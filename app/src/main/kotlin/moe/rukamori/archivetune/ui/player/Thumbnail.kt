@@ -133,6 +133,7 @@ fun Thumbnail(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
     isPlayerExpanded: Boolean = true, // Add parameter to control swipe based on player state
+    onSwipeUp: () -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -586,6 +587,14 @@ fun Thumbnail(
                                                 modifier = Modifier.fillMaxSize(),
                                             )
                                         }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .fillMaxHeight(0.5f)
+                                                .align(Alignment.BottomCenter)
+                                                .detectSwipeUpAction(onSwipeUp = onSwipeUp)
+                                        )
                                     }
                                 }
                             }
