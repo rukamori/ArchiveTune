@@ -4026,8 +4026,8 @@ fun Modifier.detectSwipeUpAction(
     var totalDragY = 0f
     var totalDragX = 0f
 
-    androidx.compose.foundation.gestures.detectDragGestures(
-        onDragStart = {
+    detectDragGestures(
+        onDragStart = { _ ->
             totalDragY = 0f
             totalDragX = 0f
         },
@@ -4036,7 +4036,7 @@ fun Modifier.detectSwipeUpAction(
                 onSwipeUp()
             }
         },
-        onDrag = { change, dragAmount ->
+        onDrag = { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: androidx.compose.ui.geometry.Offset ->
             totalDragX += dragAmount.x
             totalDragY += dragAmount.y
             if (kotlin.math.abs(totalDragY) > kotlin.math.abs(totalDragX) && kotlin.math.abs(totalDragY) > 20f) {
