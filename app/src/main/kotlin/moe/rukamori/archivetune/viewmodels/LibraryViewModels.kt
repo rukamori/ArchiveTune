@@ -52,6 +52,7 @@ import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.constants.SongSortTypeKey
 import moe.rukamori.archivetune.constants.TopSize
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
 import moe.rukamori.archivetune.extensions.reversed
@@ -86,6 +87,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.Collator
+import java.util.Locale
 import java.time.Duration
 import java.time.LocalDateTime
 import javax.inject.Inject
@@ -141,9 +143,11 @@ constructor(
                                             val collator =
                                                 Collator.getInstance(Locale.getDefault())
                                             collator.strength = Collator.PRIMARY
-                                            songs.sortedWith(compareBy(collator) { song: Song ->
-                                                song.artists.joinToString("") { artist -> artist.name }
-                                            })
+                                            songs.sortedWith(
+                                                compareBy<Song, String>(collator) { song ->
+                                                    song.artists.joinToString("") { artist -> artist.name }
+                                                },
+                                            )
                                         }
 
                                         SongSortType.PLAY_TIME -> songs.sortedBy { song: Song -> song.song.totalPlayTime }

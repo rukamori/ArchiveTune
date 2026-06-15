@@ -199,12 +199,17 @@ private data class ValidatedTopMixSong(
         get() = ytmSong.toMediaMetadata()
 }
 
-private suspend fun List<Song>.validateWithYtm(): List<ValidatedTopMixSong> =
-    buildList {
-        distinctBy { it.id }.forEach { song ->
-            song.validateWithYtm()?.let(::add)
+private suspend fun List<Song>.validateWithYtm(): List<ValidatedTopMixSong> {
+    val localSongs = distinctBy { it.id }
+    return buildList {
+        localSongs.forEach { song ->
+            val validatedSong = song.validateWithYtm()
+            if (validatedSong != null) {
+                add(validatedSong)
+            }
         }
     }
+}
 
 private suspend fun Song.validateWithYtm(): ValidatedTopMixSong? {
     val query = ytmValidationQuery()
