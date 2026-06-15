@@ -56,7 +56,9 @@ import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
+import moe.rukamori.archivetune.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.launch
+
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -90,6 +92,8 @@ fun HomeScreen(
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+
     val (showHomeCategoryChips) = rememberPreference(ShowHomeCategoryChipsKey, true)
     val (quickPicksDisplayMode) = rememberEnumPreference(QuickPicksDisplayModeKey, QuickPicksDisplayMode.CARD)
     val isLoggedIn = remember(innerTubeCookie) {
@@ -227,7 +231,7 @@ fun HomeScreen(
                         )
 
                         // Add a final vertical gradient overlay to ensure smooth bottom fade
-                        val overlayBrush = Brush.verticalGradient(
+                        val overlayBrush = if (isLiquidGlassEnabled) null else Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
                                 Color.Transparent,
@@ -245,7 +249,7 @@ fun HomeScreen(
                             drawRect(brush = brush3)
                             drawRect(brush = brush4)
                             drawRect(brush = brush5)
-                            drawRect(brush = overlayBrush)
+                            overlayBrush?.let { drawRect(brush = it) }
                         }
                     }
             ) {}

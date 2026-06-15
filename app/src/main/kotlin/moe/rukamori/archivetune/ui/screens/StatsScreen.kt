@@ -57,7 +57,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import moe.rukamori.archivetune.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -193,6 +195,8 @@ fun StatsScreen(
     }
 
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+
     val color1 = MaterialTheme.colorScheme.primary
     val color2 = MaterialTheme.colorScheme.secondary
     val color3 = MaterialTheme.colorScheme.tertiary
@@ -231,13 +235,14 @@ fun StatsScreen(
                             colors = listOf(color5.copy(alpha = 0.22f), color5.copy(alpha = 0.12f), color5.copy(alpha = 0.06f), color5.copy(alpha = 0.02f), Color.Transparent),
                             center = Offset(width * 0.5f, height * 0.75f), radius = width * 0.8f,
                         )
-                        val overlayBrush = Brush.verticalGradient(
+                        val overlayBrush = if (isLiquidGlassEnabled) null else Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color.Transparent, surfaceColor.copy(alpha = 0.22f), surfaceColor.copy(alpha = 0.55f), surfaceColor),
                             startY = height * 0.4f, endY = height,
                         )
                         onDrawBehind {
                             drawRect(brush = brush1); drawRect(brush = brush2); drawRect(brush = brush3)
-                            drawRect(brush = brush4); drawRect(brush = brush5); drawRect(brush = overlayBrush)
+                            drawRect(brush = brush4); drawRect(brush = brush5)
+                            overlayBrush?.let { drawRect(brush = it) }
                         }
                     }
             )

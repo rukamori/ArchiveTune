@@ -764,23 +764,13 @@ class MainActivity : ComponentActivity() {
                         modifier =
                         Modifier
                             .fillMaxSize()
-                            .then(
-                                if (liquidGlassEnabled) {
-                                    Modifier.hazeSource(state = hazeState)
-                                } else Modifier
-                            )
                             .background(
                                 if (liquidGlassEnabled) {
-                                    LiquidGlassDefaults.rootBackgroundBrush(useDarkTheme, themeColor)
+                                    Color.Transparent
                                 } else if (pureBlack) {
-                                    Brush.linearGradient(listOf(Color.Black, Color.Black))
+                                    Color.Black
                                 } else {
-                                    Brush.linearGradient(
-                                        listOf(
-                                            MaterialTheme.colorScheme.surface,
-                                            MaterialTheme.colorScheme.surface,
-                                        )
-                                    )
+                                    MaterialTheme.colorScheme.surface
                                 }
                             )
                     ) {
@@ -1909,11 +1899,19 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(searchBarScrollBehavior.nestedScrollConnection)
                             ) {
-                                var transitionDirection =
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(
+                                            if (liquidGlassEnabled) {
+                                                Modifier
+                                                    .hazeSource(state = hazeState)
+                                                    .background(LiquidGlassDefaults.rootBackgroundBrush(useDarkTheme, themeColor))
+                                            } else Modifier
+                                        )
+                                ) {
+                                    var transitionDirection =
                                     AnimatedContentTransitionScope.SlideDirection.Left
 
                                 if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route }) {
@@ -2012,6 +2010,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
 
                         BackHandler(enabled = playerBottomSheetState.isExpanded) {
                             playerBottomSheetState.collapseSoft()

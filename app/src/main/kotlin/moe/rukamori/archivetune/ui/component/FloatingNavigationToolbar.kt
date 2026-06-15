@@ -57,6 +57,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
+
 import androidx.compose.material3.FloatingToolbarScrollBehavior
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -539,7 +540,14 @@ private fun floatingToolbarContainerColor(pureBlack: Boolean, liquidGlass: Boole
 
 @Composable
 private fun floatingToolbarFabContainerColor(pureBlack: Boolean): Color {
-    return if (pureBlack) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.tertiaryContainer
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    return if (isLiquidGlassEnabled) {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)
+    } else if (pureBlack) {
+        Color.White.copy(alpha = 0.12f)
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
 }
 
 @Composable
@@ -549,7 +557,14 @@ private fun floatingToolbarFabContentColor(pureBlack: Boolean): Color {
 
 @Composable
 private fun floatingToolbarSelectedItemContainerColor(pureBlack: Boolean): Color {
-    return if (pureBlack) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.secondaryContainer
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    return if (isLiquidGlassEnabled) {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
+    } else if (pureBlack) {
+        Color.White.copy(alpha = 0.12f)
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
 }
 
 @Composable
@@ -568,7 +583,14 @@ private fun floatingToolbarItemContentColor(pureBlack: Boolean): Color {
 
 @Composable
 private fun floatingToolbarMenuIconContainerColor(pureBlack: Boolean): Color {
-    return if (pureBlack) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.secondaryContainer
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    return if (isLiquidGlassEnabled) {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
+    } else if (pureBlack) {
+        Color.White.copy(alpha = 0.12f)
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
 }
 
 @Composable

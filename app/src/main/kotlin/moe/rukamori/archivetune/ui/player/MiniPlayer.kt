@@ -232,8 +232,10 @@ private fun rememberMiniPlayerContentColors(
     useArtworkBackground: Boolean,
 ): MiniPlayerContentColors {
     val colorScheme = MaterialTheme.colorScheme
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     return remember(
         useArtworkBackground,
+        isLiquidGlassEnabled,
         colorScheme.primary,
         colorScheme.outline,
         colorScheme.onSurface,
@@ -264,13 +266,13 @@ private fun rememberMiniPlayerContentColors(
                 secondary = colorScheme.onSurfaceVariant,
                 progress = colorScheme.primary,
                 progressTrack = colorScheme.outline.copy(alpha = 0.18f),
-                artworkContainer = colorScheme.surfaceVariant,
+                artworkContainer = if (isLiquidGlassEnabled) colorScheme.surfaceVariant.copy(alpha = 0.30f) else colorScheme.surfaceVariant,
                 artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
-                primaryButtonContainer = colorScheme.surface,
+                primaryButtonContainer = if (isLiquidGlassEnabled) colorScheme.surface.copy(alpha = 0.15f) else colorScheme.surface,
                 buttonBorder = colorScheme.outline.copy(alpha = 0.3f),
                 buttonIcon = colorScheme.onSurface,
                 disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
-                togetherContainer = colorScheme.primaryContainer,
+                togetherContainer = if (isLiquidGlassEnabled) colorScheme.primaryContainer.copy(alpha = 0.15f) else colorScheme.primaryContainer,
                 togetherContent = colorScheme.onPrimaryContainer,
             )
         }
