@@ -545,7 +545,7 @@ private fun floatingToolbarContainerColor(pureBlack: Boolean, liquidGlass: Boole
 private fun floatingToolbarFabContainerColor(pureBlack: Boolean): Color {
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     return if (isLiquidGlassEnabled) {
-        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)
+        Color.White.copy(alpha = 0.20f)
     } else if (pureBlack) {
         Color.White.copy(alpha = 0.12f)
     } else {
@@ -562,7 +562,7 @@ private fun floatingToolbarFabContentColor(pureBlack: Boolean): Color {
 private fun floatingToolbarSelectedItemContainerColor(pureBlack: Boolean): Color {
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     return if (isLiquidGlassEnabled) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
+        Color.White.copy(alpha = 0.20f)
     } else if (pureBlack) {
         Color.White.copy(alpha = 0.12f)
     } else {
@@ -588,7 +588,7 @@ private fun floatingToolbarItemContentColor(pureBlack: Boolean): Color {
 private fun floatingToolbarMenuIconContainerColor(pureBlack: Boolean): Color {
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     return if (isLiquidGlassEnabled) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
+        Color.White.copy(alpha = 0.20f)
     } else if (pureBlack) {
         Color.White.copy(alpha = 0.12f)
     } else {
