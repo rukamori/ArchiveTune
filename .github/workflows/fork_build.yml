@@ -1,0 +1,104 @@
+name: Fork Build APK
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Purpose: Build a debug APK on every push to any branch in this fork so the
+#          author can download and test the APK before opening a pull request.
+#
+# No secrets required — all API key BuildConfig fields fall back to empty
+# strings when the environment variables are absent, which is fine for testing.
+# The APK is signed with an auto-generated debug keystore.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - "**"          # every branch in the fork
+  workflow_dispatch:  # also allow manual trigger from Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug-apk:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. JDK ───────────────────────────────────────────────────────────────
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # ── 3. Gradle ────────────────────────────────────────────────────────────
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          cache-cleanup: on-success
+
+      # ── 4. Permissions ───────────────────────────────────────────────────────
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # ── 5. Debug keystore ────────────────────────────────────────────────────
+      - name: Generate debug keystore
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkey -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      # ── 6. Build ─────────────────────────────────────────────────────────────
+      - name: Build GMS Mobile Universal Debug APK
+        run: ./gradlew assembleGmsMobileUniversalDebug --stacktrace
+        env:
+          # Secrets fall back to empty string — build still succeeds
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          PULL_REQUEST: "false"
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+      # ── 7. Locate APK ────────────────────────────────────────────────────────
+      - name: Locate built APK
+        id: locate_apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK" ]; then
+            echo "ERROR: No APK found after build!"
+            find app/build/outputs -type f || true
+            exit 1
+          fi
+          echo "Found APK: $APK"
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+
+      # ── 8. Get short SHA for artifact name ───────────────────────────────────
+      - name: Get short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # ── 9. Upload ────────────────────────────────────────────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArchiveTune-debug-${{ github.ref_name }}-${{ steps.sha.outputs.short }}
+          path: ${{ steps.locate_apk.outputs.apk_path }}
+          retention-days: 7
+          if-no-files-found: error
