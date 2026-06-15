@@ -83,7 +83,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 fun LibraryScreen(navController: NavController) {
-    var filterType by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
+    val defaultFilter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
     val database = LocalDatabase.current
     val (selectedTagIds, onSelectedTagIdsChange) = rememberPlaylistTagFilterState(database)
     val allTags by database.allTags().collectAsState(initial = emptyList())
@@ -119,9 +119,7 @@ fun LibraryScreen(navController: NavController) {
     }
 
     val pagerState = rememberPagerState(
-        initialPage = remember {
-            libraryFilters.indexOf(filterType).takeIf { it >= 0 } ?: 0
-        }
+        initialPage = libraryFilters.indexOf(defaultFilter).takeIf { it >= 0 } ?: 0
     ) { libraryFilters.size }
 
     val currentFilter = libraryFilters.getOrElse(pagerState.currentPage) { LibraryFilter.LIBRARY }
@@ -236,11 +234,8 @@ fun LibraryScreen(navController: NavController) {
             val tabListState = rememberLazyListState()
             val coroutineScope = rememberCoroutineScope()
 
-            LaunchedEffect(libraryFilters) {
-                val selectedFilter = filterType.takeIf { it in libraryFilters } ?: LibraryFilter.LIBRARY
-                if (filterType != selectedFilter) {
-                    filterType = selectedFilter
-                }
+            LaunchedEffect(defaultFilter, libraryFilters) {
+                val selectedFilter = defaultFilter.takeIf { it in libraryFilters } ?: LibraryFilter.LIBRARY
                 val selectedPage = libraryFilters.indexOf(selectedFilter).takeIf { it >= 0 } ?: 0
                 if (pagerState.currentPage != selectedPage) {
                     pagerState.scrollToPage(selectedPage)
@@ -252,9 +247,6 @@ fun LibraryScreen(navController: NavController) {
                 headerOffsetPx = 0f
                 val targetPage = pagerState.currentPage.coerceIn(0, libraryFilters.lastIndex)
                 val targetFilter = libraryFilters.getOrElse(targetPage) { LibraryFilter.LIBRARY }
-                if (filterType != targetFilter) {
-                    filterType = targetFilter
-                }
 
                 // Centering the tab chip scroll alignment
                 val tabWidth = when (targetFilter) {

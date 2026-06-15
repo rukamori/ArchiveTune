@@ -1204,126 +1204,232 @@ private fun SearchLyricsInputDialog(
     onSearchOnline: () -> Unit,
     onSearch: () -> Unit,
 ) {
+    val configuration = LocalConfiguration.current
+    val useStackedActions = configuration.screenWidthDp < 600
+
     BasicAlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.padding(24.dp)
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .navigationBarsPadding()
+            .imePadding(),
     ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
+            modifier = Modifier.widthIn(max = 560.dp),
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                LyricsSearchInputHeader(onDismiss = onDismiss)
+
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.search_lyrics),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(Modifier.height(24.dp))
-
-                OutlinedTextField(
-                    value = titleField,
-                    onValueChange = onTitleFieldChange,
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.song_title)) },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.music_note),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    )
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = artistField,
-                    onValueChange = onArtistFieldChange,
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.song_artists)) },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.artist),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    )
-                )
-
-                Spacer(Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilledTonalButton(
-                        onClick = onSearchOnline,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        shapes = ButtonDefaults.shapes(),
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.language),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                        LyricsSearchTextField(
+                            value = titleField,
+                            onValueChange = onTitleFieldChange,
+                            label = stringResource(R.string.song_title),
+                            iconResId = R.drawable.music_note,
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.search_online))
-                    }
-
-                    Button(
-                        onClick = onSearch,
-                        modifier = Modifier.weight(1f),
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                        LyricsSearchTextField(
+                            value = artistField,
+                            onValueChange = onArtistFieldChange,
+                            label = stringResource(R.string.song_artists),
+                            iconResId = R.drawable.artist,
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(android.R.string.ok))
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                LyricsSearchInputActions(
+                    useStackedActions = useStackedActions,
+                    onDismiss = onDismiss,
+                    onSearchOnline = onSearchOnline,
+                    onSearch = onSearch,
+                )
+            }
+        }
+    }
+}
 
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
+@Composable
+private fun LyricsSearchInputHeader(
+    onDismiss: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            tonalElevation = 2.dp,
+            modifier = Modifier.size(56.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        Text(
+            text = stringResource(R.string.search_lyrics),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+
+        IconButton(onClick = onDismiss) {
+            Icon(
+                painter = painterResource(R.drawable.close),
+                contentDescription = stringResource(android.R.string.cancel),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsSearchTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    label: String,
+    iconResId: Int,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(iconResId),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        ),
+    )
+}
+
+@Composable
+private fun LyricsSearchInputActions(
+    useStackedActions: Boolean,
+    onDismiss: () -> Unit,
+    onSearchOnline: () -> Unit,
+    onSearch: () -> Unit,
+) {
+    if (useStackedActions) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = onSearch,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.search))
+            }
+
+            FilledTonalButton(
+                onClick = onSearchOnline,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.language),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.search_online))
+            }
+
+            TextButton(
+                onClick = onDismiss,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(stringResource(android.R.string.cancel))
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            FilledTonalButton(
+                onClick = onSearchOnline,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.language),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.search_online))
+            }
+
+            Button(
+                onClick = onSearch,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.search))
             }
         }
     }
