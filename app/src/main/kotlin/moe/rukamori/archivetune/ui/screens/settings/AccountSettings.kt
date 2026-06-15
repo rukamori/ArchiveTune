@@ -98,6 +98,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -216,6 +217,7 @@ fun AccountSettings(
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
+    var showUnsavedAccountDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
@@ -392,6 +394,14 @@ fun AccountSettings(
                     onSwitchAccount = switchToAccount,
                     onSwitchAccountChannel = switchToAccountChannel,
                     onRemoveAccount = removeAccount,
+                    onAddAnotherAccount = {
+                        val isSaved = savedAccounts.accounts.any { it.innerTubeCookie == innerTubeCookie }
+                        if (isLoggedIn && !isSaved) {
+                            showUnsavedAccountDialog = true
+                        } else {
+                            navController.navigate(buildLoginRoute())
+                        }
+                    },
                 )
             }
 
@@ -506,6 +516,69 @@ fun AccountSettings(
             onDismiss = { showTokenEditor = false },
         )
     }
+
+    if (showUnsavedAccountDialog) {
+        Dialog(onDismissRequest = { showUnsavedAccountDialog = false }) {
+            Card(
+                shape = CardShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.unsaved_account_dialog_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = stringResource(R.string.unsaved_account_dialog_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = { showUnsavedAccountDialog = false },
+                        ) {
+                            Text(text = stringResource(R.string.unsaved_account_dialog_cancel))
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = {
+                                showUnsavedAccountDialog = false
+                                navController.navigate(buildLoginRoute())
+                            },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.unsaved_account_dialog_no_thanks),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = {
+                                showUnsavedAccountDialog = false
+                                saveCurrentAccount()
+                                navController.navigate(buildLoginRoute())
+                            },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.unsaved_account_dialog_save_yes),
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -525,6 +598,7 @@ private fun ProfileIdentityCard(
     onSwitchAccount: (SavedAccount) -> Unit,
     onSwitchAccountChannel: (AccountChannelUiModel) -> Unit,
     onRemoveAccount: (SavedAccount) -> Unit,
+    onAddAnotherAccount: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -912,6 +986,27 @@ private fun ProfileIdentityCard(
                                 onClick = {
                                     onSaveAccount()
                                     accountMenuExpanded = false
+                                },
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.add_another_account),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.add_circle),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                },
+                                onClick = {
+                                    accountMenuExpanded = false
+                                    onAddAnotherAccount()
                                 },
                             )
                         }

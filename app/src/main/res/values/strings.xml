@@ -1056,5 +1056,11 @@
     <string name="save_current_account">Save current account</string>
     <string name="no_saved_accounts">No saved accounts yet</string>
     <string name="remove_account">Remove account</string>
+    <string name="add_another_account">Add another account</string>
+    <string name="unsaved_account_dialog_title">Account not saved</string>
+    <string name="unsaved_account_dialog_text">Your current account has not been saved yet. Do you want to save it before adding another account?</string>
+    <string name="unsaved_account_dialog_cancel">Cancel login</string>
+    <string name="unsaved_account_dialog_no_thanks">No thanks</string>
+    <string name="unsaved_account_dialog_save_yes">Yes, save current account</string>
     <string name="youtube_channels">YouTube channels</string>
 </resources>

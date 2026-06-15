@@ -1016,6 +1016,12 @@
     <string name="player_background_style_v8_v9_desc">Không khả dụng với kiểu trình phát V8 và V9</string>
     <string name="recent_requests">Yêu cầu gần đây</string>
     <string name="remove_account">Xóa tài khoản</string>
+    <string name="add_another_account">Thêm tài khoản khác</string>
+    <string name="unsaved_account_dialog_title">Tài khoản chưa được lưu</string>
+    <string name="unsaved_account_dialog_text">Tài khoản hiện tại của bạn chưa được lưu. Bạn có muốn lưu trước khi thêm tài khoản khác không?</string>
+    <string name="unsaved_account_dialog_cancel">Hủy đăng nhập</string>
+    <string name="unsaved_account_dialog_no_thanks">Không cần đâu, cảm ơn</string>
+    <string name="unsaved_account_dialog_save_yes">Có, hãy lưu tài khoản hiện tại</string>
     <string name="romanization">Latinh hóa</string>
     <string name="save_current_account">Lưu tài khoản hiện tại</string>
     <string name="saved_accounts">Tài khoản đã lưu</string>
