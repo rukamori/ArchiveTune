@@ -187,9 +187,9 @@ private fun NewMiniPlayer(
             Modifier.hazeEffect(
                 state = hazeState,
                 style = HazeStyle(
-                    tints = listOf(HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark))),
-                    blurRadius = 24.dp,
-                    noiseFactor = 0.1f,
+                    tints = listOf(HazeTint(color = LiquidGlassDefaults.glassBackdropTint(isDark))),
+                    blurRadius = 30.dp,
+                    noiseFactor = 0.02f,
                     backgroundColor = hazeBg
                 )
             )

@@ -123,6 +123,13 @@ object LiquidGlassDefaults {
         },
     )
 
+    /** Glass backdrop tint color for Haze blurs - provides optimal frosting and readability. */
+    fun glassBackdropTint(isDark: Boolean): Color = if (isDark) {
+        Color(0xFF1A1A2E).copy(alpha = 0.35f)
+    } else {
+        Color.White.copy(alpha = 0.40f)
+    }
+
     /**
      * Diagonal gradient used as the app-root background when Liquid Glass is active.
      * The gradient uses the current theme seed colour so it adapts to album art tinting.
@@ -135,7 +142,7 @@ object LiquidGlassDefaults {
             Brush.linearGradient(
                 colors = listOf(
                     Color(0xFF050508),
-                    themeColor.copy(alpha = 0.22f),
+                    androidx.compose.ui.graphics.lerp(Color(0xFF050508), themeColor, 0.22f),
                     Color(0xFF08080F),
                 ),
                 start = Offset(0f, 0f),
@@ -145,7 +152,7 @@ object LiquidGlassDefaults {
             Brush.linearGradient(
                 colors = listOf(
                     Color(0xFFF0F4FF),
-                    themeColor.copy(alpha = 0.10f),
+                    androidx.compose.ui.graphics.lerp(Color.White, themeColor, 0.10f),
                     Color(0xFFEBF0FA),
                 ),
                 start = Offset(0f, 0f),
