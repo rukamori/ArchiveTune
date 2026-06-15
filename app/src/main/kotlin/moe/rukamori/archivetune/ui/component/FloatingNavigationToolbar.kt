@@ -125,7 +125,8 @@ fun FloatingNavigationToolbar(
                 style = HazeStyle(
                     tints = listOf(HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark))),
                     blurRadius = 24.dp,
-                    noiseFactor = 0.1f
+                    noiseFactor = 0.1f,
+                    backgroundColor = MaterialTheme.colorScheme.background
                 )
             )
             .border(1.dp, LiquidGlassDefaults.borderBrush(isDark), shape)
