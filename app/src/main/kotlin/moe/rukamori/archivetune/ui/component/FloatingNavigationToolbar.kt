@@ -118,9 +118,9 @@ fun FloatingNavigationToolbar(
     val shape = CircleShape
     val glassModifier = if (isLiquidGlassEnabled && hazeState != null) {
         Modifier
+            .clip(shape)
             .hazeChild(
                 state = hazeState,
-                shape = shape,
                 style = HazeStyle(
                     tint = HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark)),
                     blurRadius = 24.dp,

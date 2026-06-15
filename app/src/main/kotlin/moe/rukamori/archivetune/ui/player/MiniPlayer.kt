@@ -184,7 +184,6 @@ private fun NewMiniPlayer(
         val hazeMod = if (hazeState != null && effectiveBackgroundStyle == MiniPlayerBackgroundStyle.THEME) {
             Modifier.hazeChild(
                 state = hazeState,
-                shape = miniPlayerShape,
                 style = HazeStyle(
                     tint = HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark)),
                     blurRadius = 24.dp,
