@@ -197,6 +197,7 @@ import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PureBlackKey
+import moe.rukamori.archivetune.constants.LiquidGlassEnabledKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
@@ -276,6 +277,7 @@ import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
+import moe.rukamori.archivetune.ui.theme.LiquidGlassDefaults
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
@@ -661,6 +663,7 @@ class MainActivity : ComponentActivity() {
                 }
             val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
             val pureBlack = pureBlackEnabled && useDarkTheme
+            val liquidGlassEnabled by rememberPreference(LiquidGlassEnabledKey, defaultValue = false)
 
             val customThemeSeedPalette = remember(customThemeColorValue) {
                 if (customThemeColorValue.startsWith("#")) {
@@ -751,13 +754,25 @@ class MainActivity : ComponentActivity() {
                 disableAnimations = disableAnimations,
                 fontPreference = fontPreference,
                 customFontUri = customFontUri,
+                liquidGlass = liquidGlassEnabled,
             ) {
                     BoxWithConstraints(
                         modifier =
                         Modifier
                             .fillMaxSize()
                             .background(
-                                if(pureBlack) Color.Black else MaterialTheme.colorScheme.surface
+                                if (liquidGlassEnabled) {
+                                    LiquidGlassDefaults.rootBackgroundBrush(useDarkTheme, themeColor)
+                                } else if (pureBlack) {
+                                    Brush.linearGradient(listOf(Color.Black, Color.Black))
+                                } else {
+                                    Brush.linearGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.surface,
+                                            MaterialTheme.colorScheme.surface,
+                                        )
+                                    )
+                                }
                             )
                     ) {
                     val focusManager = LocalFocusManager.current

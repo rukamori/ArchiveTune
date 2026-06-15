@@ -88,6 +88,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PureBlackKey
+import moe.rukamori.archivetune.constants.LiquidGlassEnabledKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.PlayerButtonsStyle
 import moe.rukamori.archivetune.constants.PlayerButtonsStyleKey
@@ -179,6 +180,7 @@ fun AppearanceSettings(
             defaultValue = MiniPlayerBackgroundStyle.THEME,
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
+    val (liquidGlassEnabled, onLiquidGlassEnabledChange) = rememberPreference(LiquidGlassEnabledKey, defaultValue = false)
     val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
     val (disableAnimations, onDisableAnimationsChange) = rememberPreference(
         DisableAnimationsKey,
@@ -430,6 +432,16 @@ fun AppearanceSettings(
                     icon = { Icon(painterResource(R.drawable.contrast), null) },
                     checked = pureBlack,
                     onCheckedChange = onPureBlackChange,
+                )
+            }
+
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.liquid_glass)) },
+                    description = stringResource(R.string.liquid_glass_desc),
+                    icon = { Icon(painterResource(R.drawable.blur_on), null) },
+                    checked = liquidGlassEnabled,
+                    onCheckedChange = onLiquidGlassEnabledChange,
                 )
             }
 

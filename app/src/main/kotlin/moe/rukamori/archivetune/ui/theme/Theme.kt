@@ -78,6 +78,7 @@ fun ArchiveTuneTheme(
     disableAnimations: Boolean = false,
     fontPreference: AppFontPreference = AppFontPreference.DEFAULT,
     customFontUri: String = "",
+    liquidGlass: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -140,8 +141,9 @@ fun ArchiveTuneTheme(
             appColorScheme
         }
 
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) baseColorScheme.pureBlack(true) else baseColorScheme
+    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme, liquidGlass) {
+        val afterPureBlack = if (darkTheme && pureBlack) baseColorScheme.pureBlack(true) else baseColorScheme
+        if (liquidGlass) afterPureBlack.applyLiquidGlass(darkTheme) else afterPureBlack
     }
 
     val animatedColorScheme = if (disableAnimations) colorScheme else animateColorScheme(colorScheme)
@@ -159,6 +161,7 @@ fun ArchiveTuneTheme(
     CompositionLocalProvider(
         LocalArchiveTuneFontPreference provides fontPreference,
         LocalArchiveTuneFontFamily provides resolvedFontFamily,
+        LocalLiquidGlassEnabled provides liquidGlass,
     ) {
         MaterialExpressiveTheme(
             colorScheme = animatedColorScheme,
@@ -169,6 +172,22 @@ fun ArchiveTuneTheme(
         )
     }
 }
+
+/**
+ * Overrides the M3 [ColorScheme]'s surface and container tokens with semi-transparent
+ * glass equivalents so that the entire Compose surface hierarchy becomes glassy without
+ * any per-component changes.
+ *
+ * @param isDark Whether dark mode is currently active (determines glass tint direction).
+ */
+private fun ColorScheme.applyLiquidGlass(isDark: Boolean): ColorScheme = copy(
+    surface = LiquidGlassDefaults.surfaceColor(isDark),
+    surfaceContainer = LiquidGlassDefaults.surfaceContainerColor(isDark),
+    surfaceContainerLow = LiquidGlassDefaults.surfaceContainerLowColor(isDark),
+    surfaceContainerHigh = LiquidGlassDefaults.surfaceContainerHighColor(isDark),
+    surfaceContainerLowest = LiquidGlassDefaults.surfaceContainerLowestColor(isDark),
+    surfaceContainerHighest = LiquidGlassDefaults.surfaceContainerHighestColor(isDark),
+)
 
 @Composable
 private fun animateColorScheme(targetColorScheme: ColorScheme): ColorScheme {
