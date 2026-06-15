@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -919,17 +920,27 @@ fun UpdateScreen(
         AlertDialog(
             onDismissRequest = { showUpdateUpToDateDialog = false },
             icon = {
-                Icon(
-                    painter = painterResource(R.drawable.done),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(R.drawable.check),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
             },
             title = {
                 Text(
                     text = stringResource(R.string.updates_status_current),
                     style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
                 )
             },
             text = {
@@ -937,10 +948,12 @@ fun UpdateScreen(
                     text = updateSheetVersion ?: BuildConfig.VERSION_NAME,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showUpdateUpToDateDialog = false }) {
+                OutlinedButton(onClick = { showUpdateUpToDateDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }
