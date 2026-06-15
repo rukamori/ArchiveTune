@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.ui.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.luminance
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import moe.rukamori.archivetune.ui.theme.LocalLiquidGlassEnabled
+import moe.rukamori.archivetune.ui.theme.LocalHazeState
+import moe.rukamori.archivetune.ui.theme.LiquidGlassDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -166,6 +175,26 @@ private fun NewMiniPlayer(
         useArtworkBackground = effectiveBackgroundStyle != MiniPlayerBackgroundStyle.THEME,
     )
 
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val hazeState = LocalHazeState.current
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val miniPlayerShape = RoundedCornerShape(32.dp)
+
+    val glassModifier = if (isLiquidGlassEnabled) {
+        val hazeMod = if (hazeState != null && effectiveBackgroundStyle == MiniPlayerBackgroundStyle.THEME) {
+            Modifier.hazeChild(
+                state = hazeState,
+                shape = miniPlayerShape,
+                style = HazeStyle(
+                    tint = HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark)),
+                    blurRadius = 24.dp,
+                    noiseFactor = 0.1f
+                )
+            )
+        } else Modifier
+        hazeMod.border(1.dp, LiquidGlassDefaults.borderBrush(isDark), miniPlayerShape)
+    } else Modifier
+
     SwipeableMiniPlayerBox(
         modifier = modifier,
         swipeSensitivity = swipeSensitivity,
@@ -181,7 +210,8 @@ private fun NewMiniPlayer(
                 .fillMaxWidth()
                 .height(64.dp)
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
-                .clip(RoundedCornerShape(32.dp))
+                .clip(miniPlayerShape)
+                .then(glassModifier)
         ) {
             MiniPlayerBackground(
                 style = effectiveBackgroundStyle,
@@ -256,8 +286,11 @@ private fun MiniPlayerBackground(
 ) {
     when (style) {
         MiniPlayerBackgroundStyle.THEME -> {
+            val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
             Box(
-                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer)
+                modifier = modifier.background(
+                    if (isLiquidGlassEnabled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer
+                )
             )
         }
 

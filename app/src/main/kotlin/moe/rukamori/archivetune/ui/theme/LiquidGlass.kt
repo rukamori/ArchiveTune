@@ -11,6 +11,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeState
+
+/**
+ * Composition local that provides the HazeState for backdrop blur effects.
+ */
+val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 /**
  * Composition local that indicates whether the Liquid Glass UI mode is active.

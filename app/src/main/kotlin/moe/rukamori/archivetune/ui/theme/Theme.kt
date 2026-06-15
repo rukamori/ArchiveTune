@@ -141,9 +141,9 @@ fun ArchiveTuneTheme(
             appColorScheme
         }
 
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme, liquidGlass) {
+    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
         val afterPureBlack = if (darkTheme && pureBlack) baseColorScheme.pureBlack(true) else baseColorScheme
-        if (liquidGlass) afterPureBlack.applyLiquidGlass(darkTheme) else afterPureBlack
+        afterPureBlack
     }
 
     val animatedColorScheme = if (disableAnimations) colorScheme else animateColorScheme(colorScheme)

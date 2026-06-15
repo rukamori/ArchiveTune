@@ -278,6 +278,9 @@ import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.theme.LiquidGlassDefaults
+import moe.rukamori.archivetune.ui.theme.LocalHazeState
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
@@ -756,6 +759,7 @@ class MainActivity : ComponentActivity() {
                 customFontUri = customFontUri,
                 liquidGlass = liquidGlassEnabled,
             ) {
+                    val hazeState = remember { HazeState() }
                     BoxWithConstraints(
                         modifier =
                         Modifier
@@ -774,7 +778,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             )
+                            .then(
+                                if (liquidGlassEnabled) {
+                                    Modifier.haze(hazeState)
+                                } else Modifier
+                            )
                     ) {
+
                     val focusManager = LocalFocusManager.current
                     val density = LocalDensity.current
                     val windowsInsets = WindowInsets.systemBars
@@ -1373,6 +1383,7 @@ class MainActivity : ComponentActivity() {
                         LocalSyncUtils provides syncUtils,
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
+                        LocalHazeState provides hazeState,
                     ) {
                         if (showCreatePlaylistDialog) {
                             CreatePlaylistDialog(

@@ -25,7 +25,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.luminance
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import moe.rukamori.archivetune.ui.theme.LocalLiquidGlassEnabled
+import moe.rukamori.archivetune.ui.theme.LocalHazeState
+import moe.rukamori.archivetune.ui.theme.LiquidGlassDefaults
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -96,12 +105,30 @@ fun FloatingNavigationToolbar(
     isSelected: (Screens) -> Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
 ) {
-    val toolbarContainerColor = floatingToolbarContainerColor(pureBlack = pureBlack)
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val hazeState = LocalHazeState.current
+    val toolbarContainerColor = floatingToolbarContainerColor(pureBlack = pureBlack, liquidGlass = isLiquidGlassEnabled)
     val toolbarColors = FloatingToolbarDefaults.standardFloatingToolbarColors(
         toolbarContainerColor = toolbarContainerColor,
     )
     val hasOverflowAction = onShuffleClick != null && shuffleIconRes != null
     val hasFabAction = onFabClick != null && fabIconRes != null
+
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val shape = CircleShape
+    val glassModifier = if (isLiquidGlassEnabled && hazeState != null) {
+        Modifier
+            .hazeChild(
+                state = hazeState,
+                shape = shape,
+                style = HazeStyle(
+                    tint = HazeTint(color = LiquidGlassDefaults.surfaceContainerColor(isDark)),
+                    blurRadius = 24.dp,
+                    noiseFactor = 0.1f
+                )
+            )
+            .border(1.dp, LiquidGlassDefaults.borderBrush(isDark), shape)
+    } else Modifier
 
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
@@ -122,7 +149,9 @@ fun FloatingNavigationToolbar(
                         musicRecognitionContentDescription = musicRecognitionContentDescription,
                     )
                 },
-                modifier = Modifier.widthIn(max = 480.dp),
+                modifier = Modifier
+                    .widthIn(max = 480.dp)
+                    .then(glassModifier),
                 colors = toolbarColors,
                 scrollBehavior = scrollBehavior,
                 animationSpec = FloatingToolbarDefaults.animationSpec(),
@@ -146,7 +175,9 @@ fun FloatingNavigationToolbar(
                         contentDescription = fabContentDescription,
                     )
                 },
-                modifier = Modifier.widthIn(max = 480.dp),
+                modifier = Modifier
+                    .widthIn(max = 480.dp)
+                    .then(glassModifier),
                 colors = toolbarColors,
                 scrollBehavior = scrollBehavior,
                 animationSpec = FloatingToolbarDefaults.animationSpec(),
@@ -162,7 +193,9 @@ fun FloatingNavigationToolbar(
         } else {
             HorizontalFloatingToolbar(
                 expanded = true,
-                modifier = Modifier.widthIn(max = 420.dp),
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .then(glassModifier),
                 colors = toolbarColors,
                 scrollBehavior = scrollBehavior,
             ) {
@@ -496,8 +529,12 @@ private fun FloatingNavigationToolbarItem(
 }
 
 @Composable
-private fun floatingToolbarContainerColor(pureBlack: Boolean): Color {
-    return if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+private fun floatingToolbarContainerColor(pureBlack: Boolean, liquidGlass: Boolean): Color {
+    return when {
+        liquidGlass -> Color.Transparent
+        pureBlack -> Color.Black
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
 }
 
 @Composable
