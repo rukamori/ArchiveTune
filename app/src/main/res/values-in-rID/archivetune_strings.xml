@@ -216,8 +216,8 @@
     <string name="maximum_volume">Volume Maksimum</string>
     <string name="hide_player_thumbnail">Sembunyikan Thumbnail Pemutar</string>
     <string name="hide_player_thumbnail_desc">Ganti sampul album dengan logo aplikasi di pemutar</string>
-    <string name="crop_thumbnail_to_square">Pangkas thumbnail video menjadi persegi</string>
-    <string name="crop_thumbnail_to_square_desc">Wajibkan semua thumbnail dari sumber YouTube (tipe video) ditampilkan sebagai persegi</string>
+    <string name="crop_thumbnail_to_square">Pangkas thumbnail menjadi 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Tampilkan thumbnail YouTube dalam format persegi, bukan 16:9</string>
     <string name="show_home_category_chips">Tampilkan chip kategori beranda</string>
     <string name="show_home_category_chips_desc">Tampilkan chip filter kategori di layar beranda</string>
     <string name="show_tags_in_library">Tampilkan tag di pustaka</string>

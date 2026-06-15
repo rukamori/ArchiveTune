@@ -239,8 +239,8 @@
     <string name="maximum_volume">Maximum Volume</string>
     <string name="hide_player_thumbnail">Hide Player Thumbnail</string>
     <string name="hide_player_thumbnail_desc">Replace album artwork with app logo in player</string>
-    <string name="crop_thumbnail_to_square">Crop video thumbnail to square</string>
-    <string name="crop_thumbnail_to_square_desc">Require all thumbnails from YouTube sources (video type) to display as square</string>
+    <string name="crop_thumbnail_to_square">Crop thumbnails to 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Display YouTube thumbnails in square format instead of 16:9</string>
     <string name="show_home_category_chips">Show home category chips</string>
     <string name="show_home_category_chips_desc">Show category filter chips on the home screen</string>
     <string name="show_tags_in_library">Show tags in library</string>
@@ -625,6 +625,10 @@
     <string name="about_archive_tune_team">Team</string>
     <string name="about_respecter">Respecter</string>
     <string name="about_contributors">Contributors</string>
+    <string name="about_contributors_read_more">Read More</string>
+    <string name="about_contributor_translation">Contributor Translation</string>
+    <string name="about_license">LICENSE</string>
+    <string name="about_license_unknown">Unknown license</string>
     <string name="about_position_lead_dev">Eh?</string>
     <string name="about_position_wttexe">Word Synced Lyrics, Gradients and UI Changes for the better!</string>
     <string name="about_position_miko">Contributor Team</string>

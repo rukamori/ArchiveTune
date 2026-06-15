@@ -296,8 +296,8 @@
     <string name="lyrics_share_show_cover_desc">Includi l\'artwork nell\'header dell\'immagine esportata.</string>
     <string name="lyrics_share_export_failed">Impossibile creare immagine: %1$s</string>
     <string name="lyrics_share_export_not_supported">La condivisione immagine richiese Android 6.0 o superiore</string>
-    <string name="crop_thumbnail_to_square">Ritaglia thumbnail video a quadrato</string>
-    <string name="crop_thumbnail_to_square_desc">Richiedi che tutte le thumbnail da fonti YouTube (tipo video) vengano visualizzate come quadrate</string>
+    <string name="crop_thumbnail_to_square">Ritaglia thumbnails a 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Mostra le thumbnails di YouTube in formato quadrato invece di 16:9</string>
     <string name="show_home_category_chips">Mostra chip categorie nella home</string>
     <string name="show_home_category_chips_desc">Mostra i chip delle categorie nella schermata principale</string>
     <string name="player_design_v6">Espressivo</string>

@@ -879,20 +879,6 @@
     <string name="album_backdrop_desc">Afficher l’illustration comme arrière-plan flou sur le lecteur</string>
     <string name="backdrop_blur_amount">Quantité de flou d’arrière-plan</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="build_your_mix_title">Créez votre propre mix</string>
-    <string name="build_your_mix_description">Sur quelle base préparons-nous ce mix pour vous ?</string>
-    <string name="build_your_mix_song_count">Combien de titres au total souhaitez-vous télécharger ?</string>
-    <string name="build_your_mix_listening_history">Historique d\'écoute</string>
-    <string name="build_your_mix_average_listened">Moyenne d\'écoute</string>
-    <string name="build_your_mix_input_manually">Saisir manuellement</string>
-    <string name="build_your_mix_create">Composition</string>
-    <string name="build_your_mix_manual_basis">Base du manuel</string>
-    <string name="build_your_mix_manual_placeholder">Tapez le nom d\'un artiste ou le titre d\'un morceau, par exemple Alan Walker</string>
-    <string name="build_your_mix_loading_quote">Construire votre mix, ça va prendre du temps...</string>
-    <string name="build_your_mix_empty_library">Aucun morceau de la bibliothèque n\'est disponible pour créer un mix.</string>
-    <string name="build_your_mix_manual_required">Commencez par saisir le nom d\'un artiste ou le titre d\'un morceau.</string>
-    <string name="build_your_mix_no_manual_match">Aucun morceau de la bibliothèque ne correspond à cet artiste ou à ce titre.</string>
-    <string name="build_your_mix_failed">Impossible de constituer votre mix</string>
     <string name="library_title">Votre Bibliothèque</string>
     <string name="library_subtitle">Votre musique, classée pour vous</string>
     <string name="library_playlists_subtitle">Toutes vos playlists, classées pour vous</string>
@@ -909,12 +895,6 @@
     <string name="instant_playback">Lecture immédiate</string>
     <string name="on_device">Sur l\'appareil</string>
     <string name="recently_played">Joués récemment</string>
-    <string name="daily_mix_1_desc">Ambiance décontractée, concentration et rythmes de fond</string>
-    <string name="daily_mix_1">Compilation du Jour 1</string>
-    <string name="chill_mix">Chill Mix</string>
-    <string name="chill_mix_desc">Des mélodies apaisantes pour se détendre</string>
-    <string name="focus_mix">Focus Mix</string>
-    <string name="focus_mix_desc">Des rythmes lo-fi pour favoriser la concentration</string>
     <string name="your_playlists">Vos Playlists</string>
     <string name="see_all">Tout afficher</string>
 </resources>

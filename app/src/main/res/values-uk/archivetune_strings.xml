@@ -65,8 +65,8 @@
     <string name="maximum_volume">Максимальна гучність</string>
     <string name="hide_player_thumbnail">Приховати мініатюру відтворювача</string>
     <string name="hide_player_thumbnail_desc">Замінити обкладинку альбому на логотип програми в програвачі</string>
-    <string name="crop_thumbnail_to_square">Обрізати відео мініатюру до квадрата</string>
-    <string name="crop_thumbnail_to_square_desc">Вимагати відображення всіх мініатюр із джерел YouTube (тип відео) у квадратному форматі</string>
+    <string name="crop_thumbnail_to_square">Обрізати мініатюри до формату 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Відображати мініатюри YouTube у квадратному форматі замість 16:9</string>
     <string name="show_home_category_chips">Показати вкладки домашньої категорії</string>
     <string name="show_home_category_chips_desc">Показати фільтри категорій на головному екрані</string>
     <string name="show_tags_in_library">Показати теги в бібліотеці</string>

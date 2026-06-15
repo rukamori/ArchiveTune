@@ -112,16 +112,6 @@ data class ArtistItem(
         get() = "https://music.youtube.com/channel/$id"
 }
 
-val YTItem.displayThumbnail: String?
-    get() = when (this) {
-        is SongItem -> {
-            val musicVideoType = endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType
-            val isMusicVideo = musicVideoType == MUSIC_VIDEO_TYPE_OMV || musicVideoType == MUSIC_VIDEO_TYPE_UGC
-            if (isMusicVideo) "https://i.ytimg.com/vi/$id/maxresdefault.jpg" else thumbnail
-        }
-        else -> thumbnail
-    }
-
 fun <T : YTItem> List<T>.filterExplicit(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.explicit }

@@ -288,8 +288,8 @@
     <string name="lyrics_share_show_cover_desc">Inclua a arte no cabeçalho da imagem exportada.</string>
     <string name="lyrics_share_export_failed">Falha ao criar imagem: %1$s</string>
     <string name="lyrics_share_export_not_supported">O compartilhamento de imagens requer Android 6.0 ou posterior</string>
-    <string name="crop_thumbnail_to_square">Recortar miniatura de vídeo para quadrado</string>
-    <string name="crop_thumbnail_to_square_desc">Exigir que todas as miniaturas de fontes do YouTube (tipo vídeo) sejam exibidas como quadrado</string>
+    <string name="crop_thumbnail_to_square">Recortar miniaturas para escala 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Exibir miniaturas do YouTube em formato quadrado em vez de 16:9</string>
     <string name="show_home_category_chips">Mostrar fichas da categoria casa</string>
     <string name="show_home_category_chips_desc">Exibir filtros de categoria na tela inicial</string>
     <string name="player_design_v5">Pequeno</string>

@@ -118,7 +118,6 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.YTItem
-import moe.rukamori.archivetune.innertube.models.displayThumbnail
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -387,7 +386,7 @@ fun SongListItem(
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
-                    thumbnailUrl = song.song.thumbnailUrl,
+                    thumbnailUrl = song.song.thumbnailUrl?.resize(200, 200),
                     albumIndex = albumIndex,
                     isSelected = isSelected,
                     isActive = isActive,
@@ -1308,7 +1307,7 @@ fun YouTubeListItem(
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
-                    thumbnailUrl = item.displayThumbnail,
+                    thumbnailUrl = item.thumbnail,
                     albumIndex = albumIndex,
                     isSelected = isSelected,
                     isActive = isActive,
@@ -1325,7 +1324,7 @@ fun YouTubeListItem(
 
     if (item is SongItem && isSwipeable && swipeEnabled) {
         SwipeToSongBox(
-            mediaItem = item.copy(thumbnail = item.displayThumbnail ?: item.thumbnail).toMediaItem(),
+            mediaItem = item.copy(thumbnail = item.thumbnail.resize(1080, 1080)).toMediaItem(),
             modifier = Modifier.fillMaxWidth()
         ) {
             content()
@@ -1361,51 +1360,47 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-) {
-    val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, false)
-    val isYtVideo = item.displayThumbnail?.contains("i.ytimg.com") == true
-    val effectiveRatio = if (cropThumbnailToSquare && isYtVideo) 1f else thumbnailRatio
-    GridItem(
-        title = {
+) = GridItem(
+    title = {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier.basicMarquee().fillMaxWidth()
+        )
+    },
+    subtitle = {
+        val subtitle = when (item) {
+            is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+            is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+            is ArtistItem -> null
+            is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
+        }
+        if (subtitle != null) {
             Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-                modifier = Modifier.basicMarquee().fillMaxWidth()
             )
-        },
-        subtitle = {
-            val subtitle = when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
-                is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
-                is ArtistItem -> null
-                is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
-            }
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        },
-        badges = badges,
-        thumbnailContent = {
-            val database = LocalDatabase.current
-            val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-            val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
+        }
+    },
+    badges = badges,
+    thumbnailContent = {
+        val database = LocalDatabase.current
+        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
+        val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
 
-            ItemThumbnail(
-                thumbnailUrl = item.displayThumbnail?: item.thumbnail,
-                isActive = isActive,
-                isPlaying = isPlaying,
-                shape = shape,
-                thumbnailRatio = effectiveRatio
+        ItemThumbnail(
+            thumbnailUrl = item.thumbnail,
+            isActive = isActive,
+            isPlaying = isPlaying,
+            shape = shape,
+            thumbnailRatio = thumbnailRatio
         )
 
         if (item is SongItem && !isActive) {
@@ -1434,11 +1429,10 @@ fun YouTubeGridItem(
             }
         )
     },
-    thumbnailRatio = effectiveRatio,
+    thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth,
     modifier = modifier
 )
-}
 
 @Composable
 fun LocalSongsGrid(
@@ -1543,18 +1537,16 @@ fun ItemThumbnail(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, false)
-    val isYtVideo = thumbnailUrl?.contains("i.ytimg.com") == true
-    val effectiveRatio = if (cropThumbnailToSquare && isYtVideo) 1f else thumbnailRatio
-    val effectiveContentScale = if (cropThumbnailToSquare && isYtVideo) ContentScale.Crop else ContentScale.Fit
-
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
-            .aspectRatio(effectiveRatio)
+            .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
+        val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
+        val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
+        val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
 
@@ -1576,12 +1568,24 @@ fun ItemThumbnail(
             }
 
             if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
-                YTFallbackImage(
-                    url = thumbnailUrl,
+                val request = remember(thumbnailUrl, widthPx, heightPx) {
+                    ImageRequest.Builder(context)
+                        .data(thumbnailUrl?.resize(544, 544))
+                        .allowHardware(true)
+                        .apply {
+                            if (widthPx != null && heightPx != null) {
+                                size(widthPx, heightPx)
+                            }
+                        }
+                        .build()
+                }
+                AsyncImage(
+                    model = request,
                     contentDescription = null,
-                    contentScale = effectiveContentScale,
-                    widthPx = widthPx,
-                    heightPx = heightPx,
+                    contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it }
                 )
             } else if (placeholderIconRes == null) {
                 Box(
@@ -1659,26 +1663,34 @@ fun LocalThumbnail(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, false)
-    val isYtVideo = thumbnailUrl?.contains("i.ytimg.com") == true
-    val effectiveRatio = if (cropThumbnailToSquare && isYtVideo) 1f else thumbnailRatio
-    val effectiveContentScale = if (cropThumbnailToSquare && isYtVideo) ContentScale.Crop else ContentScale.Fit
 
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .aspectRatio(effectiveRatio)
+            .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
+        val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
+        val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
+        val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
-        YTFallbackImage(
-            url = thumbnailUrl,
+        val request = remember(thumbnailUrl, widthPx, heightPx) {
+            ImageRequest.Builder(context)
+                .data(thumbnailUrl)
+                .allowHardware(true)
+                .apply {
+                    if (widthPx != null && heightPx != null) {
+                        size(widthPx, heightPx)
+                    }
+                }
+                .build()
+        }
+        AsyncImage(
+            model = request,
             contentDescription = null,
-            contentScale = effectiveContentScale,
-            modifier = Modifier.fillMaxSize(),
-            widthPx = widthPx,
-            heightPx = heightPx,
+            contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
+            modifier = Modifier.fillMaxSize().let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it }
         )
 
         AnimatedVisibility(

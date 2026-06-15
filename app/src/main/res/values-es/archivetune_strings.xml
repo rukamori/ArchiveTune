@@ -64,8 +64,8 @@
     <string name="maximum_volume">Volumen máximo</string>
     <string name="hide_player_thumbnail">Ocultar miniatura del reproductor</string>
     <string name="hide_player_thumbnail_desc">Reemplaza la caratula del álbum con el logo de la app en el reproductor</string>
-    <string name="crop_thumbnail_to_square">Recortar miniatura de video a cuadrado</string>
-    <string name="crop_thumbnail_to_square_desc">Exigir que todas las miniaturas de fuentes de YouTube (tipo video) se muestren como cuadrado</string>
+    <string name="crop_thumbnail_to_square">Cortar miniaturas a 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Mostrar miniaturas de YouTube en formato cuadrado en lugar de 16:9</string>
     <string name="show_tags_in_library">Mostrar etiquetas en la biblioteca</string>
     <string name="already_in_playlist">Ya en la lista de reproducción:</string>
     <plurals name="n_element">

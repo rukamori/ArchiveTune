@@ -10,11 +10,18 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
+import android.os.Message
+import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -120,6 +127,8 @@ private val CSV_MIME_TYPES =
     )
 
 private val SpotifyAccountIconSize = 44.dp
+private const val SpotifyLoginUserAgent =
+    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
 
 @Composable
 fun BackupAndRestore(
@@ -478,14 +487,28 @@ private fun SpotifyLoginSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var mainWebView by remember { mutableStateOf<WebView?>(null) }
     var captured by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         onDispose {
-            webView?.stopLoading()
-            webView?.loadUrl("about:blank")
-            webView?.destroy()
+            webView?.destroySpotifyLoginWebView()
+            mainWebView?.takeIf { it !== webView }?.destroySpotifyLoginWebView()
             webView = null
+            mainWebView = null
+        }
+    }
+
+    BackHandler(enabled = webView != null) {
+        val activeWebView = webView
+        val rootWebView = mainWebView
+        when {
+            activeWebView?.canGoBack() == true -> activeWebView.goBack()
+            activeWebView != null && rootWebView != null && activeWebView !== rootWebView -> {
+                activeWebView.destroySpotifyLoginWebView()
+                webView = rootWebView
+            }
+            else -> onDismiss()
         }
     }
 
@@ -520,32 +543,42 @@ private fun SpotifyLoginSheet(
                     .weight(1f)
                     .clip(MaterialTheme.shapes.large),
                 factory = { context ->
-                    WebView(context).apply {
+                    val container = FrameLayout(context)
+                    val spotifyWebView = WebView(context).apply {
                         val cookieManager = CookieManager.getInstance()
                         cookieManager.setAcceptCookie(true)
                         cookieManager.setAcceptThirdPartyCookies(this, true)
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.setSupportZoom(true)
-                        settings.builtInZoomControls = true
-                        settings.displayZoomControls = false
-                        settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
-                        webViewClient = object : WebViewClient() {
-                            private fun captureCookies(url: String?): Boolean {
-                                if (captured) return true
-                                val cookies = readSpotifyCookies(cookieManager, url)
-                                val spDc = cookies["sp_dc"].orEmpty()
-                                if (spDc.isBlank()) return false
-                                captured = true
-                                cookieManager.flush()
-                                onCookiesCaptured(spDc, cookies["sp_key"].orEmpty())
-                                return true
-                            }
+                        configureSpotifyLoginWebView()
 
+                        fun captureCookies(url: String?): Boolean {
+                            if (captured) return true
+                            val cookies = readSpotifyCookies(cookieManager, url)
+                            val spDc = cookies["sp_dc"].orEmpty()
+                            if (spDc.isBlank()) return false
+                            captured = true
+                            cookieManager.flush()
+                            onCookiesCaptured(spDc, cookies["sp_key"].orEmpty())
+                            return true
+                        }
+
+                        webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(
                                 view: WebView,
                                 request: WebResourceRequest,
-                            ): Boolean = captureCookies(request.url?.toString())
+                            ): Boolean =
+                                shouldOverrideSpotifyLoginUrl(
+                                    view = view,
+                                    url = request.url?.toString(),
+                                    captureCookies = { url -> captureCookies(url) },
+                                )
+
+                            @Deprecated("Deprecated in Java")
+                            override fun shouldOverrideUrlLoading(view: WebView, url: String?): Boolean =
+                                shouldOverrideSpotifyLoginUrl(
+                                    view = view,
+                                    url = url,
+                                    captureCookies = { targetUrl -> captureCookies(targetUrl) },
+                                )
 
                             override fun onPageStarted(
                                 view: WebView,
@@ -559,19 +592,169 @@ private fun SpotifyLoginSheet(
                                 captureCookies(url)
                             }
                         }
+                        webChromeClient = SpotifyLoginWebChromeClient(
+                            container = container,
+                            parentWebView = this,
+                            captureCookies = { url -> captureCookies(url) },
+                            onActiveWebViewChanged = { activeWebView -> webView = activeWebView },
+                        )
                         webView = this
+                        mainWebView = this
                         resetAuthWebViewSession(context, this) {
                             loadUrl(SpotifyAuth.LOGIN_URL)
                         }
                     }
+                    container.addView(
+                        spotifyWebView,
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        ),
+                    )
+                    container
                 },
-                update = { view ->
-                    webView = view
+                update = {
+                    webView = webView ?: mainWebView
                 },
             )
         }
     }
 }
+
+private fun WebView.destroySpotifyLoginWebView() {
+    stopLoading()
+    loadUrl("about:blank")
+    (parent as? ViewGroup)?.removeView(this)
+    destroy()
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun WebView.configureSpotifyLoginWebView() {
+    settings.apply {
+        javaScriptEnabled = true
+        domStorageEnabled = true
+        javaScriptCanOpenWindowsAutomatically = true
+        setSupportMultipleWindows(true)
+        setSupportZoom(true)
+        builtInZoomControls = true
+        displayZoomControls = false
+        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        userAgentString = SpotifyLoginUserAgent
+    }
+}
+
+private class SpotifyLoginWebChromeClient(
+    private val container: FrameLayout,
+    private val parentWebView: WebView,
+    private val captureCookies: (String?) -> Boolean,
+    private val onActiveWebViewChanged: (WebView) -> Unit,
+) : WebChromeClient() {
+    override fun onCreateWindow(
+        view: WebView,
+        isDialog: Boolean,
+        isUserGesture: Boolean,
+        resultMsg: Message,
+    ): Boolean {
+        closePopupWebViews()
+
+        val popupWebView = WebView(view.context).apply {
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.setAcceptCookie(true)
+            cookieManager.setAcceptThirdPartyCookies(this, true)
+            configureSpotifyLoginWebView()
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView,
+                    request: WebResourceRequest,
+                ): Boolean =
+                    shouldOverrideSpotifyLoginUrl(
+                        view = view,
+                        url = request.url?.toString(),
+                        captureCookies = captureCookies,
+                    )
+
+                @Deprecated("Deprecated in Java")
+                override fun shouldOverrideUrlLoading(view: WebView, url: String?): Boolean =
+                    shouldOverrideSpotifyLoginUrl(
+                        view = view,
+                        url = url,
+                        captureCookies = captureCookies,
+                    )
+
+                override fun onPageStarted(
+                    view: WebView,
+                    url: String?,
+                    favicon: android.graphics.Bitmap?,
+                ) {
+                    captureCookies(url)
+                }
+
+                override fun onPageFinished(view: WebView, url: String?) {
+                    captureCookies(url)
+                }
+            }
+        }
+
+        val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
+        container.addView(
+            popupWebView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        popupWebView.bringToFront()
+        popupWebView.requestFocus()
+        onActiveWebViewChanged(popupWebView)
+        transport.webView = popupWebView
+        resultMsg.sendToTarget()
+        return true
+    }
+
+    override fun onCloseWindow(window: WebView) {
+        window.destroySpotifyLoginWebView()
+        onActiveWebViewChanged(parentWebView)
+    }
+
+    private fun closePopupWebViews() {
+        for (index in container.childCount - 1 downTo 0) {
+            val child = container.getChildAt(index) as? WebView ?: continue
+            if (child !== parentWebView) {
+                child.destroySpotifyLoginWebView()
+            }
+        }
+        onActiveWebViewChanged(parentWebView)
+    }
+}
+
+private fun shouldOverrideSpotifyLoginUrl(
+    view: WebView,
+    url: String?,
+    captureCookies: (String?) -> Boolean,
+): Boolean {
+    if (captureCookies(url)) return true
+
+    val targetUrl = url?.takeIf(String::isNotBlank) ?: return false
+    if (targetUrl.isWebViewLoadableUrl()) return false
+
+    targetUrl.intentBrowserFallbackUrl()?.let { fallbackUrl -> view.loadUrl(fallbackUrl) }
+    return true
+}
+
+private fun String.isWebViewLoadableUrl(): Boolean {
+    val scheme = runCatching { Uri.parse(this).scheme?.lowercase() }.getOrNull()
+    return scheme == "http" ||
+        scheme == "https" ||
+        scheme == "javascript" ||
+        scheme == "data" ||
+        scheme == "blob"
+}
+
+private fun String.intentBrowserFallbackUrl(): String? =
+    runCatching { Intent.parseUri(this, Intent.URI_INTENT_SCHEME) }
+        .getOrNull()
+        ?.getStringExtra("browser_fallback_url")
+        ?.takeIf { it.isWebViewLoadableUrl() }
 
 private fun readSpotifyCookies(
     cookieManager: CookieManager,

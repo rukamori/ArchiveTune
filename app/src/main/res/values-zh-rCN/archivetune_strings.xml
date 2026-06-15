@@ -65,8 +65,8 @@
     <string name="maximum_volume">最大音量</string>
     <string name="hide_player_thumbnail">隐藏播放器缩略图</string>
     <string name="hide_player_thumbnail_desc">在播放器中替换专辑封面为应用图标</string>
-    <string name="crop_thumbnail_to_square">将视频缩略图裁剪为正方形</string>
-    <string name="crop_thumbnail_to_square_desc">要求所有YouTube来源（视频类型）的缩略图显示为正方形</string>
+    <string name="crop_thumbnail_to_square">将缩略图裁剪为1:1</string>
+    <string name="crop_thumbnail_to_square_desc">将YouTube缩略图显示为正方形，而不是16:9</string>
     <string name="show_tags_in_library">在库中显示标签</string>
     <string name="show_tags_in_library_desc">在库中显示标签过滤按钮</string>
     <string name="already_in_playlist">已经在播放列表里：</string>

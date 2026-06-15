@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.media3.datasource.cache.Cache
+import coil3.imageLoader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.constants.GitHubContributorsEtagKey
+import moe.rukamori.archivetune.constants.GitHubContributorsJsonKey
+import moe.rukamori.archivetune.constants.GitHubContributorsLastCheckedAtKey
 import moe.rukamori.archivetune.constants.StorageFolderDisplayNameKey
 import moe.rukamori.archivetune.constants.StorageFolderIdKey
 import moe.rukamori.archivetune.constants.StorageFolderPathKey
@@ -151,16 +155,6 @@ constructor(
         onProgress: suspend (StorageMigrationProgress) -> Unit,
     ): StorageFolderUpdateResult =
         repository.setStorageLocationAndMoveCache(optionId, onProgress)
-}
-
-private object StorageCacheCleanupRunner {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    fun deleteLater(target: File, deleteRoot: Boolean = true) {
-        scope.launch {
-            target.deleteTreeSafely(deleteRoot)
-        }
-    }
 }
 
 class ClearStorageCacheUseCase
@@ -340,8 +334,11 @@ constructor(
         cache: Cache,
         folderKind: StorageFolderKind,
     ): Boolean {
+        runCatching {
+            cache.keys.toList().forEach(cache::removeResource)
+        }
         val released = runCatching { cache.release() }.isSuccess
-        return released && moveCacheDirectoryToTrash(folderKind)
+        return released && clearCacheDirectory(folderKind)
     }
 
     private fun clearDownloads(): Boolean =
@@ -350,32 +347,48 @@ constructor(
         }.isSuccess
 
     private fun clearCanvasCache(): Boolean {
-        CanvasArtworkPlaybackCache.clear()
-        return moveCacheDirectoryToTrash(StorageFolderKind.CANVAS_CACHE)
+        val memoryAndIndexCleared = CanvasArtworkPlaybackCache.clearAndPersist()
+        return memoryAndIndexCleared && clearCacheDirectory(StorageFolderKind.CANVAS_CACHE)
     }
 
-    private fun clearImageCache(): Boolean {
-        val diskCacheCleared = moveCacheDirectoryToTrash(StorageFolderKind.IMAGE_CACHE)
-        val artworkCacheCleared = moveCacheDirectoryToTrash(StorageFolderKind.ARTWORK_CACHE)
+    private suspend fun clearImageCache(): Boolean {
+        val imageLoader = context.imageLoader
+        val diskCacheCleared = runCatching {
+            val diskCache = imageLoader.diskCache
+                ?: return@runCatching clearCacheDirectory(StorageFolderKind.IMAGE_CACHE)
+            imageLoader.memoryCache?.clear()
+            diskCache.clear()
+            diskCache.size == 0L
+        }.getOrDefault(false)
+        val artworkCacheCleared = clearCacheDirectory(StorageFolderKind.ARTWORK_CACHE)
         val artworkCleared = ArtworkStorage.clear(context)
-        return diskCacheCleared && artworkCacheCleared && artworkCleared
+        val cacheCleared = diskCacheCleared && artworkCacheCleared && artworkCleared
+        val contributorCacheCleared = if (cacheCleared) clearGitHubContributorCache() else false
+        return cacheCleared && contributorCacheCleared
     }
 
-    private fun moveCacheDirectoryToTrash(kind: StorageFolderKind): Boolean {
+    private suspend fun clearGitHubContributorCache(): Boolean =
+        runCatching {
+            context.dataStore.edit { preferences ->
+                preferences.remove(GitHubContributorsEtagKey)
+                preferences.remove(GitHubContributorsJsonKey)
+                preferences.remove(GitHubContributorsLastCheckedAtKey)
+            }
+        }.isSuccess
+
+    private fun clearCacheDirectory(kind: StorageFolderKind): Boolean {
         val directory = cacheDirectory(context, kind)
         val parent = directory.parentFile ?: return false
         val trashDirectory = parent.resolve("${directory.name}.delete-${System.currentTimeMillis()}")
-        val scheduledForDeletion = runCatching {
+        val cleared = runCatching {
             if (!directory.exists()) return@runCatching true
             if (directory.renameTo(trashDirectory)) {
-                StorageCacheCleanupRunner.deleteLater(trashDirectory)
-                true
+                trashDirectory.deleteTreeSafely(deleteRoot = true)
             } else {
-                StorageCacheCleanupRunner.deleteLater(directory, deleteRoot = false)
-                true
+                directory.deleteTreeSafely(deleteRoot = false)
             }
         }.getOrDefault(false)
-        return scheduledForDeletion && directory.ensureWritableDirectory()
+        return cleared && directory.ensureWritableDirectory() && directory.isDirectoryEmpty()
     }
 
     private suspend fun StorageMigrationPlan.withProgress(
@@ -634,11 +647,12 @@ private fun File.migrationByteCount(target: File): Long {
         .sumOf { file -> file.length() }
 }
 
-private fun File.deleteTreeSafely(deleteRoot: Boolean) {
+private fun File.deleteTreeSafely(deleteRoot: Boolean): Boolean =
     runCatching {
-        if (!exists()) return
+        if (!exists()) return@runCatching true
         val directories = ArrayList<File>()
         val stack = ArrayDeque<File>()
+        var deleted = true
         stack.add(this)
         while (stack.isNotEmpty()) {
             val file = stack.removeLast()
@@ -646,16 +660,26 @@ private fun File.deleteTreeSafely(deleteRoot: Boolean) {
                 directories += file
                 file.listFiles()?.forEach { child -> stack.add(child) }
             } else {
-                runCatching { file.delete() }
+                if (!runCatching { file.delete() || !file.exists() }.getOrDefault(false)) {
+                    deleted = false
+                }
             }
         }
         directories.asReversed().forEach { directory ->
             if (deleteRoot || directory != this) {
-                runCatching { directory.delete() }
+                if (!runCatching { directory.delete() || !directory.exists() }.getOrDefault(false)) {
+                    deleted = false
+                }
             }
         }
-    }
-}
+        deleted
+    }.getOrDefault(false)
+
+private fun File.isDirectoryEmpty(): Boolean =
+    runCatching {
+        val children = listFiles() ?: return@runCatching false
+        children.isEmpty()
+    }.getOrDefault(false)
 
 private class StorageProgressReporter(
     private val phase: StorageMigrationPhase,

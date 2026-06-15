@@ -176,8 +176,8 @@
     <string name="import_csv">Impordi „csv“ tüüpi eristusloendeid</string>
     <string name="auto_download_on_like">Meeldivaks märkimisel laadi automaatselt alla</string>
     <string name="auto_download_on_like_desc">Kui oled loo märkinud meeldivaks, siis laadi ta automaatselt alla</string>
-    <string name="crop_thumbnail_to_square">Kadreeri video pisipilt ruudukujuliseks</string>
-    <string name="crop_thumbnail_to_square_desc">Nõua, et kõik YouTube\'i allikatest (videotüüp) pärinevad pisipildid kuvataks ruudukujulistena</string>
+    <string name="crop_thumbnail_to_square">Kadreeri pisipildid 1:1 mõõtu</string>
+    <string name="crop_thumbnail_to_square_desc">16:9 vormingu asemel kuva Youtube\'i pisipildid ruudukujulistena</string>
     <string name="show_tags_in_library_desc">Näita muusikakogus sildifiltri nupukesi</string>
     <string name="default_lib_chips">Muuda muusikakogu vaikimisi nupukest</string>
     <string name="player_design_v5">Väikene</string>

@@ -65,8 +65,8 @@
     <string name="maximum_volume">Âm lượng tối đa</string>
     <string name="hide_player_thumbnail">Ẩn Thumbnail Trình phát</string>
     <string name="hide_player_thumbnail_desc">Thay thế artwork album bằng logo ứng dụng trong trình phát</string>
-    <string name="crop_thumbnail_to_square">Cắt hình thu nhỏ video thành vuông</string>
-    <string name="crop_thumbnail_to_square_desc">Yêu cầu tất cả hình thu nhỏ từ nguồn YouTube (loại video) hiển thị dưới dạng vuông</string>
+    <string name="crop_thumbnail_to_square">Cắt hình thu nhỏ thành 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Hiển thị hình thu nhỏ YouTube ở định dạng vuông thay vì 16:9</string>
     <string name="show_tags_in_library">Hiển thị thẻ trong thư viện</string>
     <string name="show_tags_in_library_desc">Hiển thị chip lọc thẻ trong thư viện</string>
     <string name="already_in_playlist">Đã có trong danh sách phát:</string>

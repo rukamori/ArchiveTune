@@ -146,8 +146,8 @@
     <string name="maximum_volume">최대 볼륨</string>
     <string name="hide_player_thumbnail">플레이어 썸네일 숨기기</string>
     <string name="hide_player_thumbnail_desc">플레이어의 앨범 아트워크를 앱 로고로 교체</string>
-    <string name="crop_thumbnail_to_square">비디오 썸네일을 정사각형으로 자르기</string>
-    <string name="crop_thumbnail_to_square_desc">YouTube 소스(동영상 유형)의 모든 썸네일이 정사각형으로 표시되도록 설정</string>
+    <string name="crop_thumbnail_to_square">썸네일을 1:1로 자르기</string>
+    <string name="crop_thumbnail_to_square_desc">YouTube 축소판을 16:9 대신 정사각형 형식으로 표시합니다.</string>
     <string name="show_home_category_chips">홈 카테고리 칩 표시</string>
     <string name="show_home_category_chips_desc">홈 화면에 카테고리 필터 칩 표시</string>
     <string name="show_tags_in_library">라이브러리에 태그 표시</string>

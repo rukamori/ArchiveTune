@@ -102,7 +102,6 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
-import moe.rukamori.archivetune.ui.component.YTFallbackImage
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -546,31 +545,43 @@ fun Thumbnail(
                                         val thumbnailBgRequest = rememberOfflineArtworkImageRequest(thumbnailBgUrl)
                                         val thumbnailArtworkUrl = item.metadata?.thumbnailUrl?.highRes()
                                             ?: item.mediaMetadata.artworkUri?.toString()
+                                        val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(thumbnailArtworkUrl)
                                         val thumbnailBgBlurEnabled = backdropEnabled && !disableBlur && backdropBlurAmount > 0
 
-                                        if (!shouldCropArtwork && thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                             val blurRadiusPx = (backdropBlurAmount * 60 / 100f).coerceAtMost(60f)
                                             AsyncImage(
                                                 model = thumbnailBgRequest,
                                                 contentDescription = null,
-                                                contentScale = ContentScale.Crop,
+                                                contentScale = ContentScale.FillBounds,
                                                 modifier = Modifier
                                                     .fillMaxSize()
+                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
                                                     .graphicsLayer(
                                                         renderEffect = BlurEffect(radiusX = blurRadiusPx, radiusY = blurRadiusPx),
                                                         alpha = 0.6f,
                                                     )
                                             )
-                                        } else if (!shouldCropArtwork && thumbnailBgBlurEnabled) {
+                                        } else if (thumbnailBgBlurEnabled) {
                                             ThumbnailBgBlurApi30(
                                                 imageUrl = thumbnailBgUrl,
                                                 blurAmount = backdropBlurAmount,
-                                                shouldCropArtwork = false,
+                                                shouldCropArtwork = shouldCropArtwork,
+                                            )
+                                        } else {
+                                            AsyncImage(
+                                                model = thumbnailBgRequest,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.FillBounds,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                    .graphicsLayer(alpha = 0.6f)
                                             )
                                         }
 
-                                        YTFallbackImage(
-                                            url = thumbnailArtworkUrl,
+                                        AsyncImage(
+                                            model = thumbnailArtworkRequest,
                                             contentDescription = null,
                                             contentScale = if (shouldCropArtwork) ContentScale.Crop else ContentScale.Fit,
                                             modifier = Modifier
@@ -691,14 +702,14 @@ private fun ThumbnailBgBlurApi30(
         Image(
             painter = BitmapPainter(loadedBitmap.asImageBitmap()),
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.FillBounds,
             modifier = modifier,
         )
     } else {
         AsyncImage(
             model = rememberOfflineArtworkImageRequest(imageUrl),
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.FillBounds,
             modifier = modifier,
         )
     }

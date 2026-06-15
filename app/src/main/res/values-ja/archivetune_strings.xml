@@ -146,8 +146,8 @@
     <string name="maximum_volume">最大音量</string>
     <string name="hide_player_thumbnail">プレーヤーのサムネイルを非表示にする</string>
     <string name="hide_player_thumbnail_desc">プレーヤーでアルバムのアートワークをアプリのロゴに置き換える</string>
-    <string name="crop_thumbnail_to_square">動画サムネイルを正方形にトリミング</string>
-    <string name="crop_thumbnail_to_square_desc">YouTubeソース（動画タイプ）からのすべてのサムネイルを正方形で表示するよう設定</string>
+    <string name="crop_thumbnail_to_square">サムネイルを 1:1 にトリミングする</string>
+    <string name="crop_thumbnail_to_square_desc">YouTube サムネイルを 16:9 ではなく正方形フォーマットで表示します</string>
     <string name="show_home_category_chips">ホームカテゴリーチップを表示</string>
     <string name="show_home_category_chips_desc">ホーム画面にカテゴリフィルターチップを表示</string>
     <string name="show_tags_in_library">ライブラリ内のタグを表示する</string>

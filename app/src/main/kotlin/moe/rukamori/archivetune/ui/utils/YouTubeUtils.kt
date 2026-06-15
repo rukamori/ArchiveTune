@@ -24,36 +24,21 @@ fun String.resize(
     val isYtimg = contains("i.ytimg.com")
 
     if (isGoogleCdn) {
+        val w = width ?: height!!
+        val h = height ?: width!!
+
         if (wHPathRegex.containsMatchIn(this)) {
-            val replacement = buildString {
-                if (width != null) append("w$width")
-                if (width != null && height != null) append("-")
-                if (height != null) append("h$height")
-            }
-            return replace(wHPathRegex, replacement)
+            return replace(wHPathRegex, "w$w-h$h")
         }
 
         wHParamRegex.find(this)?.let {
-            val base = split("=w")[0]
-            val param = when {
-                width != null && height != null -> "${base}=w$width-h$height-p-l90-rj"
-                width != null -> "${base}=w$width-p-l90-rj"
-                height != null -> "${base}=h$height-p-l90-rj"
-                else -> return this
-            }
-            return param
+            return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
         }
 
         sParamRegex.find(this)?.let { match ->
             val before = substring(0, match.range.first)
             val after = substring(match.range.last + 1)
-            val size = when {
-                width != null && height != null -> maxOf(width, height)
-                width != null -> width
-                height != null -> height
-                else -> return this
-            }
-            return "${before}=s$size${after.replace(brokenSAppendRegex, "")}"
+            return "${before}=s${maxOf(w, h)}${after.replace(brokenSAppendRegex, "")}"
         }
 
         return this
@@ -66,4 +51,4 @@ fun String.resize(
     return this
 }
 
-fun String.highRes(): String = resize(width = PlayerArtworkHighResPx)
+fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx)

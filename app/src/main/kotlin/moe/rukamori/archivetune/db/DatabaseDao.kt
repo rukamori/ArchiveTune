@@ -39,6 +39,8 @@ import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.EventWithSong
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
+import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
@@ -691,6 +693,10 @@ interface DatabaseDao {
     @Query("SELECT * FROM lyrics WHERE id = :id LIMIT 1")
     suspend fun getLyricsById(id: String): LyricsEntity?
 
+    @Transaction
+    @Query("SELECT * FROM lyrics WHERE id IN (:ids)")
+    suspend fun getLyricsByIds(ids: List<String>): List<LyricsEntity>
+
     @Query("DELETE FROM lyrics")
     fun clearAllLyrics()
 
@@ -1213,6 +1219,21 @@ interface DatabaseDao {
     )
     fun recentSongs(limit: Int = 100): Flow<List<Song>>
 
+    @Query("SELECT * FROM library_top_mix ORDER BY position LIMIT :limit")
+    fun libraryTopMixes(limit: Int): Flow<List<LibraryTopMixEntity>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        INNER JOIN library_top_mix_song_map ON library_top_mix_song_map.songId = song.id
+        WHERE library_top_mix_song_map.mixId = :mixId
+        ORDER BY library_top_mix_song_map.position
+        """,
+    )
+    fun libraryTopMixSongs(mixId: String): List<Song>
+
     @Query(
         """
         SELECT CAST(strftime('%H', datetime(timestamp / 1000, 'unixepoch', 'localtime')) AS INTEGER) AS slot,
@@ -1401,6 +1422,12 @@ interface DatabaseDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playCountEntity: PlayCountEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(libraryTopMix: LibraryTopMixEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(libraryTopMixSongMap: LibraryTopMixSongMap)
 
     @Transaction
     fun insert(
@@ -1740,6 +1767,9 @@ interface DatabaseDao {
 
     @Delete
     fun delete(event: Event)
+
+    @Query("DELETE FROM library_top_mix")
+    fun deleteLibraryTopMixes()
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")

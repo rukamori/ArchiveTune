@@ -147,8 +147,8 @@
         <item quantity="many">%d секунд</item>
         <item quantity="other">%d секунд</item>
     </plurals>
-    <string name="crop_thumbnail_to_square">Обрезать миниатюру видео до квадрата</string>
-    <string name="crop_thumbnail_to_square_desc">Требовать отображения всех миниатюр из источников YouTube (тип видео) в квадратном формате</string>
+    <string name="crop_thumbnail_to_square">Обрезать миниатюры до соотношения 1:1</string>
+    <string name="crop_thumbnail_to_square_desc">Отображать миниатюры YouTube в квадратном формате вместо 16:9</string>
     <string name="player_design_v5">Маленький</string>
     <string name="min_playback_duration_title">Минимальная продолжительность воспроизведения</string>
     <string name="min_playback_duration_description">Минимальная длительность для учета прослушивания</string>
