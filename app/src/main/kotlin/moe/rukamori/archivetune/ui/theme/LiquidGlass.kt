@@ -125,9 +125,9 @@ object LiquidGlassDefaults {
 
     /** Glass backdrop tint color for Haze blurs - provides optimal frosting and readability. */
     fun glassBackdropTint(isDark: Boolean): Color = if (isDark) {
-        Color(0xFF1A1A2E).copy(alpha = 0.05f)
+        Color(0xFF1A1A2E).copy(alpha = 0.15f)
     } else {
-        Color.White.copy(alpha = 0.05f)
+        Color.White.copy(alpha = 0.18f)
     }
 
     /**

@@ -194,7 +194,9 @@ private fun NewMiniPlayer(
                 )
             )
         } else Modifier
-        hazeMod.border(1.dp, LiquidGlassDefaults.borderBrush(isDark), miniPlayerShape)
+        hazeMod
+            .background(LiquidGlassDefaults.specularBrush(isDark), miniPlayerShape)
+            .border(1.dp, LiquidGlassDefaults.borderBrush(isDark), miniPlayerShape)
     } else Modifier
 
     SwipeableMiniPlayerBox(

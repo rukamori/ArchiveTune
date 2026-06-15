@@ -131,6 +131,7 @@ fun FloatingNavigationToolbar(
                     backgroundColor = hazeBg
                 )
             )
+            .background(LiquidGlassDefaults.specularBrush(isDark))
             .border(1.dp, LiquidGlassDefaults.borderBrush(isDark), shape)
     } else Modifier
 
