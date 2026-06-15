@@ -236,7 +236,9 @@ import kotlinx.coroutines.plus
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import java.io.EOFException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.io.Serializable
@@ -2386,6 +2388,32 @@ class MusicService :
         while (throwable != null) {
             if (throwable.message?.contains("Skipping atom with length", ignoreCase = true) == true) {
                 return true
+            }
+            throwable = throwable.cause
+        }
+        return false
+    }
+
+    private fun isCacheCorruptionError(error: PlaybackException): Boolean {
+        if (
+            error.errorCode != PlaybackException.ERROR_CODE_IO_UNSPECIFIED &&
+            error.errorCode != PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE
+        ) {
+            return false
+        }
+        var throwable: Throwable? = error.cause
+        while (throwable != null) {
+            when {
+                throwable is EOFException -> return true
+                throwable is IOException &&
+                    throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true ->
+                    return true
+                // Truncated MP4 atoms frequently surface as extractor IllegalState/IllegalArgument
+                // exceptions WITHOUT a wrapped EOFException.
+                throwable is IllegalStateException || throwable is IllegalArgumentException ->
+                    if (throwable.stackTrace.any { it.className.startsWith("androidx.media3.extractor") }) {
+                        return true
+                    }
             }
             throwable = throwable.cause
         }
@@ -5261,6 +5289,49 @@ private fun onMediaItemTransitionInternal() {
             if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyCachedMedia, retryableStreamFailure)) {
                 return
             }
+        }
+
+        if (!isLocalMedia && isCacheCorruptionError(error)) {
+            // Snapshot on the Main thread before dispatching; these can change.
+            val mediaItemIndex = player.currentMediaItemIndex
+            val resumePosition = player.currentPosition.coerceAtLeast(0L)
+
+            Timber.tag("MusicService").w(
+                "Cache corruption / truncated stream for %s (fullyCached=%b); purging caches then retrying",
+                currentMediaId,
+                isFullyCachedMedia,
+            )
+
+            playbackUrlCache.remove(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+
+            scope.launch(Dispatchers.IO) {
+                // Always purge the streaming/player cache.
+                runCatching { playerCache.removeResource(currentMediaId) }
+                // Keep a complete offline download in place; deleting a user's saved download
+                // to recover from a read error is surprising. Only purge partial entries.
+                if (!isFullyCachedMedia) {
+                    runCatching { downloadCache.removeResource(currentMediaId) }
+                } else {
+                    Timber.tag("MusicService").w(
+                        "Keeping offline download for %s; corruption may require manual re-download",
+                        currentMediaId,
+                    )
+                }
+
+                // Re-prepare ONLY after the purge completes, back on the Main thread, so the
+                // fresh prepare cannot re-read the spans we just deleted.
+                withContext(Dispatchers.Main) {
+                    if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
+                        player.seekTo(mediaItemIndex, resumePosition)
+                        player.prepare()
+                    } else {
+                        // Retry budget for this item is spent; fall back to configured behavior.
+                        if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+                    }
+                }
+            }
+            return
         }
 
         if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBotDetectionException(error)) {
