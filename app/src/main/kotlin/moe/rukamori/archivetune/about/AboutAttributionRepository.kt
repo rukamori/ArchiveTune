@@ -21,10 +21,14 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -125,10 +129,10 @@ constructor(
         withContext(Dispatchers.IO) {
             try {
                 val languageResponse = getJson(TranslationLanguagesUrl)
-                val changesResponse = getJson(TranslationChangesUrl)
-                val contributorsByLanguage = parseTranslationContributors(changesResponse)
-                val contributors = parseTranslationLanguages(
-                    json = languageResponse,
+                val languages = parseTranslationLanguages(languageResponse)
+                val contributorsByLanguage = getTranslationContributors(languages)
+                val contributors = buildTranslationContributorCollection(
+                    languages = languages,
                     contributorsByLanguage = contributorsByLanguage,
                 )
                 if (contributors.isEmpty) {
@@ -179,24 +183,74 @@ constructor(
             headers {
                 append("Accept", "application/json")
                 append("User-Agent", "ArchiveTune")
+                BuildConfig.WEBLATE_API_TOKEN.trim().takeIf(String::isNotBlank)?.let { token ->
+                    append("Authorization", "Token $token")
+                }
             }
+        }
+        if (response.status.value !in SuccessStatusCodes) {
+            throw IllegalStateException("Weblate request failed with HTTP ${response.status.value}")
         }
         return response.bodyAsText()
     }
 
-    private fun parseTranslationLanguages(
-        json: String,
-        contributorsByLanguage: Map<String, List<String>>,
-    ): AboutTranslationContributorCollection {
+    private suspend fun getTranslationContributors(
+        languages: List<TranslationLanguage>,
+    ): Map<String, List<String>> {
+        val token = BuildConfig.WEBLATE_API_TOKEN.trim()
+        if (token.isNotBlank()) {
+            val credits = getTranslationCredits(languages)
+            if (credits.isNotEmpty()) return credits
+        }
+        return parseTranslationContributors(getJson(TranslationChangesUrl))
+    }
+
+    private suspend fun getTranslationCredits(
+        languages: List<TranslationLanguage>,
+    ): Map<String, List<String>> {
+        val end = Instant.now().toString()
+        val contributorsByLanguage = LinkedHashMap<String, List<String>>()
+        for (language in languages) {
+            val contributors = try {
+                parseTranslationCredits(getJson(translationCreditsUrl(language.code, end)))
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                Timber.w(throwable, "Failed to load Weblate translation credits")
+                return emptyMap()
+            }
+            if (contributors.isNotEmpty()) {
+                contributorsByLanguage[language.code] = contributors
+            }
+        }
+        return contributorsByLanguage
+    }
+
+    private fun parseTranslationLanguages(json: String): List<TranslationLanguage> {
         val languages = JSONArray(json)
-        val values = ArrayList<AboutTranslationContributor>(languages.length())
+        val values = ArrayList<TranslationLanguage>(languages.length())
         for (index in 0 until languages.length()) {
             val language = languages.getJSONObject(index)
-            val code = language.optString("code")
-            val contributors = contributorsByLanguage[code].orEmpty()
+            val code = language.optString("code").takeIf(String::isNotBlank) ?: continue
+            values.add(
+                TranslationLanguage(
+                    code = code,
+                    name = language.optString("name", code).ifBlank { code },
+                ),
+            )
+        }
+        return values
+    }
+
+    private fun buildTranslationContributorCollection(
+        languages: List<TranslationLanguage>,
+        contributorsByLanguage: Map<String, List<String>>,
+    ): AboutTranslationContributorCollection {
+        val values = ArrayList<AboutTranslationContributor>(languages.size)
+        for (language in languages) {
+            val contributors = contributorsByLanguage[language.code].orEmpty()
             values.add(
                 AboutTranslationContributor(
-                    language = language.optString("name", code).ifBlank { code },
+                    language = language.name,
                     contributors = AboutTranslationContributorNameCollection.from(contributors),
                 ),
             )
@@ -226,10 +280,38 @@ constructor(
         }
     }
 
+    private fun parseTranslationCredits(json: String): List<String> {
+        val credits = when (val trimmedJson = json.trim()) {
+            "" -> JSONArray()
+            else -> if (trimmedJson.startsWith("[")) {
+                JSONArray(trimmedJson)
+            } else {
+                JSONObject(trimmedJson).optJSONArray("results") ?: JSONArray()
+            }
+        }
+        val contributors = LinkedHashSet<String>()
+        for (index in 0 until credits.length()) {
+            val contributor = credits.getJSONObject(index)
+                .optString("full_name")
+                .takeIf(String::isNotBlank)
+                ?.takeUnless(::isIgnoredTranslationContributor)
+                ?: continue
+            contributors.add(contributor)
+            if (contributors.size == MaxContributorsPerLanguage) break
+        }
+        return contributors.toList()
+    }
+
     private fun isIgnoredTranslationContributor(name: String): Boolean =
         IgnoredTranslationContributors.any { ignoredName ->
             name.equals(ignoredName, ignoreCase = true)
         }
+
+    private fun translationCreditsUrl(
+        languageCode: String,
+        end: String,
+    ): String =
+        "$TranslationCreditsUrl?start=$TranslationCreditsStart&end=${end.urlEncoded()}&lang=${languageCode.urlEncoded()}"
 
     private fun String.translationLanguageCode(): String? {
         val segments = trimEnd('/').split('/')
@@ -243,12 +325,24 @@ constructor(
         return URLDecoder.decode(encodedName, StandardCharsets.UTF_8.name())
     }
 
+    private fun String.urlEncoded(): String =
+        URLEncoder.encode(this, StandardCharsets.UTF_8.name())
+
+    private data class TranslationLanguage(
+        val code: String,
+        val name: String,
+    )
+
     private companion object {
         const val TranslationLanguagesUrl = "https://translate.codeberg.org/api/projects/archivetune/languages/"
         const val TranslationChangesUrl = "https://translate.codeberg.org/api/projects/archivetune/changes/?page_size=1000"
+        const val TranslationCreditsUrl = "https://translate.codeberg.org/api/projects/archivetune/credits/"
+        const val TranslationCreditsStart = "1970-01-01T00%3A00%3A00Z"
         const val WeblateCommitUser = "weblate:commit"
         const val AnonymousUser = "anonymous"
+        const val MisspelledAnonymousUser = "anynymous"
         const val MaxContributorsPerLanguage = 6
-        val IgnoredTranslationContributors = setOf(WeblateCommitUser, AnonymousUser)
+        val SuccessStatusCodes = 200..299
+        val IgnoredTranslationContributors = setOf(WeblateCommitUser, AnonymousUser, MisspelledAnonymousUser)
     }
 }

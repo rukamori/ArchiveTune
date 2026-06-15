@@ -62,6 +62,12 @@ android {
                 ?: ""
         buildConfigField("String", "CANVAS_BEARER_TOKEN", "\"$canvasBearerToken\"")
 
+        val weblateApiToken =
+            localProperties.getProperty("WEBLATE_API_TOKEN")
+                ?: System.getenv("WEBLATE_API_TOKEN")
+                ?: ""
+        buildConfigField("String", "WEBLATE_API_TOKEN", "\"$weblateApiToken\"")
+
         val nightlyBuildHash =
             (
                 localProperties.getProperty("NIGHTLY_BUILD_HASH")
