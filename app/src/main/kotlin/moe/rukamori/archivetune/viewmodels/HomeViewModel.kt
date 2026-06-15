@@ -518,11 +518,9 @@ class HomeViewModel @Inject constructor(
                 isAccountLoggedIn.value = loggedIn
 
                 if (loggedIn && prepareYouTubeAccount(cookie)) {
-                    launch {
-                        refreshAccountIdentity()
-                    }
-                    launch {
-                        refreshAccountPlaylistsInternal()
+                    supervisorScope {
+                        launch { refreshAccountIdentity() }
+                        launch { refreshAccountPlaylistsInternal() }
                     }
                 } else {
                     clearAccountData()
@@ -589,11 +587,9 @@ class HomeViewModel @Inject constructor(
                 val authState = context.dataStore.data.first().toPlaybackAuthState()
                 YouTube.authState = authState
 
-                launch {
-                    refreshAccountIdentity()
-                }
-                launch {
-                    refreshAccountPlaylistsInternal()
+                supervisorScope {
+                    launch { refreshAccountIdentity() }
+                    launch { refreshAccountPlaylistsInternal() }
                 }
 
                 if (forceSyncOnSwitch && context.dataStore.get(YtmSyncKey, true) && authState.hasLoginCookie) {
@@ -654,6 +650,12 @@ class HomeViewModel @Inject constructor(
                                 return@collect
                             }
 
+                            supervisorScope {
+                                kotlinx.coroutines.delay(100)
+                                launch { refreshAccountIdentity() }
+                                launch { refreshAccountPlaylistsInternal() }
+                            }
+
                             if (loginTransition) {
                                 launch {
                                     try {
@@ -665,15 +667,6 @@ class HomeViewModel @Inject constructor(
                                         reportException(e)
                                     }
                                 }
-                            }
-                            
-                            kotlinx.coroutines.delay(100)
-
-                            launch {
-                                refreshAccountIdentity()
-                            }
-                            launch {
-                                refreshAccountPlaylistsInternal()
                             }
                         } else {
                             clearAccountData()
