@@ -113,6 +113,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerButtonsStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -2602,23 +2603,6 @@ private fun V8QualityChip(
                 maxLines = 1,
             )
         }
-    }
-}
-
-private fun FormatEntity.codecLabel(): String {
-    val rawCodec = codecs.ifBlank { mimeType.substringAfter("/") }.uppercase()
-    val rawMime = mimeType.substringAfter("/").substringBefore(";").uppercase()
-
-    return when {
-        rawCodec.contains("FLAC") || rawCodec.contains("ALAC") -> "Lossless"
-        rawCodec.contains("OPUS") -> "OPUS"
-        rawCodec.contains("AAC") || rawCodec.contains("MP4A") -> "AAC"
-        rawCodec.contains("VORBIS") -> "VORBIS"
-        rawMime.contains("OPUS") -> "OPUS"
-        rawMime.contains("AAC") || rawMime.contains("MP4A") -> "AAC"
-        rawMime.contains("VORBIS") -> "VORBIS"
-        rawMime.isNotBlank() -> rawMime
-        else -> rawCodec
     }
 }
 
