@@ -26,14 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import moe.rukamori.archivetune.models.MediaMetadata
 
-/**
- * Renders a comma-separated artist line where **each artist name is individually tappable**.
- *
- * This is a generic, single-purpose leaf primitive (think "a smarter Text") — it owns the only
- * tricky bit of the artist line: mapping a tap position back to the artist span underneath it.
- * It carries no style opinions of its own, so every player style can reuse it without this file
- * ever needing changes when a new style is added.
- */
 @Composable
 fun ClickableArtists(
     artists: List<MediaMetadata.Artist>,
