@@ -144,111 +144,22 @@ fun PlayerTitleSection(
     textBackgroundColor: Color,
     navController: NavController,
     state: BottomSheetState,
-    clipboardManager: ClipboardManager,
-    context: Context
+    @Suppress("UNUSED_PARAMETER") clipboardManager: ClipboardManager,
+    @Suppress("UNUSED_PARAMETER") context: Context,
 ) {
-    AnimatedContent(
-        targetState = mediaMetadata.title,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "",
-    ) { title ->
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = textBackgroundColor,
-            modifier =
-            Modifier
-                .basicMarquee()
-                .combinedClickable(
-                    enabled = true,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = {
-                        if (mediaMetadata.album != null) {
-                            state.snapTo(state.collapsedBound)
-                            navController.navigate("album/${mediaMetadata.album.id}")
-                        }
-                    },
-                    onLongClick = {
-                        val clip = ClipData.newPlainText("Copied Title", title)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied Title", Toast.LENGTH_SHORT).show()
-                    }
-                ),
-        )
-    }
-
-    Spacer(Modifier.height(6.dp))
-
-    val annotatedString = buildAnnotatedString {
-        mediaMetadata.artists.forEachIndexed { index, artist ->
-            val tag = "artist_${artist.id.orEmpty()}"
-            pushStringAnnotation(tag = tag, annotation = artist.id.orEmpty())
-            withStyle(SpanStyle(color = textBackgroundColor, fontSize = 16.sp)) {
-                append(artist.name)
-            }
-            pop()
-            if (index != mediaMetadata.artists.lastIndex) append(", ")
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .basicMarquee()
-            .padding(end = 12.dp)
-    ) {
-        var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-        var clickOffset by remember { mutableStateOf<Offset?>(null) }
-        Text(
-            text = annotatedString,
-            style = MaterialTheme.typography.titleMedium.copy(color = textBackgroundColor),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { layoutResult = it },
-            modifier = Modifier
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val tapPosition = event.changes.firstOrNull()?.position
-                            if (tapPosition != null) {
-                                clickOffset = tapPosition
-                            }
-                        }
-                    }
-                }
-                .combinedClickable(
-                    enabled = true,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = {
-                        val tapPosition = clickOffset
-                        val layout = layoutResult
-                        if (tapPosition != null && layout != null) {
-                            val offset = layout.getOffsetForPosition(tapPosition)
-                            annotatedString.getStringAnnotations(offset, offset)
-                                .firstOrNull()
-                                ?.let { ann ->
-                                    val artistId = ann.item
-                                    if (artistId.isNotBlank()) {
-                                        navController.navigate("artist/$artistId")
-                                        state.collapseSoft()
-                                    }
-                                }
-                        }
-                    },
-                    onLongClick = {
-                        val clip = ClipData.newPlainText("Copied Artist", annotatedString)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied Artist", Toast.LENGTH_SHORT).show()
-                    }
-                )
-        )
-    }
+    // Delegates to the shared PlayerTitleArtist component. clipboardManager/context are kept in the
+    // signature for source compatibility with existing callers; the shared helper obtains its own
+    // clipboard manager via LocalContext.
+    PlayerTitleArtist(
+        mediaMetadata = mediaMetadata,
+        foreground = textBackgroundColor,
+        spec = TitleArtistSpec.classic(),
+        actions = rememberPlayerTitleActions(
+            mediaMetadata = mediaMetadata,
+            navController = navController,
+            state = state,
+        ),
+    )
 }
 
 @Composable
