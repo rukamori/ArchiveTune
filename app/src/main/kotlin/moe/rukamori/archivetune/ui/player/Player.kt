@@ -9,8 +9,6 @@
 
 package moe.rukamori.archivetune.ui.player
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -329,7 +327,6 @@ fun BottomSheetPlayer(
     pureBlack: Boolean,
 ) {
     val context = LocalContext.current
-    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val menuState = LocalMenuState.current
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
@@ -1082,7 +1079,6 @@ fun BottomSheetPlayer(
                 state = state,
                 menuState = menuState,
                 bottomSheetPageState = bottomSheetPageState,
-                clipboardManager = clipboardManager,
                 context = context,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
