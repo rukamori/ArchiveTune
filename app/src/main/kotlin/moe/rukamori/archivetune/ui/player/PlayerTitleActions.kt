@@ -19,14 +19,24 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 
+/**
+ * Centralized *behavior* for the title/artist block shared by every player design style.
+ *
+ * This intentionally contains **no UI** — each player style keeps rendering its own `Text`s,
+ * layout, typography and decorations. Only the tap/long-press behavior lives here, so:
+ *  - the historical inconsistency (title used `snapTo`, artist used `collapseSoft`) has a single
+ *    source of truth and is fixed in one place, and
+ *  - the behavior can no longer drift between styles.
+ *
+ * Adding a new player style does **not** require touching this file: just call
+ * [rememberPlayerTitleActions] and wire the callbacks into whatever UI the style draws.
+ */
 @Immutable
 class PlayerTitleActions(
     /** Navigate to the current song's album (no-op if the song has no album). */
     val onTitleClick: () -> Unit,
     /** Navigate to a specific artist by id (no-op for blank ids). */
     val onArtistClick: (artistId: String) -> Unit,
-    /** Navigate to the first artist, if any. Convenience for styles without per-artist hit testing. */
-    val onFirstArtistClick: () -> Unit,
     /** Copy the song title to the clipboard and show a toast. */
     val onCopyTitle: () -> Unit,
     /** Copy the comma-joined artist names to the clipboard and show a toast. */
@@ -45,24 +55,25 @@ fun rememberPlayerTitleActions(
     val artistLine = remember(mediaMetadata.artists) {
         mediaMetadata.artists.joinToString(", ") { it.name }
     }
-    val firstArtistId = mediaMetadata.artists.firstOrNull()?.id
 
-    return remember(mediaMetadata, navController, state, context, clipboardManager, artistLine, firstArtistId) {
-        val navigateToArtist: (String) -> Unit = { artistId ->
-            if (artistId.isNotBlank()) {
-                state.collapseSoft()
-                navController.navigate("artist/$artistId")
-            }
-        }
+    return remember(mediaMetadata, navController, state, artistLine) {
         PlayerTitleActions(
             onTitleClick = {
                 mediaMetadata.album?.let { album ->
+                    // collapseSoft animates the sheet AND updates its internal anchor, keeping
+                    // isCollapsed/isExpanded in sync. (Previously this used snapTo, which jumped
+                    // without animation and left the anchor stale, so tapping the title from the
+                    // home screen failed to collapse the player reliably.)
                     state.collapseSoft()
                     navController.navigate("album/${album.id}")
                 }
             },
-            onArtistClick = navigateToArtist,
-            onFirstArtistClick = { firstArtistId?.let(navigateToArtist) },
+            onArtistClick = { artistId ->
+                if (artistId.isNotBlank()) {
+                    state.collapseSoft()
+                    navController.navigate("artist/$artistId")
+                }
+            },
             onCopyTitle = {
                 clipboardManager.setPrimaryClip(
                     ClipData.newPlainText("Copied Title", mediaMetadata.title)

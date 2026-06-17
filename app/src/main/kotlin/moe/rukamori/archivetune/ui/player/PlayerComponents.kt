@@ -9,7 +9,6 @@
 
 package moe.rukamori.archivetune.ui.player
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -137,8 +136,6 @@ fun PlayerTitleSection(
     textBackgroundColor: Color,
     navController: NavController,
     state: BottomSheetState,
-    @Suppress("UNUSED_PARAMETER") clipboardManager: ClipboardManager,
-    @Suppress("UNUSED_PARAMETER") context: Context,
 ) {
     // Tap/long-press behavior is centralized; this style keeps its own visual rendering.
     val actions = rememberPlayerTitleActions(
@@ -1556,7 +1553,6 @@ fun PlayerControlsContent(
     state: BottomSheetState,
     menuState: MenuState,
     bottomSheetPageState: BottomSheetPageState,
-    clipboardManager: ClipboardManager,
     context: Context,
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
@@ -1584,8 +1580,6 @@ fun PlayerControlsContent(
                 textBackgroundColor = textBackgroundColor,
                 navController = navController,
                 state = state,
-                clipboardManager = clipboardManager,
-                context = context
             )
         }
 
