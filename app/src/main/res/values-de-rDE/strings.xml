@@ -36,8 +36,8 @@
     <string name="most_played_albums">Die meisten gespielten Alben</string>
     <!-- Search -->
     <string name="search">Suchen</string>
-    <string name="search_yt_music">Durchsuchen Sie YouTube Music…</string>
-    <string name="search_library">Bibliothek durchsuchen…</string>
+    <string name="search_yt_music">Durchsuche YouTube Music</string>
+    <string name="search_library">Bibliothek durchsuchen</string>
     <string name="filter_library">Bibliothek</string>
     <string name="filter_liked">Gefallen</string>
     <string name="filter_downloaded">Heruntergeladen</string>
@@ -447,7 +447,7 @@
     <string name="scrobble_delay_minutes">Scrobble-Verzögerung (Sekunden)</string>
     <string name="username">Benutzername</string>
     <string name="password">Passwort</string>
-    <string name="logging_in">Anmeldung…</string>
+    <string name="logging_in">Anmelden</string>
     <!-- ListenBrainz -->
     <string name="listenbrainz_scrobbling">ListenBrainz-Scrobbling</string>
     <string name="listenbrainz_scrobbling_description">Übermitteln von „Jetzt läuft“ und abgeschlossenen Wiedergaben an ListenBrainz aktivieren</string>
