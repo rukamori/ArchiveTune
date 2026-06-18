@@ -45,6 +45,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.EVENT_POSITION_DISCONTINUITY
@@ -2394,13 +2395,20 @@ class MusicService :
         return false
     }
 
-    private fun isCacheCorruptionError(error: PlaybackException): Boolean {
-        if (
-            error.errorCode != PlaybackException.ERROR_CODE_IO_UNSPECIFIED &&
-            error.errorCode != PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE
-        ) {
+    private fun isCacheCorruptionError(
+        error: PlaybackException,
+        isContentCached: Boolean,
+    ): Boolean {
+        val isIoError =
+            error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE
+        val isContainerParseError =
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+        
+        if (!isIoError && !isContainerParseError) {
             return false
         }
+
         var throwable: Throwable? = error.cause
         while (throwable != null) {
             when {
@@ -2408,12 +2416,19 @@ class MusicService :
                 throwable is IOException &&
                     throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true ->
                     return true
-                // Truncated MP4 atoms frequently surface as extractor IllegalState/IllegalArgument
-                // exceptions WITHOUT a wrapped EOFException.
                 throwable is IllegalStateException || throwable is IllegalArgumentException ->
                     if (throwable.stackTrace.any { it.className.startsWith("androidx.media3.extractor") }) {
                         return true
                     }
+                isContainerParseError && isContentCached && throwable is ParserException ->
+                    return true
+                isContainerParseError && isContentCached &&
+                    throwable.message?.let {
+                        it.contains("Invalid integer size", ignoreCase = true) ||
+                            it.contains("Skipping atom with length", ignoreCase = true) ||
+                            it.contains("contentIsMalformed=true", ignoreCase = true)
+                    } == true ->
+                    return true
             }
             throwable = throwable.cause
         }
@@ -5269,6 +5284,11 @@ private fun onMediaItemTransitionInternal() {
             cachedInDownload || cachedInPlayer
         }.getOrDefault(false)
 
+        val hasAnyCachedData = isFullyCachedMedia || runCatching {
+            downloadCache.getCachedSpans(currentMediaId).isNotEmpty() ||
+                playerCache.getCachedSpans(currentMediaId).isNotEmpty()
+        }.getOrDefault(false)
+
         val isConnectionError = (error.cause?.cause is PlaybackException) &&
                 (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
 
@@ -5291,7 +5311,7 @@ private fun onMediaItemTransitionInternal() {
             }
         }
 
-        if (!isLocalMedia && isCacheCorruptionError(error)) {
+        if (!isLocalMedia && isCacheCorruptionError(error, hasAnyCachedData)) {
             // Snapshot on the Main thread before dispatching; these can change.
             val mediaItemIndex = player.currentMediaItemIndex
             val resumePosition = player.currentPosition.coerceAtLeast(0L)

@@ -81,6 +81,7 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          WEBLATE_API_TOKEN: ${{ secrets.WEBLATE_API_TOKEN }}
         run: |
           set -euo pipefail
           DEVICE="mobile"
@@ -302,6 +303,7 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          WEBLATE_API_TOKEN: ${{ secrets.WEBLATE_API_TOKEN }}
 
       - name: Resolve release output directory
         id: release_dir

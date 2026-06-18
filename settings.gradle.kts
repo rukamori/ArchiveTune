@@ -46,7 +46,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "ArchiveTune"
 include(":app")
-include(":innertube")
+include(":core")
 include(":kugou")
 include(":lrclib")
 include(":lastfm")
@@ -62,7 +62,7 @@ include(":spotifycore")
 // We assume, that ArchiveTune and NewPipe Extractor have the same parent directory.
 // If this is not the case, please change the path in includeBuild().
 //
-// For this to work you also need to change the implementation in innertube/build.gradle.kts
+// For this to work you also need to change the implementation in core/build.gradle.kts
 // to one which does not specify a version.
 // From:
 //      implementation(libs.newpipe.extractor)

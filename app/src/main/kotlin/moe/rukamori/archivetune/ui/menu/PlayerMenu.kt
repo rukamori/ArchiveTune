@@ -139,6 +139,7 @@ import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -171,7 +172,10 @@ fun PlayerMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val playerVolume = playerConnection.service.playerVolume.collectAsState()
+    val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
+    val onPlayerVolumeChange = remember(deviceMusicVolumeController) {
+        { volume: Float -> deviceMusicVolumeController.setVolumeFraction(volume) }
+    }
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
@@ -428,8 +432,8 @@ fun PlayerMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         PlayerVolumeCard(
-            volume = playerVolume.value,
-            onVolumeChange = { playerConnection.service.playerVolume.value = it },
+            volume = deviceMusicVolumeController.volumeFraction,
+            onVolumeChange = onPlayerVolumeChange,
         )
     }
 

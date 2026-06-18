@@ -94,6 +94,7 @@ output-metadata.json
 # Binary files and core dumps
 core
 core.*
+!/core/
 *.so
 *.bin
 /.trae

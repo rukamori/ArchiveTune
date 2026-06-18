@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.constants.GitHubContributorsEtagKey
+import moe.rukamori.archivetune.constants.GitHubContributorsJsonKey
+import moe.rukamori.archivetune.constants.GitHubContributorsLastCheckedAtKey
 import moe.rukamori.archivetune.constants.StorageFolderDisplayNameKey
 import moe.rukamori.archivetune.constants.StorageFolderIdKey
 import moe.rukamori.archivetune.constants.StorageFolderPathKey
@@ -348,7 +351,7 @@ constructor(
         return memoryAndIndexCleared && clearCacheDirectory(StorageFolderKind.CANVAS_CACHE)
     }
 
-    private fun clearImageCache(): Boolean {
+    private suspend fun clearImageCache(): Boolean {
         val imageLoader = context.imageLoader
         val diskCacheCleared = runCatching {
             val diskCache = imageLoader.diskCache
@@ -359,8 +362,19 @@ constructor(
         }.getOrDefault(false)
         val artworkCacheCleared = clearCacheDirectory(StorageFolderKind.ARTWORK_CACHE)
         val artworkCleared = ArtworkStorage.clear(context)
-        return diskCacheCleared && artworkCacheCleared && artworkCleared
+        val cacheCleared = diskCacheCleared && artworkCacheCleared && artworkCleared
+        val contributorCacheCleared = if (cacheCleared) clearGitHubContributorCache() else false
+        return cacheCleared && contributorCacheCleared
     }
+
+    private suspend fun clearGitHubContributorCache(): Boolean =
+        runCatching {
+            context.dataStore.edit { preferences ->
+                preferences.remove(GitHubContributorsEtagKey)
+                preferences.remove(GitHubContributorsJsonKey)
+                preferences.remove(GitHubContributorsLastCheckedAtKey)
+            }
+        }.isSuccess
 
     private fun clearCacheDirectory(kind: StorageFolderKind): Boolean {
         val directory = cacheDirectory(context, kind)

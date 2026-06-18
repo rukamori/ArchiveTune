@@ -198,6 +198,7 @@ constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val lyricsToSave = when (source) {
                 LyricsEntity.Source.REMOTE,
+                LyricsEntity.Source.EMBEDDED,
                 LyricsEntity.Source.USER_SELECTION -> LyricsUtils.lyricsOrNotFound(lyrics)
                 LyricsEntity.Source.USER_EDIT,
                 LyricsEntity.Source.AI_TRANSLATION -> lyrics

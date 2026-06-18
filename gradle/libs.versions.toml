@@ -43,6 +43,7 @@ okhttp = "5.3.2"
 accompanist = "1.0.19"
 accompanist-core = "0.4.5"
 androidsvg = "1.4"
+aboutLibraries = "15.0.0-rc01"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -142,6 +143,7 @@ markwon-simple-ext = { module = "io.noties.markwon:simple-ext", version.ref = "m
 accompanist-lyrics-ui = { module = "com.mocharealm.accompanist:lyrics-ui", version.ref = "accompanist" }
 accompanist-lyrics-core = { module = "com.mocharealm.accompanist:lyrics-core", version.ref = "accompanist-core" }
 androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
+aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
 
 
 [plugins]
@@ -153,3 +155,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+aboutlibraries-android = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }

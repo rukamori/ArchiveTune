@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Set up Python 3
         uses: actions/setup-python@v6
@@ -89,6 +91,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
       
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -161,6 +165,7 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          WEBLATE_API_TOKEN: ${{ secrets.WEBLATE_API_TOKEN }}
           NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
 
       - name: Resolve release output directory
@@ -252,6 +257,8 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Download Artifacts
         uses: actions/download-artifact@v8
@@ -300,6 +307,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -336,6 +345,7 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          WEBLATE_API_TOKEN: ${{ secrets.WEBLATE_API_TOKEN }}
           NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
 
       - name: Upload Debug APK

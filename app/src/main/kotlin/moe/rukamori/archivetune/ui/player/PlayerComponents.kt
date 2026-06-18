@@ -9,12 +9,9 @@
 
 package moe.rukamori.archivetune.ui.player
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -82,7 +79,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -90,13 +86,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,6 +105,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerButtonsStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -143,9 +136,13 @@ fun PlayerTitleSection(
     textBackgroundColor: Color,
     navController: NavController,
     state: BottomSheetState,
-    clipboardManager: ClipboardManager,
-    context: Context
 ) {
+    // Tap/long-press behavior is centralized; this style keeps its own visual rendering.
+    val actions = rememberPlayerTitleActions(
+        mediaMetadata = mediaMetadata,
+        navController = navController,
+        state = state,
+    )
     AnimatedContent(
         targetState = mediaMetadata.title,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -165,89 +162,24 @@ fun PlayerTitleSection(
                     enabled = true,
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
-                    onClick = {
-                        if (mediaMetadata.album != null) {
-                            state.snapTo(state.collapsedBound)
-                            navController.navigate("album/${mediaMetadata.album.id}")
-                        }
-                    },
-                    onLongClick = {
-                        val clip = ClipData.newPlainText("Copied Title", title)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied Title", Toast.LENGTH_SHORT).show()
-                    }
+                    onClick = actions.onTitleClick,
+                    onLongClick = actions.onCopyTitle,
                 ),
         )
     }
 
     Spacer(Modifier.height(6.dp))
 
-    val annotatedString = buildAnnotatedString {
-        mediaMetadata.artists.forEachIndexed { index, artist ->
-            val tag = "artist_${artist.id.orEmpty()}"
-            pushStringAnnotation(tag = tag, annotation = artist.id.orEmpty())
-            withStyle(SpanStyle(color = textBackgroundColor, fontSize = 16.sp)) {
-                append(artist.name)
-            }
-            pop()
-            if (index != mediaMetadata.artists.lastIndex) append(", ")
-        }
-    }
-
-    Box(
+    ClickableArtists(
+        artists = mediaMetadata.artists,
+        onArtistClick = actions.onArtistClick,
+        style = MaterialTheme.typography.titleMedium.copy(color = textBackgroundColor, fontSize = 16.sp),
+        onLongClick = actions.onCopyArtists,
         modifier = Modifier
             .fillMaxWidth()
             .basicMarquee()
-            .padding(end = 12.dp)
-    ) {
-        var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-        var clickOffset by remember { mutableStateOf<Offset?>(null) }
-        Text(
-            text = annotatedString,
-            style = MaterialTheme.typography.titleMedium.copy(color = textBackgroundColor),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { layoutResult = it },
-            modifier = Modifier
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val tapPosition = event.changes.firstOrNull()?.position
-                            if (tapPosition != null) {
-                                clickOffset = tapPosition
-                            }
-                        }
-                    }
-                }
-                .combinedClickable(
-                    enabled = true,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = {
-                        val tapPosition = clickOffset
-                        val layout = layoutResult
-                        if (tapPosition != null && layout != null) {
-                            val offset = layout.getOffsetForPosition(tapPosition)
-                            annotatedString.getStringAnnotations(offset, offset)
-                                .firstOrNull()
-                                ?.let { ann ->
-                                    val artistId = ann.item
-                                    if (artistId.isNotBlank()) {
-                                        navController.navigate("artist/$artistId")
-                                        state.collapseSoft()
-                                    }
-                                }
-                        }
-                    },
-                    onLongClick = {
-                        val clip = ClipData.newPlainText("Copied Artist", annotatedString)
-                        clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied Artist", Toast.LENGTH_SHORT).show()
-                    }
-                )
-        )
-    }
+            .padding(end = 12.dp),
+    )
 }
 
 @Composable
@@ -1621,7 +1553,6 @@ fun PlayerControlsContent(
     state: BottomSheetState,
     menuState: MenuState,
     bottomSheetPageState: BottomSheetPageState,
-    clipboardManager: ClipboardManager,
     context: Context,
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
@@ -1649,8 +1580,6 @@ fun PlayerControlsContent(
                 textBackgroundColor = textBackgroundColor,
                 navController = navController,
                 state = state,
-                clipboardManager = clipboardManager,
-                context = context
             )
         }
 
@@ -1778,9 +1707,6 @@ fun V8PlayerControlsContent(
 ) {
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
-    val artists = remember(mediaMetadata.artists) {
-        mediaMetadata.artists.joinToString(", ") { it.name }
-    }
     val onMenuClick = remember(mediaMetadata, navController, state, menuState, bottomSheetPageState) {
         {
             menuState.show {
@@ -1798,23 +1724,9 @@ fun V8PlayerControlsContent(
             }
         }
     }
-    val onTitleClick = remember(mediaMetadata.album, navController, state) {
-        {
-            if (mediaMetadata.album != null) {
-                state.snapTo(state.collapsedBound)
-                navController.navigate("album/${mediaMetadata.album.id}")
-            }
-        }
-    }
-    val firstArtistId = mediaMetadata.artists.firstOrNull()?.id
-    val onArtistClick = remember(firstArtistId, navController, state) {
-        {
-            if (!firstArtistId.isNullOrBlank()) {
-                state.collapseSoft()
-                navController.navigate("artist/$firstArtistId")
-            }
-        }
-    }
+    val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
+    val onTitleClick = titleActions.onTitleClick
+    val onArtistClick = titleActions.onArtistClick
     val onPlayPauseClick = remember(playbackState, playerConnection) {
         {
             if (playbackState == STATE_ENDED) {
@@ -1866,7 +1778,7 @@ fun V8PlayerControlsContent(
 
             V8MetadataActions(
                 title = mediaMetadata.title,
-                artists = artists,
+                artists = mediaMetadata.artists,
                 liked = currentSongLiked,
                 foreground = foreground,
                 onMenuClick = onMenuClick,
@@ -1945,9 +1857,6 @@ fun V8PlayerContent(
     val secondaryForeground = foreground.copy(alpha = 0.72f)
     val artworkUrl = mediaMetadata.thumbnailUrl?.highRes()
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
-    val artists = remember(mediaMetadata.artists) {
-        mediaMetadata.artists.joinToString(", ") { it.name }
-    }
     val onMenuClick = {
         menuState.show {
             PlayerMenu(
@@ -1964,25 +1873,15 @@ fun V8PlayerContent(
         }
     }
 
-    val onTitleClick = {
-        if (mediaMetadata.album != null) {
-            state.snapTo(state.collapsedBound)
-            navController.navigate("album/${mediaMetadata.album.id}")
-        }
-    }
-    val firstArtistId = mediaMetadata.artists.firstOrNull()?.id
-    val onArtistClick = {
-        if (!firstArtistId.isNullOrBlank()) {
-            state.collapseSoft()
-            navController.navigate("artist/$firstArtistId")
-        }
-    }
+    val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
+    val onTitleClick = titleActions.onTitleClick
+    val onArtistClick = titleActions.onArtistClick
 
     if (landscape) {
         V8LandscapeContent(
             mediaMetadata = mediaMetadata,
             subtitle = subtitle,
-            artists = artists,
+            artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
@@ -2022,7 +1921,7 @@ fun V8PlayerContent(
         V8PortraitContent(
             mediaMetadata = mediaMetadata,
             subtitle = subtitle,
-            artists = artists,
+            artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
@@ -2065,7 +1964,7 @@ fun V8PlayerContent(
 private fun V8PortraitContent(
     mediaMetadata: MediaMetadata,
     subtitle: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
@@ -2091,7 +1990,7 @@ private fun V8PortraitContent(
     onSliderValueChangeFinished: () -> Unit,
     onVolumeChange: (Float) -> Unit,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -2215,7 +2114,7 @@ private fun V8PortraitContent(
 private fun V8LandscapeContent(
     mediaMetadata: MediaMetadata,
     subtitle: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
@@ -2241,7 +2140,7 @@ private fun V8LandscapeContent(
     onSliderValueChangeFinished: () -> Unit,
     onVolumeChange: (Float) -> Unit,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -2404,13 +2303,13 @@ private fun V8Artwork(
 @Composable
 private fun V8MetadataActions(
     title: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     liked: Boolean,
     foreground: Color,
     onMenuClick: () -> Unit,
     onToggleLike: () -> Unit,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2436,19 +2335,12 @@ private fun V8MetadataActions(
                         onClick = onTitleClick,
                     ),
             )
-            Text(
-                text = artists,
+            ClickableArtists(
+                artists = artists,
+                onArtistClick = onArtistClick,
                 style = MaterialTheme.typography.titleMedium,
                 color = foreground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .basicMarquee()
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = onArtistClick,
-                    ),
+                modifier = Modifier.basicMarquee(),
             )
         }
 
@@ -2602,23 +2494,6 @@ private fun V8QualityChip(
                 maxLines = 1,
             )
         }
-    }
-}
-
-private fun FormatEntity.codecLabel(): String {
-    val rawCodec = codecs.ifBlank { mimeType.substringAfter("/") }.uppercase()
-    val rawMime = mimeType.substringAfter("/").substringBefore(";").uppercase()
-
-    return when {
-        rawCodec.contains("FLAC") || rawCodec.contains("ALAC") -> "Lossless"
-        rawCodec.contains("OPUS") -> "OPUS"
-        rawCodec.contains("AAC") || rawCodec.contains("MP4A") -> "AAC"
-        rawCodec.contains("VORBIS") -> "VORBIS"
-        rawMime.contains("OPUS") -> "OPUS"
-        rawMime.contains("AAC") || rawMime.contains("MP4A") -> "AAC"
-        rawMime.contains("VORBIS") -> "VORBIS"
-        rawMime.isNotBlank() -> rawMime
-        else -> rawCodec
     }
 }
 
@@ -2846,22 +2721,9 @@ fun V9PlayerContent(
     landscape: Boolean = false,
 ) {
     val artworkUrl = mediaMetadata.thumbnailUrl?.highRes()
-    val artists = remember(mediaMetadata.artists) {
-        mediaMetadata.artists.joinToString(", ") { it.name }
-    }
-    val onTitleClick = {
-        if (mediaMetadata.album != null) {
-            state.snapTo(state.collapsedBound)
-            navController.navigate("album/${mediaMetadata.album.id}")
-        }
-    }
-    val firstArtistId = mediaMetadata.artists.firstOrNull()?.id
-    val onArtistClick = {
-        if (!firstArtistId.isNullOrBlank()) {
-            state.collapseSoft()
-            navController.navigate("artist/$firstArtistId")
-        }
-    }
+    val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
+    val onTitleClick = titleActions.onTitleClick
+    val onArtistClick = titleActions.onArtistClick
     val onPlayPauseClick = {
         if (playbackState == STATE_ENDED) {
             playerConnection.player.seekTo(0, 0)
@@ -2874,7 +2736,7 @@ fun V9PlayerContent(
     if (landscape) {
         V9LandscapeContent(
             title = mediaMetadata.title,
-            artists = artists,
+            artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
@@ -2904,7 +2766,7 @@ fun V9PlayerContent(
     } else {
         V9PortraitContent(
             title = mediaMetadata.title,
-            artists = artists,
+            artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
@@ -2937,7 +2799,7 @@ fun V9PlayerContent(
 @Composable
 private fun V9PortraitContent(
     title: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
@@ -2961,7 +2823,7 @@ private fun V9PortraitContent(
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -3076,7 +2938,7 @@ private fun V9PortraitContent(
 @Composable
 private fun V9LandscapeContent(
     title: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
@@ -3100,7 +2962,7 @@ private fun V9LandscapeContent(
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -3310,10 +3172,10 @@ private fun V9Artwork(
 @Composable
 private fun V9Metadata(
     title: String,
-    artists: String,
+    artists: List<MediaMetadata.Artist>,
     textColor: Color,
     onTitleClick: () -> Unit,
-    onArtistClick: () -> Unit,
+    onArtistClick: (artistId: String) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -3337,22 +3199,15 @@ private fun V9Metadata(
                     onClick = onTitleClick,
                 ),
         )
-        Text(
-            text = artists,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+        ClickableArtists(
+            artists = artists,
+            onArtistClick = onArtistClick,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
             color = textColor.copy(alpha = 0.72f),
             textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
-                .basicMarquee()
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onArtistClick,
-                ),
+                .basicMarquee(),
         )
     }
 }

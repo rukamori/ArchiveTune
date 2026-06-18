@@ -625,6 +625,10 @@
     <string name="about_archive_tune_team">Team</string>
     <string name="about_respecter">Respecter</string>
     <string name="about_contributors">Contributors</string>
+    <string name="about_contributors_read_more">Read More</string>
+    <string name="about_contributor_translation">Contributor Translation</string>
+    <string name="about_license">LICENSE</string>
+    <string name="about_license_unknown">Unknown license</string>
     <string name="about_position_lead_dev">Eh?</string>
     <string name="about_position_wttexe">Word Synced Lyrics, Gradients and UI Changes for the better!</string>
     <string name="about_position_miko">Contributor Team</string>

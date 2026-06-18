@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.aboutlibraries.android)
 }
 
 val localProperties = Properties()
@@ -60,6 +61,12 @@ android {
                 ?: System.getenv("CANVAS_BEARER_TOKEN")
                 ?: ""
         buildConfigField("String", "CANVAS_BEARER_TOKEN", "\"$canvasBearerToken\"")
+
+        val weblateApiToken =
+            localProperties.getProperty("WEBLATE_API_TOKEN")
+                ?: System.getenv("WEBLATE_API_TOKEN")
+                ?: ""
+        buildConfigField("String", "WEBLATE_API_TOKEN", "\"$weblateApiToken\"")
 
         val nightlyBuildHash =
             (
@@ -239,6 +246,7 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.palette)
     implementation(libs.androidsvg)
+    implementation(libs.aboutlibraries.core)
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.strikethrough)
     implementation(libs.markwon.ext.tables)
@@ -280,7 +288,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
-    implementation(project(":innertube"))
+    implementation(project(":core"))
     implementation(project(":kugou"))
     implementation(project(":lrclib"))
     implementation(project(":lastfm"))

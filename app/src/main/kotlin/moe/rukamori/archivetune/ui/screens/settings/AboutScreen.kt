@@ -32,10 +32,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -47,8 +50,10 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -60,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -68,6 +74,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -78,9 +86,14 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
 import moe.rukamori.archivetune.viewmodels.AboutContributorsUiState
+import moe.rukamori.archivetune.viewmodels.AboutDependencyLicenseUiCollection
+import moe.rukamori.archivetune.viewmodels.AboutDependencyLicensesUiState
+import moe.rukamori.archivetune.viewmodels.AboutDialog
 import moe.rukamori.archivetune.viewmodels.AboutLinkCollection
 import moe.rukamori.archivetune.viewmodels.AboutScreenEffect
 import moe.rukamori.archivetune.viewmodels.AboutScreenState
+import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorUiCollection
+import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorsUiState
 import moe.rukamori.archivetune.viewmodels.AboutUiModel
 import moe.rukamori.archivetune.viewmodels.AboutViewModel
 import moe.rukamori.archivetune.viewmodels.TeamMember
@@ -111,6 +124,13 @@ fun AboutScreen(
         onNavigateHome = navController::backToMain,
         onOpenUri = viewModel::openUri,
         onRetryContributors = viewModel::retryContributors,
+        onShowOverflowMenu = viewModel::showOverflowMenu,
+        onDismissOverflowMenu = viewModel::dismissOverflowMenu,
+        onOpenTranslationContributors = viewModel::openTranslationContributors,
+        onOpenDependencyLicenses = viewModel::openDependencyLicenses,
+        onDismissDialog = viewModel::dismissDialog,
+        onRetryTranslationContributors = viewModel::retryTranslationContributors,
+        onRetryDependencyLicenses = viewModel::retryDependencyLicenses,
     )
 }
 
@@ -123,6 +143,13 @@ private fun AboutScreenContent(
     onNavigateHome: () -> Unit,
     onOpenUri: (String) -> Unit,
     onRetryContributors: () -> Unit,
+    onShowOverflowMenu: () -> Unit,
+    onDismissOverflowMenu: () -> Unit,
+    onOpenTranslationContributors: () -> Unit,
+    onOpenDependencyLicenses: () -> Unit,
+    onDismissDialog: () -> Unit,
+    onRetryTranslationContributors: () -> Unit,
+    onRetryDependencyLicenses: () -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -155,6 +182,17 @@ private fun AboutScreenContent(
                     containerColor = MaterialTheme.colorScheme.surface,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
+                actions = {
+                    if (state is AboutScreenState.Success) {
+                        AboutOverflowMenu(
+                            expanded = state.model.isOverflowMenuExpanded,
+                            onShowMenu = onShowOverflowMenu,
+                            onDismissMenu = onDismissOverflowMenu,
+                            onOpenTranslationContributors = onOpenTranslationContributors,
+                            onOpenDependencyLicenses = onOpenDependencyLicenses,
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -208,6 +246,63 @@ private fun AboutScreenContent(
             }
         }
     }
+
+    if (state is AboutScreenState.Success) {
+        AboutFullScreenDialogs(
+            model = state.model,
+            onDismiss = onDismissDialog,
+            onRetryTranslationContributors = onRetryTranslationContributors,
+            onRetryDependencyLicenses = onRetryDependencyLicenses,
+        )
+    }
+}
+
+@Composable
+private fun AboutOverflowMenu(
+    expanded: Boolean,
+    onShowMenu: () -> Unit,
+    onDismissMenu: () -> Unit,
+    onOpenTranslationContributors: () -> Unit,
+    onOpenDependencyLicenses: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        IconButton(
+            onClick = onShowMenu,
+            onLongClick = {},
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.more_vert),
+                contentDescription = stringResource(R.string.more_options),
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismissMenu,
+        ) {
+            DropdownMenuItem(
+                text = { Text(text = stringResource(R.string.about_contributor_translation)) },
+                onClick = onOpenTranslationContributors,
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.translate),
+                        contentDescription = null,
+                    )
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(text = stringResource(R.string.about_license)) },
+                onClick = onOpenDependencyLicenses,
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.info),
+                        contentDescription = null,
+                    )
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -236,6 +331,411 @@ private fun AboutMessageContent(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun AboutFullScreenDialogs(
+    model: AboutUiModel,
+    onDismiss: () -> Unit,
+    onRetryTranslationContributors: () -> Unit,
+    onRetryDependencyLicenses: () -> Unit,
+) {
+    when (model.activeDialog) {
+        AboutDialog.NONE -> Unit
+
+        AboutDialog.TRANSLATION_CONTRIBUTORS -> {
+            AboutFullScreenDialog(
+                title = stringResource(R.string.about_contributor_translation),
+                onDismiss = onDismiss,
+            ) { modifier ->
+                TranslationContributorsDialogContent(
+                    state = model.translationContributorsState,
+                    onRetry = onRetryTranslationContributors,
+                    modifier = modifier,
+                )
+            }
+        }
+
+        AboutDialog.DEPENDENCY_LICENSES -> {
+            AboutFullScreenDialog(
+                title = stringResource(R.string.about_license),
+                onDismiss = onDismiss,
+            ) { modifier ->
+                DependencyLicensesDialogContent(
+                    state = model.dependencyLicensesState,
+                    onRetry = onRetryDependencyLicenses,
+                    modifier = modifier,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutFullScreenDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = title,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    navigationIcon = {
+                        androidx.compose.material3.IconButton(onClick = onDismiss) {
+                            Icon(
+                                painter = painterResource(R.drawable.close),
+                                contentDescription = stringResource(R.string.close_dialog),
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                )
+            },
+        ) { innerPadding ->
+            content(
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                        ),
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TranslationContributorsDialogContent(
+    state: AboutTranslationContributorsUiState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (state) {
+        AboutTranslationContributorsUiState.Loading -> {
+            DialogStatusContent(
+                message = stringResource(R.string.loading),
+                showRetry = false,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        AboutTranslationContributorsUiState.Empty -> {
+            DialogStatusContent(
+                message = stringResource(R.string.no_results_found),
+                showRetry = true,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        is AboutTranslationContributorsUiState.Error -> {
+            DialogStatusContent(
+                message = stringResource(state.messageResId),
+                showRetry = true,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        is AboutTranslationContributorsUiState.Success -> {
+            TranslationContributorList(
+                contributors = state.contributors,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DependencyLicensesDialogContent(
+    state: AboutDependencyLicensesUiState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (state) {
+        AboutDependencyLicensesUiState.Loading -> {
+            DialogStatusContent(
+                message = stringResource(R.string.loading),
+                showRetry = false,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        AboutDependencyLicensesUiState.Empty -> {
+            DialogStatusContent(
+                message = stringResource(R.string.no_results_found),
+                showRetry = true,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        is AboutDependencyLicensesUiState.Error -> {
+            DialogStatusContent(
+                message = stringResource(state.messageResId),
+                showRetry = true,
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        }
+
+        is AboutDependencyLicensesUiState.Success -> {
+            DependencyLicenseList(
+                licenses = state.licenses,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DialogStatusContent(
+    message: String,
+    showRetry: Boolean,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (!showRetry) {
+            LoadingIndicator(modifier = Modifier.size(40.dp))
+        }
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        if (showRetry) {
+            TextButton(
+                onClick = onRetry,
+                modifier = Modifier.padding(top = 12.dp),
+            ) {
+                Text(text = stringResource(R.string.retry))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationContributorList(
+    contributors: AboutTranslationContributorUiCollection,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        items(
+            count = contributors.size,
+            key = { index -> contributors[index].language },
+            contentType = { "translation_contributor" },
+        ) { index ->
+            val contributor = contributors[index]
+            SegmentedListItemSurface(
+                index = index,
+                itemCount = contributors.size,
+            ) {
+                TranslationContributorListItem(
+                    language = contributor.language,
+                    contributors = contributor.contributors,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationContributorListItem(
+    language: String,
+    contributors: String?,
+    modifier: Modifier = Modifier,
+) {
+    ListItem(
+        modifier = modifier.heightIn(min = if (contributors == null) 56.dp else 72.dp),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Icon(
+                painter = painterResource(R.drawable.language),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp),
+            )
+        },
+        headlineContent = {
+            Text(
+                text = language,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        supportingContent = contributors?.let { contributorNames ->
+            {
+                Text(
+                    text = contributorNames,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun DependencyLicenseList(
+    licenses: AboutDependencyLicenseUiCollection,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        items(
+            count = licenses.size,
+            key = { index -> "${licenses[index].name}:${licenses[index].version.orEmpty()}:$index" },
+            contentType = { "dependency_license" },
+        ) { index ->
+            val dependency = licenses[index]
+            SegmentedListItemSurface(
+                index = index,
+                itemCount = licenses.size,
+            ) {
+                DependencyLicenseListItem(
+                    name = dependency.name,
+                    version = dependency.version,
+                    licenses = dependency.licenses,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DependencyLicenseListItem(
+    name: String,
+    version: String?,
+    licenses: String?,
+    modifier: Modifier = Modifier,
+) {
+    ListItem(
+        modifier = modifier.heightIn(min = 72.dp),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Icon(
+                painter = painterResource(R.drawable.info),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp),
+            )
+        },
+        headlineContent = {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        supportingContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                version?.let { versionName ->
+                    Text(
+                        text = versionName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = licenses ?: stringResource(R.string.about_license_unknown),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun SegmentedListItemSurface(
+    index: Int,
+    itemCount: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = segmentedListItemShape(
+            index = index,
+            itemCount = itemCount,
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        content = content,
+    )
+}
+
+private fun segmentedListItemShape(
+    index: Int,
+    itemCount: Int,
+): Shape {
+    val outerCorner = 24.dp
+    val innerCorner = 4.dp
+    return when {
+        itemCount <= 1 -> RoundedCornerShape(outerCorner)
+        index == 0 -> RoundedCornerShape(
+            topStart = outerCorner,
+            topEnd = outerCorner,
+            bottomEnd = innerCorner,
+            bottomStart = innerCorner,
+        )
+        index == itemCount - 1 -> RoundedCornerShape(
+            topStart = innerCorner,
+            topEnd = innerCorner,
+            bottomEnd = outerCorner,
+            bottomStart = outerCorner,
+        )
+        else -> RoundedCornerShape(innerCorner)
     }
 }
 
@@ -300,6 +800,7 @@ private fun AboutSuccessContent(
             AboutContentContainer {
                 ContributorsSection(
                     state = model.contributorsState,
+                    readMoreUrl = model.contributorsReadMoreUrl,
                     onOpenProfile = onOpenUri,
                     onRetry = onRetryContributors,
                     modifier = Modifier.fillMaxWidth(),
@@ -659,6 +1160,7 @@ private fun MemberLinkActions(
 @Composable
 private fun ContributorsSection(
     state: AboutContributorsUiState,
+    readMoreUrl: String,
     onOpenProfile: (String) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -705,6 +1207,7 @@ private fun ContributorsSection(
                 is AboutContributorsUiState.Success -> {
                     ContributorList(
                         contributors = state.contributors,
+                        readMoreUrl = readMoreUrl,
                         onOpenProfile = onOpenProfile,
                     )
                 }
@@ -746,6 +1249,7 @@ private fun ContributorStatusContent(
 @Composable
 private fun ContributorList(
     contributors: AboutContributorUiCollection,
+    readMoreUrl: String,
     onOpenProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -768,6 +1272,17 @@ private fun ContributorList(
                 )
             }
         }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 72.dp),
+            thickness = SettingsDimensions.DividerThickness,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+
+        ContributorReadMoreListItem(
+            readMoreUrl = readMoreUrl,
+            onOpenProfile = onOpenProfile,
+        )
     }
 }
 
@@ -808,6 +1323,45 @@ private fun ContributorListItem(
         headlineContent = {
             Text(
                 text = login,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    )
+}
+
+@Composable
+private fun ContributorReadMoreListItem(
+    readMoreUrl: String,
+    onOpenProfile: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val onClick = remember(readMoreUrl, onOpenProfile) {
+        { onOpenProfile(readMoreUrl) }
+    }
+
+    ListItem(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        leadingContent = {
+            Icon(
+                painter = painterResource(R.drawable.add_circle),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(44.dp),
+            )
+        },
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.more),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,

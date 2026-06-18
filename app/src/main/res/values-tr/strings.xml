@@ -630,7 +630,4 @@
     <string name="album_backdrop_desc">Sanat eserini oynatıcıda bulanık arka plan olarak göster</string>
     <string name="backdrop_blur_amount">Arka plan bulanıklık miktarı</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="build_your_mix_manual_placeholder">Bir sanatçı ya da şarkı ismi yazın, Alan Walker gibi</string>
-    <string name="build_your_mix_song_count">Toplam kaç tane müzik istiyorsun?</string>
-    <string name="build_your_mix_listening_history">Dinleme Geçmişi</string>
 </resources>
