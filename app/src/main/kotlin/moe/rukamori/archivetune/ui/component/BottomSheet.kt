@@ -166,9 +166,6 @@ class BottomSheetState(
     val isExpandedOrExpanding: Boolean
         get() = targetAnchor == EXPANDED_ANCHOR
 
-    val isCollapsedOrCollapsing: Boolean
-        get() = targetAnchor == COLLAPSED_ANCHOR || targetAnchor == DISMISSED_ANCHOR
-
     val progress by derivedStateOf {
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
@@ -219,6 +216,7 @@ class BottomSheetState(
         updateAnchor(
             when (value) {
                 expandedBound -> EXPANDED_ANCHOR
+                collapsedBound -> COLLAPSED_ANCHOR
                 dismissedBound -> DISMISSED_ANCHOR
                 else -> COLLAPSED_ANCHOR
             }
