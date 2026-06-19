@@ -752,14 +752,13 @@ fun BottomSheetPlayer(
 
     BackHandler(
         enabled =
-        isLyricsScreenVisible ||
-            (!queueSheetState.isCollapsed && !queueSheetState.isDismissed) ||
-            (!state.isCollapsed && !state.isDismissed)
+        queueSheetState.isExpandedOrExpanding ||
+            state.isExpandedOrExpanding
     ) {
         when {
-            isLyricsScreenVisible -> isLyricsScreenVisible = false
-            !queueSheetState.isCollapsed && !queueSheetState.isDismissed -> queueSheetState.collapseSoft()
-            !state.isCollapsed && !state.isDismissed -> state.collapseSoft()
+            isLyricsScreenVisible && state.isExpandedOrExpanding -> isLyricsScreenVisible = false
+            queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
+            state.isExpandedOrExpanding -> state.collapseSoft()
         }
     }
 
@@ -1642,6 +1641,7 @@ fun BottomSheetPlayer(
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
                 visible = isLyricsScreenVisible,
+                backHandlerEnabled = isLyricsScreenVisible && state.isExpandedOrExpanding,
                 mediaMetadata = metadata,
                 navController = navController,
                 lyricsSyncOffset = lyricsSyncOffset,
@@ -1687,6 +1687,7 @@ fun BottomSheetPlayer(
 @Composable
 private fun MikoLyricsTransition(
     visible: Boolean,
+    backHandlerEnabled: Boolean,
     mediaMetadata: MediaMetadata,
     navController: NavController,
     lyricsSyncOffset: Int,
@@ -1738,6 +1739,7 @@ private fun MikoLyricsTransition(
                     lyricsSyncOffset = lyricsSyncOffset,
                     onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
                     onQueueClick = onQueueClick,
+                    backHandlerEnabled = backHandlerEnabled,
                 )
             }
         }

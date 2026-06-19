@@ -96,7 +96,7 @@ fun BottomSheet(
                 )
             ),
     ) {
-        if (!state.isCollapsed && !state.isDismissed) {
+        if (state.isExpandedOrExpanding) {
             BackHandler(onBack = state::collapseSoft)
         }
 
@@ -138,6 +138,7 @@ class BottomSheetState(
     private val onAnchorChanged: (Int) -> Unit,
     private val animationsDisabled: Boolean,
     val collapsedBound: Dp,
+    initialAnchor: Int = DISMISSED_ANCHOR,
 ) : DraggableState by draggableState {
     val dismissedBound: Dp
         get() = animatable.lowerBound!!
@@ -146,6 +147,9 @@ class BottomSheetState(
         get() = animatable.upperBound!!
 
     val value by animatable.asState()
+
+    var targetAnchor by mutableIntStateOf(initialAnchor)
+        private set
 
     val isDismissed by derivedStateOf {
         value == animatable.lowerBound!!
@@ -159,19 +163,27 @@ class BottomSheetState(
         value == animatable.upperBound
     }
 
+    val isExpandedOrExpanding: Boolean
+        get() = targetAnchor == EXPANDED_ANCHOR
+
     val progress by derivedStateOf {
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
 
+    private fun updateAnchor(anchor: Int) {
+        targetAnchor = anchor
+        onAnchorChanged(anchor)
+    }
+
     fun collapse(animationSpec: AnimationSpec<Dp>) {
-        onAnchorChanged(COLLAPSED_ANCHOR)
+        updateAnchor(COLLAPSED_ANCHOR)
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             animatable.animateTo(collapsedBound, animationSpec)
         }
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
-        onAnchorChanged(EXPANDED_ANCHOR)
+        updateAnchor(EXPANDED_ANCHOR)
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             animatable.animateTo(animatable.upperBound!!, animationSpec)
         }
@@ -194,13 +206,21 @@ class BottomSheetState(
     }
 
     fun dismiss() {
-        onAnchorChanged(DISMISSED_ANCHOR)
+        updateAnchor(DISMISSED_ANCHOR)
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             animatable.animateTo(animatable.lowerBound!!, if (animationsDisabled) snap() else BottomSheetAnimationSpec)
         }
     }
 
     fun snapTo(value: Dp) {
+        updateAnchor(
+            when (value) {
+                expandedBound -> EXPANDED_ANCHOR
+                collapsedBound -> COLLAPSED_ANCHOR
+                dismissedBound -> DISMISSED_ANCHOR
+                else -> COLLAPSED_ANCHOR
+            }
+        )
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             animatable.snapTo(value)
         }
@@ -349,6 +369,7 @@ fun rememberBottomSheetState(
             animatable = animatable,
             animationsDisabled = animationsDisabled,
             collapsedBound = collapsedBound,
+            initialAnchor = previousAnchor,
         )
     }
 }

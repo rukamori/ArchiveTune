@@ -133,6 +133,7 @@ fun LyricsScreen(
     onLyricsSyncOffsetChange: (Int) -> Unit,
     onQueueClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    backHandlerEnabled: Boolean = true,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
@@ -281,7 +282,7 @@ fun LyricsScreen(
     val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
     val orientation = LocalConfiguration.current.orientation
 
-    BackHandler(onBack = onBackClick)
+    BackHandler(enabled = backHandlerEnabled, onBack = onBackClick)
 
     Box(modifier = modifier.fillMaxSize()) {
         AppleMusicBackground(
