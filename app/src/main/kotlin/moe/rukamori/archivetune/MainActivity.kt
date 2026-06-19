@@ -8,6 +8,7 @@
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package moe.rukamori.archivetune
+import androidx.compose.runtime.mutableIntStateOf
 
 import android.annotation.SuppressLint
 import android.Manifest
