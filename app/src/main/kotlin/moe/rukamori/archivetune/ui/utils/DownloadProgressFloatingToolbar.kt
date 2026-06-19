@@ -75,7 +75,7 @@ fun DownloadProgressFloatingToolbar(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.dismiss_download_progress),
+                    contentDescription = null,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -112,13 +112,6 @@ fun DownloadProgressFloatingToolbar(
 
             DownloadToolbarAction(
                 icon = if (state.paused) R.drawable.play else R.drawable.pause,
-                label = stringResource(
-                    if (state.paused) {
-                        R.string.resume_download
-                    } else {
-                        R.string.widget_pause
-                    },
-                ),
                 enabled = state.canPause,
                 onClick = onPauseResume,
             )
