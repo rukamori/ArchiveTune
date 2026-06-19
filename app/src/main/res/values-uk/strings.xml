@@ -1034,4 +1034,11 @@
     <string name="lyrics_word_sync"></string>
     <string name="duration_sort"></string>
     <string name="lastfm_login_invalid_api_key"></string>
+    <string name="lyrics_synced_badge"></string>
+    <string name="widget_pause"></string>
+    <string name="download_progress_percent"></string>
+    <string name="widget_previous"></string>
+    <string name="widget_tap_to_open"></string>
+    <string name="aod_mode_exit"></string>
+    <string name="aod_mode"></string>
 </resources>
