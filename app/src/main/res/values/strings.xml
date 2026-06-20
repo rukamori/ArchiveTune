@@ -150,7 +150,10 @@
     <string name="import_playlist">Import playlist</string>
     <string name="import_failed">Import failed</string>
     <string name="update_button">Update</string>
+    <string name="add">Add</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="add_to_n_playlists">Add to %1$d</string>
+    <string name="no_playlists_yet">No playlists yet</string>
     <string name="pin_to_speed_dial">Pin to speed dial</string>
     <string name="remove_from_speed_dial">Remove from speed dial</string>
     <string name="view_artist">View artist</string>
@@ -469,6 +472,10 @@
     <string name="playback_login_refresh_required">Refresh YouTube Music login</string>
     <string name="playback_requires_youtube_music_login_refresh">Refresh your YouTube Music login, then return to ArchiveTune.</string>
     <string name="could_not_open_youtube_music">Could not open YouTube Music</string>
+    <string name="playback_error_code">Code</string>
+    <string name="playback_error_http">HTTP</string>
+    <string name="playback_error_message">Message</string>
+    <string name="playback_error_cause">Cause</string>
     <string name="content_language">Default content language</string>
     <string name="content_country">Default content country</string>
     <string name="system_default">System default</string>

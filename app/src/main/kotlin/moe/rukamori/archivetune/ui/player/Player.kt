@@ -1825,6 +1825,7 @@ private fun MikoLyricsTransition(
                 modifier
                     .fillMaxSize()
                     .graphicsLayer { this.alpha = boundedProgress }
+                    .consumeUnhandledPointerInput()
                     .background(Color.Black.copy(alpha = 0.24f * boundedProgress)),
         ) {
             Box(

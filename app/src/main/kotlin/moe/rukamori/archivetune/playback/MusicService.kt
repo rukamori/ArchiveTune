@@ -5659,6 +5659,35 @@ class MusicService :
             }
         }
 
+        if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
+            playbackUrlCache.remove(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
+                scope.launch(Dispatchers.IO) {
+                    runCatching {
+                        YTPlayerUtils.recoverFromBadStreamPlayerResponse(currentMediaId)
+                    }.onFailure {
+                        Timber.tag("MusicService").w(
+                            it,
+                            "Failed to refresh stream session for %s after all stream clients failed",
+                            currentMediaId,
+                        )
+                        reportException(it)
+                    }
+                    withContext(Dispatchers.Main) {
+                        if (player.currentMediaItem?.mediaId == currentMediaId) {
+                            Timber.tag("MusicService").i(
+                                "Retrying playback for %s after refreshing stream session",
+                                currentMediaId,
+                            )
+                            player.prepare()
+                        }
+                    }
+                }
+                return
+            }
+        }
+
         if (!isLocalMedia && !isFullyCachedMedia && isRetryableRemoteParserFailure(error)) {
             playbackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
@@ -5944,6 +5973,14 @@ class MusicService :
                     }
 
                     throwable is YTPlayerUtils.BotDetectionPlaybackException -> {
+                        throw PlaybackException(
+                            getString(R.string.error_no_stream),
+                            throwable,
+                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                        )
+                    }
+
+                    throwable is YTPlayerUtils.BadStreamPlayerResponseException -> {
                         throw PlaybackException(
                             getString(R.string.error_no_stream),
                             throwable,

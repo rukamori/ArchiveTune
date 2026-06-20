@@ -298,7 +298,12 @@ fun LyricsScreen(
 
     BackHandler(enabled = backHandlerEnabled, onBack = onBackClick)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .consumeUnhandledPointerInput(),
+    ) {
         AppleMusicBackground(
             mediaMetadata = mediaMetadata,
             gradientColors = gradientColors,

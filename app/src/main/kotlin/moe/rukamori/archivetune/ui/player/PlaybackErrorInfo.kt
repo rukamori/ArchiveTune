@@ -58,6 +58,8 @@ internal fun PlaybackException.toPlaybackErrorInfo(): PlaybackErrorInfo {
 
             YTPlayerUtils.isBotDetectionException(this) -> PlaybackErrorKind.NoStream
 
+            YTPlayerUtils.isBadStreamPlayerResponseException(this) -> PlaybackErrorKind.NoStream
+
             httpCode in setOf(403, 404, 410, 416) -> PlaybackErrorKind.NoStream
 
             errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> PlaybackErrorKind.MalformedStream
