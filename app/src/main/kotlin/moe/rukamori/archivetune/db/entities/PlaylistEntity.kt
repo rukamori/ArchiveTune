@@ -44,6 +44,8 @@ data class PlaylistEntity(
     val songSortType: String? = null,
     @ColumnInfo(defaultValue = "NULL")
     val songSortDescending: Boolean? = null,
+    @ColumnInfo(name = "isHidden", defaultValue = "0")
+    val isHidden: Boolean = false,
 ) {
     companion object {
         const val LIKED_PLAYLIST_ID = "LP_LIKED"

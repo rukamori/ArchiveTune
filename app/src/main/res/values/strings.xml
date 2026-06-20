@@ -186,6 +186,10 @@
     <string name="refetch">Refetch</string>
     <string name="share">Share</string>
     <string name="delete">Delete</string>
+    <string name="hide_playlist">Hide playlist</string>
+    <string name="unhide_playlist">Unhide playlist</string>
+    <string name="show_hidden_playlists">Show hidden</string>
+    <string name="hide_playlist_confirm">Hide \u0022%1$s\u0022 from library?</string>
     <string name="together_participants">Participants</string>
     <string name="together_connected_count">%1$d connected</string>
     <string name="together_role_host">Host</string>
