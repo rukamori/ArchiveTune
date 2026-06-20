@@ -1032,4 +1032,13 @@
     <string name="proxy_connection_invalid_configuration">Máy chủ proxy hoặc cổng không hợp lệ</string>
     <!-- YouTube channels -->
     <string name="youtube_channels">Kênh YouTube</string>
+    <!-- Hide playlist -->
+    <string name="hide_playlist">Ẩn danh sách phát</string>
+    <string name="unhide_playlist">Bỏ ẩn danh sách phát</string>
+    <string name="show_hidden_playlists">Hiện ẩn</string>
+    <string name="hide_playlist_confirm">Ẩn \u0022%1$s\u0022 khỏi thư viện?</string>
+    <string name="hidden_playlists">Danh sách phát đã ẩn</string>
+    <string name="hidden_playlists_description">Danh sách phát đã ẩn khỏi thư viện sẽ xuất hiện tại đây</string>
+    <string name="no_hidden_playlists">Không có danh sách phát đã ẩn</string>
+    <string name="unhide">Bỏ ẩn</string>
 </resources>

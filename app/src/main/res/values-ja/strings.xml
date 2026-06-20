@@ -998,4 +998,13 @@
     <string name="album_backdrop_desc">プレーヤーにアートワークをぼかした背景として表示</string>
     <string name="backdrop_blur_amount">背景ブラーの量</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <!-- Hide playlist -->
+    <string name="hide_playlist">プレイリストを非表示</string>
+    <string name="unhide_playlist">プレイリストを表示</string>
+    <string name="show_hidden_playlists">非表示を表示</string>
+    <string name="hide_playlist_confirm">ライブラリから「%1$s」を非表示にしますか？</string>
+    <string name="hidden_playlists">非表示のプレイリスト</string>
+    <string name="hidden_playlists_description">ライブラリから非表示にしたプレイリストがここに表示されます</string>
+    <string name="no_hidden_playlists">非表示のプレイリストはありません</string>
+    <string name="unhide">表示に戻す</string>
 </resources>
