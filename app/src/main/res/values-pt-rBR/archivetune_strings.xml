@@ -176,7 +176,7 @@
     <string name="empty_playlist">Playlist Vazia</string>
     <string name="empty_playlist_desc">Esta playlist não contém nenhuma música</string>
     <plurals name="seconds">
-        <item quantity="one">1 segundo</item>
+        <item quantity="one">%d segundo</item>
         <item quantity="many">%d segundos</item>
         <item quantity="other">%d segundos</item>
     </plurals>
@@ -353,9 +353,9 @@
     <string name="news_tooltip_body">Você tem anúncios não lidos de desenvolvedores.</string>
     <string name="news_author_on_date">%1$s · %2$s</string>
     <plurals name="news_article_count">
-        <item quantity="one">Artigo</item>
-        <item quantity="many">Artigos</item>
-        <item quantity="other">Artigos</item>
+        <item quantity="one">%d artigo</item>
+        <item quantity="many">%d artigos</item>
+        <item quantity="other">%d artigos</item>
     </plurals>
     <string name="aod_customize_title">Customização do AOD</string>
     <string name="aod_customize_subtitle">Forma, layout, controles e estilo ambiente</string>
@@ -456,7 +456,7 @@
     <string name="settings_backup_restore_subtitle">Exporte e recupere os dados pessoais do seu aplicativo</string>
     <string name="settings_developer_options_title">Opções de Desenvolvedor</string>
     <string name="settings_developer_options_subtitle">Funcionalidades experimentais e depuração</string>
-    <string name="settings_lyrics_subtitle">Provedores de letras, pré-carregamento e tradução.</string>
+    <string name="settings_lyrics_subtitle">Provedores de letras, pré-carregamento e tradução</string>
     <string name="settings_content_subtitle">Idioma, país e configurações padrão de recomendação</string>
     <string name="settings_internet_subtitle">Comportamento de proxy, DNS e reprodução de rede</string>
     <string name="settings_po_token_subtitle">Verificação de reprodução e dados de visitantes</string>
