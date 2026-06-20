@@ -112,3 +112,4 @@ core.*
 /.openclaw
 /AGENTS.md
 /SOUL.md
+/string_cleaner.py

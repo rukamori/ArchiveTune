@@ -1,53 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Upstream InnerTune strings --><!-- Do not add new features here --><!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun --><!-- "InnerTune" is replaced with "ArchiveTune" --><!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. --><resources>
-    <!-- Bottom navigation -->
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    
     <string name="home">ホーム</string>
     <string name="songs">歌</string>
     <string name="artists">アーティスト</string>
     <string name="albums">アルバム</string>
     <string name="playlists">プレイリスト</string>
-    <!-- Top bar -->
+    
     <plurals name="n_selected">
         <item quantity="other">%d が選択されました</item>
     </plurals>
-    <!-- Home -->
+    
     <string name="history">歴史</string>
     <string name="stats">統計</string>
     <string name="mood_and_genres">ムード &amp; ジャンル</string>
-    <string name="mood_and_genres_supporting">感情、時代、エネルギーに合わせてプレイする</string>
-    <string name="mood_and_genres_count">%d 件のピック</string>
     <string name="account">アカウント</string>
     <string name="quick_picks">クイックピック</string>
-    <string name="quick_picks_empty">曲を聴いて簡単なピックを作成します</string>
     <string name="speed_dial">短縮ダイヤル</string>
-    <string name="speed_dial_random">ランダム短縮ダイヤル曲を再生する</string>
     <string name="forgotten_favorites">忘れてしまったお気に入り</string>
     <string name="keep_listening">聞き続けてください</string>
     <string name="your_youtube_playlists">YouTube プレイリスト</string>
     <string name="similar_to">に似ている</string>
     <string name="new_release_albums">新しいリリースのアルバム</string>
-    <string name="select_playlist_to_sync">同期するプレイリストを選択</string>
     <string name="integration">統合</string>
-    <string name="integrations">統合</string>
-    <string name="internal_subcategory_settings">内部の &amp; サブカテゴリ設定</string>
-    <string name="search_try_different">別の検索語を試してください</string>
-    <!-- History -->
     <string name="today">今日</string>
     <string name="yesterday">昨日</string>
     <string name="this_week">今週</string>
     <string name="last_week">先週</string>
-    <!-- Stats -->
+    
     <string name="most_played_songs">最も再生された曲</string>
-    <string name="most_played_artists">最も再生されたアーティスト</string>
-    <string name="most_played_albums">最も再生されたアルバム</string>
-    <!-- Search -->
     <string name="search">検索</string>
     <string name="search_yt_music">YouTube ミュージックを検索…</string>
     <string name="search_library">ライブラリを検索…</string>
     <string name="filter_library">図書館</string>
     <string name="filter_liked">気に入った</string>
     <string name="filter_downloaded">ダウンロード済み</string>
-    <string name="filter_downloaded_full">ダウンロード済み (フル)</string>
     <string name="filter_all">すべて</string>
     <string name="filter_songs">歌</string>
     <string name="filter_videos">動画</string>
@@ -56,15 +43,9 @@
     <string name="filter_playlists">プレイリスト</string>
     <string name="filter_community_playlists">コミュニティプレイリスト</string>
     <string name="filter_featured_playlists">注目のプレイリスト</string>
-    <string name="filter_bookmarked">ブックマーク済み</string>
     <string name="no_results_found">結果が見つかりませんでした</string>
     <string name="top_results">上位の結果</string>
-    <!-- Library -->
-    <string name="library_song_empty">ライブラリの曲がここに表示されます</string>
-    <string name="library_artist_empty">ライブラリーアーティストがここに登場します</string>
-    <string name="library_album_empty">ライブラリアルバムがここに表示されます</string>
-    <string name="library_playlist_empty">プレイリストがここに表示されます</string>
-    <!-- New Library UI -->
+    
     <string name="library_title">あなたのライブラリ</string>
     <string name="library_subtitle">あなたの音楽を整理しました</string>
     <string name="library_playlists_subtitle">すべてのプレイリストを整理しました</string>
@@ -85,7 +66,6 @@
     <string name="your_playlists">あなたのプレイリスト</string>
     <string name="see_all">すべて見る</string>
     <string name="your_artists">あなたのアーティスト</string>
-    <string name="your_albums">あなたのアルバム</string>
     <string name="all_songs">すべての曲</string>
     <string name="newest_first">新しい順</string>
     <string name="oldest_first">古い順</string>
@@ -128,25 +108,21 @@
     <string name="year_sort">年</string>
     <string name="duration_sort">時間</string>
     <string name="featured_album_badge">おすすめアルバム</string>
-    <!-- Artist screen -->
-    <string name="from_your_library">あなたのライブラリから</string>
-    <!-- Album screen -->
+    
     <string name="other_versions">他のバージョン</string>
-    <!-- Playlist -->
+    
     <string name="liked_songs">好きな曲</string>
     <string name="downloaded_songs">ダウンロードした曲</string>
     <string name="playlist_is_empty">プレイリストが空です</string>
     <string name="remove_download_playlist_confirm">本当にすべての「%s\"」プレイリストの曲をダウンロード済み曲ストレージから削除してもよろしいですか?</string>
     <string name="delete_playlist_confirm">本当にプレイリスト「%s\"」を削除してもよろしいですか?</string>
     <string name="change_playlist_cover">プレイリストのカバーを変更する</string>
-    <string name="remove_playlist_cover">カバーを外す</string>
-    <!-- Button -->
     <string name="retry">再試行</string>
     <string name="radio">ラジオ</string>
     <string name="shuffle">シャッフル</string>
     <string name="music_recognition">音楽認識</string>
     <string name="reset">リセット</string>
-    <!-- Menu -->
+    
     <string name="details">詳細</string>
     <string name="edit">編集</string>
     <string name="start_radio">ラジオを開始する</string>
@@ -154,9 +130,7 @@
     <string name="play_next">次にプレイする</string>
     <string name="add_to_queue">キューに追加</string>
     <string name="add_to_library">ライブラリに追加</string>
-    <string name="add_all_to_library">すべてをライブラリに追加</string>
     <string name="remove_from_library">ライブラリから削除</string>
-    <string name="remove_all_from_library">ライブラリからすべて削除する</string>
     <string name="action_download">ダウンロード</string>
     <string name="downloading">ダウンロード中</string>
     <string name="remove_download">ダウンロードを削除する</string>
@@ -192,8 +166,6 @@
     <string name="removed_song_from_queue">\"%s\" をキューから削除しました</string>
     <string name="removed_n_songs_from_queue">%d 曲をキューから削除しました</string>
     <string name="search_online">オンラインで検索</string>
-    <string name="action_sync">同期</string>
-    <string name="advanced">上級者向け</string>
     <string name="tempo_and_pitch">テンポとピッチ</string>
     <string name="aod_mode">AODモード</string>
     <string name="aod_mode_exit">AOD を終了する</string>
@@ -201,19 +173,16 @@
     <string name="pitch">ピッチ</string>
     <string name="pitch_mode_semitones_short">セント</string>
     <string name="pitch_mode_multiplier_short">×</string>
-    <!-- Sort menu -->
+    
     <string name="sort_by_create_date">追加日</string>
     <string name="sort_by_name">名前</string>
     <string name="sort_by_artist">アーティスト</string>
-    <string name="sort_by_year">年</string>
-    <string name="sort_by_song_count">曲数</string>
-    <string name="sort_by_length">長さ</string>
     <string name="sort_by_play_time">プレイ時間</string>
     <string name="sort_by_most_played">最もプレイされた</string>
     <string name="sort_by_custom">カスタムオーダー</string>
     <string name="sort_order_ascending">昇順</string>
     <string name="sort_order_descending">降順</string>
-    <!-- Dialog -->
+    
     <string name="media_id">メディアID</string>
     <string name="mime_type">MIMEタイプ</string>
     <string name="no_matching_playlists">一致するプレイリストがありません</string>
@@ -225,28 +194,21 @@
     <string name="file_size">ファイルサイズ</string>
     <string name="unknown">不明</string>
     <string name="copied">クリップボードにコピーされました</string>
-    <string name="edit_lyrics">歌詞を編集する</string>
     <string name="search_lyrics">歌詞を検索する</string>
     <string name="edit_song">曲を編集する</string>
     <string name="song_title">曲名</string>
     <string name="song_artists">ソングアーティスト</string>
-    <string name="error_song_title_empty">曲のタイトルを空にすることはできません。</string>
-    <string name="error_song_artist_empty">ソングアーティストを空にすることはできません。</string>
     <string name="save">保存</string>
-    <string name="choose_playlist">プレイリストを選択</string>
     <string name="edit_playlist">プレイリストを編集する</string>
     <string name="create_playlist">プレイリストの作成</string>
     <string name="playlist_name">プレイリスト名</string>
-    <string name="error_playlist_name_empty">プレイリスト名を空にすることはできません。</string>
-    <string name="edit_artist">アーティストの編集</string>
     <string name="artist_name">アーティスト名</string>
-    <string name="error_artist_name_empty">アーティスト名を空にすることはできません。</string>
     <string name="duplicates">重複</string>
     <string name="skip_duplicates">重複をスキップする</string>
     <string name="add_anyway">とにかく追加してください</string>
     <string name="duplicates_description_single">曲はすでにプレイリストにあります</string>
     <string name="duplicates_description_multiple">%d 曲はすでにプレイリストにあります</string>
-    <!-- Noun -->
+    
     <plurals name="n_song">
         <item quantity="other">%d曲</item>
     </plurals>
@@ -268,16 +230,14 @@
     <plurals name="n_year">
         <item quantity="other">%d年</item>
     </plurals>
-    <!-- Snackbar -->
+    
     <string name="added_to_playlist">%s に追加されました</string>
     <string name="added_n_songs_to_playlist">%1$d 曲を %2$s に追加しました</string>
     <string name="added_to_n_playlists">%d 個のプレイリストに追加されました</string>
     <string name="added_n_songs_to_n_playlists">%1$d 曲を %2$d プレイリストに追加しました</string>
-    <string name="playlist_imported">インポートされたプレイリスト</string>
-    <string name="removed_song_from_playlist">プレイリストから「%s\"」を削除しました</string>
     <string name="playlist_synced">プレイリストが同期されました</string>
     <string name="undo">元に戻す</string>
-    <!-- Player -->
+    
     <string name="lyrics_not_found">歌詞が見つかりません</string>
     <string name="lyrics_word_sync">ワードシンク</string>
     <string name="sleep_timer">スリープタイマー</string>
@@ -290,47 +250,40 @@
     <string name="error_timeout">タイムアウト</string>
     <string name="error_malformed_stream">ソースエラー</string>
     <string name="error_unknown">不明なエラー</string>
-    <!-- Player action -->
+    
     <string name="action_like">いいね</string>
-    <string name="action_like_all">みんなと同じように</string>
     <string name="action_remove_like">いいねを削除</string>
-    <string name="action_remove_like_all">すべての「いいね！」を削除</string>
     <string name="action_shuffle_on">シャッフルオン</string>
     <string name="action_shuffle_off">シャッフルオフ</string>
     <string name="repeat_mode_off">リピートモードオフ</string>
     <string name="repeat_mode_one">現在の曲をリピートする</string>
     <string name="repeat_mode_all">リピートキュー</string>
-    <!-- Queue Title -->
+    
     <string name="queue_all_songs">全曲</string>
     <string name="queue_searched_songs">検索した曲</string>
     <string name="queue_continue_playing">プレイを続ける</string>
     <string name="queue_autoplaying_similar">似たような音楽を自動再生する</string>
-    <!-- Notification name -->
+    
     <string name="music_player">音楽プレーヤー</string>
-    <!-- Settings -->
+    
     <string name="settings">設定</string>
     <string name="appearance">外観</string>
     <string name="theme">テーマ</string>
     <string name="enable_dynamic_theme">動的テーマを有効にする</string>
     <string name="random_theme_on_startup">起動時のランダムなテーマ</string>
     <string name="random_theme_on_startup_desc">アプリを起動するたびにランダムなカラーパレットを適用する</string>
-    <!-- Color Palette -->
+    
     <string name="color_palette">カラーパレット</string>
     <string name="customize_theme_colors">アプリのテーマカラーを選択してください</string>
-    <string name="selected_theme_color">選択したテーマカラー</string>
-    <string name="theme_preview">テーマのプレビュー</string>
-    <string name="select_palette">カラーパレットを選択してください</string>
-    <string name="palette_applied">適用されたパレット</string>
-    <!-- Palette Names -->
     <string name="palette_default">デフォルト</string>
-    <!-- Blues -->
+    
     <string name="palette_ocean_blue">オーシャンブルー</string>
     <string name="palette_arctic_blue">北極</string>
     <string name="palette_midnight_navy">真夜中</string>
     <string name="palette_sky_blue">スカイブルー</string>
     <string name="palette_cobalt_blue">コバルト</string>
     <string name="palette_electric_blue">電気</string>
-    <!-- Greens -->
+    
     <string name="palette_emerald_green">エメラルド</string>
     <string name="palette_teal_wave">ティールウェーブ</string>
     <string name="palette_forest_green">森</string>
@@ -338,21 +291,21 @@
     <string name="palette_mint_fresh">ミント</string>
     <string name="palette_olive_garden">オリーブ</string>
     <string name="palette_sage_green">セージ</string>
-    <!-- Oranges & Yellows -->
+    
     <string name="palette_sunset_orange">日没</string>
     <string name="palette_golden_hour">ゴールデン</string>
     <string name="palette_warm_amber">アンバー</string>
     <string name="palette_tangerine_blast">みかん</string>
     <string name="palette_peach">ピーチ</string>
     <string name="palette_mango">マンゴー</string>
-    <!-- Purples -->
+    
     <string name="palette_royal_purple">ロイヤルパープル</string>
     <string name="palette_lavender_dream">ラベンダー</string>
     <string name="palette_grape_purple">ぶどう</string>
     <string name="palette_violet">バイオレット</string>
     <string name="palette_amethyst">アメジスト</string>
     <string name="palette_ultra_violet">ウルトラバイオレット</string>
-    <!-- Pinks -->
+    
     <string name="palette_cherry_blossom">さくら</string>
     <string name="palette_rose_quartz">ローズクォーツ</string>
     <string name="palette_magenta_pop">マゼンタ</string>
@@ -360,37 +313,37 @@
     <string name="palette_blush">赤面</string>
     <string name="palette_coral">サンゴ</string>
     <string name="palette_bubblegum">バブルガム</string>
-    <!-- Reds -->
+    
     <string name="palette_crimson_red">クリムゾン</string>
     <string name="palette_youtube_red">YouTube</string>
     <string name="palette_wine_red">ワイン</string>
     <string name="palette_ruby_red">ルビー</string>
     <string name="palette_scarlet">スカーレット</string>
-    <!-- Neutrals -->
+    
     <string name="palette_charcoal">木炭</string>
     <string name="palette_silver">シルバー</string>
     <string name="palette_slate">スレート</string>
     <string name="palette_graphite">グラファイト</string>
-    <!-- Earth Tones -->
+    
     <string name="palette_terracotta">テラコッタ</string>
     <string name="palette_coffee">コーヒー</string>
     <string name="palette_mocha">モカ</string>
     <string name="palette_sand">砂</string>
     <string name="palette_clay">粘土</string>
-    <!-- Pastels -->
+    
     <string name="palette_pastel_pink">パステルピンク</string>
     <string name="palette_pastel_blue">パステルブルー</string>
     <string name="palette_pastel_green">パステルグリーン</string>
     <string name="palette_pastel_yellow">パステルイエロー</string>
     <string name="palette_pastel_purple">パステルパープル</string>
-    <!-- Neon & Vibrant -->
+    
     <string name="palette_neon_green">ネオングリーン</string>
     <string name="palette_neon_pink">ネオンピンク</string>
     <string name="palette_neon_blue">ネオンブルー</string>
     <string name="palette_neon_orange">ネオンオレンジ</string>
     <string name="palette_cyberpunk">サイバーパンク</string>
     <string name="palette_synthwave">シンセウェーブ</string>
-    <!-- Special & Themed -->
+    
     <string name="palette_ocean">オーシャン</string>
     <string name="palette_forest">ディープフォレスト</string>
     <string name="palette_autumn">秋</string>
@@ -401,21 +354,7 @@
     <string name="palette_aurora">オーロラ</string>
     <string name="palette_candy">キャンディ</string>
     <string name="palette_rainbow">レインボー</string>
-    <!-- Additional Palettes -->
-    <string name="palette_aquamarine">アクアマリン</string>
-    <string name="palette_coral_reef">サンゴ礁</string>
-    <string name="palette_cotton_candy">わたあめ</string>
-    <string name="palette_deep_sea">深海</string>
-    <string name="palette_electric_violet">エレクトリックバイオレット</string>
-    <string name="palette_mustard">マスタード</string>
-    <string name="palette_olive">オリーブ</string>
-    <string name="palette_peachy_keen">ピーチキーン</string>
-    <string name="palette_plum">梅</string>
-    <string name="palette_slate_gray">スレートグレー</string>
-    <string name="palette_sunset_beach">サンセットビーチ</string>
-    <string name="palette_turquoise">ターコイズ</string>
-    <!-- End of Color Palette -->
-
+    
     <string name="dark_theme">ダークテーマ</string>
     <string name="dark_theme_on">オン</string>
     <string name="dark_theme_off">オフ</string>
@@ -433,11 +372,8 @@
     <string name="contrast">コントラスト</string>
     <string name="brightness">明るさ</string>
     <string name="custom_value">カスタム値</string>
-    <string name="new_library_design">新しいライブラリのデザイン</string>
-    <string name="new_library_design_description">新しいライブラリ設計を有効にします (不安定になる可能性があります)</string>
     <string name="archivetune_canvas">アーカイブチューン キャンバス</string>
     <string name="archivetune_canvas_desc">再生中にアルバムのアートワークをアニメーション化 (Powered by BetterLyrics)</string>
-    <string name="archivetune_canvas_v7_desc">イマーシブ プレーヤー スタイルでは利用できません</string>
     <string name="show_button1_description">Discord リッチ プレゼンスのボタン 1 の表示を切り替えます</string>
     <string name="show_button2_description">Discord リッチ プレゼンスのボタン 2 の表示を切り替えます</string>
     <string name="discord_activity_type">アクティビティの種類</string>
@@ -449,11 +385,7 @@
     <string name="disable_animations_desc">ほとんどのアプリのアニメーションを無効にします。ローエンドデバイスに推奨</string>
     <string name="blur_intensity">ぼかし強度</string>
     <string name="blur_intensity_value">%1$d dp</string>
-    <string name="customize_navigation_tabs">ナビゲーションタブをカスタマイズする</string>
     <string name="player">プレーヤー</string>
-    <string name="player_text_alignment">プレーヤーのテキストの配置</string>
-    <string name="lyrics_text_position">歌詞テキストの位置</string>
-    <string name="sided">サイド</string>
     <string name="left">左</string>
     <string name="center">センター</string>
     <string name="right">右</string>
@@ -463,7 +395,6 @@
     <string name="slider_style_thick">厚い</string>
     <string name="slider_style_circular">円形</string>
     <string name="slider_style_simple">シンプル</string>
-    <string name="default_">デフォルト</string>
     <string name="squiggly">波打つ</string>
     <string name="misc">その他</string>
     <string name="haptics">振動</string>
@@ -472,26 +403,22 @@
     <string name="grid_cell_size">グリッドセルのサイズ</string>
     <string name="small">小</string>
     <string name="big">大きい</string>
-    <!-- Lyrics animation style -->
+    
     <string name="lyrics_animation_style">歌詞アニメーション風</string>
     <string name="lyrics_mode">歌詞モード</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
     <string name="lyrics_mode_enhanced">強化された</string>
     <string name="lyrics_animation_style_v2_only">V2 歌詞モードでのみ利用可能</string>
-    <!-- Animation options -->
+    
     <string name="none">なし</string>
     <string name="fade">フェード</string>
-    <string name="slide">スライド</string>
     <string name="karaoke">カラオケ</string>
-    <string name="apple_music_style">Apple Music</string>
-    <!-- Lyrics line spacing -->
     <string name="lyrics_line_spacing">歌詞の行間</string>
     <string name="content">内容</string>
     <string name="action_logout">ログアウト</string>
     <string name="action_login">ログイン</string>
     <string name="login">ログイン</string>
     <string name="not_logged_in">ログインしていません</string>
-    <string name="login_failed">ログインに失敗しました</string>
     <string name="playback_confirmation_required">再生確認が必要です</string>
     <string name="playback_requires_youtube_music_confirmation">YouTube Music で再生を確認し、ArchiveTune に戻ります。</string>
     <string name="playback_login_refresh_required">YouTube Music のログインを更新する</string>
@@ -526,7 +453,6 @@
     <string name="ip_rotation_refresh">IPをリフレッシュ</string>
     <string name="stream_bypass_proxy">ストリームのプロキシをバイパスする</string>
     <string name="stream_bypass_proxy_desc">IP の不一致を避けるためにストリーム再生には直接 IP を使用してください</string>
-    <string name="restart_to_take_effect">再起動して有効にします</string>
     <string name="enable_betterlyrics">BetterLyrics を有効にする</string>
     <string name="enable_unison_lyrics">ユニゾン歌詞を有効にする</string>
     <string name="enable_simpmusic_lyrics">SimpMusic の歌詞を有効にする</string>
@@ -541,8 +467,6 @@
     <string name="persistent_queue_desc">アプリの起動時に最後のキューを復元する</string>
     <string name="permanent_shuffle">永久シャッフルモード</string>
     <string name="permanent_shuffle_desc">新しい曲を開始するときにシャッフルを有効にしたままにする</string>
-    <string name="auto_load_more">さらに多くの曲を自動ロードします</string>
-    <string name="auto_load_more_desc">キューの終わりに達すると、自動的に曲を追加します。リピートモードがアクティブな場合は無効になります</string>
     <string name="skip_silence">沈黙をスキップする</string>
     <string name="audio_normalization">オーディオの正規化</string>
     <string name="audio_offload">オーディオオフロード</string>
@@ -557,7 +481,6 @@
     <string name="auto_start_on_bluetooth">Bluetooth接続時の自動起動</string>
     <string name="auto_start_on_bluetooth_desc">Bluetooth オーディオ デバイスが接続されると自動的に再生を再開します</string>
     <string name="artist_separators">アーティストを分割するためのシンボル</string>
-    <string name="artist_separators_desc">複数のアーティストを分割するために使用される記号</string>
     <string name="external_downloader">外部ダウンローダー</string>
     <string name="external_downloader_desc">パッケージ名に基づいて外部アプリを通じて曲をダウンロードする</string>
     <string name="external_downloader_package">ダウンローダー アプリ パッケージ</string>
@@ -572,7 +495,6 @@
     <string name="eq_waiting_for_audio_session">音声セッションを待っています…</string>
     <string name="eq_open_system_equalizer">オープンシステムイコライザー</string>
     <string name="eq_presets">プリセット</string>
-    <string name="eq_system">システム</string>
     <string name="eq_flat">フラット</string>
     <string name="eq_profiles">プロフィール</string>
     <string name="eq_manage">管理する</string>
@@ -584,8 +506,6 @@
     <string name="eq_profile_name">プロファイル名</string>
     <string name="eq_custom_profile">カスタムプロファイル</string>
     <string name="eq_import">インポート</string>
-    <string name="eq_import_profiles">プロファイルをインポートする</string>
-    <string name="eq_import_profiles_placeholder">イコライザープロファイルJSONを貼り付けます</string>
     <string name="eq_import_failed">無効なプロファイルデータ</string>
     <string name="eq_imported_profile">輸入品</string>
     <string name="eq_import_success">%1$d 個のプロファイルをインポートしました</string>
@@ -596,15 +516,6 @@
     <string name="storage">ストレージ</string>
     <string name="smart_trimmer">スマートトリマー</string>
     <string name="smart_trimmer_description">スマート トリマーは画像キャッシュと曲キャッシュを動的に管理し、古いエントリを削除してディスク領域を節約します。</string>
-    <string name="storage_tracked_storage">%s がデバイス上で追跡されました</string>
-    <string name="storage_summary_supporting">ダウンロード、再生、アートワークのキャッシュはライブで更新されます。</string>
-    <string name="storage_automation_title">自動化</string>
-    <string name="storage_limit_format">Limit: %s</string>
-    <string name="storage_downloads_detail">削除するまでオフラインで利用できます。</string>
-    <string name="storage_cache_disabled_detail">キャッシュはオフになり、自動的にクリアされます。</string>
-    <string name="storage_cache_unlimited_detail">サイズ制限は適用されません。</string>
-    <string name="storage_canvas_detail">キャンバスは、ディスク サイズではなくアイテム数によって制限されます。</string>
-    <string name="storage_trimmer_unavailable">スマート トリマーを使用する前に、画像または曲のキャッシュを有効にしてください。</string>
     <string name="cache">キャッシュ</string>
     <string name="image_cache">画像キャッシュ</string>
     <string name="song_cache">ソングキャッシュ</string>
@@ -638,7 +549,6 @@
     <string name="pause_search_history">検索履歴を一時停止する</string>
     <string name="clear_search_history">検索履歴をクリアする</string>
     <string name="clear_search_history_confirm">すべての検索履歴をクリアしてもよろしいですか?</string>
-    <string name="use_login_for_browse">コンテンツの閲覧にはログインを使用します</string>
     <string name="use_login_for_browse_desc">これは、表示されるコンテンツに影響を与える可能性があり、たとえば、プレミアム アカウントでログインしている場合はプレミアム限定のアルバムが表示されます。</string>
     <string name="disable_screenshot">スクリーンショットを無効にする</string>
     <string name="disable_screenshot_desc">このオプションがオンの場合、スクリーンショットと最近のアプリの表示が無効になります。</string>
@@ -653,7 +563,6 @@
     <string name="backup_restore">バックアップと復元</string>
     <string name="action_backup">バックアップ</string>
     <string name="action_restore">復元</string>
-    <string name="imported_playlist">インポートされたプレイリスト</string>
     <string name="backup_create_success">バックアップが正常に作成されました</string>
     <string name="backup_create_failed">バックアップを作成できませんでした</string>
     <string name="restore_success">バックアップが正常に復元されました</string>
@@ -662,7 +571,7 @@
     <string name="options">オプション</string>
     <string name="preview">プレビュー</string>
     <string name="enable_discord_rpc">リッチ プレゼンスを有効にする</string>
-    <!-- Last.fm -->
+    
     <string name="scrobbling">スクロブル</string>
     <string name="lastfm_integration">Last.fm の統合</string>
     <string name="enable_scrobbling">スクロブリングを有効にする</string>
@@ -674,12 +583,12 @@
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
     <string name="logging_in">ログイン中…</string>
-    <!-- ListenBrainz -->
+    
     <string name="listenbrainz_scrobbling">ListenBrainz のスクロブル</string>
     <string name="listenbrainz_scrobbling_description">再生中および終了したリスニングを ListenBrainz に送信できるようにする</string>
     <string name="set_listenbrainz_token">ListenBrainzトークンを設定する</string>
     <string name="edit_listenbrainz_token">ListenBrainzトークンを編集する</string>
-    <!-- Discord activity customization -->
+    
     <string name="discord_activity_name">アクティビティ名</string>
     <string name="discord_activity_details">活動内容</string>
     <string name="discord_activity_state">アクティビティ状態</string>
@@ -697,34 +606,28 @@
     <string name="small_image_custom_url">小さい画像のカスタム URL</string>
     <string name="activity_status">活動状況</string>
     <string name="platform_status">プラットフォーム</string>
-    <string name="update_interval">プレゼンス更新間隔</string>
-    <!--Discord Tranalstor Settings-->
     <string name="translator_options">翻訳オプション</string>
     <string name="enable_translator">トランスレータを有効にする</string>
     <string name="enable_translator_desc">Discord RPC に送信する前に選択したフィールドを翻訳します</string>
     <string name="context_info">コンテキスト (カンマ区切り)</string>
-    <string name="translator_info_usage">使用例: {曲}、{アーティスト}、{アルバム}</string>
     <string name="target_language">対象言語</string>
-    <string name="select_language">言語の選択</string>
     <string name="close_dialog">閉じる</string>
-    <string name="select_dialog">選択</string>
-    <string name="support_github">スターアーカイブチューン！</string>
     <string name="support_development_title">サポート開発</string>
     <string name="support_development_message">ちょっと、そこ！ ArchiveTune の開発者、Koiverse です。 ArchiveTune が毎日のリスニングに活用されている場合は、GitHub でプロジェクトに寄付したりスターを付けたりすることで、ArchiveTune を前進させることができます。アプリの開発にご協力いただきありがとうございます。</string>
     <string name="support_development_donate">開発をサポートするために寄付する</string>
     <string name="support_development_star">GitHub でスターを付ける</string>
     <string name="later">後で</string>
-    <!-- Update dialog -->
+    
     <string name="new_update_available">新しいアップデートが利用可能</string>
     <string name="release_notes_unavailable">リリースノートは入手できません</string>
     <string name="update_text">アップデート</string>
-    <!-- Translate UI strings -->
+    
     <string name="translate">翻訳する</string>
     <string name="language_label">言語</string>
     <string name="lyrics">歌詞</string>
     <string name="translation_success">翻訳が保存されました</string>
     <string name="translation_failed">翻訳に失敗しました</string>
-    <!-- Discord settings additions -->
+    
     <string name="discord_button_options">ボタンのオプション</string>
     <string name="discord_image_options">画像オプション</string>
     <string name="refresh">リフレッシュ</string>
@@ -732,13 +635,11 @@
     <string name="discord_show_when_paused">一時停止時に RPC を表示する</string>
     <string name="discord_show_when_paused_desc">有効にすると、一時停止中もリッチ プレゼンスが一時停止アイコンで表示されたままになります。無効にすると、一時停止時に RPC が表示されなくなります。</string>
     <string name="discord_paused">一時停止中</string>
-    <string name="show_small_image">小さい画像を表示</string>
-    <string name="description_show_small_image">有効にすると、小さな円形の画像がリッチ プレゼンス プレビューに表示され、利用可能な場合は Discord に送信されます。</string>
     <string name="logout_confirm_title">ログアウトの確認</string>
     <string name="logout_confirm_message">Discord からログアウトしてもよろしいですか?</string>
     <string name="logout_confirm_yes">ログアウト</string>
     <string name="logout_confirm_no">キャンセル</string>
-    <!--Misc settings additions-->
+    
     <string name="experiment_settings">実験設定</string>
     <string name="show_discord_debug_ui">デバッグ UI を表示</string>
     <string name="enable_discord_debug_lines">デバッグ設定行を有効にする</string>
@@ -746,8 +647,6 @@
     <string name="presence_manager_stopped">プレゼンスマネージャー: 停止しました</string>
     <string name="filter_levels">フィルターレベル</string>
     <string name="experimental_features">実験的な機能</string>
-    <string name="experimental_features_description">高度なまたは実験的な Discord オプション (別の画面に移動)</string>
-    <string name="experimental_feature">実験的機能</string>
     <string name="open">開く</string>
     <string name="reset_to_default_levels">デフォルトにリセットする</string>
     <string name="no_logs">ログなし</string>
@@ -766,7 +665,6 @@
     <string name="unknown_sample_rate">不明なサンプルレート</string>
     <string name="content_length_label">コンテンツの長さ</string>
     <string name="unknown_content_length">不明なコンテンツの長さ</string>
-    <string name="format_label">フォーマット</string>
     <string name="loading_format">フォーマットを読み込み中…</string>
     <string name="buffer_health_label">バッファの健全性</string>
     <string name="playback_speed_label">再生速度</string>
@@ -796,10 +694,7 @@
     <string name="share_logs">ログを共有する</string>
     <string name="about">について</string>
     <string name="open_youtube_music">YouTube ミュージックを開く</string>
-    <string name="app_version">アプリのバージョン</string>
     <string name="new_version_available">新しいバージョンが利用可能になりました</string>
-    <string name="translation_models">翻訳モデル</string>
-    <string name="clear_translation_models">明確な翻訳モデル</string>
     <string name="updates">アップデート</string>
     <string name="updates_subtitle_stable">安定版リリースとリリースノート</string>
     <string name="updates_subtitle_nightly">夜間のビルドと最近の開発コミット</string>
@@ -835,15 +730,10 @@
     <string name="permissions_subtitle">音楽を確実に再生および管理するために、いくつかの権限を使用します。これらはシステム設定でいつでも変更できます。</string>
     <string name="permission_storage_title">ストレージアクセス</string>
     <string name="permission_storage_desc">ダウンロードしたローカルのオーディオ ファイルを再生のために読み取るために必要です。</string>
-    <string name="permission_notifications_title">通知</string>
-    <string name="permission_notifications_desc">再生コントロールを表示し、バックグラウンドで音楽を実行し続けるために使用されます。</string>
     <string name="permission_status_allowed">許可される</string>
-    <string name="permission_status_all_granted">必要な権限はすべて許可されます。始める準備ができました。</string>
-    <string name="permission_status_required">続行するには必要なすべての権限を許可してください。</string>
     <string name="next">次へ</string>
-    <string name="next_song">次の曲</string>
     <string name="allow">許可する</string>
-    <!-- Playlist Suggestions -->
+    
     <string name="you_might_like">あなたは好きかもしれません</string>
     <string name="refresh_suggestions">提案を更新する</string>
     <string name="you_might_like_source">あなたはソースが好きかもしれません</string>
@@ -864,19 +754,12 @@
     <string name="together_join_link_hint">参加リンクまたはコードを貼り付けます</string>
     <string name="together_join_code_hint">セッションコードを入力してください</string>
     <string name="start_session">セッションを開始する</string>
-    <string name="end_session">セッションを終了する</string>
     <string name="join_session">セッションに参加する</string>
     <string name="session_link">セッションリンク</string>
     <string name="session_code">セッションコード</string>
     <string name="participants">参加者</string>
-    <string name="pending_requests">参加リクエスト</string>
-    <string name="waiting_for_approval">承認待ち</string>
     <string name="host">ホスト</string>
-    <string name="session_settings">セッション設定</string>
     <string name="add_current_song">現在の曲を追加</string>
-    <string name="playback_controls">再生コントロール</string>
-    <string name="approve">承認する</string>
-    <string name="deny">拒否する</string>
     <string name="dismiss">解雇する</string>
     <string name="enabled">有効</string>
     <string name="disabled">障害者</string>
@@ -915,7 +798,6 @@
     <string name="together_welcome_permissions_title">許可と安全性</string>
     <string name="together_welcome_permissions_body">ホストは、ゲストが曲を追加できるか、再生を制御できるか、または参加に承認を必要とするかを決定できます。</string>
     <string name="po_token_generation">POトークンの生成</string>
-    <string name="po_token_generation_subtitle">Web クライアント PO トークンの生成と管理</string>
     <string name="web_client_po_token">WebクライアントPOトークン</string>
     <string name="web_client_po_token_desc">Web ベースのプレーヤー クライアントの PO トークン生成を有効にする</string>
     <string name="po_token_gvs">PO トークン (GVS)</string>
@@ -929,7 +811,6 @@
     <string name="cookies_must_be_disabled">訪問者データを使用するには Cookie を無効にする必要があります</string>
     <string name="regenerate">Re-generate</string>
     <string name="regenerate_token">トークンを再生成する</string>
-    <string name="regenerate_desc">すべてのトークンを更新する</string>
     <string name="source_url">ソースURL</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
     <string name="generating_tokens">トークンを生成中…</string>
@@ -937,7 +818,6 @@
     <string name="token_generation_failed">トークンの生成に失敗しました</string>
     <string name="open_account_before_extract">抽出する前に、youtube.com/account を開いてログインしてください</string>
     <string name="token_copied">トークンがクリップボードにコピーされました</string>
-    <string name="no_visitor_data">利用可能な訪問者データはありません。トークンは生成できません。</string>
     <string name="extracting_from_url">URL からトークンを抽出しています…</string>
     <string name="po_token_account_notice_title">同じアカウントを使用する</string>
     <string name="po_token_account_notice_body">PO トークンを生成する前に、ArchiveTune 内で YouTube Music にすでに使用しているのと同じ Google アカウントでここにサインインします。</string>
@@ -960,13 +840,8 @@
     <string name="discord_authorization_failed">Discord の認証に失敗しました</string>
     <string name="discord_authorization_success">Discord アカウントが接続されました</string>
     <string name="discord_connection_settings">接続</string>
-    <string name="discord_custom_interval_unit">単位</string>
-    <string name="discord_custom_interval_value">値</string>
     <string name="discord_image_album_artwork">アルバムアートワーク</string>
     <string name="discord_image_artist_artwork">アーティストアートワーク</string>
-    <string name="discord_interval_unit_hours">時間</string>
-    <string name="discord_interval_unit_minutes">分</string>
-    <string name="discord_interval_unit_seconds">秒</string>
     <string name="discord_login_description">Discord アカウントを OAuth で接続して、ArchiveTune が Discord の公式 Social SDK を通じて Rich Presence を公開できるようにします。</string>
     <string name="discord_open_authorization">Discord 認証を開く</string>
     <string name="discord_platform_android">Android</string>
