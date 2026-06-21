@@ -1,46 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Upstream InnerTune strings --><!-- Do not add new features here --><!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun --><!-- "InnerTune" is replaced with "ArchiveTune" --><!-- Translators: Do not modify this file for translations, use InnerTune\'s Weblate instead. --><resources>
-    <!-- Bottom navigation -->
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    
     <string name="home">Home</string>
     <string name="songs">Canzoni</string>
     <string name="artists">Artisti</string>
     <string name="albums">Album</string>
     <string name="playlists">Playlist</string>
-    <!-- Top bar -->
+    
     <plurals name="n_selected">
         <item quantity="other">%d selezionato</item>
     </plurals>
-    <!-- Home -->
+    
     <string name="history">Cronologia</string>
     <string name="stats">Statistiche</string>
     <string name="mood_and_genres">Umore e generi</string>
     <string name="account">Account</string>
     <string name="quick_picks">Scelte rapide</string>
-    <string name="quick_picks_empty">Ascolta le canzoni per generare le tue scelte rapide</string>
     <string name="forgotten_favorites">Preferiti dimenticati</string>
     <string name="keep_listening">Continua ad ascoltare</string>
     <string name="your_youtube_playlists">Le tue playlist di YouTube</string>
     <string name="similar_to">Simile a</string>
     <string name="new_release_albums">Nuovi album in uscita</string>
-    <string name="select_playlist_to_sync">Seleziona la playlist da sincronizzare</string>
     <string name="integration">Integrazione</string>
-    <!-- History -->
+    
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="this_week">Questa settimana</string>
     <string name="last_week">La settimana scorsa</string>
-    <!-- Stats -->
+    
     <string name="most_played_songs">Canzoni più suonate</string>
-    <string name="most_played_artists">Gli artisti più ascoltati</string>
-    <string name="most_played_albums">Gli album più ascoltati</string>
-    <!-- Search -->
     <string name="search">Cerca</string>
     <string name="search_yt_music">Cerca su YouTube Musica...</string>
     <string name="search_library">Cerca nella libreria…</string>
     <string name="filter_library">Biblioteca</string>
     <string name="filter_liked">Mi è piaciuto</string>
     <string name="filter_downloaded">Scaricato</string>
-    <string name="filter_downloaded_full">Scaricato (completo)</string>
     <string name="filter_all">Tutto</string>
     <string name="filter_songs">Canzoni</string>
     <string name="filter_videos">Video</string>
@@ -49,29 +43,21 @@
     <string name="filter_playlists">Playlist</string>
     <string name="filter_community_playlists">Playlist della comunità</string>
     <string name="filter_featured_playlists">Playlist in primo piano</string>
-    <string name="filter_bookmarked">Aggiunto ai preferiti</string>
     <string name="no_results_found">Nessun risultato trovato</string>
-    <!-- Library -->
-    <string name="library_song_empty">Le canzoni della libreria verranno visualizzate qui</string>
-    <string name="library_artist_empty">Gli artisti della libreria verrano visualizzati qui</string>
-    <string name="library_album_empty">Gli album della libreria verranno visualizzati qui</string>
-    <string name="library_playlist_empty">Le tue playlist verranno visualizzate qui</string>
-    <!-- Artist screen -->
-    <string name="from_your_library">Dalla tua libreria</string>
-    <!-- Album screen -->
+    
     <string name="other_versions">Altre versioni</string>
-    <!-- Playlist -->
+    
     <string name="liked_songs">Canzoni che mi sono piaciute</string>
     <string name="downloaded_songs">Canzoni scaricate</string>
     <string name="playlist_is_empty">La playlist è vuota</string>
     <string name="remove_download_playlist_confirm">Vuoi davvero rimuovere tutti i brani della playlist \"%s\" dall\'archivio brani scaricati?</string>
     <string name="delete_playlist_confirm">Vuoi veramente eliminare la playlist \"%s\"?</string>
-    <!-- Button -->
+    
     <string name="retry">Riprova</string>
     <string name="radio">Radio</string>
     <string name="shuffle">Mescola</string>
     <string name="reset">Ripristina</string>
-    <!-- Menu -->
+    
     <string name="details">Dettagli</string>
     <string name="edit">Modifica</string>
     <string name="start_radio">Avvia la radio</string>
@@ -79,9 +65,7 @@
     <string name="play_next">Vai alla successiva</string>
     <string name="add_to_queue">Aggiungi alla coda</string>
     <string name="add_to_library">Aggiungi alla libreria</string>
-    <string name="add_all_to_library">Aggiungi tutto alla libreria</string>
     <string name="remove_from_library">Rimuovi dalla libreria</string>
-    <string name="remove_all_from_library">Rimuovi tutto dalla libreria</string>
     <string name="action_download">Scarica</string>
     <string name="downloading">Download in corso</string>
     <string name="remove_download">Rimuovi il download</string>
@@ -99,19 +83,14 @@
     <string name="remove_from_playlist">Rimuovi dalla playlist</string>
     <string name="remove_from_queue">Rimuovi dalla coda</string>
     <string name="search_online">Cerca in linea</string>
-    <string name="action_sync">Sincronizzazione</string>
-    <string name="advanced">Avanzato</string>
     <string name="tempo_and_pitch">Tempo e intonazione</string>
-    <!-- Sort menu -->
+    
     <string name="sort_by_create_date">Data aggiunta</string>
     <string name="sort_by_name">Nome</string>
     <string name="sort_by_artist">Artista</string>
-    <string name="sort_by_year">Anno</string>
-    <string name="sort_by_song_count">Conteggio dei brani</string>
-    <string name="sort_by_length">Lunghezza</string>
     <string name="sort_by_play_time">Tempo di gioco</string>
     <string name="sort_by_custom">Ordine personalizzato</string>
-    <!-- Dialog -->
+    
     <string name="media_id">Identificativo multimediale</string>
     <string name="mime_type">Tipo MIME</string>
     <string name="codecs">Codec</string>
@@ -122,28 +101,21 @@
     <string name="file_size">Dimensioni del file</string>
     <string name="unknown">Sconosciuto</string>
     <string name="copied">Copiato negli appunti</string>
-    <string name="edit_lyrics">Modifica testi</string>
     <string name="search_lyrics">Cerca testi</string>
     <string name="edit_song">Modifica canzone</string>
     <string name="song_title">Titolo della canzone</string>
     <string name="song_artists">Artisti della canzone</string>
-    <string name="error_song_title_empty">Il titolo del brano non può essere vuoto.</string>
-    <string name="error_song_artist_empty">L\'artista del brano non può essere vuoto.</string>
     <string name="save">Salva</string>
-    <string name="choose_playlist">Scegli la playlist</string>
     <string name="edit_playlist">Modifica playlist</string>
     <string name="create_playlist">Crea playlist</string>
     <string name="playlist_name">Nome della playlist</string>
-    <string name="error_playlist_name_empty">Il nome della playlist non può essere vuoto.</string>
-    <string name="edit_artist">Modifica artista</string>
     <string name="artist_name">Nome dell\'artista</string>
-    <string name="error_artist_name_empty">Il nome dell\'artista non può essere vuoto.</string>
     <string name="duplicates">Duplicati</string>
     <string name="skip_duplicates">Salta i duplicati</string>
     <string name="add_anyway">Aggiungi comunque</string>
     <string name="duplicates_description_single">La canzone è già nella tua playlist</string>
     <string name="duplicates_description_multiple">%d brani sono già nella tua playlist</string>
-    <!-- Noun -->
+    
     <plurals name="n_song">
         <item quantity="one">%d canzone</item>
         <item quantity="other">%d brani</item>
@@ -172,16 +144,14 @@
         <item quantity="one">%d anno</item>
         <item quantity="other">%d anni</item>
     </plurals>
-    <!-- Snackbar -->
+    
     <string name="added_to_playlist">Aggiunto a %s</string>
     <string name="added_n_songs_to_playlist">Aggiunti %1$d brani a %2$s</string>
     <string name="added_to_n_playlists">Aggiunto a %d playlist</string>
     <string name="added_n_songs_to_n_playlists">Aggiunti %1$d brani a %2$d playlist</string>
-    <string name="playlist_imported">Playlist importata</string>
-    <string name="removed_song_from_playlist">Rimosso \"%s\" dalla playlist</string>
     <string name="playlist_synced">Playlist sincronizzata</string>
     <string name="undo">Annulla</string>
-    <!-- Player -->
+    
     <string name="lyrics_not_found">Testo non trovato</string>
     <string name="sleep_timer">Temporizzatore di sonno</string>
     <string name="end_of_song">Fine della canzone</string>
@@ -193,45 +163,38 @@
     <string name="error_no_internet">Nessuna connessione di rete</string>
     <string name="error_timeout">Timeout</string>
     <string name="error_unknown">Errore sconosciuto</string>
-    <!-- Player action -->
+    
     <string name="action_like">Mi piace</string>
-    <string name="action_like_all">Come tutti</string>
     <string name="action_remove_like">Rimuovi mi piace</string>
-    <string name="action_remove_like_all">Rimuovi tutti i Mi piace</string>
     <string name="action_shuffle_on">Continua a mescolare</string>
     <string name="action_shuffle_off">Mescola</string>
     <string name="repeat_mode_off">Modalità di ripetizione disattivata</string>
     <string name="repeat_mode_one">Ripete il brano corrente</string>
     <string name="repeat_mode_all">Ripeti la coda</string>
-    <!-- Queue Title -->
+    
     <string name="queue_all_songs">Tutte le canzoni</string>
     <string name="queue_searched_songs">Canzoni cercate</string>
     <string name="queue_continue_playing">Continua a giocare</string>
     <string name="queue_autoplaying_similar">Riproduzione automatica di musica simile</string>
-    <!-- Notification name -->
+    
     <string name="music_player">Lettore musicale</string>
-    <!-- Settings -->
+    
     <string name="settings">Impostazioni</string>
     <string name="appearance">Aspetto</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Abilita tema dinamico</string>
-    <!-- Color Palette -->
+    
     <string name="color_palette">Tavolozza dei colori</string>
     <string name="customize_theme_colors">Scegli i colori del tema dell\'app</string>
-    <string name="selected_theme_color">Colore tema selezionato</string>
-    <string name="theme_preview">Anteprima del tema</string>
-    <string name="select_palette">Seleziona una tavolozza di colori</string>
-    <string name="palette_applied">Tavolozza applicata</string>
-    <!-- Palette Names -->
     <string name="palette_default">Predefinito</string>
-    <!-- Blues -->
+    
     <string name="palette_ocean_blue">Blu oceano</string>
     <string name="palette_arctic_blue">Artico</string>
     <string name="palette_midnight_navy">Mezzanotte</string>
     <string name="palette_sky_blue">Cielo blu</string>
     <string name="palette_cobalt_blue">Cobalto</string>
     <string name="palette_electric_blue">Elettrico</string>
-    <!-- Greens -->
+    
     <string name="palette_emerald_green">Smeraldo</string>
     <string name="palette_teal_wave">Onda verde acqua</string>
     <string name="palette_forest_green">Foresta</string>
@@ -239,21 +202,21 @@
     <string name="palette_mint_fresh">Menta</string>
     <string name="palette_olive_garden">Oliva</string>
     <string name="palette_sage_green">Saggio</string>
-    <!-- Oranges & Yellows -->
+    
     <string name="palette_sunset_orange">Tramonto</string>
     <string name="palette_golden_hour">D\'oro</string>
     <string name="palette_warm_amber">Ambra</string>
     <string name="palette_tangerine_blast">Mandarino</string>
     <string name="palette_peach">Pesca</string>
     <string name="palette_mango">Mango</string>
-    <!-- Purples -->
+    
     <string name="palette_royal_purple">Viola reale</string>
     <string name="palette_lavender_dream">Lavanda</string>
     <string name="palette_grape_purple">Uva</string>
     <string name="palette_violet">Viola</string>
     <string name="palette_amethyst">Ametista</string>
     <string name="palette_ultra_violet">Ultravioletto</string>
-    <!-- Pinks -->
+    
     <string name="palette_cherry_blossom">Sakura</string>
     <string name="palette_rose_quartz">Quarzo rosa</string>
     <string name="palette_magenta_pop">Magenta</string>
@@ -261,37 +224,37 @@
     <string name="palette_blush">Arrossire</string>
     <string name="palette_coral">Corallo</string>
     <string name="palette_bubblegum">Gomma da masticare</string>
-    <!-- Reds -->
+    
     <string name="palette_crimson_red">Cremisi</string>
     <string name="palette_youtube_red">YouTube</string>
     <string name="palette_wine_red">Vino</string>
     <string name="palette_ruby_red">Rubino</string>
     <string name="palette_scarlet">Scarlatto</string>
-    <!-- Neutrals -->
+    
     <string name="palette_charcoal">Carbone</string>
     <string name="palette_silver">Argento</string>
     <string name="palette_slate">Ardesia</string>
     <string name="palette_graphite">Grafite</string>
-    <!-- Earth Tones -->
+    
     <string name="palette_terracotta">Terracotta</string>
     <string name="palette_coffee">Caffè</string>
     <string name="palette_mocha">Moka</string>
     <string name="palette_sand">Sabbia</string>
     <string name="palette_clay">Argilla</string>
-    <!-- Pastels -->
+    
     <string name="palette_pastel_pink">Rosa pastello</string>
     <string name="palette_pastel_blue">Blu pastello</string>
     <string name="palette_pastel_green">Verde pastello</string>
     <string name="palette_pastel_yellow">Giallo pastello</string>
     <string name="palette_pastel_purple">Viola pastello</string>
-    <!-- Neon & Vibrant -->
+    
     <string name="palette_neon_green">Verde neon</string>
     <string name="palette_neon_pink">Rosa neon</string>
     <string name="palette_neon_blue">Blu neon</string>
     <string name="palette_neon_orange">Arancione neon</string>
     <string name="palette_cyberpunk">Cyberpunk</string>
     <string name="palette_synthwave">Synthwave</string>
-    <!-- Special & Themed -->
+    
     <string name="palette_ocean">Oceano</string>
     <string name="palette_forest">Foresta profonda</string>
     <string name="palette_autumn">Autunno</string>
@@ -302,21 +265,7 @@
     <string name="palette_aurora">Aurora</string>
     <string name="palette_candy">Caramella</string>
     <string name="palette_rainbow">Arcobaleno</string>
-    <!-- Additional Palettes -->
-    <string name="palette_aquamarine">Acquamarina</string>
-    <string name="palette_coral_reef">Barriera corallina</string>
-    <string name="palette_cotton_candy">Zucchero filato</string>
-    <string name="palette_deep_sea">Mare profondo</string>
-    <string name="palette_electric_violet">Viola elettrico</string>
-    <string name="palette_mustard">Senape</string>
-    <string name="palette_olive">Oliva</string>
-    <string name="palette_peachy_keen">Peachy Keen</string>
-    <string name="palette_plum">Prugna</string>
-    <string name="palette_slate_gray">Grigio ardesia</string>
-    <string name="palette_sunset_beach">Spiaggia al tramonto</string>
-    <string name="palette_turquoise">Turchese</string>
-    <!-- End of Color Palette -->
-
+    
     <string name="dark_theme">Tema oscuro</string>
     <string name="dark_theme_on">Su</string>
     <string name="dark_theme_off">Spento</string>
@@ -334,8 +283,6 @@
     <string name="contrast">Contrasto</string>
     <string name="brightness">Luminosità</string>
     <string name="custom_value">Valore personalizzato</string>
-    <string name="new_library_design">Nuovo design della biblioteca</string>
-    <string name="new_library_design_description">Abilita il nuovo design della libreria (potrebbe essere instabile)</string>
     <string name="show_button1_description">Attiva/disattiva la visibilità del pulsante 1 in Discord Rich Presence</string>
     <string name="show_button2_description">Attiva/disattiva la visibilità del pulsante 2 in Discord Rich Presence</string>
     <string name="discord_activity_type">Tipo di attività</string>
@@ -343,44 +290,34 @@
     <string name="pure_black">Nero puro</string>
     <string name="disable_blur">Disattiva gli effetti di sfocatura</string>
     <string name="disable_blur_desc">Disabilita gli effetti di sfocatura in tutta l\'app</string>
-    <string name="customize_navigation_tabs">Personalizza le schede di navigazione</string>
     <string name="player">Giocatore</string>
-    <string name="player_text_alignment">Allineamento del testo del lettore</string>
-    <string name="lyrics_text_position">Posizione del testo del testo</string>
-    <string name="sided">Lato</string>
     <string name="left">A sinistra</string>
     <string name="center">Centro</string>
     <string name="right">Giusto</string>
     <string name="player_slider_style">Stile del dispositivo di scorrimento del giocatore</string>
-    <string name="default_">Predefinito</string>
     <string name="squiggly">Ondulato</string>
     <string name="misc">Varie</string>
     <string name="default_open_tab">Scheda aperta predefinita</string>
     <string name="grid_cell_size">Dimensione delle celle della griglia</string>
     <string name="small">Piccolo</string>
     <string name="big">Grande</string>
-    <!-- Lyrics animation style -->
+    
     <string name="lyrics_animation_style">Stile di animazione dei testi</string>
-    <!-- Animation options -->
+    
     <string name="none">Nessuno</string>
     <string name="fade">Svanire</string>
-    <string name="slide">Scivolo</string>
     <string name="karaoke">Karaoke</string>
-    <string name="apple_music_style">Apple Musica</string>
-    <!-- Lyrics line spacing -->
     <string name="lyrics_line_spacing">Interlinea del testo</string>
     <string name="content">Contenuto</string>
     <string name="action_logout">Esci</string>
     <string name="action_login">Accedi</string>
     <string name="login">Accedi</string>
     <string name="not_logged_in">Non effettuato l\'accesso</string>
-    <string name="login_failed">Accesso non riuscito</string>
     <string name="content_language">Lingua del contenuto predefinita</string>
     <string name="content_country">Paese dei contenuti predefinito</string>
     <string name="system_default">Predefinito del sistema</string>
     <string name="enable_proxy">Abilita proxy</string>
     <string name="proxy_type">Tipo di procura</string>
-    <string name="restart_to_take_effect">Riavvia per avere effetto</string>
     <string name="enable_betterlyrics">Abilita BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Abilita i testi di SimpMusic</string>
     <string name="player_and_audio">Lettore e audio</string>
@@ -393,22 +330,18 @@
     <string name="persistent_queue_desc">Ripristina l\'ultima coda all\'avvio dell\'app</string>
     <string name="permanent_shuffle">Modalità casuale permanente</string>
     <string name="permanent_shuffle_desc">Mantieni la riproduzione casuale abilitata quando inizi un nuovo brano</string>
-    <string name="auto_load_more">Carica automaticamente più brani</string>
-    <string name="auto_load_more_desc">Aggiungi automaticamente più brani quando viene raggiunta la fine della coda. Disabilitato quando la modalità di ripetizione è attiva</string>
     <string name="skip_silence">Salta il silenzio</string>
     <string name="audio_normalization">Normalizzazione dell\'audio</string>
     <string name="auto_skip_next_on_error">Passa automaticamente al brano successivo quando si verifica un errore</string>
     <string name="auto_skip_next_on_error_desc">Assicurati la tua esperienza di riproduzione continua</string>
     <string name="stop_music_on_task_clear">Interrompi la musica durante l\'attività</string>
     <string name="artist_separators">Simboli per dividere gli artisti</string>
-    <string name="artist_separators_desc">Simboli utilizzati per dividere più artisti</string>
     <string name="add_symbol">Aggiungi simbolo</string>
     <string name="enter_symbol">Inserisci il simbolo</string>
     <string name="equalizer">Equalizzatore</string>
     <string name="eq_waiting_for_audio_session">In attesa della sessione audio...</string>
     <string name="eq_open_system_equalizer">Equalizzatore di sistema aperto</string>
     <string name="eq_presets">Preimpostazioni</string>
-    <string name="eq_system">Sistema</string>
     <string name="eq_flat">Piatto</string>
     <string name="eq_profiles">Profili</string>
     <string name="eq_manage">Gestisci</string>
@@ -420,8 +353,6 @@
     <string name="eq_profile_name">Nome del profilo</string>
     <string name="eq_custom_profile">Profilo personalizzato</string>
     <string name="eq_import">Importa</string>
-    <string name="eq_import_profiles">Importa profili</string>
-    <string name="eq_import_profiles_placeholder">Incolla i profili dell\'equalizzatore JSON</string>
     <string name="eq_import_failed">Dati del profilo non validi</string>
     <string name="eq_imported_profile">Importato</string>
     <string name="eq_import_success">Profili %1$d importati</string>
@@ -452,7 +383,6 @@
     <string name="pause_search_history">Metti in pausa la cronologia delle ricerche</string>
     <string name="clear_search_history">Cancella la cronologia delle ricerche</string>
     <string name="clear_search_history_confirm">Sei sicuro di voler cancellare tutta la cronologia delle ricerche?</string>
-    <string name="use_login_for_browse">Utilizza il login per sfogliare i contenuti</string>
     <string name="use_login_for_browse_desc">Ciò può influenzare il contenuto che vedi e, ad esempio, mostrare gli album solo premium se hai effettuato l\'accesso con un account Premium</string>
     <string name="disable_screenshot">Disabilita schermata</string>
     <string name="disable_screenshot_desc">Quando questa opzione è attiva, gli screenshot e la visualizzazione dell\'app in Recenti sono disabilitati.</string>
@@ -463,7 +393,6 @@
     <string name="backup_restore">Backup e ripristino</string>
     <string name="action_backup">Backup</string>
     <string name="action_restore">Ripristina</string>
-    <string name="imported_playlist">Playlist importata</string>
     <string name="backup_create_success">Backup creato con successo</string>
     <string name="backup_create_failed">Impossibile creare il backup</string>
     <string name="restore_failed">Impossibile ripristinare il backup</string>
@@ -472,7 +401,7 @@
     <string name="options">Opzioni</string>
     <string name="preview">Anteprima</string>
     <string name="enable_discord_rpc">Abilita Rich Presence</string>
-    <!-- Last.fm -->
+    
     <string name="scrobbling">Scrobbling</string>
     <string name="lastfm_integration">Integrazione con Last.fm</string>
     <string name="enable_scrobbling">Abilita lo scrobbling</string>
@@ -484,12 +413,12 @@
     <string name="username">Nome utente</string>
     <string name="password">Parola d\'ordine</string>
     <string name="logging_in">Accesso…</string>
-    <!-- ListenBrainz -->
+    
     <string name="listenbrainz_scrobbling">AscoltaBrainz che scrobbling</string>
     <string name="listenbrainz_scrobbling_description">Abilita l\'invio degli ascolti in riproduzione e finiti a ListenBrainz</string>
     <string name="set_listenbrainz_token">Imposta il token ListenBrainz</string>
     <string name="edit_listenbrainz_token">Modifica il token ListenBrainz</string>
-    <!-- Discord activity customization -->
+    
     <string name="discord_activity_name">Nome dell\'attività</string>
     <string name="discord_activity_details">Dettagli dell\'attività</string>
     <string name="discord_activity_state">Stato attività</string>
@@ -507,29 +436,22 @@
     <string name="small_image_custom_url">URL personalizzato di piccola immagine</string>
     <string name="activity_status">Stato dell\'attività</string>
     <string name="platform_status">Piattaforma</string>
-    <string name="update_interval">Intervallo di aggiornamento della presenza</string>
-    <!--Discord Tranalstor Settings-->
     <string name="translator_options">Opzioni del traduttore</string>
     <string name="enable_translator">Abilita traduttore</string>
     <string name="enable_translator_desc">Traduci i campi selezionati prima di inviarli a Discord RPC</string>
     <string name="context_info">Contesti (separati da virgole)</string>
-    <string name="translator_info_usage">Esempio di utilizzo: {canzone}, {artista}, {album}</string>
     <string name="target_language">Lingua di destinazione</string>
-    <string name="select_language">Seleziona lingua</string>
     <string name="close_dialog">Chiudi</string>
-    <string name="select_dialog">Seleziona</string>
-    <string name="support_github">Star ArchiveTune!</string>
-    <!-- Update dialog -->
     <string name="new_update_available">Nuovo aggiornamento disponibile</string>
     <string name="release_notes_unavailable">Le note sulla versione non sono disponibili</string>
     <string name="update_text">Aggiorna</string>
-    <!-- Translate UI strings -->
+    
     <string name="translate">Traduci</string>
     <string name="language_label">Lingua</string>
     <string name="lyrics">Testi</string>
     <string name="translation_success">Traduzione salvata</string>
     <string name="translation_failed">Traduzione fallita</string>
-    <!-- Discord settings additions -->
+    
     <string name="discord_button_options">Opzioni dei pulsanti</string>
     <string name="discord_image_options">Opzioni immagine</string>
     <string name="refresh">Aggiorna</string>
@@ -537,13 +459,11 @@
     <string name="discord_show_when_paused">Mostra RPC quando in pausa</string>
     <string name="discord_show_when_paused_desc">Se abilitato, Rich Presence rimarrà visibile durante la pausa con un\'icona di pausa. Se disabilitato, RPC scomparirà durante la pausa.</string>
     <string name="discord_paused">In pausa</string>
-    <string name="show_small_image">Mostra immagine piccola</string>
-    <string name="description_show_small_image">Se abilitato, una piccola immagine circolare viene mostrata nell\'anteprima di Rich Presence e inviata a Discord se disponibile</string>
     <string name="logout_confirm_title">Conferma la disconnessione</string>
     <string name="logout_confirm_message">Sei sicuro di voler uscire da Discord?.</string>
     <string name="logout_confirm_yes">Esci</string>
     <string name="logout_confirm_no">Annulla</string>
-    <!--Misc settings additions-->
+    
     <string name="experiment_settings">Impostazioni sperimentali</string>
     <string name="show_discord_debug_ui">Mostra interfaccia utente di debug</string>
     <string name="enable_discord_debug_lines">Abilita le righe delle impostazioni di debug</string>
@@ -551,8 +471,6 @@
     <string name="presence_manager_stopped">Gestore della presenza: interrotto</string>
     <string name="filter_levels">Livelli di filtro</string>
     <string name="experimental_features">Funzionalità sperimentali</string>
-    <string name="experimental_features_description">Opzioni Discord avanzate o sperimentali (spostate in una schermata separata)</string>
-    <string name="experimental_feature">Caratteristica sperimentale</string>
     <string name="open">Aperto</string>
     <string name="reset_to_default_levels">Ripristina le impostazioni predefinite</string>
     <string name="no_logs">Nessun registro</string>
@@ -571,17 +489,13 @@
     <string name="unknown_sample_rate">Frequenza di campionamento sconosciuta</string>
     <string name="content_length_label">Lunghezza del contenuto</string>
     <string name="unknown_content_length">Lunghezza del contenuto sconosciuta</string>
-    <string name="format_label">Formato</string>
     <string name="loading_format">Caricamento formato...</string>
     <string name="buffer_health_label">Salute del buffer</string>
     <string name="playback_speed_label">Velocità di riproduzione</string>
     <string name="state_label">Stato</string>
     <string name="media_id_label">ID supporto</string>
     <string name="about">Circa</string>
-    <string name="app_version">Versione dell\'app</string>
     <string name="new_version_available">Nuova versione disponibile</string>
-    <string name="translation_models">Modelli di traduzione</string>
-    <string name="clear_translation_models">Modelli di traduzione chiari</string>
     <string name="updates">Aggiornamenti</string>
     <string name="current_version">Versione attuale</string>
     <string name="latest_version_format">Latest: %s</string>
@@ -602,30 +516,18 @@
     <string name="permissions_subtitle">Utilizziamo alcune autorizzazioni per riprodurre e gestire la tua musica in modo affidabile. Puoi modificarli in qualsiasi momento nelle impostazioni di sistema.</string>
     <string name="permission_storage_title">Accesso allo spazio di archiviazione</string>
     <string name="permission_storage_desc">Necessario per leggere i file audio scaricati e locali per la riproduzione.</string>
-    <string name="permission_notifications_title">Notifiche</string>
-    <string name="permission_notifications_desc">Utilizzato per mostrare i controlli di riproduzione e mantenere la musica in esecuzione in sottofondo.</string>
     <string name="permission_status_allowed">Consentito</string>
-    <string name="permission_status_all_granted">Sono consentite tutte le autorizzazioni richieste. Sei pronto per iniziare.</string>
-    <string name="permission_status_required">Concedere tutte le autorizzazioni necessarie per continuare.</string>
     <string name="next">Avanti</string>
-    <string name="next_song">Canzone successiva</string>
     <string name="allow">Consenti</string>
-    <string name="integrations">Integrazioni</string>
-    <string name="internal_subcategory_settings">Impostazioni interne e di sottocategoria</string>
-    <string name="search_try_different">Prova con un termine di ricerca diverso</string>
     <string name="top_results">Risultati principali</string>
     <string name="change_playlist_cover">Cambia la copertina della playlist</string>
-    <string name="remove_playlist_cover">Rimuovi la copertina</string>
     <string name="music_recognition">Riconoscimento musicale</string>
     <string name="pin_to_speed_dial">Aggiungi ai preferiti</string>
     <string name="remove_from_speed_dial">Rimuovi dai preferiti</string>
     <string name="together_participants">Partecipanti</string>
     <string name="together_connected_count">%1$d connesso</string>
     <string name="together_role_host">Host</string>
-    <string name="mood_and_genres_supporting">Riproduci per sensazioni, era o energia</string>
-    <string name="mood_and_genres_count">%d scelte</string>
     <string name="speed_dial">Riproduzione rapida</string>
-    <string name="speed_dial_random">Riproduci brano random da riproduzione rapida</string>
     <string name="refetch">Ricarica</string>
     <string name="together_role_guest">Ospite</string>
     <string name="together_pending_approval">In attesa di approvazione</string>
@@ -654,7 +556,6 @@
     <string name="random_theme_on_startup_desc">Applica una palette di colori randomica ad ogni avvio dell\'app</string>
     <string name="archivetune_canvas">Canvas ArchiveTune</string>
     <string name="archivetune_canvas_desc">Anima la copertina dell\'album durante la riproduzione (Fornito da BetterLyrics)</string>
-    <string name="archivetune_canvas_v7_desc">Non disponibile con lo stile player Immersivo</string>
     <string name="disable_animations">Disabilita animazioni</string>
     <string name="disable_animations_desc">Disabilita la maggior parte delle animazioni dell\'app. Raccomandato per dispositivi di fascia bassa</string>
     <string name="blur_intensity">Intensità sfocatura</string>

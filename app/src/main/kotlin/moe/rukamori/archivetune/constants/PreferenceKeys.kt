@@ -386,11 +386,6 @@ val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
 val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 
-val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
-val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist")
-val ShowTopPlaylistKey = booleanPreferencesKey("show_top_playlist")
-val ShowCachedPlaylistKey = booleanPreferencesKey("show_cached_playlist")
-
 enum class LibraryViewType {
     LIST,
     GRID,

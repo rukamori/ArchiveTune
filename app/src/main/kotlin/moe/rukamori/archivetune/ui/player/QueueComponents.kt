@@ -1308,7 +1308,12 @@ fun QueueCollapsedContentV7(
                     onClick = onSleepTimerClick,
                     shape = if (sleepTimerEnabled) RoundedCornerShape(20.dp) else CircleShape,
                     color = textBackgroundColor.copy(alpha = if (sleepTimerEnabled) 0.16f else 0.08f),
-                    modifier = Modifier.height(42.dp),
+                    modifier =
+                        if (sleepTimerEnabled) {
+                            Modifier.height(42.dp)
+                        } else {
+                            Modifier.size(42.dp)
+                        },
                 ) {
                     AnimatedContent(
                         label = "v7SleepTimer",
@@ -1317,7 +1322,11 @@ fun QueueCollapsedContentV7(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(horizontal = if (enabled) 12.dp else 10.dp),
+                            modifier =
+                                Modifier.padding(
+                                    start = 10.dp,
+                                    end = if (enabled) 12.dp else 10.dp,
+                                ),
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.bedtime),

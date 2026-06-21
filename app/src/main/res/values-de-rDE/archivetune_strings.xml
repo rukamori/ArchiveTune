@@ -94,11 +94,6 @@
     <string name="lyrics_auto_scroll">Songtexte automatisch scrollen</string>
     <string name="lyrics_romanize_japanese">Japanische Texte romanisieren</string>
     <string name="lyrics_romanize_korean">Romanisieren Sie koreanische Texte</string>
-    <string name="auto_playlists">Automatische Wiedergabelisten</string>
-    <string name="show_liked_playlist">Playlist mit „Gefällt mir“ anzeigen</string>
-    <string name="show_downloaded_playlist">Wiedergabeliste „Heruntergeladen“ anzeigen</string>
-    <string name="show_top_playlist">„Top“-Playlist anzeigen</string>
-    <string name="show_cached_playlist">Playlist „im Cache“ anzeigen</string>
     <string name="google">Google</string>
     <string name="discord">Zwietracht</string>
     <string name="advanced_login">Mit Token anmelden</string>

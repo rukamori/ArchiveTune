@@ -98,6 +98,10 @@ object YTPlayerUtils {
         val clients: Set<String>,
     ) : IllegalStateException("YouTube playback bot detection blocked all stream clients")
 
+    class BadStreamPlayerResponseException(
+        val videoId: String,
+    ) : IllegalStateException("YouTube playback stream clients returned no playable response")
+
     private data class PlaybackGateFailure(
         val clientName: String,
         val status: String,
@@ -175,6 +179,21 @@ object YTPlayerUtils {
         streamUrlCache.clear()
         failedStreamClientsUntil.clear()
         lastSuccessfulClientKey = null
+    }
+
+    suspend fun recoverFromBadStreamPlayerResponse(videoId: String) {
+        val authState = YouTube.currentPlaybackAuthState()
+        val refreshedAuthState =
+            ensureVisitorDataReady(
+                videoId = videoId,
+                authState = authState,
+                forceRefresh = true,
+                reason = "all stream clients failed",
+            )
+        if (refreshedAuthState.fingerprint != authState.fingerprint) {
+            YouTube.authState = refreshedAuthState
+        }
+        clearPlaybackAuthCaches()
     }
 
     private suspend fun ensureVisitorDataReady(
@@ -942,7 +961,7 @@ object YTPlayerUtils {
                 )
             }
             Timber.tag(logTag).e("Bad stream player response - all clients failed")
-            throw Exception("Bad stream player response")
+            throw BadStreamPlayerResponseException(videoId)
         }
 
         if (streamPlayerResponse.playabilityStatus.status != "OK") {
@@ -1395,6 +1414,15 @@ object YTPlayerUtils {
         while (cause != null) {
             if (cause is BotDetectionPlaybackException) return true
             if (isBotDetectionError(cause.message.orEmpty())) return true
+            cause = cause.cause
+        }
+        return false
+    }
+
+    fun isBadStreamPlayerResponseException(error: PlaybackException): Boolean {
+        var cause: Throwable? = error
+        while (cause != null) {
+            if (cause is BadStreamPlayerResponseException) return true
             cause = cause.cause
         }
         return false

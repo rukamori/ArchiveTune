@@ -387,7 +387,7 @@ class DiscordRPC(
             }
 
             "albumurl" -> {
-                song.album?.playlistId?.let { "https://music.youtube.com/playlist?list=$it" }
+                song.discordAlbumMusicUrl()
             }
 
             "custom" -> {

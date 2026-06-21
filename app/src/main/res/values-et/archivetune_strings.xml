@@ -181,11 +181,6 @@
     <string name="show_tags_in_library_desc">Näita muusikakogus sildifiltri nupukesi</string>
     <string name="default_lib_chips">Muuda muusikakogu vaikimisi nupukest</string>
     <string name="player_design_v5">Väikene</string>
-    <string name="auto_playlists">Automaatsed esitusloendid</string>
-    <string name="show_liked_playlist">Näita „Meeldib“ esitusloendit</string>
-    <string name="show_downloaded_playlist">Näita „Allalaaditud“ esitusloendit</string>
-    <string name="show_top_playlist">Näita „Populaarsed“ esitusloendit</string>
-    <string name="show_cached_playlist">Näita „Puhverdatud“ esitusloendit</string>
     <string name="ytm_sync">Sünkrooni automaatselt oma YouTube Musicu kasutajakontoga</string>
     <string name="enable_similar_content">Luba sarnase sisu kasutamine</string>
     <string name="similar_content_desc">Kui esitusjärjekord jõuab lõpuni, siis lisa sinna sarnast sisu automaatselt</string>

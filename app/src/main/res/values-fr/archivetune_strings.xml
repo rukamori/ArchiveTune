@@ -96,11 +96,6 @@
     <string name="resume_autoscroll">Reprise du défilement automatique</string>
     <string name="lyrics_romanize_japanese">Romaniser les paroles japonaises</string>
     <string name="lyrics_romanize_korean">Romaniser les paroles coréennes</string>
-    <string name="auto_playlists">Playlists Automatiques</string>
-    <string name="show_liked_playlist">Afficher la playlist « Favoris »</string>
-    <string name="show_downloaded_playlist">Afficher la playlist « Téléchargés »</string>
-    <string name="show_top_playlist">Afficher la playlist « Top »</string>
-    <string name="show_cached_playlist">Afficher la playlist « Mise en cache »</string>
     <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Connexion avec un jeton</string>

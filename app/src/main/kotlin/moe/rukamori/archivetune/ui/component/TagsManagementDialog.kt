@@ -29,17 +29,19 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -61,6 +63,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -122,48 +125,44 @@ private fun TagsManagementContent(
     onDeleteTag: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        PlaylistTagsHeader(
-            icon = R.drawable.style,
-            title = stringResource(R.string.manage_tags),
-        )
+    PlaylistTagsDialogLayout(
+        icon = R.drawable.style,
+        title = stringResource(R.string.manage_tags),
+        subtitle = stringResource(R.string.manage_playlist_tags_desc),
+        body = { bodyModifier ->
+            when (state) {
+                PlaylistTagsScreenState.Loading -> {
+                    PlaylistTagsLoadingContent(modifier = bodyModifier)
+                }
 
-        when (state) {
-            PlaylistTagsScreenState.Loading -> {
-                PlaylistTagsLoadingContent()
+                PlaylistTagsScreenState.Empty -> {
+                    PlaylistTagsEmptyContent(modifier = bodyModifier)
+                }
+
+                is PlaylistTagsScreenState.Error -> {
+                    PlaylistTagsErrorContent(
+                        messageResId = state.messageResId,
+                        modifier = bodyModifier,
+                    )
+                }
+
+                is PlaylistTagsScreenState.Success -> {
+                    TagsManagementList(
+                        tags = state.tags,
+                        onEditTag = onEditTag,
+                        onChangeColor = onChangeColor,
+                        onDeleteTag = onDeleteTag,
+                        modifier = bodyModifier,
+                    )
+                }
             }
-
-            PlaylistTagsScreenState.Empty -> {
-                PlaylistTagsEmptyContent(onAddTag = onAddTag)
-            }
-
-            is PlaylistTagsScreenState.Error -> {
-                PlaylistTagsErrorContent(messageResId = state.messageResId)
-            }
-
-            is PlaylistTagsScreenState.Success -> {
-                TagsManagementList(
-                    tags = state.tags,
-                    onEditTag = onEditTag,
-                    onChangeColor = onChangeColor,
-                    onDeleteTag = onDeleteTag,
-                )
-            }
-        }
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        },
+        actions = {
             TextButton(
                 onClick = onDismiss,
                 shapes = ButtonDefaults.shapes(),
             ) {
-                Text(text = stringResource(android.R.string.ok))
+                Text(text = stringResource(R.string.close))
             }
 
             Button(
@@ -178,8 +177,59 @@ private fun TagsManagementContent(
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text(text = stringResource(R.string.add_tag))
             }
-        }
+        },
+    )
+}
+
+@Composable
+private fun PlaylistTagsDialogLayout(
+    icon: Int,
+    title: String,
+    subtitle: String? = null,
+    body: @Composable (Modifier) -> Unit,
+    actions: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        PlaylistTagsHeader(
+            icon = icon,
+            title = title,
+            subtitle = subtitle,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, top = 24.dp, end = 24.dp),
+        )
+
+        Spacer(modifier = Modifier.heightIn(min = 20.dp))
+
+        body(
+            Modifier
+                .weight(1f, fill = false)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+        )
+
+        PlaylistTagsActionRow(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, top = 20.dp, end = 24.dp, bottom = 24.dp),
+            actions = actions,
+        )
     }
+}
+
+@Composable
+private fun PlaylistTagsActionRow(
+    modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit,
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        content = { actions() },
+    )
 }
 
 @Composable
@@ -188,12 +238,10 @@ private fun TagsManagementList(
     onEditTag: (String) -> Unit,
     onChangeColor: (String) -> Unit,
     onDeleteTag: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(max = 420.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
     ) {
         itemsIndexed(
@@ -239,7 +287,6 @@ private fun EditableTagRow(
             PlaylistTagColorSwatch(
                 color = tag.color,
                 selected = false,
-                onClick = onChangeColor,
             )
         },
         trailingContent = {
@@ -283,6 +330,7 @@ private fun AddEditTagDialog(
     onSave: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollState = rememberScrollState()
     val title =
         if (editor.tagId == null) {
             stringResource(R.string.add_tag)
@@ -291,77 +339,73 @@ private fun AddEditTagDialog(
         }
 
     PlaylistTagsDialogScaffold(onDismiss = onDismiss) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            PlaylistTagsHeader(
-                icon = if (editor.tagId == null) R.drawable.add else R.drawable.edit,
-                title = title,
-            )
-
-            OutlinedTextField(
-                value = editor.name,
-                onValueChange = onNameChange,
-                label = { Text(text = stringResource(R.string.tag_name)) },
-                singleLine = true,
-                shape = MaterialTheme.shapes.large,
-                colors = OutlinedTextFieldDefaults.colors(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions =
-                    KeyboardActions(
-                        onDone = {
-                            if (!editor.canSave) return@KeyboardActions
-                            keyboardController?.hide()
-                            onSave()
-                        },
-                    ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Surface(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onColorClick),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+        PlaylistTagsDialogLayout(
+            icon = if (editor.tagId == null) R.drawable.add else R.drawable.edit,
+            title = title,
+            body = { bodyModifier ->
+                Column(
+                    modifier = bodyModifier.verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    PlaylistTagColorSwatch(
-                        color = editor.color,
-                        selected = true,
-                        onClick = onColorClick,
+                    OutlinedTextField(
+                        value = editor.name,
+                        onValueChange = onNameChange,
+                        label = { Text(text = stringResource(R.string.tag_name)) },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.large,
+                        colors = OutlinedTextFieldDefaults.colors(),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions =
+                            KeyboardActions(
+                                onDone = {
+                                    if (!editor.canSave) return@KeyboardActions
+                                    keyboardController?.hide()
+                                    onSave()
+                                },
+                            ),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.tag_color),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = stringResource(R.string.tap_to_change_color),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(
-                        painter = painterResource(R.drawable.palette),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
 
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+                    Surface(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onColorClick),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            PlaylistTagColorSwatch(
+                                color = editor.color,
+                                selected = true,
+                                onClick = onColorClick,
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.tag_color),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = stringResource(R.string.tap_to_change_color),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(
+                                painter = painterResource(R.drawable.palette),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            },
+            actions = {
                 TextButton(
                     onClick = onDismiss,
                     shapes = ButtonDefaults.shapes(),
@@ -379,8 +423,8 @@ private fun AddEditTagDialog(
                 ) {
                     Text(text = stringResource(R.string.save))
                 }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -390,45 +434,40 @@ private fun PlaylistTagColorPickerDialog(
     onDismiss: () -> Unit,
     onColorSelected: (String) -> Unit,
 ) {
+    val scrollState = rememberScrollState()
+
     PlaylistTagsDialogScaffold(onDismiss = onDismiss) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            PlaylistTagsHeader(
-                icon = R.drawable.palette,
-                title = stringResource(R.string.choose_color),
-            )
+        PlaylistTagsDialogLayout(
+            icon = R.drawable.palette,
+            title = stringResource(R.string.choose_color),
+            body = { bodyModifier ->
+                FlowRow(
+                    modifier =
+                        bodyModifier
+                            .verticalScroll(scrollState),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    colorPicker.colors.forEach { color ->
+                        val colorClick = remember(color, onColorSelected) { { onColorSelected(color) } }
 
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                colorPicker.colors.forEach { color ->
-                    val colorClick = remember(color, onColorSelected) { { onColorSelected(color) } }
-
-                    PlaylistTagColorSwatch(
-                        color = color,
-                        selected = color == colorPicker.selectedColor,
-                        onClick = colorClick,
-                    )
+                        PlaylistTagColorSwatch(
+                            color = color,
+                            selected = color == colorPicker.selectedColor,
+                            onClick = colorClick,
+                        )
+                    }
                 }
-            }
-
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            },
+            actions = {
                 TextButton(
                     onClick = onDismiss,
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -436,52 +475,59 @@ private fun PlaylistTagColorPickerDialog(
 private fun PlaylistTagsHeader(
     icon: Int,
     title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.primaryContainer,
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(48.dp),
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
             }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
             )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PlaylistTagsLoadingContent() {
+private fun PlaylistTagsLoadingContent(modifier: Modifier = Modifier) {
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
-                .padding(vertical = 36.dp),
+                .heightIn(min = 160.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
     ) {
         LoadingIndicator(modifier = Modifier.size(40.dp))
         Text(
@@ -493,16 +539,21 @@ private fun PlaylistTagsLoadingContent() {
 }
 
 @Composable
-private fun PlaylistTagsEmptyContent(onAddTag: () -> Unit) {
+private fun PlaylistTagsEmptyContent(modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 180.dp)
+                    .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {
             Icon(
                 painter = painterResource(R.drawable.style),
@@ -514,27 +565,20 @@ private fun PlaylistTagsEmptyContent(onAddTag: () -> Unit) {
                 text = stringResource(R.string.no_tags_available),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
-            FilledTonalButton(
-                onClick = onAddTag,
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.add),
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = stringResource(R.string.add_tag))
-            }
         }
     }
 }
 
 @Composable
-private fun PlaylistTagsErrorContent(messageResId: Int) {
+private fun PlaylistTagsErrorContent(
+    messageResId: Int,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.errorContainer,
     ) {
@@ -563,7 +607,7 @@ private fun PlaylistTagsErrorContent(messageResId: Int) {
 private fun PlaylistTagColorSwatch(
     color: String,
     selected: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
 ) {
     val motionScheme = MaterialTheme.motionScheme
     val swatchColor = rememberTagColor(color)
@@ -587,7 +631,13 @@ private fun PlaylistTagColorSwatch(
         modifier =
             Modifier
                 .size(size)
-                .clickable(onClick = onClick),
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    },
+                ),
         shape = if (selected) MaterialTheme.shapes.extraLarge else MaterialTheme.shapes.large,
         color = swatchColor,
         border = BorderStroke(2.dp, borderColor),
@@ -634,6 +684,7 @@ private fun PlaylistTagsDialogScaffold(
             Surface(
                 modifier =
                     Modifier
+                        .widthIn(max = 560.dp)
                         .fillMaxWidth()
                         .heightIn(max = maxHeight),
                 shape = AlertDialogDefaults.shape,

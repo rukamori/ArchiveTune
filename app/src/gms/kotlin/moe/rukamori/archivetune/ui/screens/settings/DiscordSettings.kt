@@ -63,6 +63,7 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.ArtworkStorage
+import moe.rukamori.archivetune.utils.discordAlbumMusicUrl
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -1268,7 +1269,7 @@ fun RichPresence(
             }
 
             "albumurl" -> {
-                song?.album?.playlistId?.let { "https://music.youtube.com/playlist?list=$it" }
+                song?.discordAlbumMusicUrl()
             }
 
             "custom" -> {

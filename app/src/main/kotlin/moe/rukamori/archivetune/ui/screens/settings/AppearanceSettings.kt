@@ -100,12 +100,8 @@ import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
-import moe.rukamori.archivetune.constants.ShowCachedPlaylistKey
-import moe.rukamori.archivetune.constants.ShowDownloadedPlaylistKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
-import moe.rukamori.archivetune.constants.ShowLikedPlaylistKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
-import moe.rukamori.archivetune.constants.ShowTopPlaylistKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
@@ -245,26 +241,6 @@ fun AppearanceSettings(
             defaultValue = false,
         )
 
-    val (showLikedPlaylist, onShowLikedPlaylistChange) =
-        rememberPreference(
-            ShowLikedPlaylistKey,
-            defaultValue = true,
-        )
-    val (showDownloadedPlaylist, onShowDownloadedPlaylistChange) =
-        rememberPreference(
-            ShowDownloadedPlaylistKey,
-            defaultValue = true,
-        )
-    val (showTopPlaylist, onShowTopPlaylistChange) =
-        rememberPreference(
-            ShowTopPlaylistKey,
-            defaultValue = true,
-        )
-    val (showCachedPlaylist, onShowCachedPlaylistChange) =
-        rememberPreference(
-            ShowCachedPlaylistKey,
-            defaultValue = true,
-        )
     val (showTagsInLibrary, onShowTagsInLibraryChange) =
         rememberPreference(
             ShowTagsInLibraryKey,
@@ -920,44 +896,6 @@ fun AppearanceSettings(
                             GridItemSize.SMALL -> stringResource(R.string.small)
                         }
                     },
-                )
-            }
-        }
-
-        PreferenceGroup(title = stringResource(R.string.auto_playlists)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.show_liked_playlist)) },
-                    icon = { Icon(painterResource(R.drawable.favorite), null) },
-                    checked = showLikedPlaylist,
-                    onCheckedChange = onShowLikedPlaylistChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.show_downloaded_playlist)) },
-                    icon = { Icon(painterResource(R.drawable.offline), null) },
-                    checked = showDownloadedPlaylist,
-                    onCheckedChange = onShowDownloadedPlaylistChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.show_top_playlist)) },
-                    icon = { Icon(painterResource(R.drawable.trending_up), null) },
-                    checked = showTopPlaylist,
-                    onCheckedChange = onShowTopPlaylistChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.show_cached_playlist)) },
-                    icon = { Icon(painterResource(R.drawable.cached), null) },
-                    checked = showCachedPlaylist,
-                    onCheckedChange = onShowCachedPlaylistChange,
                 )
             }
         }

@@ -118,11 +118,6 @@
     <string name="resume_autoscroll">استئناف التمرير التلقائي</string>
     <string name="lyrics_romanize_japanese">كتابة كلمات الأغاني اليابانية بالحروف اللاتينية</string>
     <string name="lyrics_romanize_korean">كلمات الأغاني الكورية بالحروف اللاتينية</string>
-    <string name="auto_playlists">قوائم التشغيل التلقائية</string>
-    <string name="show_liked_playlist">عرض قائمة التشغيل \"المفضلة\"</string>
-    <string name="show_downloaded_playlist">إظهار قائمة التحميلات</string>
-    <string name="show_top_playlist">إظهار قائمة الأعلى أستماع</string>
-    <string name="show_cached_playlist">إظهار قائمة الأغاني المخزنة مؤقتًا</string>
     <string name="google">جوجل</string>
     <string name="discord">ديسكورد</string>
     <string name="advanced_login">تسجيل الدخول باستخدام الرمز المميز</string>

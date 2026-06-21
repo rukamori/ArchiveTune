@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">الرئيسية</string>
     <string name="songs">الأغاني</string>
@@ -8,41 +8,30 @@
     <string name="history">السجل</string>
     <string name="stats">إحصائيات</string>
     <string name="mood_and_genres">المود والأنواع</string>
-    <string name="mood_and_genres_supporting">اسمع حسب مودك، أو الفترة، أو الطاقة</string>
-    <string name="mood_and_genres_count">ترشيحات</string>
     <string name="account">الحساب</string>
     <string name="quick_picks">اختيارات سريعة</string>
-    <string name="quick_picks_empty">اسمع أغاني عشان نطلع لك اختياراتك السريعة</string>
     <plurals name="n_selected">
         <item quantity="one">ولا عنصر مختار</item>
         <item quantity="other">%d عنصر مختار</item>
     </plurals>
     <string name="speed_dial">اتصال سريع</string>
-    <string name="speed_dial_random">شغل اغنية اتصال سريع عشوائية</string>
     <string name="forgotten_favorites">مفضلاتك المنسية</string>
     <string name="keep_listening">كمل سماع</string>
     <string name="your_youtube_playlists">قايمات تشغيل يوتيوب الخاصة بيك</string>
     <string name="similar_to">زي</string>
     <string name="new_release_albums">أحدث الألبومات</string>
-    <string name="select_playlist_to_sync">اختار قائمة التشغيل اللي عايز تزامنها</string>
     <string name="integration">ربط</string>
-    <string name="integrations">ارتباطات</string>
-    <string name="internal_subcategory_settings">إعدادات الأقسام الفرعية والداخلية</string>
-    <string name="search_try_different">جرب تبحث بصيغة تانية</string>
     <string name="today">النهاردة</string>
     <string name="yesterday">امبارح</string>
     <string name="this_week">الأسبوع ده</string>
     <string name="last_week">الأسبوع اللي فات</string>
     <string name="most_played_songs">اكتر اغاني شغلتها</string>
-    <string name="most_played_artists">اكتر فنانين سمعتهم</string>
-    <string name="most_played_albums">اكتر ألبومات سمعتها</string>
     <string name="search">البحث</string>
     <string name="search_yt_music">دور في يوتيوب ميوزك…</string>
     <string name="search_library">دور في المكتبة…</string>
     <string name="filter_library">المكتبة</string>
     <string name="filter_liked">عجبتني</string>
     <string name="filter_downloaded">متنزلة</string>
-    <string name="filter_downloaded_full">متنزلة (كلها)</string>
     <string name="filter_all">كله</string>
     <string name="filter_songs">الأغاني</string>
     <string name="filter_videos">الفيديوهات</string>
@@ -51,10 +40,8 @@
     <string name="filter_playlists">قايمات</string>
     <string name="filter_community_playlists">قايمات الناس</string>
     <string name="filter_featured_playlists">قايمات مميزة</string>
-    <string name="filter_bookmarked">محفوظة</string>
     <string name="no_results_found">مفيش نتايج لقيناها</string>
     <string name="top_results">أهم النتايج</string>
-    <string name="from_your_library">من مكتبتك</string>
     <string name="retry">جرب تاني</string>
     <string name="music_recognition">التعرف على المزيكا</string>
     <string name="liked_songs">أغاني عجبتك</string>
@@ -66,7 +53,6 @@
     <string name="view_album">سوف الألبوم</string>
     <string name="view_all">شوف كله</string>
     <string name="more">اكتر</string>
-    <string name="remove_all_from_library">شيل كله من المكتبة</string>
     <string name="remove_from_library">شيل من المكتبة</string>
     <string name="add_to_playlist">ضيفها لقايمة التشغيل</string>
     <string name="pin_to_speed_dial">ثبتها للتشغيل السريع</string>
@@ -76,19 +62,13 @@
     <string name="start_radio">ابدأ راديو</string>
     <string name="downloading">بتتنزل</string>
     <string name="remove_download">شيل التنزيل</string>
-    <string name="add_all_to_library">ضيف كله للمكتبة</string>
     <string name="details">تفاصيل</string>
     <string name="shuffle">ترتيب عشوائي</string>
     <string name="playlist_is_empty">قايمة التشغيل فاضية</string>
-    <string name="library_song_empty">أغاني المكتبة هتظهر هنا</string>
-    <string name="library_artist_empty">فنانين المكتبة هيظهروا هنا</string>
-    <string name="library_album_empty">ألبومات المكتبة هتظهر هنا</string>
-    <string name="library_playlist_empty">قايماتك هتظهر هنا</string>
     <string name="other_versions">اصدارات تانية</string>
     <string name="remove_download_playlist_confirm">هل انت بجد عايز تمسح كل أغاني قايمة التشغيل \'%s\' من المساحة المتنزلة؟</string>
     <string name="delete_playlist_confirm">هل انت بجد عايز تمسح قائمة التشغيل \"%s\"؟</string>
     <string name="change_playlist_cover">غير غلاف القايمة</string>
-    <string name="remove_playlist_cover">شيل الغلاف</string>
     <string name="reset">إعادة ضبط</string>
     <string name="discord_paused">متوقفة</string>
     <string name="translate">ترجم</string>
@@ -98,14 +78,10 @@
     <string name="translation_failed">الترجمة فشلت</string>
     <string name="target_language">اللغة المستهدفة</string>
     <string name="save">حفظ</string>
-    <string name="choose_playlist">اختار قايمة التشغيل</string>
     <string name="edit_playlist">عدل قايمة التشغيل</string>
     <string name="create_playlist">اعمل قايمة تشغيل</string>
     <string name="playlist_name">اسم قايمة التشغيل</string>
-    <string name="error_playlist_name_empty">اسم قايمة التشغيل ماينفعش يبقى فاضي.</string>
-    <string name="edit_artist">عدل المغني</string>
     <string name="artist_name">اسم المغني</string>
-    <string name="error_artist_name_empty">اسم المغني مينفعش يبقى فاضي.</string>
     <string name="duplicates">متكررين</string>
     <string name="skip_duplicates">اتخطي المتكررين</string>
     <string name="add_anyway">ضيفها وخلاص</string>
@@ -123,7 +99,6 @@
         <item quantity="one">ولا ألبوم</item>
         <item quantity="other">ألبوم</item>
     </plurals>
-    <string name="format_label">التنسيق</string>
     <string name="loading_format">التنسيق بيحمل…</string>
     <string name="cancel_button">الغي</string>
     <string name="ok_button">قشطة</string>
@@ -135,12 +110,7 @@
     <string name="contrast">وضوح الألوان</string>
     <string name="brightness">السطوع</string>
     <string name="custom_value">قيمة على ذوقك</string>
-    <string name="new_library_design">تصميم جديد للمكتبة</string>
-    <string name="new_library_design_description">فعل التصميم الجديد للمكتبة (ممكن يكون غير مستقر)</string>
-    <string name="app_version">إصدار التطبيق</string>
     <string name="new_version_available">إصدار جديد متاح</string>
-    <string name="translation_models">موديلات الترجمة</string>
-    <string name="clear_translation_models">امسح موديلات الترجمة</string>
     <string name="updates">تحديثات</string>
     <string name="updates_subtitle_stable">النسخ المستقرة وملاحظات التحديث</string>
     <string name="updates_subtitle_nightly">نسخ لسة بتتحضر وتعديلات التطوير الأخيرة</string>
@@ -153,7 +123,6 @@
     <string name="enable_update_notification_desc">هيجي لك إشعار لما ينزل إصدار مستقر جديد</string>
     <string name="unknown">مش معروف</string>
     <string name="copied">اتنسخ للحافظة</string>
-    <string name="edit_lyrics">عدّل الكلمات</string>
     <string name="add_to_queue">ضيفه للدور</string>
     <string name="remove_from_history">شيل من السجل</string>
     <string name="remove_from_playlist">شيل من القايمة</string>

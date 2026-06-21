@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">मुख्य स्क्रीन बटन</string>
     <string name="songs">गानें</string>
@@ -12,37 +12,26 @@
     <string name="history">इतिहास</string>
     <string name="stats">आँकड़े</string>
     <string name="mood_and_genres">भाव और शैलियाँ</string>
-    <string name="mood_and_genres_supporting">भावना, युग या ऊर्जा के आधार पर चलाएं</string>
-    <string name="mood_and_genres_count">%d चयनें</string>
     <string name="account">खाता</string>
     <string name="quick_picks">त्वरित चयन</string>
-    <string name="quick_picks_empty">अपनी पसंद के गाने चुनने के लिए उन्हें सुनें</string>
     <string name="speed_dial">गति डायल</string>
-    <string name="speed_dial_random">कोई भी गति डायल गाना चलाएं</string>
     <string name="forgotten_favorites">भूले हुए पसंदीदा</string>
     <string name="keep_listening">सुनते रहिए</string>
     <string name="your_youtube_playlists">आपकी YouTube प्लेलिस्ट</string>
     <string name="similar_to">के समान</string>
     <string name="new_release_albums">नए प्रकाशित एल्बम</string>
-    <string name="select_playlist_to_sync">सिंक करने के लिए प्लेलिस्ट चुनें</string>
     <string name="integration">समाकलन करे</string>
-    <string name="integrations">समाकलित करें</string>
-    <string name="internal_subcategory_settings">आंतरिक और उपश्रेणी सेटिंग्स</string>
-    <string name="search_try_different">किसी दूसरे खोज शब्द का प्रयोग करें</string>
     <string name="today">आज</string>
     <string name="yesterday">बीता हुआ कल</string>
     <string name="this_week">इस सप्ताह</string>
     <string name="last_week">पिछले सप्ताह</string>
     <string name="most_played_songs">सबसे ज्यादा बजने वाले गाने</string>
-    <string name="most_played_artists">सबसे ज्यादा सुने हुए कलाकार</string>
-    <string name="most_played_albums">सर्वाधिक बजाए गए एल्बम</string>
     <string name="search">ढूंढ़े</string>
     <string name="search_yt_music">YouTube संगीत ढुंढे…</string>
     <string name="search_library">लाइब्रेरी खोजें…</string>
     <string name="filter_library">लाइब्रेरी</string>
     <string name="filter_liked">पसंद किया</string>
     <string name="filter_downloaded">अधथभारण</string>
-    <string name="filter_downloaded_full">अधथभारण किया गया (पूर्ण)</string>
     <string name="filter_all">सभी</string>
     <string name="filter_songs">गीने</string>
     <string name="filter_videos">वीडियो</string>
@@ -51,7 +40,6 @@
     <string name="filter_playlists">प्लेलिस्ट</string>
     <string name="filter_community_playlists">सामुदायिक प्लेलिस्ट</string>
     <string name="filter_featured_playlists">विशेष रुप से प्रदर्शित प्लेलिस्ट</string>
-    <string name="filter_bookmarked">बुकमार्क</string>
     <string name="no_results_found">कोई परिणाम नहीं मिला</string>
     <string name="album_backdrop">पृष्ठभूमि धुंधलापन</string>
     <string name="album_backdrop_desc">प्लेयर पर कलाकृति को धुंधली पृष्ठभूमि के रूप में दिखाएं</string>

@@ -31,7 +31,6 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -39,10 +38,15 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.OkHttpClient
 import java.util.Locale
+
+private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
+private const val CanvasPlaybackStallTimeoutMs = 5_000L
 
 @Composable
 internal fun CanvasArtworkPlayer(
@@ -114,17 +118,46 @@ internal fun CanvasArtworkPlayer(
                     )
                     volume = 0f
                     repeatMode = Player.REPEAT_MODE_ONE
-                    trackSelectionParameters =
-                        TrackSelectionParameters
-                            .Builder(context)
-                            .setForceHighestSupportedBitrate(true)
-                            .build()
                     playWhenReady = isPlaying
                 }
         }
 
     LaunchedEffect(isPlaying) {
         exoPlayer.setCanvasPlayback(isPlaying)
+    }
+
+    LaunchedEffect(currentUrl, isPlaying, primary, fallback, exoPlayer) {
+        if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary) return@LaunchedEffect
+
+        var lastPosition = exoPlayer.currentPosition
+        var stalledForMs = 0L
+
+        while (isActive && isPlaying && currentUrl == primary) {
+            delay(CanvasPlaybackStallCheckIntervalMs)
+
+            val currentPosition = exoPlayer.currentPosition
+            val playbackState = exoPlayer.playbackState
+            val positionAdvanced = currentPosition != lastPosition
+            val isActivelyRendering =
+                playbackState == Player.STATE_READY &&
+                    exoPlayer.isPlaying &&
+                    positionAdvanced
+
+            stalledForMs =
+                if (isActivelyRendering) {
+                    0L
+                } else {
+                    stalledForMs + CanvasPlaybackStallCheckIntervalMs
+                }
+
+            if (stalledForMs >= CanvasPlaybackStallTimeoutMs) {
+                currentUrl = fallback
+                isVideoReady = false
+                return@LaunchedEffect
+            }
+
+            lastPosition = currentPosition
+        }
     }
 
     DisposableEffect(exoPlayer, lifecycleOwner) {
