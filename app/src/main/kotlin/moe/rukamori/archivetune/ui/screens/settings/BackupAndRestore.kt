@@ -144,9 +144,12 @@ fun BackupAndRestore(
     var progressPercentage by rememberSaveable { mutableIntStateOf(0) }
     var showBackupOptionsDialog by rememberSaveable { mutableStateOf(false) }
     var showRestoreOptionsDialog by rememberSaveable { mutableStateOf(false) }
+    var showRestoreValidationError by rememberSaveable { mutableStateOf(false) }
+    var restoreValidationErrorMessage by remember { mutableStateOf("") }
     var showSpotifyLogin by rememberSaveable { mutableStateOf(false) }
     var pendingBackupCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
     var pendingRestoreCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
 
     val backupRestoreProgress by viewModel.backupRestoreProgress.collectAsStateWithLifecycle()
     val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
@@ -163,7 +166,17 @@ fun BackupAndRestore(
     val restoreLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                viewModel.restore(context, uri, pendingRestoreCategories)
+                coroutineScope.launch {
+                    val result = viewModel.validateBackup(context, uri)
+                    if (result.isValid) {
+                        pendingRestoreCategories = result.availableCategories
+                        pendingRestoreUri = uri
+                        showRestoreOptionsDialog = true
+                    } else {
+                        restoreValidationErrorMessage = result.errorMessage ?: context.getString(R.string.restore_corrupted)
+                        showRestoreValidationError = true
+                    }
+                }
             }
         }
     val importPlaylistFromCsv =
@@ -216,9 +229,9 @@ fun BackupAndRestore(
             item {
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.action_restore)) },
-                    description = stringResource(R.string.backup_restore_backup_desc),
+                    description = stringResource(R.string.restore_select_backup),
                     icon = { Icon(painterResource(R.drawable.restore), null) },
-                    onClick = { showRestoreOptionsDialog = true },
+                    onClick = { restoreLauncher.launch(arrayOf("application/octet-stream", "application/zip")) },
                 )
             }
 
@@ -288,16 +301,44 @@ fun BackupAndRestore(
     }
 
     if (showRestoreOptionsDialog) {
-        BackupOptionsDialog(
-            title = stringResource(R.string.restore_options_title),
-            confirmLabel = stringResource(R.string.action_restore),
-            onConfirm = { categories ->
-                pendingRestoreCategories = categories
-                showRestoreOptionsDialog = false
-                restoreLauncher.launch(arrayOf("application/octet-stream"))
+        val uri = pendingRestoreUri
+        if (uri != null) {
+            BackupOptionsDialog(
+                title = stringResource(R.string.restore_options_title),
+                confirmLabel = stringResource(R.string.action_restore),
+                onConfirm = { categories ->
+                    pendingRestoreCategories = categories
+                    showRestoreOptionsDialog = false
+                    pendingRestoreUri = null
+                    viewModel.restore(context, uri, categories)
+                },
+                onDismiss = {
+                    showRestoreOptionsDialog = false
+                    pendingRestoreUri = null
+                },
+            )
+        }
+    }
+
+    if (showRestoreValidationError) {
+        DefaultDialog(
+            onDismiss = { showRestoreValidationError = false },
+            title = { Text(stringResource(R.string.restore_failed)) },
+            buttons = {
+                TextButton(
+                    onClick = { showRestoreValidationError = false },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(android.R.string.ok))
+                }
             },
-            onDismiss = { showRestoreOptionsDialog = false },
-        )
+        ) {
+            Text(
+                text = restoreValidationErrorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 
     if (showSpotifyLogin) {

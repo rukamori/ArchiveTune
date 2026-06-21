@@ -69,6 +69,12 @@ enum class BackupCategory {
     SETTINGS,
 }
 
+data class BackupValidationResult(
+    val isValid: Boolean,
+    val availableCategories: Set<BackupCategory>,
+    val errorMessage: String?,
+)
+
 internal fun readCsvRecords(reader: Reader): Sequence<List<String>> =
     sequence {
         val pushbackReader = if (reader is PushbackReader) reader else PushbackReader(reader, 1)
@@ -723,6 +729,70 @@ class BackupRestoreViewModel
             }
 
             return songs
+        }
+
+        suspend fun validateBackup(
+            context: Context,
+            uri: Uri,
+        ): BackupValidationResult = withContext(Dispatchers.IO) {
+            try {
+                val stream =
+                    context.applicationContext.contentResolver.openInputStream(uri)
+                if (stream == null) {
+                    return@withContext BackupValidationResult(
+                        isValid = false,
+                        availableCategories = emptySet(),
+                        errorMessage = context.getString(R.string.restore_file_not_found),
+                    )
+                }
+                stream.use { inputStream ->
+                    val zipStream = inputStream.zipInputStream()
+                    val entryNames = mutableSetOf<String>()
+                    zipStream.use { zip ->
+                        var entry = zip.nextEntry
+                        while (entry != null) {
+                            entryNames.add(entry.name)
+                            entry = zip.nextEntry
+                        }
+                    }
+                    if (entryNames.isEmpty()) {
+                        return@withContext BackupValidationResult(
+                            isValid = false,
+                            availableCategories = emptySet(),
+                            errorMessage = context.getString(R.string.restore_invalid_file),
+                        )
+                    }
+                    val categories = mutableSetOf<BackupCategory>()
+                    val hasSettings = SETTINGS_XML_FILENAME in entryNames || SETTINGS_FILENAME in entryNames
+                    val hasDb = entryNames.any { it.startsWith(InternalDatabase.DB_NAME) }
+                    if (hasSettings) {
+                        categories.add(BackupCategory.SETTINGS)
+                        categories.add(BackupCategory.ACCOUNT)
+                    }
+                    if (hasDb) {
+                        categories.add(BackupCategory.LIBRARY)
+                    }
+                    if (categories.isEmpty()) {
+                        return@withContext BackupValidationResult(
+                            isValid = false,
+                            availableCategories = emptySet(),
+                            errorMessage = context.getString(R.string.restore_missing_content),
+                        )
+                    }
+                    BackupValidationResult(
+                        isValid = true,
+                        availableCategories = categories,
+                        errorMessage = null,
+                    )
+                }
+            } catch (e: Exception) {
+                reportException(e)
+                BackupValidationResult(
+                    isValid = false,
+                    availableCategories = emptySet(),
+                    errorMessage = context.getString(R.string.restore_corrupted),
+                )
+            }
         }
 
         companion object {

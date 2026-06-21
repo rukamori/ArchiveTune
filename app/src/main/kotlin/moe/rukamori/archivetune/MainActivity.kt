@@ -59,6 +59,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -70,10 +71,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -288,6 +291,8 @@ import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.setAppLocale
+import moe.rukamori.archivetune.viewmodels.BackupCategory
+import moe.rukamori.archivetune.viewmodels.BackupRestoreViewModel
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import moe.rukamori.archivetune.viewmodels.NetworkBannerViewModel
 import moe.rukamori.archivetune.viewmodels.NewsViewModel
@@ -315,6 +320,7 @@ class MainActivity : ComponentActivity() {
     private var pendingDeepLinkQueue: Queue? = null
     private var pendingVoiceSearchQuery: String? = null
     private var pendingTogetherJoinLink: String? = null
+    private var pendingBackupRestoreUri by mutableStateOf<Uri?>(null)
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
     private var latestUpdateChannel by mutableStateOf(defaultUpdateChannel)
 
@@ -451,6 +457,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val dataUri = intent.data
+        if (isBackupUri(dataUri)) {
+            pendingBackupRestoreUri = dataUri
+            return
+        }
         if (::navController.isInitialized) {
             handleDeepLinkIntent(intent, navController)
         } else {
@@ -2263,6 +2274,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    pendingBackupRestoreUri?.let { uri ->
+                        BackupRestoreFromIntentDialog(uri = uri)
+                    }
+
                     LaunchedEffect(shouldShowSearchBar, openSearchImmediately) {
                         if (shouldShowSearchBar && openSearchImmediately) {
                             onActiveChange(true)
@@ -2279,11 +2294,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun isBackupUri(uri: Uri?): Boolean {
+        if (uri == null) return false
+        val path = uri.lastPathSegment?.lowercase(Locale.US)
+        return path?.endsWith(".backup") == true || uri.toString().lowercase(Locale.US).endsWith(".backup")
+    }
+
     private fun handleIntent(
         intent: Intent?,
         navController: NavHostController,
     ) {
         if (intent == null) return
+        val dataUri = intent.data
+        if (isBackupUri(dataUri)) {
+            pendingBackupRestoreUri = dataUri
+            return
+        }
         if (intent.action == ACTION_MUSIC_RECOGNITION) {
             navController.openMusicRecognition()
             return
@@ -2547,6 +2573,101 @@ class MainActivity : ComponentActivity() {
             window.navigationBarColor =
                 (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()
         }
+    }
+
+    @Composable
+    private fun BackupRestoreFromIntentDialog(
+        uri: Uri,
+        viewModel: BackupRestoreViewModel = hiltViewModel(),
+    ) {
+        var selected by remember { mutableStateOf(BackupCategory.entries.toSet()) }
+
+        AlertDialog(
+            onDismissRequest = { pendingBackupRestoreUri = null },
+            icon = { Icon(painterResource(R.drawable.restore), null) },
+            title = { Text(stringResource(R.string.restore_options_title)) },
+            text = {
+                Column {
+                    BackupCategory.entries.forEach { category ->
+                        val isChecked = category in selected
+                        val labelRes =
+                            when (category) {
+                                BackupCategory.LIBRARY -> R.string.backup_category_library
+                                BackupCategory.ACCOUNT -> R.string.backup_category_account
+                                BackupCategory.SETTINGS -> R.string.backup_category_settings
+                            }
+                        val descRes =
+                            when (category) {
+                                BackupCategory.LIBRARY -> R.string.backup_category_library_desc
+                                BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
+                                BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
+                            }
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            color = Color.Transparent,
+                            onClick = {
+                                selected = if (isChecked) selected - category else selected + category
+                            },
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 72.dp)
+                                    .padding(horizontal = 4.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(labelRes),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = stringResource(descRes),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                androidx.compose.material3.Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = { checked ->
+                                        selected = if (checked) selected + category else selected - category
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val uri = pendingBackupRestoreUri ?: return@TextButton
+                        pendingBackupRestoreUri = null
+                        viewModel.restore(this@MainActivity, uri, selected)
+                    },
+                    enabled = selected.isNotEmpty(),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(R.string.action_restore))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingBackupRestoreUri = null },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
     }
 
     companion object {

@@ -562,6 +562,12 @@
     <string name="backup_category_account_desc">YouTube, Spotify, Last.fm, Libre.fm, Discord &amp; proxy credentials</string>
     <string name="internal_service">Internal Service</string>
     <string name="external_service">External Service</string>
+    <string name="restore_invalid_file">The selected file is not a valid backup archive.</string>
+    <string name="restore_missing_content">The backup archive does not contain any restorable data.</string>
+    <string name="restore_corrupted">The backup file appears to be corrupted and could not be read.</string>
+    <string name="restore_file_not_found">Could not open the selected file.</string>
+    <string name="backup_select_backup">Select Backup File</string>
+    <string name="restore_select_backup">Select a backup file to restore.</string>
     <string name="backup_data_safety">Data safety</string>
     <string name="backup_data_safety_desc">Create a portable backup or restore selected app data.</string>
     <string name="backup_data_formats">.backup archive</string>
