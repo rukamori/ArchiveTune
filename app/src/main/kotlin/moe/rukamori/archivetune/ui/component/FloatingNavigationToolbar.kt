@@ -141,7 +141,6 @@ fun FloatingNavigationToolbar(
                 expanded = true,
                 floatingActionButton = {
                     FloatingToolbarFabAction(
-                        pureBlack = pureBlack,
                         onClick = onFabClick,
                         iconRes = fabIconRes,
                         contentDescription = fabContentDescription,
@@ -264,8 +263,8 @@ private fun FloatingToolbarOverflowAction(
     Box {
         FloatingToolbarDefaults.VibrantFloatingActionButton(
             onClick = { fabMenuExpanded = !fabMenuExpanded },
-            containerColor = floatingToolbarFabContainerColor(pureBlack = pureBlack),
-            contentColor = floatingToolbarFabContentColor(pureBlack = pureBlack),
+            containerColor = floatingToolbarFabContainerColor(),
+            contentColor = floatingToolbarFabContentColor(),
         ) {
             Icon(
                 painter = painterResource(R.drawable.more_horiz),
@@ -376,7 +375,6 @@ private fun FloatingToolbarOverflowAction(
 
 @Composable
 private fun FloatingToolbarFabAction(
-    pureBlack: Boolean,
     onClick: (() -> Unit)?,
     iconRes: Int?,
     contentDescription: String,
@@ -385,8 +383,8 @@ private fun FloatingToolbarFabAction(
 
     FloatingToolbarDefaults.VibrantFloatingActionButton(
         onClick = onClick,
-        containerColor = floatingToolbarFabContainerColor(pureBlack = pureBlack),
-        contentColor = floatingToolbarFabContentColor(pureBlack = pureBlack),
+        containerColor = floatingToolbarFabContainerColor(),
+        contentColor = floatingToolbarFabContentColor(),
     ) {
         Icon(
             painter = painterResource(iconRes),
@@ -536,12 +534,12 @@ private fun floatingToolbarContainerColor(pureBlack: Boolean): Color =
     if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
 @Composable
-private fun floatingToolbarFabContainerColor(pureBlack: Boolean): Color =
-    if (pureBlack) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.tertiaryContainer
+private fun floatingToolbarFabContainerColor(): Color =
+    MaterialTheme.colorScheme.tertiaryContainer
 
 @Composable
-private fun floatingToolbarFabContentColor(pureBlack: Boolean): Color =
-    if (pureBlack) Color.White else MaterialTheme.colorScheme.onTertiaryContainer
+private fun floatingToolbarFabContentColor(): Color =
+    MaterialTheme.colorScheme.onTertiaryContainer
 
 @Composable
 private fun floatingToolbarSelectedItemContainerColor(pureBlack: Boolean): Color =
