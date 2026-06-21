@@ -35,3 +35,12 @@ subprojects {
         }
     }
 }
+
+// Force Gradle to fetch fresh SNAPSHOTs instead of turning off the build cache
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy {
+            cacheChangingModulesFor(0, "seconds")
+        }
+    }
+}
