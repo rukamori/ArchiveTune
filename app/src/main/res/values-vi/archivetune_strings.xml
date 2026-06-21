@@ -589,6 +589,12 @@
     <string name="internal_service">Dịch vụ nội bộ</string>
     <string name="external_service">Dịch vụ bên ngoài</string>
     <!-- Backup data safety -->
+    <string name="restore_invalid_file">Tệp đã chọn không phải là tệp sao lưu hợp lệ.</string>
+    <string name="restore_missing_content">Tệp sao lưu không chứa dữ liệu có thể khôi phục.</string>
+    <string name="restore_corrupted">Tệp sao lưu có vẻ bị hỏng và không thể đọc được.</string>
+    <string name="restore_file_not_found">Không thể mở tệp đã chọn.</string>
+    <string name="backup_select_backup">Chọn Tệp Sao lưu</string>
+    <string name="restore_select_backup">Chọn tệp sao lưu để khôi phục.</string>
     <string name="backup_data_safety">An toàn dữ liệu</string>
     <string name="backup_data_safety_desc">Tạo bản sao lưu di động hoặc khôi phục dữ liệu ứng dụng đã chọn.</string>
     <string name="backup_data_formats">Lưu trữ .backup</string>

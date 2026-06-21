@@ -451,4 +451,10 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">寄付</string>
+    <string name="restore_invalid_file">選択されたファイルは有効なバックアップアーカイブではありません。</string>
+    <string name="restore_missing_content">バックアップアーカイブに復元可能なデータが含まれていません。</string>
+    <string name="restore_corrupted">バックアップファイルが破損しているため、読み取れません。</string>
+    <string name="restore_file_not_found">選択されたファイルを開けませんでした。</string>
+    <string name="backup_select_backup">バックアップファイルを選択</string>
+    <string name="restore_select_backup">復元するバックアップファイルを選択してください。</string>
 </resources>
