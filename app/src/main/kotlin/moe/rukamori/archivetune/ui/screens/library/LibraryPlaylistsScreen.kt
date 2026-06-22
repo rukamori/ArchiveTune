@@ -340,21 +340,21 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    // Show hidden toggle
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(if (showHidden) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .clickable { showHidden = !showHidden },
-                        contentAlignment = Alignment.Center,
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    IconButton(
+                        onClick = { showHidden = !showHidden },
+                        colors =
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.visibility_off),
                             contentDescription = stringResource(R.string.show_hidden_playlists),
-                            tint = if (showHidden) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
 
