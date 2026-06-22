@@ -37,13 +37,8 @@
 
 - [ ] `:app`
 - [ ] `:core`
-- [ ] `:betterlyrics`
-- [ ] `:kugou`
-- [ ] `:lrclib`
+- [ ] `:lyrics`
 - [ ] `:lastfm`
-- [ ] `:simpmusic`
-- [ ] `:paxsenix`
-- [ ] `:unison`
 - [ ] `:canvas`
 - [ ] `:shazamkit`
 - [ ] `:spotifycore`
