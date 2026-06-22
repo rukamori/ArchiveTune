@@ -47,13 +47,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
@@ -729,11 +729,6 @@ fun UpdateScreen(
 
         AlertDialog(
             onDismissRequest = {},
-            icon = {
-                LoadingIndicator(
-                    modifier = Modifier.size(24.dp),
-                )
-            },
             title = {
                 Text(
                     text = stringResource(R.string.downloading),
@@ -742,30 +737,48 @@ fun UpdateScreen(
             },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     if (progress != null) {
-                        LinearWavyProgressIndicator(
-                            progress = { animatedProgress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            text =
-                                stringResource(
-                                    R.string.download_progress_percent,
-                                    (animatedProgress * 100f).roundToInt().coerceIn(0, 100),
-                                ),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Box(
+                            modifier = Modifier.size(96.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularWavyProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.download_progress_percent,
+                                        (animatedProgress * 100f).roundToInt().coerceIn(0, 100),
+                                    ),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     } else {
-                        LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        CircularWavyProgressIndicator(
+                            modifier = Modifier.size(72.dp),
+                        )
                     }
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        updateDownloadJob?.cancel()
+                        updateDownloadJob = null
+                        updateDownloadProgress = null
+                        showUpdateDownloadDialog = false
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+            },
         )
     }
 
