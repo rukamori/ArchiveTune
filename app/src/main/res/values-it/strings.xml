@@ -1,16 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    
     <string name="home">Home</string>
     <string name="songs">Canzoni</string>
     <string name="artists">Artisti</string>
     <string name="albums">Album</string>
     <string name="playlists">Playlist</string>
-    
     <plurals name="n_selected">
         <item quantity="other">%d selezionato</item>
     </plurals>
-    
     <string name="history">Cronologia</string>
     <string name="stats">Statistiche</string>
     <string name="mood_and_genres">Umore e generi</string>
@@ -22,12 +19,10 @@
     <string name="similar_to">Simile a</string>
     <string name="new_release_albums">Nuovi album in uscita</string>
     <string name="integration">Integrazione</string>
-    
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="this_week">Questa settimana</string>
     <string name="last_week">La settimana scorsa</string>
-    
     <string name="most_played_songs">Canzoni più suonate</string>
     <string name="search">Cerca</string>
     <string name="search_yt_music">Cerca su YouTube Musica...</string>
@@ -44,20 +39,16 @@
     <string name="filter_community_playlists">Playlist della comunità</string>
     <string name="filter_featured_playlists">Playlist in primo piano</string>
     <string name="no_results_found">Nessun risultato trovato</string>
-    
     <string name="other_versions">Altre versioni</string>
-    
     <string name="liked_songs">Canzoni che mi sono piaciute</string>
     <string name="downloaded_songs">Canzoni scaricate</string>
     <string name="playlist_is_empty">La playlist è vuota</string>
     <string name="remove_download_playlist_confirm">Vuoi davvero rimuovere tutti i brani della playlist \"%s\" dall\'archivio brani scaricati?</string>
     <string name="delete_playlist_confirm">Vuoi veramente eliminare la playlist \"%s\"?</string>
-    
     <string name="retry">Riprova</string>
     <string name="radio">Radio</string>
     <string name="shuffle">Mescola</string>
     <string name="reset">Ripristina</string>
-    
     <string name="details">Dettagli</string>
     <string name="edit">Modifica</string>
     <string name="start_radio">Avvia la radio</string>
@@ -84,13 +75,11 @@
     <string name="remove_from_queue">Rimuovi dalla coda</string>
     <string name="search_online">Cerca in linea</string>
     <string name="tempo_and_pitch">Tempo e intonazione</string>
-    
     <string name="sort_by_create_date">Data aggiunta</string>
     <string name="sort_by_name">Nome</string>
     <string name="sort_by_artist">Artista</string>
     <string name="sort_by_play_time">Tempo di gioco</string>
     <string name="sort_by_custom">Ordine personalizzato</string>
-    
     <string name="media_id">Identificativo multimediale</string>
     <string name="mime_type">Tipo MIME</string>
     <string name="codecs">Codec</string>
@@ -115,7 +104,6 @@
     <string name="add_anyway">Aggiungi comunque</string>
     <string name="duplicates_description_single">La canzone è già nella tua playlist</string>
     <string name="duplicates_description_multiple">%d brani sono già nella tua playlist</string>
-    
     <plurals name="n_song">
         <item quantity="one">%d canzone</item>
         <item quantity="other">%d brani</item>
@@ -144,14 +132,12 @@
         <item quantity="one">%d anno</item>
         <item quantity="other">%d anni</item>
     </plurals>
-    
     <string name="added_to_playlist">Aggiunto a %s</string>
     <string name="added_n_songs_to_playlist">Aggiunti %1$d brani a %2$s</string>
     <string name="added_to_n_playlists">Aggiunto a %d playlist</string>
     <string name="added_n_songs_to_n_playlists">Aggiunti %1$d brani a %2$d playlist</string>
     <string name="playlist_synced">Playlist sincronizzata</string>
     <string name="undo">Annulla</string>
-    
     <string name="lyrics_not_found">Testo non trovato</string>
     <string name="sleep_timer">Temporizzatore di sonno</string>
     <string name="end_of_song">Fine della canzone</string>
@@ -163,7 +149,6 @@
     <string name="error_no_internet">Nessuna connessione di rete</string>
     <string name="error_timeout">Timeout</string>
     <string name="error_unknown">Errore sconosciuto</string>
-    
     <string name="action_like">Mi piace</string>
     <string name="action_remove_like">Rimuovi mi piace</string>
     <string name="action_shuffle_on">Continua a mescolare</string>
@@ -171,30 +156,24 @@
     <string name="repeat_mode_off">Modalità di ripetizione disattivata</string>
     <string name="repeat_mode_one">Ripete il brano corrente</string>
     <string name="repeat_mode_all">Ripeti la coda</string>
-    
     <string name="queue_all_songs">Tutte le canzoni</string>
     <string name="queue_searched_songs">Canzoni cercate</string>
     <string name="queue_continue_playing">Continua a giocare</string>
     <string name="queue_autoplaying_similar">Riproduzione automatica di musica simile</string>
-    
     <string name="music_player">Lettore musicale</string>
-    
     <string name="settings">Impostazioni</string>
     <string name="appearance">Aspetto</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Abilita tema dinamico</string>
-    
     <string name="color_palette">Tavolozza dei colori</string>
     <string name="customize_theme_colors">Scegli i colori del tema dell\'app</string>
     <string name="palette_default">Predefinito</string>
-    
     <string name="palette_ocean_blue">Blu oceano</string>
     <string name="palette_arctic_blue">Artico</string>
     <string name="palette_midnight_navy">Mezzanotte</string>
     <string name="palette_sky_blue">Cielo blu</string>
     <string name="palette_cobalt_blue">Cobalto</string>
     <string name="palette_electric_blue">Elettrico</string>
-    
     <string name="palette_emerald_green">Smeraldo</string>
     <string name="palette_teal_wave">Onda verde acqua</string>
     <string name="palette_forest_green">Foresta</string>
@@ -202,21 +181,18 @@
     <string name="palette_mint_fresh">Menta</string>
     <string name="palette_olive_garden">Oliva</string>
     <string name="palette_sage_green">Saggio</string>
-    
     <string name="palette_sunset_orange">Tramonto</string>
     <string name="palette_golden_hour">D\'oro</string>
     <string name="palette_warm_amber">Ambra</string>
     <string name="palette_tangerine_blast">Mandarino</string>
     <string name="palette_peach">Pesca</string>
     <string name="palette_mango">Mango</string>
-    
     <string name="palette_royal_purple">Viola reale</string>
     <string name="palette_lavender_dream">Lavanda</string>
     <string name="palette_grape_purple">Uva</string>
     <string name="palette_violet">Viola</string>
     <string name="palette_amethyst">Ametista</string>
     <string name="palette_ultra_violet">Ultravioletto</string>
-    
     <string name="palette_cherry_blossom">Sakura</string>
     <string name="palette_rose_quartz">Quarzo rosa</string>
     <string name="palette_magenta_pop">Magenta</string>
@@ -224,37 +200,31 @@
     <string name="palette_blush">Arrossire</string>
     <string name="palette_coral">Corallo</string>
     <string name="palette_bubblegum">Gomma da masticare</string>
-    
     <string name="palette_crimson_red">Cremisi</string>
     <string name="palette_youtube_red">YouTube</string>
     <string name="palette_wine_red">Vino</string>
     <string name="palette_ruby_red">Rubino</string>
     <string name="palette_scarlet">Scarlatto</string>
-    
     <string name="palette_charcoal">Carbone</string>
     <string name="palette_silver">Argento</string>
     <string name="palette_slate">Ardesia</string>
     <string name="palette_graphite">Grafite</string>
-    
     <string name="palette_terracotta">Terracotta</string>
     <string name="palette_coffee">Caffè</string>
     <string name="palette_mocha">Moka</string>
     <string name="palette_sand">Sabbia</string>
     <string name="palette_clay">Argilla</string>
-    
     <string name="palette_pastel_pink">Rosa pastello</string>
     <string name="palette_pastel_blue">Blu pastello</string>
     <string name="palette_pastel_green">Verde pastello</string>
     <string name="palette_pastel_yellow">Giallo pastello</string>
     <string name="palette_pastel_purple">Viola pastello</string>
-    
     <string name="palette_neon_green">Verde neon</string>
     <string name="palette_neon_pink">Rosa neon</string>
     <string name="palette_neon_blue">Blu neon</string>
     <string name="palette_neon_orange">Arancione neon</string>
     <string name="palette_cyberpunk">Cyberpunk</string>
     <string name="palette_synthwave">Synthwave</string>
-    
     <string name="palette_ocean">Oceano</string>
     <string name="palette_forest">Foresta profonda</string>
     <string name="palette_autumn">Autunno</string>
@@ -265,7 +235,6 @@
     <string name="palette_aurora">Aurora</string>
     <string name="palette_candy">Caramella</string>
     <string name="palette_rainbow">Arcobaleno</string>
-    
     <string name="dark_theme">Tema oscuro</string>
     <string name="dark_theme_on">Su</string>
     <string name="dark_theme_off">Spento</string>
@@ -291,22 +260,13 @@
     <string name="disable_blur">Disattiva gli effetti di sfocatura</string>
     <string name="disable_blur_desc">Disabilita gli effetti di sfocatura in tutta l\'app</string>
     <string name="player">Giocatore</string>
-    <string name="left">A sinistra</string>
-    <string name="center">Centro</string>
-    <string name="right">Giusto</string>
     <string name="player_slider_style">Stile del dispositivo di scorrimento del giocatore</string>
-    <string name="squiggly">Ondulato</string>
     <string name="misc">Varie</string>
     <string name="default_open_tab">Scheda aperta predefinita</string>
     <string name="grid_cell_size">Dimensione delle celle della griglia</string>
     <string name="small">Piccolo</string>
     <string name="big">Grande</string>
-    
     <string name="lyrics_animation_style">Stile di animazione dei testi</string>
-    
-    <string name="none">Nessuno</string>
-    <string name="fade">Svanire</string>
-    <string name="karaoke">Karaoke</string>
     <string name="lyrics_line_spacing">Interlinea del testo</string>
     <string name="content">Contenuto</string>
     <string name="action_logout">Esci</string>
@@ -401,7 +361,6 @@
     <string name="options">Opzioni</string>
     <string name="preview">Anteprima</string>
     <string name="enable_discord_rpc">Abilita Rich Presence</string>
-    
     <string name="scrobbling">Scrobbling</string>
     <string name="lastfm_integration">Integrazione con Last.fm</string>
     <string name="enable_scrobbling">Abilita lo scrobbling</string>
@@ -413,12 +372,10 @@
     <string name="username">Nome utente</string>
     <string name="password">Parola d\'ordine</string>
     <string name="logging_in">Accesso…</string>
-    
     <string name="listenbrainz_scrobbling">AscoltaBrainz che scrobbling</string>
     <string name="listenbrainz_scrobbling_description">Abilita l\'invio degli ascolti in riproduzione e finiti a ListenBrainz</string>
     <string name="set_listenbrainz_token">Imposta il token ListenBrainz</string>
     <string name="edit_listenbrainz_token">Modifica il token ListenBrainz</string>
-    
     <string name="discord_activity_name">Nome dell\'attività</string>
     <string name="discord_activity_details">Dettagli dell\'attività</string>
     <string name="discord_activity_state">Stato attività</string>
@@ -445,13 +402,11 @@
     <string name="new_update_available">Nuovo aggiornamento disponibile</string>
     <string name="release_notes_unavailable">Le note sulla versione non sono disponibili</string>
     <string name="update_text">Aggiorna</string>
-    
     <string name="translate">Traduci</string>
     <string name="language_label">Lingua</string>
     <string name="lyrics">Testi</string>
     <string name="translation_success">Traduzione salvata</string>
     <string name="translation_failed">Traduzione fallita</string>
-    
     <string name="discord_button_options">Opzioni dei pulsanti</string>
     <string name="discord_image_options">Opzioni immagine</string>
     <string name="refresh">Aggiorna</string>
@@ -463,7 +418,6 @@
     <string name="logout_confirm_message">Sei sicuro di voler uscire da Discord?.</string>
     <string name="logout_confirm_yes">Esci</string>
     <string name="logout_confirm_no">Annulla</string>
-    
     <string name="experiment_settings">Impostazioni sperimentali</string>
     <string name="show_discord_debug_ui">Mostra interfaccia utente di debug</string>
     <string name="enable_discord_debug_lines">Abilita le righe delle impostazioni di debug</string>
@@ -471,7 +425,6 @@
     <string name="presence_manager_stopped">Gestore della presenza: interrotto</string>
     <string name="filter_levels">Livelli di filtro</string>
     <string name="experimental_features">Funzionalità sperimentali</string>
-    <string name="open">Aperto</string>
     <string name="reset_to_default_levels">Ripristina le impostazioni predefinite</string>
     <string name="no_logs">Nessun registro</string>
     <string name="show_nerd_stats">Mostra le statistiche dei nerd</string>

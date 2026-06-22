@@ -132,7 +132,6 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
-import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -481,6 +480,15 @@ fun SpeedDialSection(
         remember(tiles) {
             tiles.chunked(SpeedDialItemsPerPage)
         }
+    val visibleGridRows =
+        remember(tilePages) {
+            if (tilePages.size == 1) {
+                ((tilePages.first().size + SpeedDialGridColumns - 1) / SpeedDialGridColumns)
+                    .coerceIn(1, SpeedDialGridRows)
+            } else {
+                SpeedDialGridRows
+            }
+        }
     val pagerState =
         rememberPagerState(
             pageCount = { tilePages.size },
@@ -515,7 +523,7 @@ fun SpeedDialSection(
                     .fillMaxWidth(),
         ) {
             val tileSize = (maxWidth - spacing * (SpeedDialGridColumns - 1)) / SpeedDialGridColumns
-            val gridHeight = (tileSize * SpeedDialGridRows) + (spacing * (SpeedDialGridRows - 1))
+            val gridHeight = (tileSize * visibleGridRows) + (spacing * (visibleGridRows - 1))
 
             HorizontalPager(
                 state = pagerState,

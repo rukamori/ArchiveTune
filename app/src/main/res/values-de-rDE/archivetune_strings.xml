@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Erkunden</string>
     <string name="local_history">Lokal</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Zurück</string>
     <string name="no_title">Kein Titel</string>
     <string name="unknown_artist">Unbekannter Künstler</string>
-    <string name="unknown_item_type">Unbekannter Artikeltyp</string>
-    <string name="loading_charts">Charts werden geladen...</string>
     <string name="retry_button">Wiederholen</string>
     <string name="album_cover_desc">Albumcover</string>
     <string name="top_music_videos">Top-Musikvideos</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">Cache</string>
     <string name="sync_playlist">Playlist synchronisieren</string>
     <string name="sync_disabled">Synchronisierung deaktiviert</string>
-    <string name="elements_selected">%1$d Elemente ausgewählt</string>
     <string name="allows_for_sync_witch_youtube">Hinweis: Dies ermöglicht die Synchronisierung mit YouTube Music. Dies ist später NICHT änderbar.</string>
     <string name="generating_image">Bild erzeugen</string>
     <string name="please_wait">Bitte warten</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">Teilen ausgewählt</string>
     <string name="customize_colors">Passen Sie die Farben an</string>
     <string name="more_options">Weitere Optionen</string>
-    <string name="text_color">Textfarbe</string>
-    <string name="secondary_text_color">Sekundäre Textfarbe</string>
-    <string name="background_color">Hintergrundfarbe</string>
-    <string name="added_to_play_next">Zum nächsten Abspielen hinzugefügt</string>
-    <string name="added_to_queue">Zur Warteschlange hinzugefügt</string>
     <string name="remove_from_cache">Aus Cache entfernen</string>
     <string name="copy_link">Link kopieren</string>
     <string name="select">Alles auswählen</string>
@@ -47,7 +39,6 @@
     <string name="dislike_all">Mag alles nicht</string>
     <string name="sort_by_last_updated">Datum aktualisiert</string>
     <string name="link_copied">Link in die Zwischenablage kopiert</string>
-    <string name="starting_radio">Radio starten</string>
     <string name="now_playing">Jetzt gespielt</string>
     <string name="close">Schließen</string>
     <string name="minimum_volume">Mindestlautstärke</string>
@@ -63,15 +54,11 @@
         <item quantity="one">%d Mal</item>
         <item quantity="other">%d Mal</item>
     </plurals>
-    <string name="seek_backward">5 Sekunden zurück</string>
-    <string name="seek_forward">5 Sekunden vorwärts</string>
     <string name="seek_forward_dynamic">+%1$d Sekunden vorwärts</string>
     <string name="seek_backward_dynamic">-%1$d Sekunden zurück</string>
     <string name="seek_seconds_addup">Progressive Suche</string>
     <string name="seek_seconds_addup_description">Wenn diese Option aktiviert ist, werden bei jedem Suchsprung schrittweise 5 zusätzliche Sekunden addiert</string>
     <string name="similar_content">Ähnlicher Inhalt</string>
-    <string name="login_settings">Anmeldeeinstellungen</string>
-    <string name="general_settings">Allgemeine Einstellungen</string>
     <string name="player_background_style">Hintergrundstil des Spielers</string>
     <string name="follow_theme">Thema folgen</string>
     <string name="gradient">Gradient</string>
@@ -87,20 +74,17 @@
     <string name="player_buttons_style">Farben der Player-Tasten</string>
     <string name="default_style">Standard</string>
     <string name="secondary_color_style">Sekundär</string>
-    <string name="enable_squiggly_slider">Aktivieren Sie den verschnörkelten Schieberegler</string>
     <string name="enable_swipe_thumbnail">Aktivieren Sie Wischen, um das Lied zu wechseln</string>
     <string name="swipe_song_to_add">Wischen Sie das Lied nach links, um ihn zur Warteschlange hinzuzufügen, oder nach rechts, um ihn als nächstes abzuspielen</string>
     <string name="lyrics_click_change">Liedtext per Klick ändern</string>
     <string name="lyrics_auto_scroll">Songtexte automatisch scrollen</string>
     <string name="lyrics_romanize_japanese">Japanische Texte romanisieren</string>
     <string name="lyrics_romanize_korean">Romanisieren Sie koreanische Texte</string>
-    <string name="google">Google</string>
     <string name="discord">Zwietracht</string>
     <string name="advanced_login">Mit Token anmelden</string>
     <string name="token_hidden">Tippen Sie, um das Token anzuzeigen</string>
     <string name="token_shown">Tippen Sie erneut, um zu kopieren oder zu bearbeiten</string>
     <string name="token_adv_login_description">Dies ist eine ERWEITERTE Anmeldemethode. Alternativ zum Webportal können Sie Ihr Login-Token hier direkt eingeben oder aktualisieren. Dies kann beispielsweise die Anmeldung auf mehreren Geräten beschleunigen. Bitte beachten Sie, dass ungültige Tokenformate, die die App nicht analysieren kann, nicht akzeptiert werden</string>
-    <string name="ytm_sync">Automatische Synchronisierung mit Ihrem YouTube Music-Konto</string>
     <string name="yt_sync">Automatische Synchronisierung mit Konto</string>
     <string name="more_content">Mehr Inhalt</string>
     <string name="general">Allgemein</string>
@@ -109,32 +93,21 @@
     <string name="set_quick_picks">Legen Sie schnelle Tipps fest</string>
     <string name="last_song_listened">Basierend auf dem zuletzt gehörten Lied</string>
     <string name="app_language">App-Sprache</string>
-    <string name="configure_app_language">App-Sprachen konfigurieren</string>
-    <string name="intent_app_language_not_found">Die Spracheinstellungen der App konnten nicht gefunden werden. Bitte konfigurieren Sie sie manuell</string>
     <string name="open_supported_links">Unterstützten Link standardmäßig öffnen</string>
-    <string name="configure_supported_links">Konfigurieren Sie unterstützte Links</string>
-    <string name="intent_supported_links_not_found">Es konnten keine unterstützten Linkeinstellungen gefunden werden. Bitte konfigurieren Sie sie manuell</string>
     <string name="set_first_lyrics_provider">Bevorzugter Textanbieter</string>
     <string name="audio_quality_max">Max (Beta)</string>
-    <string name="enable_similar_content">Aktivieren Sie ähnliche Inhalte</string>
-    <string name="similar_content_desc">Fügen Sie automatisch weitere ähnliche Songs hinzu, wenn das Ende der Warteschlange erreicht ist</string>
-    <string name="min_playback_duration_title">Mindestwiedergabedauer</string>
-    <string name="min_playback_duration_description">Die Mindestlänge eines Songs, die gespielt werden muss, bevor er als „gespielt“ gilt.</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Mindestwiedergabedauer</string>
     <string name="import_online">Importieren Sie eine „m3u“-Wiedergabeliste</string>
     <string name="import_csv">Importieren Sie eine „CSV“-Wiedergabeliste</string>
     <string name="playlist_add_local_to_synced_note">Hinweis: Das Hinzufügen lokaler Songs zu synchronisierten/Remote-Playlists wird nicht unterstützt. Jede andere Kombination ist gültig</string>
     <string name="auto_download_on_like">Automatischer Download bei Like</string>
     <string name="auto_download_on_like_desc">Laden Sie Songs automatisch herunter, wenn sie Ihnen gefallen</string>
     <string name="swipe_sensitivity">Wischempfindlichkeit des Mini-Players</string>
-    <string name="swipe_sensitivity_desc">Passen Sie an, wie empfindlich Wischgesten beim Wechseln von Songs sind</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">Sind Sie sicher, dass Sie alle zwischengespeicherten Songs löschen möchten?</string>
     <string name="clear_image_cache_dialog">Sind Sie sicher, dass Sie alle zwischengespeicherten Bilder löschen möchten?</string>
     <string name="clear_downloads_dialog">Sind Sie sicher, dass Sie alle Downloads löschen möchten?</string>
     <string name="disable">Deaktivieren</string>
-    <string name="pause_remote_listen_history">Pausieren des Hörverlaufs mit YouTube Music</string>
     <string name="not_logged_in_youtube">Nicht bei YouTube angemeldet</string>
     <string name="default_links">Unterstützte Links öffnen</string>
     <string name="open_app_settings_error">Die App-Einstellungen konnten nicht geöffnet werden</string>
@@ -163,16 +136,7 @@
         <item quantity="one">1 second</item>
         <item quantity="other">%d Sekunden</item>
     </plurals>
-    <!-- Player Settings -->
-    <string name="disable_load_more_when_repeat_all">Deaktivieren Sie „Mehr laden, wenn alles wiederholt wird“.</string>
-    <string name="disable_load_more_when_repeat_all_desc">Wenn der Modus „Alle wiederholen“ aktiviert ist, werden nicht automatisch weitere Songs und ähnliche Inhalte geladen</string>
-    <!-- Material 3 Settings Sections -->
-    <string name="settings_section_ui">Benutzeroberfläche</string>
-    <string name="settings_section_privacy">Datenschutz &amp; Sicherheit</string>
-    <string name="settings_section_player">Spieler &amp; Medien</string>
     <string name="settings_section_player_content">Inhalt von Spieler &amp;</string>
-    <string name="settings_section_storage">Speicher &amp; Daten</string>
-    <string name="settings_section_system">System &amp; Über</string>
     <string name="manage_tags">Verwalten Tags</string>
     <string name="add_tag">Tag Hinzufügen</string>
     <string name="edit_tag">Tag bearbeiten</string>
@@ -231,8 +195,6 @@
     <string name="local_songs_scan_folders_desc">Lass Titel überspringen, die in Ordnern gespeichert sind, deren Pfad mit einem der folgenden übereinstimmt.</string>
     <string name="local_songs_scan_folders_empty">Es wurden noch keine Ordner ausgeschlossen.</string>
     <string name="local_songs_scan_folders_add">Ordner hinzufügen</string>
-    <string name="local_songs_scan_folders_dialog_title">Ordner ausschließen</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Music/Ringtones</string>
     <string name="local_songs_no_matches_title">Es wurden keine passenden lokalen Titel gefunden</string>
     <string name="local_songs_no_matches_desc">Versuche es mit einem anderen Titel, Interpreten oder Albumnamen.</string>
     <string name="sort_by_album">Album</string>

@@ -271,20 +271,13 @@
     <string name="disable_blur">Desativar efeitos de borrão</string>
     <string name="disable_blur_desc">Desative os efeitos de desfoque em todo o aplicativo</string>
     <string name="player">Tela de Reprodução</string>
-    <string name="left">Esquerda</string>
-    <string name="center">Centro</string>
-    <string name="right">Direita</string>
     <string name="player_slider_style">Estilo do controle deslizante do player</string>
-    <string name="squiggly">Ondulado</string>
     <string name="misc">Diverso</string>
     <string name="default_open_tab">Guia padrão aberta</string>
     <string name="grid_cell_size">Tamanho da célula da grade</string>
     <string name="small">Pequeno</string>
     <string name="big">Grande</string>
     <string name="lyrics_animation_style">Estilo da animação das letras</string>
-    <string name="none">Nenhuma</string>
-    <string name="fade">Desvanecimento</string>
-    <string name="karaoke">Karaokê</string>
     <string name="lyrics_line_spacing">Espaçamento entre linhas das letras</string>
     <string name="content">Conteúdo</string>
     <string name="action_logout">Sair</string>
@@ -420,7 +413,6 @@
     <string name="presence_manager_stopped">Gerenciador do Presence: parou</string>
     <string name="filter_levels">Níveis de filtro</string>
     <string name="experimental_features">Funções experimentais</string>
-    <string name="open">Abrir</string>
     <string name="reset_to_default_levels">Restaurar para o padrão</string>
     <string name="no_logs">Sem Logs</string>
     <string name="show_nerd_stats">Mostrar estatísticas para nerds</string>
@@ -636,8 +628,6 @@
     <string name="join_session">Entrar na sessão</string>
     <string name="session_link">Link da sessão</string>
     <string name="session_code">Código da sessão</string>
-    <string name="participants">Participantes</string>
-    <string name="host">Anfitrião</string>
     <string name="add_current_song">Adicionar música atual</string>
     <string name="enabled">Habilitado</string>
     <string name="disabled">Desabilitado</string>

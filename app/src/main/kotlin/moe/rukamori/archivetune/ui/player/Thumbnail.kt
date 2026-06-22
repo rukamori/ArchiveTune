@@ -437,31 +437,36 @@ fun Thumbnail(
                                     val country = Locale.getDefault().country
                                     if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
                                 }
-                            val shouldAnimateCanvas =
+                            val shouldUseCanvas =
                                 archiveTuneCanvasEnabled &&
-                                    !lowDataModeActive &&
                                     playerDesignStyle != PlayerDesignStyle.V7 &&
                                     playerDesignStyle != PlayerDesignStyle.V8 &&
                                     item.mediaId.isNotBlank() &&
                                     item.mediaId == currentMediaItem?.mediaId
+                            val shouldFetchCanvas = shouldUseCanvas && !lowDataModeActive
                             var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
                             var canvasFetchedAtMs by remember(item.mediaId) { mutableLongStateOf(0L) }
                             var canvasFetchInFlight by remember(item.mediaId) { mutableStateOf(false) }
 
-                            LaunchedEffect(shouldAnimateCanvas) {
-                                if (!shouldAnimateCanvas) {
+                            LaunchedEffect(shouldUseCanvas) {
+                                if (!shouldUseCanvas) {
                                     canvasArtwork = null
                                     canvasFetchedAtMs = 0L
                                     canvasFetchInFlight = false
                                 }
                             }
 
-                            LaunchedEffect(shouldAnimateCanvas, item.mediaId) {
-                                if (!shouldAnimateCanvas) return@LaunchedEffect
+                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId) {
+                                if (!shouldUseCanvas) return@LaunchedEffect
 
                                 CanvasArtworkPlaybackCache.get(item.mediaId)?.let { cached ->
                                     canvasArtwork = cached
                                     canvasFetchedAtMs = System.currentTimeMillis()
+                                    canvasFetchInFlight = false
+                                    return@LaunchedEffect
+                                }
+
+                                if (!shouldFetchCanvas) {
                                     canvasFetchInFlight = false
                                     return@LaunchedEffect
                                 }
@@ -650,7 +655,7 @@ fun Thumbnail(
                                                     .let { if (shouldCropArtwork) it.aspectRatio(1f) else it },
                                         )
 
-                                        if (shouldAnimateCanvas &&
+                                        if (shouldUseCanvas &&
                                             (!primaryCanvasUrl.isNullOrBlank() || !fallbackCanvasUrl.isNullOrBlank())
                                         ) {
                                             CanvasArtworkPlayer(

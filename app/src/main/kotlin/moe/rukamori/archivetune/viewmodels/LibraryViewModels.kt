@@ -68,6 +68,7 @@ import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.constants.SongSortTypeKey
 import moe.rukamori.archivetune.constants.TopSize
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
@@ -398,7 +399,7 @@ class LibraryPlaylistsViewModel
     @Inject
     constructor(
         @ApplicationContext context: Context,
-        database: MusicDatabase,
+        private val database: MusicDatabase,
         private val syncUtils: SyncUtils,
     ) : ViewModel() {
         val allPlaylists =
@@ -422,6 +423,17 @@ class LibraryPlaylistsViewModel
                 syncUtils.syncSavedPlaylists()
                 syncUtils.syncAutoSyncPlaylists()
                 _isRefreshing.value = false
+            }
+        }
+
+        fun updateCustomPlaylistOrder(playlists: List<Playlist>) {
+            if (playlists.isEmpty()) return
+            viewModelScope.launch(Dispatchers.IO) {
+                database.withTransaction {
+                    playlists.forEachIndexed { index, playlist ->
+                        setPlaylistCustomOrder(playlist.id, index)
+                    }
+                }
             }
         }
 

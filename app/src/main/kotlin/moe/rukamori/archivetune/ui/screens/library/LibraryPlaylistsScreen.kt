@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -38,8 +37,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -54,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,13 +93,12 @@ import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.PlaylistSortDescendingKey
+import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.constants.PlaylistSortTypeKey
 import moe.rukamori.archivetune.constants.PureBlackKey
-import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.entities.Playlist
-import moe.rukamori.archivetune.db.entities.PlaylistEntity
+import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
@@ -114,6 +113,8 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryPlaylistsViewModel
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -135,12 +136,7 @@ fun LibraryPlaylistsScreen(
             PlaylistSortTypeKey,
             PlaylistSortType.CUSTOM,
         )
-    val (sortDescending, onSortDescendingChange) =
-        rememberPreference(
-            PlaylistSortDescendingKey,
-            true,
-        )
-    val (ytmSync) = rememberPreference(YtmSyncKey, true)
+    var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
     val isDarkTheme = isSystemInDarkTheme()
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
 
@@ -162,10 +158,40 @@ fun LibraryPlaylistsScreen(
                 matchesName && matchesTags && matchesVisibility
             }
         }
+    val mutablePlaylists = remember { mutableStateListOf<Playlist>() }
 
     var isGridView by rememberSaveable { mutableStateOf(false) }
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val lazyListState = rememberLazyListState()
+    var pendingPlaylistOrderUpdate by remember { mutableStateOf(false) }
+    val reorderableState =
+        rememberReorderableLazyListState(
+            lazyListState = lazyListState,
+            scrollThresholdPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        ) { from, to ->
+            if (from.index in mutablePlaylists.indices && to.index in mutablePlaylists.indices) {
+                mutablePlaylists.move(from.index, to.index)
+                pendingPlaylistOrderUpdate = true
+            }
+        }
+
+    LaunchedEffect(visiblePlaylists) {
+        mutablePlaylists.clear()
+        mutablePlaylists.addAll(visiblePlaylists)
+    }
+
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging && pendingPlaylistOrderUpdate) {
+            viewModel.updateCustomPlaylistOrder(
+                mergeVisiblePlaylistOrder(
+                    currentOrder = playlists,
+                    visibleOrder = mutablePlaylists,
+                ),
+            )
+            pendingPlaylistOrderUpdate = false
+        }
+    }
 
     // Dialog launcher
     if (showCreatePlaylistDialog) {
@@ -257,6 +283,20 @@ fun LibraryPlaylistsScreen(
 
                 // Right: list/grid toggle & add button
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (sortType == PlaylistSortType.CUSTOM) {
+                        IconButton(
+                            onClick = { locked = !locked },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
+                                contentDescription = null,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
                     // List/Grid Toggle
                     Row(
                         modifier =
@@ -355,7 +395,11 @@ fun LibraryPlaylistsScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(visiblePlaylists) { playlist ->
+                    items(
+                        items = visiblePlaylists,
+                        key = { playlist -> playlist.id },
+                        contentType = { "playlist_grid" },
+                    ) { playlist ->
                         PlaylistGridCard(
                             playlist = playlist,
                             onClick = {
@@ -383,45 +427,83 @@ fun LibraryPlaylistsScreen(
                 }
             } else {
                 val spaceBetween = if (isDarkTheme && pureBlack) 0.dp else 12.dp
+                val listPlaylists = if (sortType == PlaylistSortType.CUSTOM) mutablePlaylists else visiblePlaylists
+                val showDragHandles = sortType == PlaylistSortType.CUSTOM && !locked
                 LazyColumn(
+                    state = lazyListState,
                     contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
                     verticalArrangement = Arrangement.spacedBy(spaceBetween),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    itemsIndexed(visiblePlaylists) { index, playlist ->
-                        val showDivider = isDarkTheme && pureBlack && index > 0
-                        if (showDivider) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                thickness = 0.5.dp,
-                            )
-                        }
-                        PlaylistListCard(
-                            playlist = playlist,
-                            onClick = {
-                                openPlaylist(navController, playlist)
-                            },
-                            onPlay = {
-                                playerConnection?.let { conn ->
-                                    coroutineScope.launch {
-                                        database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
-                                            if (songs.isNotEmpty()) {
-                                                conn.playQueue(ListQueue(items = songs.map { it.song.toMediaItem() }))
+                    itemsIndexed(
+                        items = listPlaylists,
+                        key = { _, playlist -> playlist.id },
+                        contentType = { _, _ -> "playlist_list" },
+                    ) { index, playlist ->
+                        ReorderableItem(
+                            state = reorderableState,
+                            key = playlist.id,
+                            modifier =
+                                Modifier.graphicsLayer {
+                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                                },
+                        ) {
+                            val showDivider = isDarkTheme && pureBlack && index > 0
+                            if (showDivider) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                                    thickness = 0.5.dp,
+                                )
+                            }
+                            PlaylistListCard(
+                                playlist = playlist,
+                                onClick = {
+                                    openPlaylist(navController, playlist)
+                                },
+                                onPlay = {
+                                    playerConnection?.let { conn ->
+                                        coroutineScope.launch {
+                                            database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
+                                                if (songs.isNotEmpty()) {
+                                                    conn.playQueue(ListQueue(items = songs.map { it.song.toMediaItem() }))
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            },
-                            onMenuClick = {
-                                menuState.show {
-                                    triggerPlaylistMenu(playlist, coroutineScope, menuState)
-                                }
-                            },
-                        )
+                                },
+                                onMenuClick = {
+                                    menuState.show {
+                                        triggerPlaylistMenu(playlist, coroutineScope, menuState)
+                                    }
+                                },
+                                showDragHandle = showDragHandles,
+                                dragHandleModifier =
+                                    Modifier
+                                        .draggableHandle()
+                                        .graphicsLayer { alpha = 0.99f },
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+private fun mergeVisiblePlaylistOrder(
+    currentOrder: List<Playlist>,
+    visibleOrder: List<Playlist>,
+): List<Playlist> {
+    if (visibleOrder.isEmpty()) return currentOrder
+
+    val visibleIds = visibleOrder.mapTo(HashSet(visibleOrder.size)) { playlist -> playlist.id }
+    val reorderedVisible = visibleOrder.iterator()
+    return currentOrder.map { playlist ->
+        if (playlist.id in visibleIds) {
+            reorderedVisible.next()
+        } else {
+            playlist
         }
     }
 }
@@ -574,6 +656,8 @@ fun PlaylistListCard(
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onMenuClick: () -> Unit,
+    showDragHandle: Boolean = false,
+    dragHandleModifier: Modifier = Modifier,
 ) {
     val cardBgColor =
         rememberArtworkCardColor(
@@ -706,6 +790,19 @@ fun PlaylistListCard(
                 painter = painterResource(id = R.drawable.more_vert),
                 contentDescription = stringResource(R.string.options_label),
             )
+        }
+
+        if (showDragHandle) {
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = {},
+                modifier = dragHandleModifier.size(36.dp),
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.drag_handle),
+                    contentDescription = null,
+                )
+            }
         }
     }
 }

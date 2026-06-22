@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -271,6 +272,7 @@ private fun SearchBarInputField(
     focusRequester: FocusRequester = remember { FocusRequester() },
     leftFocusRequester: FocusRequester? = null,
 ) {
+    val coercedQuery = remember(query) { query.coerceTextRanges() }
     val focused = interactionSource.collectIsFocusedAsState().value
     val textColor =
         LocalTextStyle.current.color.takeOrElse {
@@ -290,8 +292,8 @@ private fun SearchBarInputField(
         }
 
         BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
+            value = coercedQuery,
+            onValueChange = { onQueryChange(it.coerceTextRanges()) },
             modifier =
                 Modifier
                     .weight(1f)
@@ -319,7 +321,7 @@ private fun SearchBarInputField(
                         }
                     }.onKeyEvent {
                         if (it.key == Key.Enter) {
-                            onSearch(query.text)
+                            onSearch(coercedQuery.text)
                             return@onKeyEvent true
                         }
                         false
@@ -329,11 +331,11 @@ private fun SearchBarInputField(
             textStyle = LocalTextStyle.current.merge(TextStyle(color = textColor)),
             cursorBrush = SolidColor(colors.cursorColor),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
+            keyboardActions = KeyboardActions(onSearch = { onSearch(coercedQuery.text) }),
             interactionSource = interactionSource,
             decorationBox = @Composable { innerTextField ->
                 TextFieldDefaults.DecorationBox(
-                    value = query.text,
+                    value = coercedQuery.text,
                     innerTextField = innerTextField,
                     enabled = enabled,
                     singleLine = true,
@@ -354,6 +356,23 @@ private fun SearchBarInputField(
         }
     }
 }
+
+private fun TextFieldValue.coerceTextRanges(): TextFieldValue {
+    val textLength = text.length
+    val coercedSelection = selection.coerceInText(textLength)
+    val coercedComposition = composition?.coerceInText(textLength)
+    return if (coercedSelection == selection && coercedComposition == composition) {
+        this
+    } else {
+        copy(selection = coercedSelection, composition = coercedComposition)
+    }
+}
+
+private fun TextRange.coerceInText(textLength: Int): TextRange =
+    TextRange(
+        start = minOf(start, end).coerceIn(0, textLength),
+        end = maxOf(start, end).coerceIn(0, textLength),
+    )
 
 // Measurement specs
 val InputFieldHeight = 48.dp

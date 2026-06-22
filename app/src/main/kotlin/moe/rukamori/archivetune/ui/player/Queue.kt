@@ -86,7 +86,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.media3.common.Timeline
@@ -1142,7 +1141,6 @@ fun Queue(
                             ),
                 ) {
                     QueueSelectionFloatingToolbar(
-                        selectedCount = selectedSongs.size,
                         allSelected = selectedSongs.size == mutableQueueWindows.size,
                         pureBlack = pureBlack,
                         onClose = ::clearSelection,
@@ -1168,8 +1166,7 @@ fun Queue(
                         },
                         modifier =
                             Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .fillMaxWidth(),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -1179,7 +1176,6 @@ fun Queue(
 
 @Composable
 private fun QueueSelectionFloatingToolbar(
-    selectedCount: Int,
     allSelected: Boolean,
     pureBlack: Boolean,
     onClose: () -> Unit,
@@ -1224,18 +1220,6 @@ private fun QueueSelectionFloatingToolbar(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.elements_selected, selectedCount),
-                style = MaterialTheme.typography.labelLarge,
-                color = toolbarContentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier =
-                    Modifier
-                        .widthIn(max = 132.dp)
-                        .padding(horizontal = 8.dp),
-            )
-
             QueueSelectionToolbarAction(
                 icon = if (allSelected) R.drawable.deselect else R.drawable.select_all,
                 contentDescription = null,

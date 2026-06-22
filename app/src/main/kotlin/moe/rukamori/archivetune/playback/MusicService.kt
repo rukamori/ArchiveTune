@@ -590,6 +590,7 @@ class MusicService :
     private var togetherHeartbeatJob: Job? = null
     private var togetherClock: moe.rukamori.archivetune.together.TogetherClock? = null
     private var togetherSelfParticipantId: String? = null
+    private var togetherAuthorityParticipantId: String? = null
     private var togetherLastAppliedQueueHash: String? = null
     private var togetherIsOnlineSession: Boolean = false
 
@@ -620,6 +621,7 @@ class MusicService :
     private fun isTogetherApplyingRemote(): Boolean = togetherApplyingRemote
 
     private val togetherHostId: String = "host"
+    private val togetherParticipantNames = ConcurrentHashMap<String, String>()
     private var lastTogetherNoticeAtElapsedMs: Long = 0L
     private var lastTogetherNoticeKey: String? = null
 
@@ -642,6 +644,47 @@ class MusicService :
         lastTogetherNoticeAtElapsedMs = now
         scope.launch(SilentHandler) {
             Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showTogetherParticipantNotification(
+        participantName: String,
+        joined: Boolean,
+    ) {
+        val normalizedName = participantName.trim().ifBlank { getString(R.string.together_unknown_participant) }
+        val contentText =
+            getString(
+                if (joined) {
+                    R.string.together_participant_joined_notification
+                } else {
+                    R.string.together_participant_left_notification
+                },
+                normalizedName,
+            )
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat
+                .Builder(this, TOGETHER_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_together))
+                .setContentText(contentText)
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(TOGETHER_PARTICIPANT_NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            Timber.tag("Together").v(error, "Unable to show participant notification")
         }
     }
 
@@ -776,6 +819,13 @@ class MusicService :
                         CHANNEL_ID,
                         getString(R.string.music_player),
                         NotificationManager.IMPORTANCE_LOW,
+                    ),
+                )
+                nm?.createNotificationChannel(
+                    NotificationChannel(
+                        TOGETHER_NOTIFICATION_CHANNEL_ID,
+                        getString(R.string.music_together),
+                        NotificationManager.IMPORTANCE_DEFAULT,
                     ),
                 )
             }
@@ -3152,6 +3202,7 @@ class MusicService :
                     sessionKey = sessionKey,
                     hostDisplayName = displayName.trim().ifBlank { getString(R.string.app_name) },
                     initialSettings = settings,
+                    hostParticipantId = togetherHostId,
                 )
 
             server.onEvent = { event ->
@@ -3178,20 +3229,22 @@ class MusicService :
             togetherBroadcastJob =
                 ioScope.launch(SilentHandler) {
                     while (togetherServer === server) {
-                        val state = buildTogetherRoomState(sessionId = sessionId, hostId = togetherHostId)
-                        server.broadcastRoomState(state)
-                        scope.launch(SilentHandler) {
-                            val hosting = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Hosting
-                            if (hosting?.sessionId == sessionId) {
-                                togetherSessionState.value =
-                                    hosting.copy(
-                                        settings = server.currentSettings(),
-                                        roomState =
-                                            state.copy(
-                                                participants = server.currentParticipants(),
-                                                settings = server.currentSettings(),
-                                            ),
-                                    )
+                        if (togetherAuthorityParticipantId == null || togetherAuthorityParticipantId == togetherHostId) {
+                            val state = buildTogetherRoomState(sessionId = sessionId, hostId = togetherHostId)
+                            server.broadcastRoomState(state)
+                            scope.launch(SilentHandler) {
+                                val hosting = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Hosting
+                                if (hosting?.sessionId == sessionId) {
+                                    togetherSessionState.value =
+                                        hosting.copy(
+                                            settings = server.currentSettings(),
+                                            roomState =
+                                                state.copy(
+                                                    participants = server.currentParticipants(),
+                                                    settings = server.currentSettings(),
+                                                ),
+                                        )
+                                }
                             }
                         }
                         kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
@@ -3341,25 +3394,31 @@ class MusicService :
                 ioScope.launch(SilentHandler) {
                     while (togetherOnlineHost === onlineHost) {
                         val state =
-                            buildTogetherRoomState(
-                                sessionId = created.sessionId,
-                                hostId = togetherHostId,
-                            )
-                        onlineHost.broadcastRoomState(state)
-                        scope.launch(SilentHandler) {
-                            val hosting =
-                                togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline
-                            if (hosting?.sessionId == created.sessionId) {
-                                val currentSettings = onlineHost.currentSettings()
-                                togetherSessionState.value =
-                                    hosting.copy(
-                                        settings = currentSettings,
-                                        roomState =
-                                            state.copy(
-                                                participants = onlineHost.currentParticipants(),
-                                                settings = currentSettings,
-                                            ),
-                                    )
+                            if (togetherAuthorityParticipantId == null || togetherAuthorityParticipantId == togetherHostId) {
+                                buildTogetherRoomState(
+                                    sessionId = created.sessionId,
+                                    hostId = togetherHostId,
+                                )
+                            } else {
+                                null
+                            }
+                        if (state != null) {
+                            onlineHost.broadcastRoomState(state)
+                            scope.launch(SilentHandler) {
+                                val hosting =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline
+                                if (hosting?.sessionId == created.sessionId) {
+                                    val currentSettings = onlineHost.currentSettings()
+                                    togetherSessionState.value =
+                                        hosting.copy(
+                                            settings = currentSettings,
+                                            roomState =
+                                                state.copy(
+                                                    participants = onlineHost.currentParticipants(),
+                                                    settings = currentSettings,
+                                                ),
+                                        )
+                                }
                             }
                         }
                         kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
@@ -3457,6 +3516,30 @@ class MusicService :
 
                             is moe.rukamori.archivetune.together.TogetherClientEvent.RoomState -> {
                                 applyRemoteRoomState(event.state)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HostTransferred -> {
+                                handleTogetherClientHostTransferred(event.transfer)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ControlRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToControlPlayback == true
+                                ) {
+                                    applyHostControl(event.request.action)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.AddTrackRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToAddTracks == true
+                                ) {
+                                    applyHostAddTrack(event.request.track, event.request.mode)
+                                }
                             }
 
                             is moe.rukamori.archivetune.together.TogetherClientEvent.JoinDecision -> {
@@ -3692,6 +3775,30 @@ class MusicService :
                                 applyRemoteRoomState(event.state)
                             }
 
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HostTransferred -> {
+                                handleTogetherClientHostTransferred(event.transfer)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ControlRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToControlPlayback == true
+                                ) {
+                                    applyHostControl(event.request.action)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.AddTrackRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToAddTracks == true
+                                ) {
+                                    applyHostAddTrack(event.request.track, event.request.mode)
+                                }
+                            }
+
                             is moe.rukamori.archivetune.together.TogetherClientEvent.JoinDecision -> {
                                 if (!event.decision.approved) {
                                     scope.launch(SilentHandler) {
@@ -3861,6 +3968,24 @@ class MusicService :
         }
     }
 
+    fun transferTogetherHostOwnership(participantId: String) {
+        val targetId = participantId.trim()
+        if (targetId.isBlank() || targetId == togetherHostId || targetId == togetherSelfParticipantId) return
+        val server = togetherServer
+        val onlineHost = togetherOnlineHost
+        val client = togetherClient
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        ioScope.launch(SilentHandler) {
+            when {
+                server != null -> server.transferHostOwnership(targetId)
+                onlineHost != null -> onlineHost.transferHostOwnership(targetId)
+                joined?.role is moe.rukamori.archivetune.together.TogetherRole.Host && client != null -> {
+                    client.transferHostOwnership(joined.sessionId, targetId)
+                }
+            }
+        }
+    }
+
     fun requestTogetherControl(action: moe.rukamori.archivetune.together.ControlAction) {
         val client =
             togetherClient ?: run {
@@ -3946,6 +4071,32 @@ class MusicService :
                 val settings = currentSettings()
                 if (!settings.allowGuestsToAddTracks) return
                 applyHostAddTrack(event.request.track, event.request.mode)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.ParticipantJoined -> {
+                val participant = event.participant
+                if (!participant.isHost && !participant.isPending) {
+                    togetherParticipantNames[participant.id] = participant.name
+                    showTogetherParticipantNotification(participant.name, joined = true)
+                }
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.ParticipantLeft -> {
+                val participantName =
+                    togetherParticipantNames.remove(event.participantId)
+                        ?: return
+                showTogetherParticipantNotification(participantName, joined = false)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.HostTransferred -> {
+                handleTogetherHostTransferred(event.participantId)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.RoomStateReceived -> {
+                if (event.state.hostId != togetherHostId) {
+                    togetherSelfParticipantId = togetherHostId
+                    applyRemoteRoomState(event.state, force = true)
+                }
             }
 
             is moe.rukamori.archivetune.together.TogetherServerEvent.Error -> {
@@ -4090,6 +4241,109 @@ class MusicService :
                 sentAtElapsedRealtimeMs = android.os.SystemClock.elapsedRealtime(),
             )
         }
+
+    private fun markTogetherHostParticipant(
+        state: moe.rukamori.archivetune.together.TogetherRoomState,
+        hostId: String,
+    ): moe.rukamori.archivetune.together.TogetherRoomState =
+        state.copy(
+            hostId = hostId,
+            participants =
+                state.participants.map { participant ->
+                    participant.copy(isHost = participant.id == hostId)
+                },
+        )
+
+    private fun handleTogetherHostTransferred(participantId: String) {
+        togetherAuthorityParticipantId = participantId
+        if (participantId != togetherHostId) {
+            togetherSelfParticipantId = togetherHostId
+        }
+        scope.launch(SilentHandler) {
+            when (val current = togetherSessionState.value) {
+                is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                    val roomState = current.roomState?.let { markTogetherHostParticipant(it, participantId) }
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                            role =
+                                if (participantId == togetherHostId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            sessionId = current.sessionId,
+                            selfParticipantId = togetherHostId,
+                            roomState =
+                                roomState
+                                    ?: moe.rukamori.archivetune.together.TogetherRoomState(
+                                        sessionId = current.sessionId,
+                                        hostId = participantId,
+                                    ),
+                        )
+                }
+
+                is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                    val roomState = current.roomState?.let { markTogetherHostParticipant(it, participantId) }
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                            role =
+                                if (participantId == togetherHostId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            sessionId = current.sessionId,
+                            selfParticipantId = togetherHostId,
+                            roomState =
+                                roomState
+                                    ?: moe.rukamori.archivetune.together.TogetherRoomState(
+                                        sessionId = current.sessionId,
+                                        hostId = participantId,
+                                    ),
+                        )
+                }
+
+                is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                    togetherSessionState.value =
+                        current.copy(
+                            role =
+                                if (current.selfParticipantId == participantId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            roomState = markTogetherHostParticipant(current.roomState, participantId),
+                        )
+                }
+
+                else -> Unit
+            }
+        }
+    }
+
+    private fun handleTogetherClientHostTransferred(transfer: moe.rukamori.archivetune.together.HostTransferred) {
+        val participantId = transfer.participantId
+        handleTogetherHostTransferred(participantId)
+        val client = togetherClient ?: return
+        if (participantId != togetherSelfParticipantId) return
+        startTogetherAuthorityBroadcast(transfer.sessionId, participantId, client)
+    }
+
+    private fun startTogetherAuthorityBroadcast(
+        sessionId: String,
+        participantId: String,
+        client: moe.rukamori.archivetune.together.TogetherClient,
+    ) {
+        togetherBroadcastJob?.cancel()
+        togetherBroadcastJob =
+            ioScope.launch(SilentHandler) {
+                while (togetherClient === client && togetherAuthorityParticipantId == participantId) {
+                    val state = buildTogetherRoomState(sessionId = sessionId, hostId = participantId)
+                    client.sendRoomState(state)
+                    kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
+                }
+            }
+    }
 
     private suspend fun applyRemoteRoomState(
         state: moe.rukamori.archivetune.together.TogetherRoomState,
@@ -4264,6 +4518,8 @@ class MusicService :
 
         togetherClock = null
         togetherSelfParticipantId = null
+        togetherAuthorityParticipantId = null
+        togetherParticipantNames.clear()
         togetherLastAppliedQueueHash = null
         togetherIsOnlineSession = false
         togetherApplyingRemote = false
@@ -4577,6 +4833,11 @@ class MusicService :
         }
     }
 
+    private fun shouldKeepAudioEffectSessionOpen(): Boolean {
+        val playbackState = player.playbackState
+        return playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY
+    }
+
     private fun openAudioEffectSession() {
         if (isAudioEffectSessionOpened) return
         val sessionId = player.audioSessionId
@@ -4584,13 +4845,7 @@ class MusicService :
         isAudioEffectSessionOpened = true
         openedAudioSessionId = sessionId
         ensureAudioEffects(sessionId)
-        sendBroadcast(
-            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
-                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
-                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-            },
-        )
+        sendOpenAudioEffectSessionBroadcast(sessionId)
     }
 
     private fun closeAudioEffectSession() {
@@ -4600,6 +4855,40 @@ class MusicService :
         openedAudioSessionId = null
         releaseAudioEffects()
         if (sessionId <= 0) return
+        sendCloseAudioEffectSessionBroadcast(sessionId)
+    }
+
+    private fun rebindAudioEffectSession(newSessionId: Int) {
+        if (newSessionId <= 0 || !shouldKeepAudioEffectSessionOpen()) return
+        val oldSessionId = openedAudioSessionId
+        if (!isAudioEffectSessionOpened) {
+            openAudioEffectSession()
+            return
+        }
+        if (oldSessionId == newSessionId) {
+            ensureAudioEffects(newSessionId)
+            return
+        }
+
+        if (oldSessionId != null && oldSessionId > 0) {
+            sendCloseAudioEffectSessionBroadcast(oldSessionId)
+        }
+        openedAudioSessionId = newSessionId
+        ensureAudioEffects(newSessionId)
+        sendOpenAudioEffectSessionBroadcast(newSessionId)
+    }
+
+    private fun sendOpenAudioEffectSessionBroadcast(sessionId: Int) {
+        sendBroadcast(
+            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
+                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+            },
+        )
+    }
+
+    private fun sendCloseAudioEffectSessionBroadcast(sessionId: Int) {
         sendBroadcast(
             Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
                 putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
@@ -5286,36 +5575,14 @@ class MusicService :
             handleDeviceMuteStateChanged(playbackRequestedWhileMuted = true)
         }
         if (events.contains(Player.EVENT_AUDIO_SESSION_ID)) {
-            val newSessionId = this.player.audioSessionId
-            val oldSessionId = openedAudioSessionId
-            if (isAudioEffectSessionOpened && newSessionId > 0 && oldSessionId != null && oldSessionId > 0 &&
-                oldSessionId != newSessionId
-            ) {
-                sendBroadcast(
-                    Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
-                        putExtra(AudioEffect.EXTRA_AUDIO_SESSION, oldSessionId)
-                        putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-                    },
-                )
-                openedAudioSessionId = newSessionId
-                ensureAudioEffects(newSessionId)
-                sendBroadcast(
-                    Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
-                        putExtra(AudioEffect.EXTRA_AUDIO_SESSION, newSessionId)
-                        putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-                        putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                    },
-                )
-            }
+            rebindAudioEffectSession(this.player.audioSessionId)
         }
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
                 Player.EVENT_PLAY_WHEN_READY_CHANGED,
             )
         ) {
-            val playbackState = player.playbackState
-            val keepAudioEffectSessionOpen =
-                playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY
+            val keepAudioEffectSessionOpen = shouldKeepAudioEffectSessionOpen()
             if (player.playWhenReady && keepAudioEffectSessionOpen) {
                 ensureAudioFocusForActivePlayback()
             }
@@ -6984,6 +7251,8 @@ class MusicService :
         private const val TAG = "MusicService"
         const val CHANNEL_ID = "music_channel_01"
         const val NOTIFICATION_ID = 888
+        private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
+        private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 8 * 1024 * 1024L
         val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)

@@ -92,6 +92,7 @@ fun FloatingNavigationToolbar(
     shuffleContentDescription: String = "",
     onMusicRecognitionClick: (() -> Unit)? = null,
     musicRecognitionContentDescription: String = "",
+    onMusicTogetherClick: (() -> Unit)? = null,
     scrollBehavior: FloatingToolbarScrollBehavior? = null,
     isSelected: (Screens) -> Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
@@ -121,6 +122,7 @@ fun FloatingNavigationToolbar(
                         shuffleContentDescription = shuffleContentDescription,
                         onMusicRecognitionClick = onMusicRecognitionClick,
                         musicRecognitionContentDescription = musicRecognitionContentDescription,
+                        onMusicTogetherClick = onMusicTogetherClick,
                     )
                 },
                 modifier = Modifier.widthIn(max = 480.dp),
@@ -257,6 +259,7 @@ private fun FloatingToolbarOverflowAction(
     shuffleContentDescription: String,
     onMusicRecognitionClick: (() -> Unit)?,
     musicRecognitionContentDescription: String,
+    onMusicTogetherClick: (() -> Unit)?,
 ) {
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
@@ -307,6 +310,51 @@ private fun FloatingToolbarOverflowAction(
                     }
                 },
                 enabled = onMusicRecognitionClick != null,
+                colors =
+                    MenuDefaults.itemColors(
+                        textColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface,
+                        leadingIconColor = if (pureBlack) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTextColor =
+                            if (pureBlack) {
+                                Color.White.copy(
+                                    alpha = 0.38f,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                        disabledLeadingIconColor =
+                            if (pureBlack) {
+                                Color.White.copy(
+                                    alpha = 0.38f,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            },
+                    ),
+            )
+
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.music_together)) },
+                onClick = {
+                    fabMenuExpanded = false
+                    onMusicTogetherClick?.invoke()
+                },
+                leadingIcon = {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = CircleShape,
+                        color = floatingToolbarMenuIconContainerColor(pureBlack = pureBlack),
+                        contentColor = floatingToolbarMenuIconContentColor(pureBlack = pureBlack),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(R.drawable.multi_user),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
+                enabled = onMusicTogetherClick != null,
                 colors =
                     MenuDefaults.itemColors(
                         textColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -406,7 +454,7 @@ private fun FloatingNavigationToolbarItem(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(24.dp)
-    val showLabel = selected && showSelectedLabel && screen.route != Screens.Search.route
+    val showLabel = selected && showSelectedLabel
     val transition = updateTransition(targetState = selected, label = "navItem_${screen.route}")
 
     val contentColor by transition.animateColor(
@@ -439,7 +487,7 @@ private fun FloatingNavigationToolbarItem(
         },
         label = "horizontalPadding",
     ) { isSelected ->
-        if (isSelected && showSelectedLabel && screen.route != Screens.Search.route) 16.dp else 12.dp
+        if (isSelected && showSelectedLabel) 16.dp else 12.dp
     }
 
     val interactionSource = remember { MutableInteractionSource() }

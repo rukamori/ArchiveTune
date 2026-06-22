@@ -1,16 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    
     <string name="home">Home</string>
     <string name="songs">Songs</string>
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>
     <string name="playlists">Playlists</string>
-    
     <plurals name="n_selected">
         <item quantity="other">%d selected</item>
     </plurals>
-    
     <string name="history">History</string>
     <string name="stats">Stats</string>
     <string name="mood_and_genres">Mood &amp; Genres</string>
@@ -27,7 +24,6 @@
     <string name="yesterday">Yesterday</string>
     <string name="this_week">This week</string>
     <string name="last_week">Last week</string>
-    
     <string name="most_played_songs">Most played songs</string>
     <string name="search">Search</string>
     <string name="search_yt_music">Search YouTube Music</string>
@@ -45,7 +41,6 @@
     <string name="filter_featured_playlists">Featured playlists</string>
     <string name="no_results_found">No results found</string>
     <string name="top_results">Top Results</string>
-    
     <string name="library_title">Your Library</string>
     <string name="library_subtitle">Your music, organized for you</string>
     <string name="library_playlists_subtitle">All your playlists, organized for you</string>
@@ -117,9 +112,7 @@
     <string name="year_sort">Year</string>
     <string name="duration_sort">Duration</string>
     <string name="featured_album_badge">FEATURED ALBUM</string>
-    
     <string name="other_versions">Other versions</string>
-    
     <string name="liked_songs">Liked songs</string>
     <string name="downloaded_songs">Downloaded songs</string>
     <string name="playlist_is_empty">The playlist is empty</string>
@@ -131,7 +124,6 @@
     <string name="shuffle">Shuffle</string>
     <string name="music_recognition">Music Recognition</string>
     <string name="reset">Reset</string>
-    
     <string name="details">Details</string>
     <string name="edit">Edit</string>
     <string name="start_radio">Start radio</string>
@@ -176,10 +168,17 @@
     <string name="together_host_left_session">Host Leaved Sessions</string>
     <string name="together_kick">Kick</string>
     <string name="together_ban">Ban</string>
+    <string name="together_transfer_host">Transfer host</string>
+    <string name="together_approve">Approve</string>
+    <string name="together_reject">Reject</string>
     <string name="together_kick_confirm">Kick %1$s?</string>
     <string name="together_ban_confirm">Ban %1$s?</string>
+    <string name="together_transfer_host_confirm">Transfer host ownership to %1$s?</string>
     <string name="together_requesting_song_change">Requesting host to change the song\u2026</string>
     <string name="together_song_change_failed">Song change not applied. Please try again.</string>
+    <string name="together_participant_joined_notification">%1$s joined the room</string>
+    <string name="together_participant_left_notification">%1$s left the room</string>
+    <string name="together_unknown_participant">Someone</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="remove_from_queue">Remove from queue</string>
@@ -193,7 +192,6 @@
     <string name="pitch">Pitch</string>
     <string name="pitch_mode_semitones_short">st</string>
     <string name="pitch_mode_multiplier_short">x</string>
-    
     <string name="sort_by_create_date">Date added</string>
     <string name="sort_by_name">Name</string>
     <string name="sort_by_artist">Artist</string>
@@ -202,7 +200,6 @@
     <string name="sort_by_custom">Custom order</string>
     <string name="sort_order_ascending">Ascending</string>
     <string name="sort_order_descending">Descending</string>
-    
     <string name="media_id">Media id</string>
     <string name="mime_type">MIME type</string>
     <string name="no_matching_playlists">No matching playlists</string>
@@ -235,7 +232,6 @@
     <string name="add_anyway">Add anyway</string>
     <string name="duplicates_description_single">The song is already in your playlist</string>
     <string name="duplicates_description_multiple">%d songs are already in your playlist</string>
-    
     <plurals name="n_song">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
@@ -264,14 +260,12 @@
         <item quantity="one">%d year</item>
         <item quantity="other">%d years</item>
     </plurals>
-    
     <string name="added_to_playlist">Added to %s</string>
     <string name="added_n_songs_to_playlist">Added %1$d songs to %2$s</string>
     <string name="added_to_n_playlists">Added to %d playlists</string>
     <string name="added_n_songs_to_n_playlists">Added %1$d songs to %2$d playlists</string>
     <string name="playlist_synced">Playlist synced</string>
     <string name="undo">Undo</string>
-    
     <string name="lyrics_not_found">Lyrics not found</string>
     <string name="lyrics_word_sync">Word Sync</string>
     <string name="sleep_timer">Sleep timer</string>
@@ -285,7 +279,6 @@
     <string name="error_timeout">Timeout</string>
     <string name="error_malformed_stream">Source error</string>
     <string name="error_unknown">Unknown error</string>
-    
     <string name="action_like">Like</string>
     <string name="action_remove_like">Remove like</string>
     <string name="action_shuffle_on">Shuffle on</string>
@@ -293,14 +286,11 @@
     <string name="repeat_mode_off">Repeat mode off</string>
     <string name="repeat_mode_one">Repeat current song</string>
     <string name="repeat_mode_all">Repeat queue</string>
-    
     <string name="queue_all_songs">All songs</string>
     <string name="queue_searched_songs">Searched songs</string>
     <string name="queue_continue_playing">Continue Playing</string>
     <string name="queue_autoplaying_similar">Autoplaying similar music</string>
-    
     <string name="music_player">Music Player</string>
-    
     <string name="settings">Settings</string>
     <string name="appearance">Appearance</string>
     <string name="theme">Theme</string>
@@ -315,18 +305,15 @@
     <string name="custom_font">Custom font</string>
     <string name="custom_font_desc">Pick a .ttf font</string>
     <string name="custom_font_invalid">Pick a .ttf font file</string>
-    
     <string name="color_palette">Color Palette</string>
     <string name="customize_theme_colors">Choose your app theme colors</string>
     <string name="palette_default">Default</string>
-    
     <string name="palette_ocean_blue">Ocean Blue</string>
     <string name="palette_arctic_blue">Arctic</string>
     <string name="palette_midnight_navy">Midnight</string>
     <string name="palette_sky_blue">Sky Blue</string>
     <string name="palette_cobalt_blue">Cobalt</string>
     <string name="palette_electric_blue">Electric</string>
-    
     <string name="palette_emerald_green">Emerald</string>
     <string name="palette_teal_wave">Teal Wave</string>
     <string name="palette_forest_green">Forest</string>
@@ -334,21 +321,18 @@
     <string name="palette_mint_fresh">Mint</string>
     <string name="palette_olive_garden">Olive</string>
     <string name="palette_sage_green">Sage</string>
-    
     <string name="palette_sunset_orange">Sunset</string>
     <string name="palette_golden_hour">Golden</string>
     <string name="palette_warm_amber">Amber</string>
     <string name="palette_tangerine_blast">Tangerine</string>
     <string name="palette_peach">Peach</string>
     <string name="palette_mango">Mango</string>
-    
     <string name="palette_royal_purple">Royal Purple</string>
     <string name="palette_lavender_dream">Lavender</string>
     <string name="palette_grape_purple">Grape</string>
     <string name="palette_violet">Violet</string>
     <string name="palette_amethyst">Amethyst</string>
     <string name="palette_ultra_violet">Ultra Violet</string>
-    
     <string name="palette_cherry_blossom">Sakura</string>
     <string name="palette_rose_quartz">Rose Quartz</string>
     <string name="palette_magenta_pop">Magenta</string>
@@ -356,37 +340,31 @@
     <string name="palette_blush">Blush</string>
     <string name="palette_coral">Coral</string>
     <string name="palette_bubblegum">Bubblegum</string>
-    
     <string name="palette_crimson_red">Crimson</string>
     <string name="palette_youtube_red">YouTube</string>
     <string name="palette_wine_red">Wine</string>
     <string name="palette_ruby_red">Ruby</string>
     <string name="palette_scarlet">Scarlet</string>
-    
     <string name="palette_charcoal">Charcoal</string>
     <string name="palette_silver">Silver</string>
     <string name="palette_slate">Slate</string>
     <string name="palette_graphite">Graphite</string>
-    
     <string name="palette_terracotta">Terracotta</string>
     <string name="palette_coffee">Coffee</string>
     <string name="palette_mocha">Mocha</string>
     <string name="palette_sand">Sand</string>
     <string name="palette_clay">Clay</string>
-    
     <string name="palette_pastel_pink">Pastel Pink</string>
     <string name="palette_pastel_blue">Pastel Blue</string>
     <string name="palette_pastel_green">Pastel Green</string>
     <string name="palette_pastel_yellow">Pastel Yellow</string>
     <string name="palette_pastel_purple">Pastel Purple</string>
-    
     <string name="palette_neon_green">Neon Green</string>
     <string name="palette_neon_pink">Neon Pink</string>
     <string name="palette_neon_blue">Neon Blue</string>
     <string name="palette_neon_orange">Neon Orange</string>
     <string name="palette_cyberpunk">Cyberpunk</string>
     <string name="palette_synthwave">Synthwave</string>
-    
     <string name="palette_ocean">Ocean</string>
     <string name="palette_forest">Deep Forest</string>
     <string name="palette_autumn">Autumn</string>
@@ -397,7 +375,6 @@
     <string name="palette_aurora">Aurora</string>
     <string name="palette_candy">Candy</string>
     <string name="palette_rainbow">Rainbow</string>
-    
     <string name="dark_theme">Dark theme</string>
     <string name="dark_theme_on">On</string>
     <string name="dark_theme_off">Off</string>
@@ -434,16 +411,12 @@
     <string name="backdrop_blur_amount">Backdrop blur amount</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
     <string name="player">Player</string>
-    <string name="left">Left</string>
-    <string name="center">Center</string>
-    <string name="right">Right</string>
     <string name="player_slider_style">Player slider style</string>
     <string name="slider_style_standard">Standard</string>
     <string name="slider_style_wavy">Wavy</string>
     <string name="slider_style_thick">Thick</string>
     <string name="slider_style_circular">Circular</string>
     <string name="slider_style_simple">Simple</string>
-    <string name="squiggly">Squiggly</string>
     <string name="misc">Misc</string>
     <string name="haptics">Vibration</string>
     <string name="haptics_desc">Enable haptic feedback on interactive elements</string>
@@ -451,16 +424,11 @@
     <string name="grid_cell_size">Grid cell size</string>
     <string name="small">Small</string>
     <string name="big">Big</string>
-    
     <string name="lyrics_animation_style">Lyrics animation style</string>
     <string name="lyrics_mode">Lyrics mode</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
     <string name="lyrics_mode_enhanced">Enhanced</string>
     <string name="lyrics_animation_style_v2_only">Available only in V2 lyrics mode</string>
-    
-    <string name="none">None</string>
-    <string name="fade">Fade</string>
-    <string name="karaoke">Karaoke</string>
     <string name="lyrics_line_spacing">Lyrics line spacing</string>
     <string name="content">Content</string>
     <string name="action_logout">Log out</string>
@@ -644,7 +612,6 @@
     <string name="options">Options</string>
     <string name="preview">Preview</string>
     <string name="enable_discord_rpc">Enable Rich Presence</string>
-    
     <string name="scrobbling">Scrobbling</string>
     <string name="lastfm_integration">Last.fm / Libre.fm Integration</string>
     <string name="enable_scrobbling">Enable Scrobbling</string>
@@ -679,12 +646,10 @@
     <string name="lastfm_login_failed">Login failed. Try again.</string>
     <string name="duration_seconds_short">%1$ds</string>
     <string name="percent_format">%1$d%%</string>
-    
     <string name="listenbrainz_scrobbling">ListenBrainz scrobbling</string>
     <string name="listenbrainz_scrobbling_description">Enable submitting now-playing and finished listens to ListenBrainz</string>
     <string name="set_listenbrainz_token">Set ListenBrainz token</string>
     <string name="edit_listenbrainz_token">Edit ListenBrainz token</string>
-    
     <string name="discord_activity_name">Activity name</string>
     <string name="discord_activity_details">Activity details</string>
     <string name="discord_activity_state">Activity state</string>
@@ -738,17 +703,14 @@
     <string name="support_development_donate">Donate to support development</string>
     <string name="support_development_star">Star on GitHub</string>
     <string name="later">Later</string>
-    
     <string name="new_update_available">New update available</string>
     <string name="release_notes_unavailable">Release notes are unavailable</string>
     <string name="update_text">Update</string>
-    
     <string name="translate">Translate</string>
     <string name="language_label">Language</string>
     <string name="lyrics">Lyrics</string>
     <string name="translation_success">Translation saved</string>
     <string name="translation_failed">Translation failed</string>
-    
     <string name="discord_button_options">Button Options</string>
     <string name="discord_image_options">Image Options</string>
     <string name="refresh">Refresh</string>
@@ -760,7 +722,6 @@
     <string name="logout_confirm_message">Are you sure you want to log out of Discord?.</string>
     <string name="logout_confirm_yes">Log out</string>
     <string name="logout_confirm_no">Cancel</string>
-    
     <string name="experiment_settings">Experimental Settings</string>
     <string name="show_discord_debug_ui">Show Debug UI</string>
     <string name="enable_discord_debug_lines">Enable debug settings lines</string>
@@ -768,7 +729,6 @@
     <string name="presence_manager_stopped">Presence manager: stopped</string>
     <string name="filter_levels">Filter levels</string>
     <string name="experimental_features">Experimental Features</string>
-    <string name="open">Open</string>
     <string name="reset_to_default_levels">Reset to default</string>
     <string name="no_logs">No Logs</string>
     <string name="show_nerd_stats">Show nerd stats</string>
@@ -850,7 +810,6 @@
     <string name="update_notification_title">Update Available</string>
     <string name="update_notification_text">ArchiveTune %s is now available</string>
     <string name="download">Download</string>
-
     <string name="permissions_title">Allow ArchiveTune to work best</string>
     <string name="permissions_subtitle">We use a few permissions to play and manage your music reliably. You can change these anytime in system settings.</string>
     <string name="permission_storage_title">Storage access</string>
@@ -858,14 +817,12 @@
     <string name="permission_status_allowed">Allowed</string>
     <string name="next">Next</string>
     <string name="allow">Allow</string>
-    
     <string name="you_might_like">You might like</string>
     <string name="refresh_suggestions">Refresh suggestions</string>
     <string name="you_might_like_source">You might like source</string>
     <string name="playlist_suggestion_source_title">Playlist title</string>
     <string name="playlist_suggestion_source_content">Playlist content</string>
     <string name="playlist_suggestion_source_both">Playlist title and content</string>
-
     <string name="music_together">ArchiveTune Music Together</string>
     <string name="together_display_name">Display name</string>
     <string name="together_display_name_placeholder">Your name</string>
@@ -883,8 +840,6 @@
     <string name="join_session">Join session</string>
     <string name="session_link">Session link</string>
     <string name="session_code">Session code</string>
-    <string name="participants">Participants</string>
-    <string name="host">Host</string>
     <string name="add_current_song">Add current song</string>
     <string name="dismiss">Dismiss</string>
     <string name="enabled">Enabled</string>
@@ -905,7 +860,6 @@
     <string name="loading">Loading</string>
     <string name="connecting">Connecting</string>
     <string name="copy_link">Copy link</string>
-
     <string name="together_host_section">Host</string>
     <string name="together_join_section">Join</string>
     <string name="together_status">Status</string>
@@ -914,7 +868,32 @@
     <string name="together_joining">Joining session</string>
     <string name="together_connected">Connected</string>
     <string name="together_error_state">Error</string>
-
+    <string name="together_current_playback">Current playback</string>
+    <string name="together_playback_empty">Nothing playing</string>
+    <string name="together_playback_playing">Playing</string>
+    <string name="together_playback_paused">Paused</string>
+    <string name="together_queue_count">%1$d in queue</string>
+    <string name="together_queue_position">%1$d/%2$d</string>
+    <string name="together_shuffle_on">Shuffle on</string>
+    <string name="together_shuffle_off">Shuffle off</string>
+    <string name="together_repeat_mode">Repeat %1$d</string>
+    <string name="together_participants_empty">No participants yet</string>
+    <string name="together_participants_empty_body">People who join this session will appear here.</string>
+    <string name="together_activity_log">Activity log</string>
+    <string name="together_activity_log_subtitle">Session and playback events</string>
+    <string name="together_activity_log_empty">No activity yet</string>
+    <string name="together_activity_log_empty_body">Session events will appear here as they happen.</string>
+    <string name="together_activity_session_started">Session started</string>
+    <string name="together_activity_joining_session">Joining session</string>
+    <string name="together_activity_join_requested">%1$s requested to join</string>
+    <string name="together_activity_host_transferred">Host transferred to %1$s</string>
+    <string name="together_activity_playback_paused">%1$s paused playback</string>
+    <string name="together_activity_playback_resumed">%1$s resumed playback</string>
+    <string name="together_activity_song_changed">%1$s changed the song to %2$s</string>
+    <string name="together_activity_song_skipped">%1$s skipped to %2$s</string>
+    <string name="together_activity_queue_updated">%1$s changed the queue</string>
+    <string name="together_activity_playback_state_changed">%1$s changed playback state</string>
+    <string name="together_activity_error">Error: %1$s</string>
     <string name="got_it">Got it</string>
     <string name="together_dont_show_again">Don\'t show this again</string>
     <string name="together_welcome_title">Welcome to ArchiveTune Music Together</string>
@@ -925,7 +904,6 @@
     <string name="together_welcome_join_body">Open the shared link, or enter code and tap Join. Your queue and playback will follow the host.</string>
     <string name="together_welcome_permissions_title">Permissions and safety</string>
     <string name="together_welcome_permissions_body">Hosts can decide whether guests can add songs, control playback, or require approval to join.</string>
-
     <string name="po_token_generation">PO Token Generation</string>
     <string name="web_client_po_token">Web Client PO Token</string>
     <string name="web_client_po_token_desc">Enable PO token generation for web-based player clients</string>

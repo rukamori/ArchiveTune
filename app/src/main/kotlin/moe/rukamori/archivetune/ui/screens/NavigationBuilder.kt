@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResult
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
+import moe.rukamori.archivetune.ui.screens.search.SearchScreen
 import moe.rukamori.archivetune.ui.screens.settings.AboutScreen
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettings
 import moe.rukamori.archivetune.ui.screens.settings.AiIntegrationSettings
@@ -119,6 +120,16 @@ fun NavGraphBuilder.navigationBuilder(
         Screens.Library.route,
     ) {
         LibraryScreen(navController)
+    }
+    composable(Screens.Search.route) {
+        SearchScreen(
+            navController = navController,
+            onSearchClick = {
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("openSearch", true)
+            },
+        )
     }
     composable("local_songs") {
         LocalSongScreen(navController)

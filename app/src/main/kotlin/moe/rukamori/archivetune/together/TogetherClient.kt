@@ -45,6 +45,18 @@ sealed interface TogetherClientEvent {
         val decision: moe.rukamori.archivetune.together.JoinDecision,
     ) : TogetherClientEvent
 
+    data class HostTransferred(
+        val transfer: moe.rukamori.archivetune.together.HostTransferred,
+    ) : TogetherClientEvent
+
+    data class ControlRequested(
+        val request: ControlRequest,
+    ) : TogetherClientEvent
+
+    data class AddTrackRequested(
+        val request: AddTrackRequest,
+    ) : TogetherClientEvent
+
     data class ServerIssue(
         val message: String,
         val code: String? = null,
@@ -304,6 +316,31 @@ class TogetherClient(
         }
     }
 
+    fun sendRoomState(state: TogetherRoomState) {
+        scope.launch {
+            session?.send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    RoomStateMessage(state),
+                ),
+            )
+        }
+    }
+
+    fun transferHostOwnership(
+        sessionId: String,
+        participantId: String,
+    ) {
+        scope.launch {
+            session?.send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    HostTransfer(sessionId = sessionId, participantId = participantId),
+                ),
+            )
+        }
+    }
+
     fun sendHeartbeat(
         sessionId: String,
         pingId: Long,
@@ -366,6 +403,12 @@ class TogetherClient(
                                 }
                             }
 
+                            is moe.rukamori.archivetune.together.HostTransferred -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.HostTransferred(message))
+                                }
+                            }
+
                             is KickParticipant -> {
                                 if (message.sessionId == sessionId && message.participantId == selfParticipantId) {
                                     val detail =
@@ -398,6 +441,18 @@ class TogetherClient(
                                             receivedAtElapsedRealtimeMs = android.os.SystemClock.elapsedRealtime(),
                                         ),
                                     )
+                                }
+                            }
+
+                            is ControlRequest -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.ControlRequested(message))
+                                }
+                            }
+
+                            is AddTrackRequest -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.AddTrackRequested(message))
                                 }
                             }
 

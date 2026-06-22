@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Explorer</string>
     <string name="local_history">Locale</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Retour</string>
     <string name="no_title">Aucun titre</string>
     <string name="unknown_artist">Artiste inconnu</string>
-    <string name="unknown_item_type">Type d\'élément inconnu</string>
-    <string name="loading_charts">Chargement des graphiques...</string>
     <string name="retry_button">Réessayer</string>
     <string name="album_cover_desc">Pochette d\'album</string>
     <string name="top_music_videos">Meilleurs Clips Musicaux</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">En cache</string>
     <string name="sync_playlist">Synchroniser la Playlist</string>
     <string name="sync_disabled">Synchronisation désactivée</string>
-    <string name="elements_selected">%1$d éléments sélectionnés</string>
     <string name="allows_for_sync_witch_youtube">Remarque : Ceci permet la synchronisation avec YouTube Music. Ce paramètre ne peut pas être modifié ultérieurement.</string>
     <string name="generating_image">Génération de l\'image</string>
     <string name="please_wait">Veuillez patienter</string>
@@ -35,18 +32,12 @@
     <string name="share_selected">Partager la sélection</string>
     <string name="customize_colors">Personnaliser les couleurs</string>
     <string name="more_options">Plus d\'options</string>
-    <string name="text_color">Couleur du texte</string>
-    <string name="secondary_text_color">Couleur secondaire du texte</string>
-    <string name="background_color">Couleur d\'arrière-plan</string>
-    <string name="added_to_play_next">Ajouté à la playlist</string>
-    <string name="added_to_queue">Ajouté à la file d\'attente</string>
     <string name="remove_from_cache">Retirer du cache</string>
     <string name="select">Tout sélectionner</string>
     <string name="like_all">Tout aimer</string>
     <string name="dislike_all">Ne pas aimer tout</string>
     <string name="sort_by_last_updated">Date de mise à jour</string>
     <string name="link_copied">Lien copié dans le presse-papiers</string>
-    <string name="starting_radio">Démarrage de la radio</string>
     <string name="now_playing">En cours de lecture</string>
     <string name="close">Fermer</string>
     <string name="minimum_volume">Volume Minimum</string>
@@ -64,15 +55,11 @@
         <item quantity="many">%d fois</item>
         <item quantity="other">%d fois</item>
     </plurals>
-    <string name="seek_backward">5 secondes en arrière</string>
-    <string name="seek_forward">5 secondes en avant</string>
     <string name="seek_forward_dynamic">+%1$d secondes en avant</string>
     <string name="seek_backward_dynamic">-%1$d secondes en arrière</string>
     <string name="seek_seconds_addup">Recherche progressive</string>
     <string name="seek_seconds_addup_description">Si cette option est activée, chaque nouvel appui pour avancer ou reculer ajoute 5 secondes de plus que le saut précédent</string>
     <string name="similar_content">Contenu similaire</string>
-    <string name="login_settings">Paramètres de connexion</string>
-    <string name="general_settings">Paramètres généraux</string>
     <string name="player_background_style">Style de l\'arrière plan du lecteur</string>
     <string name="follow_theme">Suivre le thème</string>
     <string name="gradient">Dégradé</string>
@@ -87,7 +74,6 @@
     <string name="player_buttons_style">Couleurs des boutons du lecteur</string>
     <string name="default_style">Défaut</string>
     <string name="secondary_color_style">Secondaire</string>
-    <string name="enable_squiggly_slider">Activer le curseur ondulé</string>
     <string name="enable_swipe_thumbnail">Activer le glissement pour changer de titre</string>
     <string name="swipe_song_to_add">Faites glisser le titre vers la gauche pour l\'ajouter à la file d\'attente ou vers la droite pour le lire ensuite</string>
     <string name="lyrics_click_change">Changer les paroles avec un clic</string>
@@ -96,13 +82,11 @@
     <string name="resume_autoscroll">Reprise du défilement automatique</string>
     <string name="lyrics_romanize_japanese">Romaniser les paroles japonaises</string>
     <string name="lyrics_romanize_korean">Romaniser les paroles coréennes</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Connexion avec un jeton</string>
     <string name="token_hidden">Cliquer pour afficher le jeton</string>
     <string name="token_shown">Cliquer encore pour copier ou éditer</string>
     <string name="token_adv_login_description">Il s\'agit d\'une méthode de connexion avancée. En alternative au portail web, vous pouvez saisir ou mettre à jour directement votre jeton de connexion ici. Cela peut, par exemple, accélérer la connexion sur plusieurs appareils. Veuillez noter que tout jeton invalide que l\'application ne parvient pas à analyser sera refusé.</string>
-    <string name="ytm_sync">Synchronise automatiquement avec votre compte YouTube Music</string>
     <string name="yt_sync">Synchronisation automatique avec le compte</string>
     <string name="more_content">Plus de contenu</string>
     <string name="general">Général</string>
@@ -111,32 +95,21 @@
     <string name="set_quick_picks">Choix des sélections rapides</string>
     <string name="last_song_listened">Basé sur le dernier titre écouté</string>
     <string name="app_language">Langue de l\'application</string>
-    <string name="configure_app_language">Configurer les langues de l\'application</string>
-    <string name="intent_app_language_not_found">Impossible de trouver les paramètres de langue de l\'application. Veuillez les configurer manuellement.</string>
     <string name="open_supported_links">Ouvrir les liens supportés par défaut</string>
-    <string name="configure_supported_links">Configurer les liens supportés</string>
-    <string name="intent_supported_links_not_found">Impossible de trouver les paramètres des liens pris en charge. Veuillez les configurer manuellement.</string>
     <string name="set_first_lyrics_provider">Fournisseur de paroles préférées</string>
     <string name="audio_quality_max">Max (bêta)</string>
-    <string name="enable_similar_content">Activer le contenu similaire</string>
-    <string name="similar_content_desc">Ajoutez automatiquement d\'autres titres similaires lorsque la fin de la file d\'attente est atteinte</string>
-    <string name="min_playback_duration_title">Durée minimum de lecture</string>
-    <string name="min_playback_duration_description">La durée minimale qu\'un titre doit être diffusé pour être considéré comme « diffusé »</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Durée minimum de lecture</string>
     <string name="import_online">Importer une playlist « m3u »</string>
     <string name="import_csv">Importer une playlist « csv »</string>
     <string name="playlist_add_local_to_synced_note">Remarque : L\'ajout de titres locaux aux playlists synchronisées/distantes n\'est pas pris en charge. Toute autre combinaison est valide.</string>
     <string name="auto_download_on_like">Télécharger automatiquement quand on aime</string>
     <string name="auto_download_on_like_desc">Téléchargez automatiquement les titres quand vous les aimez</string>
     <string name="swipe_sensitivity">Sensibilité du mini-lecteur au balayage</string>
-    <string name="swipe_sensitivity_desc">Ajuster la sensibilité des gestes de balayage pour changer de titre</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">Êtes-vous sûr de vouloir effacer tous les titres en cache ?</string>
     <string name="clear_image_cache_dialog">Êtes-vous sûr de vouloir effacer toutes les images mises en cache ?</string>
     <string name="clear_downloads_dialog">Êtes-vous sûr de vouloir supprimer tous les téléchargements ?</string>
     <string name="disable">Désactiver</string>
-    <string name="pause_remote_listen_history">Mettre en pause et partager l\'historique d\'écoute avec YouTube Music</string>
     <string name="not_logged_in_youtube">Non connecté à YouTube</string>
     <string name="default_links">Ouvrir les liens supportés</string>
     <string name="open_app_settings_error">Impossible d\'ouvrir les paramètres de l\'application</string>
@@ -166,16 +139,7 @@
         <item quantity="many">%d secondes</item>
         <item quantity="other">%d secondes</item>
     </plurals>
-    <!-- Player Settings -->
-    <string name="disable_load_more_when_repeat_all">Désactiver le chargement supplémentaire lors de la répétition de tout</string>
-    <string name="disable_load_more_when_repeat_all_desc">Ne chargez pas automatiquement plus de titres et de contenu similaire lorsque le mode répéter tout est activé</string>
-    <!-- Material 3 Settings Sections -->
-    <string name="settings_section_ui">Interface</string>
-    <string name="settings_section_privacy">Confidentialité &amp; Sécurité</string>
-    <string name="settings_section_player">Lecteur &amp; Médias</string>
     <string name="settings_section_player_content">Lecteur &amp; Contenu</string>
-    <string name="settings_section_storage">Stockage &amp; Données</string>
-    <string name="settings_section_system">Système &amp; À propos</string>
     <string name="manage_tags">Gérer les balises</string>
     <string name="add_tag">Ajouter une balise</string>
     <string name="edit_tag">Modifier la balise</string>
@@ -200,17 +164,11 @@
     <string name="import_theme">Importer un thème</string>
     <string name="export_theme">Exporter le thème</string>
     <string name="palette_custom">Personnalisé</string>
-    <string name="theme_creator_title">Créateur de thèmes</string>
-    <string name="theme_creator_subtitle">Ajustez les couleurs, prévisualisez le résultat, puis exportez ou importez.</string>
     <string name="theme_meta_title">Détails du thème</string>
     <string name="theme_name_optional">Nom (facultatif)</string>
     <string name="theme_apply_button">Appliquer le thème</string>
-    <string name="theme_applied">Thème appliqué</string>
-    <string name="theme_export_success">Thème exporté</string>
-    <string name="theme_export_failed">Échec de l\'exportation</string>
     <string name="theme_import_success">Thème importé</string>
     <string name="theme_import_failed">Échec de l\'importation</string>
-    <string name="theme_import_failed_title">Impossible d\'importer le thème</string>
     <string name="theme_seed_colors">Couleurs des graines</string>
     <string name="theme_seed_primary">Primaire</string>
     <string name="theme_seed_secondary">Secondaire</string>
@@ -220,9 +178,6 @@
     <string name="theme_editor_hex">Hex</string>
     <string name="theme_editor_hex_input">Valeur hexadécimale (#RRGGBB ou #AARRGGBB)</string>
     <string name="theme_presets_title">Préréglages</string>
-    <string name="theme_preview_trackline">Carte d\'aperçu premium</string>
-    <string name="theme_preview_primary_action">Action principale</string>
-    <string name="theme_preview_secondary_action">Action secondaire</string>
     <string name="copy">Copier</string>
     <string name="player_design_v5">Petit</string>
     <string name="player_stream_client">Client de lecture</string>
@@ -258,9 +213,6 @@
     <string name="album_not_found_desc">L\'album demandé n\'a pas pu être chargé</string>
     <string name="empty_album">Album vide</string>
     <string name="empty_album_desc">Cet album ne contient aucun titre</string>
-    <string name="error_no_song_playing">Aucun titre n\'est en cours de lecture</string>
-    <string name="error_no_similar_songs">Aucun titre similaire trouvé</string>
-    <string name="error_automix_failed">Impossible de charger des titres similaires</string>
     <string name="music_recognition_tap_to_listen">Appuyez pour écouter</string>
     <string name="music_recognition_listening">Écoute…</string>
     <string name="music_recognition_processing">Traitement…</string>
@@ -275,7 +227,6 @@
     <string name="music_recognition_permission_action">Autoriser</string>
     <string name="music_recognition_error">Quelque chose s\'est mal passé</string>
     <string name="player_design_v7">Immersion</string>
-    <string name="playing_from">Lecture à partir de %s</string>
     <string name="lyrics_romanize_chinese">Paroles chinoises romanisées</string>
     <string name="lyrics_romanize_hindi">Paroles hindi romanisées</string>
     <string name="lyrics_romanize_other_languages">Romaniser les autres paroles non latines</string>
@@ -327,13 +278,10 @@
     <string name="local_songs_scan_folders_desc">Ignorez les titres stockés dans les dossiers dont le chemin correspond à l\'un de ces chemins.</string>
     <string name="local_songs_scan_folders_empty">Aucun dossier n\'a encore été exclu.</string>
     <string name="local_songs_scan_folders_add">Ajouter un dossier</string>
-    <string name="local_songs_scan_folders_dialog_title">Exclure le dossier</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Musique/Sonneries</string>
     <string name="local_songs_no_matches_title">Aucun titre local correspondant</string>
     <string name="local_songs_no_matches_desc">Essayez un autre titre, artiste ou nom d\'album.</string>
     <string name="sort_by_album">Album</string>
     <string name="lyrics_line_blur">Lignes de paroles floues</string>
-    <string name="card_and_list">Fiche &amp; Liste</string>
     <string name="quick_picks_display_mode">Mode d\'affichage « Sélection Rapide »</string>
     <string name="quick_picks_display_mode_card">Fiche</string>
     <string name="quick_picks_display_mode_list">Liste</string>
@@ -343,7 +291,6 @@
     <string name="stats_total_plays">Nombre Total de Lectures</string>
     <string name="stats_unique_songs">Titres Uniques</string>
     <string name="stats_unique_artists">Artistes Uniques</string>
-    <string name="stats_unique_albums">Albums Uniques</string>
     <string name="stats_listening_by_hour">Écoute par Heure</string>
     <string name="stats_listening_by_day">Écoute par Jour</string>
     <string name="stats_peak_hour">Les Plus Actifs : %s</string>
@@ -385,8 +332,6 @@
     <string name="year_in_music_recap_word">RÉSUMÉ</string>
     <string name="ai_api_key">Clé API</string>
     <string name="music_recognition_history_no_results_body">Essayez un autre morceau, un autre artiste, un autre album ou un autre code.</string>
-    <string name="year_in_music_intro_subtitle">Un tour d\'horizon des titres, des artistes et des albums qui ont marqué %d.</string>
-    <string name="year_in_music_intro_title">Revivez votre année</string>
     <string name="about_lead_developer">Développeur principal</string>
     <string name="aod_customize_text_alignment">Alignement du texte</string>
     <string name="settings_lyrics_subtitle">Fournisseurs de paroles, préchargement et traduction</string>
@@ -436,7 +381,6 @@
     <string name="news_search_results_title">Résultats de la recherche</string>
     <string name="aod_accent_monochrome">Monochrome</string>
     <string name="aod_alignment_center">Centre</string>
-    <string name="import_from_file">Importer depuis un fichier</string>
     <string name="news_retry">Réessayer</string>
     <string name="spotify_connect">Se connecter à Spotify</string>
     <string name="news_important_badge">Important</string>
@@ -465,13 +409,10 @@
     <string name="spotify_playlists">Playlist Spotify</string>
     <string name="aod_shape_sunny">Ensoleillé</string>
     <string name="import_m3u_format">Playlist audio M3U</string>
-    <string name="backup_data_safety">Sécurité des données</string>
     <string name="ai_model_fetch_failed">Impossible de récupérer les modèles disponibles</string>
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="aod_customize_thumbnail_shape">Forme de la miniature</string>
     <string name="spotify_waiting_for_login">En attente de connexion à Spotify</string>
-    <string name="year_in_music_final_title">C\'était ton année</string>
-    <string name="backup_data_safety_desc">Créer une sauvegarde portable ou restaurer les données d\'une application sélectionnée.</string>
     <string name="aod_background_soft_radial">Radial souple</string>
     <string name="aod_shape_cookie_9">Cookie 9</string>
     <string name="settings_storage_subtitle">Cache, téléchargements et stockage hors ligne</string>
@@ -493,7 +434,6 @@
     <string name="year_in_music_totals_title">Vous avez fait vivre la musique</string>
     <string name="aod_customize_show_controls">Afficher les commandes</string>
     <string name="news_error_desc">Vérifiez votre connexion Internet et réessayez.</string>
-    <string name="spotify_track_count">%1$d titres</string>
     <string name="spotify_not_connected">Spotify n\'est pas connecté</string>
     <string name="settings_developer_options_subtitle">Fonctionnalités expérimentales et débogage</string>
     <string name="about_position_lead_dev">Hein ?</string>
@@ -505,7 +445,6 @@
     <string name="ai_test_api">API de test</string>
     <string name="spotify_available_count">%1$d playlists disponibles</string>
     <string name="spotify_show_playlist">Afficher la playlist</string>
-    <string name="import_from_file_desc">Importez des playlists à partir de fichiers M3U ou CSV locaux.</string>
     <string name="ai_provider_desc">Sélectionnez le service d\'IA.</string>
     <string name="spotify_login_title">Connexion à Spotify</string>
     <string name="storage_folder">Dossier de stockage</string>
@@ -565,11 +504,9 @@
     <string name="aod_shape_slanted">Incliné</string>
     <string name="year_in_music_current_card">Partager la fiche</string>
     <string name="settings_behavior_subtitle">Historique, paramètres par défaut et paramètres de confidentialité</string>
-    <string name="spotify_refresh">Actualiser la bibliothèque Spotify</string>
     <string name="ai_api_test_failed">Échec du test de l\'API</string>
     <string name="lyrics_share_style_album_tint">Teinte de l\'album</string>
     <string name="news_empty_desc">Il n\'y a aucune annonce pour le moment. Revenez bientôt.</string>
-    <string name="backup_restore_backup_desc">Restaurer les données sélectionnées à partir d\'une sauvegarde précédente.</string>
     <string name="playlist_sync_progress_step">%1$d/%2$d titres</string>
     <string name="settings_internet_subtitle">Comportement de la lecture en réseau, du proxy et du DNS</string>
     <string name="ai_model_no_results">Aucun modèle ne correspond à votre recherche</string>
@@ -603,7 +540,6 @@
     <string name="year_in_music_intro_details">Découvrez vos titres, artistes et albums préférés, ainsi que le temps que vous passez à les écouter.</string>
     <string name="player_stream_client_hi_res_lossless_desc">Préfère les flux audio sans perte lorsqu\'ils sont disponibles.</string>
     <string name="spotify_no_sources">Aucune playlist Spotify trouvée</string>
-    <string name="backup_data_formats">Fichier .backup</string>
     <string name="storage_location_removable">Carte SD</string>
     <string name="aod_control_tonal">Tonale</string>
     <string name="android_auto_mixes_and_radios">Mix et Radios</string>

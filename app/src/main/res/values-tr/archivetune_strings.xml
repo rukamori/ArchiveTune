@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Keşfet</string>
     <string name="local_history">Yerel</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Geri</string>
     <string name="no_title">Başlık yok</string>
     <string name="unknown_artist">Bilinmeyen sanatçı</string>
-    <string name="unknown_item_type">Bilinmeyen öğe türü</string>
-    <string name="loading_charts">Grafikler yükleniyor...</string>
     <string name="retry_button">Yeniden dene</string>
     <string name="album_cover_desc">Albüm kapağı</string>
     <string name="top_music_videos">En iyi müzik videoları</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">Önbelleğe alındı</string>
     <string name="sync_playlist">Çalma listesini senkronize et</string>
     <string name="sync_disabled">Senkronizasyon devre dışı</string>
-    <string name="elements_selected">%1$d öğe seçildi</string>
     <string name="allows_for_sync_witch_youtube">Not: Bu, YouTube Music ile senkronizasyona olanak tanır. Bu daha sonra değiştirilemez.</string>
     <string name="generating_image">Görüntü oluşturuluyor</string>
     <string name="please_wait">Lütfen bekleyin</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">Seçileni paylaş</string>
     <string name="customize_colors">Renkleri özelleştirin</string>
     <string name="more_options">Daha fazla seçenek</string>
-    <string name="text_color">Metin rengi</string>
-    <string name="secondary_text_color">İkincil metin rengi</string>
-    <string name="background_color">Arka plan rengi</string>
-    <string name="added_to_play_next">Sonraki oynamak için eklendi</string>
-    <string name="added_to_queue">Sıraya eklendi</string>
     <string name="remove_from_cache">Önbellekten kaldır</string>
     <string name="copy_link">Bağlantıyı kopyala</string>
     <string name="select">Tümünü seç</string>
@@ -59,7 +51,6 @@
     <string name="dislike_all">Tümünü beğenmedim</string>
     <string name="sort_by_last_updated">Tarih güncellendi</string>
     <string name="link_copied">Bağlantı panoya kopyalandı</string>
-    <string name="starting_radio">Radyoyu başlatıyorum</string>
     <string name="now_playing">Şimdi Oynatılıyor</string>
     <string name="close">Kapat</string>
     <string name="minimum_volume">Minimum Ses</string>
@@ -77,14 +68,10 @@
         <item quantity="one">%d kere</item>
         <item quantity="other">%d kere</item>
     </plurals>
-    <string name="seek_backward">5 saniye geri</string>
-    <string name="seek_forward">5 saniye ileri</string>
     <string name="seek_forward_dynamic">+%1$d saniye ileri</string>
     <string name="seek_backward_dynamic">-%1$d saniye geriye doğru</string>
     <string name="seek_seconds_addup">Aşamalı arama</string>
     <string name="seek_seconds_addup_description">Etkinleştirilirse, her arama atlamasında artımlı olarak 5 saniye daha eklenir</string>
-    <string name="login_settings">Giriş ayarları</string>
-    <string name="general_settings">Genel ayarlar</string>
     <string name="player_background_style">Oyuncu arka plan stili</string>
     <string name="follow_theme">Temayı takip et</string>
     <string name="gradient">Gradyan</string>
@@ -101,7 +88,6 @@
     <string name="player_buttons_style">Oynatıcı düğme renkleri</string>
     <string name="default_style">Varsayılan</string>
     <string name="secondary_color_style">İkincil</string>
-    <string name="enable_squiggly_slider">Dalgalı kaydırıcıyı etkinleştir</string>
     <string name="enable_swipe_thumbnail">Şarkıyı değiştirmek için kaydırmayı etkinleştirin</string>
     <string name="swipe_song_to_add">Şarkıyı sıraya eklemek için sola, sonraki çalmak için sağa kaydırın</string>
     <string name="lyrics_click_change">Tıkladığınızda şarkı sözlerini değiştirin</string>
@@ -110,18 +96,11 @@
     <string name="resume_autoscroll">Otomatik Kaydırmayı Devam Ettir</string>
     <string name="lyrics_romanize_japanese">Japonca şarkı sözlerini romanlaştır</string>
     <string name="lyrics_romanize_korean">Korece şarkı sözlerini romanlaştırın</string>
-    <string name="auto_playlists">Otomatik çalma listeleri</string>
-    <string name="show_liked_playlist">\"Beğenilenler\" oynatma listesini göster</string>
-    <string name="show_downloaded_playlist">\"İndirilenler\" oynatma listesini göster</string>
-    <string name="show_top_playlist">\"En iyi\" oynatma listesini göster</string>
-    <string name="show_cached_playlist">\"Önbelleğe Alınmış\" oynatma listesini göster</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Token ile giriş yap</string>
     <string name="token_hidden">Jeton göstermek için dokunun</string>
     <string name="token_shown">Kopyalamak veya düzenlemek için tekrar dokunun</string>
     <string name="token_adv_login_description">Bu GELİŞMİŞ bir giriş yöntemidir. Web portalına alternatif olarak, giriş kartınızı doğrudan buraya girebilir veya güncelleyebilirsiniz. Örneğin bu, birden fazla cihazda oturum açmayı hızlandırabilir. Uygulamanın ayrıştıramadığı geçersiz simge biçimlerinin kabul edilmeyeceğini lütfen unutmayın</string>
-    <string name="ytm_sync">YouTube Müzik hesabınızla otomatik olarak senkronize edin</string>
     <string name="yt_sync">Hesapla otomatik senkronizasyon</string>
     <string name="more_content">Daha fazla içerik</string>
     <string name="general">Genel</string>
@@ -130,32 +109,21 @@
     <string name="set_quick_picks">Hızlı seçimleri ayarla</string>
     <string name="last_song_listened">Son dinlediğiniz şarkıya göre</string>
     <string name="app_language">Uygulama dili</string>
-    <string name="configure_app_language">Uygulama dillerini yapılandırma</string>
-    <string name="intent_app_language_not_found">Uygulama dili ayarları bulunamadı. Lütfen bunları manuel olarak yapılandırın</string>
     <string name="open_supported_links">Desteklenen bağlantıyı varsayılan olarak aç</string>
-    <string name="configure_supported_links">Desteklenen bağlantıları yapılandırma</string>
-    <string name="intent_supported_links_not_found">Desteklenen bağlantı ayarları bulunamadı, lütfen bunları manuel olarak yapılandırın</string>
     <string name="set_first_lyrics_provider">Tercih edilen şarkı sözü sağlayıcısı</string>
     <string name="audio_quality_max">Maksimum (beta)</string>
-    <string name="enable_similar_content">Benzer içeriği etkinleştir</string>
-    <string name="similar_content_desc">Sıranın sonuna gelindiğinde otomatik olarak daha fazla benzer şarkı ekleyin</string>
-    <string name="min_playback_duration_title">Minimum oynatma süresi</string>
-    <string name="min_playback_duration_description">Bir şarkının çalındı olarak kabul edilmesi için çalınması gereken minimum şarkı miktarı</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Minimum oynatma süresi</string>
     <string name="import_online">\"m3u\" çalma listelerini içe aktar</string>
     <string name="import_csv">\"csv\" oynatma listelerini içe aktarın</string>
     <string name="playlist_add_local_to_synced_note">Not: Yerel şarkıların senkronize edilmiş/uzak çalma listelerine eklenmesi desteklenmez. Başka herhangi bir kombinasyon geçerlidir</string>
     <string name="auto_download_on_like">Beğenildiğinde otomatik indirme</string>
     <string name="auto_download_on_like_desc">Şarkıları beğendiğinizde otomatik olarak indirin</string>
     <string name="swipe_sensitivity">Mini oynatıcı kaydırma hassasiyeti</string>
-    <string name="swipe_sensitivity_desc">Şarkıları değiştirirken kaydırma hareketlerinin ne kadar hassas olacağını ayarlayın</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">Önbelleğe alınmış tüm şarkıları temizlemek istediğinizden emin misiniz?</string>
     <string name="clear_image_cache_dialog">Önbelleğe alınmış tüm görselleri temizlemek istediğinizden emin misiniz?</string>
     <string name="clear_downloads_dialog">Tüm indirilenleri temizlemek istediğinizden emin misiniz?</string>
     <string name="disable">Devre dışı bırak</string>
-    <string name="pause_remote_listen_history">YouTube Music ile dinleme geçmişini paylaşmayı duraklatın</string>
     <string name="not_logged_in_youtube">YouTube\'a giriş yapmadınız</string>
     <string name="default_links">Desteklenen bağlantıları aç</string>
     <string name="open_app_settings_error">Uygulama ayarları açılamadı</string>
@@ -184,20 +152,13 @@
         <item quantity="one">1 saniye</item>
         <item quantity="other">%d saniye</item>
     </plurals>
-    <string name="disable_load_more_when_repeat_all">Tümünü tekrarladığınızda daha fazla yüklemeyi devre dışı bırakın</string>
-    <string name="disable_load_more_when_repeat_all_desc">Tümünü tekrarla modu etkinleştirildiğinde daha fazla şarkıyı ve benzer içeriği otomatik olarak yüklemeyin</string>
     <string name="player_stream_client">Oynatma istemcisi</string>
     <string name="player_stream_client_desc">Akışları getirmek için hangi YouTube istemcisinin kullanılacağını kontrol eder</string>
     <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_android_vr_desc">İmza şifresi çözülmeden doğrudan akış yaparak maksimum hız sağlar. Kullanıcıların çoğunluğu için uygundur.</string>
     <string name="player_stream_client_web_remix">Web Remiksi</string>
     <string name="player_stream_client_web_remix_desc">Hız pahasına genişletilmiş format desteği. JavaScript imza şifre çözme işlemi ~5-10 saniyelik bir başlatma gecikmesine neden olur.</string>
-    <string name="settings_section_ui">Kullanıcı Arayüzü</string>
-    <string name="settings_section_privacy">Gizlilik &amp; Güvenlik</string>
-    <string name="settings_section_player">Oyuncu &amp; Medyası</string>
     <string name="settings_section_player_content">Oyuncu &amp; İçeriği</string>
-    <string name="settings_section_storage">Depolama &amp; Verisi</string>
-    <string name="settings_section_system">Sistem &amp; Hakkında</string>
     <string name="similar_content">Benzer içerik</string>
     <string name="year_in_music">Müzik Yılı</string>
     <string name="total_listening_time">Toplam Dinleme Süresi</string>
@@ -208,17 +169,11 @@
     <string name="import_theme">Temayı İçe Aktar</string>
     <string name="export_theme">İhracat Teması</string>
     <string name="palette_custom">Özel</string>
-    <string name="theme_creator_title">Tema Oluşturucu</string>
-    <string name="theme_creator_subtitle">Renkleri ayarlayın, sonucu önizleyin, ardından dışa aktarın veya içe aktarın.</string>
     <string name="theme_meta_title">Tema Detayları</string>
     <string name="theme_name_optional">Ad (isteğe bağlı)</string>
     <string name="theme_apply_button">Temayı Uygula</string>
-    <string name="theme_applied">Tema uygulandı</string>
-    <string name="theme_export_success">Tema dışa aktarıldı</string>
-    <string name="theme_export_failed">Dışa aktarma başarısız oldu</string>
     <string name="theme_import_success">Tema içe aktarıldı</string>
     <string name="theme_import_failed">İçe aktarma başarısız oldu</string>
-    <string name="theme_import_failed_title">Tema içe aktarılamıyor</string>
     <string name="theme_seed_colors">Tohum Renkleri</string>
     <string name="theme_seed_primary">Birincil</string>
     <string name="theme_seed_secondary">İkincil</string>
@@ -228,9 +183,6 @@
     <string name="theme_editor_hex">Altıgen</string>
     <string name="theme_editor_hex_input">Onaltılı değer (#RRGGBB veya #AARRGGBB)</string>
     <string name="theme_presets_title">Ön ayarlar</string>
-    <string name="theme_preview_trackline">Birinci sınıf bir önizleme kartı</string>
-    <string name="theme_preview_primary_action">Birincil Eylem</string>
-    <string name="theme_preview_secondary_action">İkincil Eylem</string>
     <string name="copy">Kopyala</string>
     <string name="music_recognition_tap_to_listen">Dinlemek için dokun</string>
     <string name="music_recognition_listening">Dinleniyor…</string>
