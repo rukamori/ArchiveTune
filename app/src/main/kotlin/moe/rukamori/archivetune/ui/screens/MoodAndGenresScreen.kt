@@ -8,14 +8,8 @@
 package moe.rukamori.archivetune.ui.screens
 
 import android.net.Uri
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +23,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,13 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -164,9 +156,6 @@ fun MoodAndGenresButton(
     val base = remember(stripeColor) { Color(stripeColor) }
     val artworkUrl = rememberMoodAndGenresArtworkUrl(endpoint)
     val artworkModel = rememberMoodAndGenresArtworkModel(endpoint = endpoint, artworkUrl = artworkUrl)
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val coverShadow = with(LocalDensity.current) { 18.dp.toPx() }
     val cardStart =
         remember(base, colorScheme.primaryContainer) {
             lerp(base, colorScheme.primaryContainer, 0.18f)
@@ -175,178 +164,93 @@ fun MoodAndGenresButton(
         remember(base, colorScheme.surfaceContainerHighest) {
             lerp(base, colorScheme.surfaceContainerHighest, 0.34f)
         }
-    val topGlow =
-        remember(base) {
-            lerp(base, Color.White, 0.24f).copy(alpha = 0.26f)
-        }
     val coverStart =
-        remember(base) {
-            lerp(base, Color.White, 0.36f)
+        remember(base, colorScheme.surface) {
+            lerp(base, colorScheme.surface, 0.28f)
         }
     val coverEnd =
         remember(base, colorScheme.scrim) {
             lerp(base, colorScheme.scrim, 0.2f)
         }
-    val coverAccent =
-        remember(base, colorScheme.tertiary) {
-            lerp(base, colorScheme.tertiary, 0.16f).copy(alpha = 0.5f)
+    val cardBrush =
+        remember(cardStart, cardEnd) {
+            Brush.linearGradient(
+                colors = listOf(cardStart, cardEnd),
+                start = Offset.Zero,
+                end = Offset(900f, 650f),
+            )
         }
-    val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.985f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 560f),
-        label = "MoodAndGenresCardScale",
-    )
-    val coverRotation by animateFloatAsState(
-        targetValue = if (isPressed) 14f else 21f,
-        animationSpec = spring(dampingRatio = 0.74f, stiffness = 420f),
-        label = "MoodAndGenresCoverRotation",
-    )
-    Box(
+    val coverBrush =
+        remember(coverStart, coverEnd) {
+            Brush.linearGradient(
+                colors = listOf(coverStart, coverEnd),
+                start = Offset.Zero,
+                end = Offset(360f, 360f),
+            )
+        }
+    val textScrimBrush =
+        remember(colorScheme.scrim) {
+            Brush.horizontalGradient(
+                colors =
+                    listOf(
+                        colorScheme.scrim.copy(alpha = 0.38f),
+                        colorScheme.scrim.copy(alpha = 0.18f),
+                        Color.Transparent,
+                    ),
+            )
+        }
+
+    Card(
+        onClick = onClick,
+        shape = MoodAndGenresButtonShape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier =
             modifier
-                .height(MoodAndGenresButtonHeight)
-                .graphicsLayer {
-                    scaleX = cardScale
-                    scaleY = cardScale
-                }.clip(MoodAndGenresButtonShape)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(cardStart, cardEnd),
-                        start = Offset.Zero,
-                        end = Offset(900f, 650f),
-                    ),
-                ).clickable(
-                    interactionSource = interactionSource,
-                    indication = LocalIndication.current,
-                    onClick = onClick,
-                ),
+                .height(MoodAndGenresButtonHeight),
     ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .drawWithCache {
-                        val glowBrush =
-                            Brush.radialGradient(
-                                colors = listOf(topGlow, Color.Transparent),
-                                center = Offset(size.width * 0.86f, size.height * 0.16f),
-                                radius = size.minDimension * 0.95f,
-                            )
-                        val depthBrush =
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f)),
-                                startY = size.height * 0.24f,
-                                endY = size.height,
-                            )
-                        onDrawBehind {
-                            drawRect(glowBrush)
-                            drawRect(depthBrush)
-                        }
-                    },
-        )
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 10.dp, end = 32.dp)
-                    .size(80.dp)
-                    .graphicsLayer {
-                        alpha = 0.24f
-                        rotationZ = 13f
-                        shape = MoodAndGenresCoverShape
-                        clip = true
-                        transformOrigin = TransformOrigin(1f, 0f)
-                    }.background(
-                        Brush.linearGradient(
-                            colors = listOf(coverStart.copy(alpha = 0.8f), coverEnd.copy(alpha = 0.74f)),
-                            start = Offset.Zero,
-                            end = Offset(480f, 480f),
-                        ),
-                    ),
+                    .background(cardBrush),
         ) {
-            if (artworkModel != null) {
-                AsyncImage(
-                    model = artworkModel,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 12.dp, end = 16.dp)
-                    .size(90.dp)
-                    .graphicsLayer {
-                        rotationZ = coverRotation
-                        shadowElevation = coverShadow
-                        ambientShadowColor = base.copy(alpha = 0.28f)
-                        spotShadowColor = base.copy(alpha = 0.42f)
-                        shape = MoodAndGenresCoverShape
-                        clip = true
-                        transformOrigin = TransformOrigin(1f, 0f)
-                    }.background(
-                        Brush.linearGradient(
-                            colors = listOf(coverStart, coverEnd),
-                            start = Offset.Zero,
-                            end = Offset(560f, 560f),
-                        ),
-                    ),
-        ) {
-            if (artworkModel != null) {
-                AsyncImage(
-                    model = artworkModel,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 10.dp, end = 12.dp)
+                        .size(MoodAndGenresCoverSize)
+                        .clip(MoodAndGenresCoverShape)
+                        .background(coverBrush),
+            ) {
+                if (artworkModel != null) {
+                    AsyncImage(
+                        model = artworkModel,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .drawWithCache {
-                            val sheenBrush =
-                                Brush.linearGradient(
-                                    colors = listOf(Color.White.copy(alpha = 0.3f), Color.Transparent),
-                                    start = Offset.Zero,
-                                    end = Offset(size.width, size.height),
-                                )
-                            val accentBrush =
-                                Brush.radialGradient(
-                                    colors = listOf(coverAccent, Color.Transparent),
-                                    center = Offset(size.width * 0.78f, size.height * 0.22f),
-                                    radius = size.minDimension * 0.44f,
-                                )
-                            onDrawBehind {
-                                drawRect(sheenBrush)
-                                drawRect(accentBrush)
-                            }
-                        },
+                        .background(textScrimBrush),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 16.dp, end = 92.dp, bottom = 16.dp),
             )
         }
-        Text(
-            text = title,
-            style =
-                MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Black,
-                    shadow =
-                        Shadow(
-                            color = Color.Black.copy(alpha = 0.35f),
-                            offset = Offset(0f, 1f),
-                            blurRadius = 4f,
-                        ),
-                ),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, end = 92.dp, bottom = 16.dp),
-        )
     }
 }
 
@@ -404,7 +308,8 @@ private fun buildMoodAndGenresArtworkCacheKey(endpoint: BrowseEndpoint): String 
 private val moodAndGenresArtworkCache = ConcurrentHashMap<String, String>()
 
 private val MoodAndGenresButtonShape = RoundedCornerShape(24.dp)
-private val MoodAndGenresCoverShape = RoundedCornerShape(18.dp)
-private val MoodAndGenresArtworkRequestSize = 90.dp
+private val MoodAndGenresCoverShape = RoundedCornerShape(16.dp)
+private val MoodAndGenresCoverSize = 80.dp
+private val MoodAndGenresArtworkRequestSize = 80.dp
 
 val MoodAndGenresButtonHeight = 100.dp

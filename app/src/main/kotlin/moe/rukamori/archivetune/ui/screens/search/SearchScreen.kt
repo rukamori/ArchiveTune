@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,7 +31,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +56,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -371,6 +376,38 @@ private fun SearchMoodAndGenresGrid(
 
 private val MoodAndGenresMinCellWidth = 180.dp
 
+private val TopSongGroupHorizontalPadding = 12.dp
+private val TopSongGroupVerticalPadding = 2.dp
+private val TopSongGroupItemSpacing = 2.dp
+private val TopSongGroupLargeCorner = 28.dp
+private val TopSongGroupSmallCorner = 6.dp
+
+private fun segmentedTopSongShape(
+    index: Int,
+    count: Int,
+): Shape {
+    val large = TopSongGroupLargeCorner
+    val small = TopSongGroupSmallCorner
+    return when {
+        count <= 1 -> RoundedCornerShape(large)
+        index == 0 ->
+            RoundedCornerShape(
+                topStart = large,
+                topEnd = large,
+                bottomEnd = small,
+                bottomStart = small,
+            )
+        index == count - 1 ->
+            RoundedCornerShape(
+                topStart = small,
+                topEnd = small,
+                bottomEnd = large,
+                bottomStart = large,
+            )
+        else -> RoundedCornerShape(small)
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrendingSongsSection(
@@ -390,45 +427,68 @@ private fun TrendingSongsSection(
         title = stringResource(R.string.top_songs),
         modifier = modifier,
     ) {
-        songs.take(6).forEachIndexed { index, song ->
-            YouTubeListItem(
-                item = song,
-                albumIndex = song.chartPosition ?: index + 1,
-                viewCountText = song.viewCountText,
-                isActive = song.id == mediaMetadata?.id,
-                isPlaying = isPlaying,
-                isSwipeable = false,
-                trailingContent = {
-                    YouTubeSongMenuButton(song = song, navController = navController)
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = {
-                                if (song.id == mediaMetadata?.id) {
-                                    playerConnection.player.togglePlayPause()
-                                } else {
-                                    playerConnection.playQueue(
-                                        YouTubeQueue(
-                                            endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                            preloadItem = song.toMediaMetadata(),
-                                        ),
-                                    )
-                                }
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    YouTubeSongMenu(
-                                        song = song,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
+        val visibleSongs = remember(songs) { songs.take(6) }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(TopSongGroupItemSpacing),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = TopSongGroupHorizontalPadding,
+                        vertical = TopSongGroupVerticalPadding,
+                    ),
+        ) {
+            visibleSongs.forEachIndexed { index, song ->
+                Card(
+                    shape = segmentedTopSongShape(index = index, count = visibleSongs.size),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         ),
-            )
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    if (song.id == mediaMetadata?.id) {
+                                        playerConnection.player.togglePlayPause()
+                                    } else {
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
+                                                preloadItem = song.toMediaMetadata(),
+                                            ),
+                                        )
+                                    }
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        YouTubeSongMenu(
+                                            song = song,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                },
+                            ),
+                ) {
+                    YouTubeListItem(
+                        item = song,
+                        albumIndex = index + 1,
+                        viewCountText = song.viewCountText,
+                        isActive = song.id == mediaMetadata?.id,
+                        isPlaying = isPlaying,
+                        isSwipeable = false,
+                        trailingContent = {
+                            YouTubeSongMenuButton(song = song, navController = navController)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
     }
 }

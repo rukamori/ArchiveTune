@@ -11,11 +11,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.Artist
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
-import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
 import javax.inject.Inject
@@ -25,27 +27,30 @@ data class SearchDiscoveryData(
     val moodAndGenres: List<MoodAndGenres.Item>,
     val newReleaseAlbums: List<AlbumItem>,
     val chartSections: List<ChartsPage.ChartSection>,
-    val searchedSongs: List<SongItem>,
+    val topSongs: List<Song>,
     val searchedAlbums: List<AlbumItem>,
-    val searchedArtists: List<ArtistItem>,
+    val topArtists: List<Artist>,
 )
 
 @Singleton
 class SearchDiscoveryRepository
     @Inject
-    constructor() {
+    constructor(
+        private val database: MusicDatabase,
+    ) {
         suspend fun loadDiscovery(): Result<SearchDiscoveryData> =
             withContext(Dispatchers.IO) {
                 try {
                     coroutineScope {
                         val explorePageDeferred = async { YouTube.explore().getOrThrow() }
                         val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
-                        val searchedSongsDeferred =
+                        val topSongsDeferred =
                             async {
-                                searchItems<SongItem>(
-                                    query = TrendingSongsQuery,
-                                    filter = YouTube.SearchFilter.FILTER_SONG,
-                                )
+                                database
+                                    .mostPlayedSongs(
+                                        fromTimeStamp = AllHistoryTimestamp,
+                                        limit = MaxHistoryLookupItems,
+                                    ).first()
                             }
                         val searchedAlbumsDeferred =
                             async {
@@ -54,12 +59,13 @@ class SearchDiscoveryRepository
                                     filter = YouTube.SearchFilter.FILTER_ALBUM,
                                 )
                             }
-                        val searchedArtistsDeferred =
+                        val topArtistsDeferred =
                             async {
-                                searchItems<ArtistItem>(
-                                    query = TopArtistsQuery,
-                                    filter = YouTube.SearchFilter.FILTER_ARTIST,
-                                )
+                                database
+                                    .mostPlayedArtists(
+                                        fromTimeStamp = AllHistoryTimestamp,
+                                        limit = MaxHistoryLookupItems,
+                                    ).first()
                             }
 
                         val explorePage = explorePageDeferred.await()
@@ -70,9 +76,9 @@ class SearchDiscoveryRepository
                                 moodAndGenres = explorePage.moodAndGenres,
                                 newReleaseAlbums = explorePage.newReleaseAlbums,
                                 chartSections = chartsPage.sections,
-                                searchedSongs = searchedSongsDeferred.await(),
+                                topSongs = topSongsDeferred.await(),
                                 searchedAlbums = searchedAlbumsDeferred.await(),
-                                searchedArtists = searchedArtistsDeferred.await(),
+                                topArtists = topArtistsDeferred.await(),
                             ),
                         )
                     }
@@ -101,8 +107,8 @@ class SearchDiscoveryRepository
             }
 
         private companion object {
-            const val TrendingSongsQuery = "trending songs"
+            const val AllHistoryTimestamp = 0L
+            const val MaxHistoryLookupItems = 36
             const val TopAlbumsQuery = "top albums"
-            const val TopArtistsQuery = "top artists"
         }
     }
