@@ -1,16 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    
     <string name="home">ホーム</string>
     <string name="songs">歌</string>
     <string name="artists">アーティスト</string>
     <string name="albums">アルバム</string>
     <string name="playlists">プレイリスト</string>
-    
     <plurals name="n_selected">
         <item quantity="other">%d が選択されました</item>
     </plurals>
-    
     <string name="history">歴史</string>
     <string name="stats">統計</string>
     <string name="mood_and_genres">ムード &amp; ジャンル</string>
@@ -27,7 +24,6 @@
     <string name="yesterday">昨日</string>
     <string name="this_week">今週</string>
     <string name="last_week">先週</string>
-    
     <string name="most_played_songs">最も再生された曲</string>
     <string name="search">検索</string>
     <string name="search_yt_music">YouTube ミュージックを検索…</string>
@@ -45,7 +41,6 @@
     <string name="filter_featured_playlists">注目のプレイリスト</string>
     <string name="no_results_found">結果が見つかりませんでした</string>
     <string name="top_results">上位の結果</string>
-    
     <string name="library_title">あなたのライブラリ</string>
     <string name="library_subtitle">あなたの音楽を整理しました</string>
     <string name="library_playlists_subtitle">すべてのプレイリストを整理しました</string>
@@ -108,9 +103,7 @@
     <string name="year_sort">年</string>
     <string name="duration_sort">時間</string>
     <string name="featured_album_badge">おすすめアルバム</string>
-    
     <string name="other_versions">他のバージョン</string>
-    
     <string name="liked_songs">好きな曲</string>
     <string name="downloaded_songs">ダウンロードした曲</string>
     <string name="playlist_is_empty">プレイリストが空です</string>
@@ -122,7 +115,6 @@
     <string name="shuffle">シャッフル</string>
     <string name="music_recognition">音楽認識</string>
     <string name="reset">リセット</string>
-    
     <string name="details">詳細</string>
     <string name="edit">編集</string>
     <string name="start_radio">ラジオを開始する</string>
@@ -173,7 +165,6 @@
     <string name="pitch">ピッチ</string>
     <string name="pitch_mode_semitones_short">セント</string>
     <string name="pitch_mode_multiplier_short">×</string>
-    
     <string name="sort_by_create_date">追加日</string>
     <string name="sort_by_name">名前</string>
     <string name="sort_by_artist">アーティスト</string>
@@ -182,7 +173,6 @@
     <string name="sort_by_custom">カスタムオーダー</string>
     <string name="sort_order_ascending">昇順</string>
     <string name="sort_order_descending">降順</string>
-    
     <string name="media_id">メディアID</string>
     <string name="mime_type">MIMEタイプ</string>
     <string name="no_matching_playlists">一致するプレイリストがありません</string>
@@ -208,7 +198,6 @@
     <string name="add_anyway">とにかく追加してください</string>
     <string name="duplicates_description_single">曲はすでにプレイリストにあります</string>
     <string name="duplicates_description_multiple">%d 曲はすでにプレイリストにあります</string>
-    
     <plurals name="n_song">
         <item quantity="other">%d曲</item>
     </plurals>
@@ -230,14 +219,12 @@
     <plurals name="n_year">
         <item quantity="other">%d年</item>
     </plurals>
-    
     <string name="added_to_playlist">%s に追加されました</string>
     <string name="added_n_songs_to_playlist">%1$d 曲を %2$s に追加しました</string>
     <string name="added_to_n_playlists">%d 個のプレイリストに追加されました</string>
     <string name="added_n_songs_to_n_playlists">%1$d 曲を %2$d プレイリストに追加しました</string>
     <string name="playlist_synced">プレイリストが同期されました</string>
     <string name="undo">元に戻す</string>
-    
     <string name="lyrics_not_found">歌詞が見つかりません</string>
     <string name="lyrics_word_sync">ワードシンク</string>
     <string name="sleep_timer">スリープタイマー</string>
@@ -250,7 +237,6 @@
     <string name="error_timeout">タイムアウト</string>
     <string name="error_malformed_stream">ソースエラー</string>
     <string name="error_unknown">不明なエラー</string>
-    
     <string name="action_like">いいね</string>
     <string name="action_remove_like">いいねを削除</string>
     <string name="action_shuffle_on">シャッフルオン</string>
@@ -258,32 +244,26 @@
     <string name="repeat_mode_off">リピートモードオフ</string>
     <string name="repeat_mode_one">現在の曲をリピートする</string>
     <string name="repeat_mode_all">リピートキュー</string>
-    
     <string name="queue_all_songs">全曲</string>
     <string name="queue_searched_songs">検索した曲</string>
     <string name="queue_continue_playing">プレイを続ける</string>
     <string name="queue_autoplaying_similar">似たような音楽を自動再生する</string>
-    
     <string name="music_player">音楽プレーヤー</string>
-    
     <string name="settings">設定</string>
     <string name="appearance">外観</string>
     <string name="theme">テーマ</string>
     <string name="enable_dynamic_theme">動的テーマを有効にする</string>
     <string name="random_theme_on_startup">起動時のランダムなテーマ</string>
     <string name="random_theme_on_startup_desc">アプリを起動するたびにランダムなカラーパレットを適用する</string>
-    
     <string name="color_palette">カラーパレット</string>
     <string name="customize_theme_colors">アプリのテーマカラーを選択してください</string>
     <string name="palette_default">デフォルト</string>
-    
     <string name="palette_ocean_blue">オーシャンブルー</string>
     <string name="palette_arctic_blue">北極</string>
     <string name="palette_midnight_navy">真夜中</string>
     <string name="palette_sky_blue">スカイブルー</string>
     <string name="palette_cobalt_blue">コバルト</string>
     <string name="palette_electric_blue">電気</string>
-    
     <string name="palette_emerald_green">エメラルド</string>
     <string name="palette_teal_wave">ティールウェーブ</string>
     <string name="palette_forest_green">森</string>
@@ -291,21 +271,18 @@
     <string name="palette_mint_fresh">ミント</string>
     <string name="palette_olive_garden">オリーブ</string>
     <string name="palette_sage_green">セージ</string>
-    
     <string name="palette_sunset_orange">日没</string>
     <string name="palette_golden_hour">ゴールデン</string>
     <string name="palette_warm_amber">アンバー</string>
     <string name="palette_tangerine_blast">みかん</string>
     <string name="palette_peach">ピーチ</string>
     <string name="palette_mango">マンゴー</string>
-    
     <string name="palette_royal_purple">ロイヤルパープル</string>
     <string name="palette_lavender_dream">ラベンダー</string>
     <string name="palette_grape_purple">ぶどう</string>
     <string name="palette_violet">バイオレット</string>
     <string name="palette_amethyst">アメジスト</string>
     <string name="palette_ultra_violet">ウルトラバイオレット</string>
-    
     <string name="palette_cherry_blossom">さくら</string>
     <string name="palette_rose_quartz">ローズクォーツ</string>
     <string name="palette_magenta_pop">マゼンタ</string>
@@ -313,37 +290,31 @@
     <string name="palette_blush">赤面</string>
     <string name="palette_coral">サンゴ</string>
     <string name="palette_bubblegum">バブルガム</string>
-    
     <string name="palette_crimson_red">クリムゾン</string>
     <string name="palette_youtube_red">YouTube</string>
     <string name="palette_wine_red">ワイン</string>
     <string name="palette_ruby_red">ルビー</string>
     <string name="palette_scarlet">スカーレット</string>
-    
     <string name="palette_charcoal">木炭</string>
     <string name="palette_silver">シルバー</string>
     <string name="palette_slate">スレート</string>
     <string name="palette_graphite">グラファイト</string>
-    
     <string name="palette_terracotta">テラコッタ</string>
     <string name="palette_coffee">コーヒー</string>
     <string name="palette_mocha">モカ</string>
     <string name="palette_sand">砂</string>
     <string name="palette_clay">粘土</string>
-    
     <string name="palette_pastel_pink">パステルピンク</string>
     <string name="palette_pastel_blue">パステルブルー</string>
     <string name="palette_pastel_green">パステルグリーン</string>
     <string name="palette_pastel_yellow">パステルイエロー</string>
     <string name="palette_pastel_purple">パステルパープル</string>
-    
     <string name="palette_neon_green">ネオングリーン</string>
     <string name="palette_neon_pink">ネオンピンク</string>
     <string name="palette_neon_blue">ネオンブルー</string>
     <string name="palette_neon_orange">ネオンオレンジ</string>
     <string name="palette_cyberpunk">サイバーパンク</string>
     <string name="palette_synthwave">シンセウェーブ</string>
-    
     <string name="palette_ocean">オーシャン</string>
     <string name="palette_forest">ディープフォレスト</string>
     <string name="palette_autumn">秋</string>
@@ -354,7 +325,6 @@
     <string name="palette_aurora">オーロラ</string>
     <string name="palette_candy">キャンディ</string>
     <string name="palette_rainbow">レインボー</string>
-    
     <string name="dark_theme">ダークテーマ</string>
     <string name="dark_theme_on">オン</string>
     <string name="dark_theme_off">オフ</string>
@@ -386,16 +356,12 @@
     <string name="blur_intensity">ぼかし強度</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="player">プレーヤー</string>
-    <string name="left">左</string>
-    <string name="center">センター</string>
-    <string name="right">右</string>
     <string name="player_slider_style">プレーヤーのスライダーのスタイル</string>
     <string name="slider_style_standard">標準</string>
     <string name="slider_style_wavy">波状</string>
     <string name="slider_style_thick">厚い</string>
     <string name="slider_style_circular">円形</string>
     <string name="slider_style_simple">シンプル</string>
-    <string name="squiggly">波打つ</string>
     <string name="misc">その他</string>
     <string name="haptics">振動</string>
     <string name="haptics_desc">インタラクティブな要素で触覚フィードバックを有効にする</string>
@@ -403,16 +369,11 @@
     <string name="grid_cell_size">グリッドセルのサイズ</string>
     <string name="small">小</string>
     <string name="big">大きい</string>
-    
     <string name="lyrics_animation_style">歌詞アニメーション風</string>
     <string name="lyrics_mode">歌詞モード</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
     <string name="lyrics_mode_enhanced">強化された</string>
     <string name="lyrics_animation_style_v2_only">V2 歌詞モードでのみ利用可能</string>
-    
-    <string name="none">なし</string>
-    <string name="fade">フェード</string>
-    <string name="karaoke">カラオケ</string>
     <string name="lyrics_line_spacing">歌詞の行間</string>
     <string name="content">内容</string>
     <string name="action_logout">ログアウト</string>
@@ -571,7 +532,6 @@
     <string name="options">オプション</string>
     <string name="preview">プレビュー</string>
     <string name="enable_discord_rpc">リッチ プレゼンスを有効にする</string>
-    
     <string name="scrobbling">スクロブル</string>
     <string name="lastfm_integration">Last.fm の統合</string>
     <string name="enable_scrobbling">スクロブリングを有効にする</string>
@@ -583,12 +543,10 @@
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
     <string name="logging_in">ログイン中…</string>
-    
     <string name="listenbrainz_scrobbling">ListenBrainz のスクロブル</string>
     <string name="listenbrainz_scrobbling_description">再生中および終了したリスニングを ListenBrainz に送信できるようにする</string>
     <string name="set_listenbrainz_token">ListenBrainzトークンを設定する</string>
     <string name="edit_listenbrainz_token">ListenBrainzトークンを編集する</string>
-    
     <string name="discord_activity_name">アクティビティ名</string>
     <string name="discord_activity_details">活動内容</string>
     <string name="discord_activity_state">アクティビティ状態</string>
@@ -617,17 +575,14 @@
     <string name="support_development_donate">開発をサポートするために寄付する</string>
     <string name="support_development_star">GitHub でスターを付ける</string>
     <string name="later">後で</string>
-    
     <string name="new_update_available">新しいアップデートが利用可能</string>
     <string name="release_notes_unavailable">リリースノートは入手できません</string>
     <string name="update_text">アップデート</string>
-    
     <string name="translate">翻訳する</string>
     <string name="language_label">言語</string>
     <string name="lyrics">歌詞</string>
     <string name="translation_success">翻訳が保存されました</string>
     <string name="translation_failed">翻訳に失敗しました</string>
-    
     <string name="discord_button_options">ボタンのオプション</string>
     <string name="discord_image_options">画像オプション</string>
     <string name="refresh">リフレッシュ</string>
@@ -639,7 +594,6 @@
     <string name="logout_confirm_message">Discord からログアウトしてもよろしいですか?</string>
     <string name="logout_confirm_yes">ログアウト</string>
     <string name="logout_confirm_no">キャンセル</string>
-    
     <string name="experiment_settings">実験設定</string>
     <string name="show_discord_debug_ui">デバッグ UI を表示</string>
     <string name="enable_discord_debug_lines">デバッグ設定行を有効にする</string>
@@ -647,7 +601,6 @@
     <string name="presence_manager_stopped">プレゼンスマネージャー: 停止しました</string>
     <string name="filter_levels">フィルターレベル</string>
     <string name="experimental_features">実験的な機能</string>
-    <string name="open">開く</string>
     <string name="reset_to_default_levels">デフォルトにリセットする</string>
     <string name="no_logs">ログなし</string>
     <string name="show_nerd_stats">オタク統計を表示</string>
@@ -733,7 +686,6 @@
     <string name="permission_status_allowed">許可される</string>
     <string name="next">次へ</string>
     <string name="allow">許可する</string>
-    
     <string name="you_might_like">あなたは好きかもしれません</string>
     <string name="refresh_suggestions">提案を更新する</string>
     <string name="you_might_like_source">あなたはソースが好きかもしれません</string>
@@ -757,8 +709,6 @@
     <string name="join_session">セッションに参加する</string>
     <string name="session_link">セッションリンク</string>
     <string name="session_code">セッションコード</string>
-    <string name="participants">参加者</string>
-    <string name="host">ホスト</string>
     <string name="add_current_song">現在の曲を追加</string>
     <string name="dismiss">解雇する</string>
     <string name="enabled">有効</string>

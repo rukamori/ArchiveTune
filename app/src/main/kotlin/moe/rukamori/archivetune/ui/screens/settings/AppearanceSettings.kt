@@ -82,7 +82,6 @@ import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
-import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.GridItemSize
 import moe.rukamori.archivetune.constants.GridItemsSizeKey
@@ -188,11 +187,6 @@ fun AppearanceSettings(
         rememberPreference(
             DisableAnimationsKey,
             defaultValue = defaultDisableAnimations,
-        )
-    val (enableHapticFeedback, onEnableHapticFeedbackChange) =
-        rememberPreference(
-            EnableHapticFeedbackKey,
-            defaultValue = true,
         )
     val (blurRadius, onBlurRadiusChange) = rememberPreference(BlurRadiusKey, defaultValue = 48f)
     val (backdropEnabled, onBackdropEnabledChange) = rememberPreference(BackdropEnabledKey, defaultValue = true)
@@ -786,16 +780,6 @@ fun AppearanceSettings(
         }
 
         PreferenceGroup(title = stringResource(R.string.misc)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.haptics)) },
-                    description = stringResource(R.string.haptics_desc),
-                    icon = { Icon(painterResource(R.drawable.vibration), null) },
-                    checked = enableHapticFeedback,
-                    onCheckedChange = onEnableHapticFeedbackChange,
-                )
-            }
-
             item {
                 EnumListPreference(
                     title = { Text(stringResource(R.string.quick_picks_display_mode)) },

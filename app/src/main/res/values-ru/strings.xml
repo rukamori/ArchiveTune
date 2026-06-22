@@ -302,20 +302,13 @@
     <string name="disable_blur">Убрать эффекты размытия</string>
     <string name="disable_blur_desc">Убрать эффекты размытия во всем приложении</string>
     <string name="player">Плеер</string>
-    <string name="left">Слева</string>
-    <string name="center">По центру</string>
-    <string name="right">Справа</string>
     <string name="player_slider_style">Стиль ползунка плеера</string>
-    <string name="squiggly">Волнистый</string>
     <string name="misc">Разное</string>
     <string name="default_open_tab">Вкладка по умолчанию</string>
     <string name="grid_cell_size">Размер ячейки сетки</string>
     <string name="small">Маленький</string>
     <string name="big">Большой</string>
     <string name="lyrics_animation_style">Стиль анимации текста песни</string>
-    <string name="none">Нет</string>
-    <string name="fade">Затухание</string>
-    <string name="karaoke">Караоке</string>
     <string name="lyrics_line_spacing">Интервал между строк</string>
     <string name="content">Контент</string>
     <string name="action_logout">Выйти</string>
@@ -476,7 +469,6 @@
     <string name="presence_manager_stopped">Менеджер статуса: остановлен</string>
     <string name="filter_levels">Уровни фильтрации</string>
     <string name="experimental_features">Экспериментальные функции</string>
-    <string name="open">Открыть</string>
     <string name="reset_to_default_levels">Сбросить</string>
     <string name="no_logs">Без логов</string>
     <string name="show_nerd_stats">Показывать статистику для гиков</string>
@@ -569,8 +561,6 @@
     <string name="join_session">Присоединиться к сессии</string>
     <string name="session_link">Ссылка сессии</string>
     <string name="session_code">Код сессии</string>
-    <string name="participants">Участники</string>
-    <string name="host">Хост</string>
     <string name="add_current_song">Добавить текущую песню</string>
     <string name="dismiss">Скрыть</string>
     <string name="enabled">Включено</string>

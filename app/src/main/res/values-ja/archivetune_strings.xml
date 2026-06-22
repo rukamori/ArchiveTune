@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">探検する</string>
     <string name="music_recognition_tap_to_listen">タップして聞いてください</string>
@@ -46,8 +46,6 @@
     <string name="local_songs_scan_folders_desc">これらのパスのいずれかに一致するフォルダーに保存されている曲をスキップします。</string>
     <string name="local_songs_scan_folders_empty">まだ除外されたフォルダーはありません。</string>
     <string name="local_songs_scan_folders_add">フォルダーの追加</string>
-    <string name="local_songs_scan_folders_dialog_title">除外フォルダー</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Music/Ringtones</string>
     <string name="local_songs_no_matches_title">一致するローカルソングはありません</string>
     <string name="local_songs_no_matches_desc">別の曲、アーティスト、またはアルバム名を試してください。</string>
     <string name="sort_by_album">アルバム</string>
@@ -74,8 +72,6 @@
     </plurals>
     <string name="no_title">タイトルなし</string>
     <string name="unknown_artist">不明なアーティスト</string>
-    <string name="unknown_item_type">不明なアイテムの種類</string>
-    <string name="loading_charts">チャートを読み込んでいます...</string>
     <string name="retry_button">再試行</string>
     <string name="album_cover_desc">アルバムカバー</string>
     <string name="top_music_videos">人気のミュージック ビデオ</string>
@@ -90,7 +86,6 @@
     <string name="cached_playlist">キャッシュされた</string>
     <string name="sync_playlist">プレイリストを同期する</string>
     <string name="sync_disabled">同期は無効です</string>
-    <string name="elements_selected">%1$d 個の要素が選択されました</string>
     <string name="allows_for_sync_witch_youtube">注: これにより、YouTube Music との同期が可能になります。これは後から変更することはできません。</string>
     <string name="generating_image">画像の生成</string>
     <string name="please_wait">お待ちください</string>
@@ -115,11 +110,6 @@
     <string name="lyrics_share_export_failed">イメージの作成に失敗しました: %1$s</string>
     <string name="lyrics_share_export_not_supported">画像の共有には Android 6.0 以降が必要です</string>
     <string name="more_options">その他のオプション</string>
-    <string name="text_color">文字の色</string>
-    <string name="secondary_text_color">二次テキストの色</string>
-    <string name="background_color">背景色</string>
-    <string name="added_to_play_next">次にプレイするために追加されました</string>
-    <string name="added_to_queue">キューに追加されました</string>
     <string name="remove_from_cache">キャッシュから削除</string>
     <string name="select">すべて選択</string>
     <string name="manage_tags">タグの管理</string>
@@ -138,7 +128,6 @@
     <string name="dislike_all">全部嫌い</string>
     <string name="sort_by_last_updated">更新日</string>
     <string name="link_copied">リンクがクリップボードにコピーされました</string>
-    <string name="starting_radio">ラジオを開始します</string>
     <string name="now_playing">プレイ中</string>
     <string name="close">閉じる</string>
     <string name="minimum_volume">最小音量</string>
@@ -158,14 +147,10 @@
     <plurals name="n_time">
         <item quantity="other">%d回</item>
     </plurals>
-    <string name="seek_backward">5秒戻る</string>
-    <string name="seek_forward">5秒進む</string>
     <string name="seek_forward_dynamic">+%1$d 秒進む</string>
     <string name="seek_backward_dynamic">-%1$d 秒前に戻る</string>
     <string name="seek_seconds_addup">プログレッシブシーク</string>
     <string name="seek_seconds_addup_description">有効にすると、シークスキップごとに 5 秒ずつ追加されます。</string>
-    <string name="login_settings">ログイン設定</string>
-    <string name="general_settings">一般設定</string>
     <string name="player_background_style">プレーヤーの背景スタイル</string>
     <string name="follow_theme">テーマに従う</string>
     <string name="gradient">グラデーション</string>
@@ -177,7 +162,6 @@
     <string name="player_design_v5">少し</string>
     <string name="player_design_v6">表現力豊かな</string>
     <string name="player_design_v7">没入型</string>
-    <string name="playing_from">%sからプレイ中</string>
     <string name="player_background_blur">ぼかし</string>
     <string name="coloring">ぬりえ</string>
     <string name="blur_gradient">ぼかしグラデーション</string>
@@ -185,7 +169,6 @@
     <string name="player_buttons_style">プレーヤーのボタンの色</string>
     <string name="default_style">デフォルト</string>
     <string name="secondary_color_style">二次</string>
-    <string name="enable_squiggly_slider">波線スライダーを有効にする</string>
     <string name="enable_swipe_thumbnail">スワイプによる曲変更を有効にする</string>
     <string name="swipe_song_to_add">曲を左にスワイプしてキューに追加するか、右にスワイプして次に再生します</string>
     <string name="lyrics_click_change">クリックすると歌詞が変わります</string>
@@ -198,22 +181,14 @@
     <string name="lyrics_romanize_chinese">中国語の歌詞をローマ字化する</string>
     <string name="lyrics_romanize_hindi">ヒンディー語の歌詞をローマ字化</string>
     <string name="lyrics_romanize_other_languages">他の非ラテン語の歌詞をローマ字化する</string>
-    <string name="auto_playlists">自動プレイリスト</string>
-    <string name="show_liked_playlist">「いいね！」プレイリストを表示</string>
-    <string name="show_downloaded_playlist">「ダウンロード済み」プレイリストを表示する</string>
-    <string name="show_top_playlist">「トップ」プレイリストを表示</string>
-    <string name="show_cached_playlist">「キャッシュされた」プレイリストを表示する</string>
-    <string name="card_and_list">カード&amp;リスト</string>
     <string name="quick_picks_display_mode">クイックピック表示モード</string>
     <string name="quick_picks_display_mode_card">カード</string>
     <string name="quick_picks_display_mode_list">リスト</string>
-    <string name="google">Google</string>
     <string name="discord">不和</string>
     <string name="advanced_login">トークンを使用してログインする</string>
     <string name="token_hidden">タップしてトークンを表示</string>
     <string name="token_shown">もう一度タップしてコピーまたは編集します</string>
     <string name="token_adv_login_description">これは高度なログイン方法です。 Web ポータルの代わりに、ここでログイン トークンを直接入力または更新することもできます。たとえば、これにより複数のデバイスでのログインが高速化されます。アプリが解析できない無効なトークン形式は受け入れられないことに注意してください。</string>
-    <string name="ytm_sync">YouTube Music アカウントと自動的に同期します</string>
     <string name="yt_sync">アカウントと自動同期</string>
     <string name="force_sync_on_switch_account">切り替えアカウントで強制的に同期する</string>
     <string name="force_sync_on_switch_account_desc">切り替え後に選択したアカウントからプレイリスト、好きな曲、アーティスト、アルバムを再同期します</string>
@@ -225,26 +200,16 @@
     <string name="last_song_listened">最後に聴いた曲に基づいて</string>
     <string name="dont_show">見せないでください</string>
     <string name="app_language">アプリ言語</string>
-    <string name="configure_app_language">アプリの言語を構成する</string>
-    <string name="intent_app_language_not_found">アプリの言語設定が見つかりませんでした。手動で設定してください</string>
     <string name="open_supported_links">デフォルトでサポートされているリンクを開く</string>
-    <string name="configure_supported_links">サポートされているリンクを構成する</string>
-    <string name="intent_supported_links_not_found">サポートされているリンク設定が見つかりませんでした。手動で設定してください</string>
     <string name="set_first_lyrics_provider">優先歌詞プロバイダー</string>
     <string name="audio_quality_max">マックス（ベータ版）</string>
-    <string name="enable_similar_content">同様のコンテンツを有効にする</string>
-    <string name="similar_content_desc">キューの終わりに達すると、類似した曲を自動的に追加します</string>
-    <string name="min_playback_duration_title">最小再生時間</string>
-    <string name="min_playback_duration_description">「再生済み」とみなされる前に再生する必要がある曲の最小量</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">最小再生時間</string>
     <string name="import_online">「m3u」プレイリストをインポートする</string>
     <string name="import_csv">「csv」プレイリストをインポートする</string>
     <string name="playlist_add_local_to_synced_note">注: ローカルの曲を同期/リモートのプレイリストに追加することはサポートされていません。他の組み合わせは有効です</string>
     <string name="auto_download_on_like">「いいね！」で自動ダウンロード</string>
     <string name="auto_download_on_like_desc">気に入った曲を自動的にダウンロード</string>
     <string name="swipe_sensitivity">ミニプレーヤーのスワイプ感度</string>
-    <string name="swipe_sensitivity_desc">曲を変更する際のスワイプ ジェスチャの感度を調整する</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">キャッシュされた曲をすべてクリアしてもよろしいですか?</string>
     <string name="clear_image_cache_dialog">キャッシュされた画像をすべてクリアしてもよろしいですか?</string>
@@ -253,7 +218,6 @@
     <string name="clear_canvas_cache">キャンバスキャッシュをクリアする</string>
     <string name="clear_canvas_cache_dialog">キャッシュされたキャンバスをすべてクリアしてもよろしいですか?</string>
     <string name="disable">無効にする</string>
-    <string name="pause_remote_listen_history">YouTube Music での視聴履歴の共有を一時停止する</string>
     <string name="not_logged_in_youtube">YouTube にログインしていません</string>
     <string name="default_links">サポートされているリンクを開く</string>
     <string name="open_app_settings_error">アプリ設定を開けませんでした</string>
@@ -299,20 +263,13 @@
     <string name="audio_crossfade_seconds">%1$s秒</string>
     <string name="crossfade_gapless_title">ギャップレスクロスフェード</string>
     <string name="crossfade_gapless_description">オーディオをオーバーラップさせずにフェードアウトおよびフェードインします。</string>
-    <string name="disable_load_more_when_repeat_all">すべて繰り返すときにさらに読み込みを無効にする</string>
-    <string name="disable_load_more_when_repeat_all_desc">全リピートモードが有効になっている場合、さらに曲や類似のコンテンツを自動ロードしないでください。</string>
     <string name="player_stream_client">再生クライアント</string>
     <string name="player_stream_client_desc">ストリームの取得にどの YouTube クライアントを使用するかを制御します</string>
     <string name="player_stream_client_android_vr">アンドロイドVR</string>
     <string name="player_stream_client_android_vr_desc">署名の復号化を行わずに直接ストリーミングするため、最大の速度が得られます。大多数のユーザーに適しています。</string>
     <string name="player_stream_client_web_remix">ウェブリミックス</string>
     <string name="player_stream_client_web_remix_desc">速度を犠牲にして拡張フォーマットをサポートします。 JavaScript 署名の復号化により、起動に最大 5 ～ 10 秒の遅延が発生します。</string>
-    <string name="settings_section_ui">ユーザーインターフェース</string>
-    <string name="settings_section_privacy">プライバシー &amp; セキュリティ</string>
-    <string name="settings_section_player">プレーヤー &amp; メディア</string>
     <string name="settings_section_player_content">プレーヤー &amp; のコンテンツ</string>
-    <string name="settings_section_storage">ストレージ &amp; データ</string>
-    <string name="settings_section_system">システム &amp; について</string>
     <string name="settings_appearance_subtitle">テーマ、レイアウト、視覚スタイル</string>
     <string name="settings_playback_title">再生</string>
     <string name="settings_playback_subtitle">オーディオの動作、クロスフェード、バックグラウンド再生</string>
@@ -333,9 +290,6 @@
     <string name="settings_stats_title">リスニング統計</string>
     <string name="settings_stats_subtitle">人気の曲、アーティスト、再生履歴</string>
     <string name="similar_content">類似のコンテンツ</string>
-    <string name="error_no_song_playing">現在再生中の曲はありません</string>
-    <string name="error_no_similar_songs">似たような曲は見つかりませんでした</string>
-    <string name="error_automix_failed">類似した曲の読み込みに失敗しました</string>
     <string name="year_in_music">音楽の一年</string>
     <string name="total_listening_time">合計リスニング時間</string>
     <string name="top_artists">トップアーティスト</string>
@@ -347,7 +301,6 @@
     <string name="stats_total_plays">総再生数</string>
     <string name="stats_unique_songs">ユニークな曲</string>
     <string name="stats_unique_artists">ユニークなアーティスト</string>
-    <string name="stats_unique_albums">ユニークなアルバム</string>
     <string name="stats_listening_by_day">日ごとに聞く</string>
     <string name="stats_listening_by_hour">時間ごとに聞く</string>
     <string name="stats_peak_hour">最もアクティブ: %s</string>
@@ -362,17 +315,11 @@
     <string name="import_theme">テーマのインポート</string>
     <string name="export_theme">テーマのエクスポート</string>
     <string name="palette_custom">カスタム</string>
-    <string name="theme_creator_title">テーマクリエーター</string>
-    <string name="theme_creator_subtitle">カラーを調整し、結果をプレビューして、エクスポートまたはインポートします。</string>
     <string name="theme_meta_title">テーマの詳細</string>
     <string name="theme_name_optional">名前 (オプション)</string>
     <string name="theme_apply_button">テーマの適用</string>
-    <string name="theme_applied">適用されたテーマ</string>
-    <string name="theme_export_success">テーマがエクスポートされました</string>
-    <string name="theme_export_failed">エクスポートに失敗しました</string>
     <string name="theme_import_success">インポートされたテーマ</string>
     <string name="theme_import_failed">インポートに失敗しました</string>
-    <string name="theme_import_failed_title">テーマをインポートできません</string>
     <string name="theme_seed_colors">シードカラー</string>
     <string name="theme_seed_primary">プライマリー</string>
     <string name="theme_seed_secondary">二次</string>
@@ -382,9 +329,6 @@
     <string name="theme_editor_hex">16進数</string>
     <string name="theme_editor_hex_input">16 進値 (#RRGGBB または #AARRGGBB)</string>
     <string name="theme_presets_title">プリセット</string>
-    <string name="theme_preview_trackline">プレミアム プレビュー カード</string>
-    <string name="theme_preview_primary_action">主なアクション</string>
-    <string name="theme_preview_secondary_action">二次アクション</string>
     <string name="copy">コピー</string>
     <string name="backup_in_progress">バックアップ中です</string>
     <string name="restore_in_progress">復元中です</string>
@@ -435,7 +379,6 @@
     <string name="ai_api_test_failed">APIテストに失敗しました</string>
     <string name="ai_translation_menu">AI翻訳</string>
     <string name="ai_translating_lyrics">歌詞を翻訳中...</string>
-    <!-- About Screen -->
     <string name="about_lead_developer">リードデベロッパー</string>
     <string name="about_archive_tune_team">ArchiveTune チーム</string>
     <string name="about_respecter">リスペクター</string>
@@ -455,6 +398,5 @@
     <string name="restore_missing_content">バックアップアーカイブに復元可能なデータが含まれていません。</string>
     <string name="restore_corrupted">バックアップファイルが破損しているため、読み取れません。</string>
     <string name="restore_file_not_found">選択されたファイルを開けませんでした。</string>
-    <string name="backup_select_backup">バックアップファイルを選択</string>
     <string name="restore_select_backup">復元するバックアップファイルを選択してください。</string>
 </resources>

@@ -173,6 +173,7 @@ import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -181,6 +182,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
@@ -319,6 +321,8 @@ class MainActivity : ComponentActivity() {
     private var pendingIntent: Intent? = null
     private var pendingDeepLinkQueue: Queue? = null
     private var pendingVoiceSearchQuery: String? = null
+    private var pendingAodModeRequest = false
+    private var pendingAodModeJob: Job? = null
     private var pendingTogetherJoinLink: String? = null
     private var pendingBackupRestoreUri by mutableStateOf<Uri?>(null)
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -339,12 +343,15 @@ class MainActivity : ComponentActivity() {
                         PlayerConnection(this@MainActivity, service, database, lifecycleScope)
                     playPendingDeepLinkQueueIfReady()
                     playPendingVoiceSearchIfReady()
+                    openPendingAodModeIfReady()
                     joinPendingTogetherIfReady()
                 }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 isMusicServiceBound = false
+                pendingAodModeJob?.cancel()
+                pendingAodModeJob = null
                 playerConnection?.dispose()
                 playerConnection = null
             }
@@ -362,6 +369,26 @@ class MainActivity : ComponentActivity() {
         val connection = playerConnection ?: return
         pendingVoiceSearchQuery = null
         connection.playFromVoiceSearch(query)
+    }
+
+    private fun requestAodMode() {
+        pendingAodModeRequest = true
+        startMusicServiceSafely()
+        openPendingAodModeIfReady()
+    }
+
+    private fun openPendingAodModeIfReady() {
+        if (!pendingAodModeRequest) return
+        val connection = playerConnection ?: return
+        pendingAodModeRequest = false
+        pendingAodModeJob?.cancel()
+        pendingAodModeJob =
+            lifecycleScope.launch {
+                connection.queueRestoreCompleted.first { it }
+                if (awaitRestorablePlayback(connection)) {
+                    connection.aodModeEnabled.value = true
+                }
+            }
     }
 
     private fun joinPendingTogetherIfReady() {
@@ -409,6 +436,7 @@ class MainActivity : ComponentActivity() {
                 Context.BIND_AUTO_CREATE,
             )
         playPendingDeepLinkQueueIfReady()
+        openPendingAodModeIfReady()
     }
 
     private fun safeUnbindMusicService() {
@@ -457,13 +485,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val dataUri = intent.data
-        if (isBackupUri(dataUri)) {
-            pendingBackupRestoreUri = dataUri
-            return
-        }
         if (::navController.isInitialized) {
-            handleDeepLinkIntent(intent, navController)
+            handleIntent(intent, navController)
         } else {
             pendingIntent = intent
         }
@@ -1140,9 +1163,7 @@ class MainActivity : ComponentActivity() {
                         )
 
                     val handlePrimaryNavigationClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
-                        if (screen.route == Screens.Search.route) {
-                            openSearch()
-                        } else if (isSelected) {
+                        if (isSelected) {
                             navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                             coroutineScope.launch {
                                 searchBarScrollBehavior.state.resetHeightOffset()
@@ -1481,12 +1502,8 @@ class MainActivity : ComponentActivity() {
                                                 playerBottomSheetState.collapse(if (disableAnimations) snap() else spring())
                                             }
                                             val isSelected =
-                                                if (screen.route == Screens.Search.route) {
-                                                    active
-                                                } else {
-                                                    navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
-                                                }
-                                            if (wasPlayerActive && isSelected && screen.route != Screens.Search.route) {
+                                                navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
+                                            if (wasPlayerActive && isSelected) {
                                                 return@TvNavigationRail
                                             }
                                             handlePrimaryNavigationClick(screen, isSelected)
@@ -1542,7 +1559,7 @@ class MainActivity : ComponentActivity() {
                                         val shouldUseFloatingTopBar =
                                             remember(navBackStackEntry) {
                                                 navBackStackEntry?.destination?.route == Screens.Home.route ||
-                                                    navBackStackEntry?.destination?.route == Screens.MoodAndGenres.route ||
+                                                    navBackStackEntry?.destination?.route == Screens.Search.route ||
                                                     navBackStackEntry?.destination?.route == Screens.Library.route
                                             }
                                         val shouldShowBlurBackground =
@@ -2084,6 +2101,12 @@ class MainActivity : ComponentActivity() {
                                                     } else {
                                                         ""
                                                     },
+                                                onMusicTogetherClick =
+                                                    if (shouldShowHomeShuffleButton) {
+                                                        { navController.navigate("settings/music_together") }
+                                                    } else {
+                                                        null
+                                                    },
                                                 isSelected = { screen ->
                                                     navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
                                                         true
@@ -2289,6 +2312,19 @@ class MainActivity : ComponentActivity() {
                             openSearchImmediately = false
                         }
                     }
+
+                    val openSearchFromRoute =
+                        navBackStackEntry
+                            ?.savedStateHandle
+                            ?.getStateFlow("openSearch", false)
+                            ?.collectAsStateWithLifecycle()
+
+                    LaunchedEffect(openSearchFromRoute?.value) {
+                        if (openSearchFromRoute?.value == true) {
+                            navBackStackEntry?.savedStateHandle?.set("openSearch", false)
+                            openSearch()
+                        }
+                    }
                 }
             }
         }
@@ -2312,6 +2348,10 @@ class MainActivity : ComponentActivity() {
         }
         if (intent.action == ACTION_MUSIC_RECOGNITION) {
             navController.openMusicRecognition()
+            return
+        }
+        if (intent.action == ACTION_AOD_MODE) {
+            requestAodMode()
             return
         }
         if (intent.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH") {

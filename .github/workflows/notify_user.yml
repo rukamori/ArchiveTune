@@ -1,13 +1,18 @@
 name: Comment when commit references issue
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Build APKs
+    types:
+      - completed
     branches:
       - main
       - dev
 
 jobs:
   notify-issue:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -42,10 +47,11 @@ jobs:
             const commentMarker = "<!-- archivetune-notify-user:nightly-reference -->";
             const referencedIssuePattern = /#([1-9]\d*)\b/g;
             const issueClosedReason = "completed";
+            const workflowRun = context.payload.workflow_run;
             const commits = Array.isArray(context.payload.commits)
               ? context.payload.commits
               : [];
-            const headCommit = context.payload.head_commit;
+            const headCommit = workflowRun?.head_commit ?? context.payload.head_commit;
             const commitMessages = commits.length > 0
               ? commits.map((commit) => commit.message)
               : headCommit?.message
@@ -61,7 +67,7 @@ jobs:
             ];
 
             if (issueNumbers.length === 0) {
-              core.info("No referenced issues found in pushed commit messages.");
+              core.info("No referenced issues found in the completed build commit message.");
               return;
             }
 
@@ -160,8 +166,9 @@ jobs:
                 }
 
                 const author = issue.data.user.login;
-                const commitUrl = headCommit?.url ?? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
-                const commitSha = (headCommit?.id ?? context.sha).substring(0, 7);
+                const headSha = workflowRun?.head_sha ?? headCommit?.id ?? context.sha;
+                const commitUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${headSha}`;
+                const commitSha = headSha.substring(0, 7);
                 const body = [
                   commentMarker,
                   `Hey @${author}, This issue was referenced on commit [\`${commitSha}\`](${commitUrl}).`,

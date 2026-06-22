@@ -109,6 +109,22 @@ data class ParticipantLeft(
 ) : TogetherMessage
 
 @Serializable
+@SerialName("host_transfer")
+@Immutable
+data class HostTransfer(
+    val sessionId: String,
+    val participantId: String,
+) : TogetherMessage
+
+@Serializable
+@SerialName("host_transferred")
+@Immutable
+data class HostTransferred(
+    val sessionId: String,
+    val participantId: String,
+) : TogetherMessage
+
+@Serializable
 @SerialName("heartbeat_ping")
 @Immutable
 data class HeartbeatPing(

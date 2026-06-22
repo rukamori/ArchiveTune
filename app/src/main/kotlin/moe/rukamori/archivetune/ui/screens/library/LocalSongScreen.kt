@@ -439,8 +439,24 @@ fun LocalSongScreen(
                     sortType = sortType,
                     sortDescending = sortDescending,
                     visibleSongCount = visibleSongs.size,
+                    shuffleEnabled = queueItems.isNotEmpty(),
                     onSortTypeChange = { onSortTypeNameChange(it.name) },
                     onSortDescendingChange = onSortDescendingChange,
+                    onShuffleClick = {
+                        if (queueItems.isNotEmpty()) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title =
+                                        if (query.isBlank()) {
+                                            context.getString(R.string.local_history)
+                                        } else {
+                                            context.getString(R.string.queue_searched_songs)
+                                        },
+                                    items = queueItems.shuffled(),
+                                ),
+                            )
+                        }
+                    },
                 )
             }
 
@@ -566,8 +582,10 @@ private fun LocalSongControlsCard(
     sortType: LocalSongSortType,
     sortDescending: Boolean,
     visibleSongCount: Int,
+    shuffleEnabled: Boolean,
     onSortTypeChange: (LocalSongSortType) -> Unit,
     onSortDescendingChange: (Boolean) -> Unit,
+    onShuffleClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -590,6 +608,18 @@ private fun LocalSongControlsCard(
                 }
             },
         )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        IconButton(
+            onClick = onShuffleClick,
+            enabled = shuffleEnabled,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.shuffle),
+                contentDescription = stringResource(R.string.shuffle),
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 

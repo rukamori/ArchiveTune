@@ -1,16 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    
     <string name="home">홈</string>
     <string name="songs">노래</string>
     <string name="artists">아티스트</string>
     <string name="albums">앨범</string>
     <string name="playlists">재생목록</string>
-    
     <plurals name="n_selected">
         <item quantity="other">%d개 선택됨</item>
     </plurals>
-    
     <string name="history">재생 기록</string>
     <string name="stats">통계</string>
     <string name="mood_and_genres">분위기 및 장르</string>
@@ -27,7 +24,6 @@
     <string name="yesterday">어제</string>
     <string name="this_week">이번 주</string>
     <string name="last_week">지난주</string>
-    
     <string name="most_played_songs">가장 많이 재생한 곡</string>
     <string name="search">검색</string>
     <string name="search_yt_music">YouTube Music 검색…</string>
@@ -45,9 +41,7 @@
     <string name="filter_featured_playlists">추천 재생목록</string>
     <string name="no_results_found">검색 결과가 없습니다.</string>
     <string name="top_results">가장 일치하는 검색결과</string>
-    
     <string name="other_versions">다른 버전</string>
-    
     <string name="liked_songs">좋아요 한 곡</string>
     <string name="downloaded_songs">다운로드 한 곡</string>
     <string name="playlist_is_empty">재생목록이 비어 있습니다.</string>
@@ -59,7 +53,6 @@
     <string name="shuffle">셔플</string>
     <string name="music_recognition">음악 인식</string>
     <string name="reset">재설정</string>
-    
     <string name="details">세부 정보</string>
     <string name="edit">편집</string>
     <string name="start_radio">라디오 시작</string>
@@ -110,7 +103,6 @@
     <string name="pitch">피치</string>
     <string name="pitch_mode_semitones_short">st</string>
     <string name="pitch_mode_multiplier_short">x</string>
-    
     <string name="sort_by_create_date">추가된 날짜순</string>
     <string name="sort_by_name">이름순</string>
     <string name="sort_by_artist">아티스트순</string>
@@ -119,7 +111,6 @@
     <string name="sort_by_custom">사용자 지정 정렬</string>
     <string name="sort_order_ascending">오름차순 정렬</string>
     <string name="sort_order_descending">내림차순 정렬</string>
-    
     <string name="media_id">미디어 ID</string>
     <string name="mime_type">파일 형식 (MIME)</string>
     <string name="no_matching_playlists">일치하는 재생목록이 없습니다.</string>
@@ -145,7 +136,6 @@
     <string name="add_anyway">무시하고 추가</string>
     <string name="duplicates_description_single">이미 재생목록에 있는 곡입니다.</string>
     <string name="duplicates_description_multiple">%d곡이 이미 재생목록에 있습니다.</string>
-    
     <plurals name="n_song">
         <item quantity="other">%d곡</item>
     </plurals>
@@ -167,14 +157,12 @@
     <plurals name="n_year">
         <item quantity="other">%d년</item>
     </plurals>
-    
     <string name="added_to_playlist">%s에 추가됨</string>
     <string name="added_n_songs_to_playlist">%2$s에 %1$d곡을 추가했습니다.</string>
     <string name="added_to_n_playlists">%d개의 재생목록에 추가됨</string>
     <string name="added_n_songs_to_n_playlists">%2$d개의 재생목록에 %1$d곡을 추가했습니다.</string>
     <string name="playlist_synced">재생목록이 동기화되었습니다.</string>
     <string name="undo">실행 취소</string>
-    
     <string name="lyrics_not_found">가사를 찾을 수 없습니다</string>
     <string name="lyrics_word_sync">단어 동기화</string>
     <string name="sleep_timer">취침 타이머</string>
@@ -187,7 +175,6 @@
     <string name="error_timeout">시간 초과</string>
     <string name="error_malformed_stream">오디오 소스 에러</string>
     <string name="error_unknown">알 수 없는 오류</string>
-    
     <string name="action_like">좋아요</string>
     <string name="action_remove_like">좋아요 취소</string>
     <string name="action_shuffle_on">셔플 켜짐</string>
@@ -195,32 +182,26 @@
     <string name="repeat_mode_off">반복 모드 꺼짐</string>
     <string name="repeat_mode_one">한 곡 반복</string>
     <string name="repeat_mode_all">전체 반복</string>
-    
     <string name="queue_all_songs">모든 노래</string>
     <string name="queue_searched_songs">검색된 노래</string>
     <string name="queue_continue_playing">대기열 이어서 감상</string>
     <string name="queue_autoplaying_similar">유사한 음악 자동 재생</string>
-    
     <string name="music_player">뮤직 플레이어</string>
-    
     <string name="settings">설정</string>
     <string name="appearance">화면 설정</string>
     <string name="theme">테마</string>
     <string name="enable_dynamic_theme">동적 테마 활성화</string>
     <string name="random_theme_on_startup">앱 시작 시 무작위 테마 적용</string>
     <string name="random_theme_on_startup_desc">앱을 실행할 때마다 매번 임의의 색상 테마를 자동으로 적용합니다.</string>
-    
     <string name="color_palette">컬러 팔레트</string>
     <string name="customize_theme_colors">앱 테마의 메인 색상을 직접 선택하세요</string>
     <string name="palette_default">기본</string>
-    
     <string name="palette_ocean_blue">오션 블루</string>
     <string name="palette_arctic_blue">아크틱 블루</string>
     <string name="palette_midnight_navy">미드나잇 네이비</string>
     <string name="palette_sky_blue">스카이 블루</string>
     <string name="palette_cobalt_blue">코발트 블루</string>
     <string name="palette_electric_blue">일렉트릭 블루</string>
-    
     <string name="palette_emerald_green">에메랄드 그린</string>
     <string name="palette_teal_wave">틸 웨이브</string>
     <string name="palette_forest_green">포레스트 그린</string>
@@ -228,21 +209,18 @@
     <string name="palette_mint_fresh">민트 프레시</string>
     <string name="palette_olive_garden">올리브 가든</string>
     <string name="palette_sage_green">세이지 그린</string>
-    
     <string name="palette_sunset_orange">선셋 오렌지</string>
     <string name="palette_golden_hour">골든 아워</string>
     <string name="palette_warm_amber">웜 엠버</string>
     <string name="palette_tangerine_blast">탠저린 블래스트</string>
     <string name="palette_peach">피치</string>
     <string name="palette_mango">망고</string>
-    
     <string name="palette_royal_purple">로열 퍼플</string>
     <string name="palette_lavender_dream">라벤더 드림</string>
     <string name="palette_grape_purple">그레이프 퍼플</string>
     <string name="palette_violet">바이올렛</string>
     <string name="palette_amethyst">아메시스트</string>
     <string name="palette_ultra_violet">울트라 바이올렛</string>
-    
     <string name="palette_cherry_blossom">벚꽃</string>
     <string name="palette_rose_quartz">로즈 쿼츠</string>
     <string name="palette_magenta_pop">마젠타 팝</string>
@@ -250,37 +228,31 @@
     <string name="palette_blush">블러쉬</string>
     <string name="palette_coral">코랄</string>
     <string name="palette_bubblegum">버블검</string>
-    
     <string name="palette_crimson_red">크림슨 레드</string>
     <string name="palette_youtube_red">YouTube 레드</string>
     <string name="palette_wine_red">와인 레드</string>
     <string name="palette_ruby_red">루비 레드</string>
     <string name="palette_scarlet">스칼렛</string>
-    
     <string name="palette_charcoal">차콜</string>
     <string name="palette_silver">실버</string>
     <string name="palette_slate">슬레이트</string>
     <string name="palette_graphite">그라파이트</string>
-    
     <string name="palette_terracotta">테라코타</string>
     <string name="palette_coffee">커피</string>
     <string name="palette_mocha">모카</string>
     <string name="palette_sand">샌드</string>
     <string name="palette_clay">클레이</string>
-    
     <string name="palette_pastel_pink">파스텔 핑크</string>
     <string name="palette_pastel_blue">파스텔 블루</string>
     <string name="palette_pastel_green">파스텔 그린</string>
     <string name="palette_pastel_yellow">파스텔 옐로우</string>
     <string name="palette_pastel_purple">파스텔 퍼플</string>
-    
     <string name="palette_neon_green">네온 그린</string>
     <string name="palette_neon_pink">네온 핑크</string>
     <string name="palette_neon_blue">네온 블루</string>
     <string name="palette_neon_orange">네온 오렌지</string>
     <string name="palette_cyberpunk">사이버펑크</string>
     <string name="palette_synthwave">신스웨이브</string>
-    
     <string name="palette_ocean">바다</string>
     <string name="palette_forest">깊은 숲</string>
     <string name="palette_autumn">가을</string>
@@ -291,7 +263,6 @@
     <string name="palette_aurora">오로라</string>
     <string name="palette_candy">캔디</string>
     <string name="palette_rainbow">무지개</string>
-    
     <string name="dark_theme">어두운 테마</string>
     <string name="dark_theme_on">켜짐</string>
     <string name="dark_theme_off">꺼짐</string>
@@ -323,16 +294,12 @@
     <string name="blur_intensity">블러 강도</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="player">플레이어</string>
-    <string name="left">왼쪽</string>
-    <string name="center">가운데</string>
-    <string name="right">오른쪽</string>
     <string name="player_slider_style">플레이어 재생 바 스타일</string>
     <string name="slider_style_standard">표준</string>
     <string name="slider_style_wavy">물결 모양</string>
     <string name="slider_style_thick">두껍게</string>
     <string name="slider_style_circular">원형</string>
     <string name="slider_style_simple">심플</string>
-    <string name="squiggly">물결</string>
     <string name="misc">기타 설정</string>
     <string name="haptics">햅틱 피드백</string>
     <string name="haptics_desc">버튼이나 메뉴를 누를 때 손끝에 가벼운 진동 반응을 줍니다.</string>
@@ -340,16 +307,11 @@
     <string name="grid_cell_size">그리드 셀 크기</string>
     <string name="small">작게</string>
     <string name="big">크게</string>
-    
     <string name="lyrics_animation_style">가사 애니메이션 스타일</string>
     <string name="lyrics_mode">가사 렌더링 모드</string>
     <string name="lyrics_mode_v2">V2 레거시</string>
     <string name="lyrics_mode_enhanced">향상된 모드</string>
     <string name="lyrics_animation_style_v2_only">이전 버전(V2) 가사 모드에서만 사용할 수 있는 효과입니다.</string>
-    
-    <string name="none">없음</string>
-    <string name="fade">페이드</string>
-    <string name="karaoke">노래방 효과</string>
     <string name="lyrics_line_spacing">가사 줄 간격</string>
     <string name="content">콘텐츠</string>
     <string name="action_logout">로그아웃</string>
@@ -508,7 +470,6 @@
     <string name="options">옵션</string>
     <string name="preview">미리보기</string>
     <string name="enable_discord_rpc">Rich Presence 활성화</string>
-    
     <string name="scrobbling">스크로블링</string>
     <string name="lastfm_integration">Last.fm 연동</string>
     <string name="enable_scrobbling">감상 기록 전송 (스크로블) 활성화</string>
@@ -520,12 +481,10 @@
     <string name="username">사용자 이름</string>
     <string name="password">비밀번호</string>
     <string name="logging_in">로그인 중…</string>
-    
     <string name="listenbrainz_scrobbling">ListenBrainz 음악 전송</string>
     <string name="listenbrainz_scrobbling_description">지금 듣는 노래 및 완곡한 기록을 ListenBrainz 서비스로 실시간 전송합니다.</string>
     <string name="set_listenbrainz_token">ListenBrainz 토큰 설정</string>
     <string name="edit_listenbrainz_token">ListenBrainz 토큰 편집</string>
-    
     <string name="discord_activity_name">활동명</string>
     <string name="discord_activity_details">활동 세부정보</string>
     <string name="discord_activity_state">활동 상태</string>
@@ -554,17 +513,14 @@
     <string name="support_development_donate">개발 후원하기</string>
     <string name="support_development_star">GitHub에서 스타 누르기</string>
     <string name="later">나중에</string>
-    
     <string name="new_update_available">새 업데이트 사용 가능</string>
     <string name="release_notes_unavailable">릴리스 노트를 사용할 수 없습니다.</string>
     <string name="update_text">업데이트</string>
-    
     <string name="translate">번역</string>
     <string name="language_label">언어</string>
     <string name="lyrics">가사</string>
     <string name="translation_success">번역이 저장되었습니다</string>
     <string name="translation_failed">번역 실패</string>
-    
     <string name="discord_button_options">버튼 옵션</string>
     <string name="discord_image_options">이미지 옵션</string>
     <string name="refresh">새로고침</string>
@@ -576,7 +532,6 @@
     <string name="logout_confirm_message">Discord 계정에서 로그아웃하시겠습니까?</string>
     <string name="logout_confirm_yes">로그아웃</string>
     <string name="logout_confirm_no">취소</string>
-    
     <string name="experiment_settings">실험실 설정</string>
     <string name="show_discord_debug_ui">디버그 UI 표시</string>
     <string name="enable_discord_debug_lines">디버그 정보 라인 활성화</string>
@@ -584,7 +539,6 @@
     <string name="presence_manager_stopped">상태 관리자: 중지됨</string>
     <string name="filter_levels">필터 수준</string>
     <string name="experimental_features">실험적 기능 설정</string>
-    <string name="open">열기</string>
     <string name="reset_to_default_levels">기본값으로 재설정</string>
     <string name="no_logs">로그 없음</string>
     <string name="show_nerd_stats">전문가용 재생 통계 표시</string>
@@ -670,7 +624,6 @@
     <string name="permission_status_allowed">기기 권한 허용 완료</string>
     <string name="next">다음</string>
     <string name="allow">권한 승인</string>
-    
     <string name="you_might_like">당신을 위한 맞춤 추천 리스트</string>
     <string name="refresh_suggestions">추천 리스트 새로고침</string>
     <string name="you_might_like_source">추천 음원 추출 기준</string>
@@ -694,8 +647,6 @@
     <string name="join_session">Music Together 세션 참가하기</string>
     <string name="session_link">세션 다이렉트 주소</string>
     <string name="session_code">세션 고유 코드</string>
-    <string name="participants">세션 접속 게스트 목록</string>
-    <string name="host">호스트 (방장)</string>
     <string name="add_current_song">현재 곡 대기열에 추가</string>
     <string name="dismiss">닫기</string>
     <string name="enabled">사용 중</string>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">浏览</string>
     <string name="local_history">本地</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">返回</string>
     <string name="no_title">无标题</string>
     <string name="unknown_artist">未知艺术家</string>
-    <string name="unknown_item_type">未知项目类型</string>
-    <string name="loading_charts">正在加载图表..</string>
     <string name="retry_button">重试</string>
     <string name="album_cover_desc">专辑封面</string>
     <string name="top_music_videos">顶级音乐视频</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">已缓存</string>
     <string name="sync_playlist">同步播放列表</string>
     <string name="sync_disabled">同步被禁用</string>
-    <string name="elements_selected">%1$d已选定元素</string>
     <string name="allows_for_sync_witch_youtube">注意：这允许与YouTube Music同步。这在之后是无法更改的。</string>
     <string name="generating_image">生成图像</string>
     <string name="please_wait">请稍候</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">分享已选中</string>
     <string name="customize_colors">自定义颜色</string>
     <string name="more_options">更多选项</string>
-    <string name="text_color">文本颜色</string>
-    <string name="secondary_text_color">次要文本颜色</string>
-    <string name="background_color">背景颜色</string>
-    <string name="added_to_play_next">添加下一播放</string>
-    <string name="added_to_queue">加入队列</string>
     <string name="remove_from_cache">从缓存中删除</string>
     <string name="select">全部选择</string>
     <string name="manage_tags">管理标签</string>
@@ -58,7 +50,6 @@
     <string name="dislike_all">全部不喜爱</string>
     <string name="sort_by_last_updated">更新的日期</string>
     <string name="link_copied">链接已复制到剪贴板</string>
-    <string name="starting_radio">正在开始广播</string>
     <string name="now_playing">正在播放</string>
     <string name="close">关闭</string>
     <string name="minimum_volume">最小音量</string>
@@ -70,12 +61,8 @@
     <string name="show_tags_in_library">在库中显示标签</string>
     <string name="show_tags_in_library_desc">在库中显示标签过滤按钮</string>
     <string name="already_in_playlist">已经在播放列表里：</string>
-    <string name="seek_backward">回退5秒</string>
-    <string name="seek_forward">前进5秒</string>
     <string name="seek_seconds_addup">渐进式寻觅</string>
     <string name="seek_seconds_addup_description">如果启用，每次寻觅跳跃都会增加5秒的额外时间</string>
-    <string name="login_settings">登录设置</string>
-    <string name="general_settings">通用设置</string>
     <string name="player_background_style">播放器背景风格</string>
     <string name="follow_theme">跟随主题</string>
     <string name="gradient">梯度</string>
@@ -100,29 +87,18 @@
     <string name="set_quick_picks">快速选择</string>
     <string name="last_song_listened">基于最近听过的歌曲</string>
     <string name="app_language">应用语言</string>
-    <string name="configure_app_language">配置应用语言</string>
-    <string name="intent_app_language_not_found">找不到应用的语言设置，请手动配置</string>
     <string name="open_supported_links">默认打开支持的链接</string>
-    <string name="configure_supported_links">配置支持的链接</string>
-    <string name="intent_supported_links_not_found">找不到支持的链接设置，请手动配置</string>
     <string name="set_first_lyrics_provider">首选歌词提供者</string>
-    <string name="enable_similar_content">启用类似内容</string>
-    <string name="similar_content_desc">当排队结束时，自动添加更多相似歌曲</string>
-    <string name="min_playback_duration_title">最小播放时长</string>
-    <string name="min_playback_duration_description">歌曲必须播放达到此时间，才会记入播放历史或统计</string>
-    <string name="minimum_playback_duration">最小播放时长</string>
     <string name="import_online">导入“m3u”播放列表</string>
     <string name="import_csv">导入“csv”播放列表</string>
     <string name="playlist_add_local_to_synced_note">提示：本地歌曲无法加入同步歌单，除此之外的操作均受支持</string>
     <string name="auto_download_on_like">自动下载</string>
     <string name="auto_download_on_like_desc">自动下载喜欢的歌曲</string>
     <string name="swipe_sensitivity">迷你播放器滑动灵敏度</string>
-    <string name="swipe_sensitivity_desc">调整切换歌曲时滑动手势的灵敏度</string>
     <string name="clear_song_cache_dialog">你确定要清除所有缓存的歌曲吗？</string>
     <string name="clear_image_cache_dialog">你确定要清除所有缓存的图片吗？</string>
     <string name="clear_downloads_dialog">你确定要清除所有下载吗？</string>
     <string name="disable">停用</string>
-    <string name="pause_remote_listen_history">暂停分享与YouTube Music的收听历史</string>
     <string name="not_logged_in_youtube">未登录YouTube</string>
     <string name="default_links">打开支持链接</string>
     <string name="open_app_settings_error">无法打开应用设置</string>
@@ -147,20 +123,13 @@
     <string name="playlist_not_found_desc">请求的播放列表无法加载</string>
     <string name="empty_playlist">空播放列表</string>
     <string name="empty_playlist_desc">此播放列表暂无歌曲</string>
-    <string name="disable_load_more_when_repeat_all">列表循环模式下禁用加载更多</string>
-    <string name="disable_load_more_when_repeat_all_desc">列表循环时禁用自动续播和相似歌曲推荐</string>
     <string name="player_stream_client">播放客户端</string>
     <string name="player_stream_client_desc">控制哪个YouTube客户端用于获取流</string>
     <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_android_vr_desc">免签名解密直流，速度最快，适合绝大多数用户.</string>
     <string name="player_stream_client_web_remix">网络混音</string>
     <string name="player_stream_client_web_remix_desc">支持更多格式，但会降低启动速度，JavaScript 签名解密会导致约 5–10 秒的加载延迟.</string>
-    <string name="settings_section_ui">用户界面</string>
-    <string name="settings_section_privacy">隐私与安全</string>
-    <string name="settings_section_player">播放器与媒体</string>
     <string name="settings_section_player_content">播放器与内容</string>
-    <string name="settings_section_storage">存储与数据</string>
-    <string name="settings_section_system">系统与简介</string>
     <string name="similar_content">类似内容</string>
     <string name="year_in_music">一年里的音乐</string>
     <string name="total_listening_time">总收听时间</string>
@@ -171,30 +140,18 @@
     <string name="import_theme">导入主题</string>
     <string name="export_theme">导出主题</string>
     <string name="palette_custom">自定义</string>
-    <string name="theme_creator_title">主题创建器</string>
-    <string name="theme_creator_subtitle">自定义颜色，实时预览，并进行导入或导出</string>
     <string name="theme_meta_title">主题详情</string>
     <string name="theme_name_optional">名称（可选）</string>
     <string name="theme_apply_button">应用主题</string>
-    <string name="theme_applied">主题应用</string>
-    <string name="theme_export_success">主题导出</string>
-    <string name="theme_export_failed">导出失败</string>
     <string name="theme_import_success">主题导入</string>
     <string name="theme_import_failed">导入失败</string>
-    <string name="theme_import_failed_title">无法导入主题</string>
     <string name="theme_seed_colors">基准色</string>
     <string name="lyrics_click_change">点击切换歌词</string>
     <string name="lyrics_romanize_japanese">日文歌词罗马音</string>
     <string name="lyrics_romanize_korean">韩文歌词罗马音</string>
-    <string name="auto_playlists">自动播放列表</string>
-    <string name="show_liked_playlist">展示“我的喜爱”播放列表</string>
-    <string name="show_downloaded_playlist">展示“已下载”播放列表</string>
-    <string name="show_top_playlist">展示“排行榜”播放列表</string>
-    <string name="show_cached_playlist">展示“已缓存”播放列表</string>
     <string name="advanced_login">用令牌登录</string>
     <string name="token_hidden">点击显示令牌</string>
     <string name="token_shown">再次点击以复制或编辑</string>
-    <string name="ytm_sync">自动同步你的YouTube Music账号</string>
     <string name="yt_sync">账户自动同步</string>
     <string name="more_content">更多内容</string>
     <string name="theme_seed_primary">主题基准主色</string>
@@ -204,9 +161,6 @@
     <string name="theme_editor_hex">Hex</string>
     <string name="theme_editor_hex_input">Hex值（#RRGGBB 或 #AARRGGBB）</string>
     <string name="theme_presets_title">预设</string>
-    <string name="theme_preview_trackline">高级预览卡片</string>
-    <string name="theme_preview_primary_action">主要操作按钮</string>
-    <string name="theme_preview_secondary_action">次要操作按钮</string>
     <string name="backup_in_progress">备份正在进行中</string>
     <string name="restore_step_restarting">重启应用</string>
     <string name="copy">复制</string>
@@ -218,7 +172,6 @@
     <string name="restore_step_restoring_settings">恢复设置</string>
     <string name="swipe_song_to_add">向左滑动歌曲加入队列，向右滑动即可播放下一首</string>
     <string name="enable_swipe_thumbnail">启用滑动切换歌曲</string>
-    <string name="enable_squiggly_slider">启用波浪滑块</string>
     <plurals name="n_element">
         <item quantity="other">%d 元素</item>
     </plurals>
@@ -229,7 +182,6 @@
     </plurals>
     <string name="seek_forward_dynamic">快进 %1$d 秒</string>
     <string name="seek_backward_dynamic">快退 %1$d 秒</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="audio_quality_max">最高（Beta）</string>
     <string name="percentage_format">%d%%</string>
@@ -255,9 +207,6 @@
     <string name="audio_crossfade_title">淡入淡出切换</string>
     <string name="audio_crossfade_description">在歌曲之间实现平滑过渡，每首曲目结束时自动淡出</string>
     <string name="audio_crossfade_dialog_title">平滑过渡时间</string>
-    <string name="error_no_song_playing">暂无正在播放的歌曲</string>
-    <string name="error_no_similar_songs">暂无相似歌曲</string>
-    <string name="error_automix_failed">获取相似歌曲失败</string>
     <string name="music_recognition_tap_to_listen">点击聆听</string>
     <string name="music_recognition_listening">聆听中…</string>
     <string name="music_recognition_processing">处理中…</string>
@@ -271,7 +220,6 @@
     <string name="history_remote_error_title">无法加载云端记录</string>
     <string name="history_remote_summary">同步自 YouTube Music</string>
     <string name="local_songs_empty_desc">通过顶部栏进入设置，扫描设备以查找本地音频</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">歌曲与铃声</string>
     <string name="local_songs_empty_title">未找到本地歌曲</string>
     <string name="local_songs_scan_folders_desc">跳过这些路径下的文件夹扫描</string>
     <string name="lyrics_line_blur">歌词模糊效果</string>

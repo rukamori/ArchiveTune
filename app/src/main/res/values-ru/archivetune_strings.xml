@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Исследовать</string>
     <string name="local_history">Локальная</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Назад</string>
     <string name="no_title">Без названия</string>
     <string name="unknown_artist">Неизвестный исполнитель</string>
-    <string name="unknown_item_type">Неизвестный тип объекта</string>
-    <string name="loading_charts">Загрузка чартов...</string>
     <string name="retry_button">Повторить</string>
     <string name="album_cover_desc">Обложка</string>
     <string name="top_music_videos">Топ музыкальных клипов</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">Кешированные</string>
     <string name="sync_playlist">Синхронизировать плейлист</string>
     <string name="sync_disabled">Синхронизация отключена</string>
-    <string name="elements_selected">%1$d элементов выбрано</string>
     <string name="allows_for_sync_witch_youtube">Заметка: Это позволяет синхронизацию с YouTube Music. Это НЕЛЬЗЯ изменить позже.</string>
     <string name="generating_image">Генерация изображения</string>
     <string name="please_wait">Пожалуйста подождите</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">Поделиться выбранным</string>
     <string name="customize_colors">Настроить цвета</string>
     <string name="more_options">Доп. настройки</string>
-    <string name="text_color">Цвет текста</string>
-    <string name="secondary_text_color">Вторичный цвет текста</string>
-    <string name="background_color">Цвет фона</string>
-    <string name="added_to_play_next">Будет воспроизведено следующим</string>
-    <string name="added_to_queue">Добавлено в конец очереди</string>
     <string name="remove_from_cache">Удалить с кэша</string>
     <string name="select">Выбрать всё</string>
     <string name="manage_tags">Управлять тегами</string>
@@ -57,7 +49,6 @@
     <string name="dislike_all">Отметить всё как непонравившееся</string>
     <string name="sort_by_last_updated">Дата обновления</string>
     <string name="link_copied">Ссылка скопирована в буфер обмена</string>
-    <string name="starting_radio">Запуск радио</string>
     <string name="now_playing">Сейчас играет</string>
     <string name="close">Закрыть</string>
     <string name="minimum_volume">Минимальная громкость</string>
@@ -77,14 +68,10 @@
         <item quantity="many">%d раз</item>
         <item quantity="other">%d раз</item>
     </plurals>
-    <string name="seek_backward">5 секунд назад</string>
-    <string name="seek_forward">5 секунд вперёд</string>
     <string name="seek_forward_dynamic">+%1$d секунд вперёд</string>
     <string name="seek_backward_dynamic">-%1$d секунд назад</string>
     <string name="seek_seconds_addup">Плавная перемотка</string>
     <string name="seek_seconds_addup_description">Если включено, добавляет 5 секунд при каждом пропуске перемотки</string>
-    <string name="login_settings">Настройки входа</string>
-    <string name="general_settings">Основные настройки</string>
     <string name="player_background_style">Стиль фона плеера</string>
     <string name="follow_theme">Следовать теме</string>
     <string name="gradient">Градиент</string>
@@ -103,7 +90,6 @@
     <string name="show_tags_in_library">Показывать теги в библиотеке</string>
     <string name="show_tags_in_library_desc">Показывать теги фильтрации в библиотеке</string>
     <string name="secondary_color_style">Вторичный</string>
-    <string name="enable_squiggly_slider">Включить волнистый ползунок</string>
     <string name="enable_swipe_thumbnail">Включить смену песни перелистыванием</string>
     <string name="swipe_song_to_add">Смахните песню влево для добавления в очередь или вправо, чтобы сделать её следующей</string>
     <string name="lyrics_click_change">Изменить текст песни по нажатию</string>
@@ -112,18 +98,11 @@
     <string name="resume_autoscroll">Продолжить авто-прокрут</string>
     <string name="lyrics_romanize_japanese">Романизация японских слов</string>
     <string name="lyrics_romanize_korean">Романизация корейских слов</string>
-    <string name="auto_playlists">Автоплейлисты</string>
-    <string name="show_liked_playlist">Показывать плейлист «Понравившееся»</string>
-    <string name="show_downloaded_playlist">Показывать плейлист «Скачанные»</string>
-    <string name="show_top_playlist">Показывать плейлист «Топ»</string>
-    <string name="show_cached_playlist">Показывать плейлист «Кешированные»</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Войти с помощью токена</string>
     <string name="token_hidden">Нажмите, чтобы показать токен</string>
     <string name="token_shown">Нажмите ещё раз, чтобы скопировать или изменить</string>
     <string name="token_adv_login_description">Это РАСШИРЕННЫЙ метод входа. В качестве альтернативы веб-порталу вы можете напрямую ввести или обновить свой токен для входа здесь. Например, это может ускорить вход в систему на нескольких устройствах. Обратите внимание, что недействительные форматы токенов, которые приложение не может проанализировать, не будут приняты</string>
-    <string name="ytm_sync">Автоматическая синхронизация с аккаунтом YouTube Music</string>
     <string name="yt_sync">Автоматическая синхронизация с аккаунтом</string>
     <string name="more_content">Больше контента</string>
     <string name="general">Общее</string>
@@ -132,15 +111,9 @@
     <string name="set_quick_picks">Установить быстрый выбор</string>
     <string name="last_song_listened">На основе последней прослушанной песни</string>
     <string name="app_language">Язык приложения</string>
-    <string name="configure_app_language">Настройка языков приложения</string>
-    <string name="intent_app_language_not_found">Не удалось найти настройки языка приложения. Настройте их вручную</string>
     <string name="open_supported_links">Открывать поддерживаемую ссылку по умолчанию</string>
-    <string name="configure_supported_links">Настройка поддерживаемых ссылок</string>
-    <string name="intent_supported_links_not_found">Не удалось найти поддерживаемые настройки ссылок. Настройте их вручную</string>
     <string name="set_first_lyrics_provider">Предпочтительный поставщик текстов песен</string>
     <string name="audio_quality_max">Максимальное (бета)</string>
-    <string name="enable_similar_content">Включать похожий контент</string>
-    <string name="similar_content_desc">Автоматически добавлять больше похожих песен, когда очередь доходит до конца</string>
     <plurals name="seconds">
         <item quantity="one">%d секунда</item>
         <item quantity="few">%d секунды</item>
@@ -150,23 +123,18 @@
     <string name="crop_thumbnail_to_square">Обрезать миниатюры до соотношения 1:1</string>
     <string name="crop_thumbnail_to_square_desc">Отображать миниатюры YouTube в квадратном формате вместо 16:9</string>
     <string name="player_design_v5">Маленький</string>
-    <string name="min_playback_duration_title">Минимальная продолжительность воспроизведения</string>
-    <string name="min_playback_duration_description">Минимальная длительность для учета прослушивания</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Минимальная длительность воспроизведения</string>
     <string name="import_online">Импорт плейлистов m3u</string>
     <string name="import_csv">Импорт плейлистов csv</string>
     <string name="playlist_add_local_to_synced_note">Примечание: Добавление локальных песен в синхронизированные/удаленные плейлисты не поддерживается. Допустима любая другая комбинация</string>
     <string name="auto_download_on_like">Автозагрузка при лайке</string>
     <string name="auto_download_on_like_desc">Автоматически скачивать понравившиеся песни</string>
     <string name="swipe_sensitivity">Чувствительность к свайпу экрана мини-плеера</string>
-    <string name="swipe_sensitivity_desc">Отрегулируйте чувствительность жестов смахивания при смене песен</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">Вы уверены, что хотите очистить все кешированные песни?</string>
     <string name="clear_image_cache_dialog">Вы уверены, что хотите очистить все кешированные изображения?</string>
     <string name="clear_downloads_dialog">Вы уверены, что хотите очистить все загрузки?</string>
     <string name="disable">Выключить</string>
-    <string name="pause_remote_listen_history">Приостановите и поделитесь историей прослушивания с YouTube Music</string>
     <string name="not_logged_in_youtube">Не авторизован в YouTube</string>
     <string name="default_links">Открыть поддерживаемые ссылки</string>
     <string name="open_app_settings_error">Не удалось открыть настройки приложения</string>
@@ -191,20 +159,13 @@
     <string name="playlist_not_found_desc">Запрошенный плейлист не может быть загружен</string>
     <string name="empty_playlist">Пустой Плейлист</string>
     <string name="empty_playlist_desc">Этот плейлист не содержит никаких песен</string>
-    <string name="disable_load_more_when_repeat_all">Отключить дополнительную загрузку при повторении всех</string>
-    <string name="disable_load_more_when_repeat_all_desc">Не загружать автоматически новые песни и аналогичный контент, если включен режим повтора всех композиций</string>
     <string name="player_stream_client">Клиент воспроизведения</string>
     <string name="player_stream_client_desc">Определяет, какой клиент YouTube используется для загрузки потоков</string>
     <string name="player_stream_client_android_vr">Андроид VR</string>
     <string name="player_stream_client_android_vr_desc">Транслирует напрямую, без расшифровки подписи, обеспечивая максимальную скорость. Подходит для большинства пользователей.</string>
     <string name="player_stream_client_web_remix">Веб-ремикс</string>
     <string name="player_stream_client_web_remix_desc">Расширенная поддержка форматов за счет увеличения скорости. Расшифровка подписи JavaScript приводит к задержке запуска на 5-10 секунд.</string>
-    <string name="settings_section_ui">Интерфейс пользователя</string>
-    <string name="settings_section_privacy">Конфиденциальность и безопасность</string>
-    <string name="settings_section_player">Плеер и мультимедиа</string>
     <string name="settings_section_player_content">Плеер и контент</string>
-    <string name="settings_section_storage">Хранилище и данные</string>
-    <string name="settings_section_system">Система и информация о программе</string>
     <string name="similar_content">Похожий контент</string>
     <string name="year_in_music">Год в Музыке</string>
     <string name="total_listening_time">Общее время прослушивания</string>
@@ -215,17 +176,11 @@
     <string name="import_theme">Импортировать тему</string>
     <string name="export_theme">Экспортировать тему</string>
     <string name="palette_custom">Кастом</string>
-    <string name="theme_creator_title">Создание темы</string>
-    <string name="theme_creator_subtitle">Настройте цвета, предварительно просмотрите результат, а затем экспортируйте или импортируйте его.</string>
     <string name="theme_meta_title">Детали темы</string>
     <string name="theme_name_optional">Имя (опционально)</string>
     <string name="theme_apply_button">Применить тему</string>
-    <string name="theme_applied">Тема применена</string>
-    <string name="theme_export_success">Тема экспортирована</string>
-    <string name="theme_export_failed">Экспорт не удался</string>
     <string name="theme_import_success">Тема импортирована</string>
     <string name="theme_import_failed">Импорт не удался</string>
-    <string name="theme_import_failed_title">Не удается импортировать тему</string>
     <string name="theme_seed_colors">Сиды цветов</string>
     <string name="theme_seed_primary">Первичный (Основной)</string>
     <string name="theme_seed_secondary">Вторичный (Дополнительный)</string>
@@ -235,7 +190,6 @@
     <string name="theme_editor_hex">Шестнадцатеричный</string>
     <string name="theme_editor_hex_input">Шестнадцатеричное значение (#RRGGBB или #AARRGGBB)</string>
     <string name="theme_presets_title">Шаблоны</string>
-    <string name="theme_preview_trackline">Превью карта премиум-класса</string>
     <string name="canvas_cache">Кеш обложек</string>
     <string name="clear_canvas_cache">Очистить кеш обложек</string>
     <string name="clear_canvas_cache_dialog">Вы уверены что хотите очистить все кешированные обложки?</string>
@@ -244,8 +198,6 @@
     <string name="audio_crossfade_title">Кроссфейд</string>
     <string name="audio_crossfade_description">Плавный переход между песнями за счет затухания и появления звука в конце каждого трека.</string>
     <string name="audio_crossfade_dialog_title">Длительность кроссфейда</string>
-    <string name="theme_preview_primary_action">Основное действие</string>
-    <string name="theme_preview_secondary_action">Вторичное действие</string>
     <string name="copy">Скопировать</string>
     <string name="backup_in_progress">Создаётся резервная копия</string>
     <string name="restore_in_progress">Восстановление с резервной копии</string>
@@ -264,9 +216,6 @@
     <string name="album_not_found_desc">Запрашиваемый альбом не может быть загружен</string>
     <string name="empty_album">Пустой альбом</string>
     <string name="empty_album_desc">Этот альбом не содержит никаких песен</string>
-    <string name="error_no_song_playing">Сейчас ничего не воспроизводится</string>
-    <string name="error_no_similar_songs">Не найдено похожих песен</string>
-    <string name="error_automix_failed">Ошибка при загрузке похожих песен</string>
     <string name="music_recognition_tap_to_listen">Нажмите для прослушивания</string>
     <string name="music_recognition_listening">Играет…</string>
     <string name="music_recognition_processing">Обработка…</string>
@@ -311,8 +260,6 @@
     <string name="local_songs_scan_folders_desc">Пропустить песни хранящиеся в папках которые совпадают с этими путями.</string>
     <string name="local_songs_scan_folders_empty">Пока что нет исключённых папок.</string>
     <string name="local_songs_scan_folders_add">Добавить папку</string>
-    <string name="local_songs_scan_folders_dialog_title">Исключить папку</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Music/Ringtones</string>
     <string name="local_songs_no_matches_title">Нет подходящих локальных песен</string>
     <string name="local_songs_no_matches_desc">Попробуйте другое название песни, исполнителя или альбома.</string>
     <string name="sort_by_album">Альбом</string>
@@ -329,7 +276,6 @@
     <string name="lyrics_share_export_failed">Не удалось создать изображение: %1$s</string>
     <string name="lyrics_share_export_not_supported">Для обмена изображениями требуется Android 6.0 или новее</string>
     <string name="player_design_v7">Погружение</string>
-    <string name="playing_from">Воспроизводится из %s</string>
     <string name="lyrics_sync_offset">Смещение синхронизации текста песни</string>
     <string name="lyrics_romanize_chinese">Романизировать китайский текст</string>
     <string name="lyrics_romanize_hindi">Романизировать текст на хинди</string>

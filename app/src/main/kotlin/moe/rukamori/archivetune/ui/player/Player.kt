@@ -1033,14 +1033,14 @@ fun BottomSheetPlayer(
             }
         val shouldUseV7Canvas =
             archiveTuneCanvasEnabled &&
-                !lowDataModeActive &&
                 playerDesignStyle == PlayerDesignStyle.V7 &&
                 !aodModeEnabled
         val shouldUseArtworkCanvas =
             archiveTuneCanvasEnabled &&
-                !lowDataModeActive &&
                 (playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9) &&
                 !aodModeEnabled
+        val shouldFetchV7Canvas = shouldUseV7Canvas && !lowDataModeActive
+        val shouldFetchArtworkCanvas = shouldUseArtworkCanvas && !lowDataModeActive
         var v7CanvasArtwork by remember(mediaMetadata?.id) {
             mutableStateOf<CanvasArtwork?>(null)
         }
@@ -1054,7 +1054,7 @@ fun BottomSheetPlayer(
             mutableStateOf(false)
         }
 
-        LaunchedEffect(shouldUseV7Canvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id) {
             val metadata = mediaMetadata
             if (!shouldUseV7Canvas || metadata == null) {
                 v7CanvasArtwork = null
@@ -1070,6 +1070,11 @@ fun BottomSheetPlayer(
                     v7CanvasFetchInFlight = false
                     return@LaunchedEffect
                 }
+
+            if (!shouldFetchV7Canvas) {
+                v7CanvasFetchInFlight = false
+                return@LaunchedEffect
+            }
 
             val artistNameRaw =
                 metadata.artists
@@ -1100,7 +1105,7 @@ fun BottomSheetPlayer(
             }
         }
 
-        LaunchedEffect(shouldUseArtworkCanvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id) {
             val metadata = mediaMetadata
             if (!shouldUseArtworkCanvas || metadata == null) {
                 artworkCanvas = null
@@ -1116,6 +1121,11 @@ fun BottomSheetPlayer(
                     artworkCanvasFetchInFlight = false
                     return@LaunchedEffect
                 }
+
+            if (!shouldFetchArtworkCanvas) {
+                artworkCanvasFetchInFlight = false
+                return@LaunchedEffect
+            }
 
             val artistNameRaw =
                 metadata.artists

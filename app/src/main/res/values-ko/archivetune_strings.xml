@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">탐색</string>
     <string name="music_recognition_tap_to_listen">탭하여 듣기</string>
@@ -46,8 +46,6 @@
     <string name="local_songs_scan_folders_desc">지정한 특정 폴더 경로 아래에 있는 음원 파일들은 건너뜁니다.</string>
     <string name="local_songs_scan_folders_empty">제외된 폴더가 아직 없습니다.</string>
     <string name="local_songs_scan_folders_add">폴더 추가</string>
-    <string name="local_songs_scan_folders_dialog_title">폴더 제외</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">음악/벨소리 폴더</string>
     <string name="local_songs_no_matches_title">일치하는 로컬 곡 없음</string>
     <string name="local_songs_no_matches_desc">다른 곡명, 아티스트 또는 앨범 이름으로 검색해 보세요.</string>
     <string name="sort_by_album">앨범</string>
@@ -74,8 +72,6 @@
     </plurals>
     <string name="no_title">제목 없음</string>
     <string name="unknown_artist">알 수 없는 아티스트</string>
-    <string name="unknown_item_type">알 수 없는 항목 유형</string>
-    <string name="loading_charts">차트 로드 중…</string>
     <string name="retry_button">재시도</string>
     <string name="album_cover_desc">앨범 커버</string>
     <string name="top_music_videos">인기 뮤직비디오</string>
@@ -90,7 +86,6 @@
     <string name="cached_playlist">캐시됨</string>
     <string name="sync_playlist">재생목록 동기화</string>
     <string name="sync_disabled">동기화 비활성화됨</string>
-    <string name="elements_selected">%1$d개 항목 선택됨</string>
     <string name="allows_for_sync_witch_youtube">참고: 이 설정을 활성화하면 YouTube Music과 재생목록이 동기화됩니다. 이 설정은 나중에 변경할 수 없습니다.</string>
     <string name="generating_image">이미지 생성 중…</string>
     <string name="please_wait">잠시만 기다려 주세요</string>
@@ -115,11 +110,6 @@
     <string name="lyrics_share_export_failed">이미지 생성 실패: %1$s</string>
     <string name="lyrics_share_export_not_supported">이미지로 공유하려면 Android 6.0 이상 버전이 필요합니다.</string>
     <string name="more_options">추가 옵션</string>
-    <string name="text_color">텍스트 색상</string>
-    <string name="secondary_text_color">보조 텍스트 색상</string>
-    <string name="background_color">배경색</string>
-    <string name="added_to_play_next">다음에 재생할 곡에 추가됨</string>
-    <string name="added_to_queue">재생 대기열에 추가됨</string>
     <string name="remove_from_cache">캐시에서 삭제</string>
     <string name="select">전체 선택</string>
     <string name="manage_tags">태그 관리</string>
@@ -138,7 +128,6 @@
     <string name="dislike_all">모두 싫어요</string>
     <string name="sort_by_last_updated">최근 업데이트순</string>
     <string name="link_copied">링크가 클립보드에 복사되었습니다.</string>
-    <string name="starting_radio">라디오 시작 중…</string>
     <string name="now_playing">지금 재생 중</string>
     <string name="close">닫기</string>
     <string name="minimum_volume">최소 볼륨</string>
@@ -158,14 +147,10 @@
     <plurals name="n_time">
         <item quantity="other">%d회</item>
     </plurals>
-    <string name="seek_backward">5초 뒤로 이동</string>
-    <string name="seek_forward">5초 앞으로 이동</string>
     <string name="seek_forward_dynamic">+%1$d초 앞으로 이동</string>
     <string name="seek_backward_dynamic">-%1$d초 뒤로 이동</string>
     <string name="seek_seconds_addup">탐색 시간 누적</string>
     <string name="seek_seconds_addup_description">활성화하면 연속으로 탐색 버튼을 누를 때마다 건너뛰는 시간이 5초씩 누적되어 늘어납니다.</string>
-    <string name="login_settings">로그인 설정</string>
-    <string name="general_settings">일반 설정</string>
     <string name="player_background_style">플레이어 배경 스타일</string>
     <string name="follow_theme">시스템 설정 따름</string>
     <string name="gradient">그라데이션</string>
@@ -177,7 +162,6 @@
     <string name="player_design_v5">리틀</string>
     <string name="player_design_v6">익스프레시브</string>
     <string name="player_design_v7">이머시브</string>
-    <string name="playing_from">%s에서 재생 중</string>
     <string name="player_background_blur">블러 처리</string>
     <string name="coloring">색상 적용</string>
     <string name="blur_gradient">블러 그라데이션</string>
@@ -185,7 +169,6 @@
     <string name="player_buttons_style">플레이어 버튼 색상</string>
     <string name="default_style">기본</string>
     <string name="secondary_color_style">보조</string>
-    <string name="enable_squiggly_slider">물결 모양 재생 바 활성화</string>
     <string name="enable_swipe_thumbnail">스와이프로 곡 전환 활성화</string>
     <string name="swipe_song_to_add">곡을 왼쪽으로 밀어 대기열에 추가하고, 오른쪽으로 밀어 다음에 재생합니다.</string>
     <string name="lyrics_click_change">탭하여 가사 전환</string>
@@ -198,22 +181,14 @@
     <string name="lyrics_romanize_chinese">중국어 가사 로마자 표기</string>
     <string name="lyrics_romanize_hindi">힌디어 가사 로마자 표기</string>
     <string name="lyrics_romanize_other_languages">기타 비라틴어 가사 로마자 표기</string>
-    <string name="auto_playlists">자동 재생목록</string>
-    <string name="show_liked_playlist">\'좋아요 한 곡\' 재생목록 표시</string>
-    <string name="show_downloaded_playlist">\'다운로드한 곡\' 재생목록 표시</string>
-    <string name="show_top_playlist">\'자주 듣는 곡\' 재생목록 표시</string>
-    <string name="show_cached_playlist">\'캐시된 곡\' 재생목록 표시</string>
-    <string name="card_and_list">카드 및 리스트</string>
     <string name="quick_picks_display_mode">빠른 선택 표시 모드</string>
     <string name="quick_picks_display_mode_card">카드</string>
     <string name="quick_picks_display_mode_list">목록</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">고급 로그인 (토큰)</string>
     <string name="token_hidden">탭하여 토큰 보기</string>
     <string name="token_shown">다시 탭하여 복사/편집</string>
     <string name="token_adv_login_description">이 방식은 고급 로그인 수단입니다. 웹 페이지 대신 로그인 토큰을 직접 입력하거나 업데이트하여 여러 기기에서 로그인 속도를 높일 수 있습니다. 유효하지 않은 토큰 형식은 허용되지 않습니다.</string>
-    <string name="ytm_sync">YouTube Music 계정과 자동으로 동기화</string>
     <string name="yt_sync">계정과 자동 동기화</string>
     <string name="force_sync_on_switch_account">계정 전환 시 강제 동기화</string>
     <string name="force_sync_on_switch_account_desc">계정을 전환할 때 선택한 계정의 재생목록, 좋아요 표시한 곡, 아티스트 및 앨범을 다시 동기화합니다.</string>
@@ -225,26 +200,16 @@
     <string name="last_song_listened">최근 감상한 곡 기준</string>
     <string name="dont_show">표시 안 함</string>
     <string name="app_language">앱 언어</string>
-    <string name="configure_app_language">앱 언어 설정</string>
-    <string name="intent_app_language_not_found">앱 언어 설정을 열 수 없습니다. 휴대폰 시스템 설정에서 수동으로 앱 언어를 구성해 주세요.</string>
     <string name="open_supported_links">지원되는 링크 기본값으로 열기</string>
-    <string name="configure_supported_links">지원되는 링크 설정</string>
-    <string name="intent_supported_links_not_found">지원되는 링크 설정을 열 수 없습니다. 휴대폰 시스템 설정에서 기본적으로 열리도록 수동으로 구성해 주세요.</string>
     <string name="set_first_lyrics_provider">선호하는 가사 제공처 설정</string>
     <string name="audio_quality_max">최대 음질 (베타)</string>
-    <string name="enable_similar_content">유사한 음악 자동 추가</string>
-    <string name="similar_content_desc">대기열의 끝에 도달하면 자동으로 유사한 곡을 재생 대기열에 추가합니다.</string>
-    <string name="min_playback_duration_title">최소 재생 시간</string>
-    <string name="min_playback_duration_description">재생한 것으로 간주되기 위해 노래를 감상해야 하는 최소 시간입니다.</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">최소 재생 시간</string>
     <string name="import_online">M3U 재생목록 가져오기</string>
     <string name="import_csv">CSV 재생목록 가져오기</string>
     <string name="playlist_add_local_to_synced_note">참고: 원격/동기화된 재생목록에 기기 저장 곡(로컬 파일)을 추가하는 것은 지원되지 않습니다.</string>
     <string name="auto_download_on_like">\'좋아요\' 표시 시 자동 다운로드</string>
     <string name="auto_download_on_like_desc">곡에 \'좋아요\'를 표시하면 오프라인 재생을 위해 자동으로 다운로드합니다.</string>
     <string name="swipe_sensitivity">미니 플레이어 스와이프 민감도</string>
-    <string name="swipe_sensitivity_desc">곡을 전환할 때 스와이프 제스처의 민감도를 조정합니다.</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">캐시된 노래를 모두 삭제하시겠습니까?</string>
     <string name="clear_image_cache_dialog">캐시된 이미지를 모두 삭제하시겠습니까?</string>
@@ -253,7 +218,6 @@
     <string name="clear_canvas_cache">캔버스 캐시 비우기</string>
     <string name="clear_canvas_cache_dialog">캐시된 캔버스 데이터를 모두 삭제하시겠습니까?</string>
     <string name="disable">비활성화</string>
-    <string name="pause_remote_listen_history">YouTube Music으로 감상 기록 공유 일시중지</string>
     <string name="not_logged_in_youtube">YouTube 계정에 로그인되지 않음</string>
     <string name="default_links">지원되는 링크 열기</string>
     <string name="open_app_settings_error">앱 설정을 열 수 없습니다.</string>
@@ -299,20 +263,13 @@
     <string name="audio_crossfade_seconds">%1$s초</string>
     <string name="crossfade_gapless_title">연속 재생 앨범 크로스페이드 제외</string>
     <string name="crossfade_gapless_description">동일한 앨범에 있는 연속된 곡들은 크로스페이드 없이 매끄럽게 연결해 재생합니다.</string>
-    <string name="disable_load_more_when_repeat_all">전체 반복 시 추가 곡 로드 비활성화</string>
-    <string name="disable_load_more_when_repeat_all_desc">전체 반복 모드가 활성화되었을 때, 자동으로 더 많은 곡이나 유사한 콘텐츠를 가져오지 않습니다.</string>
     <string name="player_stream_client">재생 클라이언트</string>
     <string name="player_stream_client_desc">스트림을 가져오는 데 사용할 재생 클라이언트를 제어합니다.</string>
     <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_android_vr_desc">서명 복호화 과정 없이 직접 스트리밍하여 최대 속도를 제공합니다. 대부분의 사용자에게 적합합니다.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">속도를 희생하는 대신 확장된 형식을 지원합니다. JavaScript 서명 복호화로 인해 약 5~10초의 초기 지연이 발생합니다.</string>
-    <string name="settings_section_ui">사용자 인터페이스</string>
-    <string name="settings_section_privacy">개인정보 및 보안</string>
-    <string name="settings_section_player">플레이어 및 미디어</string>
     <string name="settings_section_player_content">플레이어 및 재생 콘텐츠</string>
-    <string name="settings_section_storage">저장공간 및 데이터</string>
-    <string name="settings_section_system">시스템 및 정보</string>
     <string name="settings_appearance_subtitle">테마, 레이아웃 및 시각적 스타일 설정</string>
     <string name="settings_playback_title">재생</string>
     <string name="settings_playback_subtitle">오디오 동작, 크로스페이드 및 백그라운드 재생 설정</string>
@@ -333,9 +290,6 @@
     <string name="settings_stats_title">음악 감상 통계</string>
     <string name="settings_stats_subtitle">가장 많이 들은 곡, 아티스트 및 재생 기록 요약</string>
     <string name="similar_content">유사한 콘텐츠</string>
-    <string name="error_no_song_playing">현재 재생 중인 노래가 없습니다.</string>
-    <string name="error_no_similar_songs">유사한 노래가 없습니다.</string>
-    <string name="error_automix_failed">유사한 노래를 로드할 수 없습니다.</string>
     <string name="year_in_music">Year in Music</string>
     <string name="total_listening_time">총 감상 시간</string>
     <string name="top_artists">인기 아티스트</string>
@@ -347,7 +301,6 @@
     <string name="stats_total_plays">총 재생 횟수</string>
     <string name="stats_unique_songs">감상한 곡</string>
     <string name="stats_unique_artists">감상한 아티스트</string>
-    <string name="stats_unique_albums">감상한 앨범</string>
     <string name="stats_listening_by_day">요일별 재생 빈도</string>
     <string name="stats_listening_by_hour">시간별 재생 빈도</string>
     <string name="stats_peak_hour">가장 활발한 시간: %s</string>
@@ -362,17 +315,11 @@
     <string name="import_theme">테마 가져오기</string>
     <string name="export_theme">테마 내보내기</string>
     <string name="palette_custom">사용자 지정</string>
-    <string name="theme_creator_title">테마 크리에이터</string>
-    <string name="theme_creator_subtitle">색상을 미세 조정하고 결과를 실시간으로 확인한 후, 테마를 내보내거나 가져옵니다.</string>
     <string name="theme_meta_title">테마 세부정보</string>
     <string name="theme_name_optional">테마 이름 (선택사항)</string>
     <string name="theme_apply_button">테마 적용</string>
-    <string name="theme_applied">테마가 적용되었습니다.</string>
-    <string name="theme_export_success">테마를 내보냈습니다.</string>
-    <string name="theme_export_failed">내보내기 실패</string>
     <string name="theme_import_success">테마를 가져왔습니다.</string>
     <string name="theme_import_failed">가져오기 실패</string>
-    <string name="theme_import_failed_title">테마를 가져올 수 없습니다.</string>
     <string name="theme_seed_colors">시드 색상</string>
     <string name="theme_seed_primary">기본 색상</string>
     <string name="theme_seed_secondary">보조 색상</string>
@@ -382,9 +329,6 @@
     <string name="theme_editor_hex">16진수 값 (Hex)</string>
     <string name="theme_editor_hex_input">16진수 값 입력 (#RRGGBB 또는 #AARRGGBB)</string>
     <string name="theme_presets_title">프리셋</string>
-    <string name="theme_preview_trackline">프리미엄 미리보기 카드</string>
-    <string name="theme_preview_primary_action">기본 작업</string>
-    <string name="theme_preview_secondary_action">보조 작업</string>
     <string name="copy">복사</string>
     <string name="backup_in_progress">백업 진행 중…</string>
     <string name="restore_in_progress">복원 진행 중…</string>
@@ -449,8 +393,6 @@
     <string name="import_csv_format">CSV 재생목록 파일</string>
     <string name="year_in_music_recap_word">RECAP</string>
     <string name="music_recognition_history_no_results_body">다른 곡, 아티스트, 앨범 또는 코드를 입력해 보세요.</string>
-    <string name="year_in_music_intro_subtitle">%d년을 장식한 노래, 아티스트, 앨범들을 보여드립니다.</string>
-    <string name="year_in_music_intro_title">당신의 한 해를 돌아보세요</string>
     <string name="about_lead_developer">리드 개발자</string>
     <string name="aod_customize_text_alignment">텍스트 정렬</string>
     <string name="aod_customize_sample_artist">Koiverse Ensemble</string>
@@ -484,7 +426,6 @@
     <string name="aod_position_center">중앙</string>
     <string name="aod_accent_monochrome">단색 (모노크롬)</string>
     <string name="aod_alignment_center">가운데 정렬</string>
-    <string name="import_from_file">파일에서 가져오기</string>
     <string name="spotify_connect">Spotify 연결</string>
     <string name="aod_customize_ambient_intensity">배경 조명 밝기</string>
     <string name="top_songs">인기 곡</string>
@@ -507,12 +448,9 @@
     <string name="spotify_playlists">Spotify 재생목록</string>
     <string name="aod_shape_sunny">태양</string>
     <string name="import_m3u_format">M3U 오디오 재생목록</string>
-    <string name="backup_data_safety">데이터 안전성</string>
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="aod_customize_thumbnail_shape">썸네일 모양</string>
     <string name="spotify_waiting_for_login">Spotify 로그인 대기 중…</string>
-    <string name="year_in_music_final_title">당신만의 한 해를 장식한 음악 테마</string>
-    <string name="backup_data_safety_desc">백업 파일을 생성하거나 선택한 앱 데이터를 복원합니다.</string>
     <string name="aod_background_soft_radial">부드러운 방사형</string>
     <string name="aod_shape_cookie_9">쿠키 9</string>
     <string name="aod_customize_shape_rotation">모양 회전</string>
@@ -525,7 +463,6 @@
     <string name="music_recognition_history_no_results_title">일치하는 인식 기록이 없습니다.</string>
     <string name="year_in_music_totals_title">당신이 채워온 음악 속 일상</string>
     <string name="aod_customize_show_controls">컨트롤 버튼 표시</string>
-    <string name="spotify_track_count">%1$d곡</string>
     <string name="spotify_not_connected">Spotify가 연결되지 않았습니다.</string>
     <string name="about_position_lead_dev">네?</string>
     <string name="aod_customize_controls">재생 컨트롤</string>
@@ -534,7 +471,6 @@
     <string name="aod_shape_clover_4">클로버</string>
     <string name="spotify_available_count">%1$d개의 사용 가능한 재생목록</string>
     <string name="spotify_show_playlist">재생목록 표시</string>
-    <string name="import_from_file_desc">기기 로컬에 저장된 M3U 또는 CSV 재생목록 파일을 불러옵니다.</string>
     <string name="spotify_login_title">Spotify 로그인</string>
     <string name="storage_folder">저장 폴더</string>
     <string name="internal_service">내부 서비스</string>
@@ -576,9 +512,7 @@
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="aod_shape_slanted">기울임</string>
     <string name="year_in_music_current_card">공유 카드</string>
-    <string name="spotify_refresh">Spotify 라이브러리 새로고침</string>
     <string name="lyrics_share_style_album_tint">앨범 색조</string>
-    <string name="backup_restore_backup_desc">기존 백업 파일로부터 선택한 데이터를 복원합니다.</string>
     <string name="playlist_sync_progress_step">%1$d / %2$d곡</string>
     <string name="spotify_account">Spotify 계정</string>
     <string name="aod_shape_diamond">다이아몬드</string>
@@ -602,7 +536,6 @@
     <string name="year_in_music_intro_details">가장 많이 들은 노래, 아티스트, 앨범 및 총 감상 시간을 한눈에 확인해 보세요.</string>
     <string name="player_stream_client_hi_res_lossless_desc">수신 가능한 경우 무손실(Lossless) 스트림을 우선 사용합니다.</string>
     <string name="spotify_no_sources">Spotify 재생목록을 찾을 수 없습니다.</string>
-    <string name="backup_data_formats">.backup 백업 아카이브</string>
     <string name="storage_location_removable">SD 카드</string>
     <string name="aod_control_tonal">톤온톤</string>
     <string name="android_auto_mixes_and_radios">맞춤형 믹스 및 라디오</string>

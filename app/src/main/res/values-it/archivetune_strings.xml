@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Esplora</string>
     <string name="local_history">Locale</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Indietro</string>
     <string name="no_title">Nessun titolo</string>
     <string name="unknown_artist">Artista sconosciuto</string>
-    <string name="unknown_item_type">Tipo di articolo sconosciuto</string>
-    <string name="loading_charts">Caricamento grafici...</string>
     <string name="retry_button">Riprova</string>
     <string name="album_cover_desc">Copertina dell\'album</string>
     <string name="top_music_videos">I migliori video musicali</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">Memorizzato in cache</string>
     <string name="sync_playlist">Sincronizza playlist</string>
     <string name="sync_disabled">Sincronizzazione disabilitata</string>
-    <string name="elements_selected">%1$d elementi selezionati</string>
     <string name="allows_for_sync_witch_youtube">Nota: questo consente la sincronizzazione con YouTube Music. NON è modificabile in seguito.</string>
     <string name="generating_image">Generando immagine</string>
     <string name="please_wait">Attendere prego</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">Condividi selezionati</string>
     <string name="customize_colors">Personalizza colori</string>
     <string name="more_options">Più opzioni</string>
-    <string name="text_color">Colore del testo</string>
-    <string name="secondary_text_color">Colore del testo secondario</string>
-    <string name="background_color">Colore sfondo</string>
-    <string name="added_to_play_next">Aggiunto come prossimo brano</string>
-    <string name="added_to_queue">Aggiunto alla coda</string>
     <string name="remove_from_cache">Rimuovi dalla cache</string>
     <string name="copy_link">Copia collegamento</string>
     <string name="select">Seleziona tutto</string>
@@ -59,7 +51,6 @@
     <string name="dislike_all">Non mi piace a tutti</string>
     <string name="sort_by_last_updated">Data aggiornamento</string>
     <string name="link_copied">Link copiato negli appunti</string>
-    <string name="starting_radio">Avvio radio</string>
     <string name="now_playing">Ora in riproduzione</string>
     <string name="close">Chiudi</string>
     <string name="minimum_volume">Volume minimo</string>
@@ -79,14 +70,10 @@
         <item quantity="many">%d volte</item>
         <item quantity="other">%d volte</item>
     </plurals>
-    <string name="seek_backward">5 secondi indietro</string>
-    <string name="seek_forward">5 secondi avanti</string>
     <string name="seek_forward_dynamic">+%1$d secondi avanti</string>
     <string name="seek_backward_dynamic">-%1$d secondi indietro</string>
     <string name="seek_seconds_addup">Ricerca progressiva</string>
     <string name="seek_seconds_addup_description">Se abilitato, aggiunge 5 secondi extra in modo incrementale a ogni salto di ricerca</string>
-    <string name="login_settings">Impostazioni di accesso</string>
-    <string name="general_settings">Impostazioni generali</string>
     <string name="player_background_style">Stile di sfondo del player</string>
     <string name="follow_theme">Segui tema</string>
     <string name="gradient">Gradiente</string>
@@ -103,7 +90,6 @@
     <string name="player_buttons_style">Colori pulsanti player</string>
     <string name="default_style">Predefinito</string>
     <string name="secondary_color_style">Secondario</string>
-    <string name="enable_squiggly_slider">Abilita slider ondulato</string>
     <string name="enable_swipe_thumbnail">Abilita lo scorrimento per cambiare brano</string>
     <string name="swipe_song_to_add">Scorri il brano verso sinistra per aggiungerlo alla coda o verso destra per riprodurlo come prossimo brano</string>
     <string name="lyrics_click_change">Cambia testo con un clic</string>
@@ -112,18 +98,11 @@
     <string name="resume_autoscroll">Riprendi lo scorrimento automatico</string>
     <string name="lyrics_romanize_japanese">Converti in alfabeto latino i testi giapponesi</string>
     <string name="lyrics_romanize_korean">Converti in alfabeto latino i testi coreani</string>
-    <string name="auto_playlists">Playlist automatiche</string>
-    <string name="show_liked_playlist">Mostra la playlist \"Mi piace\"</string>
-    <string name="show_downloaded_playlist">Mostra la playlist \"Scaricati\"</string>
-    <string name="show_top_playlist">Mostra la playlist \"Top\"</string>
-    <string name="show_cached_playlist">Mostra playlist \"Memorizzato in cache\"</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Accedi tramite token</string>
     <string name="token_hidden">Tocca per mostrare il token</string>
     <string name="token_shown">Tocca di nuovo per copiare o modificare</string>
     <string name="token_adv_login_description">Questo è un metodo di accesso AVANZATO. In alternativa al portale web, puoi inserire o aggiornare direttamente il tuo token di accesso qui. Ciò può ad esempio velocizzare l\'accesso su più dispositivi. Tieni presente che eventuali formati di token non validi che l\'app non riesce ad analizzare non saranno accettati</string>
-    <string name="ytm_sync">Sincronizza automaticamente con il tuo account YouTube Music</string>
     <string name="yt_sync">Sincronizza automaticamente con l\'account</string>
     <string name="more_content">Più contenuti</string>
     <string name="general">Generale</string>
@@ -132,32 +111,21 @@
     <string name="set_quick_picks">Imposta scelte rapide</string>
     <string name="last_song_listened">Basato sull\'ultimo brano ascoltato</string>
     <string name="app_language">Lingua dell\'app</string>
-    <string name="configure_app_language">Configura le lingue dell\'app</string>
-    <string name="intent_app_language_not_found">Impossibile trovare le impostazioni della lingua dell\'app, configurale manualmente</string>
     <string name="open_supported_links">Apri link supportati di default</string>
-    <string name="configure_supported_links">Configura link supportati</string>
-    <string name="intent_supported_links_not_found">Impossibile trovare le impostazioni dei link supportati, configurale manualmente</string>
     <string name="set_first_lyrics_provider">Fornitore di testi preferito</string>
     <string name="audio_quality_max">Massima (beta)</string>
-    <string name="enable_similar_content">Abilita contenuti simili</string>
-    <string name="similar_content_desc">Aggiungi automaticamente altri brani simili quando viene raggiunta la fine della coda</string>
-    <string name="min_playback_duration_title">Durata minima della riproduzione</string>
-    <string name="min_playback_duration_description">Il minimo di un brano che deve essere riprodotto prima di essere considerato \"riprodotto\"</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Durata minima della riproduzione</string>
     <string name="import_online">Importa una playlist \"m3u\"</string>
     <string name="import_csv">Importa una playlist \"csv\"</string>
     <string name="playlist_add_local_to_synced_note">Nota: l\'aggiunta di brani locali a playlist sincronizzate/remote non è supportata. Qualsiasi altra combinazione è valida</string>
     <string name="auto_download_on_like">Download automatico su Mi piace</string>
     <string name="auto_download_on_like_desc">Scarica automaticamente i brani quando metti Mi piace</string>
     <string name="swipe_sensitivity">Sensibilità di scorrimento del mini player</string>
-    <string name="swipe_sensitivity_desc">Regola la sensibilità dei gesti di scorrimento per cambiare brano</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">Sei sicuro di voler cancellare tutti i brani memorizzati nella cache?</string>
     <string name="clear_image_cache_dialog">Sei sicuro di voler cancellare tutte le immagini memorizzate nella cache?</string>
     <string name="clear_downloads_dialog">Sei sicuro di voler cancellare tutti i download?</string>
     <string name="disable">Disabilita</string>
-    <string name="pause_remote_listen_history">Metti in pausa la condivisione della cronologia di ascolto con YouTube Music</string>
     <string name="not_logged_in_youtube">Non hai effettuato l\'accesso a YouTube</string>
     <string name="default_links">Apri collegamenti supportati</string>
     <string name="open_app_settings_error">Impossibile aprire le impostazioni dell\'app</string>
@@ -187,20 +155,13 @@
         <item quantity="many">%d secondi</item>
         <item quantity="other">%d secondi</item>
     </plurals>
-    <string name="disable_load_more_when_repeat_all">Disabilita carica altro quando ripeti tutto</string>
-    <string name="disable_load_more_when_repeat_all_desc">Non caricare automaticamente più brani e contenuti simili quando la modalità Ripeti tutto è abilitata</string>
     <string name="player_stream_client">Client di riproduzione</string>
     <string name="player_stream_client_desc">Controlla quale client YouTube viene utilizzato per recuperare gli stream</string>
     <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_android_vr_desc">Trasmette direttamente senza decrittare la firma, fornendo la massima velocità. Adatto alla maggior parte degli utenti.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Supporto di formati esteso a scapito della velocità. La decrittografia della firma JavaScript introduce un ritardo di avvio di circa 5-10 secondi.</string>
-    <string name="settings_section_ui">Interfaccia utente</string>
-    <string name="settings_section_privacy">Privacy e Sicurezza</string>
-    <string name="settings_section_player">Player e media</string>
     <string name="settings_section_player_content">Player e contenuto</string>
-    <string name="settings_section_storage">Memoria e dati</string>
-    <string name="settings_section_system">Sistema e Informazioni</string>
     <string name="similar_content">Contenuti simili</string>
     <string name="year_in_music">Il tuo anno in Music</string>
     <string name="total_listening_time">Tempo di ascolto totale</string>
@@ -211,17 +172,11 @@
     <string name="import_theme">Importa tema</string>
     <string name="export_theme">Esporta tema</string>
     <string name="palette_custom">Personalizzato</string>
-    <string name="theme_creator_title">Creatore di temi</string>
-    <string name="theme_creator_subtitle">Regola i colori, visualizza l\'anteprima, quindi esporta o importa.</string>
     <string name="theme_meta_title">Dettagli del tema</string>
     <string name="theme_name_optional">Nome (facoltativo)</string>
     <string name="theme_apply_button">Applica tema</string>
-    <string name="theme_applied">Tema applicato</string>
-    <string name="theme_export_success">Tema esportato</string>
-    <string name="theme_export_failed">Esportazione non riuscita</string>
     <string name="theme_import_success">Tema importato</string>
     <string name="theme_import_failed">Importazione non riuscita</string>
-    <string name="theme_import_failed_title">Impossibile importare il tema</string>
     <string name="theme_seed_colors">Colori utilizzati</string>
     <string name="theme_seed_primary">Primario</string>
     <string name="theme_seed_secondary">Secondario</string>
@@ -231,9 +186,6 @@
     <string name="theme_editor_hex">Esadecimale</string>
     <string name="theme_editor_hex_input">Valore esadecimale (#RRGGBB o #AARRGGBB)</string>
     <string name="theme_presets_title">Preimpostati</string>
-    <string name="theme_preview_trackline">Card anteprima premium</string>
-    <string name="theme_preview_primary_action">Azione primaria</string>
-    <string name="theme_preview_secondary_action">Azione secondaria</string>
     <string name="copy">Copia</string>
     <string name="music_recognition_tap_to_listen">Premi per ascoltare</string>
     <string name="music_recognition_listening">In ascolto…</string>
@@ -279,8 +231,6 @@
     <string name="local_songs_scan_folders_desc">Salta brani presenti nelle cartelle che corrispondono a questi percorsi.</string>
     <string name="local_songs_scan_folders_empty">Ancora nessuna cartella esclusa.</string>
     <string name="local_songs_scan_folders_add">Aggiungi cartella</string>
-    <string name="local_songs_scan_folders_dialog_title">Escludi cartella</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Music/Ringtones</string>
     <string name="local_songs_no_matches_title">Nessun brano locale corrispondente</string>
     <string name="local_songs_no_matches_desc">Prova un brano, un artista o un album differente.</string>
     <string name="sort_by_album">Album</string>
@@ -302,7 +252,6 @@
     <string name="show_home_category_chips_desc">Mostra i chip delle categorie nella schermata principale</string>
     <string name="player_design_v6">Espressivo</string>
     <string name="player_design_v7">Immersivo</string>
-    <string name="playing_from">Riproducendo da %s</string>
     <string name="lyrics_sync_offset">Offset sincronizzazione testo</string>
     <string name="lyrics_romanize_chinese">Converti in alfabeto latino i testi cinesi</string>
     <string name="lyrics_romanize_hindi">Converti in alfabeto latino i testi hindi</string>
@@ -323,9 +272,6 @@
     <string name="audio_crossfade_seconds">%1$s s</string>
     <string name="crossfade_gapless_title">Sfumatura senza sovrapposizione</string>
     <string name="crossfade_gapless_description">Sfuma senza sovrapporre i due brani.</string>
-    <string name="error_no_song_playing">Nessun brano attualmente in riproduzione</string>
-    <string name="error_no_similar_songs">Nessun brano simile trovato</string>
-    <string name="error_automix_failed">Impossibile caricare brani simili</string>
     <string name="backup_in_progress">Backup in corso</string>
     <string name="restore_in_progress">Ripristino in corso</string>
     <string name="backup_step_export_settings">Backup delle impostazioni in corso</string>

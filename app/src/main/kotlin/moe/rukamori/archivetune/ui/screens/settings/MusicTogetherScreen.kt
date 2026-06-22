@@ -9,122 +9,111 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
-import android.os.Build
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
+import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import androidx.window.core.layout.WindowSizeClass
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.TogetherAllowGuestsToAddTracksKey
-import moe.rukamori.archivetune.constants.TogetherAllowGuestsToControlPlaybackKey
-import moe.rukamori.archivetune.constants.TogetherDefaultPortKey
-import moe.rukamori.archivetune.constants.TogetherDisplayNameKey
-import moe.rukamori.archivetune.constants.TogetherLastJoinLinkKey
-import moe.rukamori.archivetune.constants.TogetherRequireHostApprovalToJoinKey
-import moe.rukamori.archivetune.constants.TogetherWelcomeShownKey
-import moe.rukamori.archivetune.together.TogetherLink
-import moe.rukamori.archivetune.together.TogetherRole
-import moe.rukamori.archivetune.together.TogetherRoomSettings
-import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.floor
+import moe.rukamori.archivetune.viewmodels.MusicTogetherActivityLogItemUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherActivityLogUiModels
+import moe.rukamori.archivetune.viewmodels.MusicTogetherDialogUiState
+import moe.rukamori.archivetune.viewmodels.MusicTogetherEffect
+import moe.rukamori.archivetune.viewmodels.MusicTogetherHostUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherJoinUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherParticipantUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherParticipantUiModels
+import moe.rukamori.archivetune.viewmodels.MusicTogetherPlaybackUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherScreenState
+import moe.rukamori.archivetune.viewmodels.MusicTogetherSessionShareUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherStatusUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherUiModel
+import moe.rukamori.archivetune.viewmodels.MusicTogetherViewModel
 import moe.rukamori.archivetune.ui.component.IconButton as AtIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,1582 +121,453 @@ import moe.rukamori.archivetune.ui.component.IconButton as AtIconButton
 fun MusicTogetherScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
+    viewModel: MusicTogetherViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
-    val coroutineScope = rememberCoroutineScope()
+    val screenState by viewModel.state.collectAsStateWithLifecycle()
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val useSupportingPane = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-    val welcomeShown by remember(context) {
-        context.dataStore.data
-            .map<Preferences, Boolean?> { preferences ->
-                preferences[TogetherWelcomeShownKey] ?: false
-            }.distinctUntilChanged()
-    }.collectAsState(initial = null)
-    var welcomeDismissedThisSession by rememberSaveable { mutableStateOf(false) }
-    val showWelcome = welcomeShown == false && !welcomeDismissedThisSession
+    LaunchedEffect(playerConnection?.service) {
+        viewModel.attachService(playerConnection?.service)
+    }
 
-    if (showWelcome) {
-        WelcomeDialog(
-            onGotIt = { dontShowAgain ->
-                welcomeDismissedThisSession = true
-                if (dontShowAgain) {
-                    coroutineScope.launch {
-                        context.dataStore.edit { preferences ->
-                            preferences[TogetherWelcomeShownKey] = true
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is MusicTogetherEffect.CopyText -> {
+                    val clipboard = context.getSystemService(ClipboardManager::class.java)
+                    clipboard?.setPrimaryClip(
+                        ClipData.newPlainText(context.getString(effect.labelResId), effect.value),
+                    )
+                }
+
+                is MusicTogetherEffect.ShareText -> {
+                    val share =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, effect.value)
                         }
+                    context.startActivity(Intent.createChooser(share, null))
+                }
+
+                is MusicTogetherEffect.ToastMessage -> {
+                    Toast.makeText(context, effect.messageResId, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val model = (screenState as? MusicTogetherScreenState.Success)?.model
+    if (model != null) {
+        MusicTogetherDialogs(model = model, viewModel = viewModel)
+    }
+
+    Scaffold(
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text(stringResource(R.string.music_together)) },
+                navigationIcon = {
+                    AtIconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                        modifier =
+                            Modifier
+                                .padding(horizontal = 4.dp)
+                                .size(40.dp),
+                        colors =
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
                     }
-                }
-            },
-            onDismiss = { welcomeDismissedThisSession = true },
-        )
-    }
-
-    val (displayName, setDisplayName) =
-        rememberPreference(
-            TogetherDisplayNameKey,
-            defaultValue = Build.MODEL?.takeIf { it.isNotBlank() } ?: context.getString(R.string.app_name),
-        )
-    val (port, setPort) = rememberPreference(TogetherDefaultPortKey, defaultValue = 42117)
-    val (allowAddTracks, setAllowAddTracksRaw) = rememberPreference(TogetherAllowGuestsToAddTracksKey, defaultValue = true)
-    val (allowControlPlayback, setAllowControlPlaybackRaw) =
-        rememberPreference(
-            TogetherAllowGuestsToControlPlaybackKey,
-            defaultValue = false,
-        )
-    val (requireApproval, setRequireApprovalRaw) = rememberPreference(TogetherRequireHostApprovalToJoinKey, defaultValue = false)
-    val (lastJoinLink, setLastJoinLink) = rememberPreference(TogetherLastJoinLinkKey, defaultValue = "")
-
-    val sessionStateFlow =
-        remember(playerConnection) {
-            playerConnection?.service?.togetherSessionState ?: MutableStateFlow(TogetherSessionState.Idle)
-        }
-    val sessionState by sessionStateFlow.collectAsState()
-
-    val isHosting = sessionState is TogetherSessionState.Hosting || sessionState is TogetherSessionState.HostingOnline
-    val isJoining = sessionState is TogetherSessionState.Joining || sessionState is TogetherSessionState.JoiningOnline
-    val isHostRole =
-        when (val state = sessionState) {
-            is TogetherSessionState.Hosting,
-            is TogetherSessionState.HostingOnline,
-            -> true
-
-            is TogetherSessionState.Joined -> state.role is TogetherRole.Host
-
-            else -> false
-        }
-    val isCreatingSessionLoading =
-        when (val state = sessionState) {
-            is TogetherSessionState.Hosting -> state.roomState == null
-            is TogetherSessionState.HostingOnline -> state.roomState == null
-            else -> false
-        }
-    val isJoinedAsGuest =
-        when (val state = sessionState) {
-            is TogetherSessionState.Joined -> state.role is TogetherRole.Guest
-            else -> false
-        }
-    val isWaitingApproval =
-        when (val state = sessionState) {
-            is TogetherSessionState.Joined -> {
-                state.role is TogetherRole.Guest &&
-                    state.roomState.participants
-                        .firstOrNull { it.id == state.selfParticipantId }
-                        ?.isPending == true
-            }
-
-            else -> {
-                false
-            }
-        }
-    val isJoinedAsAcceptedGuest = isJoinedAsGuest && !isWaitingApproval
-    val disableJoinUi = isHostRole || isCreatingSessionLoading || isJoinedAsGuest
-
-    var showNameDialog by rememberSaveable { mutableStateOf(false) }
-    var showPortDialog by rememberSaveable { mutableStateOf(false) }
-    var showJoinDialog by rememberSaveable { mutableStateOf(false) }
-
-    val hostingOnline = sessionState as? TogetherSessionState.HostingOnline
-    val onlineParticipants = hostingOnline?.roomState?.participants.orEmpty()
-    var confirmKickParticipantId by rememberSaveable { mutableStateOf<String?>(null) }
-    var confirmBanParticipantId by rememberSaveable { mutableStateOf<String?>(null) }
-    val confirmKickName = onlineParticipants.firstOrNull { it.id == confirmKickParticipantId }?.name
-    val confirmBanName = onlineParticipants.firstOrNull { it.id == confirmBanParticipantId }?.name
-
-    LaunchedEffect(disableJoinUi, isJoining, isHosting) {
-        if (disableJoinUi || isJoining || isHosting) showJoinDialog = false
-    }
-
-    var hostModeOnline by rememberSaveable { mutableStateOf(false) }
-    var joinModeOnline by rememberSaveable { mutableStateOf(false) }
-
-    fun pushSettingsToActiveSession(
-        addTracks: Boolean = allowAddTracks,
-        controlPlayback: Boolean = allowControlPlayback,
-        approval: Boolean = requireApproval,
-    ) {
-        if (isHosting) {
-            playerConnection?.service?.updateTogetherSettings(
-                TogetherRoomSettings(
-                    allowGuestsToAddTracks = addTracks,
-                    allowGuestsToControlPlayback = controlPlayback,
-                    requireHostApprovalToJoin = approval,
-                ),
+                },
+                colors =
+                    TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                scrollBehavior = scrollBehavior,
             )
-        }
-    }
-
-    val setAllowAddTracks: (Boolean) -> Unit = { value ->
-        setAllowAddTracksRaw(value)
-        pushSettingsToActiveSession(addTracks = value)
-    }
-    val setAllowControlPlayback: (Boolean) -> Unit = { value ->
-        setAllowControlPlaybackRaw(value)
-        pushSettingsToActiveSession(controlPlayback = value)
-    }
-    val setRequireApproval: (Boolean) -> Unit = { value ->
-        setRequireApprovalRaw(value)
-        pushSettingsToActiveSession(approval = value)
-    }
-
-    if (showNameDialog) {
-        TextFieldDialog(
-            title = { Text(text = stringResource(R.string.together_display_name)) },
-            placeholder = { Text(text = stringResource(R.string.together_display_name_placeholder)) },
-            isInputValid = { it.trim().isNotBlank() },
-            onDone = { setDisplayName(it.trim()) },
-            onDismiss = { showNameDialog = false },
-        )
-    }
-
-    if (showPortDialog) {
-        TextFieldDialog(
-            title = { Text(text = stringResource(R.string.together_port)) },
-            placeholder = { Text(text = "42117") },
-            isInputValid = { it.trim().toIntOrNull() in 1..65535 },
-            keyboardOptions =
-                KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done,
-                ),
-            onDone = { setPort(it.trim().toInt()) },
-            onDismiss = { showPortDialog = false },
-        )
-    }
-
-    var joinInput by rememberSaveable { mutableStateOf(lastJoinLink) }
-    val canJoin =
-        remember(joinInput, joinModeOnline) {
-            if (joinModeOnline) joinInput.trim().isNotBlank() else TogetherLink.decode(joinInput) != null
-        }
-
-    if (showJoinDialog) {
-        val placeholder =
-            if (joinModeOnline) {
-                stringResource(R.string.together_join_code_hint)
-            } else {
-                stringResource(R.string.together_join_link_hint)
-            }
-        TextFieldDialog(
-            title = { Text(text = stringResource(R.string.join_session)) },
-            placeholder = { Text(text = placeholder) },
-            singleLine = false,
-            maxLines = 8,
-            isInputValid = { if (joinModeOnline) it.trim().isNotBlank() else TogetherLink.decode(it) != null },
-            onDone = { raw ->
-                val trimmed = raw.trim()
-                joinInput = trimmed
-                setLastJoinLink(trimmed)
-                if (joinModeOnline) {
-                    playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
-                } else {
-                    playerConnection?.service?.joinTogether(trimmed, displayName)
-                }
-            },
-            onDismiss = { showJoinDialog = false },
-        )
-    }
-
-    if (confirmKickParticipantId != null) {
-        AlertDialog(
-            onDismissRequest = { confirmKickParticipantId = null },
-            shape = RoundedCornerShape(28.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text(text = stringResource(R.string.together_kick)) },
-            text = {
-                Text(
-                    text = stringResource(R.string.together_kick_confirm, confirmKickName ?: stringResource(R.string.unknown)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val pid = confirmKickParticipantId ?: return@Button
-                        confirmKickParticipantId = null
-                        playerConnection?.service?.kickTogetherParticipant(pid)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.together_kick), fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { confirmKickParticipantId = null },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.dismiss))
-                }
-            },
-        )
-    }
-
-    if (confirmBanParticipantId != null) {
-        AlertDialog(
-            onDismissRequest = { confirmBanParticipantId = null },
-            shape = RoundedCornerShape(28.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text(text = stringResource(R.string.together_ban)) },
-            text = {
-                Text(
-                    text = stringResource(R.string.together_ban_confirm, confirmBanName ?: stringResource(R.string.unknown)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val pid = confirmBanParticipantId ?: return@Button
-                        confirmBanParticipantId = null
-                        playerConnection?.service?.banTogetherParticipant(pid)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.together_ban), fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { confirmBanParticipantId = null },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.dismiss))
-                }
-            },
-        )
-    }
-
-    Column(
+        },
+        contentWindowInsets = WindowInsets.safeDrawing,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier =
             Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-    ) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.music_together)) },
-            navigationIcon = {
-                AtIconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(painterResource(R.drawable.arrow_back), null)
-                }
-            },
-            scrollBehavior = scrollBehavior,
-        )
-
-        Column(
+    ) { innerPadding ->
+        Box(
             modifier =
                 Modifier
-                    .weight(1f)
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                        ),
+                    ),
         ) {
-            StatusCard(
-                state = sessionState,
-                onCopyText = { labelRes, value ->
-                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                    clipboard?.setPrimaryClip(
-                        android.content.ClipData.newPlainText(context.getString(labelRes), value),
+            when (val state = screenState) {
+                MusicTogetherScreenState.Loading -> LoadingContent()
+                MusicTogetherScreenState.Empty -> EmptyContent()
+                is MusicTogetherScreenState.Error -> ErrorContent(messageResId = state.messageResId)
+                is MusicTogetherScreenState.Success -> {
+                    MusicTogetherContent(
+                        model = state.model,
+                        useSupportingPane = useSupportingPane,
+                        viewModel = viewModel,
                     )
-                    Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
-                },
-                onShareLink = { link ->
-                    val share =
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, link)
-                        }
-                    context.startActivity(Intent.createChooser(share, null))
-                },
-                onLeave = { playerConnection?.service?.leaveTogether() },
-                modifier =
-                    Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 4.dp, bottom = 12.dp),
-            )
-
-            if (hostingOnline?.roomState != null && isHostRole) {
-                OnlineParticipantsCard(
-                    participants = hostingOnline.roomState.participants,
-                    hostApprovalEnabled = hostingOnline.settings.requireHostApprovalToJoin,
-                    onApprove = { participantId, approved ->
-                        playerConnection?.service?.approveTogetherParticipant(participantId, approved)
-                    },
-                    onKick = { participantId ->
-                        confirmKickParticipantId = participantId
-                    },
-                    onBan = { participantId ->
-                        confirmBanParticipantId = participantId
-                    },
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 12.dp),
-                )
+                }
             }
-
-            if (!isJoinedAsGuest) {
-                HostSectionCard(
-                    hostModeOnline = hostModeOnline,
-                    onHostModeChange = { hostModeOnline = it },
-                    displayName = displayName,
-                    port = port,
-                    allowAddTracks = allowAddTracks,
-                    allowControlPlayback = allowControlPlayback,
-                    requireApproval = requireApproval,
-                    onShowNameDialog = { showNameDialog = true },
-                    onShowPortDialog = { showPortDialog = true },
-                    onAllowAddTracksChange = setAllowAddTracks,
-                    onAllowControlPlaybackChange = setAllowControlPlayback,
-                    onRequireApprovalChange = setRequireApproval,
-                    isStartEnabled = !isCreatingSessionLoading && !isJoining && !isHosting && sessionState !is TogetherSessionState.Joined,
-                    isLoading = isCreatingSessionLoading,
-                    onStartSession = {
-                        val settings =
-                            TogetherRoomSettings(
-                                allowGuestsToAddTracks = allowAddTracks,
-                                allowGuestsToControlPlayback = allowControlPlayback,
-                                requireHostApprovalToJoin = requireApproval,
-                            )
-                        if (hostModeOnline) {
-                            playerConnection?.service?.startTogetherOnlineHost(
-                                displayName = displayName,
-                                settings = settings,
-                            )
-                        } else {
-                            playerConnection?.service?.startTogetherHost(
-                                port = port,
-                                displayName = displayName,
-                                settings = settings,
-                            )
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 12.dp),
-                )
-            }
-
-            JoinSectionCard(
-                joinModeOnline = joinModeOnline,
-                onJoinModeChange = { joinModeOnline = it },
-                joinInput = joinInput,
-                canJoin = canJoin,
-                disableJoinUi = disableJoinUi,
-                isJoined = isJoinedAsAcceptedGuest,
-                isWaitingApproval = isWaitingApproval,
-                isJoining = isJoining,
-                onShowJoinDialog = { showJoinDialog = true },
-                onJoin = {
-                    val trimmed = joinInput.trim()
-                    setLastJoinLink(trimmed)
-                    if (joinModeOnline) {
-                        playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
-                    } else {
-                        playerConnection?.service?.joinTogether(trimmed, displayName)
-                    }
-                },
-                modifier =
-                    Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 16.dp),
-            )
         }
     }
 }
 
 @Composable
-private fun OnlineParticipantsCard(
-    participants: List<moe.rukamori.archivetune.together.TogetherParticipant>,
-    hostApprovalEnabled: Boolean,
-    onApprove: (participantId: String, approved: Boolean) -> Unit,
-    onKick: (participantId: String) -> Unit,
-    onBan: (participantId: String) -> Unit,
-    modifier: Modifier = Modifier,
+private fun MusicTogetherContent(
+    model: MusicTogetherUiModel,
+    useSupportingPane: Boolean,
+    viewModel: MusicTogetherViewModel,
 ) {
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Row(
+    if (useSupportingPane) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = MusicTogetherSpacing.md, vertical = MusicTogetherSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.md),
+        ) {
+            LazyColumn(
                 modifier =
                     Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        .weight(1.25f)
+                        .fillMaxHeight()
+                        .widthIn(max = 720.dp),
+                contentPadding = PaddingValues(bottom = MusicTogetherSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
             ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f),
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
-                                        ),
-                                ),
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.list),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(22.dp),
+                item(contentType = "status") {
+                    StatusCard(
+                        status = model.status,
+                        sessionShare = model.sessionShare,
+                        onCopy = viewModel::copySessionValue,
+                        onShare = viewModel::shareSessionValue,
+                        onLeave = viewModel::leaveSession,
                     )
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.together_participants),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.together_connected_count, participants.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                item(contentType = "playback") {
+                    PlaybackCard(playback = model.playback)
+                }
+                if (model.host.visible) {
+                    item(contentType = "host") {
+                        HostControlsCard(host = model.host, viewModel = viewModel)
+                    }
+                }
+                item(contentType = "join") {
+                    JoinControlsCard(join = model.join, viewModel = viewModel)
                 }
             }
 
-            participants.forEachIndexed { index, participant ->
-                key(participant.id) {
-                    if (index != 0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        )
-                    }
-
-                    Row(
-                        modifier =
+            Column(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .widthIn(max = 480.dp),
+                verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+            ) {
+                ParticipantsCard(
+                    participants = model.participants,
+                    viewModel = viewModel,
+                    modifier =
+                        if (model.participants.isEmpty) {
+                            Modifier.fillMaxWidth()
+                        } else {
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 18.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        val accent =
-                            if (participant.isHost) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(accent.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(if (participant.isHost) R.drawable.fire else R.drawable.person),
-                                contentDescription = null,
-                                tint = accent,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = participant.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            val subtitle =
-                                when {
-                                    participant.isHost -> stringResource(R.string.together_role_host)
-                                    participant.isPending && hostApprovalEnabled -> stringResource(R.string.together_pending_approval)
-                                    else -> stringResource(R.string.together_role_guest)
-                                }
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-
-                        if (!participant.isHost) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (participant.isPending && hostApprovalEnabled) {
-                                    AtIconButton(
-                                        onClick = { onApprove(participant.id, true) },
-                                        onLongClick = {},
-                                    ) {
-                                        Icon(painterResource(R.drawable.check), null)
-                                    }
-                                    AtIconButton(
-                                        onClick = { onApprove(participant.id, false) },
-                                        onLongClick = {},
-                                    ) {
-                                        Icon(painterResource(R.drawable.close), null)
-                                    }
-                                }
-
-                                AtIconButton(
-                                    onClick = { onKick(participant.id) },
-                                    onLongClick = {},
-                                ) {
-                                    Icon(painterResource(R.drawable.kick), null)
-                                }
-                                AtIconButton(
-                                    onClick = { onBan(participant.id) },
-                                    onLongClick = {},
-                                ) {
-                                    Icon(painterResource(R.drawable.block), null)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WelcomeDialog(
-    onGotIt: (dontShowAgain: Boolean) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var dontShowAgain by rememberSaveable { mutableStateOf(true) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(28.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                        ),
-                                ),
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.fire),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.together_welcome_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
+                                .weight(0.45f)
+                        },
+                    fillAvailableHeight = !model.participants.isEmpty,
                 )
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = stringResource(R.string.together_welcome_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Card(
-                    shape = RoundedCornerShape(22.dp),
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        InstructionRow(
-                            icon = R.drawable.fire,
-                            accentColor = MaterialTheme.colorScheme.primary,
-                            title = stringResource(R.string.together_welcome_host_title),
-                            body = stringResource(R.string.together_welcome_host_body),
-                        )
-                        InstructionRow(
-                            icon = R.drawable.link,
-                            accentColor = MaterialTheme.colorScheme.tertiary,
-                            title = stringResource(R.string.together_welcome_join_title),
-                            body = stringResource(R.string.together_welcome_join_body),
-                        )
-                        InstructionRow(
-                            icon = R.drawable.lock,
-                            accentColor = MaterialTheme.colorScheme.secondary,
-                            title = stringResource(R.string.together_welcome_permissions_title),
-                            body = stringResource(R.string.together_welcome_permissions_body),
-                        )
-                    }
-                }
-                val cbStrokeWidthPx = with(LocalDensity.current) { floor(CheckboxDefaults.StrokeWidth.toPx()) }
-                val cbCheckmarkStroke =
-                    remember(cbStrokeWidthPx) {
-                        Stroke(width = cbStrokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    }
-                val cbOutlineStroke = remember(cbStrokeWidthPx) { Stroke(width = cbStrokeWidthPx) }
-                Row(
+                ActivityLogCard(
+                    activityLog = model.activityLog,
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .toggleable(
-                                value = dontShowAgain,
-                                role = Role.Checkbox,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onValueChange = { dontShowAgain = it },
-                            ).padding(horizontal = 4.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Checkbox(
-                        checked = dontShowAgain,
-                        onCheckedChange = null,
-                        checkmarkStroke = cbCheckmarkStroke,
-                        outlineStroke = cbOutlineStroke,
-                    )
-                    Text(
-                        text = stringResource(R.string.together_dont_show_again),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onGotIt(dontShowAgain) },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.check),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.got_it),
-                    fontWeight = FontWeight.SemiBold,
+                            .weight(1f),
+                    fillAvailableHeight = true,
                 )
             }
-        },
-    )
-}
-
-@Composable
-private fun InstructionRow(
-    icon: Int,
-    accentColor: androidx.compose.ui.graphics.Color,
-    title: String,
-    body: String,
-) {
-    Row(
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accentColor.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center,
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = MusicTogetherSpacing.sm,
+                    top = MusicTogetherSpacing.xs,
+                    end = MusicTogetherSpacing.sm,
+                    bottom = SettingsDimensions.ScreenBottomPadding,
+                ),
+            verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
         ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            item(contentType = "status") {
+                StatusCard(
+                    status = model.status,
+                    sessionShare = model.sessionShare,
+                    onCopy = viewModel::copySessionValue,
+                    onShare = viewModel::shareSessionValue,
+                    onLeave = viewModel::leaveSession,
+                )
+            }
+            item(contentType = "playback") {
+                PlaybackCard(playback = model.playback)
+            }
+            if (model.host.visible) {
+                item(contentType = "host") {
+                    HostControlsCard(host = model.host, viewModel = viewModel)
+                }
+            }
+            item(contentType = "join") {
+                JoinControlsCard(join = model.join, viewModel = viewModel)
+            }
+            item(contentType = "participants") {
+                ParticipantsCard(participants = model.participants, viewModel = viewModel)
+            }
+            item(contentType = "activity") {
+                ActivityLogCard(activityLog = model.activityLog)
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HostSectionCard(
-    hostModeOnline: Boolean,
-    onHostModeChange: (Boolean) -> Unit,
-    displayName: String,
-    port: Int,
-    allowAddTracks: Boolean,
-    allowControlPlayback: Boolean,
-    requireApproval: Boolean,
-    onShowNameDialog: () -> Unit,
-    onShowPortDialog: () -> Unit,
-    onAllowAddTracksChange: (Boolean) -> Unit,
-    onAllowControlPlaybackChange: (Boolean) -> Unit,
-    onRequireApprovalChange: (Boolean) -> Unit,
-    isStartEnabled: Boolean,
-    isLoading: Boolean,
-    onStartSession: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun MusicTogetherDialogs(
+    model: MusicTogetherUiModel,
+    viewModel: MusicTogetherViewModel,
 ) {
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                        ),
-                                ),
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.fire),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.together_host_section),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.together_display_name),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+    if (model.showWelcomeDialog) {
+        WelcomeDialog(
+            dontShowAgain = model.welcomeDontShowAgain,
+            onDontShowAgainChange = viewModel::setWelcomeDontShowAgain,
+            onGotIt = viewModel::confirmWelcomeDialog,
+            onDismiss = viewModel::dismissWelcomeDialog,
+        )
+    }
 
-            SingleChoiceSegmentedButtonRow(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
-                        .padding(bottom = 4.dp),
-            ) {
-                SegmentedButton(
-                    selected = !hostModeOnline,
-                    onClick = { onHostModeChange(false) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.together_lan))
-                }
-                SegmentedButton(
-                    selected = hostModeOnline,
-                    onClick = { onHostModeChange(true) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.together_online))
-                }
-            }
-
-            SettingsItemRow(
-                icon = R.drawable.person,
-                title = stringResource(R.string.together_display_name),
-                subtitle = displayName,
-                onClick = onShowNameDialog,
+    when (val dialog = model.dialog) {
+        MusicTogetherDialogUiState.None -> Unit
+        is MusicTogetherDialogUiState.DisplayName -> {
+            TextFieldDialog(
+                title = { Text(text = stringResource(R.string.together_display_name)) },
+                initialTextFieldValue = TextFieldValue(dialog.initialValue),
+                placeholder = { Text(text = stringResource(R.string.together_display_name_placeholder)) },
+                isInputValid = { it.trim().isNotBlank() },
+                onDone = viewModel::submitDisplayName,
+                onDismiss = viewModel::dismissDialog,
             )
+        }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
-
-            AnimatedVisibility(
-                visible = !hostModeOnline,
-                enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-                exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
-            ) {
-                Column {
-                    SettingsItemRow(
-                        icon = R.drawable.link,
-                        title = stringResource(R.string.together_port),
-                        subtitle = port.toString(),
-                        onClick = onShowPortDialog,
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    )
-                }
-            }
-
-            ToggleRow(
-                icon = R.drawable.playlist_add,
-                title = stringResource(R.string.together_allow_guests_add),
-                checked = allowAddTracks,
-                onCheckedChange = onAllowAddTracksChange,
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
-
-            ToggleRow(
-                icon = R.drawable.play,
-                title = stringResource(R.string.together_allow_guests_control),
-                checked = allowControlPlayback,
-                onCheckedChange = onAllowControlPlaybackChange,
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
-
-            ToggleRow(
-                icon = R.drawable.lock,
-                title = stringResource(R.string.together_require_approval),
-                checked = requireApproval,
-                onCheckedChange = onRequireApprovalChange,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.97f else 1f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                label = "host_btn_scale",
-            )
-
-            Button(
-                enabled = isStartEnabled,
-                onClick = onStartSession,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
-                        .padding(bottom = 10.dp)
-                        .scale(scale),
-                interactionSource = interactionSource,
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
+        is MusicTogetherDialogUiState.Port -> {
+            TextFieldDialog(
+                title = { Text(text = stringResource(R.string.together_port)) },
+                initialTextFieldValue = TextFieldValue(dialog.initialValue),
+                placeholder = { Text(text = dialog.initialValue) },
+                isInputValid = { it.trim().toIntOrNull() in 1..65535 },
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done,
                     ),
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                if (isLoading) {
-                    CircularWavyProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.loading),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                } else {
-                    Icon(
-                        painter = painterResource(R.drawable.fire),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.start_session),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun JoinSectionCard(
-    joinModeOnline: Boolean,
-    onJoinModeChange: (Boolean) -> Unit,
-    joinInput: String,
-    canJoin: Boolean,
-    disableJoinUi: Boolean,
-    isJoined: Boolean,
-    isWaitingApproval: Boolean,
-    isJoining: Boolean,
-    onShowJoinDialog: () -> Unit,
-    onJoin: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f),
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
-                                        ),
-                                ),
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.multi_user),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.together_join_section),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.join_session),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            SingleChoiceSegmentedButtonRow(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
-                        .padding(bottom = 4.dp),
-            ) {
-                SegmentedButton(
-                    selected = !joinModeOnline,
-                    enabled = !disableJoinUi,
-                    onClick = { onJoinModeChange(false) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.together_join_link))
-                }
-                SegmentedButton(
-                    selected = joinModeOnline,
-                    enabled = !disableJoinUi,
-                    onClick = { onJoinModeChange(true) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.together_join_code))
-                }
-            }
-
-            val hint =
-                if (joinModeOnline) {
-                    stringResource(R.string.together_join_code_hint)
-                } else {
-                    stringResource(R.string.together_join_link_hint)
-                }
-
-            SettingsItemRow(
-                icon = R.drawable.input,
-                title = stringResource(R.string.join_session),
-                subtitle = joinInput.trim().ifBlank { hint },
-                subtitleMaxLines = 2,
-                onClick = if (!disableJoinUi && !isJoining && !isJoined && !isWaitingApproval) onShowJoinDialog else null,
+                onDone = viewModel::submitPort,
+                onDismiss = viewModel::dismissDialog,
             )
-
-            Spacer(Modifier.height(8.dp))
-
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.97f else 1f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                label = "join_btn_scale",
-            )
-
-            FilledTonalButton(
-                enabled = canJoin && !disableJoinUi && !isJoining && !isJoined && !isWaitingApproval,
-                onClick = onJoin,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
-                        .padding(bottom = 10.dp)
-                        .scale(scale),
-                interactionSource = interactionSource,
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                if (isJoining) {
-                    CircularWavyProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.connecting),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                } else if (isWaitingApproval) {
-                    CircularWavyProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.together_waiting_approval),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                } else if (isJoined) {
-                    Icon(
-                        painter = painterResource(R.drawable.check),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.joined),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                } else {
-                    Icon(
-                        painter = painterResource(R.drawable.join),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.join),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
         }
-    }
-}
 
-@Composable
-private fun SettingsItemRow(
-    icon: Int,
-    title: String,
-    subtitle: String,
-    subtitleMaxLines: Int = 1,
-    onClick: (() -> Unit)? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val alpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.7f else 1f,
-        animationSpec = tween(100),
-        label = "item_alpha",
-    )
-
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .then(
-                    if (onClick != null) {
-                        Modifier.clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = onClick,
-                        )
+        is MusicTogetherDialogUiState.Join -> {
+            TextFieldDialog(
+                title = { Text(text = stringResource(R.string.join_session)) },
+                initialTextFieldValue = TextFieldValue(dialog.initialValue),
+                placeholder = { Text(text = stringResource(dialog.placeholderResId)) },
+                singleLine = false,
+                maxLines = 8,
+                isInputValid = {
+                    if (dialog.onlineMode) {
+                        it.trim().isNotBlank()
                     } else {
-                        Modifier
-                    },
-                ).graphicsLayer { this.alpha = alpha }
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                modifier = Modifier.size(22.dp),
+                        moe.rukamori.archivetune.together.TogetherLink.decode(it) != null
+                    }
+                },
+                onDone = viewModel::submitJoinInput,
+                onDismiss = viewModel::dismissDialog,
             )
         }
 
-        Spacer(Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = subtitleMaxLines,
-                overflow = TextOverflow.Ellipsis,
+        is MusicTogetherDialogUiState.KickParticipant -> {
+            ConfirmParticipantDialog(
+                titleResId = R.string.together_kick,
+                bodyResId = R.string.together_kick_confirm,
+                participantName = dialog.participantName,
+                confirmResId = R.string.together_kick,
+                destructive = true,
+                onConfirm = { viewModel.confirmKickParticipant(dialog.participantId) },
+                onDismiss = viewModel::dismissDialog,
             )
         }
 
-        if (onClick != null) {
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                painter = painterResource(R.drawable.navigate_next),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    icon: Int,
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .clickable { onCheckedChange(!checked) }
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                modifier = Modifier.size(22.dp),
+        is MusicTogetherDialogUiState.BanParticipant -> {
+            ConfirmParticipantDialog(
+                titleResId = R.string.together_ban,
+                bodyResId = R.string.together_ban_confirm,
+                participantName = dialog.participantName,
+                confirmResId = R.string.together_ban,
+                destructive = true,
+                onConfirm = { viewModel.confirmBanParticipant(dialog.participantId) },
+                onDismiss = viewModel::dismissDialog,
             )
         }
 
-        Spacer(Modifier.width(16.dp))
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            thumbContent = {
-                Icon(
-                    painter =
-                        painterResource(
-                            id = if (checked) R.drawable.check else R.drawable.close,
-                        ),
-                    contentDescription = null,
-                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                )
-            },
-        )
+        is MusicTogetherDialogUiState.TransferHost -> {
+            ConfirmParticipantDialog(
+                titleResId = R.string.together_transfer_host,
+                bodyResId = R.string.together_transfer_host_confirm,
+                participantName = dialog.participantName,
+                confirmResId = R.string.together_transfer_host,
+                destructive = false,
+                onConfirm = { viewModel.confirmTransferHost(dialog.participantId) },
+                onDismiss = viewModel::dismissDialog,
+            )
+        }
     }
 }
 
 @Composable
 private fun StatusCard(
-    state: TogetherSessionState,
-    onCopyText: (Int, String) -> Unit,
-    onShareLink: (String) -> Unit,
+    status: MusicTogetherStatusUiModel,
+    sessionShare: MusicTogetherSessionShareUiModel?,
+    onCopy: (Int, String) -> Unit,
+    onShare: (String) -> Unit,
     onLeave: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val isActive = state !is TogetherSessionState.Idle
-    val isError = state is TogetherSessionState.Error
-    val isWaitingApproval =
-        when (state) {
-            is TogetherSessionState.Joined -> {
-                state.role is TogetherRole.Guest &&
-                    state.roomState.participants
-                        .firstOrNull { it.id == state.selfParticipantId }
-                        ?.isPending == true
-            }
-
-            else -> {
-                false
-            }
-        }
-    val statusColor =
+    val accent =
         when {
-            isError -> MaterialTheme.colorScheme.error
-            isActive -> MaterialTheme.colorScheme.primary
+            status.error -> MaterialTheme.colorScheme.error
+            status.active -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
-
     Card(
         modifier =
-            modifier
+            Modifier
                 .fillMaxWidth()
                 .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors =
-                                if (isActive && !isError) {
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                    )
-                                } else if (isError) {
-                                    listOf(
-                                        MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                    )
-                                } else {
-                                    listOf(
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                    )
-                                },
-                        ),
-                    ).padding(18.dp),
+        Column(
+            modifier = Modifier.padding(MusicTogetherSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+            ) {
+                AccentIcon(iconResId = status.iconResId, accent = accent)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(status.titleResId),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = accent,
+                    )
+                    Text(
+                        text = stringResource(status.stateLabelResId),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                if (status.active) {
                     Box(
                         modifier =
                             Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.linearGradient(
-                                        colors =
-                                            listOf(
-                                                statusColor.copy(alpha = 0.18f),
-                                                statusColor.copy(alpha = 0.08f),
-                                            ),
-                                    ),
-                                ),
-                        contentAlignment = Alignment.Center,
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(accent),
+                    )
+                }
+                if (status.canLeave) {
+                    FilledTonalButton(
+                        onClick = onLeave,
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Icon(
-                            painter =
-                                painterResource(
-                                    if (isError) R.drawable.error else R.drawable.fire,
-                                ),
+                            painter = painterResource(R.drawable.leave),
                             contentDescription = null,
-                            tint = statusColor,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(18.dp),
                         )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.together_status),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = statusColor,
-                            )
-                            if (isActive && !isError) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
-                                )
-                            }
-                        }
-                        Text(
-                            text =
-                                when (state) {
-                                    TogetherSessionState.Idle -> {
-                                        stringResource(R.string.together_idle)
-                                    }
-
-                                    is TogetherSessionState.Hosting -> {
-                                        stringResource(R.string.together_hosting)
-                                    }
-
-                                    is TogetherSessionState.HostingOnline -> {
-                                        stringResource(R.string.together_hosting)
-                                    }
-
-                                    is TogetherSessionState.Joining -> {
-                                        stringResource(R.string.together_joining)
-                                    }
-
-                                    is TogetherSessionState.JoiningOnline -> {
-                                        stringResource(R.string.together_joining)
-                                    }
-
-                                    is TogetherSessionState.Joined -> {
-                                        if (isWaitingApproval) {
-                                            stringResource(R.string.together_waiting_approval)
-                                        } else {
-                                            stringResource(R.string.together_connected)
-                                        }
-                                    }
-
-                                    is TogetherSessionState.Error -> {
-                                        if (state.message == stringResource(R.string.together_host_left_session)) {
-                                            state.message
-                                        } else {
-                                            stringResource(R.string.together_error_state)
-                                        }
-                                    }
-                                },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    if (isActive) {
-                        FilledTonalButton(
-                            onClick = onLeave,
-                            shapes = ButtonDefaults.shapes(),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.leave),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.leave),
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
+                        Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                        Text(text = stringResource(R.string.leave))
                     }
                 }
+            }
 
-                when (state) {
-                    is TogetherSessionState.Hosting -> {
-                        SessionInfoCard(
-                            label = stringResource(R.string.session_link),
-                            value = state.joinLink,
-                            maxLines = 3,
-                            onCopy = { onCopyText(R.string.session_link, state.joinLink) },
-                            onShare = { onShareLink(state.joinLink) },
-                        )
-                    }
-
-                    is TogetherSessionState.HostingOnline -> {
-                        SessionInfoCard(
-                            label = stringResource(R.string.session_code),
-                            value = state.code,
-                            maxLines = 2,
-                            onCopy = { onCopyText(R.string.session_code, state.code) },
-                            onShare = { onShareLink(state.code) },
-                        )
-                    }
-
-                    is TogetherSessionState.Joined -> {
-                        if (!isWaitingApproval) {
-                            ParticipantsCard(participants = state.roomState.participants.map { it.name })
-                        }
-                    }
-
-                    is TogetherSessionState.Error -> {
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                                ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        ) {
-                            Text(
-                                text = state.message,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(14.dp),
-                            )
-                        }
-                    }
-
-                    else -> {
-                        Unit
-                    }
+            if (status.errorMessage != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                ) {
+                    Text(
+                        text = status.errorMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(MusicTogetherSpacing.sm),
+                    )
                 }
+            }
+
+            if (sessionShare != null) {
+                SessionShareCard(sessionShare = sessionShare, onCopy = onCopy, onShare = onShare)
             }
         }
     }
 }
 
 @Composable
-private fun SessionInfoCard(
-    label: String,
-    value: String,
-    maxLines: Int,
-    onCopy: () -> Unit,
-    onShare: () -> Unit,
+private fun SessionShareCard(
+    sessionShare: MusicTogetherSessionShareUiModel,
+    onCopy: (Int, String) -> Unit,
+    onShare: (String) -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    Surface(
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(MusicTogetherSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs),
         ) {
             Text(
-                text = label,
+                text = stringResource(sessionShare.labelResId),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = value,
+                text = sessionShare.value,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = maxLines,
+                maxLines = sessionShare.maxLines,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs)) {
                 FilledTonalButton(
-                    onClick = onCopy,
+                    onClick = { onCopy(sessionShare.labelResId, sessionShare.value) },
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Icon(
@@ -1715,11 +575,11 @@ private fun SessionInfoCard(
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
                     Text(text = stringResource(R.string.copy_link))
                 }
                 TextButton(
-                    onClick = onShare,
+                    onClick = { onShare(sessionShare.value) },
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Icon(
@@ -1727,7 +587,7 @@ private fun SessionInfoCard(
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
                     Text(text = stringResource(R.string.share))
                 }
             }
@@ -1736,43 +596,884 @@ private fun SessionInfoCard(
 }
 
 @Composable
-private fun ParticipantsCard(participants: List<String>) {
+private fun PlaybackCard(playback: MusicTogetherPlaybackUiModel) {
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(MusicTogetherSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
             ) {
+                AccentIcon(iconResId = R.drawable.music_note, accent = MaterialTheme.colorScheme.tertiary)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.together_current_playback),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = playback.title ?: stringResource(R.string.together_playback_empty),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (playback.artists != null) {
+                        Text(
+                            text = playback.artists,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs),
+            ) {
+                InfoPill(text = stringResource(playback.playbackStateResId))
+                InfoPill(text = stringResource(R.string.together_queue_count, playback.queueSize))
+                if (playback.currentIndexLabel != null) {
+                    InfoPill(text = playback.currentIndexLabel)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs),
+            ) {
+                InfoPill(
+                    text =
+                        if (playback.shuffleEnabled) {
+                            stringResource(R.string.together_shuffle_on)
+                        } else {
+                            stringResource(R.string.together_shuffle_off)
+                        },
+                )
+                InfoPill(text = stringResource(R.string.together_repeat_mode, playback.repeatMode))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HostControlsCard(
+    host: MusicTogetherHostUiModel,
+    viewModel: MusicTogetherViewModel,
+) {
+    SectionCard(
+        iconResId = R.drawable.fire,
+        titleResId = R.string.together_host_section,
+        subtitleResId = R.string.together_display_name,
+        accent = MaterialTheme.colorScheme.primary,
+    ) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = !host.onlineMode,
+                onClick = { viewModel.setHostModeOnline(false) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                icon = {},
+            ) {
+                Text(text = stringResource(R.string.together_lan))
+            }
+            SegmentedButton(
+                selected = host.onlineMode,
+                onClick = { viewModel.setHostModeOnline(true) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                icon = {},
+            ) {
+                Text(text = stringResource(R.string.together_online))
+            }
+        }
+        SettingsRow(
+            iconResId = R.drawable.person,
+            titleResId = R.string.together_display_name,
+            subtitle = host.displayName,
+            onClick = viewModel::openDisplayNameDialog,
+        )
+        if (!host.onlineMode) {
+            SettingsRow(
+                iconResId = R.drawable.link,
+                titleResId = R.string.together_port,
+                subtitle = host.port.toString(),
+                onClick = viewModel::openPortDialog,
+            )
+        }
+        ToggleRow(
+            iconResId = R.drawable.playlist_add,
+            titleResId = R.string.together_allow_guests_add,
+            checked = host.allowGuestsToAddTracks,
+            onCheckedChange = viewModel::setAllowGuestsToAddTracks,
+        )
+        ToggleRow(
+            iconResId = R.drawable.play,
+            titleResId = R.string.together_allow_guests_control,
+            checked = host.allowGuestsToControlPlayback,
+            onCheckedChange = viewModel::setAllowGuestsToControlPlayback,
+        )
+        ToggleRow(
+            iconResId = R.drawable.lock,
+            titleResId = R.string.together_require_approval,
+            checked = host.requireHostApprovalToJoin,
+            onCheckedChange = viewModel::setRequireHostApprovalToJoin,
+        )
+        Button(
+            enabled = host.startEnabled,
+            onClick = viewModel::startSession,
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            if (host.loading) {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                Text(text = stringResource(R.string.loading))
+            } else {
                 Icon(
-                    painter = painterResource(R.drawable.person),
+                    painter = painterResource(R.drawable.fire),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp),
                 )
-                Text(
-                    text = stringResource(R.string.participants),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                Text(text = stringResource(R.string.start_session))
             }
+        }
+    }
+}
+
+@Composable
+private fun JoinControlsCard(
+    join: MusicTogetherJoinUiModel,
+    viewModel: MusicTogetherViewModel,
+) {
+    SectionCard(
+        iconResId = R.drawable.multi_user,
+        titleResId = R.string.together_join_section,
+        subtitleResId = R.string.join_session,
+        accent = MaterialTheme.colorScheme.tertiary,
+    ) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = !join.onlineMode,
+                enabled = !join.disabled,
+                onClick = { viewModel.setJoinModeOnline(false) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                icon = {},
+            ) {
+                Text(text = stringResource(R.string.together_join_link))
+            }
+            SegmentedButton(
+                selected = join.onlineMode,
+                enabled = !join.disabled,
+                onClick = { viewModel.setJoinModeOnline(true) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                icon = {},
+            ) {
+                Text(text = stringResource(R.string.together_join_code))
+            }
+        }
+        SettingsRow(
+            iconResId = R.drawable.input,
+            titleResId = R.string.join_session,
+            subtitle = join.input.trim().ifBlank { stringResource(join.hintResId) },
+            subtitleMaxLines = 2,
+            onClick = if (!join.disabled && !join.joining && !join.joined && !join.waitingApproval) viewModel::openJoinDialog else null,
+        )
+        FilledTonalButton(
+            enabled = join.canJoin,
+            onClick = viewModel::joinSession,
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            when {
+                join.joining -> {
+                    CircularWavyProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                    Text(text = stringResource(R.string.connecting))
+                }
+
+                join.waitingApproval -> {
+                    CircularWavyProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                    Text(text = stringResource(R.string.together_waiting_approval))
+                }
+
+                join.joined -> {
+                    Icon(
+                        painter = painterResource(R.drawable.check),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                    Text(text = stringResource(R.string.joined))
+                }
+
+                else -> {
+                    Icon(
+                        painter = painterResource(R.drawable.join),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                    Text(text = stringResource(R.string.join))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParticipantsCard(
+    participants: MusicTogetherParticipantUiModels,
+    viewModel: MusicTogetherViewModel,
+    modifier: Modifier = Modifier,
+    fillAvailableHeight: Boolean = false,
+) {
+    SectionCard(
+        iconResId = R.drawable.multi_user,
+        titleResId = R.string.together_participants,
+        subtitle = stringResource(R.string.together_connected_count, participants.size),
+        accent = MaterialTheme.colorScheme.secondary,
+        modifier = modifier,
+    ) {
+        if (participants.isEmpty) {
+            EmptyPanel(
+                iconResId = R.drawable.person,
+                titleResId = R.string.together_participants_empty,
+                bodyResId = R.string.together_participants_empty_body,
+            )
+        } else {
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (fillAvailableHeight) {
+                                Modifier.weight(1f)
+                            } else {
+                                Modifier.heightIn(max = 280.dp)
+                            },
+                        ),
+            ) {
+                items(
+                    count = participants.size,
+                    key = { index -> participants[index].id },
+                    contentType = { "participant" },
+                ) { index ->
+                    ParticipantRow(participant = participants[index], viewModel = viewModel)
+                    if (index < participants.size - 1) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParticipantRow(
+    participant: MusicTogetherParticipantUiModel,
+    viewModel: MusicTogetherViewModel,
+) {
+    ListItem(
+        headlineContent = {
             Text(
-                text = participants.joinToString(separator = " · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
+                text = participant.name,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        supportingContent = {
+            Text(
+                text =
+                    stringResource(
+                        when {
+                            participant.host -> R.string.together_role_host
+                            participant.pending -> R.string.together_pending_approval
+                            else -> R.string.together_role_guest
+                        },
+                    ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        leadingContent = {
+            AccentIcon(
+                iconResId = if (participant.host) R.drawable.fire else R.drawable.person,
+                accent = if (participant.host) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                size = 40.dp,
+            )
+        },
+        trailingContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xxs)) {
+                if (participant.showApproveActions) {
+                    IconButton(onClick = { viewModel.approveParticipant(participant.id) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.check),
+                            contentDescription = stringResource(R.string.together_approve),
+                        )
+                    }
+                    IconButton(onClick = { viewModel.rejectParticipant(participant.id) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = stringResource(R.string.together_reject),
+                        )
+                    }
+                }
+                if (participant.showTransferHostAction) {
+                    IconButton(onClick = { viewModel.requestTransferHost(participant.id) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.sync),
+                            contentDescription = stringResource(R.string.together_transfer_host),
+                        )
+                    }
+                }
+                if (participant.showModerationActions) {
+                    IconButton(onClick = { viewModel.requestKickParticipant(participant.id) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.kick),
+                            contentDescription = stringResource(R.string.together_kick),
+                        )
+                    }
+                    IconButton(onClick = { viewModel.requestBanParticipant(participant.id) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.block),
+                            contentDescription = stringResource(R.string.together_ban),
+                        )
+                    }
+                }
+            }
+        },
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun ActivityLogCard(
+    activityLog: MusicTogetherActivityLogUiModels,
+    modifier: Modifier = Modifier,
+    fillAvailableHeight: Boolean = false,
+) {
+    SectionCard(
+        iconResId = R.drawable.history,
+        titleResId = R.string.together_activity_log,
+        subtitleResId = R.string.together_activity_log_subtitle,
+        accent = MaterialTheme.colorScheme.tertiary,
+        modifier = modifier,
+    ) {
+        if (activityLog.isEmpty) {
+            EmptyPanel(
+                iconResId = R.drawable.history,
+                titleResId = R.string.together_activity_log_empty,
+                bodyResId = R.string.together_activity_log_empty_body,
+            )
+        } else {
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (fillAvailableHeight) {
+                                Modifier.weight(1f)
+                            } else {
+                                Modifier.heightIn(max = 360.dp)
+                            },
+                        ),
+                verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs),
+            ) {
+                items(
+                    count = activityLog.size,
+                    key = { index -> activityLog[index].id },
+                    contentType = { "activity_log_item" },
+                ) { index ->
+                    ActivityLogRow(item = activityLog[index])
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityLogRow(item: MusicTogetherActivityLogItemUiModel) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(item.iconResId),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = activityMessage(item),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = item.timestamp,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
+}
+
+@Composable
+private fun activityMessage(item: MusicTogetherActivityLogItemUiModel): String =
+    when (item.args.size) {
+        0 -> stringResource(item.messageResId)
+        1 -> stringResource(item.messageResId, item.args[0])
+        2 -> stringResource(item.messageResId, item.args[0], item.args[1])
+        else -> stringResource(item.messageResId)
+    }
+
+@Composable
+private fun SectionCard(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    @StringRes titleResId: Int,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    @StringRes subtitleResId: Int? = null,
+    subtitle: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(MusicTogetherSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+            ) {
+                AccentIcon(iconResId = iconResId, accent = accent)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(titleResId),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val subtitleText =
+                        when {
+                            subtitle != null -> subtitle
+                            subtitleResId != null -> stringResource(subtitleResId)
+                            else -> null
+                        }
+                    if (subtitleText != null) {
+                        Text(
+                            text = subtitleText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    @StringRes titleResId: Int,
+    subtitle: String,
+    subtitleMaxLines: Int = 1,
+    onClick: (() -> Unit)? = null,
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = stringResource(titleResId),
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                maxLines = subtitleMaxLines,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        leadingContent = {
+            AccentIcon(iconResId = iconResId, accent = MaterialTheme.colorScheme.primary, size = 40.dp)
+        },
+        trailingContent = {
+            if (onClick != null) {
+                Icon(
+                    painter = painterResource(R.drawable.navigate_next),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        modifier =
+            Modifier
+                .clip(MaterialTheme.shapes.large)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun ToggleRow(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    @StringRes titleResId: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = stringResource(titleResId),
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        leadingContent = {
+            AccentIcon(iconResId = iconResId, accent = MaterialTheme.colorScheme.primary, size = 40.dp)
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+            )
+        },
+        modifier =
+            Modifier
+                .clip(MaterialTheme.shapes.large)
+                .toggleable(
+                    value = checked,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                ),
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun AccentIcon(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
+) {
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .clip(RoundedCornerShape(size / 3))
+                .background(accent.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconResId),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(size * 0.52f),
+        )
+    }
+}
+
+@Composable
+private fun InfoPill(text: String) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = MusicTogetherSpacing.sm, vertical = MusicTogetherSpacing.xs),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun EmptyPanel(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    @StringRes titleResId: Int,
+    @StringRes bodyResId: Int,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(MusicTogetherSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AccentIcon(iconResId = iconResId, accent = MaterialTheme.colorScheme.onSurfaceVariant, size = 40.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(titleResId),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(bodyResId),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingContent() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
+    }
+}
+
+@Composable
+private fun EmptyContent() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyPanel(
+            iconResId = R.drawable.multi_user,
+            titleResId = R.string.together_idle,
+            bodyResId = R.string.together_activity_log_empty_body,
+        )
+    }
+}
+
+@Composable
+private fun ErrorContent(@StringRes messageResId: Int) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyPanel(
+            iconResId = R.drawable.error,
+            titleResId = R.string.together_error_state,
+            bodyResId = messageResId,
+        )
+    }
+}
+
+@Composable
+private fun WelcomeDialog(
+    dontShowAgain: Boolean,
+    onDontShowAgainChange: (Boolean) -> Unit,
+    onGotIt: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+            ) {
+                AccentIcon(iconResId = R.drawable.fire, accent = MaterialTheme.colorScheme.primary, size = 40.dp)
+                Text(
+                    text = stringResource(R.string.together_welcome_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm)) {
+                Text(
+                    text = stringResource(R.string.together_welcome_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(MusicTogetherSpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+                    ) {
+                        InstructionRow(
+                            iconResId = R.drawable.fire,
+                            titleResId = R.string.together_welcome_host_title,
+                            bodyResId = R.string.together_welcome_host_body,
+                            accent = MaterialTheme.colorScheme.primary,
+                        )
+                        InstructionRow(
+                            iconResId = R.drawable.link,
+                            titleResId = R.string.together_welcome_join_title,
+                            bodyResId = R.string.together_welcome_join_body,
+                            accent = MaterialTheme.colorScheme.tertiary,
+                        )
+                        InstructionRow(
+                            iconResId = R.drawable.lock,
+                            titleResId = R.string.together_welcome_permissions_title,
+                            bodyResId = R.string.together_welcome_permissions_body,
+                            accent = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                }
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.large)
+                            .toggleable(
+                                value = dontShowAgain,
+                                role = Role.Checkbox,
+                                onValueChange = onDontShowAgainChange,
+                            ).padding(vertical = MusicTogetherSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xs),
+                ) {
+                    Checkbox(
+                        checked = dontShowAgain,
+                        onCheckedChange = null,
+                    )
+                    Text(
+                        text = stringResource(R.string.together_dont_show_again),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onGotIt,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.check),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(MusicTogetherSpacing.xs))
+                Text(text = stringResource(R.string.got_it))
+            }
+        },
+    )
+}
+
+@Composable
+private fun InstructionRow(
+    @androidx.annotation.DrawableRes iconResId: Int,
+    @StringRes titleResId: Int,
+    @StringRes bodyResId: Int,
+    accent: Color,
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
+    ) {
+        AccentIcon(iconResId = iconResId, accent = accent, size = 38.dp)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.xxs)) {
+            Text(
+                text = stringResource(titleResId),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(bodyResId),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmParticipantDialog(
+    @StringRes titleResId: Int,
+    @StringRes bodyResId: Int,
+    participantName: String,
+    @StringRes confirmResId: Int,
+    destructive: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text(text = stringResource(titleResId)) },
+        text = {
+            Text(
+                text = stringResource(bodyResId, participantName),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors =
+                    if (destructive) {
+                        ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    } else {
+                        ButtonDefaults.buttonColors()
+                    },
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(text = stringResource(confirmResId))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
+                Text(text = stringResource(R.string.dismiss))
+            }
+        },
+    )
+}
+
+private object MusicTogetherSpacing {
+    val xxs = 4.dp
+    val xs = 8.dp
+    val sm = 16.dp
+    val md = 24.dp
+    val lg = 32.dp
 }

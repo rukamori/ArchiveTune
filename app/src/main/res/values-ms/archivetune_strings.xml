@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Teroka</string>
     <string name="local_history">Setempat</string>
@@ -7,8 +7,6 @@
     <string name="back_button_desc">Kembali</string>
     <string name="no_title">Tiada judul</string>
     <string name="unknown_artist">Artis tidak diketahui</string>
-    <string name="unknown_item_type">Jenis item tidak diketahui</string>
-    <string name="loading_charts">Memuat carta...</string>
     <string name="retry_button">Cuba semula</string>
     <string name="album_cover_desc">Muka album</string>
     <string name="top_music_videos">Video muzik teratas</string>
@@ -23,7 +21,6 @@
     <string name="cached_playlist">Simpanan sementara</string>
     <string name="sync_playlist">Kemasa kinikan senarai main</string>
     <string name="sync_disabled">Kemasa kinikan ditutup</string>
-    <string name="elements_selected">%1$d elemen dipilih</string>
     <string name="allows_for_sync_witch_youtube">Peringatan: Ini membenarkan pengemaskinian dengan YouTube Music. Ia TIDAK BOLEH ditukar kelak.</string>
     <string name="generating_image">Menjana gambar</string>
     <string name="please_wait">Sila tunggu</string>
@@ -35,11 +32,6 @@
     <string name="share_selected">Kongsi yang dipilih</string>
     <string name="customize_colors">Tukar warna</string>
     <string name="more_options">Tetapan tambahan</string>
-    <string name="text_color">Warna teks</string>
-    <string name="secondary_text_color">Warna teks sekunder</string>
-    <string name="background_color">Warna latar</string>
-    <string name="added_to_play_next">Ditambah ke senarai main</string>
-    <string name="added_to_queue">Ditambah ke barisan</string>
     <string name="remove_from_cache">Dibuang dari simpanan setempat</string>
     <string name="copy_link">Salin pautan</string>
     <string name="select">Pilih semua</string>
@@ -59,7 +51,6 @@
     <string name="dislike_all">Tidak suka semua</string>
     <string name="sort_by_last_updated">Tarikh dimuat naik</string>
     <string name="link_copied">Pautan disalin ke clipboard</string>
-    <string name="starting_radio">Memulakan radio</string>
     <string name="now_playing">Kini memainkan</string>
     <string name="close">Tutup</string>
     <string name="minimum_volume">Suara Minimum</string>

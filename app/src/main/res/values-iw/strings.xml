@@ -112,7 +112,6 @@
     <string name="palette_mint_fresh">מנטה</string>
     <string name="storage">אחסון</string>
     <string name="disable_blur_desc">השבתת אפקטים של טשטוש בכל האפליקציה</string>
-    <string name="center">מרכז</string>
     <string name="eq_output_gain">הגבר פלט</string>
     <string name="device_volume_zero_playback_paused">ההפעלה מושהית מכיוון שעוצמת הקול של המכשיר היא 0. הגבירו את עוצמת הקול כדי לחדש.</string>
     <string name="color_palette">פלטת צבעים</string>
@@ -212,13 +211,11 @@
     <string name="font_preference_desc">בחירת מקור גופן האפליקציה</string>
     <string name="palette_spotify_green">ספוטיפיי</string>
     <string name="blur_intensity">עוצמת טשטוש</string>
-    <string name="right">ימין</string>
     <string name="view_artist">הצג אמן</string>
     <string name="edit">עריכה</string>
     <string name="lyrics_synced_badge">מסונכרן</string>
     <string name="widget_pause">עצור</string>
     <string name="grid_cell_size">גודל תא רשת</string>
-    <string name="none">ללא</string>
     <string name="palette_neon_pink">ורוד ניאון</string>
     <string name="palette_ruby_red">רובי</string>
     <string name="palette_midnight_navy">כחול נייבי</string>
@@ -253,7 +250,6 @@
     <string name="lyrics_animation_style_v2_only">זמין רק בגרסה ״2 מדור קודם״ במצב מילות השיר</string>
     <string name="auto_start_on_bluetooth_desc">חידוש ההפעלה אוטומטית כאשר מכשיר שמע Bluetooth מתחבר</string>
     <string name="duplicates_description_multiple">%d שירים כבר נמצאים בפלייליסט שלך</string>
-    <string name="karaoke">קריוקי</string>
     <string name="add_to_playlist">הוסף לפלייליסט</string>
     <string name="action_shuffle_on">ערבוב מופעל</string>
     <string name="import_failed">ייבוא נכשל</string>
@@ -352,7 +348,6 @@
     <string name="artist_separators">סמלים לפיצול אמנים</string>
     <string name="palette_forest_green">ירוק יער</string>
     <string name="stream_bypass_proxy_desc">השתמש בכתובת ה-IP הישירה שלך להשמעת הזרם כדי למנוע אי-התאמה בכתובות ה-IP</string>
-    <string name="left">שמאל</string>
     <string name="external_downloader_not_installed">אפליקציית הורדה חיצונית לא מותקנת</string>
     <string name="sort_by_most_played">הכי מושמע</string>
     <string name="archivetune_canvas">קנבס ArchiveTune</string>
@@ -439,7 +434,6 @@
     <string name="login">התחברות</string>
     <string name="content_country">מדינת תוכן ברירת מחדל</string>
     <string name="eq_manual">ידני</string>
-    <string name="fade">פייד</string>
     <string name="media_id">מזהה מדיה</string>
     <string name="remove_from_library">הסר מהספרייה</string>
     <string name="together_role_host">מארח</string>
@@ -503,7 +497,6 @@
     <string name="audio_quality_high">גבוהה</string>
     <string name="palette_pastel_purple">סגול פסטל</string>
     <string name="custom_font_desc">בחר גופן מסוג ttf</string>
-    <string name="squiggly">מפותל</string>
     <string name="proxy_connection_success">חיבור הפרוקסי הצליח!</string>
     <string name="skip_duplicates">דלג כפילויות</string>
     <string name="internet_warning_proxy">אנא השתמשו רק בשרתי פרוקסי (Proxies) שאתם בטוחים שהם בטוחים לשימוש. שרתּי פרוקסי חינמיים הם אמנם נוחים, אך לא תמיד בטוחים, לכן היזהרו. הוזהרתם, ואנו לא נישא באחריות לאבטחה שלכם.</string>

@@ -293,20 +293,13 @@
     <string name="disable_blur">Desactivar efectos de desenfoque</string>
     <string name="disable_blur_desc">Desactivar los efectos de desenfoque en toda la aplicación</string>
     <string name="player">Reproductor</string>
-    <string name="left">Izquierda</string>
-    <string name="center">Centro</string>
-    <string name="right">Derecha</string>
     <string name="player_slider_style">Estilo de control deslizante del reproductor</string>
-    <string name="squiggly">Ondulado</string>
     <string name="misc">Varios</string>
     <string name="default_open_tab">Pestaña abierta por defecto</string>
     <string name="grid_cell_size">Tamaño de celda de la cuadricula</string>
     <string name="small">Pequeña</string>
     <string name="big">Grande</string>
     <string name="lyrics_animation_style">Estilo de animación de las letras</string>
-    <string name="none">Ninguna</string>
-    <string name="fade">Difuminado</string>
-    <string name="karaoke">Karaoke</string>
     <string name="lyrics_line_spacing">Espaciado entre líneas de la letra</string>
     <string name="content">Contenido</string>
     <string name="action_logout">Cerrar sesión</string>
@@ -471,7 +464,6 @@
     <string name="presence_manager_stopped">Gestor de presencia: detenido</string>
     <string name="filter_levels">Niveles de filtro</string>
     <string name="experimental_features">Funciones experimentales</string>
-    <string name="open">Abrir</string>
     <string name="reset_to_default_levels">Restablecer valores predeterminados</string>
     <string name="no_logs">Sin registros</string>
     <string name="show_nerd_stats">Mostrar estadísticas para nerds</string>
@@ -564,8 +556,6 @@
     <string name="join_session">Unirte a la sesión</string>
     <string name="session_link">Enlace de sesión</string>
     <string name="session_code">Código de sesión</string>
-    <string name="participants">Participantes</string>
-    <string name="host">Anfitrión</string>
     <string name="add_current_song">Añadir canción actual</string>
     <string name="dismiss">Descartar</string>
     <string name="enabled">Habilitado</string>

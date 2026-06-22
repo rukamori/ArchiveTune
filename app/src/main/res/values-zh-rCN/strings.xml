@@ -315,8 +315,6 @@
     <string name="grid_cell_size">网格单元大小</string>
     <string name="small">小</string>
     <string name="big">大</string>
-    <string name="none">无</string>
-    <string name="fade">淡出</string>
     <string name="lyrics_line_spacing">歌词行距</string>
     <string name="content">内容</string>
     <string name="action_logout">登出</string>
@@ -403,11 +401,7 @@
     <string name="pure_black">纯黑色</string>
     <string name="disable_blur">禁用模糊效果</string>
     <string name="disable_blur_desc">在应用中关闭模糊效果</string>
-    <string name="left">左边</string>
-    <string name="center">中心</string>
-    <string name="right">右边</string>
     <string name="player_slider_style">播放器滑块风格</string>
-    <string name="squiggly">曲线</string>
     <string name="misc">其他</string>
     <string name="default_open_tab">默认打开标签页</string>
     <string name="action_shuffle_on">打开随机</string>
@@ -420,7 +414,6 @@
     <string name="audio_quality_low">低质量</string>
     <string name="mime_type">MIME类型</string>
     <string name="lyrics_animation_style">动态歌词样式</string>
-    <string name="karaoke">逐字模式</string>
     <string name="enable_betterlyrics">启用BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">启用SimpMusic lyrics</string>
     <string name="player_and_audio">播放器与音频</string>
@@ -489,7 +482,6 @@
     <string name="smart_trimmer">智能清理</string>
     <string name="smart_trimmer_description">智能清理程序动态管理图片与歌曲缓存，自动剔除旧条目以节省磁盘空间.</string>
     <string name="listenbrainz_scrobbling">ListenBrainz 记录</string>
-    <string name="open">打开</string>
     <string name="show_nerd_stats">详细统计信息</string>
     <string name="nerd_stats">调试信息</string>
     <string name="state_label">状态</string>
@@ -557,8 +549,6 @@
     <string name="join_session">加入会话</string>
     <string name="session_link">同步链接</string>
     <string name="session_code">加入码</string>
-    <string name="participants">成员</string>
-    <string name="host">房主</string>
     <string name="add_current_song">添加当前歌曲</string>
     <string name="enabled">启用</string>
     <string name="disabled">停用</string>

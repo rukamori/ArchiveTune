@@ -1,6 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Explore</string>
+    <string name="suggestions">Suggestions</string>
     <string name="music_recognition_tap_to_listen">Tap to listen</string>
     <string name="music_recognition_listening">Listening…</string>
     <string name="music_recognition_processing">Processing…</string>
@@ -57,8 +58,6 @@
     <string name="local_songs_scan_folders_desc">Skip songs stored in folders that match any of these paths.</string>
     <string name="local_songs_scan_folders_empty">No folders excluded yet.</string>
     <string name="local_songs_scan_folders_add">Add folder</string>
-    <string name="local_songs_scan_folders_dialog_title">Exclude folder</string>
-    <string name="local_songs_scan_folders_dialog_placeholder">Music/Ringtones</string>
     <string name="local_songs_no_matches_title">No matching local songs</string>
     <string name="local_songs_no_matches_desc">Try a different song, artist, or album name.</string>
     <string name="sort_by_album">Album</string>
@@ -86,7 +85,6 @@
     </plurals>
     <string name="no_title">No title</string>
     <string name="unknown_artist">Unknown artist</string>
-
     <string name="aod_customize_title">AOD customization</string>
     <string name="aod_customize_subtitle">Shape, layout, controls, and ambient styling</string>
     <string name="aod_customize_entry_desc">Customize the always-on player screen</string>
@@ -158,9 +156,6 @@
     <string name="aod_control_filled">Filled</string>
     <string name="aod_control_tonal">Tonal</string>
     <string name="aod_control_minimal">Minimal</string>
-
-    <string name="unknown_item_type">Unknown item type</string>
-    <string name="loading_charts">Loading charts...</string>
     <string name="retry_button">Retry</string>
     <string name="album_cover_desc">Album cover</string>
     <string name="top_music_videos">Top music videos</string>
@@ -177,7 +172,6 @@
     <string name="playlist_sync_progress_step">%1$d/%2$d Songs</string>
     <string name="playlist_sync_failed">Playlist sync failed: %1$s</string>
     <string name="sync_disabled">Sync disabled</string>
-    <string name="elements_selected">%1$d elements selected</string>
     <string name="allows_for_sync_witch_youtube">Note: This allows for syncing with YouTube Music. This is NOT changeable later.</string>
     <string name="generating_image">Generating image</string>
     <string name="please_wait">Please wait</string>
@@ -209,11 +203,6 @@
     <string name="lyrics_share_export_failed">Failed to create image: %1$s</string>
     <string name="lyrics_share_export_not_supported">Image sharing requires Android 6.0 or newer</string>
     <string name="more_options">More options</string>
-    <string name="text_color">Text color</string>
-    <string name="secondary_text_color">Secondary text color</string>
-    <string name="background_color">Background color</string>
-    <string name="added_to_play_next">Added to play next</string>
-    <string name="added_to_queue">Added to the queue</string>
     <string name="remove_from_cache">Remove from cache</string>
     <string name="select">Select all</string>
     <string name="manage_tags">Manage Tags</string>
@@ -232,7 +221,6 @@
     <string name="dislike_all">Dislike all</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
-    <string name="starting_radio">Starting radio</string>
     <string name="now_playing">Now Playing</string>
     <string name="close">Close</string>
     <string name="minimum_volume">Minimum Volume</string>
@@ -254,14 +242,10 @@
         <item quantity="one">%d time</item>
         <item quantity="other">%d times</item>
     </plurals>
-    <string name="seek_backward">5 seconds backward</string>
-    <string name="seek_forward">5 seconds forward</string>
     <string name="seek_forward_dynamic">+%1$d seconds forwards</string>
     <string name="seek_backward_dynamic">-%1$d seconds backwards</string>
     <string name="seek_seconds_addup">Progressive seek</string>
     <string name="seek_seconds_addup_description">If enabled,  Adds up 5 extra seconds incrementally on each seek skip</string>
-    <string name="login_settings">Login settings</string>
-    <string name="general_settings">General settings</string>
     <string name="player_background_style">Player background style</string>
     <string name="mini_player_background_style">Mini player background style</string>
     <string name="follow_theme">Follow theme</string>
@@ -276,7 +260,6 @@
     <string name="player_design_v7">Immersive</string>
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
-    <string name="playing_from">Playing from %s</string>
     <string name="player_background_blur">Blur</string>
     <string name="coloring">Coloring</string>
     <string name="blur_gradient">Blur Gradient</string>
@@ -284,7 +267,6 @@
     <string name="player_buttons_style">Player button colors</string>
     <string name="default_style">Default</string>
     <string name="secondary_color_style">Secondary</string>
-    <string name="enable_squiggly_slider">Enable squiggly slider</string>
     <string name="enable_swipe_thumbnail">Enable swipe to change song</string>
     <string name="swipe_song_to_add">Swipe song to the left to add it to the queue or to the right to play it next</string>
     <string name="lyrics_click_change">Change lyrics on click</string>
@@ -297,17 +279,14 @@
     <string name="lyrics_romanize_chinese">Romanize chinese lyrics</string>
     <string name="lyrics_romanize_hindi">Romanize hindi lyrics</string>
     <string name="lyrics_romanize_other_languages">Romanize other non-latin lyrics</string>
-    <string name="card_and_list">Card &amp; List</string>
     <string name="quick_picks_display_mode">Quick Picks display mode</string>
     <string name="quick_picks_display_mode_card">Card</string>
     <string name="quick_picks_display_mode_list">List</string>
-    <string name="google">Google</string>
     <string name="discord">Discord</string>
     <string name="advanced_login">Login with token</string>
     <string name="token_hidden">Tap to show token</string>
     <string name="token_shown">Tap again to copy or edit</string>
     <string name="token_adv_login_description">This is an ADVANCED login method. As an alternative to the web portal, you may directly enter or update your login token here. For example, this can speed up logging in on multiple devices. Please note that any invalid token formats the app fails to parse will not be accepted</string>
-    <string name="ytm_sync">Automatically sync with your YouTube Music account</string>
     <string name="yt_sync">Auto sync with account</string>
     <string name="force_sync_on_switch_account">Force Sync on Switch Account</string>
     <string name="force_sync_on_switch_account_desc">Re-sync playlists, liked songs, artists, and albums from the selected account after switching</string>
@@ -319,26 +298,16 @@
     <string name="last_song_listened">Based on last song listened</string>
     <string name="dont_show">Dont Show</string>
     <string name="app_language">App language</string>
-    <string name="configure_app_language">Configure app languages</string>
-    <string name="intent_app_language_not_found">Couldn\'t find app language settings, please configure them manually</string>
     <string name="open_supported_links">Open supported link by default</string>
-    <string name="configure_supported_links">Configure supported links</string>
-    <string name="intent_supported_links_not_found">Couldn\'t find supported links settings, please configure them manually</string>
     <string name="set_first_lyrics_provider">Preferred lyrics provider</string>
     <string name="audio_quality_max">Max (beta)</string>
-    <string name="enable_similar_content">Enable similar content</string>
-    <string name="similar_content_desc">Automatically add more similar songs when the end of the queue is reached</string>
-    <string name="min_playback_duration_title">Minimum playback duration</string>
-    <string name="min_playback_duration_description">The minimum amount of a song that must be played before it is considered \"played\"</string>
     <string name="percentage_format">%d%%</string>
-    <string name="minimum_playback_duration">Minimum playback duration</string>
     <string name="import_online">Import a \"m3u\" playlists</string>
     <string name="import_csv">Import a \"csv\" playlists</string>
     <string name="playlist_add_local_to_synced_note">Note: Adding local songs to synced/remote playlists is unsupported. Any other combination is valid</string>
     <string name="auto_download_on_like">Auto download on like</string>
     <string name="auto_download_on_like_desc">Automatically download songs when you like them</string>
     <string name="swipe_sensitivity">Mini player swipe sensitivity</string>
-    <string name="swipe_sensitivity_desc">Adjust how sensitive swipe gestures are for changing songs</string>
     <string name="storage_folder">Storage folder</string>
     <string name="storage_folder_pick">Choose folder</string>
     <string name="storage_location_sheet_title">Storage location</string>
@@ -370,7 +339,6 @@
     <string name="clear_canvas_cache">Clear canvas cache</string>
     <string name="clear_canvas_cache_dialog">Are you sure you want to clear all cached canvas?</string>
     <string name="disable">Disable</string>
-    <string name="pause_remote_listen_history">Pause share listen history with YouTube Music</string>
     <string name="not_logged_in_youtube">Not logged in to YouTube</string>
     <string name="default_links">Open supported links</string>
     <string name="open_app_settings_error">Couldn\'t open app settings</string>
@@ -423,8 +391,6 @@
     <string name="audio_crossfade_seconds">%1$s s</string>
     <string name="crossfade_gapless_title">Skip gapless albums</string>
     <string name="crossfade_gapless_description">Do not crossfade consecutive songs from the same album.</string>
-    <string name="disable_load_more_when_repeat_all">Disable load more when repeat all</string>
-    <string name="disable_load_more_when_repeat_all_desc">Don\'t auto load more songs and similar content when repeat all mode is enabled</string>
     <string name="player_stream_client">Playback client</string>
     <string name="player_stream_client_desc">Controls which playback source is used to fetch streams</string>
     <string name="player_stream_client_android_vr">Android VR</string>
@@ -433,12 +399,7 @@
     <string name="player_stream_client_web_remix_desc">Extended format support at the cost of speed. JavaScript signature decryption introduces a ~5–10 second startup delay.</string>
     <string name="player_stream_client_hi_res_lossless">Hi-Res &amp; Lossless</string>
     <string name="player_stream_client_hi_res_lossless_desc">Prefers lossless audio streams when available.</string>
-    <string name="settings_section_ui">User Interface</string>
-    <string name="settings_section_privacy">Privacy &amp; Security</string>
-    <string name="settings_section_player">Player &amp; Media</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
-    <string name="settings_section_storage">Storage &amp; Data</string>
-    <string name="settings_section_system">System &amp; About</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
     <string name="settings_playback_title">Playback</string>
     <string name="settings_playback_subtitle">Audio behavior, crossfade, and background playback</string>
@@ -459,10 +420,8 @@
     <string name="settings_stats_title">Listening Stats</string>
     <string name="settings_stats_subtitle">Your top songs, artists, and playback history</string>
     <string name="similar_content">Similar content</string>
-    <string name="error_no_song_playing">No song is currently playing</string>
-    <string name="error_no_similar_songs">No similar songs found</string>
-    <string name="error_automix_failed">Failed to load similar songs</string>
     <string name="top_songs">Top Songs</string>
+    <string name="top_albums">Top Albums</string>
     <string name="year_in_music">Year in Music</string>
     <string name="total_listening_time">Total Listening Time</string>
     <string name="top_artists">Top Artists</string>
@@ -470,8 +429,6 @@
     <string name="no_listening_data">No listening data for this year</string>
     <string name="year_in_music_recap">Music Recap</string>
     <string name="year_in_music_recap_word">RECAP</string>
-    <string name="year_in_music_intro_title">Replay your year</string>
-    <string name="year_in_music_intro_subtitle">A recap of the songs, artists, and albums that shaped %d.</string>
     <string name="year_in_music_intro_hero">It\'s here! Your year in music.</string>
     <string name="year_in_music_intro_details">Reveal your top songs, artists, albums, and listening time.</string>
     <string name="year_in_music_swipe_begin">Swipe to begin</string>
@@ -479,7 +436,6 @@
     <string name="year_in_music_top_track">Your top track</string>
     <string name="year_in_music_ranked_artists">Artists on repeat</string>
     <string name="year_in_music_ranked_albums">Albums you returned to</string>
-    <string name="year_in_music_final_title">That was your year</string>
     <string name="year_in_music_musical_passport">My musical passport</string>
     <string name="year_in_music_empty_title">Nothing to recap yet</string>
     <string name="year_in_music_empty_subtitle">Play more music during %d and your recap will appear here.</string>
@@ -494,7 +450,6 @@
     <string name="stats_total_plays">Total Plays</string>
     <string name="stats_unique_songs">Unique Songs</string>
     <string name="stats_unique_artists">Unique Artists</string>
-    <string name="stats_unique_albums">Unique Albums</string>
     <string name="stats_listening_by_day">Listening by Day</string>
     <string name="stats_listening_by_hour">Listening by Hour</string>
     <string name="stats_peak_hour">Most active: %s</string>
@@ -505,42 +460,29 @@
     <string name="day_thu">Thu</string>
     <string name="day_fri">Fri</string>
     <string name="day_sat">Sat</string>
-
+    <string name="theme_creator_title">Theme Creator</string>
     <string name="custom_theme">Custom Theme</string>
     <string name="import_theme">Import Theme</string>
     <string name="export_theme">Export Theme</string>
-
     <string name="palette_custom">Custom</string>
-
-    <string name="theme_creator_title">Theme Creator</string>
-    <string name="theme_creator_subtitle">Tune colors, preview the result, then export or import.</string>
-
     <string name="theme_meta_title">Theme Details</string>
     <string name="theme_name_optional">Name (optional)</string>
     <string name="theme_apply_button">Apply Theme</string>
-
-    <string name="theme_applied">Theme applied</string>
-    <string name="theme_export_success">Theme exported</string>
-    <string name="theme_export_failed">Export failed</string>
     <string name="theme_import_success">Theme imported</string>
     <string name="theme_import_failed">Import failed</string>
     <string name="theme_import_failed_title">Can\'t import theme</string>
-
+    <string name="theme_applied">Theme applied</string>
+    <string name="theme_export_success">Theme exported</string>
+    <string name="theme_export_failed">Export failed</string>
     <string name="theme_seed_colors">Seed Colors</string>
     <string name="theme_seed_primary">Primary</string>
     <string name="theme_seed_secondary">Secondary</string>
     <string name="theme_seed_tertiary">Tertiary</string>
     <string name="theme_seed_neutral">Neutral</string>
-
     <string name="theme_editor_title">%1$s Color</string>
     <string name="theme_editor_hex">Hex</string>
     <string name="theme_editor_hex_input">Hex value (#RRGGBB or #AARRGGBB)</string>
     <string name="theme_presets_title">Presets</string>
-
-    <string name="theme_preview_trackline">A premium preview card</string>
-    <string name="theme_preview_primary_action">Primary Action</string>
-    <string name="theme_preview_secondary_action">Secondary Action</string>
-
     <string name="copy">Copy</string>
     <string name="backup_in_progress">Backup in progress</string>
     <string name="restore_in_progress">Restore in progress</string>
@@ -566,23 +508,14 @@
     <string name="restore_missing_content">The backup archive does not contain any restorable data.</string>
     <string name="restore_corrupted">The backup file appears to be corrupted and could not be read.</string>
     <string name="restore_file_not_found">Could not open the selected file.</string>
-    <string name="backup_select_backup">Select Backup File</string>
     <string name="restore_select_backup">Select a backup file to restore.</string>
-    <string name="backup_data_safety">Data safety</string>
-    <string name="backup_data_safety_desc">Create a portable backup or restore selected app data.</string>
-    <string name="backup_data_formats">.backup archive</string>
     <string name="backup_create_backup_desc">Export library, settings, and account details.</string>
-    <string name="backup_restore_backup_desc">Restore selected data from a previous backup.</string>
-    <string name="import_from_file">Import from file</string>
-    <string name="import_from_file_desc">Bring playlists from local M3U or CSV files.</string>
     <string name="import_m3u_format">M3U audio playlist</string>
     <string name="import_csv_format">CSV playlist file</string>
     <string name="spotify_connect">Connect Spotify</string>
-    <string name="spotify_refresh">Refresh Spotify library</string>
     <string name="spotify_available_count">%1$d playlists available</string>
     <string name="spotify_connected_as">Connected as %1$s</string>
     <string name="spotify_not_connected">Spotify is not connected</string>
-    <string name="spotify_track_count">%1$d tracks</string>
     <string name="spotify_login_title">Spotify login</string>
     <string name="spotify_loading_library">Loading Spotify library</string>
     <string name="spotify_no_sources">No Spotify playlists found</string>
@@ -625,13 +558,10 @@
     <string name="ai_api_test_failed">API test failed</string>
     <string name="ai_translation_menu">AI Translation</string>
     <string name="ai_translating_lyrics">Translating The Lyrics...</string>
-
-    <!-- About Screen -->
     <string name="about_lead_developer">Lead Developer</string>
     <string name="about_archive_tune_team">Team</string>
     <string name="about_respecter">Respecter</string>
     <string name="about_contributors">Contributors</string>
-    <string name="about_contributors_read_more">Read More</string>
     <string name="about_contributor_translation">Contributor Translation</string>
     <string name="about_license">LICENSE</string>
     <string name="about_license_unknown">Unknown license</string>
