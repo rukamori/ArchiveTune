@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,6 +52,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -156,6 +159,13 @@ fun BackupAndRestore(
     val (showSpotifyPlaylists, onShowSpotifyPlaylistsChange) = rememberPreference(ShowSpotifyPlaylistsKey, false)
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.backupEvent.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     val backupLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -210,79 +220,89 @@ fun BackupAndRestore(
         }
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-    ) {
-        PreferenceGroup(title = stringResource(R.string.internal_service)) {
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.action_backup)) },
-                    description = stringResource(R.string.backup_create_backup_desc),
-                    icon = { Icon(painterResource(R.drawable.backup), null) },
-                    onClick = { showBackupOptionsDialog = true },
-                )
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+        ) {
+            PreferenceGroup(title = stringResource(R.string.internal_service)) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.action_backup)) },
+                        description = stringResource(R.string.backup_create_backup_desc),
+                        icon = { Icon(painterResource(R.drawable.backup), null) },
+                        onClick = { showBackupOptionsDialog = true },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.action_restore)) },
+                        description = stringResource(R.string.restore_select_backup),
+                        icon = { Icon(painterResource(R.drawable.restore), null) },
+                        onClick = { restoreLauncher.launch(arrayOf("application/octet-stream", "application/zip")) },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.import_online)) },
+                        description = stringResource(R.string.import_m3u_format),
+                        icon = { Icon(painterResource(R.drawable.playlist_import), null) },
+                        onClick = { importM3uLauncherOnline.launch(arrayOf("audio/*")) },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.import_csv)) },
+                        description = stringResource(R.string.import_csv_format),
+                        icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+                        onClick = { importPlaylistFromCsv.launch(CSV_MIME_TYPES) },
+                    )
+                }
             }
 
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.action_restore)) },
-                    description = stringResource(R.string.restore_select_backup),
-                    icon = { Icon(painterResource(R.drawable.restore), null) },
-                    onClick = { restoreLauncher.launch(arrayOf("application/octet-stream", "application/zip")) },
-                )
-            }
-
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.import_online)) },
-                    description = stringResource(R.string.import_m3u_format),
-                    icon = { Icon(painterResource(R.drawable.playlist_import), null) },
-                    onClick = { importM3uLauncherOnline.launch(arrayOf("audio/*")) },
-                )
-            }
-
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.import_csv)) },
-                    description = stringResource(R.string.import_csv_format),
-                    icon = { Icon(painterResource(R.drawable.playlist_add), null) },
-                    onClick = { importPlaylistFromCsv.launch(CSV_MIME_TYPES) },
+            PreferenceGroup(title = stringResource(R.string.external_service)) {
+                spotifyAccountPreferences(
+                    state = spotifyState,
+                    showPlaylists = showSpotifyPlaylists,
+                    onConnectClick = { showSpotifyLogin = true },
+                    onShowPlaylistsChange = onShowSpotifyPlaylistsChange,
+                    onReloadClick = spotifyAccountViewModel::reloadPlaylists,
+                    onLogoutClick = {
+                        spotifyAccountViewModel.logout()
+                    },
                 )
             }
         }
 
-        PreferenceGroup(title = stringResource(R.string.external_service)) {
-            spotifyAccountPreferences(
-                state = spotifyState,
-                showPlaylists = showSpotifyPlaylists,
-                onConnectClick = { showSpotifyLogin = true },
-                onShowPlaylistsChange = onShowSpotifyPlaylistsChange,
-                onReloadClick = spotifyAccountViewModel::reloadPlaylists,
-                onLogoutClick = {
-                    spotifyAccountViewModel.logout()
-                },
-            )
-        }
+        TopAppBar(
+            title = { Text(stringResource(R.string.backup_restore)) },
+            navigationIcon = {
+                IconButton(
+                    onClick = navController::navigateUp,
+                    onLongClick = navController::backToMain,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.arrow_back),
+                        contentDescription = null,
+                    )
+                }
+            },
+            scrollBehavior = scrollBehavior,
+        )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom))
+                .padding(16.dp),
+        )
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.backup_restore)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-        scrollBehavior = scrollBehavior,
-    )
 
     if (showBackupOptionsDialog) {
         BackupOptionsDialog(

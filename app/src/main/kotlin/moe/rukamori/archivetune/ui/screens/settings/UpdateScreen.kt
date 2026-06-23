@@ -64,6 +64,8 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -189,6 +191,7 @@ fun UpdateScreen(
     var updateDownloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var showUpdateDownloadDialog by remember { mutableStateOf(false) }
     val useInAppUpdateInstaller = BuildConfig.DISTRIBUTION == "gms"
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val openUpdateUrl: (String) -> Unit = { url ->
         try {
@@ -212,6 +215,9 @@ fun UpdateScreen(
                             updateDownloadProgress = progress.fraction
                         }.onSuccess {
                             showUpdateDownloadDialog = false
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.download_complete),
+                            )
                         }.onFailure { error ->
                             showUpdateDownloadDialog = false
                             updateSheetError = error.message ?: context.getString(R.string.error_unknown)
@@ -573,6 +579,7 @@ fun UpdateScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             LargeFlexibleTopAppBar(
                 title = {
@@ -731,11 +738,24 @@ fun UpdateScreen(
         val determinateIndicatorModifier = remember { Modifier.fillMaxSize() }
         val indeterminateIndicatorModifier = remember { Modifier.size(72.dp) }
 
+        val downloadTitle = buildString {
+            when (updateChannel) {
+                UpdateChannel.DAILY_NIGHTLY -> append("${context.getString(R.string.app_name)} Nightly")
+                else -> append(context.getString(R.string.app_name))
+            }
+            append(' ')
+            if (updateChannel == UpdateChannel.NIGHTLY) {
+                append(latestCommit?.sha?.take(7) ?: updateSheetVersion ?: "?")
+            } else {
+                append(updateSheetVersion ?: "?")
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {},
             title = {
                 Text(
-                    text = stringResource(R.string.downloading),
+                    text = downloadTitle,
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center,
                     modifier = centeredDialogContentModifier,

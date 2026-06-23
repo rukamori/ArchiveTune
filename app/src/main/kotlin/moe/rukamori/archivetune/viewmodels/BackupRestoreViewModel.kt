@@ -22,8 +22,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -167,6 +170,9 @@ class BackupRestoreViewModel
         private val _backupRestoreProgress = MutableStateFlow<BackupRestoreProgressUi?>(null)
         val backupRestoreProgress: StateFlow<BackupRestoreProgressUi?> = _backupRestoreProgress.asStateFlow()
 
+        private val _backupEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val backupEvent: SharedFlow<String> = _backupEvent.asSharedFlow()
+
         private fun emitProgress(
             title: String,
             step: String,
@@ -280,13 +286,16 @@ class BackupRestoreViewModel
                         }
                     } ?: throw IllegalStateException("Failed to open output stream")
 
+                    val msg = context.getString(R.string.backup_create_success)
+                    _backupEvent.tryEmit(msg)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, R.string.backup_create_success, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     }
                 } catch (exception: Exception) {
                     reportException(exception)
+                    val msg = exception.message ?: context.getString(R.string.backup_create_failed)
+                    _backupEvent.tryEmit(msg)
                     withContext(Dispatchers.Main) {
-                        val msg = exception.message ?: context.getString(R.string.backup_create_failed)
                         Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                     }
                 } finally {
