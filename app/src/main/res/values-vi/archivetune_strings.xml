@@ -555,4 +555,15 @@
     <string name="about_content_desc_donate">Quyên góp</string>
     <string name="storage_cache_cleared">Cache đã được dọn.</string>
     <string name="storage_cache_clear_failed">Không thể xóa cache. Kiểm tra quyền truy cập thẻ SD.</string>
+    <string name="suggestions">Gợi ý</string>
+    <string name="about_contributor_translation">Bản dịch của người đóng góp</string>
+    <string name="about_license">GIẤY PHÉP</string>
+    <string name="about_license_unknown">Giấy phép không xác định</string>
+    <string name="history_duration_desc">Thời gian phát tối thiểu để tính là đã nghe</string>
+    <string name="history_duration_seconds">%1$s giây</string>
+    <string name="theme_creator_title">Trình tạo Giao diện</string>
+    <string name="theme_applied">Đã áp dụng giao diện</string>
+    <string name="theme_export_success">Đã xuất giao diện</string>
+    <string name="theme_export_failed">Xuất thất bại</string>
+    <string name="theme_import_failed_title">Không thể nhập giao diện</string>
 </resources>
