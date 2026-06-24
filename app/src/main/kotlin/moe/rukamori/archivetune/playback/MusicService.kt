@@ -100,6 +100,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -134,6 +135,7 @@ import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
+import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
 import moe.rukamori.archivetune.constants.DiscordTokenKey
 import moe.rukamori.archivetune.constants.EnableDiscordRPCKey
 import moe.rukamori.archivetune.constants.EnableLastFMScrobblingKey
@@ -397,6 +399,16 @@ class MusicService :
     private var lastPresenceToken: String? = null
 
     @Volatile
+    private var pausedPresenceGate = PausedPresenceGate.FollowPreference
+
+    @Volatile
+    private var discordServiceStopping = false
+
+    private val discordSyncEpoch = AtomicLong(0L)
+    private val discordSyncRequests = Channel<DiscordSyncRequest>(Channel.CONFLATED)
+    private var discordSyncWorkerJob: Job? = null
+
+    @Volatile
     private var lastLoginRecoveryPrompt: Pair<String, Long>? = null
     private val playbackStreamRecoveryTracker = PlaybackStreamRecoveryTracker()
     private var nextHistorySessionToken = 0L
@@ -465,6 +477,21 @@ class MusicService :
         val durationSeconds: Float,
         val gapless: Boolean,
     )
+
+    private data class DiscordSyncRequest(
+        val epoch: Long,
+        val reason: String,
+        val force: Boolean,
+    )
+
+    private data class Quadruple<A, B, C, D>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D,
+    )
+
+    private class StaleDiscordSyncException : CancellationException("Stale Discord sync request")
 
     private data class CrossfadeTarget(
         val index: Int,
@@ -973,13 +1000,16 @@ class MusicService :
 
         currentSong.debounce(300).collect(scope) { song ->
             updateNotification()
+            requestDiscordSync(
+                reason =
+                    if (song == null) {
+                        "current_song_cleared"
+                    } else {
+                        "current_song_changed"
+                    },
+            )
             if (song != null && player.playWhenReady && player.playbackState == Player.STATE_READY) {
                 ensurePresenceManager()
-            } else {
-                try {
-                    DiscordPresenceManager.stop()
-                } catch (_: Exception) {
-                }
             }
         }
 
@@ -1131,18 +1161,21 @@ class MusicService :
             .debounce(300)
             .distinctUntilChanged()
             .collectLatest(scope) { (key, enabled) ->
+                requestDiscordSync(
+                    reason =
+                        when {
+                            !enabled -> "discord_rpc_disabled"
+                            key.isNullOrBlank() -> "discord_token_missing"
+                            else -> "discord_token_or_toggle_changed"
+                        },
+                    force = !enabled || key.isNullOrBlank(),
+                )
                 if (!key.isNullOrBlank() && enabled) {
                     if (player.playbackState == Player.STATE_READY && player.playWhenReady) {
                         currentSong.value?.let {
                             ensurePresenceManager()
                         }
                     }
-                } else {
-                    try {
-                        DiscordPresenceManager.stop()
-                    } catch (_: Exception) {
-                    }
-                    lastPresenceToken = null
                 }
             }
 
@@ -1270,6 +1303,211 @@ class MusicService :
         }
         if (!ioScope.isActive) {
             ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
+        }
+        startDiscordSyncWorker()
+    }
+
+    private fun startDiscordSyncWorker() {
+        if (discordSyncWorkerJob?.isActive == true) return
+        discordSyncWorkerJob =
+            scope.launch(Dispatchers.IO) {
+                for (request in discordSyncRequests) {
+                    try {
+                        syncDiscordStateInternal(request)
+                    } catch (_: StaleDiscordSyncException) {
+                        Timber.tag(DISCORD_SYNC_TAG).d(
+                            "stale sync aborted epoch=%d reason=%s",
+                            request.epoch,
+                            request.reason,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Timber.tag(DISCORD_SYNC_TAG).e(
+                            error,
+                            "sync failed epoch=%d reason=%s",
+                            request.epoch,
+                            request.reason,
+                        )
+                    }
+                }
+            }
+    }
+
+    private fun requestDiscordSync(
+        reason: String,
+        force: Boolean = false,
+    ) {
+        val request =
+            DiscordSyncRequest(
+                epoch = discordSyncEpoch.incrementAndGet(),
+                reason = reason,
+                force = force,
+            )
+        if (discordSyncRequests.trySend(request).isFailure) {
+            Timber.tag(DISCORD_SYNC_TAG).w(
+                "failed to enqueue sync epoch=%d reason=%s",
+                request.epoch,
+                request.reason,
+            )
+        }
+    }
+
+    private fun ensureDiscordSyncFresh(epoch: Long) {
+        if (epoch != discordSyncEpoch.get()) {
+            throw StaleDiscordSyncException()
+        }
+    }
+
+    private suspend fun syncDiscordStateInternal(request: DiscordSyncRequest) {
+        ensureDiscordSyncFresh(request.epoch)
+
+        val enabled = dataStore.get(EnableDiscordRPCKey, true)
+        val token = dataStore.get(DiscordTokenKey, "")
+        val hasToken = token.isNotBlank()
+        val showWhenPaused = dataStore.get(DiscordShowWhenPausedKey, false)
+        val (song, isPlaying, playWhenReady, playbackState) =
+            withContext(Dispatchers.Main.immediate) {
+                Quadruple(
+                    currentPresenceSong(),
+                    player.isPlaying,
+                    player.playWhenReady,
+                    player.playbackState,
+                )
+            }
+
+        if (playWhenReady && pausedPresenceGate != PausedPresenceGate.FollowPreference) {
+            pausedPresenceGate = PausedPresenceGate.FollowPreference
+            Timber.tag(DISCORD_SYNC_TAG).d(
+                "sync epoch=%d reason=%s reset paused gate because playback intent resumed",
+                request.epoch,
+                request.reason,
+            )
+        }
+
+        val semanticState =
+            derivePlaybackSemanticState(
+                DiscordPresenceInputs(
+                    enabled = enabled,
+                    hasToken = hasToken,
+                    song = song,
+                    isPlaying = isPlaying,
+                    showWhenPaused = showWhenPaused,
+                    pausedPresenceGate = pausedPresenceGate,
+                    serviceStopping = discordServiceStopping,
+                    playWhenReady = playWhenReady,
+                    playbackState = playbackState,
+                ),
+            )
+        val decision =
+            deriveRawDiscordPresenceDecision(
+                input =
+                    DiscordPresenceInputs(
+                        enabled = enabled,
+                        hasToken = hasToken,
+                        song = song,
+                        isPlaying = isPlaying,
+                        showWhenPaused = showWhenPaused,
+                        pausedPresenceGate = pausedPresenceGate,
+                        serviceStopping = discordServiceStopping,
+                        playWhenReady = playWhenReady,
+                        playbackState = playbackState,
+                    ),
+                semanticState = semanticState,
+            )
+
+        ensureDiscordSyncFresh(request.epoch)
+        Timber.tag(DISCORD_SYNC_TAG).d(
+            "sync epoch=%d reason=%s force=%s songId=%s playWhenReady=%s playbackState=%d isPlaying=%s semantic=%s decision=%s",
+            request.epoch,
+            request.reason,
+            request.force,
+            song?.song?.id,
+            playWhenReady,
+            playbackState,
+            isPlaying,
+            semanticState,
+            decision,
+        )
+
+        when (decision) {
+            is DiscordPresenceDecision.Hidden -> applyHiddenDiscordPresenceDecision(request, decision, token)
+            is DiscordPresenceDecision.Visible,
+            is DiscordPresenceDecision.Hold,
+            -> {
+                Timber.tag(DISCORD_SYNC_TAG).v(
+                    "sync epoch=%d reason=%s no-op for decision=%s until visible/hold waves land",
+                    request.epoch,
+                    request.reason,
+                    decision,
+                )
+            }
+        }
+    }
+
+    private suspend fun applyHiddenDiscordPresenceDecision(
+        request: DiscordSyncRequest,
+        decision: DiscordPresenceDecision.Hidden,
+        token: String,
+    ) {
+        ensureDiscordSyncFresh(request.epoch)
+
+        when (decision.reason) {
+            HiddenReason.Disabled,
+            HiddenReason.NoToken,
+            HiddenReason.ServiceStopping,
+            -> {
+                Timber.tag(DISCORD_SYNC_TAG).d(
+                    "stopping presence manager for hidden reason=%s",
+                    decision.reason,
+                )
+                DiscordPresenceManager.stop()
+                lastPresenceToken = null
+            }
+
+            HiddenReason.NoSong,
+            HiddenReason.PausedByPreference,
+            HiddenReason.PausedByNotificationDismiss,
+            -> {
+                val clearToken = token.takeIf { it.isNotBlank() } ?: lastPresenceToken
+                if (clearToken.isNullOrBlank()) {
+                    Timber.tag(DISCORD_SYNC_TAG).d(
+                        "hidden reason=%s has no token available for clear",
+                        decision.reason,
+                    )
+                    return
+                }
+                if (!DiscordPresenceManager.isRunning()) {
+                    Timber.tag(DISCORD_SYNC_TAG).d(
+                        "hidden reason=%s skipped because manager is not running",
+                        decision.reason,
+                    )
+                    return
+                }
+
+                val cleared =
+                    DiscordPresenceManager.updateNow(
+                        context = this@MusicService,
+                        token = clearToken,
+                        song = null,
+                        positionMs = 0L,
+                        isPaused = false,
+                    )
+                Timber.tag(DISCORD_SYNC_TAG).d(
+                    "hidden clear result=%s reason=%s",
+                    cleared,
+                    decision.reason,
+                )
+            }
+
+            HiddenReason.NoStablePlaybackYet,
+            HiddenReason.PlaybackStalled,
+            -> {
+                Timber.tag(DISCORD_SYNC_TAG).v(
+                    "deferring hidden reason=%s until hold-aware wave",
+                    decision.reason,
+                )
+            }
         }
     }
 
@@ -1442,6 +1680,10 @@ class MusicService :
                 )
                 Timber.tag("MusicService").d("Presence manager started with token=$key")
                 lastPresenceToken = key
+                requestDiscordSync(
+                    reason = "presence_manager_started",
+                    force = true,
+                )
             } catch (ex: Exception) {
                 Timber.tag("MusicService").e(ex, "Failed to start presence manager")
             }
@@ -5319,10 +5561,10 @@ class MusicService :
                 if (player.playbackState != STATE_IDLE) {
                     player.addMediaItems(mediaItems.drop(1))
                 } else {
-                    try {
-                        DiscordPresenceManager.stop()
-                    } catch (_: Exception) {
-                    }
+                    requestDiscordSync(
+                        reason = "player_idle_after_queue_extension",
+                        force = true,
+                    )
                 }
             }
         }
@@ -7109,6 +7351,11 @@ class MusicService :
     }
 
     override fun onDestroy() {
+        discordServiceStopping = true
+        requestDiscordSync(
+            reason = "service_destroy",
+            force = true,
+        )
         super.onDestroy()
         effectiveVolumeRampJob?.cancel()
         effectiveVolumeRampJob = null
@@ -7122,10 +7369,6 @@ class MusicService :
         unregisterMuteRecoveryObserver()
         try {
             scope.launch { stopTogetherInternal() }
-        } catch (_: Exception) {
-        }
-        try {
-            DiscordPresenceManager.stop()
         } catch (_: Exception) {
         }
         try {
@@ -7190,12 +7433,6 @@ class MusicService :
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // When the user clears the app from Recents, ensure we clear Discord rich presence
-        try {
-            DiscordPresenceManager.stop()
-        } catch (_: Exception) {
-        }
-        lastPresenceToken = null
 
         val stopMusicOnTaskClearEnabled = dataStore.get(StopMusicOnTaskClearKey, false)
 
@@ -7213,12 +7450,22 @@ class MusicService :
 
             if (shouldStopServiceOnTaskRemoved(stopMusicOnTaskClearEnabled, isHostSessionActive, isPlaybackInactive)) {
                 if (stopMusicOnTaskClearEnabled) {
+                    discordServiceStopping = true
+                    requestDiscordSync(
+                        reason = "task_removed_stop_music_on_task_clear",
+                        force = true,
+                    )
                     runCatching { stopAndClearPlayback(clearPersistentState = true) }
                     stopForegroundAndSelf()
                     return
                 }
 
                 if (isHostSessionActive && isPlaybackInactive) {
+                    discordServiceStopping = true
+                    requestDiscordSync(
+                        reason = "task_removed_host_inactive",
+                        force = true,
+                    )
                     runCatching { scope.launch { stopTogetherInternal() } }
                     runCatching { togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle }
                     stopSelf()
@@ -7246,10 +7493,23 @@ class MusicService :
                 intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT)
             }
 
+        val isForeground = isAppInForeground()
+        if (!player.isPlaying && !isForeground) {
+            pausedPresenceGate = PausedPresenceGate.HiddenByNotificationDismiss
+            requestDiscordSync(
+                reason = "notification_dismissed_while_paused_background",
+                force = true,
+            )
+        } else if (!player.isPlaying) {
+            Timber.tag(DISCORD_SYNC_TAG).d(
+                "notification dismissed while paused but app is foreground; keeping paused RPC visible",
+            )
+        }
+
         runCatching {
             originalDeleteIntent?.send()
         }.onFailure {
-            Timber.tag(TAG).w(it, "failed to forward original notification delete intent")
+            Timber.tag(DISCORD_SYNC_TAG).w(it, "failed to forward original notification delete intent")
         }
     }
 
@@ -7335,6 +7595,7 @@ class MusicService :
         const val ONLINE_PLAYLIST = "online_playlist"
 
         private const val TAG = "MusicService"
+        private const val DISCORD_SYNC_TAG = "DiscordSync"
         const val CHANNEL_ID = "music_channel_01"
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
             "moe.rukamori.archivetune.action.MEDIA_NOTIFICATION_DISMISSED"
