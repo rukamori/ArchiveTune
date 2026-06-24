@@ -24,6 +24,7 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,7 +33,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.SilentHandler
+import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.widget.AlbumArtWidget
+import moe.rukamori.archivetune.widget.ListeningInsightsWidget
+import moe.rukamori.archivetune.widget.LoadWidgetInsightsUseCase
 import moe.rukamori.archivetune.widget.MusicWidget
 import moe.rukamori.archivetune.widget.MusicWidgetKeys
 import moe.rukamori.archivetune.widget.NowPlayingCardWidget
@@ -40,12 +44,15 @@ import moe.rukamori.archivetune.widget.PlaybackCapsuleWidget
 import moe.rukamori.archivetune.widget.PlaybackCommandWidget
 import moe.rukamori.archivetune.widget.PlaybackDeckWidget
 import moe.rukamori.archivetune.widget.PlaybackSpotlightWidget
+import moe.rukamori.archivetune.widget.WidgetInsightsSnapshot
+import moe.rukamori.archivetune.widget.toWidgetPreferenceValue
 import java.io.File
 
 internal class MusicServiceWidgetUpdater(
     private val service: MusicService,
     private val player: Player,
     private val scope: CoroutineScope,
+    private val loadWidgetInsights: LoadWidgetInsightsUseCase,
 ) {
     private var progressJob: Job? = null
 
@@ -82,6 +89,7 @@ internal class MusicServiceWidgetUpdater(
                 playbackPosition = player.playbackProgress(),
                 artPath = artFile?.absolutePath,
                 dominantColor = dominantColor,
+                insights = WidgetInsightsSnapshot.Empty,
             )
 
         playbackWidgets.forEach { target ->
@@ -108,10 +116,19 @@ internal class MusicServiceWidgetUpdater(
         snapshot: WidgetSnapshot,
     ) {
         val ids = GlanceAppWidgetManager(service).getGlanceIds(target.widgetClass)
+        if (ids.isEmpty()) return
+
+        val targetSnapshot =
+            if (target.requiresInsights) {
+                snapshot.copy(insights = loadInsightsSnapshot())
+            } else {
+                snapshot
+            }
+
         ids.forEach { id ->
             updateAppWidgetState(service, PreferencesGlanceStateDefinition, id) { prefs ->
                 prefs.toMutableWidgetPreferences().apply {
-                    writeSnapshot(snapshot)
+                    writeSnapshot(targetSnapshot)
                 }
             }
             target.widget.update(service, id)
@@ -127,6 +144,12 @@ internal class MusicServiceWidgetUpdater(
             this[MusicWidgetKeys.IS_AVAILABLE]?.let { mutable[MusicWidgetKeys.IS_AVAILABLE] = it }
             this[MusicWidgetKeys.DOMINANT_COLOR]?.let { mutable[MusicWidgetKeys.DOMINANT_COLOR] = it }
             this[MusicWidgetKeys.PLAYBACK_POSITION]?.let { mutable[MusicWidgetKeys.PLAYBACK_POSITION] = it }
+            this[MusicWidgetKeys.LISTENING_TIME]?.let { mutable[MusicWidgetKeys.LISTENING_TIME] = it }
+            this[MusicWidgetKeys.TOTAL_PLAYS]?.let { mutable[MusicWidgetKeys.TOTAL_PLAYS] = it }
+            this[MusicWidgetKeys.RECENT_SONGS]?.let { mutable[MusicWidgetKeys.RECENT_SONGS] = it }
+            this[MusicWidgetKeys.GENRES]?.let { mutable[MusicWidgetKeys.GENRES] = it }
+            this[MusicWidgetKeys.RECOMMENDATIONS]?.let { mutable[MusicWidgetKeys.RECOMMENDATIONS] = it }
+            this[MusicWidgetKeys.TOP_SONG_SUMMARY]?.let { mutable[MusicWidgetKeys.TOP_SONG_SUMMARY] = it }
         }
 
     private fun MutablePreferences.writeSnapshot(snapshot: WidgetSnapshot) {
@@ -149,7 +172,53 @@ internal class MusicServiceWidgetUpdater(
         } else {
             remove(MusicWidgetKeys.DOMINANT_COLOR)
         }
+
+        writeInsights(snapshot.insights)
     }
+
+    private fun MutablePreferences.writeInsights(insights: WidgetInsightsSnapshot) {
+        if (insights.listeningTime.isNotBlank()) {
+            this[MusicWidgetKeys.LISTENING_TIME] = insights.listeningTime
+        } else {
+            remove(MusicWidgetKeys.LISTENING_TIME)
+        }
+        if (insights.totalPlays.isNotBlank()) {
+            this[MusicWidgetKeys.TOTAL_PLAYS] = insights.totalPlays
+        } else {
+            remove(MusicWidgetKeys.TOTAL_PLAYS)
+        }
+        writeList(MusicWidgetKeys.RECENT_SONGS, insights.recentSongs)
+        writeList(MusicWidgetKeys.GENRES, insights.genres)
+        writeList(MusicWidgetKeys.RECOMMENDATIONS, insights.recommendations)
+
+        val topSongSummary = insights.topSongSummary
+        if (!topSongSummary.isNullOrBlank()) {
+            this[MusicWidgetKeys.TOP_SONG_SUMMARY] = topSongSummary
+        } else {
+            remove(MusicWidgetKeys.TOP_SONG_SUMMARY)
+        }
+    }
+
+    private fun MutablePreferences.writeList(
+        key: Preferences.Key<String>,
+        values: List<String>,
+    ) {
+        if (values.isEmpty()) {
+            remove(key)
+        } else {
+            this[key] = values.toWidgetPreferenceValue()
+        }
+    }
+
+    private suspend fun loadInsightsSnapshot(): WidgetInsightsSnapshot =
+        try {
+            loadWidgetInsights()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            reportException(error)
+            WidgetInsightsSnapshot.Empty
+        }
 
     private suspend fun cacheAlbumArt(uri: Uri): File? =
         withContext(Dispatchers.IO) {
@@ -218,11 +287,13 @@ internal class MusicServiceWidgetUpdater(
         val playbackPosition: Float,
         val artPath: String?,
         val dominantColor: Int?,
+        val insights: WidgetInsightsSnapshot,
     )
 
     private data class WidgetTarget(
         val widgetClass: Class<out GlanceAppWidget>,
         val widget: GlanceAppWidget,
+        val requiresInsights: Boolean = false,
     )
 
     private companion object {
@@ -235,6 +306,11 @@ internal class MusicServiceWidgetUpdater(
                 WidgetTarget(PlaybackCapsuleWidget::class.java, PlaybackCapsuleWidget()),
                 WidgetTarget(PlaybackSpotlightWidget::class.java, PlaybackSpotlightWidget()),
                 WidgetTarget(PlaybackCommandWidget::class.java, PlaybackCommandWidget()),
+                WidgetTarget(
+                    widgetClass = ListeningInsightsWidget::class.java,
+                    widget = ListeningInsightsWidget(),
+                    requiresInsights = true,
+                ),
             )
 
         val progressWidgets =

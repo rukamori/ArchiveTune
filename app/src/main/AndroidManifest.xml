@@ -337,6 +337,17 @@
         android:resource="@xml/widget_playback_command_info" />
 </receiver>
 
+<receiver
+    android:name=".widget.ListeningInsightsWidgetReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_listening_insights_info" />
+</receiver>
+
 
         <meta-data
             android:name="com.google.android.gms.car.application"

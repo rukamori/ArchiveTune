@@ -205,6 +205,7 @@ fun PlayerMenu(
         remember(librarySong?.song?.isLocal, mediaMetadata.id) {
             librarySong?.song?.isLocal == true || mediaMetadata.id.isLocalMediaId()
         }
+    val castPlayerMenuAction = rememberCastPlayerMenuAction()
 
     // Split artists by configured separators
     data class SplitArtist(
@@ -346,7 +347,7 @@ fun PlayerMenu(
                     Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
                         putExtra(
                             AudioEffect.EXTRA_AUDIO_SESSION,
-                            playerConnection.player.audioSessionId,
+                            playerConnection.localPlayer.audioSessionId,
                         )
                         putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
                         putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
@@ -463,6 +464,7 @@ fun PlayerMenu(
                 NewActionGrid(
                     actions =
                         buildList {
+                            castPlayerMenuAction?.let(::add)
                             if (!isLocalMedia) {
                                 add(
                                     NewAction(

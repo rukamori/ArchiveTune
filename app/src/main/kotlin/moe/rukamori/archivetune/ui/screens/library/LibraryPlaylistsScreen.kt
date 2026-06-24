@@ -51,7 +51,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
@@ -94,6 +94,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
+import moe.rukamori.archivetune.constants.PlaylistSortDescendingKey
 import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.constants.PlaylistSortTypeKey
 import moe.rukamori.archivetune.constants.PureBlackKey
@@ -136,15 +137,16 @@ fun LibraryPlaylistsScreen(
             PlaylistSortTypeKey,
             PlaylistSortType.CUSTOM,
         )
+    val (sortDescending, onSortDescendingChange) = rememberPreference(PlaylistSortDescendingKey, true)
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
     val isDarkTheme = isSystemInDarkTheme()
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
 
-    val playlists by viewModel.allPlaylists.collectAsState()
+    val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val filteredPlaylistIds by database
         .playlistIdsByTags(
             if (selectedTagIds.isEmpty()) emptyList() else selectedTagIds.toList(),
-        ).collectAsState(initial = emptyList())
+        ).collectAsStateWithLifecycle(initialValue = emptyList())
 
     var showHidden by rememberSaveable { mutableStateOf(false) }
 
@@ -162,7 +164,7 @@ fun LibraryPlaylistsScreen(
 
     var isGridView by rememberSaveable { mutableStateOf(false) }
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val lazyListState = rememberLazyListState()
     var pendingPlaylistOrderUpdate by remember { mutableStateOf(false) }
     val reorderableState =
@@ -227,55 +229,98 @@ fun LibraryPlaylistsScreen(
                 val currentSortLabel =
                     when (sortType) {
                         PlaylistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
-                        PlaylistSortType.NAME -> stringResource(R.string.sort_a_z)
+                        PlaylistSortType.NAME -> {
+                            if (sortDescending) stringResource(R.string.sort_z_to_a) else stringResource(R.string.sort_a_to_z)
+                        }
                         PlaylistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
                         PlaylistSortType.LAST_UPDATED -> stringResource(R.string.recently_updated)
                         PlaylistSortType.CUSTOM -> stringResource(R.string.custom_order)
                     }
 
-                Box {
-                    Row(
-                        modifier =
-                            Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showSortMenu = true }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = currentSortLabel,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            painter = painterResource(id = R.drawable.expand_more),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
-                        )
+                val showSortDirection = sortType != PlaylistSortType.CUSTOM
+                val sortDirectionRotation by animateFloatAsState(
+                    targetValue = if (sortDescending) 0f else 180f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "PlaylistSortDirectionRotation",
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .clickable { showSortMenu = true }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = currentSortLabel,
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                painter = painterResource(id = R.drawable.expand_more),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false },
+                        ) {
+                            PlaylistSortType.entries.forEach { type ->
+                                val label =
+                                    when (type) {
+                                        PlaylistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
+                                        PlaylistSortType.NAME -> stringResource(R.string.sort_a_to_z)
+                                        PlaylistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
+                                        PlaylistSortType.LAST_UPDATED -> stringResource(R.string.recently_updated)
+                                        PlaylistSortType.CUSTOM -> stringResource(R.string.custom_order)
+                                    }
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        onSortTypeChange(type)
+                                        if (type == PlaylistSortType.NAME) {
+                                            onSortDescendingChange(false)
+                                        }
+                                        showSortMenu = false
+                                    },
+                                )
+                            }
+                        }
                     }
 
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                    ) {
-                        PlaylistSortType.entries.forEach { type ->
-                            val label =
-                                when (type) {
-                                    PlaylistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
-                                    PlaylistSortType.NAME -> stringResource(R.string.sort_a_z)
-                                    PlaylistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
-                                    PlaylistSortType.LAST_UPDATED -> stringResource(R.string.recently_updated)
-                                    PlaylistSortType.CUSTOM -> stringResource(R.string.custom_order)
-                                }
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    onSortTypeChange(type)
-                                    showSortMenu = false
-                                },
+                    if (showSortDirection) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = { onSortDescendingChange(!sortDescending) },
+                            colors =
+                                IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.arrow_downward),
+                                contentDescription =
+                                    stringResource(
+                                        if (sortDescending) {
+                                            R.string.sort_order_descending
+                                        } else {
+                                            R.string.sort_order_ascending
+                                        },
+                                    ),
+                                modifier =
+                                    Modifier
+                                        .size(16.dp)
+                                        .graphicsLayer { rotationZ = sortDirectionRotation },
                             )
                         }
                     }
@@ -342,39 +387,46 @@ fun LibraryPlaylistsScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    IconButton(
-                        onClick = { showHidden = !showHidden },
-                        colors =
-                            IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                        modifier = Modifier.size(40.dp),
+                    Row(
+                        modifier =
+                            Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.visibility_off),
-                            contentDescription = stringResource(R.string.show_hidden_playlists),
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Create Playlist button
-                    IconButton(
-                        onClick = { showCreatePlaylistDialog = true },
-                        colors =
-                            IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.add),
-                            contentDescription = stringResource(R.string.create_playlist),
-                            modifier = Modifier.size(20.dp),
-                        )
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(if (showHidden) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                    .clickable { showHidden = !showHidden },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.visibility_off),
+                                contentDescription = stringResource(R.string.show_hidden_playlists),
+                                tint = if (showHidden) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .clickable { showCreatePlaylistDialog = true },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.add),
+                                contentDescription = stringResource(R.string.create_playlist),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
             }

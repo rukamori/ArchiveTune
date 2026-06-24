@@ -445,13 +445,11 @@ fun Thumbnail(
                                     item.mediaId == currentMediaItem?.mediaId
                             val shouldFetchCanvas = shouldUseCanvas && !lowDataModeActive
                             var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
-                            var canvasFetchedAtMs by remember(item.mediaId) { mutableLongStateOf(0L) }
                             var canvasFetchInFlight by remember(item.mediaId) { mutableStateOf(false) }
 
                             LaunchedEffect(shouldUseCanvas) {
                                 if (!shouldUseCanvas) {
                                     canvasArtwork = null
-                                    canvasFetchedAtMs = 0L
                                     canvasFetchInFlight = false
                                 }
                             }
@@ -459,24 +457,12 @@ fun Thumbnail(
                             LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId) {
                                 if (!shouldUseCanvas) return@LaunchedEffect
 
-                                CanvasArtworkPlaybackCache.get(item.mediaId)?.let { cached ->
-                                    canvasArtwork = cached
-                                    canvasFetchedAtMs = System.currentTimeMillis()
-                                    canvasFetchInFlight = false
-                                    return@LaunchedEffect
-                                }
-
-                                if (!shouldFetchCanvas) {
-                                    canvasFetchInFlight = false
-                                    return@LaunchedEffect
-                                }
-
                                 val songTitleRaw =
                                     itemMetadata
                                         ?.title
                                         ?.takeIf { it.isNotBlank() }
                                         ?: item.mediaMetadata.title?.toString()
-                                        ?: return@LaunchedEffect
+                                        ?: ""
 
                                 val artistNameRaw =
                                     itemMetadata
@@ -488,25 +474,24 @@ fun Thumbnail(
                                         ?: item.mediaMetadata.subtitle?.toString()
                                         ?: ""
 
-                                val now = System.currentTimeMillis()
                                 if (canvasFetchInFlight) return@LaunchedEffect
                                 canvasFetchInFlight = true
 
-                                val fetched =
-                                    withContext(Dispatchers.IO) {
-                                        fetchCanvasArtworkForPlayback(
+                                try {
+                                    canvasArtwork =
+                                        resolveCanvasArtworkForPlayback(
+                                            mediaId = item.mediaId,
                                             songTitleRaw = songTitleRaw,
                                             artistNameRaw = artistNameRaw,
+                                            albumId = itemMetadata?.album?.id,
+                                            albumTitleRaw = itemMetadata?.album?.title,
                                             storefront = storefront,
                                             requireVertical = false,
+                                            allowNetwork = shouldFetchCanvas,
                                         )
-                                    }
-                                canvasFetchedAtMs = now
-                                canvasArtwork = fetched
-                                if (fetched != null) {
-                                    canvasArtwork = CanvasArtworkPlaybackCache.put(item.mediaId, fetched)
+                                } finally {
+                                    canvasFetchInFlight = false
                                 }
-                                canvasFetchInFlight = false
                             }
 
                             Box(

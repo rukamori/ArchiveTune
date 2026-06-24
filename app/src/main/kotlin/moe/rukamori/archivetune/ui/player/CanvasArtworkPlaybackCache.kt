@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,8 @@ object CanvasArtworkPlaybackCache {
     private const val DOWNLOAD_MAX_ATTEMPTS = 4
     private const val DOWNLOAD_RETRY_DELAY_MS = 750L
     private const val CACHE_SIZE_BYTES_PER_MEGABYTE = 1024L * 1024L
+    private const val PLAYBACK_MAX_VIDEO_EDGE_PX = 1_920
+    private const val PLAYBACK_MAX_VIDEO_PIXEL_AREA = 1_920L * 1_920L
 
     private val map = LinkedHashMap<String, CanvasCacheEntry>(DEFAULT_MAX_SIZE_MEGABYTES, 0.75f, true)
 
@@ -113,8 +116,10 @@ object CanvasArtworkPlaybackCache {
     fun get(mediaId: String): CanvasArtwork? {
         if (maxSizeBytes == 0L || mediaId.isBlank()) return null
         val entry = map[mediaId] ?: return null
-        val playable = entry.toPlayableArtwork(cacheDirectory ?: return null)
+        val directory = cacheDirectory ?: return null
+        val playable = entry.toPlayableArtwork(directory)
         if (playable == null) {
+            entry.deleteFiles(directory)
             map.remove(mediaId)
             schedulePersist()
             return null
@@ -134,49 +139,61 @@ object CanvasArtworkPlaybackCache {
             directory.mkdirs()
 
             val current = synchronized(this@CanvasArtworkPlaybackCache) { map[mediaId] }
-            val regularFileName =
+            val regularDownloadUrl = artwork.downloadableRegularUrl()
+            val verticalDownloadUrl = artwork.downloadableVerticalUrl()
+            val regularCacheResult =
                 cacheCanvasVideo(
                     directory = directory,
                     mediaId = mediaId,
                     variant = CanvasVideoVariant.Regular,
-                    url = artwork.downloadableRegularUrl(),
+                    url = regularDownloadUrl,
                     currentFileName = current?.regularFileName,
                 )
+            val interimArtwork = artwork.withoutRejectedCanvasUrls(regularCacheResult.rejectedUrl)
             persistEntry(
                 directory = directory,
                 entry =
                     CanvasCacheEntry(
                         mediaId = mediaId,
-                        artwork = artwork,
-                        regularFileName = regularFileName,
+                        artwork = interimArtwork,
+                        regularFileName = regularCacheResult.fileName,
                         verticalFileName = current?.verticalFileName,
                         createdAtMs = current?.createdAtMs ?: System.currentTimeMillis(),
                         lastAccessedAtMs = System.currentTimeMillis(),
                     ),
             )
-            val verticalFileName =
+            val verticalCacheResult =
                 cacheCanvasVideo(
                     directory = directory,
                     mediaId = mediaId,
                     variant = CanvasVideoVariant.Vertical,
-                    url = artwork.downloadableVerticalUrl(),
+                    url = verticalDownloadUrl,
                     currentFileName = current?.verticalFileName,
                 )
 
+            val playableArtwork =
+                artwork.withoutRejectedCanvasUrls(
+                    regularCacheResult.rejectedUrl,
+                    verticalCacheResult.rejectedUrl,
+                )
             val now = System.currentTimeMillis()
             val entry =
                 CanvasCacheEntry(
                     mediaId = mediaId,
-                    artwork = artwork,
-                    regularFileName = regularFileName,
-                    verticalFileName = verticalFileName,
+                    artwork = playableArtwork,
+                    regularFileName = regularCacheResult.fileName,
+                    verticalFileName = verticalCacheResult.fileName,
                     createdAtMs = current?.createdAtMs ?: now,
                     lastAccessedAtMs = now,
                 )
 
+            if (regularCacheResult.fileName == null && verticalCacheResult.fileName == null) {
+                Timber.tag(CanvasCacheLogTag).d("Canvas artwork resolved without downloadable video for %s", mediaId)
+            }
+
             persistEntry(directory = directory, entry = entry)
 
-            entry.toPlayableArtwork(directory) ?: artwork
+            entry.toPlayableArtwork(directory) ?: playableArtwork
         }
 
     @Synchronized
@@ -305,27 +322,46 @@ object CanvasArtworkPlaybackCache {
         variant: CanvasVideoVariant,
         url: String?,
         currentFileName: String?,
-    ): String? {
-        if (url.isNullOrBlank()) return currentFileName?.takeIf { directory.resolve(it).isUsableFile() }
+    ): CanvasVideoCacheResult {
+        currentFileName
+            ?.let(directory::resolve)
+            ?.takeIf { file -> file.isPlayableCanvasVideoFile() }
+            ?.let { return CanvasVideoCacheResult(fileName = currentFileName) }
+
+        currentFileName
+            ?.let(directory::resolve)
+            ?.takeIf { file -> file.exists() }
+            ?.let { file -> runCatching { file.delete() } }
+
+        if (url.isNullOrBlank()) return CanvasVideoCacheResult(fileName = null)
+
         val fileName = canvasFileName(mediaId, variant, url)
         val target = directory.resolve(fileName)
-        if (target.isUsableFile()) return fileName
-        currentFileName
-            ?.takeIf { it != fileName }
-            ?.let { oldName -> runCatching { directory.resolve(oldName).delete() } }
+        if (target.exists()) {
+            if (target.isPlayableCanvasVideoFile()) {
+                return CanvasVideoCacheResult(fileName = fileName)
+            }
+            runCatching { target.delete() }
+            return CanvasVideoCacheResult(fileName = null, rejectedUrl = url)
+        }
 
         val partial = directory.resolve("$fileName.part")
         return try {
             downloadToFile(url = url, target = partial)
             if (partial.length() <= 0L) throw IOException("Downloaded empty canvas video")
+            partial.requirePlayableCanvasVideo(url)
             if (target.exists() && !target.delete()) throw IOException("Failed to replace existing canvas video")
             if (!partial.renameTo(target)) throw IOException("Failed to commit canvas video")
-            fileName
+            CanvasVideoCacheResult(fileName = fileName)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
+            val rejectedUrl = (error as? UnsupportedCanvasVideoException)?.url
             Timber.w(error, "Failed to cache canvas video")
             runCatching { partial.delete() }
-            currentFileName?.takeIf { directory.resolve(it).isUsableFile() }
+            val currentFallback =
+                currentFileName
+                    ?.takeIf { directory.resolve(it).isPlayableCanvasVideoFile() }
+            CanvasVideoCacheResult(fileName = currentFallback, rejectedUrl = rejectedUrl)
         }
     }
 
@@ -479,6 +515,83 @@ object CanvasArtworkPlaybackCache {
                     (normalized.startsWith("http://") || normalized.startsWith("https://"))
             }
 
+    private fun File.requirePlayableCanvasVideo(url: String) {
+        val size = readCanvasVideoSize()
+            ?: throw UnsupportedCanvasVideoException(url, "Canvas video metadata is unreadable")
+        if (!size.isWithinPlaybackBounds) {
+            throw UnsupportedCanvasVideoException(
+                url = url,
+                reason = "Canvas video exceeds playback-safe bounds: ${size.width}x${size.height}",
+            )
+        }
+    }
+
+    private fun File.isPlayableCanvasVideoFile(): Boolean {
+        if (!isUsableFile()) return false
+        val size = readCanvasVideoSize() ?: return false
+        return size.isWithinPlaybackBounds
+    }
+
+    private fun File.readCanvasVideoSize(): CanvasVideoSize? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(absolutePath)
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            if (width <= 0 || height <= 0) return null
+            if (rotation == 90 || rotation == 270) {
+                CanvasVideoSize(width = height, height = width)
+            } else {
+                CanvasVideoSize(width = width, height = height)
+            }
+        } catch (error: Throwable) {
+            Timber.w(error, "Failed to read canvas video metadata")
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }
+
+    private fun CanvasArtwork.withoutRejectedCanvasUrls(vararg rejectedUrls: String?): CanvasArtwork {
+        val rejected =
+            rejectedUrls
+                .mapNotNull { value -> value?.trim()?.takeIf { it.isNotBlank() } }
+                .toSet()
+        if (rejected.isEmpty()) return this
+
+        fun String?.unlessRejected(): String? =
+            this?.takeUnless { value -> value.trim() in rejected }
+
+        return copy(
+            animated = animated.unlessRejected(),
+            videoUrl = videoUrl.unlessRejected(),
+            animatedVertical = animatedVertical.unlessRejected(),
+            videoUrlVertical = videoUrlVertical.unlessRejected(),
+        )
+    }
+
+    private data class CanvasVideoSize(
+        val width: Int,
+        val height: Int,
+    ) {
+        val isWithinPlaybackBounds: Boolean
+            get() =
+                width <= PLAYBACK_MAX_VIDEO_EDGE_PX &&
+                    height <= PLAYBACK_MAX_VIDEO_EDGE_PX &&
+                    width.toLong() * height.toLong() <= PLAYBACK_MAX_VIDEO_PIXEL_AREA
+    }
+
+    private data class CanvasVideoCacheResult(
+        val fileName: String?,
+        val rejectedUrl: String? = null,
+    )
+
+    private class UnsupportedCanvasVideoException(
+        val url: String,
+        reason: String,
+    ) : IOException(reason)
+
     @Serializable
     private data class CanvasCacheEntry(
         val mediaId: String,
@@ -498,16 +611,21 @@ object CanvasArtworkPlaybackCache {
                         ?: 0L
                 }
 
+        fun deleteFiles(directory: File) {
+            runCatching { regularFileName?.let { directory.resolve(it).delete() } }
+            runCatching { verticalFileName?.let { directory.resolve(it).delete() } }
+        }
+
         fun toPlayableArtwork(directory: File): CanvasArtwork? {
             val regularUri =
                 regularFileName
                     ?.let(directory::resolve)
-                    ?.takeIf { file -> file.isUsableFile() }
+                    ?.takeIf { file -> file.isPlayableCanvasVideoFile() }
                     ?.let { file -> Uri.fromFile(file).toString() }
             val verticalUri =
                 verticalFileName
                     ?.let(directory::resolve)
-                    ?.takeIf { file -> file.isUsableFile() }
+                    ?.takeIf { file -> file.isPlayableCanvasVideoFile() }
                     ?.let { file -> Uri.fromFile(file).toString() }
             if (regularUri == null && verticalUri == null) return null
             return artwork.copy(
@@ -557,3 +675,4 @@ private fun Int.toCanvasCacheLimitBytes(): Long =
 
 private const val CanvasDownloadUserAgent =
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36"
+private const val CanvasCacheLogTag = "CanvasCache"

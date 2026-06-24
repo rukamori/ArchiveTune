@@ -815,6 +815,7 @@ val CountryCodeToName =
 
 // App rating / star prompt preferences
 val LaunchCountKey = intPreferencesKey("launch_count")
+val OnboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
 val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
 val RemindAfterKey = intPreferencesKey("remind_after")
 

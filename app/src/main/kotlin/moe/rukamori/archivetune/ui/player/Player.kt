@@ -1072,44 +1072,28 @@ fun BottomSheetPlayer(
                 return@LaunchedEffect
             }
 
-            CanvasArtworkPlaybackCache
-                .get(metadata.id)
-                ?.takeIf { !it.preferredVerticalAnimationUrl.isNullOrBlank() }
-                ?.let { cached ->
-                    v7CanvasArtwork = cached
-                    v7CanvasFetchInFlight = false
-                    return@LaunchedEffect
-                }
-
-            if (!shouldFetchV7Canvas) {
-                v7CanvasFetchInFlight = false
-                return@LaunchedEffect
-            }
-
             val artistNameRaw =
                 metadata.artists
                     .firstOrNull()
                     ?.name
                     .orEmpty()
-            if (metadata.title.isBlank() || artistNameRaw.isBlank() || v7CanvasFetchInFlight) {
+            if (v7CanvasFetchInFlight) {
                 return@LaunchedEffect
             }
 
             v7CanvasFetchInFlight = true
             try {
-                val fetched =
-                    withContext(Dispatchers.IO) {
-                        fetchCanvasArtworkForPlayback(
-                            songTitleRaw = metadata.title,
-                            artistNameRaw = artistNameRaw,
-                            storefront = storefront,
-                            requireVertical = true,
-                        )
-                    }
-                v7CanvasArtwork = fetched
-                if (fetched != null) {
-                    v7CanvasArtwork = CanvasArtworkPlaybackCache.put(metadata.id, fetched)
-                }
+                v7CanvasArtwork =
+                    resolveCanvasArtworkForPlayback(
+                        mediaId = metadata.id,
+                        songTitleRaw = metadata.title,
+                        artistNameRaw = artistNameRaw,
+                        albumId = metadata.album?.id,
+                        albumTitleRaw = metadata.album?.title,
+                        storefront = storefront,
+                        requireVertical = true,
+                        allowNetwork = shouldFetchV7Canvas,
+                    )
             } finally {
                 v7CanvasFetchInFlight = false
             }
@@ -1123,44 +1107,28 @@ fun BottomSheetPlayer(
                 return@LaunchedEffect
             }
 
-            CanvasArtworkPlaybackCache
-                .get(metadata.id)
-                ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                ?.let { cached ->
-                    artworkCanvas = cached
-                    artworkCanvasFetchInFlight = false
-                    return@LaunchedEffect
-                }
-
-            if (!shouldFetchArtworkCanvas) {
-                artworkCanvasFetchInFlight = false
-                return@LaunchedEffect
-            }
-
             val artistNameRaw =
                 metadata.artists
                     .firstOrNull()
                     ?.name
                     .orEmpty()
-            if (metadata.title.isBlank() || artistNameRaw.isBlank() || artworkCanvasFetchInFlight) {
+            if (artworkCanvasFetchInFlight) {
                 return@LaunchedEffect
             }
 
             artworkCanvasFetchInFlight = true
             try {
-                val fetched =
-                    withContext(Dispatchers.IO) {
-                        fetchCanvasArtworkForPlayback(
-                            songTitleRaw = metadata.title,
-                            artistNameRaw = artistNameRaw,
-                            storefront = storefront,
-                            requireVertical = false,
-                        )
-                    }
-                artworkCanvas = fetched
-                if (fetched != null) {
-                    artworkCanvas = CanvasArtworkPlaybackCache.put(metadata.id, fetched)
-                }
+                artworkCanvas =
+                    resolveCanvasArtworkForPlayback(
+                        mediaId = metadata.id,
+                        songTitleRaw = metadata.title,
+                        artistNameRaw = artistNameRaw,
+                        albumId = metadata.album?.id,
+                        albumTitleRaw = metadata.album?.title,
+                        storefront = storefront,
+                        requireVertical = false,
+                        allowNetwork = shouldFetchArtworkCanvas,
+                    )
             } finally {
                 artworkCanvasFetchInFlight = false
             }

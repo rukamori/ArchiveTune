@@ -113,3 +113,4 @@ core.*
 /AGENTS.md
 /SOUL.md
 /string_cleaner.py
+/.codexignore
