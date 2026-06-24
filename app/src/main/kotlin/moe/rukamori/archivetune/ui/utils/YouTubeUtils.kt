@@ -52,3 +52,14 @@ fun String.resize(
 }
 
 fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx)
+
+/**
+ * Returns YouTube video thumbnail URLs in quality order (best first).
+ * Falls through from maxresdefault → hqdefault → mqdefault → default.
+ */
+fun videoIdToYouTubeThumbnails(videoId: String): List<String> = listOf(
+    "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg",
+    "https://i.ytimg.com/vi/$videoId/hqdefault.jpg",
+    "https://i.ytimg.com/vi/$videoId/mqdefault.jpg",
+    "https://i.ytimg.com/vi/$videoId/default.jpg",
+)

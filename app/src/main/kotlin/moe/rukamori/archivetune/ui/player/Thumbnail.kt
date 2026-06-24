@@ -586,14 +586,15 @@ fun Thumbnail(
                                                 playerDesignStyle != PlayerDesignStyle.V7 &&
                                                 playerDesignStyle != PlayerDesignStyle.V8
 
+                                        val videoId = item.metadata?.id
                                         val thumbnailBgUrl =
                                             item.metadata?.thumbnailUrl?.highRes()
                                                 ?: item.mediaMetadata.artworkUri?.toString()
-                                        val thumbnailBgRequest = rememberOfflineArtworkImageRequest(thumbnailBgUrl)
+                                        val thumbnailBgRequest = rememberOfflineArtworkImageRequest(thumbnailBgUrl, videoId)
                                         val thumbnailArtworkUrl =
                                             item.metadata?.thumbnailUrl?.highRes()
                                                 ?: item.mediaMetadata.artworkUri?.toString()
-                                        val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(thumbnailArtworkUrl)
+                                        val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(thumbnailArtworkUrl, videoId)
                                         val thumbnailBgBlurEnabled = backdropEnabled && !disableBlur && backdropBlurAmount > 0
 
                                         if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
