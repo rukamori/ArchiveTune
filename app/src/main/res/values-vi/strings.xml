@@ -531,6 +531,8 @@
     <string name="description_show_nerd_stats">Hiển thị thông số phát nhạc thời gian thực (codec, bitrate, buffer)</string>
     <string name="display_codec_on_player">Hiển thị Codec trên Trình phát</string>
     <string name="description_display_codec_on_player">Hiển thị thông tin codec âm thanh hiện tại trên trình phát</string>
+    <string name="force_cpu_rendering">Ép kết xuất CPU</string>
+    <string name="description_force_cpu_rendering">Sử dụng giải mã phần mềm cho ảnh thumbnail (sửa lỗi ảnh trắng trên Android cũ)</string>
     <string name="nerd_stats">Nerd Stats</string>
     <string name="track_label">Bài hát</string>
     <string name="no_track_playing">Không có bài hát nào đang phát</string>

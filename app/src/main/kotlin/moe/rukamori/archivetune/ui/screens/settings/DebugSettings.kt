@@ -155,6 +155,12 @@ fun DebugSettings(navController: NavController) {
             defaultValue = false,
         )
 
+    val (forceCpuRendering, onForceCpuRenderingChange) =
+        rememberPreference(
+            key = booleanPreferencesKey("force_cpu_rendering"),
+            defaultValue = true,
+        )
+
     val playerConnection = LocalPlayerConnection.current
 
     Scaffold(
@@ -219,6 +225,16 @@ fun DebugSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = showCodecOnPlayer,
                         onCheckedChange = onShowCodecOnPlayerChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.force_cpu_rendering)) },
+                        description = stringResource(R.string.description_force_cpu_rendering),
+                        icon = { Icon(painterResource(R.drawable.storage), null) },
+                        checked = forceCpuRendering,
+                        onCheckedChange = onForceCpuRenderingChange,
                     )
                 }
             }

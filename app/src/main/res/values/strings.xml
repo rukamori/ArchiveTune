@@ -757,6 +757,8 @@
     <string name="description_show_nerd_stats">Display real-time playback statistics (codec, bitrate, buffer)</string>
     <string name="display_codec_on_player">Display Codec on Player</string>
     <string name="description_display_codec_on_player">Show current audio codec information on the player</string>
+    <string name="force_cpu_rendering">Force CPU Rendering</string>
+    <string name="description_force_cpu_rendering">Use software decoder for thumbnails (fixes blank images on older Android versions)</string>
     <string name="nerd_stats">Nerd Stats</string>
     <string name="track_label">Track</string>
     <string name="no_track_playing">No track playing</string>
