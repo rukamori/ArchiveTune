@@ -50,7 +50,7 @@
     <string name="local_songs_no_matches_desc">Coba lagu, artis, atau nama album lain.</string>
     <string name="sort_by_album">Album</string>
     <string name="remote_history">Online</string>
-    <string name="charts">Tangga Lagu</string>
+    <string name="charts">Grafik</string>
     <string name="back_button_desc">Kembali</string>
     <string name="news">Berita dari Pengembang</string>
     <string name="news_loading">Memuat berita…</string>
@@ -72,9 +72,9 @@
     </plurals>
     <string name="no_title">Tidak ada judul</string>
     <string name="unknown_artist">Artis tidak dikenal</string>
-    <string name="aod_customize_title">Penyesuaian AOD</string>
+    <string name="aod_customize_title">Kustomisasi AOD</string>
     <string name="aod_customize_subtitle">Bentuk, tata letak, kontrol, dan gaya ambien</string>
-    <string name="aod_customize_entry_desc">Penyesuaian layar pemutar selalu aktif</string>
+    <string name="aod_customize_entry_desc">Kustomisasi layar pemutar selalu aktif</string>
     <string name="aod_customize_preview">Pratinjau langsung</string>
     <string name="aod_customize_visibility">Visibilitas</string>
     <string name="aod_customize_show_thumbnail">Tampilkan thumbnail</string>
@@ -406,10 +406,10 @@
     <string name="day_thu">Kam</string>
     <string name="day_fri">Jum</string>
     <string name="day_sat">Sab</string>
-    <string name="custom_theme">Tema Khusus</string>
+    <string name="custom_theme">Tema Kustom</string>
     <string name="import_theme">Impor Tema</string>
     <string name="export_theme">Ekspor Tema</string>
-    <string name="palette_custom">Khusus</string>
+    <string name="palette_custom">Kustom</string>
     <string name="theme_meta_title">Detail Tema</string>
     <string name="theme_name_optional">Nama (opsional)</string>
     <string name="theme_apply_button">Terapkan Tema</string>
@@ -464,7 +464,7 @@
     <string name="ai_provider">Penyedia AI</string>
     <string name="ai_provider_desc">Pilih layanan AI.</string>
     <string name="ai_provider_none">Tidak ada (Dinonaktifkan)</string>
-    <string name="ai_custom_endpoint">Titik akhir khusus</string>
+    <string name="ai_custom_endpoint">Titik akhir kustom</string>
     <string name="ai_api_key">Kunci API</string>
     <string name="ai_api_key_missing">Diperlukan sebelum fitur AI dapat berjalan.</string>
     <string name="ai_api_key_configured">Dikonfigurasi</string>
