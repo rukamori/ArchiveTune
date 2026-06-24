@@ -1890,9 +1890,6 @@ class MusicService :
                 DiscordPresenceManager.start(
                     context = this@MusicService,
                     token = key,
-                    songProvider = { currentPresenceSong() },
-                    positionProvider = { player.currentPosition },
-                    isPausedProvider = { !player.isPlaying },
                 )
                 Timber.tag("MusicService").d("Presence manager started with token=$key")
                 lastPresenceToken = key
