@@ -472,8 +472,9 @@ private fun AppleMusicBackground(
             label = "lyrics-apple-background",
         ) { thumbnailUrl ->
             if (thumbnailUrl != null) {
+                val lyricsBgRequest = rememberOfflineArtworkImageRequest(thumbnailUrl, mediaMetadata.id)
                 AsyncImage(
-                    model = thumbnailUrl,
+                    model = lyricsBgRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier =
@@ -550,8 +551,9 @@ private fun AppleMusicTrackHeader(
                     .background(AppleMusicForeground.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
+            val lyricsHeaderRequest = rememberOfflineArtworkImageRequest(mediaMetadata.thumbnailUrl, mediaMetadata.id)
             AsyncImage(
-                model = mediaMetadata.thumbnailUrl,
+                model = lyricsHeaderRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

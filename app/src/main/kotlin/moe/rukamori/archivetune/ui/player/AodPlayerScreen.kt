@@ -146,15 +146,7 @@ fun AodPlayerScreen(
         )
     val artworkSize = thumbnailSize.coerceIn(160f, 340f).dp
     val artworkSizePx = with(density) { artworkSize.roundToPx().coerceAtLeast(1) }
-    val imageRequest =
-        remember(context, mediaMetadata.thumbnailUrl, artworkSizePx) {
-            ImageRequest
-                .Builder(context)
-                .data(mediaMetadata.thumbnailUrl)
-                .size(artworkSizePx, artworkSizePx)
-                .allowHardware(true)
-                .build()
-        }
+    val imageRequest = rememberOfflineArtworkImageRequest(mediaMetadata.thumbnailUrl, mediaMetadata.id)
     val artistText =
         remember(mediaMetadata.artists) {
             mediaMetadata.artists.joinToString { it.name }
