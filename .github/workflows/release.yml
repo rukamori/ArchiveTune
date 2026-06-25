@@ -15,7 +15,7 @@ jobs:
       version_changed: ${{ steps.check_version.outputs.version_changed }}
       new_version: ${{ steps.check_version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
@@ -58,7 +58,7 @@ jobs:
     if: needs.check-version.outputs.version_changed == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -262,7 +262,7 @@ jobs:
             abi: universal
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       
@@ -424,7 +424,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
