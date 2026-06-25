@@ -532,7 +532,6 @@
     <string name="spotify_no_tracks">Spotify 노래를 찾을 수 없습니다.</string>
     <string name="android_auto_sort_playlist">재생목록 정렬</string>
     <string name="year_in_music_intro_details">가장 많이 들은 노래, 아티스트, 앨범 및 총 감상 시간을 한눈에 확인해 보세요.</string>
-    <string name="player_stream_client_hi_res_lossless_desc">수신 가능한 경우 무손실(Lossless) 스트림을 우선 사용합니다.</string>
     <string name="spotify_no_sources">Spotify 재생목록을 찾을 수 없습니다.</string>
     <string name="storage_location_removable">SD 카드</string>
     <string name="aod_control_tonal">톤온톤</string>
@@ -542,7 +541,6 @@
     <string name="external_service">외부 서비스</string>
     <string name="aod_customize_percent_value">%1$d%%</string>
     <string name="storage_cache_clear_failed">캐시를 비울 수 없습니다. SD 카드 접근 권한을 확인해 주세요.</string>
-    <string name="player_stream_client_hi_res_lossless">고해상도 및 무손실 (Hi-Res &amp; Lossless)</string>
     <string name="aod_customize_show_album">앨범명 표시</string>
     <string name="aod_customize_show_exit_button">나가기 버튼 표시</string>
     <string name="storage_migration_downloads_progress">다운로드한 파일 이동 중… %1$d%%</string>

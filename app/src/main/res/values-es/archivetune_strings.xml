@@ -487,8 +487,6 @@
     <string name="android_auto_mixes_and_radios">Mezclas y radios</string>
     <string name="android_auto_sort_playlist">Ordenar lista de reproducción</string>
     <string name="android_auto_sort_option_format">%1$s - %2$s</string>
-    <string name="player_stream_client_hi_res_lossless">Alta resolución y sin pérdidas</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Prioriza las transmisiones de audio sin pérdida cuando estén disponibles.</string>
     <string name="settings_stats_title">Estadísticas</string>
     <string name="settings_stats_subtitle">Tus canciones, artistas y historial de reproducción más populares</string>
     <string name="year_in_music_recap">Resumen musical</string>

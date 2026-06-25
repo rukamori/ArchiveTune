@@ -397,8 +397,6 @@
     <string name="player_stream_client_android_vr_desc">シグネチャ復号なしで直接ストリームし、最大速度を提供します。ほとんどのユーザーに適しています。</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">速度と引き換えに拡張形式をサポートします。JavaScriptシグネチャ復号により起動時に約5〜10秒の遅延が発生します。</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-ResとLossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">利用可能な場合はロスレス音声ストリームを優先します。</string>
     <string name="settings_section_player_content">プレイヤーとコンテンツ</string>
     <string name="settings_appearance_subtitle">テーマ、レイアウト、表示スタイル</string>
     <string name="settings_playback_title">再生</string>

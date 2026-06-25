@@ -157,6 +157,7 @@ import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 
 // ──────────────────────────────────────────────────────────────────────
@@ -322,13 +323,6 @@ fun LyricsV2(
         }
 
         entriesWithWords.forEach { entry ->
-            if (providedTranslationTextForEntry(entry) != null) {
-                if (entry.romanizedTextFlow.value != null) {
-                    entry.romanizedTextFlow.value = null
-                }
-                return@forEach
-            }
-
             val providerRomanized = providedRomanizedTextForEntry(entry, romanizationPreferences)
             if (providerRomanized != null) {
                 if (entry.romanizedTextFlow.value != providerRomanized) {
@@ -348,6 +342,8 @@ fun LyricsV2(
                 val romanized =
                     try {
                         romanizeLyricsLine(entry.text, romanizationPreferences)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         reportException(e)
                         null
@@ -850,6 +846,39 @@ fun LyricsV2(
                                 ),
                         horizontalAlignment = horizontalAlignment,
                     ) {
+                        val romanizedText =
+                            if (romanizationPreferences.isEnabled) {
+                                val value by item.romanizedTextFlow.collectAsState()
+                                value
+                            } else {
+                                null
+                            }
+                        val translationText = remember(item.providerTranslationText, item.text) { providedTranslationTextForEntry(item) }
+                        val supplementaryBaseTextStyle = MaterialTheme.typography.bodyMedium
+                        val supplementaryTextStyle =
+                            remember(supplementaryBaseTextStyle, lyricsTextSize, lyricsFontFamily, isAllBackground) {
+                                supplementaryBaseTextStyle.copy(
+                                    fontSize = (lyricsTextSize * 0.55f).sp,
+                                    lineHeight = (lyricsTextSize * 0.75f).sp,
+                                    fontWeight = FontWeight.Normal,
+                                    fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
+                                    fontFamily = lyricsFontFamily ?: supplementaryBaseTextStyle.fontFamily,
+                                )
+                            }
+
+                        if (romanizedText != null) {
+                            Text(
+                                text = romanizedText,
+                                style = supplementaryTextStyle,
+                                color = textColor.copy(alpha = if (isActive) 0.76f else 0.42f),
+                                textAlign = textAlign,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = (lyricsTextSize * 0.18f).dp),
+                            )
+                        }
+
                         if (item.words != null && isSynced) {
                             LyricsLineV2(
                                 words = item.words!!,
@@ -896,28 +925,10 @@ fun LyricsV2(
                             )
                         }
 
-                        val translationText = remember(item.providerTranslationText, item.text) { providedTranslationTextForEntry(item) }
-                        val secondaryText =
-                            if (translationText != null) {
-                                translationText
-                            } else if (romanizationPreferences.isEnabled) {
-                                val value by item.romanizedTextFlow.collectAsState()
-                                value
-                            } else {
-                                null
-                            }
-
-                        if (secondaryText != null) {
+                        if (translationText != null) {
                             Text(
-                                text = secondaryText,
-                                style =
-                                    MaterialTheme.typography.bodyMedium.copy(
-                                        fontSize = (lyricsTextSize * 0.55f).sp,
-                                        lineHeight = (lyricsTextSize * 0.75f).sp,
-                                        fontWeight = FontWeight.Normal,
-                                        fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
-                                        fontFamily = lyricsFontFamily ?: MaterialTheme.typography.bodyMedium.fontFamily,
-                                    ),
+                                text = translationText,
+                                style = supplementaryTextStyle,
                                 color = textColor.copy(alpha = if (isActive) 0.76f else 0.42f),
                                 textAlign = textAlign,
                                 modifier =

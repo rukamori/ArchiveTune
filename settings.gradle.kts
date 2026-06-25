@@ -57,6 +57,7 @@ include(":lastfm")
 include(":canvas")
 include(":shazamkit")
 include(":spotifycore")
+include(":moriextractor")
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.
 // We assume, that ArchiveTune and NewPipe Extractor have the same parent directory.

@@ -397,8 +397,8 @@
     <string name="player_stream_client_android_vr_desc">Streams directly without signature decryption, providing maximum speed. Suitable for the majority of users.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Extended format support at the cost of speed. JavaScript signature decryption introduces a ~5–10 second startup delay.</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-Res &amp; Lossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Prefers lossless audio streams when available.</string>
+    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Uses the ArchiveTune backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
     <string name="settings_playback_title">Playback</string>

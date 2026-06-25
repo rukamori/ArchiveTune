@@ -397,8 +397,6 @@
     <string name="player_stream_client_android_vr_desc">Transmite diretamente sem descriptografia de assinatura, oferecendo velocidade máxima. Adequado para a maioria dos usuários.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Suporte estendido a formatos ao custo de velocidade. A descriptografia de assinatura por JavaScript adiciona um atraso inicial de ~5–10 segundos.</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-Res e lossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Prefere streams de áudio lossless quando disponíveis.</string>
     <string name="settings_section_player_content">Player e conteúdo</string>
     <string name="settings_appearance_subtitle">Temas, layout e estilos visuais</string>
     <string name="settings_playback_title">Reprodução</string>

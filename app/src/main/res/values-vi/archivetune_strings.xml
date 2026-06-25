@@ -396,8 +396,6 @@
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
     <string name="mini_player_background_style">Kiểu nền trình phát mini</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-Res &amp; Lossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Ưu tiên luồng âm thanh lossless khi có sẵn.</string>
     <string name="playlist_sync_progress_step">%1$d/%2$d Bài hát</string>
     <string name="playlist_sync_failed">Đồng bộ danh sách phát thất bại: %1$s</string>
     <string name="force_sync_on_switch_account">Buộc đồng bộ khi chuyển tài khoản</string>

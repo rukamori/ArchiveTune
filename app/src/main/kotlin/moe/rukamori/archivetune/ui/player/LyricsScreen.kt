@@ -301,7 +301,8 @@ fun LyricsScreen(
     Box(
         modifier =
             modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .consumeUnhandledPointerInput(),
     ) {
         AppleMusicBackground(
             mediaMetadata = mediaMetadata,
@@ -685,7 +686,7 @@ private fun AppleMusicControls(
     val remainingPosition = (safeDuration - currentPosition).coerceAtLeast(0L)
 
     Column(
-        modifier = modifier.consumeUnhandledPointerInput(),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         AppleMusicSlider(

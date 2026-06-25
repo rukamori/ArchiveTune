@@ -536,7 +536,6 @@
     <string name="spotify_no_tracks">Aucun titre Spotify trouvé.</string>
     <string name="android_auto_sort_playlist">Trier la playlist</string>
     <string name="year_in_music_intro_details">Découvrez vos titres, artistes et albums préférés, ainsi que le temps que vous passez à les écouter.</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Préfère les flux audio sans perte lorsqu\'ils sont disponibles.</string>
     <string name="spotify_no_sources">Aucune playlist Spotify trouvée</string>
     <string name="storage_location_removable">Carte SD</string>
     <string name="aod_control_tonal">Tonale</string>
@@ -548,7 +547,6 @@
     <string name="external_service">Service externe</string>
     <string name="aod_customize_percent_value">%1$d%%</string>
     <string name="storage_cache_clear_failed">Impossible de vider le cache. Vérifiez l\'accès à la carte SD.</string>
-    <string name="player_stream_client_hi_res_lossless">Haute résolution &amp; Sans perte</string>
     <string name="news_tooltip_title">Nouvelles annonces</string>
     <string name="settings_backup_restore_subtitle">Exporter et récupérer les données personnelles de vos applications</string>
     <string name="aod_customize_show_album">Afficher l\'album</string>
