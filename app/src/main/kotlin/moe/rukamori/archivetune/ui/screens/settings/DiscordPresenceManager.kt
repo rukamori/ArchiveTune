@@ -41,7 +41,7 @@ object DiscordPresenceManager {
     private val rpcMutex = Mutex()
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private var lifecycleObserver: LifecycleEventObserver? = null
+    @Volatile private var lifecycleObserver: LifecycleEventObserver? = null
     private var rpcInstance: DiscordRPC? = null
     private var rpcToken: String? = null
 
@@ -212,13 +212,18 @@ object DiscordPresenceManager {
 
         if (!started.getAndSet(true)) {
             consecutiveFailures = 0
-            lifecycleObserver =
+            val observer =
                 LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_DESTROY) {
                         stop()
                     }
                 }
-            ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver!!)
+            lifecycleObserver = observer
+            cleanupScope.launch(Dispatchers.Main.immediate) {
+                if (started.get() && lifecycleObserver === observer) {
+                    ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+                }
+            }
         }
 
         if (token.isNotBlank()) {
@@ -276,7 +281,9 @@ object DiscordPresenceManager {
         DiscordSocialPresenceClient.setOnTransportInvalidated(null)
 
         lifecycleObserver?.let { observer ->
-            ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+            cleanupScope.launch(Dispatchers.Main.immediate) {
+                ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+            }
         }
         lifecycleObserver = null
 
