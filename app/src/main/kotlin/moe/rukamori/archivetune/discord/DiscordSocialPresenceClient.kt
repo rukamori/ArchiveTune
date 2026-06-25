@@ -24,6 +24,9 @@ object DiscordSocialPresenceClient {
     @Volatile private var gateway: GatewayClient? = null
     @Volatile private var activeToken: String? = null
 
+    @Volatile
+    var onTransportInvalidated: ((String) -> Unit)? = null
+
     val isStarted: Boolean
         get() = isConnectionUsable()
 
@@ -199,12 +202,24 @@ object DiscordSocialPresenceClient {
         reason: String,
     ) {
         callbackScope.launch {
+            var invalidated = false
             mutex.withLock {
                 if (gateway === expectedGateway) {
                     tearDownLocked(reason)
+                    invalidated = true
                 }
             }
+            if (invalidated) {
+                notifyTransportInvalidated(reason)
+            }
         }
+    }
+
+    private fun notifyTransportInvalidated(reason: String) {
+        runCatching { onTransportInvalidated?.invoke(reason) }
+            .onFailure { error ->
+                Timber.tag(TAG).w(error, "transport invalidation listener failed")
+            }
     }
 
     private fun cleanNewGateway(newGateway: GatewayClient) {

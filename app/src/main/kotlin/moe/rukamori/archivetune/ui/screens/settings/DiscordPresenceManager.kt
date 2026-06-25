@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.discord.DiscordOAuthRepository
+import moe.rukamori.archivetune.discord.DiscordSocialPresenceClient
 import moe.rukamori.archivetune.utils.DiscordImageResolver
 import moe.rukamori.archivetune.utils.DiscordRPC
 import timber.log.Timber
@@ -45,6 +46,7 @@ object DiscordPresenceManager {
     private var lifecycleObserver: LifecycleEventObserver? = null
     private var rpcInstance: DiscordRPC? = null
     private var rpcToken: String? = null
+    @Volatile private var transportInvalidatedListener: ((String) -> Unit)? = null
 
     private var consecutiveFailures = 0
 
@@ -198,7 +200,16 @@ object DiscordPresenceManager {
     fun start(
         context: Context,
         token: String,
+        onTransportInvalidated: ((String) -> Unit)? = null,
     ) {
+        if (onTransportInvalidated != null) {
+            transportInvalidatedListener = onTransportInvalidated
+        }
+        DiscordSocialPresenceClient.onTransportInvalidated = { reason ->
+            Timber.tag(LOG_TAG).w("transport invalidated: %s", reason)
+            transportInvalidatedListener?.invoke(reason)
+        }
+
         if (!started.getAndSet(true)) {
             consecutiveFailures = 0
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -263,6 +274,8 @@ object DiscordPresenceManager {
         if (!started.getAndSet(false)) return
 
         updateGeneration.incrementAndGet()
+        DiscordSocialPresenceClient.onTransportInvalidated = null
+        transportInvalidatedListener = null
         scope?.cancel()
         scope = null
 
