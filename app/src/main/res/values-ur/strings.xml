@@ -1,3 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home">گھر</string>
+    <string name="songs">گانے</string>
+    <string name="artists">کلاکار</string>
+    <string name="albums">البمز</string>
+    <string name="playlists">مجموعہ گیت</string>
+    <plurals name="n_selected">
+        <item quantity="one">مُقَرَّر شُدَہ</item>
+        <item quantity="other">d% مُقَرَّر شُدَہ</item>
+    </plurals>
+    <string name="history">سرگزشت</string>
+    <string name="stats">اَعْداد و شُمار</string>
+    <string name="mood_and_genres">رنگ و انداز</string>
+    <string name="account">اکاَئونٹ</string>
+    <string name="quick_picks">فوری پکس</string>
+    <string name="speed_dial">سپید ڈائل</string>
+    <string name="forgotten_favorites">بھولے ہوئے پسندیدہ</string>
+    <string name="keep_listening">سنتے رہیے</string>
+    <string name="your_youtube_playlists">آپکے یوٹیوب کے مجموعہ گیت</string>
+    <string name="similar_to">اس جیسے</string>
+    <string name="new_release_albums">حالِیَہ البمز</string>
 </resources>
