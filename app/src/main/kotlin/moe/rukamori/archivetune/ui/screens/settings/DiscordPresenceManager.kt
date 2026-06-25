@@ -8,6 +8,8 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -62,6 +64,26 @@ object DiscordPresenceManager {
     ) {
         lastRpcStartTimeState.value = start
         lastRpcEndTimeState.value = end
+    }
+
+    private fun addLifecycleObserverOnMain(observer: LifecycleEventObserver) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+        } else {
+            Handler(Looper.getMainLooper()).post {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+            }
+        }
+    }
+
+    private fun removeLifecycleObserverOnMain(observer: LifecycleEventObserver) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+        } else {
+            Handler(Looper.getMainLooper()).post {
+                ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+            }
+        }
     }
 
     private suspend fun getOrCreateRpc(
@@ -208,7 +230,7 @@ object DiscordPresenceManager {
                         stop()
                     }
                 }
-            ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver!!)
+            addLifecycleObserverOnMain(lifecycleObserver!!)
         }
 
         if (token.isNotBlank()) {
@@ -267,7 +289,7 @@ object DiscordPresenceManager {
         scope = null
 
         lifecycleObserver?.let { observer ->
-            ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+            removeLifecycleObserverOnMain(observer)
         }
         lifecycleObserver = null
 
