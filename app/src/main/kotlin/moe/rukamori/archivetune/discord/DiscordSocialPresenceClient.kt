@@ -23,9 +23,7 @@ object DiscordSocialPresenceClient {
 
     @Volatile private var gateway: GatewayClient? = null
     @Volatile private var activeToken: String? = null
-
-    @Volatile
-    var onTransportInvalidated: ((String) -> Unit)? = null
+    @Volatile private var transportInvalidatedListener: ((String) -> Unit)? = null
 
     val isStarted: Boolean
         get() = isConnectionUsable()
@@ -36,6 +34,10 @@ object DiscordSocialPresenceClient {
         return currentGateway != null &&
             !currentToken.isNullOrBlank() &&
             currentGateway.isReady()
+    }
+
+    fun setOnTransportInvalidated(listener: ((String) -> Unit)?) {
+        transportInvalidatedListener = listener
     }
 
     suspend fun updatePresence(
@@ -216,7 +218,7 @@ object DiscordSocialPresenceClient {
     }
 
     private fun notifyTransportInvalidated(reason: String) {
-        runCatching { onTransportInvalidated?.invoke(reason) }
+        runCatching { transportInvalidatedListener?.invoke(reason) }
             .onFailure { error ->
                 Timber.tag(TAG).w(error, "transport invalidation listener failed")
             }

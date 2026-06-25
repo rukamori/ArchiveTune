@@ -1895,7 +1895,6 @@ class MusicService :
             try {
                 DiscordPresenceManager.stop()
                 DiscordPresenceManager.start(
-                    context = this@MusicService,
                     token = key,
                     onTransportInvalidated = { reason ->
                         Timber.tag(DISCORD_SYNC_TAG).w(
