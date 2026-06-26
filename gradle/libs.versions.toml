@@ -9,7 +9,7 @@ lifecycle = "2.11.0"
 material3 = "1.5.0-alpha22"
 media3 = "1.10.1"
 room = "2.8.4"
-hilt = "2.59.2"
+hilt = "2.60"
 ktor = "3.5.1"
 ksp = "2.3.9"
 jsoup = "1.22.2"
@@ -43,7 +43,7 @@ okhttp = "5.4.0"
 accompanist = "1.0.19"
 accompanist-core = "0.4.5"
 androidsvg = "1.4"
-aboutLibraries = "15.0.1"
+aboutLibraries = "15.0.2"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
