@@ -1705,7 +1705,6 @@ class MusicService :
                     }
 
                     HiddenReason.Disabled,
-                    HiddenReason.NoToken,
                     HiddenReason.ServiceStopping,
                     -> {
                         val clearToken = token.takeIf { it.isNotBlank() } ?: lastPresenceToken
@@ -1720,6 +1719,32 @@ class MusicService :
                                 "terminal clear skipped or failed for hidden reason=%s",
                                 decision.reason,
                             )
+                        }
+                        ensureDiscordSyncFresh(request.epoch)
+                        DiscordPresenceManager.stop()
+                        lastPresenceToken = null
+                        true
+                    }
+
+                    HiddenReason.NoToken -> {
+                        val clearToken = token.takeIf { it.isNotBlank() } ?: lastPresenceToken
+                        ensureDiscordSyncFresh(request.epoch)
+                        if (clearToken.isNullOrBlank()) {
+                            Timber.tag(DISCORD_SYNC_TAG).v(
+                                "no token available for terminal clear; stopping manager only",
+                            )
+                        } else {
+                            val cleared =
+                                DiscordPresenceManager.clearNow(
+                                    context = this@MusicService,
+                                    token = clearToken,
+                                )
+                            if (!cleared) {
+                                Timber.tag(DISCORD_SYNC_TAG).d(
+                                    "terminal clear skipped or failed for hidden reason=%s",
+                                    decision.reason,
+                                )
+                            }
                         }
                         ensureDiscordSyncFresh(request.epoch)
                         DiscordPresenceManager.stop()
