@@ -27,6 +27,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.discord.DiscordOAuthRepository
+import moe.rukamori.archivetune.discord.DiscordSocialPresenceClient
 import moe.rukamori.archivetune.utils.DiscordImageResolver
 import moe.rukamori.archivetune.utils.DiscordRPC
 import timber.log.Timber
@@ -254,6 +255,10 @@ object DiscordPresenceManager {
             isPaused = isPaused,
         )
 
+    fun setOnTransportInvalidated(listener: ((String) -> Unit)?) {
+        DiscordSocialPresenceClient.setOnTransportInvalidated(listener)
+    }
+
     private suspend fun clearPresenceLocked(
         context: Context,
         token: String? = null,
@@ -284,6 +289,7 @@ object DiscordPresenceManager {
     fun stop() {
         if (!started.getAndSet(false)) return
 
+        DiscordSocialPresenceClient.setOnTransportInvalidated(null)
         updateGeneration.incrementAndGet()
         scope?.cancel()
         scope = null
