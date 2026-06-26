@@ -731,10 +731,6 @@
     <string name="lyrics">歌詞</string>
     <string name="translation_success">翻訳保存済み</string>
     <string name="translation_failed">翻訳に失敗しました</string>
-    <string name="translate_in_background">バックグラウンドで翻訳</string>
-    <string name="ai_translate_in_background_desc">翻訳はバックグラウンドで続行されます。完了すると通知されます。</string>
-    <string name="ai_translation_notification_channel_name">AI翻訳</string>
-    <string name="ai_translation_notification_title">AI翻訳</string>
     <string name="discord_button_options">ボタンオプション</string>
     <string name="discord_image_options">画像オプション</string>
     <string name="refresh">更新</string>

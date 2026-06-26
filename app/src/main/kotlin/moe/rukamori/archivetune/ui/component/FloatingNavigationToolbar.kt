@@ -5,7 +5,7 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package moe.rukamori.archivetune.ui.component
 
@@ -23,9 +23,10 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -93,6 +94,7 @@ fun FloatingNavigationToolbar(
     scrollBehavior: FloatingToolbarScrollBehavior? = null,
     isSelected: (Screens) -> Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
+    onSearchItemDoubleClick: (() -> Unit)? = null,
 ) {
     val toolbarContainerColor = floatingToolbarContainerColor(pureBlack = pureBlack)
     val toolbarColors =
@@ -132,6 +134,7 @@ fun FloatingNavigationToolbar(
                     showSelectedLabels = showSelectedLabels,
                     isSelected = isSelected,
                     onItemClick = onItemClick,
+                    onSearchItemDoubleClick = onSearchItemDoubleClick,
                 )
             }
         } else {
@@ -147,6 +150,7 @@ fun FloatingNavigationToolbar(
                     showSelectedLabels = showSelectedLabels,
                     isSelected = isSelected,
                     onItemClick = onItemClick,
+                    onSearchItemDoubleClick = onSearchItemDoubleClick,
                 )
             }
         }
@@ -160,6 +164,7 @@ private fun ToolbarItemsContainer(
     showSelectedLabels: Boolean,
     isSelected: (Screens) -> Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
+    onSearchItemDoubleClick: (() -> Unit)?,
 ) {
     val density = LocalDensity.current
     val itemWidths = remember { mutableStateMapOf<Screens, Dp>() }
@@ -207,12 +212,25 @@ private fun ToolbarItemsContainer(
         Row(verticalAlignment = Alignment.CenterVertically) {
             items.forEach { screen ->
                 val selected = isSelected(screen)
+                val onClick =
+                    remember(screen, selected, onItemClick) {
+                        { onItemClick(screen, selected) }
+                    }
+                val onDoubleClick =
+                    remember(screen, onSearchItemDoubleClick) {
+                        if (screen == Screens.Search) {
+                            onSearchItemDoubleClick
+                        } else {
+                            null
+                        }
+                    }
                 FloatingNavigationToolbarItem(
                     screen = screen,
                     selected = selected,
                     showSelectedLabel = showSelectedLabels,
                     pureBlack = pureBlack,
-                    onClick = { onItemClick(screen, selected) },
+                    onClick = onClick,
+                    onDoubleClick = onDoubleClick,
                     modifier =
                         Modifier.onGloballyPositioned { coordinates ->
                             itemWidths[screen] = with(density) { coordinates.size.width.toDp() }
@@ -401,6 +419,7 @@ private fun FloatingNavigationToolbarItem(
     showSelectedLabel: Boolean,
     pureBlack: Boolean,
     onClick: () -> Unit,
+    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -457,11 +476,12 @@ private fun FloatingNavigationToolbarItem(
             modifier
                 .scale(pressScale)
                 .clip(shape)
-                .clickable(
+                .combinedClickable(
                     interactionSource = interactionSource,
                     indication = LocalIndication.current,
                     role = Role.Tab,
                     onClick = onClick,
+                    onDoubleClick = onDoubleClick,
                 ).widthIn(min = 48.dp)
                 .padding(horizontal = horizontalPadding, vertical = 12.dp),
         horizontalArrangement = Arrangement.Center,

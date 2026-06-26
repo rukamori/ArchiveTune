@@ -731,10 +731,6 @@
     <string name="lyrics">Letras</string>
     <string name="translation_success">Tradução salva</string>
     <string name="translation_failed">Falha na tradução</string>
-    <string name="translate_in_background">Traduzir em segundo plano</string>
-    <string name="ai_translate_in_background_desc">A tradução continuará em segundo plano. Você será notificado quando terminar.</string>
-    <string name="ai_translation_notification_channel_name">Tradução por IA</string>
-    <string name="ai_translation_notification_title">Tradução por IA</string>
     <string name="discord_button_options">Opções de botões</string>
     <string name="discord_image_options">Opções de imagem</string>
     <string name="refresh">Atualizar</string>

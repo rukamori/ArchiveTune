@@ -550,12 +550,9 @@
     <string name="ai_fetch_models">モデルを取得</string>
     <string name="ai_model_search">モデルを検索</string>
     <string name="ai_model_no_results">検索に一致するモデルはありません</string>
-    <string name="ai_translation">AI翻訳</string>
-    <string name="ai_translation_target">翻訳先</string>
     <string name="ai_api_connected">API接続済み</string>
     <string name="ai_api_test_failed">APIテストに失敗しました</string>
     <string name="ai_translation_menu">AI翻訳</string>
-    <string name="ai_translating_lyrics">歌詞を翻訳中...</string>
     <string name="about_lead_developer">リード開発者</string>
     <string name="about_archive_tune_team">チーム</string>
     <string name="about_respecter">リスペクター</string>

@@ -201,7 +201,7 @@ class StorageLocationRepository
                     onProgress(StorageCacheClearProgress(kind = kind, percent = 0))
                     val cleared =
                         when (kind) {
-                            StorageCacheKind.SONGS -> clearReleasedMediaCache(playerCache, StorageFolderKind.SONG_CACHE, onProgress)
+                            StorageCacheKind.SONGS -> clearMediaCache(playerCache, StorageCacheKind.SONGS, onProgress)
                             StorageCacheKind.DOWNLOADS -> clearDownloads(onProgress)
                             StorageCacheKind.IMAGES -> clearImageCache(onProgress)
                             StorageCacheKind.CANVAS -> clearCanvasCache(onProgress)
@@ -364,23 +364,45 @@ class StorageLocationRepository
             runCatching { downloadCache.release() }
         }
 
-        private suspend fun clearReleasedMediaCache(
+        private suspend fun clearMediaCache(
             cache: Cache,
-            folderKind: StorageFolderKind,
+            kind: StorageCacheKind,
             onProgress: suspend (StorageCacheClearProgress) -> Unit,
         ): Boolean {
-            runCatching {
-                cache.keys.toList().forEach(cache::removeResource)
+            val keys = runCatching { cache.keys.toList() }.getOrElse { return false }
+            val workUnitsByKey =
+                keys.associateWith { key ->
+                    cache.resourceWorkUnits(key)
+                }
+            val progressReporter =
+                StorageCacheClearReporter(
+                    kind = kind,
+                    totalWorkUnits = workUnitsByKey.values.sum().coerceAtLeast(keys.size.toLong()),
+                    minPercent = 0,
+                    maxPercent = 100,
+                    onProgress = onProgress,
+                )
+
+            var cleared = true
+            if (keys.isEmpty()) {
+                progressReporter.emitRemaining()
+                return true
             }
-            val released = runCatching { cache.release() }.isSuccess
-            return released && clearCacheDirectory(folderKind, onProgress)
+
+            keys.forEach { key ->
+                currentCoroutineContext().ensureActive()
+                val removed = runCatching { cache.removeResource(key) }.isSuccess
+                if (!removed) cleared = false
+                progressReporter.emit(workUnitsByKey.getValue(key))
+            }
+            progressReporter.emitRemaining()
+            return cleared
         }
 
         private suspend fun clearDownloads(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean =
             runCatching {
                 downloadUtil.downloadManager.removeAllDownloads()
-                onProgress(StorageCacheClearProgress(kind = StorageCacheKind.DOWNLOADS, percent = 100))
-            }.isSuccess
+            }.isSuccess && clearMediaCache(downloadCache, StorageCacheKind.DOWNLOADS, onProgress)
 
         private suspend fun clearCanvasCache(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean {
             val memoryAndIndexCleared = CanvasArtworkPlaybackCache.clearAndPersist()
@@ -794,6 +816,13 @@ private fun File.deletionWorkUnits(): Long {
 }
 
 private fun File.deleteWorkUnits(): Long = length().coerceAtLeast(1L)
+
+private fun Cache.resourceWorkUnits(key: String): Long =
+    runCatching {
+        getCachedSpans(key)
+            .sumOf { span -> span.length.coerceAtLeast(1L) }
+            .coerceAtLeast(1L)
+    }.getOrDefault(1L)
 
 private fun File.isDirectoryEmpty(): Boolean =
     runCatching {

@@ -502,10 +502,6 @@
     <string name="lyrics">Lời bài hát</string>
     <string name="translation_success">Đã lưu bản dịch</string>
     <string name="translation_failed">Bản dịch thất bại</string>
-    <string name="translate_in_background">Dịch trong nền</string>
-    <string name="ai_translate_in_background_desc">Bản dịch sẽ tiếp tục trong nền. Bạn sẽ được thông báo khi hoàn tất.</string>
-    <string name="ai_translation_notification_channel_name">Dịch AI</string>
-    <string name="ai_translation_notification_title">Dịch AI</string>
     <string name="discord_button_options">Tùy chọn nút</string>
     <string name="discord_image_options">Tùy chọn hình ảnh</string>
     <string name="refresh">Làm mới</string>

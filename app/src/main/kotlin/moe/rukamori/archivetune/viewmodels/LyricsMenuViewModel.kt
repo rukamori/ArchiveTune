@@ -7,14 +7,9 @@
 
 package moe.rukamori.archivetune.viewmodels
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -43,7 +38,6 @@ import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
-import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.extensions.toEnum
@@ -97,6 +91,7 @@ class LyricsMenuViewModel
         private val networkConnectivity: NetworkConnectivityObserver,
     ) : ViewModel() {
         private var job: Job? = null
+        private var aiTranslationJob: Job? = null
         private val _lyricsSearchState = MutableStateFlow<LyricsSearchScreenState>(LyricsSearchScreenState.Empty)
         val lyricsSearchState: StateFlow<LyricsSearchScreenState> = _lyricsSearchState.asStateFlow()
         val isRefetching = MutableStateFlow(false)
@@ -108,33 +103,7 @@ class LyricsMenuViewModel
         private val _isNetworkAvailable = MutableStateFlow(false)
         val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable.asStateFlow()
 
-        private fun createNotificationChannel() {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val name = context.getString(R.string.ai_translation_notification_channel_name)
-                val importance = NotificationManager.IMPORTANCE_DEFAULT
-                val channel = NotificationChannel(AI_TRANSLATION_CHANNEL_ID, name, importance)
-                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                manager.createNotificationChannel(channel)
-            }
-        }
-
-        private var notificationId = 1000
-
-        private fun postNotification(message: String) {
-            val notification =
-                NotificationCompat.Builder(context, AI_TRANSLATION_CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle(context.getString(R.string.ai_translation_notification_title))
-                    .setContentText(message)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-                    .setAutoCancel(true)
-                    .build()
-            NotificationManagerCompat.from(context).notify(notificationId++, notification)
-        }
-
         init {
-            createNotificationChannel()
-
             viewModelScope.launch {
                 networkConnectivity.networkStatus.collect { isConnected ->
                     _isNetworkAvailable.value = isConnected
@@ -251,57 +220,62 @@ class LyricsMenuViewModel
         fun translateLyricsWithAi(
             mediaMetadata: MediaMetadata,
             lyrics: String,
+            targetLanguage: String,
         ) {
             if (isAiTranslating.value || lyrics.isBlank()) return
-            viewModelScope.launch(Dispatchers.IO) {
-                isAiTranslating.value = true
-                try {
-                    val prefs = context.dataStore.data.first()
-                    val translatedLyrics =
-                        AiLyricsTranslator().translate(
-                            config =
-                                AiServiceConfig(
-                                    provider = prefs[AiProviderKey].toEnum(AiProvider.NONE),
-                                    apiKey = prefs[AiApiKeyKey].orEmpty(),
-                                    customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
-                                    model =
-                                        if (prefs[AiProviderKey].toEnum(AiProvider.NONE) == AiProvider.CUSTOM) {
-                                            prefs[AiCustomModelKey].orEmpty()
-                                        } else {
-                                            prefs[AiSelectedModelKey].orEmpty()
-                                        },
-                                ),
-                            lyrics = lyrics,
-                            targetLanguage = prefs[TranslatorTargetLangKey].orEmpty().ifBlank { "ENGLISH" },
-                        )
-                    database.query {
-                        replaceLyrics(
-                            id = mediaMetadata.id,
-                            lyrics = translatedLyrics,
-                            source = LyricsEntity.Source.AI_TRANSLATION.value,
-                        )
+            aiTranslationJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    isAiTranslating.value = true
+                    try {
+                        val prefs = context.dataStore.data.first()
+                        val translatedLyrics =
+                            AiLyricsTranslator().translate(
+                                config =
+                                    AiServiceConfig(
+                                        provider = prefs[AiProviderKey].toEnum(AiProvider.NONE),
+                                        apiKey = prefs[AiApiKeyKey].orEmpty(),
+                                        customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
+                                        model =
+                                            if (prefs[AiProviderKey].toEnum(AiProvider.NONE) == AiProvider.CUSTOM) {
+                                                prefs[AiCustomModelKey].orEmpty()
+                                            } else {
+                                                prefs[AiSelectedModelKey].orEmpty()
+                                            },
+                                    ),
+                                lyrics = lyrics,
+                                targetLanguage = targetLanguage.ifBlank { "ENGLISH" },
+                            )
+                        database.query {
+                            replaceLyrics(
+                                id = mediaMetadata.id,
+                                lyrics = translatedLyrics,
+                                source = LyricsEntity.Source.AI_TRANSLATION.value,
+                            )
+                        }
+                        context.dataStore.edit { settings ->
+                            settings[AiApiValidationStatusKey] = AiApiValidationStatus.SUCCESS.name
+                        }
+                        val msg = context.getString(R.string.translation_success)
+                        _aiTranslationEvents.emit(msg)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        context.dataStore.edit { settings ->
+                            settings[AiApiValidationStatusKey] = AiApiValidationStatus.FAILED.name
+                        }
+                        val msg = context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString())
+                        _aiTranslationEvents.emit(msg)
+                    } finally {
+                        isAiTranslating.value = false
+                        aiTranslationJob = null
                     }
-                    context.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.SUCCESS.name
-                    }
-                    val msg = context.getString(R.string.translation_success)
-                    _aiTranslationEvents.emit(msg)
-                    postNotification(msg)
-                } catch (e: Exception) {
-                    context.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.FAILED.name
-                    }
-                    val msg = context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString())
-                    _aiTranslationEvents.emit(msg)
-                    postNotification(msg)
-                } finally {
-                    isAiTranslating.value = false
                 }
-            }
         }
 
-        companion object {
-            private const val AI_TRANSLATION_CHANNEL_ID = "ai_translation_channel"
+        fun cancelAiTranslation() {
+            aiTranslationJob?.cancel()
+            aiTranslationJob = null
+            isAiTranslating.value = false
         }
 
         private fun LyricsResult.toUiModel(index: Int): LyricsSearchResultUiModel {

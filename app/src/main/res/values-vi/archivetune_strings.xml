@@ -498,12 +498,9 @@
     <string name="ai_fetch_models">Tìm nạp mô hình</string>
     <string name="ai_model_search">Tìm kiếm mô hình</string>
     <string name="ai_model_no_results">Không có mô hình nào phù hợp với tìm kiếm của bạn</string>
-    <string name="ai_translation">Dịch AI</string>
-    <string name="ai_translation_target">Mục tiêu dịch</string>
     <string name="ai_api_connected">API đã kết nối</string>
     <string name="ai_api_test_failed">Kiểm tra API thất bại</string>
     <string name="ai_translation_menu">Dịch AI</string>
-    <string name="ai_translating_lyrics">Đang dịch lời bài hát…</string>
     <string name="import_m3u_format">Danh sách phát âm thanh M3U</string>
     <string name="import_csv_format">Tệp danh sách phát CSV</string>
     <string name="internal_service">Dịch vụ nội bộ</string>

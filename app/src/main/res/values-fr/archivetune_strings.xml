@@ -318,7 +318,6 @@
     <string name="ai_model">Modèle</string>
     <string name="spotify_reload_playlist">Actualiser la playlist</string>
     <string name="aod_customize_scale_and_spacing">Échelle et espacement</string>
-    <string name="ai_translation">Traduction par IA</string>
     <string name="storage_location_apply">Utiliser cet espace de stockage</string>
     <string name="aod_customize_show_progress">Afficher la progression</string>
     <string name="ai_model_loading">Récupération des modèles disponibles…</string>
@@ -328,7 +327,6 @@
     <string name="ai_provider_settings">Fournisseur</string>
     <string name="ai_model_fetch_hint">Appuyez sur « Actualiser » pour charger les modèles disponibles</string>
     <string name="import_csv_format">Fichier de playlist CSV</string>
-    <string name="ai_translating_lyrics">Traduire les paroles...</string>
     <string name="year_in_music_recap_word">RÉSUMÉ</string>
     <string name="ai_api_key">Clé API</string>
     <string name="music_recognition_history_no_results_body">Essayez un autre morceau, un autre artiste, un autre album ou un autre code.</string>
@@ -494,7 +492,6 @@
     <string name="ai_model_not_selected">Non sélectionné</string>
     <string name="spotify_reload_playlist_desc">Actualisez les playlists Spotify depuis votre compte.</string>
     <string name="ai_api_key_missing">Condition préalable à l\'exécution des fonctionnalités d\'IA.</string>
-    <string name="ai_translation_target">Texte cible</string>
     <string name="lyrics_share_style_vivid_glow">Éclat éclatant</string>
     <string name="ai_api_status_success">API prête</string>
     <string name="aod_shape_pill">Comprimé</string>
