@@ -301,12 +301,18 @@ fun LyricsScreen(
     Box(
         modifier =
             modifier
-                .fillMaxSize()
-                .consumeUnhandledPointerInput(),
+                .fillMaxSize(),
     ) {
         AppleMusicBackground(
             mediaMetadata = mediaMetadata,
             gradientColors = gradientColors,
+        )
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .consumeUnhandledPointerInput(),
         )
 
         Column(
