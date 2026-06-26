@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.Download
@@ -78,6 +79,8 @@ class DownloadUtil
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
                 .dispatcher(
                     okhttp3.Dispatcher().apply {
                         maxRequests = MAX_DOWNLOAD_HTTP_REQUESTS
@@ -123,7 +126,9 @@ class DownloadUtil
                         OkHttpDataSource.Factory(
                             mediaOkHttpClient,
                         ),
-                    ).setCacheWriteDataSinkFactory(null),
+                    ).setCacheWriteDataSinkFactory(
+                        CacheDataSink.Factory().setBufferSize(DOWNLOAD_WRITE_BUFFER_SIZE),
+                    ),
             ) { dataSpec ->
                 val mediaId = dataSpec.key ?: error("No media id")
                 val length = if (dataSpec.length >= 0) dataSpec.length else 1
@@ -291,5 +296,6 @@ class DownloadUtil
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
             private const val MAX_DOWNLOAD_HTTP_REQUESTS = 24
             private const val DOWNLOAD_CONNECTION_KEEP_ALIVE_MINUTES = 5L
+            private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
         }
     }

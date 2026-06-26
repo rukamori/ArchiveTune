@@ -256,7 +256,7 @@ class BackupRestoreViewModel
                                 database.checkpoint()
                                 completedUnits++
 
-                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                val buffer = ByteArray(BUFFER_SIZE)
                                 dbFiles.forEach { file ->
                                     val fileSize = file.length().coerceAtLeast(1L)
                                     var bytesCopied = 0L
@@ -807,6 +807,7 @@ class BackupRestoreViewModel
         companion object {
             const val SETTINGS_FILENAME = "settings.preferences_pb"
             const val SETTINGS_XML_FILENAME = "settings.xml"
+            private const val BUFFER_SIZE = 64 * 1024
 
             val ACCOUNT_PREF_KEYS: Set<String> =
                 setOf(

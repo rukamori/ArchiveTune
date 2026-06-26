@@ -85,7 +85,7 @@ object AppUpdateInstaller {
             val totalBytes = connection.contentLengthLong
             connection.inputStream.use { input ->
                 downloadedFile.outputStream().use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    val buffer = ByteArray(STREAM_BUFFER_SIZE)
                     var downloadedBytes = 0L
                     while (true) {
                         currentCoroutineContext().ensureActive()
@@ -207,4 +207,5 @@ object AppUpdateInstaller {
     private const val ApkFileName = "archive-tune-update.apk"
     private const val ApkMimeType = "application/vnd.android.package-archive"
     private const val NetworkTimeoutMs = 30_000
+    private const val STREAM_BUFFER_SIZE = 128 * 1024
 }
