@@ -168,7 +168,7 @@ object DiscordSocialPresenceClient {
 
             gateway = newGateway
             activeToken = token
-            Timber.tag(TAG).i("ensureConnected: connected token***%s", token.takeLast(6))
+            Timber.tag(TAG).i("ensureConnected: connected")
             Result.success(Unit)
         } catch (e: CancellationException) {
             cleanNewGateway(newGateway)
