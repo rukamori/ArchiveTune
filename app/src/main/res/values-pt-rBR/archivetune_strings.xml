@@ -550,12 +550,9 @@
     <string name="ai_fetch_models">Buscar modelos</string>
     <string name="ai_model_search">Pesquisar modelos</string>
     <string name="ai_model_no_results">Nenhum modelo corresponde à sua pesquisa</string>
-    <string name="ai_translation">Tradução por IA</string>
-    <string name="ai_translation_target">Destino da tradução</string>
     <string name="ai_api_connected">API conectada</string>
     <string name="ai_api_test_failed">Falha no teste da API</string>
     <string name="ai_translation_menu">Tradução por IA</string>
-    <string name="ai_translating_lyrics">Traduzindo as letras...</string>
     <string name="about_lead_developer">Desenvolvedor principal</string>
     <string name="about_archive_tune_team">Equipe</string>
     <string name="about_respecter">Respeitador</string>

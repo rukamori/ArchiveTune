@@ -272,7 +272,6 @@ import moe.rukamori.archivetune.onboarding.OnboardingScreenState
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
 import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
-import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
@@ -458,14 +457,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Only clear/stop presence when the activity is actually finishing (not on rotation)
-        // and do not clear it for transient configuration changes.
-        if (isFinishing && !isChangingConfigurations) {
-            try {
-                DiscordPresenceManager.stop()
-            } catch (_: Exception) {
-            }
-        }
 
         val shouldStopOnTaskClear =
             if (!isFinishing) {
@@ -1423,7 +1414,7 @@ class MainActivity : ComponentActivity() {
                                         val launch = withContext(Dispatchers.IO) { dataStore[LaunchCountKey] ?: 0 }
                                         withContext(Dispatchers.IO) {
                                             dataStore.edit { prefs ->
-                                                prefs[RemindAfterKey] = launch + 10
+                                                prefs[RemindAfterKey] = launch + 20
                                             }
                                         }
                                     } catch (e: Exception) {
@@ -2112,6 +2103,10 @@ class MainActivity : ComponentActivity() {
                                                 },
                                                 onItemClick = { screen, isSelected ->
                                                     handlePrimaryNavigationClick(screen, isSelected)
+                                                },
+                                                onSearchItemDoubleClick = {
+                                                    searchSource = SearchSource.ONLINE
+                                                    openSearch()
                                                 },
                                             )
                                         }

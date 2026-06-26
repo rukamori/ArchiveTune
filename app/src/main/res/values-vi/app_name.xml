@@ -8,4 +8,5 @@
     <string name="widget_playback_capsule_description">Viên nang phát lại biểu cảm với ảnh bìa, tiến trình và điều khiển phát</string>
     <string name="widget_playback_spotlight_description">Widget spotlight ảnh bìa với điều khiển phát lại biểu cảm</string>
     <string name="widget_playback_command_description">Widget phát lại ưu tiên điều khiển với ảnh bìa, tiến trình và nút bỏ qua</string>
+    <string name="widget_listening_insights_description">Widget thông tin chi tiết nghe nhạc với các bài hát gần đây, thể loại và đề xuất</string>
 </resources>

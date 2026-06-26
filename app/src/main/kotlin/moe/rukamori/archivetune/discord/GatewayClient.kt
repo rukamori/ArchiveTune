@@ -13,6 +13,7 @@ import okhttp3.*
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
 
 private sealed class GatewayFrame {
@@ -31,9 +32,9 @@ class GatewayClient {
         private const val TAG = "GatewayClient"
     }
 
-    private var httpClient: OkHttpClient? = null
-    private var wsSession: WebSocket? = null
-    private var processingJob: Job? = null
+    @Volatile private var httpClient: OkHttpClient? = null
+    @Volatile private var wsSession: WebSocket? = null
+    @Volatile private var processingJob: Job? = null
     private var heartbeatJob: Job? = null
     private var helloTimerJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -46,7 +47,10 @@ class GatewayClient {
     private var sessionState: GatewaySessionState? = null
     private var liveSeq = 0
     private var token = ""
-    private var closed = false
+    @Volatile private var closed = false
+    @Volatile private var readyReceived = false
+    private val connectionGeneration = AtomicLong(0L)
+    @Volatile private var activeConnectionGeneration: Long = 0L
 
     var onReady: ((GatewayReadyEvent) -> Unit)? = null
     var onClose: ((GatewayCloseInfo) -> Unit)? = null
@@ -55,6 +59,12 @@ class GatewayClient {
 
     val latency: Int get() = ping
 
+    fun isConnected(): Boolean =
+        wsSession != null && !closed && processingJob?.isActive == true
+
+    fun isReady(): Boolean =
+        isConnected() && readyReceived
+
     suspend fun connect(accessToken: String) {
         if (wsSession != null) throw IllegalStateException("GatewayClient already connected")
 
@@ -62,6 +72,7 @@ class GatewayClient {
         sessionState = null
         liveSeq = 0
         closed = false
+        readyReceived = false
         lastAck = true
 
         val url = "${GatewayDefaults.GATEWAY_URL}/?v=${GatewayDefaults.GATEWAY_VERSION}&encoding=json"
@@ -73,6 +84,9 @@ class GatewayClient {
             OkHttpClient
                 .Builder()
                 .build()
+
+        val generation = connectionGeneration.incrementAndGet()
+        activeConnectionGeneration = generation
 
         val request =
             Request
@@ -89,13 +103,18 @@ class GatewayClient {
                         response: Response,
                     ) {
                         response.close()
+                        if (!isActiveGeneration(generation)) {
+                            webSocket.close(1000, "stale")
+                            return
+                        }
                     }
 
                     override fun onMessage(
                         webSocket: WebSocket,
                         text: String,
                     ) {
-                        scope.launch { incomingChannel.send(GatewayFrame.Text(text)) }
+                        if (!isActiveGeneration(generation)) return
+                        publishFrame(GatewayFrame.Text(text))
                     }
 
                     override fun onClosing(
@@ -103,7 +122,8 @@ class GatewayClient {
                         code: Int,
                         reason: String,
                     ) {
-                        scope.launch { incomingChannel.send(GatewayFrame.Close(code, reason)) }
+                        if (!isActiveGeneration(generation)) return
+                        publishFrame(GatewayFrame.Close(code, reason))
                     }
 
                     override fun onClosed(
@@ -111,7 +131,8 @@ class GatewayClient {
                         code: Int,
                         reason: String,
                     ) {
-                        scope.launch { incomingChannel.send(GatewayFrame.Close(code, reason)) }
+                        if (!isActiveGeneration(generation)) return
+                        publishFrame(GatewayFrame.Close(code, reason))
                     }
 
                     override fun onFailure(
@@ -119,8 +140,15 @@ class GatewayClient {
                         t: Throwable,
                         response: Response?,
                     ) {
+                        if (!isActiveGeneration(generation)) return
                         response?.close()
                         onError?.invoke(t)
+                        publishFrame(
+                            GatewayFrame.Close(
+                                response?.code ?: 4000,
+                                t.message ?: "failure",
+                            ),
+                        )
                     }
                 },
             )
@@ -129,7 +157,7 @@ class GatewayClient {
             scope.launch {
                 delay(GatewayDefaults.HELLO_TIMEOUT_MS)
                 debug("HELLO timeout")
-                wsSession?.close(4009, "HELLO timeout")
+                forceClose(4009, "HELLO timeout")
                 ready.completeExceptionally(Exception("HELLO timeout"))
             }
 
@@ -149,9 +177,12 @@ class GatewayClient {
                                         Exception("Gateway closed before ready"),
                                     )
                                 }
+                                return@launch
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     if (!ready.isCompleted) ready.completeExceptionally(e)
                     onError?.invoke(e)
@@ -161,35 +192,47 @@ class GatewayClient {
         ready.await()
     }
 
-    fun sendPresenceUpdate(presenceJson: JSONObject): Boolean = send(GatewayOp.PRESENCE_UPDATE, presenceJson)
+    fun sendPresenceUpdate(presenceJson: JSONObject): Boolean =
+        sendFrame(GatewayOp.PRESENCE_UPDATE, presenceJson, requireReady = true)
 
     fun disconnect() {
-        closed = true
-        stopHeartbeat()
-        helloTimerJob?.cancel()
-        processingJob?.cancel()
-        scope.launch {
-            wsSession?.close(1000, "Client disconnect")
-            wsSession = null
-            httpClient?.dispatcher?.executorService?.shutdown()
-            httpClient = null
-        }
+        shutdownTransport(
+            closeCode = 1000,
+            closeReason = "Client disconnect",
+            cancelProcessing = true,
+        )
     }
 
     private fun send(
         op: Int,
         d: Any?,
+    ): Boolean = sendFrame(op, d, requireReady = false)
+
+    private fun sendFrame(
+        op: Int,
+        d: Any?,
+        requireReady: Boolean,
     ): Boolean {
-        val session = wsSession ?: return false
-        scope.launch {
-            try {
-                val jsonStr = buildJsonString(op, d)
-                session.send(jsonStr)
-            } catch (e: Exception) {
-                onError?.invoke(e)
-            }
+        if (closed || wsSession == null || processingJob?.isActive != true) {
+            debug("sendFrame skipped: not connected op=$op")
+            return false
         }
-        return true
+        if (requireReady && !readyReceived) {
+            debug("sendFrame skipped: gateway not ready op=$op")
+            return false
+        }
+
+        val session = wsSession ?: return false
+        return try {
+            val sent = session.send(buildJsonString(op, d))
+            if (!sent) {
+                debug("sendFrame failed: WebSocket.send returned false op=$op")
+            }
+            sent
+        } catch (e: Exception) {
+            onError?.invoke(e)
+            false
+        }
     }
 
     private fun buildJsonString(
@@ -230,6 +273,7 @@ class GatewayClient {
             when (op) {
                 GatewayOp.HELLO -> {
                     helloTimerJob?.cancel()
+                    helloTimerJob = null
                     val dObj = d as JSONObject
                     val interval = dObj.getInt("heartbeat_interval")
                     startHeartbeat(interval.toLong())
@@ -285,6 +329,7 @@ class GatewayClient {
                 debug("READY: user=${re.user.username} (${re.user.id}) session=${re.sessionId}")
                 sessionState = GatewaySessionState(re.sessionId, liveSeq, re.resumeGatewayUrl)
                 touchSession(re.sessionId, liveSeq, re.resumeGatewayUrl)
+                readyReceived = true
                 ready.complete(Unit)
                 onReady?.invoke(re)
             }
@@ -296,6 +341,7 @@ class GatewayClient {
                     liveSeq,
                     sessionState?.resumeGatewayUrl,
                 )
+                readyReceived = true
                 ready.complete(Unit)
             }
 
@@ -377,7 +423,10 @@ class GatewayClient {
         code: Int,
         reason: String,
     ) {
-        scope.launch { wsSession?.close(code, reason) }
+        val session = wsSession
+        if (session == null || !session.close(code, reason)) {
+            publishFrame(GatewayFrame.Close(code, reason))
+        }
     }
 
     private fun handleClose(
@@ -385,13 +434,16 @@ class GatewayClient {
         code: Int,
     ) {
         if (closed) return
-        closed = true
-        stopHeartbeat()
-        helloTimerJob?.cancel()
         val fatal = NON_RESUMABLE_CLOSE_CODES.contains(code)
         val snapshot = sessionState?.copy(seq = liveSeq)
         if (fatal) sessionState = null
-        wsSession = null
+
+        shutdownTransport(
+            closeCode = null,
+            closeReason = null,
+            cancelProcessing = false,
+        )
+
         onClose?.invoke(
             GatewayCloseInfo(
                 code = code,
@@ -401,6 +453,44 @@ class GatewayClient {
             ),
         )
         debug("close code=$code reason=$reason resumable=${!fatal && snapshot != null}")
+    }
+
+    private fun shutdownTransport(
+        closeCode: Int?,
+        closeReason: String?,
+        cancelProcessing: Boolean,
+    ) {
+        closed = true
+        readyReceived = false
+        stopHeartbeat()
+        helloTimerJob?.cancel()
+        helloTimerJob = null
+        activeConnectionGeneration = connectionGeneration.incrementAndGet()
+
+        val session = wsSession
+        wsSession = null
+        val client = httpClient
+        httpClient = null
+
+        if (cancelProcessing) {
+            processingJob?.cancel()
+            processingJob = null
+        }
+
+        if (closeCode != null) {
+            runCatching { session?.close(closeCode, closeReason ?: "") }
+        }
+        runCatching { client?.dispatcher?.executorService?.shutdown() }
+    }
+
+    private fun isActiveGeneration(generation: Long): Boolean =
+        generation == activeConnectionGeneration
+
+    private fun publishFrame(frame: GatewayFrame) {
+        val result = incomingChannel.trySend(frame)
+        if (result.isFailure) {
+            result.exceptionOrNull()?.let { onError?.invoke(it) }
+        }
     }
 
     private fun debug(msg: String) {

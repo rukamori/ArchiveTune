@@ -50,86 +50,90 @@ private class LazyCache(
 
     @Volatile private var cache: SimpleCache? = null
 
-    private fun delegate(): SimpleCache = cache ?: synchronized(lock) { cache ?: create().also { cache = it } }
+    private fun delegateLocked(): SimpleCache = cache ?: create().also { cache = it }
+
+    private inline fun <T> withDelegate(block: (SimpleCache) -> T): T =
+        synchronized(lock) {
+            block(delegateLocked())
+        }
 
     override fun addListener(
         key: String,
         listener: Cache.Listener,
-    ) = delegate().addListener(key, listener)
+    ) = withDelegate { cache -> cache.addListener(key, listener) }
 
     override fun removeListener(
         key: String,
         listener: Cache.Listener,
-    ) = delegate().removeListener(key, listener)
+    ) = withDelegate { cache -> cache.removeListener(key, listener) }
 
-    override fun getCachedSpans(key: String): NavigableSet<CacheSpan> = delegate().getCachedSpans(key)
+    override fun getCachedSpans(key: String): NavigableSet<CacheSpan> = withDelegate { cache -> cache.getCachedSpans(key) }
 
-    override fun getKeys(): NavigableSet<String> = TreeSet(delegate().keys)
+    override fun getKeys(): NavigableSet<String> = withDelegate { cache -> TreeSet(cache.keys) }
 
-    override fun getCacheSpace(): Long = delegate().cacheSpace
+    override fun getCacheSpace(): Long = withDelegate { cache -> cache.cacheSpace }
 
-    override fun getUid(): Long = delegate().uid
+    override fun getUid(): Long = withDelegate { cache -> cache.uid }
 
     override fun getCachedLength(
         key: String,
         position: Long,
         length: Long,
-    ): Long = delegate().getCachedLength(key, position, length)
+    ): Long = withDelegate { cache -> cache.getCachedLength(key, position, length) }
 
     override fun getCachedBytes(
         key: String,
         position: Long,
         length: Long,
-    ): Long = delegate().getCachedBytes(key, position, length)
+    ): Long = withDelegate { cache -> cache.getCachedBytes(key, position, length) }
 
     override fun applyContentMetadataMutations(
         key: String,
         mutations: ContentMetadataMutations,
-    ) = delegate().applyContentMetadataMutations(key, mutations)
+    ) = withDelegate { cache -> cache.applyContentMetadataMutations(key, mutations) }
 
-    override fun getContentMetadata(key: String): ContentMetadata = delegate().getContentMetadata(key)
+    override fun getContentMetadata(key: String): ContentMetadata = withDelegate { cache -> cache.getContentMetadata(key) }
 
     override fun startReadWrite(
         key: String,
         position: Long,
         length: Long,
-    ): CacheSpan = delegate().startReadWrite(key, position, length)
+    ): CacheSpan = withDelegate { cache -> cache.startReadWrite(key, position, length) }
 
     override fun startReadWriteNonBlocking(
         key: String,
         position: Long,
         length: Long,
-    ): CacheSpan? = delegate().startReadWriteNonBlocking(key, position, length)
+    ): CacheSpan? = withDelegate { cache -> cache.startReadWriteNonBlocking(key, position, length) }
 
     override fun startFile(
         key: String,
         position: Long,
         maxLength: Long,
-    ): File = delegate().startFile(key, position, maxLength)
+    ): File = withDelegate { cache -> cache.startFile(key, position, maxLength) }
 
     override fun commitFile(
         file: File,
         length: Long,
-    ) = delegate().commitFile(file, length)
+    ) = withDelegate { cache -> cache.commitFile(file, length) }
 
-    override fun releaseHoleSpan(holeSpan: CacheSpan) = delegate().releaseHoleSpan(holeSpan)
+    override fun releaseHoleSpan(holeSpan: CacheSpan) = withDelegate { cache -> cache.releaseHoleSpan(holeSpan) }
 
-    override fun removeSpan(span: CacheSpan) = delegate().removeSpan(span)
+    override fun removeSpan(span: CacheSpan) = withDelegate { cache -> cache.removeSpan(span) }
 
-    override fun removeResource(key: String) = delegate().removeResource(key)
+    override fun removeResource(key: String) = withDelegate { cache -> cache.removeResource(key) }
 
     override fun isCached(
         key: String,
         position: Long,
         length: Long,
-    ): Boolean = delegate().isCached(key, position, length)
+    ): Boolean = withDelegate { cache -> cache.isCached(key, position, length) }
 
     override fun release() {
-        val cacheToRelease =
-            synchronized(lock) {
-                cache.also { cache = null }
-            }
-        cacheToRelease?.release()
+        synchronized(lock) {
+            cache?.release()
+            cache = null
+        }
     }
 }
 

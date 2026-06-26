@@ -373,12 +373,9 @@
     <string name="ai_fetch_models">모델 가져오기</string>
     <string name="ai_model_search">모델 검색</string>
     <string name="ai_model_no_results">검색어와 일치하는 모델이 없습니다.</string>
-    <string name="ai_translation">AI 번역</string>
-    <string name="ai_translation_target">번역 대상 언어</string>
     <string name="ai_api_connected">API 연결됨</string>
     <string name="ai_api_test_failed">API 테스트 실패</string>
     <string name="ai_translation_menu">AI 번역</string>
-    <string name="ai_translating_lyrics">가사 번역 중…</string>
     <string name="aod_customize_thumbnail_size">썸네일 크기</string>
     <string name="aod_control_filled">채우기</string>
     <string name="music_recognition_history">음악 인식 기록</string>

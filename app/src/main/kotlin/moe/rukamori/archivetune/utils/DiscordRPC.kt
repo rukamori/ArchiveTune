@@ -30,7 +30,6 @@ import moe.rukamori.archivetune.constants.DiscordLargeImageTypeKey
 import moe.rukamori.archivetune.constants.DiscordLargeTextCustomKey
 import moe.rukamori.archivetune.constants.DiscordLargeTextSourceKey
 import moe.rukamori.archivetune.constants.DiscordPresenceStatusKey
-import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
 import moe.rukamori.archivetune.constants.DiscordSmallImageCustomUrlKey
 import moe.rukamori.archivetune.constants.DiscordSmallImageTypeKey
 import moe.rukamori.archivetune.constants.EnableTranslatorKey
@@ -86,13 +85,6 @@ class DiscordRPC(
             translationCache.clear()
             DiscordImageResolver.clearCache()
             lastSongId = song.song.id
-        }
-
-        val showWhenPaused = context.dataStore[DiscordShowWhenPausedKey] ?: false
-        if (isPaused && !showWhenPaused) {
-            Timber.tag(TAG).v("Paused and show-when-paused is disabled; clearing Discord presence")
-            stopActivity()
-            return@runCatching
         }
 
         val translatedMap = translateSongFields(song)
@@ -195,7 +187,6 @@ class DiscordRPC(
                 song = song,
                 currentPlaybackTimeMillis = currentPlaybackTimeMillis,
                 isPaused = isPaused,
-                showWhenPaused = showWhenPaused,
             )
 
         val activity =
@@ -399,9 +390,8 @@ class DiscordRPC(
         song: Song,
         currentPlaybackTimeMillis: Long,
         isPaused: Boolean,
-        showWhenPaused: Boolean,
     ): DiscordPresenceTimestamps {
-        if (isPaused && showWhenPaused) {
+        if (isPaused) {
             val pausedStartMs = System.currentTimeMillis() - currentPlaybackTimeMillis.coerceAtLeast(0L)
             return DiscordPresenceTimestamps(
                 startEpochSeconds = pausedStartMs / 1000L,

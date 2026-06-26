@@ -44,7 +44,6 @@ import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -87,7 +86,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.bush.translator.Language
@@ -101,6 +102,7 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
+import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.DefaultDialog
@@ -118,6 +120,11 @@ import moe.rukamori.archivetune.viewmodels.LyricsSearchScreenState
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
+
+private enum class LyricsTranslationSource {
+    AI_TRANSLATION,
+    TRANSLATION,
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -210,68 +217,13 @@ fun LyricsMenu(
             (aiProvider != AiProvider.CUSTOM || aiCustomEndpoint.isNotBlank()) &&
             aiValidationStatus != AiApiValidationStatus.FAILED
 
-    var showAiTranslateDialog by rememberSaveable { mutableStateOf(false) }
+    var translationJob by remember { mutableStateOf<Job?>(null) }
+    var isStandardTranslating by remember { mutableStateOf(false) }
+    var isDialogAiTranslationRunning by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.aiTranslationEvents.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    if (showAiTranslateDialog) {
-        DefaultDialog(
-            onDismiss = { showAiTranslateDialog = false },
-            icon = {
-                Icon(painter = painterResource(R.drawable.auto_awesome), contentDescription = null)
-            },
-            title = { Text(stringResource(R.string.ai_translation_menu)) },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        showAiTranslateDialog = false
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                TextButton(
-                    onClick = {
-                        showAiTranslateDialog = false
-                        viewModel.translateLyricsWithAi(
-                            mediaMetadata = mediaMetadataProvider(),
-                            lyrics = lyricsProvider()?.lyrics.orEmpty(),
-                        )
-                        onDismiss()
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(R.string.translate_in_background))
-                }
-            },
-        ) {
-            Text(
-                text = stringResource(R.string.ai_translate_in_background_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-
-    if (isAiTranslating) {
-        DefaultDialog(onDismiss = {}) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(12.dp),
-            ) {
-                LoadingIndicator(modifier = Modifier.size(40.dp))
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.ai_translating_lyrics),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                )
-            }
         }
     }
 
@@ -415,6 +367,16 @@ fun LyricsMenu(
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    val defaultLanguageCode =
+        remember(configuration) {
+            configuration.locales
+                .get(0)
+                .getDisplayLanguage(Locale.ENGLISH)
+                .uppercase(Locale.US)
+                .replace(' ', '_')
+        }
+    val (targetLanguage, setTargetLanguage) = rememberPreference(TranslatorTargetLangKey, defaultLanguageCode)
+    val isTranslationInProgress = isStandardTranslating || isAiTranslating
 
     if (showTranslateDialog) {
         val initialText = lyricsProvider()?.lyrics.orEmpty()
@@ -428,143 +390,285 @@ fun LyricsMenu(
                 value = TranslatorLanguages.load(context)
             }
         }
-        var expanded by remember { mutableStateOf(false) }
-        val defaultLanguageCode =
-            remember(configuration) {
-                configuration.locales
-                    .get(0)
-                    .getDisplayLanguage(Locale.ENGLISH)
-                    .uppercase(Locale.US)
-                    .replace(' ', '_')
-            }
-        var selectedLanguageCode by rememberSaveable { mutableStateOf(defaultLanguageCode) }
-        var isTranslating by remember { mutableStateOf(false) }
+        var sourceExpanded by remember { mutableStateOf(false) }
+        var languageExpanded by remember { mutableStateOf(false) }
+        var selectedSource by rememberSaveable {
+            mutableStateOf(
+                if (isAiTranslationEnabled) {
+                    LyricsTranslationSource.AI_TRANSLATION
+                } else {
+                    LyricsTranslationSource.TRANSLATION
+                },
+            )
+        }
+        var selectedLanguageCode by rememberSaveable { mutableStateOf(targetLanguage.ifBlank { defaultLanguageCode }) }
         val selectedLanguageName =
             languages.firstOrNull { it.code == selectedLanguageCode }?.name ?: selectedLanguageCode
+        val canUseSelectedSource = selectedSource != LyricsTranslationSource.AI_TRANSLATION || isAiTranslationEnabled
 
-        DefaultDialog(
-            onDismiss = { showTranslateDialog = false },
-            icon = {
-                Icon(painter = painterResource(R.drawable.translate), contentDescription = null)
-            },
-            title = { Text(stringResource(R.string.translate)) },
-            buttons = {
-                TextButton(onClick = { showTranslateDialog = false }, shapes = ButtonDefaults.shapes()) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                if (isTranslating) {
-                    CircularWavyProgressIndicator(
-                        modifier =
-                            Modifier
-                                .size(20.dp)
-                                .align(Alignment.CenterVertically),
-                    )
-                } else {
-                    TextButton(onClick = {
-                        isTranslating = true
-                        val inputText = textFieldValue.text
-                        val languageCode = selectedLanguageCode
-                        val languageName = selectedLanguageName
-                        coroutineScope.launch {
-                            try {
-                                val lang =
-                                    try {
-                                        Language(languageCode)
-                                    } catch (e: Exception) {
-                                        try {
-                                            Language(languageName)
-                                        } catch (_: Exception) {
-                                            null
-                                        }
-                                    }
+        LaunchedEffect(isAiTranslationEnabled) {
+            if (!isAiTranslationEnabled && selectedSource == LyricsTranslationSource.AI_TRANSLATION) {
+                selectedSource = LyricsTranslationSource.TRANSLATION
+            }
+        }
 
-                                if (lang == null) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            context.getString(R.string.unsupported_language, languageName),
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                    return@launch
-                                }
+        LaunchedEffect(isAiTranslating, isDialogAiTranslationRunning) {
+            if (isDialogAiTranslationRunning && !isAiTranslating) {
+                isDialogAiTranslationRunning = false
+                showTranslateDialog = false
+            }
+        }
 
-                                val translatedLyrics = translateLyricsWithTranslator(inputText, lang)
-                                viewModel.updateLyrics(
-                                    mediaMetadata = mediaMetadataProvider(),
-                                    lyrics = translatedLyrics,
-                                    source = LyricsEntity.Source.AI_TRANSLATION,
-                                )
-                                showTranslateDialog = false
-                            } catch (e: Exception) {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString()),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                            } finally {
-                                isTranslating = false
-                            }
-                        }
-                    }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.translate))
-                    }
-                }
-            },
+        BasicAlertDialog(
+            onDismissRequest = {},
+            properties =
+                DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false,
+                    usePlatformDefaultWidth = false,
+                ),
+            modifier =
+                Modifier
+                    .padding(24.dp)
+                    .navigationBarsPadding()
+                    .imePadding(),
         ) {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
-                    value = textFieldValue,
-                    onValueChange = setTextFieldValue,
-                    singleLine = false,
-                    label = { Text(stringResource(R.string.lyrics)) },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 80.dp, max = 220.dp),
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.language_label),
-                        modifier = Modifier.width(96.dp),
+            Surface(
+                shape = AlertDialogDefaults.shape,
+                color = AlertDialogDefaults.containerColor,
+                tonalElevation = AlertDialogDefaults.TonalElevation,
+                modifier = Modifier.widthIn(max = 560.dp),
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Icon(
+                        painter = painterResource(R.drawable.translate),
+                        contentDescription = null,
+                        tint = AlertDialogDefaults.iconContentColor,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
-
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it },
-                        modifier = Modifier.weight(1f),
-                    ) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.translate),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = AlertDialogDefaults.titleContentColor,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(
-                            value = selectedLanguageName,
-                            onValueChange = {},
-                            readOnly = true,
-                            singleLine = true,
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
+                            value = textFieldValue,
+                            onValueChange = setTextFieldValue,
+                            enabled = !isTranslationInProgress,
+                            singleLine = false,
+                            label = { Text(stringResource(R.string.lyrics)) },
                             modifier =
                                 Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    .heightIn(min = 80.dp, max = 220.dp),
                         )
 
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                        ) {
-                            languages.forEach { lang ->
-                                DropdownMenuItem(
-                                    text = { Text(lang.name) },
-                                    onClick = {
-                                        selectedLanguageCode = lang.code
-                                        expanded = false
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.source),
+                                modifier = Modifier.width(96.dp),
+                            )
+
+                            ExposedDropdownMenuBox(
+                                expanded = sourceExpanded,
+                                onExpandedChange = {
+                                    if (!isTranslationInProgress) sourceExpanded = it
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                OutlinedTextField(
+                                    value =
+                                        when (selectedSource) {
+                                            LyricsTranslationSource.AI_TRANSLATION -> stringResource(R.string.ai_translation_menu)
+                                            LyricsTranslationSource.TRANSLATION -> stringResource(R.string.translate)
+                                        },
+                                    onValueChange = {},
+                                    enabled = !isTranslationInProgress,
+                                    readOnly = true,
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded)
                                     },
+                                    modifier =
+                                        Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth(),
                                 )
+
+                                ExposedDropdownMenu(
+                                    expanded = sourceExpanded,
+                                    onDismissRequest = { sourceExpanded = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ai_translation_menu)) },
+                                        enabled = isAiTranslationEnabled,
+                                        onClick = {
+                                            selectedSource = LyricsTranslationSource.AI_TRANSLATION
+                                            sourceExpanded = false
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.translate)) },
+                                        onClick = {
+                                            selectedSource = LyricsTranslationSource.TRANSLATION
+                                            sourceExpanded = false
+                                        },
+                                    )
+                                }
                             }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.language_label),
+                                modifier = Modifier.width(96.dp),
+                            )
+
+                            ExposedDropdownMenuBox(
+                                expanded = languageExpanded,
+                                onExpandedChange = {
+                                    if (!isTranslationInProgress) languageExpanded = it
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedLanguageName,
+                                    onValueChange = {},
+                                    enabled = !isTranslationInProgress,
+                                    readOnly = true,
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded)
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth(),
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = languageExpanded,
+                                    onDismissRequest = { languageExpanded = false },
+                                ) {
+                                    languages.forEach { lang ->
+                                        DropdownMenuItem(
+                                            text = { Text(lang.name) },
+                                            onClick = {
+                                                selectedLanguageCode = lang.code
+                                                setTargetLanguage(lang.code)
+                                                languageExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                translationJob?.cancel()
+                                translationJob = null
+                                isStandardTranslating = false
+                                if (isAiTranslating) {
+                                    viewModel.cancelAiTranslation()
+                                }
+                                isDialogAiTranslationRunning = false
+                                showTranslateDialog = false
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Text(stringResource(android.R.string.cancel))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        FilledTonalButton(
+                            enabled = !isTranslationInProgress && canUseSelectedSource,
+                            onClick = {
+                                val inputText = textFieldValue.text
+                                val languageCode = selectedLanguageCode
+                                val languageName = selectedLanguageName
+                                setTargetLanguage(languageCode)
+
+                                when (selectedSource) {
+                                    LyricsTranslationSource.AI_TRANSLATION -> {
+                                        isDialogAiTranslationRunning = true
+                                        viewModel.translateLyricsWithAi(
+                                            mediaMetadata = mediaMetadataProvider(),
+                                            lyrics = inputText,
+                                            targetLanguage = languageCode,
+                                        )
+                                    }
+
+                                    LyricsTranslationSource.TRANSLATION -> {
+                                        isStandardTranslating = true
+                                        translationJob =
+                                            coroutineScope.launch {
+                                                try {
+                                                    val lang =
+                                                        try {
+                                                            Language(languageCode)
+                                                        } catch (e: Exception) {
+                                                            try {
+                                                                Language(languageName)
+                                                            } catch (_: Exception) {
+                                                                null
+                                                            }
+                                                        }
+
+                                                    if (lang == null) {
+                                                        Toast
+                                                            .makeText(
+                                                                context,
+                                                                context.getString(R.string.unsupported_language, languageName),
+                                                                Toast.LENGTH_SHORT,
+                                                            ).show()
+                                                        return@launch
+                                                    }
+
+                                                    val translatedLyrics = translateLyricsWithTranslator(inputText, lang)
+                                                    viewModel.updateLyrics(
+                                                        mediaMetadata = mediaMetadataProvider(),
+                                                        lyrics = translatedLyrics,
+                                                        source = LyricsEntity.Source.AI_TRANSLATION,
+                                                    )
+                                                    showTranslateDialog = false
+                                                } catch (e: CancellationException) {
+                                                    throw e
+                                                } catch (e: Exception) {
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString()),
+                                                            Toast.LENGTH_SHORT,
+                                                        ).show()
+                                                } finally {
+                                                    isStandardTranslating = false
+                                                    translationJob = null
+                                                }
+                                            }
+                                    }
+                                }
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            if (isTranslationInProgress) {
+                                LoadingIndicator(modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(stringResource(R.string.translate))
                         }
                     }
                 }
@@ -626,23 +730,6 @@ fun LyricsMenu(
                                 text = stringResource(R.string.translate),
                                 onClick = { showTranslateDialog = true },
                                 enabled = isTranslateEnabled,
-                            ),
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.auto_awesome),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                text = stringResource(R.string.ai_translation_menu),
-                                onClick = {
-                                    if (isAiProviderConfigured) {
-                                        showAiTranslateDialog = true
-                                    }
-                                },
-                                enabled = isAiProviderConfigured && isAiTranslationEnabled && !isAiTranslating,
                             ),
                             NewAction(
                                 icon = {

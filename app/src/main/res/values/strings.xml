@@ -245,6 +245,7 @@
     <string name="song_title">Song title</string>
     <string name="song_artists">Song artists</string>
     <string name="unsupported_language">Unsupported language: %1$s</string>
+    <string name="source">Source</string>
     <string name="save">Save</string>
     <string name="edit_playlist">Edit playlist</string>
     <string name="create_playlist">Create playlist</string>
@@ -496,6 +497,7 @@
     <string name="stream_bypass_proxy">Bypass proxy for streams</string>
     <string name="stream_bypass_proxy_desc">Use your direct IP for stream playback to avoid IP mismatch</string>
     <string name="enable_betterlyrics">Enable BetterLyrics</string>
+    <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
     <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
@@ -731,10 +733,6 @@
     <string name="lyrics">Lyrics</string>
     <string name="translation_success">Translation saved</string>
     <string name="translation_failed">Translation failed</string>
-    <string name="translate_in_background">Translate in background</string>
-    <string name="ai_translate_in_background_desc">The translation will continue in the background. You will be notified when it completes.</string>
-    <string name="ai_translation_notification_channel_name">AI Translation</string>
-    <string name="ai_translation_notification_title">AI Translation</string>
     <string name="discord_button_options">Button Options</string>
     <string name="discord_image_options">Image Options</string>
     <string name="refresh">Refresh</string>
@@ -885,7 +883,7 @@
     <string name="onboarding_community_donate_desc">Support ongoing development.</string>
     <string name="you_might_like">You might like</string>
     <string name="refresh_suggestions">Refresh suggestions</string>
-    <string name="you_might_like_source">You might like source</string>
+    <string name="you_might_like_source">Playlist recommendation source</string>
     <string name="playlist_suggestion_source_title">Playlist title</string>
     <string name="playlist_suggestion_source_content">Playlist content</string>
     <string name="playlist_suggestion_source_both">Playlist title and content</string>
