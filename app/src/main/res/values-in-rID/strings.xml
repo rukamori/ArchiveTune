@@ -168,7 +168,7 @@
     <string name="undo">Batalkan</string>
     <string name="lyrics_not_found">Lirik tidak ditemukan</string>
     <string name="lyrics_word_sync">Sinkronisasi Kata</string>
-    <string name="sleep_timer">Pewaktu tidur</string>
+    <string name="sleep_timer">Pengatur waktu tidur</string>
     <string name="end_of_song">Akhir lagu</string>
     <plurals name="minute">
         <item quantity="other">%d menit</item>
