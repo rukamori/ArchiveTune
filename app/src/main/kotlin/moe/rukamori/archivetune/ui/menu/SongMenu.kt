@@ -563,17 +563,25 @@ fun SongMenu(
                             },
                             text = exportText,
                             onClick = {
-                                val extension = when {
-                                    song.format?.mimeType?.contains("webm") == true || song.format?.mimeType?.contains("opus") == true -> "opus"
-                                    song.format?.mimeType?.contains("mp4") == true || song.format?.mimeType?.contains("m4a") == true -> "m4a"
-                                    else -> "m4a"
-                                }
-                                val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                                val artistName = song.artists.firstOrNull()?.name?.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                                val defaultFileName = if (artistName != null) "$artistName - $cleanTitle.$extension" else "$cleanTitle.$extension"
+                                if (downloadUtil.isSongFullyCached(song.id)) {
+                                    val extension = when {
+                                        song.format?.mimeType?.contains("webm") == true || song.format?.mimeType?.contains("opus") == true -> "opus"
+                                        song.format?.mimeType?.contains("mp4") == true || song.format?.mimeType?.contains("m4a") == true -> "m4a"
+                                        else -> "m4a"
+                                    }
+                                    val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                    val artistName = song.artists.firstOrNull()?.name?.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                    val defaultFileName = if (artistName != null) "$artistName - $cleanTitle.$extension" else "$cleanTitle.$extension"
 
-                                pendingExportSong = song
-                                exportLauncher.launch(defaultFileName)
+                                    pendingExportSong = song
+                                    exportLauncher.launch(defaultFileName)
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        R.string.export_failed_not_cached,
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             },
                         ),
                     )

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -223,6 +224,31 @@ class DownloadUtil
 
         fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
 
+        fun isSongFullyCached(songId: String): Boolean {
+            val download = downloads.value[songId]
+            if (download != null && download.state == Download.STATE_COMPLETED) {
+                return true
+            }
+            if (downloadCache.keys.contains(songId)) {
+                return true
+            }
+            val format = runBlocking(Dispatchers.IO) {
+                runCatching {
+                    database.format(songId).firstOrNull()
+                }.getOrNull()
+            }
+            val contentLength = format?.contentLength
+            if (contentLength != null && contentLength > 0L) {
+                if (playerCache.isCached(songId, 0, contentLength)) {
+                    return true
+                }
+                if (downloadCache.isCached(songId, 0, contentLength)) {
+                    return true
+                }
+            }
+            return false
+        }
+
         suspend fun exportSong(
             context: Context,
             songId: String,
@@ -230,6 +256,9 @@ class DownloadUtil
         ): Result<Unit> =
             withContext(Dispatchers.IO) {
                 runCatching {
+                    if (!isSongFullyCached(songId)) {
+                        throw IllegalStateException(context.getString(R.string.export_failed_not_cached))
+                    }
                     val contentResolver = context.contentResolver
                     val outputStream =
                         contentResolver.openOutputStream(destUri)
@@ -248,38 +277,7 @@ class DownloadUtil
                             if (success) return@runCatching
                         }
 
-                        // 3. Fallback: Fetch stream and download it on-the-fly
-                        val lowDataModeActive = context.isLowDataModeActive()
-                        val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
-                        val playbackData =
-                            context.retryWithoutPlaybackLoginContext {
-                                YTPlayerUtils.playerResponseForDownload(
-                                    songId,
-                                    audioQuality = requestedAudioQuality,
-                                    connectivityManager = connectivityManager,
-                                    networkMetered = lowDataModeActive,
-                                )
-                            }.getOrThrow()
-
-                        val request =
-                            Request
-                                .Builder()
-                                .url(playbackData.streamUrl)
-                                .build()
-
-                        mediaOkHttpClient.newCall(request).execute().use { response ->
-                            if (!response.isSuccessful) {
-                                throw IllegalStateException("HTTP ${response.code}")
-                            }
-                            val body = response.body ?: throw IllegalStateException("Empty response body")
-                            body.byteStream().use { inputStream ->
-                                val buffer = ByteArray(8192)
-                                var bytesRead: Int
-                                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                                    os.write(buffer, 0, bytesRead)
-                                }
-                            }
-                        }
+                        throw IllegalStateException("Failed to read cached data")
                     }
                 }
             }

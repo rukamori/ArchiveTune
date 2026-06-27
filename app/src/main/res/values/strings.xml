@@ -1015,4 +1015,5 @@
     <string name="export_started">Export started…</string>
     <string name="export_success">Exported successfully</string>
     <string name="export_failed">Export failed: %s</string>
+    <string name="export_failed_not_cached">This song is not fully cached or downloaded yet</string>
 </resources>
