@@ -477,7 +477,7 @@ fun NavGraphBuilder.navigationBuilder(
         ChangelogScreen(navController, scrollBehavior, channel = channel)
     }
     composable("settings/about") {
-        AboutScreen(navController, scrollBehavior)
+        AboutScreen(navController)
     }
     composable("settings/po_token") {
         PoTokenScreen(navController, scrollBehavior)

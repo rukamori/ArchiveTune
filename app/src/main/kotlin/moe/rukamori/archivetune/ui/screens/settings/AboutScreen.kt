@@ -45,7 +45,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
@@ -56,7 +55,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,7 +102,6 @@ import moe.rukamori.archivetune.viewmodels.TeamMemberCollection
 @Composable
 fun AboutScreen(
     navController: NavController,
-    scrollBehavior: TopAppBarScrollBehavior,
     viewModel: AboutViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -120,7 +117,6 @@ fun AboutScreen(
 
     AboutScreenContent(
         state = state,
-        scrollBehavior = scrollBehavior,
         onNavigateUp = navController::navigateUp,
         onNavigateHome = navController::backToMain,
         onOpenUri = viewModel::openUri,
@@ -139,7 +135,6 @@ fun AboutScreen(
 @Composable
 private fun AboutScreenContent(
     state: AboutScreenState,
-    scrollBehavior: TopAppBarScrollBehavior,
     onNavigateUp: () -> Unit,
     onNavigateHome: () -> Unit,
     onOpenUri: (String) -> Unit,
@@ -157,12 +152,11 @@ private fun AboutScreenContent(
     Scaffold(
         modifier =
             Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeFlexibleTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.about),
@@ -180,23 +174,6 @@ private fun AboutScreenContent(
                         )
                     }
                 },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                actions = {
-                    if (state is AboutScreenState.Success) {
-                        AboutOverflowMenu(
-                            expanded = state.model.isOverflowMenuExpanded,
-                            onShowMenu = onShowOverflowMenu,
-                            onDismissMenu = onDismissOverflowMenu,
-                            onOpenTranslationContributors = onOpenTranslationContributors,
-                            onOpenDependencyLicenses = onOpenDependencyLicenses,
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
