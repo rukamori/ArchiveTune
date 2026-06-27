@@ -82,6 +82,7 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.together.TogetherSessionState
+import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -342,10 +343,16 @@ private fun MiniPlayerArtwork(
                         shape = CircleShape,
                     ),
         ) {
-            val thumbnailUrl = mediaMetadata?.thumbnailUrl
-            if (thumbnailUrl != null) {
+            val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
+            if (baseThumbnailUrl != null) {
+                val thumbnailSwapState = rememberThumbnailSwapState(
+                    videoId = mediaMetadata?.id,
+                    ytmUrl = baseThumbnailUrl,
+                    isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                    lowDataMode = rememberLowDataModeActive(),
+                )
                 AsyncImage(
-                    model = thumbnailUrl,
+                    model = thumbnailSwapState.displayUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

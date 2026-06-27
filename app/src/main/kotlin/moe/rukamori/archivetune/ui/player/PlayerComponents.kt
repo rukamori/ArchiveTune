@@ -126,6 +126,7 @@ import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 
 private const val PlayerBackgroundMaxBlurRadius = 64f
@@ -2054,7 +2055,14 @@ fun V8PlayerContent(
 ) {
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
-    val artworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val thumbnailSwapState = rememberThumbnailSwapState(
+        videoId = mediaMetadata.id,
+        ytmUrl = baseArtworkUrl,
+        isMusicVideo = mediaMetadata.isMusicVideo,
+        lowDataMode = rememberLowDataModeActive(),
+    )
+    val artworkUrl = thumbnailSwapState.displayUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
     val onMenuClick = {
         menuState.show {
@@ -2937,7 +2945,14 @@ fun V9PlayerContent(
     modifier: Modifier = Modifier,
     landscape: Boolean = false,
 ) {
-    val artworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val thumbnailSwapState = rememberThumbnailSwapState(
+        videoId = mediaMetadata.id,
+        ytmUrl = baseArtworkUrl,
+        isMusicVideo = mediaMetadata.isMusicVideo,
+        lowDataMode = rememberLowDataModeActive(),
+    )
+    val artworkUrl = thumbnailSwapState.displayUrl
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
     val onTitleClick = titleActions.onTitleClick
     val onArtistClick = titleActions.onArtistClick
@@ -3671,11 +3686,20 @@ fun PlayerBackground(
 ) {
     val effectiveBlurRadius = blurRadius.coerceIn(0f, PlayerBackgroundMaxBlurRadius)
     val shouldApplyBlur = !disableBlur && effectiveBlurRadius > 0f
+
+    val backgroundSwapState = rememberThumbnailSwapState(
+        videoId = mediaMetadata?.id,
+        ytmUrl = mediaMetadata?.thumbnailUrl,
+        isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+        lowDataMode = rememberLowDataModeActive(),
+    )
+    val backgroundThumbnailUrl = backgroundSwapState.displayUrl
+
     Box(modifier = Modifier.fillMaxSize()) {
         when (playerBackground) {
             PlayerBackgroundStyle.BLUR -> {
                 AnimatedContent(
-                    targetState = mediaMetadata?.thumbnailUrl,
+                    targetState = backgroundThumbnailUrl,
                     transitionSpec = {
                         fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))
                     },
@@ -3784,7 +3808,7 @@ fun PlayerBackground(
 
             PlayerBackgroundStyle.BLUR_GRADIENT -> {
                 AnimatedContent(
-                    targetState = mediaMetadata?.thumbnailUrl,
+                    targetState = backgroundThumbnailUrl,
                     transitionSpec = {
                         fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))
                     },

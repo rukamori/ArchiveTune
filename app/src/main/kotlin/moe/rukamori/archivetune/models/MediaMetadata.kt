@@ -11,6 +11,8 @@ import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import moe.rukamori.archivetune.ui.utils.resize
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -29,6 +31,7 @@ data class MediaMetadata(
     val liked: Boolean = false,
     val likedDate: LocalDateTime? = null,
     val inLibrary: LocalDateTime? = null,
+    val isMusicVideo: Boolean = false,
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L
@@ -119,4 +122,6 @@ fun SongItem.toMediaMetadata() =
             },
         explicit = explicit,
         setVideoId = setVideoId,
+        isMusicVideo = endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType in
+            listOf(MUSIC_VIDEO_TYPE_OMV, MUSIC_VIDEO_TYPE_UGC),
     )

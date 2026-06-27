@@ -1272,8 +1272,14 @@ fun BottomSheetPlayer(
                             Modifier
                                 .fillMaxSize(),
                     ) {
+                        val v7SwapState = rememberThumbnailSwapState(
+                            videoId = mediaMetadata?.id,
+                            ytmUrl = mediaMetadata?.thumbnailUrl,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            lowDataMode = lowDataModeActive,
+                        )
                         V7PlayerBackdrop(
-                            thumbnailUrl = mediaMetadata?.thumbnailUrl,
+                            thumbnailUrl = v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1327,8 +1333,14 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier.fillMaxSize(),
                     ) {
+                        val v8SwapState = rememberThumbnailSwapState(
+                            videoId = mediaMetadata?.id,
+                            ytmUrl = mediaMetadata?.thumbnailUrl,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            lowDataMode = lowDataModeActive,
+                        )
                         V8PlayerBackdrop(
-                            thumbnailUrl = mediaMetadata?.thumbnailUrl,
+                            thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                         )
 
@@ -1533,8 +1545,14 @@ fun BottomSheetPlayer(
                             Modifier
                                 .fillMaxSize(),
                     ) {
+                        val v7SwapState = rememberThumbnailSwapState(
+                            videoId = mediaMetadata?.id,
+                            ytmUrl = mediaMetadata?.thumbnailUrl,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            lowDataMode = lowDataModeActive,
+                        )
                         V7PlayerBackdrop(
-                            thumbnailUrl = mediaMetadata?.thumbnailUrl,
+                            thumbnailUrl = v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1586,8 +1604,14 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier.fillMaxSize(),
                     ) {
+                        val v8SwapState = rememberThumbnailSwapState(
+                            videoId = mediaMetadata?.id,
+                            ytmUrl = mediaMetadata?.thumbnailUrl,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            lowDataMode = lowDataModeActive,
+                        )
                         V8PlayerBackdrop(
-                            thumbnailUrl = mediaMetadata?.thumbnailUrl,
+                            thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                         )
 
