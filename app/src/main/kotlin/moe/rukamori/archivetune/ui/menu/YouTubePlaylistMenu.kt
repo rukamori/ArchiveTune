@@ -205,40 +205,73 @@ fun YouTubePlaylistMenu(
                     IconButton(
                         onClick = {
                             if (dbPlaylist?.playlist == null) {
-                                database.transaction {
-                                    val playlistEntity =
-                                        PlaylistEntity(
-                                            name = playlist.title,
-                                            browseId = playlist.id,
-                                            thumbnailUrl = playlist.thumbnail,
-                                            isEditable = false,
-                                            remoteSongCount =
-                                                playlist.songCountText?.let {
-                                                    Regex("""\d+""").find(it)?.value?.toIntOrNull()
-                                                },
-                                            playEndpointParams = playlist.playEndpoint?.params,
-                                            shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-                                            radioEndpointParams = playlist.radioEndpoint?.params,
-                                        ).toggleLike()
-                                    insert(playlistEntity)
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        songs
-                                            .ifEmpty {
-                                                YouTube
-                                                    .playlist(playlist.id)
-                                                    .completed()
-                                                    .getOrNull()
-                                                    ?.songs
-                                                    .orEmpty()
-                                            }.onEach { song -> insert(song.toMediaMetadata()) }
-                                            .mapIndexed { index, song ->
-                                                PlaylistSongMap(
-                                                    songId = song.id,
-                                                    playlistId = playlistEntity.id,
-                                                    position = index,
-                                                    setVideoId = song.setVideoId,
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    val fetchedSongs =
+                                        songs.ifEmpty {
+                                            YouTube
+                                                .playlist(playlist.id)
+                                                .completed()
+                                                .getOrNull()
+                                                ?.songs
+                                                .orEmpty()
+                                        }
+                                    database.withTransaction {
+                                        val existingPlaylist = playlistEntityByBrowseId(playlist.id)
+                                        val targetPlaylistId =
+                                            if (existingPlaylist == null) {
+                                                val playlistEntity =
+                                                    PlaylistEntity(
+                                                        name = playlist.title,
+                                                        browseId = playlist.id,
+                                                        thumbnailUrl = playlist.thumbnail,
+                                                        isEditable = false,
+                                                        remoteSongCount =
+                                                            playlist.songCountText?.let {
+                                                                Regex("""\d+""").find(it)?.value?.toIntOrNull()
+                                                            },
+                                                        playEndpointParams = playlist.playEndpoint?.params,
+                                                        shuffleEndpointParams = playlist.shuffleEndpoint?.params,
+                                                        radioEndpointParams = playlist.radioEndpoint?.params,
+                                                    ).toggleLike()
+                                                insert(playlistEntity)
+                                                playlistEntityByBrowseId(playlist.id)?.id ?: playlistEntity.id
+                                            } else {
+                                                val refreshedPlaylist =
+                                                    existingPlaylist.copy(
+                                                        name = playlist.title,
+                                                        browseId = playlist.id,
+                                                        thumbnailUrl = playlist.thumbnail,
+                                                        isEditable = playlist.isEditable,
+                                                        remoteSongCount =
+                                                            playlist.songCountText?.let {
+                                                                Regex("""\d+""").find(it)?.value?.toIntOrNull()
+                                                            },
+                                                        playEndpointParams = playlist.playEndpoint?.params,
+                                                        shuffleEndpointParams = playlist.shuffleEndpoint?.params,
+                                                        radioEndpointParams = playlist.radioEndpoint?.params,
+                                                    )
+                                                update(
+                                                    if (existingPlaylist.bookmarkedAt == null) {
+                                                        refreshedPlaylist.toggleLike()
+                                                    } else {
+                                                        refreshedPlaylist
+                                                    },
                                                 )
-                                            }.forEach(::insert)
+                                                existingPlaylist.id
+                                            }
+                                        if (fetchedSongs.isNotEmpty()) {
+                                            clearPlaylist(targetPlaylistId)
+                                            fetchedSongs.forEach { song -> insert(song.toMediaMetadata()) }
+                                            fetchedSongs
+                                                .mapIndexed { index, song ->
+                                                    PlaylistSongMap(
+                                                        songId = song.id,
+                                                        playlistId = targetPlaylistId,
+                                                        position = index,
+                                                        setVideoId = song.setVideoId,
+                                                    )
+                                                }.forEach(::insert)
+                                        }
                                     }
                                 }
                             } else {

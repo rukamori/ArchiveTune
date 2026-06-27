@@ -754,35 +754,68 @@ fun OnlinePlaylistScreen(
                                             onCheckedChange = {
                                                 if (dbPlaylist?.playlist == null) {
                                                     database.transaction {
-                                                        val playlistEntity =
-                                                            PlaylistEntity(
-                                                                name = playlist.title,
-                                                                browseId = playlist.id,
-                                                                thumbnailUrl =
-                                                                    playlist.thumbnail,
-                                                                isEditable =
-                                                                    playlist.isEditable,
-                                                                playEndpointParams =
-                                                                    playlist.playEndpoint
-                                                                        ?.params,
-                                                                shuffleEndpointParams =
-                                                                    playlist.shuffleEndpoint
-                                                                        ?.params,
-                                                                radioEndpointParams =
-                                                                    playlist.radioEndpoint
-                                                                        ?.params,
-                                                            ).toggleLike()
-                                                        insert(playlistEntity)
-                                                        songs
-                                                            .onEach { song -> insert(song.toMediaMetadata()) }
-                                                            .mapIndexed { index, song ->
-                                                                PlaylistSongMap(
-                                                                    songId = song.id,
-                                                                    playlistId = playlistEntity.id,
-                                                                    position = index,
-                                                                    setVideoId = song.setVideoId,
+                                                        val existingPlaylist = playlistEntityByBrowseId(playlist.id)
+                                                        val targetPlaylistId =
+                                                            if (existingPlaylist == null) {
+                                                                val playlistEntity =
+                                                                    PlaylistEntity(
+                                                                        name = playlist.title,
+                                                                        browseId = playlist.id,
+                                                                        thumbnailUrl =
+                                                                            playlist.thumbnail,
+                                                                        isEditable =
+                                                                            playlist.isEditable,
+                                                                        playEndpointParams =
+                                                                            playlist.playEndpoint
+                                                                                ?.params,
+                                                                        shuffleEndpointParams =
+                                                                            playlist.shuffleEndpoint
+                                                                                ?.params,
+                                                                        radioEndpointParams =
+                                                                            playlist.radioEndpoint
+                                                                                ?.params,
+                                                                    ).toggleLike()
+                                                                insert(playlistEntity)
+                                                                playlistEntityByBrowseId(playlist.id)?.id ?: playlistEntity.id
+                                                            } else {
+                                                                val refreshedPlaylist =
+                                                                    existingPlaylist.copy(
+                                                                        name = playlist.title,
+                                                                        browseId = playlist.id,
+                                                                        thumbnailUrl = playlist.thumbnail,
+                                                                        isEditable = playlist.isEditable,
+                                                                        playEndpointParams =
+                                                                            playlist.playEndpoint
+                                                                                ?.params,
+                                                                        shuffleEndpointParams =
+                                                                            playlist.shuffleEndpoint
+                                                                                ?.params,
+                                                                        radioEndpointParams =
+                                                                            playlist.radioEndpoint
+                                                                                ?.params,
+                                                                    )
+                                                                update(
+                                                                    if (existingPlaylist.bookmarkedAt == null) {
+                                                                        refreshedPlaylist.toggleLike()
+                                                                    } else {
+                                                                        refreshedPlaylist
+                                                                    },
                                                                 )
-                                                            }.forEach(::insert)
+                                                                existingPlaylist.id
+                                                            }
+                                                        if (songs.isNotEmpty()) {
+                                                            clearPlaylist(targetPlaylistId)
+                                                            songs
+                                                                .onEach { song -> insert(song.toMediaMetadata()) }
+                                                                .mapIndexed { index, song ->
+                                                                    PlaylistSongMap(
+                                                                        songId = song.id,
+                                                                        playlistId = targetPlaylistId,
+                                                                        position = index,
+                                                                        setVideoId = song.setVideoId,
+                                                                    )
+                                                                }.forEach(::insert)
+                                                        }
                                                     }
                                                 } else {
                                                     database.transaction {

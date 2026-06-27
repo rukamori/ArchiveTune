@@ -397,8 +397,8 @@
     <string name="player_stream_client_android_vr_desc">Streams directly without signature decryption, providing maximum speed. Suitable for the majority of users.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Extended format support at the cost of speed. JavaScript signature decryption introduces a ~5–10 second startup delay.</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-Res &amp; Lossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Prefers lossless audio streams when available.</string>
+    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Uses the ArchiveTune backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
     <string name="settings_playback_title">Playback</string>
@@ -552,12 +552,9 @@
     <string name="ai_fetch_models">Fetch models</string>
     <string name="ai_model_search">Search models</string>
     <string name="ai_model_no_results">No models match your search</string>
-    <string name="ai_translation">AI Translation</string>
-    <string name="ai_translation_target">Translation target</string>
     <string name="ai_api_connected">API connected</string>
     <string name="ai_api_test_failed">API test failed</string>
     <string name="ai_translation_menu">AI Translation</string>
-    <string name="ai_translating_lyrics">Translating The Lyrics...</string>
     <string name="about_lead_developer">Lead Developer</string>
     <string name="about_archive_tune_team">Team</string>
     <string name="about_respecter">Respecter</string>
@@ -567,7 +564,7 @@
     <string name="about_license_unknown">Unknown license</string>
     <string name="about_position_lead_dev">Eh?</string>
     <string name="about_position_developers">Developer | Team</string>
-    <string name="about_position_yuki">Just for Show &#x1F602; | Admin</string>
+    <string name="about_position_yuki">Just for Show 😂 | Admin</string>
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
     <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, ArchiveTune, and other forks</string>
     <string name="about_content_desc_github">GitHub</string>

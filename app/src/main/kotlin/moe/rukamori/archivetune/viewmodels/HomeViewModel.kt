@@ -28,10 +28,9 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
-import moe.rukamori.archivetune.constants.SelectedYtmPlaylistsKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
-import moe.rukamori.archivetune.constants.VisitorDataKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
+import moe.rukamori.archivetune.auth.SwitchSavedYouTubeAccountUseCase
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.*
 import moe.rukamori.archivetune.extensions.toEnum
@@ -94,6 +93,7 @@ class HomeViewModel
         @ApplicationContext val context: Context,
         val database: MusicDatabase,
         val syncUtils: SyncUtils,
+        private val switchSavedYouTubeAccount: SwitchSavedYouTubeAccountUseCase,
     ) : ViewModel() {
         val isRefreshing = MutableStateFlow(false)
         val isLoading = MutableStateFlow(false)
@@ -660,22 +660,7 @@ class HomeViewModel
         ) {
             viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    context.dataStore.edit { preferences ->
-                        preferences[InnerTubeCookieKey] = account.innerTubeCookie
-                        preferences[VisitorDataKey] = account.visitorData
-                        preferences[DataSyncIdKey] = account.dataSyncId
-                        preferences[AccountNameKey] = account.name
-                        preferences[AccountEmailKey] = account.email
-                        preferences[AccountChannelHandleKey] = account.channelHandle
-                        preferences[YtmSyncKey] = account.ytmSync
-                        preferences[SelectedYtmPlaylistsKey] = account.selectedYtmPlaylists
-                    }
-
-                    val authState =
-                        context.dataStore.data
-                            .first()
-                            .toPlaybackAuthState()
-                    YouTube.authState = authState
+                    val authState = switchSavedYouTubeAccount(account).getOrThrow()
 
                     if (forceSyncOnSwitch && account.ytmSync && authState.hasLoginCookie) {
                         syncUtils.performFullSync(authoritative = true)

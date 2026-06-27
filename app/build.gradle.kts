@@ -73,6 +73,12 @@ android {
                 ?: ""
         buildConfigField("String", "CANVAS_BEARER_TOKEN", "\"$canvasBearerToken\"")
 
+        val extractorBearer =
+            localProperties.getProperty("EXTRACTOR_BEARER")
+                ?: System.getenv("EXTRACTOR_BEARER")
+                ?: ""
+        buildConfigField("String", "EXTRACTOR_BEARER", "\"$extractorBearer\"")
+
         val nightlyBuildHash =
             (
                 localProperties.getProperty("NIGHTLY_BUILD_HASH")
@@ -306,10 +312,12 @@ dependencies {
     implementation(project(":lyrics:paxsenix"))
     implementation(project(":lyrics:betterlyrics"))
     implementation(project(":lyrics:unison"))
+    implementation(project(":lyrics:youlyplus"))
     implementation(project(":lastfm"))
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
+    implementation(project(":moriextractor"))
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
 
     implementation(libs.ktor.client.core)
@@ -327,8 +335,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
     implementation(libs.translator)
-    implementation("androidx.lifecycle:lifecycle-process:2.10.0")
-    implementation("androidx.compose.material3.adaptive:adaptive:1.3.0-beta02")
+    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
+    implementation("androidx.compose.material3.adaptive:adaptive:1.3.0-rc01")
     implementation(libs.accompanist.lyrics.ui)
     implementation(libs.accompanist.lyrics.core)
 

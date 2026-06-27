@@ -21,6 +21,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaMetadata as CastMetadata
 import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
@@ -212,7 +214,13 @@ private class GmsCastMediaItemConverter(
         return delegate.toMediaQueueItem(castMediaItem)
     }
 
-    override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem = delegate.toMediaItem(mediaQueueItem)
+    override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem =
+        try {
+            delegate.toMediaItem(mediaQueueItem)
+        } catch (error: RuntimeException) {
+            Timber.tag("Cast").w(error, "Falling back to manual Cast media item conversion")
+            mediaQueueItem.toFallbackMediaItem()
+        }
 
     private fun MediaItem.resolveForReceiver(): MediaItem {
         val uri = localConfiguration?.uri ?: return this
@@ -235,6 +243,94 @@ private class GmsCastMediaItemConverter(
             normalizedScheme == "file" ||
             normalizedScheme == "android.resource"
     }
+
+    private fun MediaQueueItem.toFallbackMediaItem(): MediaItem {
+        val mediaInfo = media
+        val mediaId =
+            mediaInfo?.contentId?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: mediaInfo?.contentUrl?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: itemId.toString()
+        return MediaItem
+            .Builder()
+            .setMediaId(mediaId)
+            .setUri(mediaInfo.resolveFallbackUri(mediaId))
+            .setMimeType(mediaInfo?.contentType?.trim()?.takeIf { it.isNotEmpty() })
+            .setTag(mediaInfo?.toAppMediaMetadata(mediaId))
+            .setMediaMetadata(mediaInfo.toMedia3Metadata(mediaId))
+            .build()
+    }
+
+    private fun MediaInfo?.resolveFallbackUri(mediaId: String): Uri {
+        val contentId = this?.contentId?.trim()
+        if (!contentId.isNullOrEmpty()) return contentId.toUri()
+        val contentUrl = this?.contentUrl?.trim()
+        if (!contentUrl.isNullOrEmpty()) return contentUrl.toUri()
+        return mediaId.toUri()
+    }
+
+    private fun MediaInfo?.toMedia3Metadata(
+        mediaId: String,
+    ): androidx.media3.common.MediaMetadata {
+        val castMetadata = this?.metadata
+        val title = castMetadata?.stringValue(CastMetadata.KEY_TITLE) ?: mediaId
+        val subtitle = castMetadata?.stringValue(CastMetadata.KEY_SUBTITLE)
+        val artist = castMetadata?.stringValue(CastMetadata.KEY_ARTIST) ?: subtitle
+        return androidx.media3.common.MediaMetadata
+            .Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setArtist(artist)
+            .setAlbumArtist(castMetadata?.stringValue(CastMetadata.KEY_ALBUM_ARTIST))
+            .setAlbumTitle(castMetadata?.stringValue(CastMetadata.KEY_ALBUM_TITLE))
+            .setComposer(castMetadata?.stringValue(CastMetadata.KEY_COMPOSER))
+            .setArtworkUri(castMetadata?.images?.firstOrNull()?.url)
+            .apply {
+                if (castMetadata?.containsKey(CastMetadata.KEY_DISC_NUMBER) == true) {
+                    setDiscNumber(castMetadata.getInt(CastMetadata.KEY_DISC_NUMBER))
+                }
+                if (castMetadata?.containsKey(CastMetadata.KEY_TRACK_NUMBER) == true) {
+                    setTrackNumber(castMetadata.getInt(CastMetadata.KEY_TRACK_NUMBER))
+                }
+            }.setIsPlayable(true)
+            .build()
+    }
+
+    private fun MediaInfo?.toAppMediaMetadata(
+        mediaId: String,
+    ): moe.rukamori.archivetune.models.MediaMetadata {
+        val castMetadata = this?.metadata
+        val title = castMetadata?.stringValue(CastMetadata.KEY_TITLE) ?: mediaId
+        val artistText =
+            castMetadata?.stringValue(CastMetadata.KEY_ARTIST)
+                ?: castMetadata?.stringValue(CastMetadata.KEY_SUBTITLE)
+        val albumTitle = castMetadata?.stringValue(CastMetadata.KEY_ALBUM_TITLE)
+        return moe.rukamori.archivetune.models.MediaMetadata(
+            id = mediaId,
+            title = title,
+            artists =
+                artistText
+                    ?.split(",")
+                    ?.mapNotNull { it.trim().takeIf(String::isNotBlank) }
+                    ?.map { moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = it) }
+                    .orEmpty(),
+            duration = -1,
+            thumbnailUrl = castMetadata?.images?.firstOrNull()?.url?.toString(),
+            album =
+                albumTitle?.let {
+                    moe.rukamori.archivetune.models.MediaMetadata.Album(
+                        id = it,
+                        title = it,
+                    )
+                },
+        )
+    }
+
+    private fun CastMetadata.stringValue(key: String): String? =
+        if (containsKey(key)) {
+            getString(key)?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
 }
 
 private class LocalCastMediaServer(

@@ -1251,6 +1251,9 @@ interface DatabaseDao {
     )
     fun playlistByBrowseId(browseId: String): Flow<Playlist?>
 
+    @Query("SELECT * FROM playlist WHERE browseId = :browseId LIMIT 1")
+    fun playlistEntityByBrowseId(browseId: String): PlaylistEntity?
+
     @Transaction
     @Query("SELECT COUNT(*) from playlist_song_map WHERE playlistId = :playlistId AND songId = :songId LIMIT 1")
     fun checkInPlaylist(

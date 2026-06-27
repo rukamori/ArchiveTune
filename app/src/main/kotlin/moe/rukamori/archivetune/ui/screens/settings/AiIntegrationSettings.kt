@@ -64,7 +64,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -86,9 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ai.AiModelOption
@@ -100,7 +97,6 @@ import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
-import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -108,8 +104,6 @@ import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.TranslatorLang
-import moe.rukamori.archivetune.utils.TranslatorLanguages
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.AiIntegrationSettingsViewModel
@@ -131,15 +125,7 @@ fun AiIntegrationSettings(
         rememberEnumPreference(AiApiValidationStatusKey, AiApiValidationStatus.UNKNOWN)
     val (selectedModel, setSelectedModel) = rememberPreference(AiSelectedModelKey, "")
     val (customModel, setCustomModel) = rememberPreference(AiCustomModelKey, "")
-    val (targetLanguage, setTargetLanguage) = rememberPreference(TranslatorTargetLangKey, "ENGLISH")
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
-
-    val languages by produceState(initialValue = emptyList<TranslatorLang>()) {
-        value =
-            withContext(Dispatchers.IO) {
-                TranslatorLanguages.load(context)
-            }
-    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
@@ -354,19 +340,6 @@ fun AiIntegrationSettings(
                     },
                     onClick = viewModel::testApi,
                     isEnabled = canTestApi,
-                )
-            }
-        }
-
-        PreferenceGroup(title = stringResource(R.string.ai_translation)) {
-            item {
-                ListPreference(
-                    title = { Text(stringResource(R.string.ai_translation_target)) },
-                    icon = { Icon(painterResource(R.drawable.translate), null) },
-                    selectedValue = targetLanguage,
-                    values = if (languages.isEmpty()) listOf(targetLanguage) else languages.map { it.code },
-                    valueText = { code -> languages.firstOrNull { it.code == code }?.name ?: code },
-                    onValueSelected = setTargetLanguage,
                 )
             }
         }

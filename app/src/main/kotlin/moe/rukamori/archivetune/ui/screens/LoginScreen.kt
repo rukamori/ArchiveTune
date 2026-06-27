@@ -22,35 +22,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AccountChannelHandleKey
-import moe.rukamori.archivetune.constants.AccountEmailKey
-import moe.rukamori.archivetune.constants.AccountNameKey
-import moe.rukamori.archivetune.constants.DataSyncIdKey
-import moe.rukamori.archivetune.constants.InnerTubeCookieKey
-import moe.rukamori.archivetune.constants.VisitorDataKey
-import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.PreferenceStore
-import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.putLegacyPoToken
-import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
+import moe.rukamori.archivetune.viewmodels.LoginEvent
+import moe.rukamori.archivetune.viewmodels.LoginViewModel
 
 const val LOGIN_ROUTE = "login"
 const val LOGIN_URL_ARGUMENT = "url"
@@ -70,23 +58,29 @@ private val YOUTUBE_COOKIE_URLS =
     )
 
 @SuppressLint("SetJavaScriptEnabled")
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
     startUrl: String? = null,
+    viewModel: LoginViewModel = hiltViewModel(),
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    var visitorData by rememberPreference(VisitorDataKey, "")
-    var dataSyncId by rememberPreference(DataSyncIdKey, "")
-    var innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
-    var accountName by rememberPreference(AccountNameKey, "")
-    var accountEmail by rememberPreference(AccountEmailKey, "")
-    var accountChannelHandle by rememberPreference(AccountChannelHandleKey, "")
-
-    var hasNavigated by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
+    @Suppress("UNUSED_VARIABLE")
+    val screenState by viewModel.screenState.collectAsStateWithLifecycle()
+    val loginSuccessMessage = stringResource(R.string.login_success)
     var webView: WebView? = null
+
+    LaunchedEffect(viewModel, loginSuccessMessage) {
+        viewModel.events.collect { event ->
+            when (event) {
+                LoginEvent.Completed -> {
+                    Toast.makeText(context, loginSuccessMessage, Toast.LENGTH_SHORT).show()
+                    navController.navigateUp()
+                }
+            }
+        }
+    }
 
     AndroidView(
         modifier =
@@ -108,7 +102,7 @@ fun LoginScreen(
                                     "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var v=c.get('VISITOR_DATA');if(v){Android.onRetrieveVisitorData(v);return}}var y=window.yt&&window.yt.config_;if(y&&y.VISITOR_DATA){Android.onRetrieveVisitorData(y.VISITOR_DATA);return}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/\"VISITOR_DATA\":\"([^\"]+)\"/);if(m){Android.onRetrieveVisitorData(m[1]);return}}}catch(e){}})())",
                                 )
                                 loadUrl(
-                                    "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var d=c.get('DATASYNC_ID');if(d){Android.onRetrieveDataSyncId(d);return}}var y=window.yt&&window.yt.config_;if(y&&y.DATASYNC_ID){Android.onRetrieveDataSyncId(y.DATASYNC_ID);return}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/\"DATASYNC_ID\":\"([^\"]+)\"/);if(m){Android.onRetrieveDataSyncId(m[1]);return}}}catch(e){}})())",
+                                    "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var d=c.get('DATASYNC_ID');if(d){Android.onRetrieveDataSyncId(d);return}}var y=window.yt&&window.yt.config_;if(y&&y.DATASYNC_ID){Android.onRetrieveDataSyncId(y.DATASYNC_ID);return}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/[\\\"'](?:DATASYNC_ID|dataSyncId)[\\\"']\\s*:\\s*[\\\"']([^\\\"']+)[\\\"']/);if(m){Android.onRetrieveDataSyncId(m[1]);return}}}catch(e){}})())",
                                 )
                                 loadUrl(
                                     "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var t=c.get('PO_TOKEN');if(t){Android.onRetrievePoToken(t);return}}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/\"PO_TOKEN\":\"([^\"]+)\"/);if(m){Android.onRetrievePoToken(m[1]);return}}}catch(e){}})())",
@@ -117,24 +111,7 @@ fun LoginScreen(
 
                             val mergedCookie = mergeYouTubeCookies(cookieManager, url)
                             if (!mergedCookie.isNullOrBlank()) {
-                                innerTubeCookie = mergedCookie
-                                coroutineScope.launch {
-                                    YouTube
-                                        .accountInfo()
-                                        .onSuccess {
-                                            accountName = it.name
-                                            accountEmail = it.email.orEmpty()
-                                            accountChannelHandle = it.channelHandle.orEmpty()
-
-                                            if (!hasNavigated) {
-                                                hasNavigated = true
-                                                Toast.makeText(context, R.string.login_success, Toast.LENGTH_SHORT).show()
-                                                navController.navigateUp()
-                                            }
-                                        }.onFailure {
-                                            reportException(it)
-                                        }
-                                }
+                                viewModel.onCookiesCaptured(mergedCookie)
                             }
                         }
                     }
@@ -148,25 +125,17 @@ fun LoginScreen(
                     object {
                         @JavascriptInterface
                         fun onRetrieveVisitorData(newVisitorData: String?) {
-                            if (!newVisitorData.isNullOrBlank()) {
-                                visitorData = newVisitorData
-                            }
+                            viewModel.onVisitorDataExtracted(newVisitorData)
                         }
 
                         @JavascriptInterface
                         fun onRetrieveDataSyncId(newDataSyncId: String?) {
-                            if (!newDataSyncId.isNullOrBlank()) {
-                                dataSyncId = newDataSyncId
-                            }
+                            viewModel.onDataSyncIdExtracted(newDataSyncId)
                         }
 
                         @JavascriptInterface
                         fun onRetrievePoToken(newPoToken: String?) {
-                            if (!newPoToken.isNullOrBlank()) {
-                                PreferenceStore.launchEdit(context.dataStore) {
-                                    putLegacyPoToken(newPoToken)
-                                }
-                            }
+                            viewModel.onPoTokenExtracted(newPoToken)
                         }
                     },
                     "Android",

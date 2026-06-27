@@ -16,14 +16,29 @@ import timber.log.Timber
 
 object DiscordSocialPresenceClient {
     private const val TAG = "DiscordSocialPresenceClient"
+    private const val MAX_SEND_ATTEMPTS = 2
 
     private val mutex = Mutex()
-    private var gateway: GatewayClient? = null
-    private var scope: CoroutineScope? = null
-    private var activeToken: String? = null
+    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile private var gateway: GatewayClient? = null
+    @Volatile private var activeToken: String? = null
+    @Volatile private var transportInvalidatedListener: ((String) -> Unit)? = null
 
     val isStarted: Boolean
-        get() = activeToken != null
+        get() = isConnectionUsable()
+
+    private fun isConnectionUsable(): Boolean {
+        val currentGateway = gateway
+        val currentToken = activeToken
+        return currentGateway != null &&
+            !currentToken.isNullOrBlank() &&
+            currentGateway.isReady()
+    }
+
+    fun setOnTransportInvalidated(listener: ((String) -> Unit)?) {
+        transportInvalidatedListener = listener
+    }
 
     suspend fun updatePresence(
         accessToken: String,
@@ -36,27 +51,41 @@ object DiscordSocialPresenceClient {
                     return@withLock Result.failure(IllegalArgumentException("Discord access token is missing"))
                 }
 
-                val connectResult = ensureConnected(token)
-                if (connectResult.isFailure) return@withLock connectResult
-
                 val presenceJson = buildPresencePayload(token, activity)
-                val sent = gateway?.sendPresenceUpdate(presenceJson) ?: false
-                if (!sent) {
-                    return@withLock Result.failure(Exception("Failed to send presence update"))
+                var lastError: Throwable? = null
+
+                repeat(MAX_SEND_ATTEMPTS) { attempt ->
+                    val connectResult = ensureConnected(token, force = attempt > 0)
+                    if (connectResult.isFailure) return@withLock connectResult
+
+                    val currentGateway = gateway
+                    val sent =
+                        if (currentGateway != null && currentGateway.isReady()) {
+                            currentGateway.sendPresenceUpdate(presenceJson)
+                        } else {
+                            false
+                        }
+
+                    if (sent) {
+                        if (attempt > 0) {
+                            Timber.tag(TAG).i("updatePresence: sent after reconnect attempt=%d", attempt)
+                        }
+                        return@withLock Result.success(Unit)
+                    }
+
+                    lastError = Exception("Failed to send presence update (attempt=$attempt)")
+                    Timber.tag(TAG).w("updatePresence: send failed, reconnecting attempt=%d", attempt)
+                    tearDownLocked("presence_send_failed_$attempt")
                 }
-                Result.success(Unit)
+
+                Result.failure(lastError ?: Exception("Failed to send presence update"))
             }
         }
 
     suspend fun clearPresence(accessToken: String? = null): Result<Unit> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                var g = gateway
-                if (g == null && !accessToken.isNullOrBlank()) {
-                    ensureConnected(accessToken)
-                    g = gateway
-                }
-                g ?: return@withLock Result.failure(Exception("Not connected"))
+                val token = accessToken?.trim().orEmpty()
                 val empty =
                     JSONObject().apply {
                         put("activities", JSONArray())
@@ -64,43 +93,157 @@ object DiscordSocialPresenceClient {
                         put("since", JSONObject.NULL)
                         put("status", "online")
                     }
-                g.sendPresenceUpdate(empty)
-                Result.success(Unit)
+
+                var lastError: Throwable? = null
+                repeat(MAX_SEND_ATTEMPTS) { attempt ->
+                    val currentGateway = gateway
+                    if (currentGateway == null || !currentGateway.isReady()) {
+                        if (token.isBlank()) {
+                            return@withLock Result.failure(Exception("Not connected"))
+                        }
+                        val connectResult = ensureConnected(token, force = currentGateway != null || attempt > 0)
+                        if (connectResult.isFailure) return@withLock connectResult
+                    }
+
+                    val activeGateway = gateway
+                    val sent =
+                        if (activeGateway != null && activeGateway.isReady()) {
+                            activeGateway.sendPresenceUpdate(empty)
+                        } else {
+                            false
+                        }
+
+                    if (sent) return@withLock Result.success(Unit)
+
+                    lastError = Exception("Failed to clear presence (attempt=$attempt)")
+                    Timber.tag(TAG).w("clearPresence: send failed, reconnecting attempt=%d", attempt)
+                    tearDownLocked("clear_send_failed_$attempt")
+                    if (token.isBlank()) return@withLock Result.failure(lastError!!)
+                }
+
+                Result.failure(lastError ?: Exception("Failed to clear presence"))
             }
         }
 
     suspend fun close(): Result<Unit> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                gateway?.disconnect()
-                gateway = null
-                scope?.cancel()
-                scope = null
-                activeToken = null
+                tearDownLocked("close")
                 DiscordAssetRegistrar.clearCache()
                 Result.success(Unit)
             }
         }
 
-    private fun ensureConnected(token: String): Result<Unit> {
-        if (activeToken == token && gateway != null) return Result.success(Unit)
+    private suspend fun ensureConnected(
+        token: String,
+        force: Boolean = false,
+    ): Result<Unit> {
+        val currentGateway = gateway
+        val currentToken = activeToken
+        if (!force && currentToken == token && currentGateway != null && currentGateway.isReady()) {
+            return Result.success(Unit)
+        }
 
-        gateway?.disconnect()
-        gateway = null
-        scope?.cancel()
-        scope = null
+        if (currentGateway != null) {
+            Timber.tag(TAG).d(
+                "ensureConnected: reconnecting force=%s tokenMatch=%s ready=%s",
+                force,
+                currentToken == token,
+                currentGateway.isReady(),
+            )
+        }
 
-        val newScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        tearDownLocked(if (force) "ensure_force" else "ensure_reconnect")
+
         val newGateway = GatewayClient()
+        attachCallbacks(newGateway)
 
-        return runCatching {
-            runBlocking {
-                newGateway.connect(token)
+        return try {
+            newGateway.connect(token)
+            if (!newGateway.isReady()) {
+                throw IllegalStateException(
+                    "Gateway connected but not ready (isConnected=${newGateway.isConnected()}, isReady=${newGateway.isReady()})",
+                )
             }
-            scope = newScope
+
             gateway = newGateway
             activeToken = token
+            Timber.tag(TAG).i("ensureConnected: connected")
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            cleanNewGateway(newGateway)
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "ensureConnected failed")
+            cleanNewGateway(newGateway)
+            Result.failure(e)
         }
+    }
+
+    private fun attachCallbacks(newGateway: GatewayClient) {
+        newGateway.onClose = { info ->
+            Timber.tag(TAG).w(
+                "gateway closed code=%d reason=%s resumable=%s",
+                info.code,
+                info.reason,
+                info.resumable,
+            )
+            invalidateGatewayAsync(newGateway, "gateway_closed_${info.code}")
+        }
+        newGateway.onError = { error ->
+            Timber.tag(TAG).w(error, "gateway error")
+        }
+        newGateway.onReady = {
+            Timber.tag(TAG).d("gateway ready")
+        }
+    }
+
+    private fun invalidateGatewayAsync(
+        expectedGateway: GatewayClient,
+        reason: String,
+    ) {
+        callbackScope.launch {
+            var invalidated = false
+            mutex.withLock {
+                if (gateway === expectedGateway) {
+                    tearDownLocked(reason)
+                    invalidated = true
+                }
+            }
+            if (invalidated) {
+                notifyTransportInvalidated(reason)
+            }
+        }
+    }
+
+    private fun notifyTransportInvalidated(reason: String) {
+        runCatching { transportInvalidatedListener?.invoke(reason) }
+            .onFailure { error ->
+                Timber.tag(TAG).w(error, "transport invalidation listener failed")
+            }
+    }
+
+    private fun cleanNewGateway(newGateway: GatewayClient) {
+        newGateway.onClose = null
+        newGateway.onError = null
+        newGateway.onReady = null
+        newGateway.onDebug = null
+        runCatching { newGateway.disconnect() }
+    }
+
+    // must be called with mutex held
+    private fun tearDownLocked(reason: String) {
+        val currentGateway = gateway
+        if (currentGateway != null) {
+            Timber.tag(TAG).d("tearDownLocked: %s", reason)
+            currentGateway.onClose = null
+            currentGateway.onError = null
+            currentGateway.onReady = null
+            currentGateway.onDebug = null
+            runCatching { currentGateway.disconnect() }
+        }
+        gateway = null
+        activeToken = null
     }
 
     private suspend fun buildPresencePayload(

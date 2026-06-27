@@ -322,13 +322,10 @@
     <string name="news_no_results_desc">Prueba con otro término de búsqueda.</string>
     <string name="news_important_badge">Importante</string>
     <string name="news_tooltip_title">Novedades</string>
-    <string name="ai_translating_lyrics">Traduciendo la letra...</string>
     <string name="ai_translation_menu">Traducción con IA</string>
     <string name="ai_api_test_failed">La prueba de la API falló.</string>
-    <string name="ai_translation_target">Texto de destino</string>
     <string name="ai_api_connected">Conectado a la API</string>
     <string name="ai_model_no_results">No hay modelos que coincidan con tu búsqueda</string>
-    <string name="ai_translation">Traducción automática</string>
     <string name="ai_model_search">Modelos de búsqueda</string>
     <string name="news_tooltip_body">Tienes mensajes no leídos de los desarrolladores.</string>
     <string name="news_author_on_date">%1$s · %2$s</string>
@@ -487,8 +484,6 @@
     <string name="android_auto_mixes_and_radios">Mezclas y radios</string>
     <string name="android_auto_sort_playlist">Ordenar lista de reproducción</string>
     <string name="android_auto_sort_option_format">%1$s - %2$s</string>
-    <string name="player_stream_client_hi_res_lossless">Alta resolución y sin pérdidas</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Prioriza las transmisiones de audio sin pérdida cuando estén disponibles.</string>
     <string name="settings_stats_title">Estadísticas</string>
     <string name="settings_stats_subtitle">Tus canciones, artistas y historial de reproducción más populares</string>
     <string name="year_in_music_recap">Resumen musical</string>

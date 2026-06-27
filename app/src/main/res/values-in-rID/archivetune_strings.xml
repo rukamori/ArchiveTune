@@ -482,11 +482,8 @@
     <string name="ai_fetch_models">Ambil model</string>
     <string name="ai_model_search">Cari model</string>
     <string name="ai_model_no_results">Tidak ada model yang cocok dengan pencarian Anda</string>
-    <string name="ai_translation">Terjemahan AI</string>
-    <string name="ai_translation_target">Target terjemahan</string>
     <string name="ai_api_connected">API terhubung</string>
     <string name="ai_api_test_failed">Uji API gagal</string>
     <string name="ai_translation_menu">Terjemahan AI</string>
-    <string name="ai_translating_lyrics">Menerjemahkan Lirik...</string>
     <string name="about_content_desc_donate">Donasi</string>
 </resources>

@@ -16,7 +16,11 @@ internal fun Modifier.consumeUnhandledPointerInput(): Modifier =
         awaitPointerEventScope {
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Final)
-                event.changes.forEach { it.consume() }
+                event.changes.forEach { pointerInputChange ->
+                    if (!pointerInputChange.isConsumed) {
+                        pointerInputChange.consume()
+                    }
+                }
             }
         }
     }

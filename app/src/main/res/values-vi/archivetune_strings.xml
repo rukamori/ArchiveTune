@@ -396,8 +396,6 @@
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
     <string name="mini_player_background_style">Kiểu nền trình phát mini</string>
-    <string name="player_stream_client_hi_res_lossless">Hi-Res &amp; Lossless</string>
-    <string name="player_stream_client_hi_res_lossless_desc">Ưu tiên luồng âm thanh lossless khi có sẵn.</string>
     <string name="playlist_sync_progress_step">%1$d/%2$d Bài hát</string>
     <string name="playlist_sync_failed">Đồng bộ danh sách phát thất bại: %1$s</string>
     <string name="force_sync_on_switch_account">Buộc đồng bộ khi chuyển tài khoản</string>
@@ -500,12 +498,9 @@
     <string name="ai_fetch_models">Tìm nạp mô hình</string>
     <string name="ai_model_search">Tìm kiếm mô hình</string>
     <string name="ai_model_no_results">Không có mô hình nào phù hợp với tìm kiếm của bạn</string>
-    <string name="ai_translation">Dịch AI</string>
-    <string name="ai_translation_target">Mục tiêu dịch</string>
     <string name="ai_api_connected">API đã kết nối</string>
     <string name="ai_api_test_failed">Kiểm tra API thất bại</string>
     <string name="ai_translation_menu">Dịch AI</string>
-    <string name="ai_translating_lyrics">Đang dịch lời bài hát…</string>
     <string name="import_m3u_format">Danh sách phát âm thanh M3U</string>
     <string name="import_csv_format">Tệp danh sách phát CSV</string>
     <string name="internal_service">Dịch vụ nội bộ</string>
@@ -563,4 +558,9 @@
     <string name="theme_export_success">Đã xuất giao diện</string>
     <string name="theme_export_failed">Xuất thất bại</string>
     <string name="theme_import_failed_title">Không thể nhập giao diện</string>
+    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Sử dụng trình trích xuất phụ trợ của ArchiveTune cho các luồng phát lại. Ưu tiên Âm thanh Chất lượng Cao Tự động.</string>
+    <string name="top_albums">Album hàng đầu</string>
+    <string name="about_position_developers">Nhà phát triển | Nhóm</string>
+    <string name="about_position_yuki">Chỉ để Trang trí 😂 | Quản trị viên</string>
 </resources>

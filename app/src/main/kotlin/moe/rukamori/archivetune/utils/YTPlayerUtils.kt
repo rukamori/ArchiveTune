@@ -395,6 +395,10 @@ object YTPlayerUtils {
                 WEB_REMIX
             }
 
+            PlayerStreamClient.ARCHIVETUNE_EXTRACTOR -> {
+                if (authState.hasPlaybackLoginContext) ANDROID_MUSIC else ANDROID_VR_NO_AUTH
+            }
+
             PlayerStreamClient.HI_RES_LOSSLESS -> {
                 WEB_REMIX
             }
@@ -560,7 +564,11 @@ object YTPlayerUtils {
             addAll(
                 PlayerStreamClient
                     .values()
-                    .filterNot { it == PlayerStreamClient.WEB_REMIX || it == PlayerStreamClient.ANDROID_VR },
+                    .filterNot {
+                        it == PlayerStreamClient.WEB_REMIX ||
+                            it == PlayerStreamClient.ANDROID_VR ||
+                            it == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
+                    },
             )
             add(PlayerStreamClient.ANDROID_VR)
         }.distinct()
@@ -1319,8 +1327,12 @@ object YTPlayerUtils {
                 .getStreamUrl(format, videoId, client, authState)
                 .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
                 .onFailure {
-                    Timber.tag(logTag).e(it, "Failed to get stream URL")
-                    reportException(it)
+                    if (it.isJavaScriptPlayerExtractorFailure()) {
+                        Timber.tag(logTag).w(it, "Skipping stream candidate because YouTube JavaScript decipher failed")
+                    } else {
+                        Timber.tag(logTag).e(it, "Failed to get stream URL")
+                        reportException(it)
+                    }
                 }.getOrNull() ?: return null
 
         // Patch cver in the URL to match the client we actually used
@@ -1329,6 +1341,22 @@ object YTPlayerUtils {
         }
 
         return url
+    }
+
+    private fun Throwable.isJavaScriptPlayerExtractorFailure(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            val message = current.message.orEmpty()
+            if (
+                message.contains("deobfuscation", ignoreCase = true) ||
+                message.contains("JavaScript player", ignoreCase = true) ||
+                message.contains("base JavaScript player", ignoreCase = true)
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     private fun Result<PlayerResponse>.getPlaybackPlayerResponseOrThrow(
@@ -1381,6 +1409,7 @@ object YTPlayerUtils {
 
         val message = clientError.message.orEmpty()
         if (!message.contains("/youtubei/v1/player", ignoreCase = true)) return false
+        if (message.contains("Origin doesn't match Host", ignoreCase = true)) return false
 
         return message.contains("INVALID_ARGUMENT", ignoreCase = true) ||
             message.contains("invalid argument", ignoreCase = true)

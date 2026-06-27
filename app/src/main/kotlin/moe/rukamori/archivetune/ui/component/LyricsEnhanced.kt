@@ -272,10 +272,6 @@ fun LyricsEnhanced(
 
         val toRomanize =
             lyricsEntries.mapIndexedNotNull { index, entry ->
-                if (providedTranslationTextForEntry(entry) != null && (!isTtmlFormat || entry.words == null)) {
-                    return@mapIndexedNotNull null
-                }
-
                 val hasProviderRomanization =
                     providedRomanizedTextForEntry(entry, romanizationPreferences) != null
                 if (hasProviderRomanization || shouldRomanizeLyricsLine(entry.text, romanizationPreferences)) {
@@ -1308,9 +1304,9 @@ private fun buildSyncedLyrics(
                     (entry.time + 4000L).toInt()
                 }
             lines.add(
-                SyncedLine(
-                    content = entry.text,
-                    translation = providedTranslationTextForEntry(entry) ?: romanizationMap[index]?.firstOrNull(),
+                buildLineSyncedLrcLine(
+                    entry = entry,
+                    romanizedText = romanizationMap[index]?.firstOrNull(),
                     start = entry.time.toInt(),
                     end = lineEnd,
                 ),
@@ -1319,4 +1315,39 @@ private fun buildSyncedLyrics(
     }
 
     return SyncedLyrics(lines = lines)
+}
+
+private fun buildLineSyncedLrcLine(
+    entry: LyricsEntry,
+    romanizedText: String?,
+    start: Int,
+    end: Int,
+): ISyncedLine {
+    val translation = providedTranslationTextForEntry(entry)
+    val normalizedRomanizedText = romanizedText?.trim()?.takeIf { it.isNotEmpty() }
+
+    if (normalizedRomanizedText == null) {
+        return SyncedLine(
+            content = entry.text,
+            translation = translation,
+            start = start,
+            end = end,
+        )
+    }
+
+    return KaraokeLine.MainKaraokeLine(
+        syllables =
+            listOf(
+                KaraokeSyllable(
+                    content = entry.text,
+                    start = start,
+                    end = end,
+                    phonetic = normalizedRomanizedText,
+                ),
+            ),
+        translation = translation,
+        alignment = KaraokeAlignment.Start,
+        start = start,
+        end = end,
+    )
 }

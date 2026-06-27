@@ -50,6 +50,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -374,7 +375,7 @@ fun SongListItem(
             val download by LocalDownloadUtil.current
                 .getDownload(song.id)
                 .collectAsState(initial = null)
-            Icon.Download(download?.state)
+            Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
     isSelected: Boolean = false,
@@ -444,7 +445,7 @@ fun SongGridItem(
         }
         if (showDownloadIcon) {
             val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
-            Icon.Download(download?.state)
+            Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
     isActive: Boolean = false,
@@ -1353,7 +1354,8 @@ fun YouTubeListItem(
         }
         if (item is SongItem) {
             val downloads by LocalDownloadUtil.current.downloads.collectAsState()
-            Icon.Download(downloads[item.id]?.state)
+            val download = downloads[item.id]
+            Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
 ) {
@@ -1433,7 +1435,8 @@ fun YouTubeGridItem(
         if (item is SongItem && song?.song?.inLibrary != null) Icon.Library()
         if (item is SongItem) {
             val downloads by LocalDownloadUtil.current.downloads.collectAsState()
-            Icon.Download(downloads[item.id]?.state)
+            val download = downloads[item.id]
+            Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
@@ -2163,7 +2166,10 @@ private object Icon {
     }
 
     @Composable
-    fun Download(state: Int?) {
+    fun Download(
+        state: Int?,
+        percent: Float = -1f,
+    ) {
         when (state) {
             STATE_COMPLETED -> {
                 Icon(
@@ -2177,12 +2183,29 @@ private object Icon {
             }
 
             STATE_QUEUED, STATE_DOWNLOADING -> {
-                CircularWavyProgressIndicator(
-                    modifier =
-                        Modifier
-                            .size(16.dp)
-                            .padding(end = 2.dp),
-                )
+                if (percent > 0f) {
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = { percent / 100f },
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                        Text(
+                            text = "${percent.toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 8.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                } else {
+                    CircularWavyProgressIndicator(
+                        modifier =
+                            Modifier
+                                .size(16.dp)
+                                .padding(end = 2.dp),
+                    )
+                }
             }
 
             else -> { /* no icon */ }
