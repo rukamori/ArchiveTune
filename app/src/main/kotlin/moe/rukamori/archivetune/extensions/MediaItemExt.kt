@@ -17,6 +17,8 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.ui.utils.YTThumbQuality
+import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
@@ -69,7 +71,10 @@ fun SongItem.toMediaItem() =
                 .setTitle(title)
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
-                .setArtworkUri(thumbnail.toNotificationArtworkUri())
+                .setArtworkUri(
+                    if (isMusicVideo()) buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    else thumbnail.toNotificationArtworkUri()
+                )
                 .setAlbumTitle(album?.name)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
@@ -90,11 +95,14 @@ fun MediaMetadata.toMediaItem() =
                 .setTitle(title)
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
-                .setArtworkUri(thumbnailUrl.toNotificationArtworkUri())
+                .setArtworkUri(
+                    if (isMusicVideo) buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    else thumbnailUrl.toNotificationArtworkUri()
+                )
                 .setAlbumTitle(album?.title)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
-                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, false) })
+                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, isMusicVideo) })
                 .build(),
         ).build()
 

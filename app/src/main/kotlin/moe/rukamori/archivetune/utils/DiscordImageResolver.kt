@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.utils
 
 import android.content.Context
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.ui.utils.getMusicVideoYTThumbnail
 import timber.log.Timber
 
 data class ResolvedDiscordImages(
@@ -45,6 +46,7 @@ object DiscordImageResolver {
     suspend fun resolveImagesForSong(
         context: Context,
         song: Song,
+        isMusicVideo: Boolean = false,
     ): ResolvedDiscordImages {
         val songId = song.song.id
         getCachedImages(songId)?.let { cached ->
@@ -53,6 +55,7 @@ object DiscordImageResolver {
         }
 
         val thumbnailUrl = song.song.thumbnailUrl?.asHttpUrl()
+        val ytThumbnailUrl = getMusicVideoYTThumbnail(songId, thumbnailUrl, isMusicVideo)
         val artistUrl =
             song.artists
                 .firstOrNull()
@@ -60,7 +63,7 @@ object DiscordImageResolver {
                 ?.asHttpUrl()
         val savedArtwork = ArtworkStorage.findBySongId(context, songId)
 
-        val thumbnail = savedArtwork?.thumbnail?.asHttpUrl() ?: thumbnailUrl
+        val thumbnail = ytThumbnailUrl ?: savedArtwork?.thumbnail?.asHttpUrl() ?: thumbnailUrl
         val artist = savedArtwork?.artist?.asHttpUrl() ?: artistUrl ?: thumbnail
 
         val images =

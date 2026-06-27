@@ -1771,6 +1771,7 @@ class MusicService :
                         song = snapshot.song,
                         positionMs = snapshot.positionMs,
                         isPaused = snapshot.isPaused,
+                        isMusicVideo = currentMediaMetadata.value?.isMusicVideo ?: false,
                     )
                 if (!updated) {
                     Timber.tag(DISCORD_SYNC_TAG).d(

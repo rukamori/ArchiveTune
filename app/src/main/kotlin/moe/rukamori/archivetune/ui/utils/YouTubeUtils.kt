@@ -62,3 +62,10 @@ fun String.resize(
 }
 
 fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx)
+
+fun getMusicVideoYTThumbnail(
+    videoId: String?,
+    ytmUrl: String?,
+    isMusicVideo: Boolean,
+    quality: YTThumbQuality = YTThumbQuality.HQ,
+): String? = if (videoId != null && isMusicVideo) buildYTThumbnailUrl(videoId, quality) else ytmUrl

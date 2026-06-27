@@ -110,6 +110,7 @@ object DiscordPresenceManager {
         song: Song?,
         positionMs: Long,
         isPaused: Boolean,
+        isMusicVideo: Boolean = false,
     ): Boolean =
         updatePresence(
             context = context,
@@ -117,6 +118,7 @@ object DiscordPresenceManager {
             song = song,
             positionMs = positionMs,
             isPaused = isPaused,
+            isMusicVideo = isMusicVideo,
             generation = updateGeneration.incrementAndGet(),
         )
 
@@ -149,6 +151,7 @@ object DiscordPresenceManager {
         song: Song?,
         positionMs: Long,
         isPaused: Boolean,
+        isMusicVideo: Boolean = false,
         generation: Long,
     ): Boolean =
         withContext(Dispatchers.IO) {
@@ -177,7 +180,7 @@ object DiscordPresenceManager {
 
                     runCatching {
                         withTimeout(IMAGE_RESOLUTION_TIMEOUT_MS) {
-                            DiscordImageResolver.resolveImagesForSong(appContext, song)
+                            DiscordImageResolver.resolveImagesForSong(appContext, song, isMusicVideo)
                         }
                     }.onFailure {
                         Timber.tag(LOG_TAG).v(it, "image resolution for presence failed or timed out")
@@ -246,6 +249,7 @@ object DiscordPresenceManager {
         song: Song?,
         positionMs: Long,
         isPaused: Boolean,
+        isMusicVideo: Boolean = false,
     ): Boolean =
         updatePresence(
             context = context,
@@ -253,6 +257,7 @@ object DiscordPresenceManager {
             song = song,
             positionMs = positionMs,
             isPaused = isPaused,
+            isMusicVideo = isMusicVideo,
         )
 
     fun setOnTransportInvalidated(listener: ((String) -> Unit)?) {
