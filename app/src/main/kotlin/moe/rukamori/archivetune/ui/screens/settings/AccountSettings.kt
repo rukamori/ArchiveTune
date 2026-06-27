@@ -62,8 +62,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -159,7 +159,6 @@ private data class SavedAccountCollection(
 @Composable
 fun AccountSettings(
     navController: NavController,
-    scrollBehavior: TopAppBarScrollBehavior,
     latestVersionName: String,
 ) {
     val context = LocalContext.current
@@ -274,17 +273,14 @@ fun AccountSettings(
     val removeAccount: (SavedAccount) -> Unit = { account ->
         val existing = decodeSavedAccounts(savedAccountsJson)
         onSavedAccountsJsonChange(encodeSavedAccounts(existing.filter { it.id != account.id }))
-    }
-
-    Scaffold(
+    }    Scaffold(
         modifier =
             Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeFlexibleTopAppBar(
+            TopAppBar(
                 title = {
                     Column {
                         Text(
@@ -347,13 +343,6 @@ fun AccountSettings(
                         }
                     }
                 },
-                windowInsets = TopAppBarDefaults.windowInsets,
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
