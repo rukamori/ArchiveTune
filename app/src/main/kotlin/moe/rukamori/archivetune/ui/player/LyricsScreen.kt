@@ -10,6 +10,8 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -21,6 +23,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,6 +68,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -87,6 +92,7 @@ import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.size.Size
 import coil3.toBitmap
@@ -110,6 +116,7 @@ import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -467,6 +474,9 @@ private fun AppleMusicBackground(
             )
         }
 
+    val context = LocalContext.current
+    val imageLoader = context.imageLoader
+
     Box(
         modifier =
             modifier
@@ -479,16 +489,48 @@ private fun AppleMusicBackground(
             label = "lyrics-apple-background",
         ) { thumbnailUrl ->
             if (thumbnailUrl != null) {
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .blur(46.dp)
-                            .alpha(0.62f),
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .blur(46.dp)
+                                .alpha(0.62f),
+                    )
+                } else {
+                    val blurredBitmap by produceState<Bitmap?>(null, thumbnailUrl) {
+                        value = withContext(Dispatchers.IO) {
+                            try {
+                                val request = ImageRequest.Builder(context)
+                                    .data(thumbnailUrl)
+                                    .allowHardware(false)
+                                    .memoryCacheKey(thumbnailUrl)
+                                    .diskCacheKey(thumbnailUrl)
+                                    .size(coil3.size.Size(500, 500))
+                                    .build()
+                                val result = imageLoader.execute(request)
+                                if (result is SuccessResult) {
+                                    val bitmap = result.image.toBitmap()
+                                        .copy(Bitmap.Config.ARGB_8888, true)
+                                    ImageBlurUtils.blur(bitmap, 48f)
+                                } else null
+                            } catch (_: Exception) {
+                                null
+                            }
+                        }
+                    }
+                    blurredBitmap?.let { bm ->
+                        Image(
+                            bitmap = bm.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().alpha(0.62f),
+                        )
+                    }
+                }
             }
         }
         Box(
