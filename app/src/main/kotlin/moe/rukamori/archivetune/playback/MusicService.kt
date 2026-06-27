@@ -7404,13 +7404,9 @@ class MusicService :
 
     private fun Song.withPresenceMetadata(metadataSong: Song): Song {
         val resolvedArtists =
-            if (artists.any { it.hasRemotePresenceId() }) {
-                artists
-            } else {
-                metadataSong.artists.takeIf { metadataArtists ->
-                    metadataArtists.any { it.hasRemotePresenceId() }
-                } ?: artists
-            }
+            metadataSong.artists.takeIf { metadataArtists ->
+                metadataArtists.any { it.hasRemotePresenceId() }
+            } ?: artists
 
         return copy(
             song =
