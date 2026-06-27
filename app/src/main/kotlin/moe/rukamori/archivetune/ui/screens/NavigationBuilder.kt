@@ -390,7 +390,7 @@ fun NavGraphBuilder.navigationBuilder(
         SettingsScreen(navController, latestVersionName())
     }
     composable("settings/account") {
-        AccountSettings(navController, latestVersionName())
+        AccountSettings(navController, scrollBehavior, latestVersionName())
     }
     composable("settings/hidden_playlists") {
         HiddenPlaylistsScreen(navController, scrollBehavior)
