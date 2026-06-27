@@ -284,13 +284,13 @@
     <string name="palette_sand">Cát</string>
     <string name="palette_clay">Đất sét</string>
     <string name="palette_pastel_pink">Hồng nhạt</string>
-    <string name="palette_pastel_blue">Xanh nhạt</string>
-    <string name="palette_pastel_green">Xanh nhạt</string>
+    <string name="palette_pastel_blue">Xanh dương nhạt</string>
+    <string name="palette_pastel_green">Xanh lá nhạt</string>
     <string name="palette_pastel_yellow">Vàng nhạt</string>
     <string name="palette_pastel_purple">Tím nhạt</string>
-    <string name="palette_neon_green">Xanh Neon</string>
+    <string name="palette_neon_green">Xanh lá Neon</string>
     <string name="palette_neon_pink">Hồng Neon</string>
-    <string name="palette_neon_blue">Xanh Neon</string>
+    <string name="palette_neon_blue">Xanh dương Neon</string>
     <string name="palette_neon_orange">Cam Neon</string>
     <string name="palette_cyberpunk">Cyberpunk</string>
     <string name="palette_synthwave">Synthwave</string>
@@ -784,6 +784,7 @@
     <string name="discord_waiting_for_authorization">Đang chờ ủy quyền Discord...</string>
     <string name="display">Màn hình</string>
     <string name="enable_unison_lyrics">Bật lời bài hát Unison</string>
+    <string name="enable_youlyplus_lyrics">Bật lời bài hát YouLyPlus</string>
     <string name="haptics">Rung</string>
     <string name="haptics_desc">Bật phản hồi rung trên các thành phần tương tác</string>
     <string name="ip_rotation">Xoay IP</string>
@@ -853,6 +854,7 @@
     <string name="add">Thêm</string>
     <string name="add_to_n_playlists">Thêm vào %1$d</string>
     <string name="no_playlists_yet">Chưa có danh sách phát nào</string>
+    <string name="source">Nguồn</string>
     <string name="unsupported_language">Ngôn ngữ không được hỗ trợ: %1$s</string>
     <string name="percent_format">%1$d%%</string>
     <string name="duration_seconds_short">%1$ds</string>
