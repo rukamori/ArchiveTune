@@ -290,7 +290,7 @@ class DiscordRPC(
         default: String,
     ): String =
         when (pref.uppercase()) {
-            "ARTIST" -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name ?: default
+            "ARTIST" -> translatedMap["{artist}"] ?: song.artists.joinToString { it.name }.ifBlank { default }
             "ALBUM" -> translatedMap["{album}"] ?: song.song.albumName ?: song.album?.title ?: default
             "SONG" -> translatedMap["{song}"] ?: song.song.title.ifBlank { default }
             "APP" -> context.getString(R.string.app_name)
@@ -303,7 +303,7 @@ class DiscordRPC(
     ): String? =
         when ((context.dataStore[DiscordLargeTextSourceKey] ?: "album").lowercase()) {
             "song" -> translatedMap["{song}"] ?: song.song.title
-            "artist" -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name
+            "artist" -> translatedMap["{artist}"] ?: song.artists.joinToString { it.name }.takeIf { it.isNotBlank() }
             "album" -> translatedMap["{album}"] ?: song.song.albumName ?: song.album?.title ?: song.song.title
             "app" -> context.getString(R.string.app_name)
             "custom" -> (context.dataStore[DiscordLargeTextCustomKey] ?: "").ifBlank { null }
@@ -320,11 +320,11 @@ class DiscordRPC(
         val base =
             when (smallImageType.lowercase()) {
                 "song" -> translatedMap["{song}"] ?: song.song.title
-                "artist" -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name
+                "artist" -> translatedMap["{artist}"] ?: song.artists.joinToString { it.name }.takeIf { it.isNotBlank() }
                 "thumbnail", "album" -> translatedMap["{album}"] ?: song.song.albumName ?: song.album?.title
                 "appicon", "app" -> appName
                 "dontshow", "none" -> null
-                else -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name
+                else -> translatedMap["{artist}"] ?: song.artists.joinToString { it.name }.takeIf { it.isNotBlank() }
             }
 
         return base?.let { "$it on $appName" }
