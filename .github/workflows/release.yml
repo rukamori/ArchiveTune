@@ -412,12 +412,41 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
+      - name: Resolve signing key from secret
+        id: signing_key_secret
+        if: ${{ secrets.KEYSTORE != '' }}
+        shell: bash
+        run: echo "keystore=$KEYSTORE" >> "$GITHUB_OUTPUT"
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+
+      - name: Resolve signing key from file
+        id: signing_key_file
+        if: ${{ secrets.KEYSTORE == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "Koiverse.jks" ]; then
+            echo "keystore=$(base64 -w0 Koiverse.jks)" >> "$GITHUB_OUTPUT"
+          elif [ -f "Koiverse.jks.base64" ]; then
+            echo "keystore=$(tr -d '\n\r ' < Koiverse.jks.base64)" >> "$GITHUB_OUTPUT"
+          else
+            echo "No signing key found in Koiverse.jks or Koiverse.jks.base64" >&2
+            exit 1
+          fi
+
+      - name: Resolve signing key output
+        id: signing_key
+        shell: bash
+        run: |
+          echo "keystore=${{ steps.signing_key_secret.outputs.keystore || steps.signing_key_file.outputs.keystore }}" >> "$GITHUB_OUTPUT"
+
       - name: Sign APK
         if: matrix.distribution == 'gms'
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
-          signingKey: ${{ secrets.KEYSTORE }}
+          signingKey: ${{ steps.signing_key.outputs.keystore }}
           keyAlias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
