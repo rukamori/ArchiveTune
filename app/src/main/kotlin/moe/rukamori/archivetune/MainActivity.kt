@@ -1174,15 +1174,16 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(navBackStackEntry) {
                         val currentRoute = navBackStackEntry?.destination?.route
-                        val wasOnNonTopLevelScreen =
+                        val wasOnSettingsRootRoute = previousRoute == "settings"
+                        val wasOnScrollResetSourceRoute =
                             previousRoute != null &&
-                                previousRoute !in topLevelScreens &&
+                                (previousRoute !in topLevelScreens || wasOnSettingsRootRoute) &&
                                 previousRoute?.startsWith(OnlineSearchResultRoutePrefix) != true
                         val isReturningToHomeOrLibrary =
                             currentRoute == Screens.Home.route ||
                                 currentRoute == Screens.Library.route
 
-                        if (wasOnNonTopLevelScreen && isReturningToHomeOrLibrary) {
+                        if (wasOnScrollResetSourceRoute && isReturningToHomeOrLibrary) {
                             searchBarScrollBehavior.state.resetHeightOffset()
                             topAppBarScrollBehavior.state.resetHeightOffset()
                         }
