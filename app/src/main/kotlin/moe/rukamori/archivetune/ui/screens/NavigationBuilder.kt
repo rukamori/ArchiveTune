@@ -396,7 +396,7 @@ fun NavGraphBuilder.navigationBuilder(
         HiddenPlaylistsScreen(navController, scrollBehavior)
     }
     composable("settings/appearance") {
-        AppearanceSettings(navController, scrollBehavior)
+        AppearanceSettings(navController)
     }
     composable("settings/appearance/aod_customized") {
         AodCustomizedScreen(navController)
@@ -417,7 +417,7 @@ fun NavGraphBuilder.navigationBuilder(
         LyricsSettings(navController)
     }
     composable("settings/internet") {
-        InternetSettings(navController, scrollBehavior)
+        InternetSettings(navController)
     }
     composable("settings/player") {
         PlayerSettings(navController)
@@ -480,7 +480,7 @@ fun NavGraphBuilder.navigationBuilder(
         AboutScreen(navController)
     }
     composable("settings/po_token") {
-        PoTokenScreen(navController, scrollBehavior)
+        PoTokenScreen(navController)
     }
     composable("customize_background") {
         CustomizeBackground(navController)
