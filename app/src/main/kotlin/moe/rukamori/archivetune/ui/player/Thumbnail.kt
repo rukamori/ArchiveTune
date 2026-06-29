@@ -9,10 +9,6 @@ package moe.rukamori.archivetune.ui.player
 
 import android.graphics.Bitmap
 import android.os.Build
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -112,6 +108,7 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.ui.utils.highRes
+import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -566,7 +563,7 @@ fun Thumbnail(
                                             item.metadata?.thumbnailUrl?.highRes()
                                                 ?: item.mediaMetadata.artworkUri?.toString()
                                         val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(thumbnailArtworkUrl)
-                                        val thumbnailBgBlurEnabled = backdropEnabled && !disableBlur && backdropBlurAmount > 0
+                                        val thumbnailBgBlurEnabled = backdropEnabled && backdropBlurAmount > 0
 
                                         if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                             val blurRadiusPx = (backdropBlurAmount * 60 / 100f).coerceAtMost(60f)
@@ -660,7 +657,6 @@ fun Thumbnail(
     }
 }
 
-@Suppress("DEPRECATION")
 @Composable
 private fun ThumbnailBgBlurApi30(
     imageUrl: String?,
@@ -690,28 +686,8 @@ private fun ThumbnailBgBlurApi30(
                     when (result) {
                         is SuccessResult -> {
                             val bitmap = result.image.toBitmap().copy(Bitmap.Config.ARGB_8888, true)
-                            val scale = 0.4f
-                            val sw = (bitmap.width * scale).toInt().coerceAtLeast(1)
-                            val sh = (bitmap.height * scale).toInt().coerceAtLeast(1)
-                            val scaled = Bitmap.createScaledBitmap(bitmap, sw, sh, true)
-                            if (bitmap !== scaled && !bitmap.isRecycled) bitmap.recycle()
-
                             val radius = (blurAmount * 25 / 100f).coerceIn(1f, 25f)
-                            RenderScript.create(context).also { rs ->
-                                try {
-                                    val input = Allocation.createFromBitmap(rs, scaled)
-                                    val output = Allocation.createTyped(rs, input.type)
-                                    ScriptIntrinsicBlur.create(rs, Element.U8_4(rs)).apply {
-                                        setRadius(radius)
-                                        setInput(input)
-                                        forEach(output)
-                                    }
-                                    output.copyTo(scaled)
-                                } finally {
-                                    rs.destroy()
-                                }
-                            }
-                            scaled
+                            ImageBlurUtils.blur(bitmap, radius)
                         }
 
                         else -> {

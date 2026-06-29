@@ -1364,7 +1364,7 @@ private fun AnimatedWordV2(
                     val looseConstraints =
                         constraints.copy(
                             minWidth = 0,
-                            maxWidth = Constraints.Infinity,
+                            maxWidth = constraints.maxWidth,
                             minHeight = 0,
                             maxHeight = Constraints.Infinity,
                         )
@@ -1477,7 +1477,7 @@ private fun LyricsLineLrcBounce(
     textAlign: TextAlign,
     bounceFactor: Float,
 ) {
-    val words = remember(text) { text.split(" ").filter { it.isNotEmpty() } }
+    val words = remember(text) { text.toLyricsWrappingUnits() }
     val effectiveFontSize = if (isAllBackground) fontSize * 0.82f else fontSize
     val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold
     val fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal
@@ -1547,7 +1547,7 @@ private fun LyricsLineLrcBounce(
     ) {
         words.forEachIndexed { i, word ->
             LrcBouncingWord(
-                text = if (i < words.lastIndex) "$word " else word,
+                text = word,
                 scaleAnim = scaleAnimatables[i],
                 floatAnim = floatAnimatables[i],
                 color = textColor,

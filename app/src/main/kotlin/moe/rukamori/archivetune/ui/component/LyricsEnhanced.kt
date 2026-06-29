@@ -1335,19 +1335,54 @@ private fun buildLineSyncedLrcLine(
         )
     }
 
+    val syllables =
+        buildWrappingKaraokeSyllables(
+            content = entry.text,
+            romanizedText = normalizedRomanizedText,
+            start = start,
+            end = end,
+        )
+
     return KaraokeLine.MainKaraokeLine(
-        syllables =
-            listOf(
-                KaraokeSyllable(
-                    content = entry.text,
-                    start = start,
-                    end = end,
-                    phonetic = normalizedRomanizedText,
-                ),
-            ),
+        syllables = syllables,
         translation = translation,
         alignment = KaraokeAlignment.Start,
         start = start,
         end = end,
     )
+}
+
+private fun buildWrappingKaraokeSyllables(
+    content: String,
+    romanizedText: String,
+    start: Int,
+    end: Int,
+): List<KaraokeSyllable> {
+    val contentUnits = content.toLyricsWrappingUnits().ifEmpty { listOf(content) }
+    val phoneticWords = romanizedText.split(Regex("\\s+")).filter(String::isNotEmpty)
+    val phoneticAnchorIndices =
+        contentUnits.indices.filter { index ->
+            contentUnits[index].any(Char::isLetterOrDigit)
+        }
+    val phoneticsByUnit = MutableList<String?>(contentUnits.size) { null }
+
+    if (phoneticAnchorIndices.isNotEmpty()) {
+        phoneticWords.forEachIndexed { wordIndex, word ->
+            val anchorIndex = wordIndex * phoneticAnchorIndices.size / phoneticWords.size
+            val unitIndex = phoneticAnchorIndices[anchorIndex]
+            phoneticsByUnit[unitIndex] = listOfNotNull(phoneticsByUnit[unitIndex], word).joinToString(" ")
+        }
+    }
+
+    val duration = (end - start).coerceAtLeast(contentUnits.size)
+    return contentUnits.mapIndexed { index, unit ->
+        val unitStart = start + (duration.toLong() * index / contentUnits.size).toInt()
+        val unitEnd = start + (duration.toLong() * (index + 1) / contentUnits.size).toInt()
+        KaraokeSyllable(
+            content = unit,
+            start = unitStart,
+            end = unitEnd.coerceAtLeast(unitStart + MIN_KARAOKE_SYLLABLE_DURATION_MS),
+            phonetic = phoneticsByUnit[index],
+        )
+    }
 }

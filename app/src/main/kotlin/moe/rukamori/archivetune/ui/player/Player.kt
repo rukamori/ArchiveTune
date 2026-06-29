@@ -21,10 +21,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -223,6 +219,7 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -1914,7 +1911,6 @@ private fun V8PlayerBackdrop(
     }
 }
 
-@Suppress("DEPRECATION")
 @Composable
 private fun BackdropBlurApi30(
     model: String?,
@@ -1944,28 +1940,8 @@ private fun BackdropBlurApi30(
                     when (result) {
                         is SuccessResult -> {
                             val bitmap = result.image.toBitmap().copy(Bitmap.Config.ARGB_8888, true)
-                            val scale = 0.4f
-                            val sw = (bitmap.width * scale).toInt().coerceAtLeast(1)
-                            val sh = (bitmap.height * scale).toInt().coerceAtLeast(1)
-                            val scaled = Bitmap.createScaledBitmap(bitmap, sw, sh, true)
-                            if (bitmap !== scaled && !bitmap.isRecycled) bitmap.recycle()
-
                             val radius = (blurAmount * 25 / 100f).coerceIn(1f, 25f)
-                            RenderScript.create(context).also { rs ->
-                                try {
-                                    val input = Allocation.createFromBitmap(rs, scaled)
-                                    val output = Allocation.createTyped(rs, input.type)
-                                    ScriptIntrinsicBlur.create(rs, Element.U8_4(rs)).apply {
-                                        setRadius(radius)
-                                        setInput(input)
-                                        forEach(output)
-                                    }
-                                    output.copyTo(scaled)
-                                } finally {
-                                    rs.destroy()
-                                }
-                            }
-                            scaled
+                            ImageBlurUtils.blur(bitmap, radius)
                         }
 
                         else -> {

@@ -654,10 +654,27 @@ class MusicService :
         )
 
     private var audioEffectsSessionId: Int? = null
+    private var audioEffectsInitializationJob: Job? = null
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private val audioEffectPlayerListener =
+        object : Player.Listener {
+            override fun onEvents(
+                player: Player,
+                events: Player.Events,
+            ) {
+                if (events.containsAny(
+                        Player.EVENT_AUDIO_SESSION_ID,
+                        Player.EVENT_PLAYBACK_STATE_CHANGED,
+                        Player.EVENT_IS_PLAYING_CHANGED,
+                    )
+                ) {
+                    reconcileAudioEffectSession()
+                }
+            }
+        }
 
     private var lastDiscordUpdateTime = 0L
 
@@ -948,6 +965,7 @@ class MusicService :
                 .build()
                 .apply {
                     addAnalyticsListener(PlaybackStatsListener(false, this@MusicService))
+                    addListener(audioEffectPlayerListener)
                     setOffloadEnabled(false)
                 }
         castPlaybackRepository = CastPlaybackRepositoryLocator.get(this)
@@ -5350,7 +5368,7 @@ class MusicService :
             )
     }
 
-    private fun releaseAudioEffects() {
+    private fun releaseAudioEffectInstances() {
         audioEffectsSessionId = null
         try {
             equalizer?.release()
@@ -5375,21 +5393,55 @@ class MusicService :
         eqCapabilities.value = null
     }
 
+    private fun releaseAudioEffects() {
+        audioEffectsInitializationJob?.cancel()
+        audioEffectsInitializationJob = null
+        releaseAudioEffectInstances()
+    }
+
     private fun ensureAudioEffects(sessionId: Int) {
         if (sessionId <= 0) return
         if (audioEffectsSessionId == sessionId && equalizer != null) return
 
-        releaseAudioEffects()
+        audioEffectsInitializationJob?.cancel()
+        audioEffectsInitializationJob = null
+        if (initializeAudioEffects(sessionId)) return
+
+        audioEffectsInitializationJob =
+            scope.launch {
+                repeat(AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS - 1) {
+                    delay(AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS)
+                    if (localPlayer.audioSessionId != sessionId || !shouldKeepAudioEffectSessionOpen()) {
+                        return@launch
+                    }
+                    if (initializeAudioEffects(sessionId)) return@launch
+                }
+            }
+    }
+
+    private fun initializeAudioEffects(sessionId: Int): Boolean {
+        releaseAudioEffectInstances()
         audioEffectsSessionId = sessionId
 
-        equalizer = runCatching { Equalizer(0, sessionId) }.getOrNull()
-        bassBoost = runCatching { BassBoost(0, sessionId) }.getOrNull()
-        virtualizer = runCatching { Virtualizer(0, sessionId) }.getOrNull()
-        loudnessEnhancer = runCatching { LoudnessEnhancer(sessionId) }.getOrNull()
+        equalizer = createAudioEffect("Equalizer", sessionId) { Equalizer(0, sessionId) }
+        bassBoost = createAudioEffect("BassBoost", sessionId) { BassBoost(0, sessionId) }
+        virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
+        loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
 
         equalizer?.let(::updateEqCapabilitiesFromEffect)
         applyEqSettingsToEffects(desiredEqSettings.value)
+        return equalizer != null
     }
+
+    private inline fun <T> createAudioEffect(
+        name: String,
+        sessionId: Int,
+        factory: () -> T,
+    ): T? =
+        runCatching(factory)
+            .onFailure { error ->
+                Timber.tag(TAG).w(error, "%s initialization failed for audio session %d", name, sessionId)
+            }.getOrNull()
 
     private fun applyEqSettingsToEffects(settings: EqSettings) {
         val eq = equalizer ?: return
@@ -5427,8 +5479,20 @@ class MusicService :
     }
 
     private fun shouldKeepAudioEffectSessionOpen(): Boolean {
-        val playbackState = player.playbackState
+        val playbackState = localPlayer.playbackState
         return playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY
+    }
+
+    private fun reconcileAudioEffectSession() {
+        if (!shouldKeepAudioEffectSessionOpen()) {
+            closeAudioEffectSession()
+            return
+        }
+
+        val sessionId = localPlayer.audioSessionId
+        if (sessionId > 0) {
+            rebindAudioEffectSession(sessionId)
+        }
     }
 
     private fun openAudioEffectSession() {
@@ -6152,22 +6216,13 @@ class MusicService :
         ) {
             handleDeviceMuteStateChanged(playbackRequestedWhileMuted = true)
         }
-        if (events.contains(Player.EVENT_AUDIO_SESSION_ID)) {
-            rebindAudioEffectSession(this.localPlayer.audioSessionId)
-        }
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
                 Player.EVENT_PLAY_WHEN_READY_CHANGED,
             )
         ) {
-            val keepAudioEffectSessionOpen = shouldKeepAudioEffectSessionOpen()
-            if (player.playWhenReady && keepAudioEffectSessionOpen) {
+            if (player.playWhenReady && shouldKeepAudioEffectSessionOpen()) {
                 ensureAudioFocusForActivePlayback()
-            }
-            if (keepAudioEffectSessionOpen) {
-                openAudioEffectSession()
-            } else {
-                closeAudioEffectSession()
             }
             updateWakeLock()
             if (hasResumablePlaybackNotification()) {
@@ -7723,6 +7778,7 @@ class MusicService :
         } catch (_: Exception) {
         }
         try {
+            localPlayer.removeListener(audioEffectPlayerListener)
             player.removeListener(this)
             player.removeListener(sleepTimer)
             player.release()
@@ -7921,6 +7977,8 @@ class MusicService :
         const val ONLINE_PLAYLIST = "online_playlist"
 
         private const val TAG = "MusicService"
+        private const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4
+        private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
         private const val DISCORD_SYNC_TAG = "DiscordSync"
         private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
         const val CHANNEL_ID = "music_channel_01"
