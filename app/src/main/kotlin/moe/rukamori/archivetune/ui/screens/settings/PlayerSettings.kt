@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -17,9 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,7 +78,6 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun PlayerSettings(
     navController: NavController,
-    scrollBehavior: TopAppBarScrollBehavior,
 ) {
     val (audioQuality, onAudioQualityChange) =
         rememberEnumPreference(
@@ -262,23 +260,36 @@ fun PlayerSettings(
         )
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
-        )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.player_and_audio)) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        val topPadding = innerPadding.calculateTopPadding()
 
-        PreferenceGroup(title = stringResource(R.string.player)) {
-            item {
-                EnumListPreference(
+        Column(
+            Modifier
+                .padding(top = topPadding)
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+        ) {
+            PreferenceGroup(title = stringResource(R.string.player)) {
+                item {
+                    EnumListPreference(
                     title = { Text(stringResource(R.string.audio_quality)) },
                     icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                     selectedValue = audioQuality,
@@ -323,7 +334,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.low_data_mode_title)) },
                     description = stringResource(R.string.low_data_mode_description),
                     icon = { Icon(painterResource(R.drawable.android_cell), null) },
@@ -342,7 +353,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.audio_crossfade_title)) },
                     description = stringResource(R.string.audio_crossfade_description),
                     icon = { Icon(painterResource(R.drawable.animation), null) },
@@ -365,7 +376,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.crossfade_gapless_title)) },
                     description = stringResource(R.string.crossfade_gapless_description),
                     icon = { Icon(painterResource(R.drawable.fast_forward), null) },
@@ -376,7 +387,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.skip_silence)) },
                     icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                     checked = skipSilence,
@@ -386,7 +397,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.audio_normalization)) },
                     icon = { Icon(painterResource(R.drawable.volume_up), null) },
                     checked = audioNormalization,
@@ -395,7 +406,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.audio_offload)) },
                     description = stringResource(R.string.audio_offload_desc),
                     icon = { Icon(painterResource(R.drawable.speed), null) },
@@ -411,7 +422,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.seek_seconds_addup)) },
                     description = stringResource(R.string.seek_seconds_addup_description),
                     icon = { Icon(painterResource(R.drawable.arrow_forward), null) },
@@ -421,7 +432,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.pause_on_device_mute)) },
                     description = stringResource(R.string.pause_on_device_mute_desc),
                     icon = { Icon(painterResource(R.drawable.volume_off), null) },
@@ -456,7 +467,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.auto_start_on_bluetooth)) },
                     description = stringResource(R.string.auto_start_on_bluetooth_desc),
                     icon = { Icon(painterResource(R.drawable.bluetooth), null) },
@@ -467,8 +478,8 @@ fun PlayerSettings(
         }
 
         PreferenceGroup(title = stringResource(R.string.queue)) {
-            item {
-                SwitchPreference(
+                item {
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.persistent_queue)) },
                     description = stringResource(R.string.persistent_queue_desc),
                     icon = { Icon(painterResource(R.drawable.queue_music), null) },
@@ -478,7 +489,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.permanent_shuffle)) },
                     description = stringResource(R.string.permanent_shuffle_desc),
                     icon = { Icon(painterResource(R.drawable.shuffle), null) },
@@ -488,7 +499,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.auto_download_on_like)) },
                     description = stringResource(R.string.auto_download_on_like_desc),
                     icon = { Icon(painterResource(R.drawable.download), null) },
@@ -498,7 +509,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.auto_skip_next_on_error)) },
                     description = stringResource(R.string.auto_skip_next_on_error_desc),
                     icon = { Icon(painterResource(R.drawable.skip_next), null) },
@@ -509,8 +520,8 @@ fun PlayerSettings(
         }
 
         PreferenceGroup(title = stringResource(R.string.misc)) {
-            item {
-                SwitchPreference(
+                item {
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.stop_music_on_task_clear)) },
                     icon = { Icon(painterResource(R.drawable.clear_all), null) },
                     checked = stopMusicOnTaskClear,
@@ -519,7 +530,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.wakelock)) },
                     description = stringResource(R.string.wakelock_desc),
                     icon = { Icon(painterResource(R.drawable.bolt), null) },
@@ -529,7 +540,7 @@ fun PlayerSettings(
             }
 
             item {
-                PreferenceEntry(
+                    PreferenceEntry(
                     title = { Text(stringResource(R.string.artist_separators)) },
                     description = artistSeparators.map { "\"$it\"" }.joinToString("  "),
                     icon = { Icon(painterResource(R.drawable.artist), null) },
@@ -538,7 +549,7 @@ fun PlayerSettings(
             }
 
             item {
-                PreferenceEntry(
+                    PreferenceEntry(
                     title = { Text(stringResource(R.string.manage_playlist_tags)) },
                     description = stringResource(R.string.manage_playlist_tags_desc),
                     icon = { Icon(painterResource(R.drawable.style), null) },
@@ -547,7 +558,7 @@ fun PlayerSettings(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.external_downloader)) },
                     description = stringResource(R.string.external_downloader_desc),
                     icon = { Icon(painterResource(R.drawable.download), null) },
@@ -557,7 +568,7 @@ fun PlayerSettings(
             }
 
             item {
-                PreferenceEntry(
+                    PreferenceEntry(
                     title = { Text(stringResource(R.string.external_downloader_package)) },
                     description = externalDownloaderPackage.ifEmpty { stringResource(R.string.external_downloader_package_desc) },
                     icon = { Icon(painterResource(R.drawable.integration), null) },
@@ -565,21 +576,7 @@ fun PlayerSettings(
                     isEnabled = externalDownloaderEnabled,
                 )
             }
+            }
         }
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.player_and_audio)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
 }

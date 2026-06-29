@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -17,14 +16,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
@@ -45,32 +43,42 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun IntegrationScreen(
     navController: NavController,
-    scrollBehavior: TopAppBarScrollBehavior,
 ) {
-    val context = LocalContext.current
-
     val (listenBrainzEnabled, onListenBrainzEnabledChange) = rememberPreference(ListenBrainzEnabledKey, false)
     val (listenBrainzToken, onListenBrainzTokenChange) = rememberPreference(ListenBrainzTokenKey, "")
 
     var showListenBrainzTokenEditor = remember { mutableStateOf(false) }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
-        )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.integration)) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        val topPadding = innerPadding.calculateTopPadding()
 
-        PreferenceGroup(title = stringResource(R.string.general)) {
-            item {
-                PreferenceEntry(
+        Column(
+            Modifier
+                .padding(top = topPadding)
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+        ) {
+            PreferenceGroup(title = stringResource(R.string.general)) {
+                item {
+                    PreferenceEntry(
                     title = { Text(stringResource(R.string.discord_integration)) },
                     icon = { Icon(painterResource(R.drawable.discord), null) },
                     onClick = {
@@ -81,8 +89,8 @@ fun IntegrationScreen(
         }
 
         PreferenceGroup(title = stringResource(R.string.scrobbling)) {
-            item {
-                PreferenceEntry(
+                item {
+                    PreferenceEntry(
                     title = { Text(stringResource(R.string.lastfm_integration)) },
                     icon = { Icon(painterResource(R.drawable.token), null) },
                     onClick = {
@@ -92,7 +100,7 @@ fun IntegrationScreen(
             }
 
             item {
-                SwitchPreference(
+                    SwitchPreference(
                     title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
                     description = stringResource(R.string.listenbrainz_scrobbling_description),
                     icon = { Icon(painterResource(R.drawable.token), null) },
@@ -102,7 +110,7 @@ fun IntegrationScreen(
             }
 
             item {
-                PreferenceEntry(
+                    PreferenceEntry(
                     title = {
                         Text(
                             if (listenBrainzToken.isBlank()) {
@@ -118,23 +126,9 @@ fun IntegrationScreen(
                     onClick = { showListenBrainzTokenEditor.value = true },
                 )
             }
+            }
         }
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.integration)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
 
     if (showListenBrainzTokenEditor.value) {
         TextFieldDialog(

@@ -420,13 +420,13 @@ fun NavGraphBuilder.navigationBuilder(
         InternetSettings(navController, scrollBehavior)
     }
     composable("settings/player") {
-        PlayerSettings(navController, scrollBehavior)
+        PlayerSettings(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController, scrollBehavior)
     }
     composable("settings/privacy") {
-        PrivacySettings(navController, scrollBehavior)
+        PrivacySettings(navController)
     }
     composable("settings/backup_restore") {
         BackupAndRestore(navController, scrollBehavior)
@@ -435,7 +435,7 @@ fun NavGraphBuilder.navigationBuilder(
         DiscordSettings(navController)
     }
     composable("settings/integration") {
-        IntegrationScreen(navController, scrollBehavior)
+        IntegrationScreen(navController)
     }
     composable("settings/ai_integration") {
         AiIntegrationSettings(navController)
