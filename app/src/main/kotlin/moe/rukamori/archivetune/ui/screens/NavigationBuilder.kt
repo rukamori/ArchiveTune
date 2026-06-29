@@ -393,7 +393,7 @@ fun NavGraphBuilder.navigationBuilder(
         AccountSettings(navController, latestVersionName())
     }
     composable("settings/hidden_playlists") {
-        HiddenPlaylistsScreen(navController, scrollBehavior)
+        HiddenPlaylistsScreen(navController)
     }
     composable("settings/appearance") {
         AppearanceSettings(navController)
@@ -405,7 +405,7 @@ fun NavGraphBuilder.navigationBuilder(
         PalettePickerScreen(navController)
     }
     composable("settings/appearance/lyrics_animations") {
-        LyricsAnimationSettings(navController, scrollBehavior)
+        LyricsAnimationSettings(navController)
     }
     composable("settings/appearance/theme_creator") {
         ThemeCreatorScreen(navController)
@@ -423,13 +423,13 @@ fun NavGraphBuilder.navigationBuilder(
         PlayerSettings(navController)
     }
     composable("settings/storage") {
-        StorageSettings(navController, scrollBehavior)
+        StorageSettings(navController)
     }
     composable("settings/privacy") {
         PrivacySettings(navController)
     }
     composable("settings/backup_restore") {
-        BackupAndRestore(navController, scrollBehavior)
+        BackupAndRestore(navController)
     }
     composable("settings/discord") {
         DiscordSettings(navController)
