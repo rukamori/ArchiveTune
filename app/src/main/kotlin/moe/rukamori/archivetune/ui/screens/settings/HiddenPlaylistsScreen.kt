@@ -72,7 +72,10 @@ fun HiddenPlaylistsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.hidden_playlists)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.backToMain() }, onLongClick = {}) {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
                             contentDescription = null,
