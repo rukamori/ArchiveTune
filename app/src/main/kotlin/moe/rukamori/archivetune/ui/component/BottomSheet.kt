@@ -11,10 +11,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.DraggableState
@@ -58,7 +56,6 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.BottomSheetAnimationSpec
 import moe.rukamori.archivetune.constants.BottomSheetSoftAnimationSpec
-import moe.rukamori.archivetune.utils.rememberPreference
 
 /**
  * Bottom Sheet

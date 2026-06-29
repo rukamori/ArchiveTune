@@ -33,7 +33,9 @@ class GatewayClient {
     }
 
     @Volatile private var httpClient: OkHttpClient? = null
+
     @Volatile private var wsSession: WebSocket? = null
+
     @Volatile private var processingJob: Job? = null
     private var heartbeatJob: Job? = null
     private var helloTimerJob: Job? = null
@@ -47,9 +49,12 @@ class GatewayClient {
     private var sessionState: GatewaySessionState? = null
     private var liveSeq = 0
     private var token = ""
+
     @Volatile private var closed = false
+
     @Volatile private var readyReceived = false
     private val connectionGeneration = AtomicLong(0L)
+
     @Volatile private var activeConnectionGeneration: Long = 0L
 
     var onReady: ((GatewayReadyEvent) -> Unit)? = null
@@ -59,11 +64,9 @@ class GatewayClient {
 
     val latency: Int get() = ping
 
-    fun isConnected(): Boolean =
-        wsSession != null && !closed && processingJob?.isActive == true
+    fun isConnected(): Boolean = wsSession != null && !closed && processingJob?.isActive == true
 
-    fun isReady(): Boolean =
-        isConnected() && readyReceived
+    fun isReady(): Boolean = isConnected() && readyReceived
 
     suspend fun connect(accessToken: String) {
         if (wsSession != null) throw IllegalStateException("GatewayClient already connected")
@@ -192,8 +195,7 @@ class GatewayClient {
         ready.await()
     }
 
-    fun sendPresenceUpdate(presenceJson: JSONObject): Boolean =
-        sendFrame(GatewayOp.PRESENCE_UPDATE, presenceJson, requireReady = true)
+    fun sendPresenceUpdate(presenceJson: JSONObject): Boolean = sendFrame(GatewayOp.PRESENCE_UPDATE, presenceJson, requireReady = true)
 
     fun disconnect() {
         shutdownTransport(
@@ -483,8 +485,7 @@ class GatewayClient {
         runCatching { client?.dispatcher?.executorService?.shutdown() }
     }
 
-    private fun isActiveGeneration(generation: Long): Boolean =
-        generation == activeConnectionGeneration
+    private fun isActiveGeneration(generation: Long): Boolean = generation == activeConnectionGeneration
 
     private fun publishFrame(frame: GatewayFrame) {
         val result = incomingChannel.trySend(frame)

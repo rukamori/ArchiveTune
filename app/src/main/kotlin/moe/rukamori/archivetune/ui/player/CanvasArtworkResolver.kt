@@ -28,8 +28,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
             mediaId = mediaId,
             preferCachedOnly = !allowNetwork,
         )
-    }
-        ?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
+    }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
         ?.let { return it }
 
     if (!allowNetwork || mediaId.isBlank()) {

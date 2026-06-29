@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -41,7 +40,6 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerCustomBlurKey
 import moe.rukamori.archivetune.constants.PlayerCustomBrightnessKey
 import moe.rukamori.archivetune.constants.PlayerCustomContrastKey

@@ -154,5 +154,4 @@ private fun String?.normalizeAuthValue(): String? {
     return trimmed?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 }
 
-private fun String?.normalizeDataSyncId(): String? =
-    PlaybackAuthState(dataSyncId = this).normalized().dataSyncId
+private fun String?.normalizeDataSyncId(): String? = PlaybackAuthState(dataSyncId = this).normalized().dataSyncId

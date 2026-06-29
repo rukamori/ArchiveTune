@@ -10,18 +10,15 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -65,18 +62,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -102,14 +93,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -133,13 +121,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,14 +132,11 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
-import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_BUFFERING
-import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Player.STATE_READY
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
-import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.CachePolicy
@@ -168,7 +149,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import me.saket.squiggles.SquigglySlider
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -191,32 +171,21 @@ import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
-import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
 import moe.rukamori.archivetune.constants.QueuePeekHeight
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
-import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.extensions.toggleRepeatMode
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.ui.component.BigSeekBar
 import moe.rukamori.archivetune.ui.component.BottomSheet
-import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
-import moe.rukamori.archivetune.ui.component.ResizableIconButton
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
-import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.ImageBlurUtils
@@ -1269,11 +1238,12 @@ fun BottomSheetPlayer(
                             Modifier
                                 .fillMaxSize(),
                     ) {
-                        val v7SwapState = rememberThumbnailSwapState(
-                            videoId = mediaMetadata?.id,
-                            ytmUrl = mediaMetadata?.thumbnailUrl,
-                            lowDataMode = lowDataModeActive,
-                        )
+                        val v7SwapState =
+                            rememberThumbnailSwapState(
+                                videoId = mediaMetadata?.id,
+                                ytmUrl = mediaMetadata?.thumbnailUrl,
+                                lowDataMode = lowDataModeActive,
+                            )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
@@ -1329,11 +1299,12 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        val v8SwapState = rememberThumbnailSwapState(
-                            videoId = mediaMetadata?.id,
-                            ytmUrl = mediaMetadata?.thumbnailUrl,
-                            lowDataMode = lowDataModeActive,
-                        )
+                        val v8SwapState =
+                            rememberThumbnailSwapState(
+                                videoId = mediaMetadata?.id,
+                                ytmUrl = mediaMetadata?.thumbnailUrl,
+                                lowDataMode = lowDataModeActive,
+                            )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
@@ -1540,11 +1511,12 @@ fun BottomSheetPlayer(
                             Modifier
                                 .fillMaxSize(),
                     ) {
-                        val v7SwapState = rememberThumbnailSwapState(
-                            videoId = mediaMetadata?.id,
-                            ytmUrl = mediaMetadata?.thumbnailUrl,
-                            lowDataMode = lowDataModeActive,
-                        )
+                        val v7SwapState =
+                            rememberThumbnailSwapState(
+                                videoId = mediaMetadata?.id,
+                                ytmUrl = mediaMetadata?.thumbnailUrl,
+                                lowDataMode = lowDataModeActive,
+                            )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
@@ -1598,11 +1570,12 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        val v8SwapState = rememberThumbnailSwapState(
-                            videoId = mediaMetadata?.id,
-                            ytmUrl = mediaMetadata?.thumbnailUrl,
-                            lowDataMode = lowDataModeActive,
-                        )
+                        val v8SwapState =
+                            rememberThumbnailSwapState(
+                                videoId = mediaMetadata?.id,
+                                ytmUrl = mediaMetadata?.thumbnailUrl,
+                                lowDataMode = lowDataModeActive,
+                            )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,

@@ -46,8 +46,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
@@ -101,7 +101,10 @@ fun OnboardingRoute(
     LaunchedEffect(context, viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is OnboardingEvent.RequestPermission -> permissionLauncher.launch(event.permission)
+                is OnboardingEvent.RequestPermission -> {
+                    permissionLauncher.launch(event.permission)
+                }
+
                 OnboardingEvent.OpenInstallPackagesSettings -> {
                     val intent =
                         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
@@ -110,6 +113,7 @@ fun OnboardingRoute(
                         settingsLauncher.launch(intent)
                     }
                 }
+
                 is OnboardingEvent.OpenUri -> {
                     runCatching {
                         context.startActivity(Intent(Intent.ACTION_VIEW, event.url.toUri()))
@@ -145,8 +149,11 @@ fun OnboardingScreen(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         when (state) {
-            OnboardingScreenState.Loading -> LoadingContent(contentPadding = padding)
-            OnboardingScreenState.Empty ->
+            OnboardingScreenState.Loading -> {
+                LoadingContent(contentPadding = padding)
+            }
+
+            OnboardingScreenState.Empty -> {
                 MessageContent(
                     title = stringResource(R.string.onboarding_empty_title),
                     subtitle = stringResource(R.string.onboarding_empty_subtitle),
@@ -154,7 +161,9 @@ fun OnboardingScreen(
                     onAction = onComplete,
                     contentPadding = padding,
                 )
-            is OnboardingScreenState.Error ->
+            }
+
+            is OnboardingScreenState.Error -> {
                 MessageContent(
                     title = stringResource(state.messageResId),
                     subtitle = stringResource(R.string.onboarding_empty_subtitle),
@@ -162,7 +171,9 @@ fun OnboardingScreen(
                     onAction = onComplete,
                     contentPadding = padding,
                 )
-            is OnboardingScreenState.Success ->
+            }
+
+            is OnboardingScreenState.Success -> {
                 OnboardingSuccessContent(
                     uiState = state.uiState,
                     onNext = onNext,
@@ -171,6 +182,7 @@ fun OnboardingScreen(
                     onCommunityAction = onCommunityAction,
                     contentPadding = padding,
                 )
+            }
         }
     }
 }
@@ -258,14 +270,16 @@ private fun OnboardingSuccessContent(
                 .padding(contentPadding),
     ) { pageIndex ->
         when (uiState.pages[pageIndex].id) {
-            OnboardingPageId.WELCOME ->
+            OnboardingPageId.WELCOME -> {
                 WelcomePage(
                     uiState = uiState,
                     pageIndex = pageIndex,
                     onBack = onBack,
                     onNext = onNext,
                 )
-            OnboardingPageId.PERMISSIONS ->
+            }
+
+            OnboardingPageId.PERMISSIONS -> {
                 PermissionsPage(
                     uiState = uiState,
                     pageIndex = pageIndex,
@@ -273,7 +287,9 @@ private fun OnboardingSuccessContent(
                     onNext = onNext,
                     onPermissionAction = onPermissionAction,
                 )
-            OnboardingPageId.COMMUNITY ->
+            }
+
+            OnboardingPageId.COMMUNITY -> {
                 CommunityPage(
                     uiState = uiState,
                     pageIndex = pageIndex,
@@ -281,6 +297,7 @@ private fun OnboardingSuccessContent(
                     onNext = onNext,
                     onCommunityAction = onCommunityAction,
                 )
+            }
         }
     }
 }

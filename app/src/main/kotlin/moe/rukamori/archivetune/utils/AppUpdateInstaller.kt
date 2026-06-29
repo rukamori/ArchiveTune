@@ -152,13 +152,14 @@ object AppUpdateInstaller {
     ): File? =
         runCatching {
             ZipFile(sourceFile).use { zip ->
-                val entries = zip.entries().asSequence().filter { entry ->
-                    val fileName = entry.name.substringAfterLast('/')
-                    !entry.isDirectory &&
-                        entry.name.endsWith(".apk", ignoreCase = true) &&
-                        !fileName.contains("foss-", ignoreCase = true) &&
-                        !fileName.contains("izzy-", ignoreCase = true)
-                }
+                val entries =
+                    zip.entries().asSequence().filter { entry ->
+                        val fileName = entry.name.substringAfterLast('/')
+                        !entry.isDirectory &&
+                            entry.name.endsWith(".apk", ignoreCase = true) &&
+                            !fileName.contains("foss-", ignoreCase = true) &&
+                            !fileName.contains("izzy-", ignoreCase = true)
+                    }
                 val preferredArtifactNames =
                     listOf(
                         "app-gms-${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-",

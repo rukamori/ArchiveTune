@@ -120,12 +120,19 @@ fun derivePlaybackSemanticState(input: DiscordPresenceInputs): PlaybackSemanticS
             }
         }
 
-        Player.STATE_BUFFERING -> PlaybackSemanticState.BufferingWhilePlayRequested
+        Player.STATE_BUFFERING -> {
+            PlaybackSemanticState.BufferingWhilePlayRequested
+        }
+
         Player.STATE_IDLE,
         Player.STATE_ENDED,
-        -> PlaybackSemanticState.Inactive
+        -> {
+            PlaybackSemanticState.Inactive
+        }
 
-        else -> PlaybackSemanticState.Inactive
+        else -> {
+            PlaybackSemanticState.Inactive
+        }
     }
 }
 
@@ -155,7 +162,10 @@ fun deriveRawDiscordPresenceDecision(
 
         PlaybackSemanticState.PausedByUser -> {
             when {
-                !input.showWhenPaused -> DiscordPresenceDecision.Hidden(HiddenReason.PausedByPreference)
+                !input.showWhenPaused -> {
+                    DiscordPresenceDecision.Hidden(HiddenReason.PausedByPreference)
+                }
+
                 input.pausedPresenceGate == PausedPresenceGate.HiddenByNotificationDismiss -> {
                     DiscordPresenceDecision.Hidden(HiddenReason.PausedByNotificationDismiss)
                 }
@@ -176,7 +186,9 @@ fun deriveRawDiscordPresenceDecision(
             )
         }
 
-        PlaybackSemanticState.Inactive -> DiscordPresenceDecision.Hidden(HiddenReason.PlaybackStalled)
+        PlaybackSemanticState.Inactive -> {
+            DiscordPresenceDecision.Hidden(HiddenReason.PlaybackStalled)
+        }
     }
 }
 
@@ -200,11 +212,12 @@ fun resolveDiscordPresenceDecision(
         }
 
         is DiscordPresenceDecision.Hold -> {
-            val lastAppliedVisible = holdContext.lastAppliedVisiblePresence
-                ?: return DiscordPresenceResolution(
-                    decision = DiscordPresenceDecision.Hidden(HiddenReason.NoStablePlaybackYet),
-                    nextHoldState = null,
-                )
+            val lastAppliedVisible =
+                holdContext.lastAppliedVisiblePresence
+                    ?: return DiscordPresenceResolution(
+                        decision = DiscordPresenceDecision.Hidden(HiddenReason.NoStablePlaybackYet),
+                        nextHoldState = null,
+                    )
 
             val activeHold = holdContext.activeHoldState
             val isSameHold =

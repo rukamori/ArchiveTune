@@ -52,9 +52,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrivacySettings(
-    navController: NavController,
-) {
+fun PrivacySettings(navController: NavController) {
     val database = LocalDatabase.current
     val (pauseListenHistory, onPauseListenHistoryChange) =
         rememberPreference(
@@ -181,61 +179,61 @@ fun PrivacySettings(
             PreferenceGroup(title = stringResource(R.string.listen_history)) {
                 item {
                     SwitchPreference(
-                    title = { Text(stringResource(R.string.pause_listen_history)) },
-                    icon = { Icon(painterResource(R.drawable.history), null) },
-                    checked = pauseListenHistory,
-                    onCheckedChange = onPauseListenHistoryChange,
-                )
-            }
+                        title = { Text(stringResource(R.string.pause_listen_history)) },
+                        icon = { Icon(painterResource(R.drawable.history), null) },
+                        checked = pauseListenHistory,
+                        onCheckedChange = onPauseListenHistoryChange,
+                    )
+                }
 
-            item {
+                item {
                     PreferenceEntry(
-                    title = { Text(stringResource(R.string.clear_listen_history)) },
-                    icon = { Icon(painterResource(R.drawable.delete_history), null) },
-                    onClick = { showClearListenHistoryDialog = true },
-                )
+                        title = { Text(stringResource(R.string.clear_listen_history)) },
+                        icon = { Icon(painterResource(R.drawable.delete_history), null) },
+                        onClick = { showClearListenHistoryDialog = true },
+                    )
+                }
             }
-        }
 
-        PreferenceGroup(title = stringResource(R.string.search_history)) {
+            PreferenceGroup(title = stringResource(R.string.search_history)) {
                 item {
                     SwitchPreference(
-                    title = { Text(stringResource(R.string.pause_search_history)) },
-                    icon = { Icon(painterResource(R.drawable.search_off), null) },
-                    checked = pauseSearchHistory,
-                    onCheckedChange = onPauseSearchHistoryChange,
-                )
-            }
+                        title = { Text(stringResource(R.string.pause_search_history)) },
+                        icon = { Icon(painterResource(R.drawable.search_off), null) },
+                        checked = pauseSearchHistory,
+                        onCheckedChange = onPauseSearchHistoryChange,
+                    )
+                }
 
-            item {
+                item {
                     PreferenceEntry(
-                    title = { Text(stringResource(R.string.clear_search_history)) },
-                    icon = { Icon(painterResource(R.drawable.clear_all), null) },
-                    onClick = { showClearSearchHistoryDialog = true },
-                )
+                        title = { Text(stringResource(R.string.clear_search_history)) },
+                        icon = { Icon(painterResource(R.drawable.clear_all), null) },
+                        onClick = { showClearSearchHistoryDialog = true },
+                    )
+                }
             }
-        }
 
-        PreferenceGroup(title = stringResource(R.string.misc)) {
+            PreferenceGroup(title = stringResource(R.string.misc)) {
                 item {
                     SwitchPreference(
-                    title = { Text(stringResource(R.string.haptics)) },
-                    description = stringResource(R.string.haptics_desc),
-                    icon = { Icon(painterResource(R.drawable.vibration), null) },
-                    checked = enableHapticFeedback,
-                    onCheckedChange = onEnableHapticFeedbackChange,
-                )
-            }
+                        title = { Text(stringResource(R.string.haptics)) },
+                        description = stringResource(R.string.haptics_desc),
+                        icon = { Icon(painterResource(R.drawable.vibration), null) },
+                        checked = enableHapticFeedback,
+                        onCheckedChange = onEnableHapticFeedbackChange,
+                    )
+                }
 
-            item {
+                item {
                     SwitchPreference(
-                    title = { Text(stringResource(R.string.disable_screenshot)) },
-                    description = stringResource(R.string.disable_screenshot_desc),
-                    icon = { Icon(painterResource(R.drawable.screenshot), null) },
-                    checked = disableScreenshot,
-                    onCheckedChange = onDisableScreenshotChange,
-                )
-            }
+                        title = { Text(stringResource(R.string.disable_screenshot)) },
+                        description = stringResource(R.string.disable_screenshot_desc),
+                        icon = { Icon(painterResource(R.drawable.screenshot), null) },
+                        checked = disableScreenshot,
+                        onCheckedChange = onDisableScreenshotChange,
+                    )
+                }
             }
         }
     }

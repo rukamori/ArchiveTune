@@ -14,7 +14,6 @@ import android.media.audiofx.AudioEffect
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -46,7 +45,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,7 +92,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
@@ -124,12 +121,8 @@ import moe.rukamori.archivetune.constants.EqualizerVirtualizerEnabledKey
 import moe.rukamori.archivetune.constants.EqualizerVirtualizerStrengthKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
-import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
-import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.EqCapabilities
 import moe.rukamori.archivetune.playback.EqProfile
 import moe.rukamori.archivetune.playback.EqProfilesPayload
 import moe.rukamori.archivetune.playback.EqualizerJson

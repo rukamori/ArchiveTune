@@ -51,12 +51,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -389,22 +389,31 @@ private fun segmentedSuggestedSongShape(
     val large = SuggestedSongGroupLargeCorner
     val small = SuggestedSongGroupSmallCorner
     return when {
-        count <= 1 -> RoundedCornerShape(large)
-        index == 0 ->
+        count <= 1 -> {
+            RoundedCornerShape(large)
+        }
+
+        index == 0 -> {
             RoundedCornerShape(
                 topStart = large,
                 topEnd = large,
                 bottomEnd = small,
                 bottomStart = small,
             )
-        index == count - 1 ->
+        }
+
+        index == count - 1 -> {
             RoundedCornerShape(
                 topStart = small,
                 topEnd = small,
                 bottomEnd = large,
                 bottomStart = large,
             )
-        else -> RoundedCornerShape(small)
+        }
+
+        else -> {
+            RoundedCornerShape(small)
+        }
     }
 }
 
@@ -633,9 +642,7 @@ private fun YouTubeSongMenuButton(
 }
 
 @Composable
-private fun SearchDiscoveryLoading(
-    modifier: Modifier = Modifier,
-) {
+private fun SearchDiscoveryLoading(modifier: Modifier = Modifier) {
     ShimmerHost(
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -692,7 +699,8 @@ private fun SearchStateMessage(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            androidx.compose.foundation.layout.Row(content = action)
+            androidx.compose.foundation.layout
+                .Row(content = action)
         }
     }
 }

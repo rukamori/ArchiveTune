@@ -10,7 +10,6 @@ package moe.rukamori.archivetune.onboarding
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import javax.inject.Inject
 
 @HiltViewModel
 class OnboardingViewModel
@@ -48,8 +48,7 @@ class OnboardingViewModel
                     } else {
                         OnboardingScreenState.Success(uiState)
                     }
-                }
-                .catch { emit(OnboardingScreenState.Error(R.string.onboarding_error_generic)) }
+                }.catch { emit(OnboardingScreenState.Error(R.string.onboarding_error_generic)) }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
@@ -74,11 +73,13 @@ class OnboardingViewModel
         fun onPermissionAction(action: OnboardingPermissionAction) {
             viewModelScope.launch {
                 when (action) {
-                    is OnboardingPermissionAction.RequestRuntimePermission ->
+                    is OnboardingPermissionAction.RequestRuntimePermission -> {
                         mutableEvents.emit(OnboardingEvent.RequestPermission(action.permission))
+                    }
 
-                    OnboardingPermissionAction.OpenInstallPackagesSettings ->
+                    OnboardingPermissionAction.OpenInstallPackagesSettings -> {
                         mutableEvents.emit(OnboardingEvent.OpenInstallPackagesSettings)
+                    }
                 }
             }
         }

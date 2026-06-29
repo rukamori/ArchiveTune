@@ -54,7 +54,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -345,11 +344,12 @@ private fun MiniPlayerArtwork(
         ) {
             val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
             if (baseThumbnailUrl != null) {
-                val thumbnailSwapState = rememberThumbnailSwapState(
-                    videoId = mediaMetadata?.id,
-                    ytmUrl = baseThumbnailUrl,
-                    lowDataMode = rememberLowDataModeActive(),
-                )
+                val thumbnailSwapState =
+                    rememberThumbnailSwapState(
+                        videoId = mediaMetadata?.id,
+                        ytmUrl = baseThumbnailUrl,
+                        lowDataMode = rememberLowDataModeActive(),
+                    )
                 AsyncImage(
                     model = thumbnailSwapState.displayUrl,
                     contentDescription = null,

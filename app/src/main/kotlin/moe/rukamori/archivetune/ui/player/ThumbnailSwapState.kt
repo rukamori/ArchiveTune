@@ -17,8 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
 import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import moe.rukamori.archivetune.ui.utils.YTThumbQuality
 import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
 import timber.log.Timber
@@ -54,15 +54,17 @@ fun rememberThumbnailSwapState(
         for (quality in YTThumbQuality.entries) {
             val url = buildYTThumbnailUrl(videoId, quality)
             try {
-                val request = ImageRequest.Builder(context)
-                    .data(url)
-                    .memoryCacheKey(url)
-                    .diskCacheKey(url)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .networkCachePolicy(CachePolicy.ENABLED)
-                    .allowHardware(false)
-                    .size(1080)
-                    .build()
+                val request =
+                    ImageRequest
+                        .Builder(context)
+                        .data(url)
+                        .memoryCacheKey(url)
+                        .diskCacheKey(url)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
+                        .allowHardware(false)
+                        .size(1080)
+                        .build()
                 val result = imageLoader.execute(request)
                 if (result is SuccessResult) {
                     ytUrl = url

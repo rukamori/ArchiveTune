@@ -83,9 +83,7 @@ private val DiscordLargeTextOptions = listOf("song", "artist", "album", "app", "
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscordSettings(
-    navController: NavController,
-) {
+fun DiscordSettings(navController: NavController) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val scrollBehavior = appBarScrollBehavior()
     val song by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)

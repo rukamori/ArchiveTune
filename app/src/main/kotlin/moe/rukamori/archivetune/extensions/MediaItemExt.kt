@@ -72,10 +72,12 @@ fun SongItem.toMediaItem() =
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
                 .setArtworkUri(
-                    if (isMusicVideo()) buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
-                    else thumbnail.toNotificationArtworkUri()
-                )
-                .setAlbumTitle(album?.name)
+                    if (isMusicVideo()) {
+                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    } else {
+                        thumbnail.toNotificationArtworkUri()
+                    },
+                ).setAlbumTitle(album?.name)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
                 .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, isMusicVideo()) })
@@ -96,10 +98,12 @@ fun MediaMetadata.toMediaItem() =
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
                 .setArtworkUri(
-                    if (isMusicVideo) buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
-                    else thumbnailUrl.toNotificationArtworkUri()
-                )
-                .setAlbumTitle(album?.title)
+                    if (isMusicVideo) {
+                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    } else {
+                        thumbnailUrl.toNotificationArtworkUri()
+                    },
+                ).setAlbumTitle(album?.title)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
                 .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, isMusicVideo) })

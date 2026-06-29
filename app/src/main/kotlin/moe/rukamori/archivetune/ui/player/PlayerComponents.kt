@@ -47,7 +47,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -60,13 +59,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,8 +77,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -101,11 +94,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import me.saket.squiggles.SquigglySlider
-import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
-import moe.rukamori.archivetune.constants.PlayerButtonsStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
 import moe.rukamori.archivetune.constants.SliderStyle
@@ -2056,11 +2047,12 @@ fun V8PlayerContent(
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
     val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
-    val thumbnailSwapState = rememberThumbnailSwapState(
-        videoId = mediaMetadata.id,
-        ytmUrl = baseArtworkUrl,
-        lowDataMode = rememberLowDataModeActive(),
-    )
+    val thumbnailSwapState =
+        rememberThumbnailSwapState(
+            videoId = mediaMetadata.id,
+            ytmUrl = baseArtworkUrl,
+            lowDataMode = rememberLowDataModeActive(),
+        )
     val artworkUrl = thumbnailSwapState.displayUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
     val onMenuClick = {
@@ -2945,11 +2937,12 @@ fun V9PlayerContent(
     landscape: Boolean = false,
 ) {
     val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
-    val thumbnailSwapState = rememberThumbnailSwapState(
-        videoId = mediaMetadata.id,
-        ytmUrl = baseArtworkUrl,
-        lowDataMode = rememberLowDataModeActive(),
-    )
+    val thumbnailSwapState =
+        rememberThumbnailSwapState(
+            videoId = mediaMetadata.id,
+            ytmUrl = baseArtworkUrl,
+            lowDataMode = rememberLowDataModeActive(),
+        )
     val artworkUrl = thumbnailSwapState.displayUrl
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
     val onTitleClick = titleActions.onTitleClick
@@ -3685,11 +3678,12 @@ fun PlayerBackground(
     val effectiveBlurRadius = blurRadius.coerceIn(0f, PlayerBackgroundMaxBlurRadius)
     val shouldApplyBlur = !disableBlur && effectiveBlurRadius > 0f
 
-    val backgroundSwapState = rememberThumbnailSwapState(
-        videoId = mediaMetadata?.id,
-        ytmUrl = mediaMetadata?.thumbnailUrl,
-        lowDataMode = rememberLowDataModeActive(),
-    )
+    val backgroundSwapState =
+        rememberThumbnailSwapState(
+            videoId = mediaMetadata?.id,
+            ytmUrl = mediaMetadata?.thumbnailUrl,
+            lowDataMode = rememberLowDataModeActive(),
+        )
     val backgroundThumbnailUrl = backgroundSwapState.displayUrl
     val styleAppliesBlur =
         effectiveBlurRadius > 0f && effectiveBlurRadius >= 0.5f

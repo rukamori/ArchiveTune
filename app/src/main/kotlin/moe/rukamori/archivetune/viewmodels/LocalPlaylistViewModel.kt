@@ -48,7 +48,6 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
-import moe.rukamori.archivetune.innertube.pages.SearchResult
 import moe.rukamori.archivetune.models.PlaylistSuggestion
 import moe.rukamori.archivetune.models.PlaylistSuggestionPage
 import moe.rukamori.archivetune.models.PlaylistSuggestionQuery

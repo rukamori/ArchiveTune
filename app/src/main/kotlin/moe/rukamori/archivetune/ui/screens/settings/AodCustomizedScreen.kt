@@ -140,9 +140,7 @@ private data class AodPreviewSettings(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AodCustomizedScreen(
-    navController: NavController,
-) {
+fun AodCustomizedScreen(navController: NavController) {
     val scrollBehavior = appBarScrollBehavior()
     val (thumbnailShape, onThumbnailShapeChange) =
         rememberEnumPreference(

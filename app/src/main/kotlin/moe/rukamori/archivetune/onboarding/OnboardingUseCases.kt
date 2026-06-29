@@ -8,13 +8,13 @@
 package moe.rukamori.archivetune.onboarding
 
 import com.google.common.collect.ImmutableList
-import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
+import javax.inject.Inject
 
 class ObserveOnboardingDataUseCase
     @Inject
@@ -22,14 +22,14 @@ class ObserveOnboardingDataUseCase
         private val repository: OnboardingRepository,
     ) {
         operator fun invoke(refreshSignals: Flow<Int>): Flow<OnboardingData> =
-            repository.observeShouldShowOnboarding()
+            repository
+                .observeShouldShowOnboarding()
                 .combine(refreshSignals) { shouldShowOnboarding, _ ->
                     OnboardingData(
                         shouldShowOnboarding = shouldShowOnboarding,
                         permissions = repository.currentPermissions(),
                     )
-                }
-                .flowOn(Dispatchers.IO)
+                }.flowOn(Dispatchers.IO)
     }
 
 class BuildOnboardingUiStateUseCase

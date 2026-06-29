@@ -30,8 +30,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.storage.ClearStorageCacheUseCase
 import moe.rukamori.archivetune.storage.ObserveStorageFoldersUseCase
 import moe.rukamori.archivetune.storage.SetStorageFolderUseCase
-import moe.rukamori.archivetune.storage.StorageCacheClearResult
 import moe.rukamori.archivetune.storage.StorageCacheClearProgress
+import moe.rukamori.archivetune.storage.StorageCacheClearResult
 import moe.rukamori.archivetune.storage.StorageCacheKind
 import moe.rukamori.archivetune.storage.StorageFolderSelection
 import moe.rukamori.archivetune.storage.StorageFolderUpdateResult

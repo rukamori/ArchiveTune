@@ -15,13 +15,13 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.LaunchCountKey
 import moe.rukamori.archivetune.constants.OnboardingCompletedKey
 import moe.rukamori.archivetune.utils.dataStore
+import javax.inject.Inject
 
 class OnboardingRepository
     @Inject
@@ -49,7 +49,7 @@ class OnboardingRepository
                         add(appInstallationData())
                         add(runtimePermissionData(OnboardingPermissionId.BLUETOOTH_SCAN, bluetoothScanPermission()))
                     }
-                }
+                },
             )
 
         suspend fun markCompleted() {

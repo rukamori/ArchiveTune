@@ -9,7 +9,6 @@
 
 package moe.rukamori.archivetune.ui.component
 
-import android.content.Intent
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -19,10 +18,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -40,12 +37,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,7 +71,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -102,14 +95,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.palette.graphics.Palette
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.toBitmap
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -126,7 +112,6 @@ import moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
 import moe.rukamori.archivetune.constants.LyricsScrollKey
-import moe.rukamori.archivetune.constants.LyricsTextPositionKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.LyricsV2BounceFactorKey
 import moe.rukamori.archivetune.constants.LyricsV2FillTransitionWidthKey
@@ -151,10 +136,8 @@ import moe.rukamori.archivetune.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import moe.rukamori.archivetune.lyrics.WordTimestamp
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
-import moe.rukamori.archivetune.ui.screens.settings.LyricsPosition
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.ui.utils.smoothFadingEdge
-import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException

@@ -9,7 +9,6 @@
 
 package moe.rukamori.archivetune.ui.component
 
-import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -46,8 +45,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,11 +55,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -76,13 +69,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -98,14 +89,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.zIndex
-import androidx.core.graphics.drawable.toBitmapOrNull
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -121,16 +110,13 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
-import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.GridThumbnailCornerRadius
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
-import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.db.entities.Album
-import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.Song
@@ -150,7 +136,6 @@ import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
-import java.util.logging.Logger
 import kotlin.math.roundToInt
 
 const val ActiveBoxAlpha = 0.6f

@@ -552,12 +552,10 @@ private fun floatingToolbarContainerColor(pureBlack: Boolean): Color =
     if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
 @Composable
-private fun floatingToolbarFabContainerColor(): Color =
-    MaterialTheme.colorScheme.primary
+private fun floatingToolbarFabContainerColor(): Color = MaterialTheme.colorScheme.primary
 
 @Composable
-private fun floatingToolbarFabContentColor(): Color =
-    MaterialTheme.colorScheme.onPrimary
+private fun floatingToolbarFabContentColor(): Color = MaterialTheme.colorScheme.onPrimary
 
 @Composable
 private fun floatingToolbarSelectedItemContainerColor(pureBlack: Boolean): Color =

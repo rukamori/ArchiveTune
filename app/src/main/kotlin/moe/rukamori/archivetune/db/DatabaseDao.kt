@@ -19,13 +19,9 @@ import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import androidx.sqlite.db.SupportSQLiteQuery
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.constants.AlbumSortType
 import moe.rukamori.archivetune.constants.ArtistSongSortType
 import moe.rukamori.archivetune.constants.ArtistSortType
@@ -52,7 +48,6 @@ import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.PlaylistTagMap
-import moe.rukamori.archivetune.db.entities.PlaylistWithTags
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity

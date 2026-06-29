@@ -61,7 +61,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -74,7 +73,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,7 +99,6 @@ import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.queues.ListQueue
@@ -228,13 +225,25 @@ fun LibraryPlaylistsScreen(
                 var showSortMenu by remember { mutableStateOf(false) }
                 val currentSortLabel =
                     when (sortType) {
-                        PlaylistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
+                        PlaylistSortType.CREATE_DATE -> {
+                            stringResource(R.string.recently_added)
+                        }
+
                         PlaylistSortType.NAME -> {
                             if (sortDescending) stringResource(R.string.sort_z_to_a) else stringResource(R.string.sort_a_to_z)
                         }
-                        PlaylistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
-                        PlaylistSortType.LAST_UPDATED -> stringResource(R.string.recently_updated)
-                        PlaylistSortType.CUSTOM -> stringResource(R.string.custom_order)
+
+                        PlaylistSortType.SONG_COUNT -> {
+                            stringResource(R.string.tracks_count_label)
+                        }
+
+                        PlaylistSortType.LAST_UPDATED -> {
+                            stringResource(R.string.recently_updated)
+                        }
+
+                        PlaylistSortType.CUSTOM -> {
+                            stringResource(R.string.custom_order)
+                        }
                     }
 
                 val showSortDirection = sortType != PlaylistSortType.CUSTOM

@@ -82,12 +82,8 @@ import moe.rukamori.archivetune.db.entities.formattedFileSize
 import moe.rukamori.archivetune.db.entities.formattedSampleRate
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
-import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.BottomSheetState
-import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.bottomSheetDraggable
-import moe.rukamori.archivetune.ui.menu.PlayerMenu
-import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt

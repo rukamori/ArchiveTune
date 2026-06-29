@@ -49,10 +49,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -79,7 +77,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -96,7 +93,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -118,7 +114,6 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -132,7 +127,6 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.extensions.move
@@ -152,13 +146,8 @@ import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.PlaylistTagChips
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
-import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
-import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
-import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
-import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.removeSongFromRemotePlaylist

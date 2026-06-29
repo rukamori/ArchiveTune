@@ -22,7 +22,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.MediaInfo
-import com.google.android.gms.cast.MediaMetadata as CastMetadata
 import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
@@ -57,6 +56,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
+import com.google.android.gms.cast.MediaMetadata as CastMetadata
 
 class DefaultCastPlaybackRepository(
     context: Context,
@@ -123,7 +123,8 @@ class DefaultCastPlaybackRepository(
             CastContext.getSharedInstance(context.applicationContext)
         }.onFailure {
             Timber.tag("Cast").w(it, "Unable to initialize CastContext")
-        }.getOrNull()?.also { castContext = it }
+        }.getOrNull()
+            ?.also { castContext = it }
 
     private fun registerSessionListener(context: CastContext) {
         if (listenerRegistered) return
@@ -268,9 +269,7 @@ private class GmsCastMediaItemConverter(
         return mediaId.toUri()
     }
 
-    private fun MediaInfo?.toMedia3Metadata(
-        mediaId: String,
-    ): androidx.media3.common.MediaMetadata {
+    private fun MediaInfo?.toMedia3Metadata(mediaId: String): androidx.media3.common.MediaMetadata {
         val castMetadata = this?.metadata
         val title = castMetadata?.stringValue(CastMetadata.KEY_TITLE) ?: mediaId
         val subtitle = castMetadata?.stringValue(CastMetadata.KEY_SUBTITLE)
@@ -295,9 +294,7 @@ private class GmsCastMediaItemConverter(
             .build()
     }
 
-    private fun MediaInfo?.toAppMediaMetadata(
-        mediaId: String,
-    ): moe.rukamori.archivetune.models.MediaMetadata {
+    private fun MediaInfo?.toAppMediaMetadata(mediaId: String): moe.rukamori.archivetune.models.MediaMetadata {
         val castMetadata = this?.metadata
         val title = castMetadata?.stringValue(CastMetadata.KEY_TITLE) ?: mediaId
         val artistText =
@@ -311,10 +308,17 @@ private class GmsCastMediaItemConverter(
                 artistText
                     ?.split(",")
                     ?.mapNotNull { it.trim().takeIf(String::isNotBlank) }
-                    ?.map { moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = it) }
-                    .orEmpty(),
+                    ?.map {
+                        moe.rukamori.archivetune.models.MediaMetadata
+                            .Artist(id = null, name = it)
+                    }.orEmpty(),
             duration = -1,
-            thumbnailUrl = castMetadata?.images?.firstOrNull()?.url?.toString(),
+            thumbnailUrl =
+                castMetadata
+                    ?.images
+                    ?.firstOrNull()
+                    ?.url
+                    ?.toString(),
             album =
                 albumTitle?.let {
                     moe.rukamori.archivetune.models.MediaMetadata.Album(
@@ -365,7 +369,8 @@ private class LocalCastMediaServer(
                 mimeType = mimeType,
                 mediaItemResolver = mediaItemResolver,
             )
-        return mediaItem.withReceiverArtwork(host)
+        return mediaItem
+            .withReceiverArtwork(host)
             .buildUpon()
             .setUri("http://$host:$port/cast/local/$token".toUri())
             .setMimeType(mimeType)
@@ -542,7 +547,8 @@ private class LocalCastMediaServer(
         item: ServedItem,
         rangeHeader: String?,
     ): OpenSource? {
-        val resolved = item.resolvedMediaItem ?: item.mediaItemResolver?.resolveForCast(item.mediaItem)?.also { item.resolvedMediaItem = it }
+        val resolved =
+            item.resolvedMediaItem ?: item.mediaItemResolver?.resolveForCast(item.mediaItem)?.also { item.resolvedMediaItem = it }
         val resolvedUri = resolved?.localConfiguration?.uri ?: return null
         if (!resolvedUri.isHttpUrl()) {
             val resolvedItem =
@@ -763,5 +769,4 @@ private class LocalCastMediaServer(
             }
         }
     }
-
 }

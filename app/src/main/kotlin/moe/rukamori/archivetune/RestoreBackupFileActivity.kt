@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -38,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -79,10 +78,15 @@ class RestoreBackupFileActivity : ComponentActivity() {
 
 private sealed class BackupScreenState {
     data object Validating : BackupScreenState()
+
     data class Ready(
         val availableCategories: Set<BackupCategory>,
     ) : BackupScreenState()
-    data class Error(val message: String) : BackupScreenState()
+
+    data class Error(
+        val message: String,
+    ) : BackupScreenState()
+
     data object Restoring : BackupScreenState()
 }
 
@@ -310,5 +314,3 @@ private fun RestoreOptionsDialog(
         Spacer(Modifier.height(4.dp))
     }
 }
-
-

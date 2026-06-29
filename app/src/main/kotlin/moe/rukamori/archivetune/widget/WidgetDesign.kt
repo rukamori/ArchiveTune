@@ -11,7 +11,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
 import android.util.LruCache
 import androidx.annotation.DrawableRes
 import androidx.compose.material3.darkColorScheme

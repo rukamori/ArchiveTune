@@ -66,6 +66,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+
     @Suppress("UNUSED_VARIABLE")
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val loginSuccessMessage = stringResource(R.string.login_success)

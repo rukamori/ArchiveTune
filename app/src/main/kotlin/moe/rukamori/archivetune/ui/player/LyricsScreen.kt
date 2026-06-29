@@ -19,11 +19,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -473,8 +472,10 @@ private fun AppleMusicBackground(
     val colors = if (gradientColors.isNotEmpty()) gradientColors else AppleMusicFallbackGradient
     val showThumbnailBg =
         !disableBlur && blurRadius > 0f &&
-            (playerBackgroundStyle == PlayerBackgroundStyle.BLUR ||
-                playerBackgroundStyle == PlayerBackgroundStyle.BLUR_GRADIENT)
+            (
+                playerBackgroundStyle == PlayerBackgroundStyle.BLUR ||
+                    playerBackgroundStyle == PlayerBackgroundStyle.BLUR_GRADIENT
+            )
     val effectiveBlurRadius = blurRadius.coerceIn(0f, 60f)
 
     val context = LocalContext.current
@@ -506,26 +507,33 @@ private fun AppleMusicBackground(
                         )
                     } else {
                         val blurredBitmap by produceState<Bitmap?>(null, thumbnailUrl) {
-                            value = withContext(Dispatchers.IO) {
-                                try {
-                                    val request = ImageRequest.Builder(context)
-                                        .data(thumbnailUrl)
-                                        .allowHardware(false)
-                                        .memoryCacheKey(thumbnailUrl)
-                                        .diskCacheKey(thumbnailUrl)
-                                        .size(coil3.size.Size(500, 500))
-                                        .build()
-                                    val result = imageLoader.execute(request)
-                                    if (result is SuccessResult) {
-                                        val bitmap = result.image.toBitmap()
-                                            .copy(Bitmap.Config.ARGB_8888, true)
-                                        val density = context.resources.displayMetrics.density
-                                        ImageBlurUtils.blur(bitmap, effectiveBlurRadius * density)
-                                    } else null
-                                } catch (_: Exception) {
-                                    null
+                            value =
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        val request =
+                                            ImageRequest
+                                                .Builder(context)
+                                                .data(thumbnailUrl)
+                                                .allowHardware(false)
+                                                .memoryCacheKey(thumbnailUrl)
+                                                .diskCacheKey(thumbnailUrl)
+                                                .size(coil3.size.Size(500, 500))
+                                                .build()
+                                        val result = imageLoader.execute(request)
+                                        if (result is SuccessResult) {
+                                            val bitmap =
+                                                result.image
+                                                    .toBitmap()
+                                                    .copy(Bitmap.Config.ARGB_8888, true)
+                                            val density = context.resources.displayMetrics.density
+                                            ImageBlurUtils.blur(bitmap, effectiveBlurRadius * density)
+                                        } else {
+                                            null
+                                        }
+                                    } catch (_: Exception) {
+                                        null
+                                    }
                                 }
-                            }
                         }
                         blurredBitmap?.let { bm ->
                             Image(

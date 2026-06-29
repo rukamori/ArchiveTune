@@ -339,9 +339,7 @@ class AboutAttributionRepository
             return cachedContributors.toString()
         }
 
-        private fun parseTranslationContributorCollectionSafely(
-            json: String,
-        ): AboutTranslationContributorCollection =
+        private fun parseTranslationContributorCollectionSafely(json: String): AboutTranslationContributorCollection =
             try {
                 val cachedContributors = JSONArray(json)
                 val contributors = ArrayList<AboutTranslationContributor>(cachedContributors.length())

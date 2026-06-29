@@ -559,11 +559,12 @@ fun Thumbnail(
                                             item.metadata?.thumbnailUrl?.highRes()
                                                 ?: item.mediaMetadata.artworkUri?.toString()
 
-                                        val thumbnailSwapState = rememberThumbnailSwapState(
-                                            videoId = item.metadata?.id,
-                                            ytmUrl = baseArtworkUrl,
-                                            lowDataMode = lowDataModeActive,
-                                        )
+                                        val thumbnailSwapState =
+                                            rememberThumbnailSwapState(
+                                                videoId = item.metadata?.id,
+                                                ytmUrl = baseArtworkUrl,
+                                                lowDataMode = lowDataModeActive,
+                                            )
 
                                         val displayUrl = thumbnailSwapState.displayUrl
 
