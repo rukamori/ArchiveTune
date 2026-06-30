@@ -73,6 +73,5 @@ class ArchiveTuneMediaNotificationProvider(
         extras: Bundle,
     ): Boolean = delegate.handleCustomCommand(session, action, extras)
 
-    override fun getNotificationChannelInfo(): MediaNotification.Provider.NotificationChannelInfo =
-        delegate.notificationChannelInfo
+    override fun getNotificationChannelInfo(): MediaNotification.Provider.NotificationChannelInfo = delegate.notificationChannelInfo
 }

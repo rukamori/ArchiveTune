@@ -651,7 +651,8 @@ fun LyricsMenu(
                                                     Toast
                                                         .makeText(
                                                             context,
-                                                            context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString()),
+                                                            context.getString(R.string.translation_failed) + ": " +
+                                                                (e.localizedMessage ?: e.toString()),
                                                             Toast.LENGTH_SHORT,
                                                         ).show()
                                                 } finally {

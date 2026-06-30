@@ -10,8 +10,6 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -23,7 +21,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +55,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,7 +64,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -92,7 +87,6 @@ import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
-import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.size.Size
 import coil3.toBitmap
@@ -105,13 +99,9 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -119,9 +109,7 @@ import moe.rukamori.archivetune.ui.component.LyricsEnhanced
 import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
-import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -168,12 +156,6 @@ fun LyricsScreen(
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
-    val playerBackgroundStyle by rememberEnumPreference(
-        PlayerBackgroundStyleKey,
-        PlayerBackgroundStyle.BLUR_GRADIENT,
-    )
-    val blurRadius by rememberPreference(BlurRadiusKey, 48f)
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
 
     val hapticClick =
         remember(enableHapticFeedback, view) {
@@ -324,9 +306,6 @@ fun LyricsScreen(
         AppleMusicBackground(
             mediaMetadata = mediaMetadata,
             gradientColors = gradientColors,
-            playerBackgroundStyle = playerBackgroundStyle,
-            blurRadius = blurRadius,
-            disableBlur = disableBlur,
         )
 
         Box(
@@ -465,20 +444,28 @@ fun LyricsScreen(
 private fun AppleMusicBackground(
     mediaMetadata: MediaMetadata,
     gradientColors: List<Color>,
-    playerBackgroundStyle: PlayerBackgroundStyle,
-    blurRadius: Float,
-    disableBlur: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colors = if (gradientColors.isNotEmpty()) gradientColors else AppleMusicFallbackGradient
-    val showThumbnailBg =
-        !disableBlur && blurRadius > 0f &&
-            (playerBackgroundStyle == PlayerBackgroundStyle.BLUR ||
-                playerBackgroundStyle == PlayerBackgroundStyle.BLUR_GRADIENT)
-    val effectiveBlurRadius = blurRadius.coerceIn(0f, 60f)
-
-    val context = LocalContext.current
-    val imageLoader = context.imageLoader
+    val backgroundBrush =
+        remember(colors) {
+            Brush.verticalGradient(
+                listOf(
+                    colors.getOrElse(0) { AppleMusicFallbackGradient[0] }.copy(alpha = 0.88f),
+                    colors.getOrElse(1) { AppleMusicFallbackGradient[1] }.copy(alpha = 0.76f),
+                    colors.getOrElse(2) { AppleMusicFallbackGradient[2] }.copy(alpha = 0.96f),
+                ),
+            )
+        }
+    val bottomScrim =
+        remember {
+            Brush.verticalGradient(
+                listOf(
+                    Color.Transparent,
+                    Color.Black.copy(alpha = 0.28f),
+                ),
+            )
+        }
 
     Box(
         modifier =
@@ -486,84 +473,29 @@ private fun AppleMusicBackground(
                 .fillMaxSize()
                 .background(AppleMusicFallbackGradient.last()),
     ) {
-        if (showThumbnailBg) {
-            AnimatedContent(
-                targetState = mediaMetadata.thumbnailUrl,
-                transitionSpec = { fadeIn(tween(700)) togetherWith fadeOut(tween(700)) },
-                label = "lyrics-apple-background",
-            ) { thumbnailUrl ->
-                if (thumbnailUrl != null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        AsyncImage(
-                            model = thumbnailUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .blur(effectiveBlurRadius.dp)
-                                    .alpha(0.62f),
-                        )
-                    } else {
-                        val blurredBitmap by produceState<Bitmap?>(null, thumbnailUrl) {
-                            value = withContext(Dispatchers.IO) {
-                                try {
-                                    val request = ImageRequest.Builder(context)
-                                        .data(thumbnailUrl)
-                                        .allowHardware(false)
-                                        .memoryCacheKey(thumbnailUrl)
-                                        .diskCacheKey(thumbnailUrl)
-                                        .size(coil3.size.Size(500, 500))
-                                        .build()
-                                    val result = imageLoader.execute(request)
-                                    if (result is SuccessResult) {
-                                        val bitmap = result.image.toBitmap()
-                                            .copy(Bitmap.Config.ARGB_8888, true)
-                                        val density = context.resources.displayMetrics.density
-                                        ImageBlurUtils.blur(bitmap, effectiveBlurRadius * density)
-                                    } else null
-                                } catch (_: Exception) {
-                                    null
-                                }
-                            }
-                        }
-                        blurredBitmap?.let { bm ->
-                            Image(
-                                bitmap = bm.asImageBitmap(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().alpha(0.62f),
-                            )
-                        }
-                    }
-                }
+        AnimatedContent(
+            targetState = mediaMetadata.thumbnailUrl,
+            transitionSpec = { fadeIn(tween(700)) togetherWith fadeOut(tween(700)) },
+            label = "lyrics-apple-background",
+        ) { thumbnailUrl ->
+            if (thumbnailUrl != null) {
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .blur(46.dp)
+                            .alpha(0.62f),
+                )
             }
         }
-
-        val overlayBrush =
-            remember(playerBackgroundStyle, colors) {
-                when (playerBackgroundStyle) {
-                    PlayerBackgroundStyle.BLUR -> {
-                        val stops = PlayerBackgroundColorUtils.buildBlurOverlayStops(colors)
-                        Brush.verticalGradient(*stops)
-                    }
-
-                    PlayerBackgroundStyle.BLUR_GRADIENT -> {
-                        val stops = PlayerBackgroundColorUtils.buildBlurGradientStops(colors)
-                        Brush.verticalGradient(*stops)
-                    }
-
-                    else -> {
-                        val stops = PlayerBackgroundColorUtils.buildBlurGradientStops(colors)
-                        Brush.verticalGradient(*stops)
-                    }
-                }
-            }
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(overlayBrush),
+                    .background(backgroundBrush),
         )
         Box(
             modifier =
@@ -571,16 +503,6 @@ private fun AppleMusicBackground(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.18f)),
         )
-
-        val bottomScrim =
-            remember {
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.48f),
-                    ),
-                )
-            }
         Box(
             modifier =
                 Modifier

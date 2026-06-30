@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -141,9 +140,7 @@ fun InternetWarningBox(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun InternetSettings(
-    navController: NavController,
-) {
+fun InternetSettings(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -203,231 +200,231 @@ fun InternetSettings(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
-        InternetWarningBox()
+            InternetWarningBox()
 
-        PreferenceGroup(title = stringResource(R.string.dns_over_https)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.dns_over_https)) },
-                    description = stringResource(R.string.dns_over_https_desc),
-                    icon = { Icon(painterResource(R.drawable.security), null) },
-                    checked = dnsOverHttpsEnabled,
-                    onCheckedChange = onDnsOverHttpsEnabledChange,
-                )
-            }
-
-            item(visible = dnsOverHttpsEnabled) {
-                ListPreference(
-                    title = { Text(stringResource(R.string.dns_provider)) },
-                    icon = { Icon(painterResource(R.drawable.website), null) },
-                    selectedValue = dnsProvider,
-                    values = dnsProviders,
-                    valueText = { it },
-                    onValueSelected = onDnsProviderChange,
-                )
-            }
-
-            item(visible = dnsOverHttpsEnabled && dnsProvider == "Custom") {
-                EditTextPreference(
-                    title = { Text(stringResource(R.string.dns_custom_url)) },
-                    value = customDnsUrl,
-                    onValueChange = onCustomDnsUrlChange,
-                )
-            }
-        }
-
-        PreferenceGroup(title = stringResource(R.string.proxy)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_proxy)) },
-                    icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
-                    checked = proxyEnabled,
-                    onCheckedChange = {
-                        onProxyEnabledChange(it)
-                        ProxyUtils.applyYouTubeProxy(it, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword)
-                    },
-                )
-            }
-
-            item(visible = proxyEnabled) {
-                ListPreference(
-                    title = { Text(stringResource(R.string.proxy_type)) },
-                    selectedValue = proxyType,
-                    values = proxyTypes,
-                    valueText = { it.name },
-                    onValueSelected = {
-                        onProxyTypeChange(it)
-                        ProxyUtils.applyYouTubeProxy(proxyEnabled, it, proxyHost, proxyPort, proxyUsername, proxyPassword)
-                    },
-                )
-            }
-
-            item(visible = proxyEnabled) {
-                EditTextPreference(
-                    title = { Text(stringResource(R.string.proxy_host)) },
-                    value = proxyHost,
-                    onValueChange = {
-                        onProxyHostChange(it)
-                        ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, it, proxyPort, proxyUsername, proxyPassword)
-                    },
-                )
-            }
-
-            item(visible = proxyEnabled) {
-                NumberEditTextPreference(
-                    title = { Text(stringResource(R.string.proxy_port)) },
-                    value = proxyPort,
-                    onValueChange = {
-                        onProxyPortChange(it)
-                        ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, it, proxyUsername, proxyPassword)
-                    },
-                    isInputValid = { it.toIntOrNull() in 1..65535 },
-                )
-            }
-        }
-
-        if (proxyEnabled) {
-            PreferenceGroup(title = stringResource(R.string.proxy_auth)) {
-                item {
-                    EditTextPreference(
-                        title = { Text(stringResource(R.string.proxy_username)) },
-                        value = proxyUsername,
-                        onValueChange = {
-                            onProxyUsernameChange(it)
-                            ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, it, proxyPassword)
-                        },
-                    )
-                }
-
-                item {
-                    EditTextPreference(
-                        title = { Text(stringResource(R.string.proxy_password)) },
-                        value = proxyPassword,
-                        onValueChange = {
-                            onProxyPasswordChange(it)
-                            ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, proxyUsername, it)
-                        },
-                    )
-                }
-
+            PreferenceGroup(title = stringResource(R.string.dns_over_https)) {
                 item {
                     SwitchPreference(
-                        title = { Text(stringResource(R.string.stream_bypass_proxy)) },
-                        description = stringResource(R.string.stream_bypass_proxy_desc),
+                        title = { Text(stringResource(R.string.dns_over_https)) },
+                        description = stringResource(R.string.dns_over_https_desc),
+                        icon = { Icon(painterResource(R.drawable.security), null) },
+                        checked = dnsOverHttpsEnabled,
+                        onCheckedChange = onDnsOverHttpsEnabledChange,
+                    )
+                }
+
+                item(visible = dnsOverHttpsEnabled) {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.dns_provider)) },
+                        icon = { Icon(painterResource(R.drawable.website), null) },
+                        selectedValue = dnsProvider,
+                        values = dnsProviders,
+                        valueText = { it },
+                        onValueSelected = onDnsProviderChange,
+                    )
+                }
+
+                item(visible = dnsOverHttpsEnabled && dnsProvider == "Custom") {
+                    EditTextPreference(
+                        title = { Text(stringResource(R.string.dns_custom_url)) },
+                        value = customDnsUrl,
+                        onValueChange = onCustomDnsUrlChange,
+                    )
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.proxy)) {
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.enable_proxy)) },
                         icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
-                        checked = streamBypassProxy,
+                        checked = proxyEnabled,
                         onCheckedChange = {
-                            onStreamBypassProxyChange(it)
-                            YouTube.streamBypassProxy = it
+                            onProxyEnabledChange(it)
+                            ProxyUtils.applyYouTubeProxy(it, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword)
                         },
                     )
                 }
 
-                item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.test_proxy_connection)) },
-                        icon = { Icon(painterResource(R.drawable.check), null) },
-                        onClick = {
-                            if (testingProxy) return@PreferenceEntry
-                            scope.launch(Dispatchers.IO) {
-                                testingProxy = true
-                                try {
-                                    val proxy = ProxyUtils.createProxyOrNull(proxyType, proxyHost, proxyPort)
-                                    if (proxy == null) {
+                item(visible = proxyEnabled) {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.proxy_type)) },
+                        selectedValue = proxyType,
+                        values = proxyTypes,
+                        valueText = { it.name },
+                        onValueSelected = {
+                            onProxyTypeChange(it)
+                            ProxyUtils.applyYouTubeProxy(proxyEnabled, it, proxyHost, proxyPort, proxyUsername, proxyPassword)
+                        },
+                    )
+                }
+
+                item(visible = proxyEnabled) {
+                    EditTextPreference(
+                        title = { Text(stringResource(R.string.proxy_host)) },
+                        value = proxyHost,
+                        onValueChange = {
+                            onProxyHostChange(it)
+                            ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, it, proxyPort, proxyUsername, proxyPassword)
+                        },
+                    )
+                }
+
+                item(visible = proxyEnabled) {
+                    NumberEditTextPreference(
+                        title = { Text(stringResource(R.string.proxy_port)) },
+                        value = proxyPort,
+                        onValueChange = {
+                            onProxyPortChange(it)
+                            ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, it, proxyUsername, proxyPassword)
+                        },
+                        isInputValid = { it.toIntOrNull() in 1..65535 },
+                    )
+                }
+            }
+
+            if (proxyEnabled) {
+                PreferenceGroup(title = stringResource(R.string.proxy_auth)) {
+                    item {
+                        EditTextPreference(
+                            title = { Text(stringResource(R.string.proxy_username)) },
+                            value = proxyUsername,
+                            onValueChange = {
+                                onProxyUsernameChange(it)
+                                ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, it, proxyPassword)
+                            },
+                        )
+                    }
+
+                    item {
+                        EditTextPreference(
+                            title = { Text(stringResource(R.string.proxy_password)) },
+                            value = proxyPassword,
+                            onValueChange = {
+                                onProxyPasswordChange(it)
+                                ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, proxyUsername, it)
+                            },
+                        )
+                    }
+
+                    item {
+                        SwitchPreference(
+                            title = { Text(stringResource(R.string.stream_bypass_proxy)) },
+                            description = stringResource(R.string.stream_bypass_proxy_desc),
+                            icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
+                            checked = streamBypassProxy,
+                            onCheckedChange = {
+                                onStreamBypassProxyChange(it)
+                                YouTube.streamBypassProxy = it
+                            },
+                        )
+                    }
+
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.test_proxy_connection)) },
+                            icon = { Icon(painterResource(R.drawable.check), null) },
+                            onClick = {
+                                if (testingProxy) return@PreferenceEntry
+                                scope.launch(Dispatchers.IO) {
+                                    testingProxy = true
+                                    try {
+                                        val proxy = ProxyUtils.createProxyOrNull(proxyType, proxyHost, proxyPort)
+                                        if (proxy == null) {
+                                            testResult =
+                                                context.getString(
+                                                    R.string.proxy_connection_failed,
+                                                    context.getString(R.string.proxy_connection_invalid_configuration),
+                                                )
+                                            return@launch
+                                        }
+                                        val clientBuilder =
+                                            OkHttpClient
+                                                .Builder()
+                                                .proxy(proxy)
+                                                .connectTimeout(10, TimeUnit.SECONDS)
+                                                .readTimeout(10, TimeUnit.SECONDS)
+
+                                        if (proxyUsername.isNotBlank() && proxyPassword.isNotBlank()) {
+                                            clientBuilder.proxyAuthenticator { _, response ->
+                                                val credential = okhttp3.Credentials.basic(proxyUsername, proxyPassword)
+                                                response.request
+                                                    .newBuilder()
+                                                    .header("Proxy-Authorization", credential)
+                                                    .build()
+                                            }
+                                        }
+
+                                        val client = clientBuilder.build()
+                                        val request =
+                                            Request
+                                                .Builder()
+                                                .url("https://music.youtube.com/generate_204")
+                                                .build()
+                                        client.newCall(request).execute().use { response ->
+                                            testResult =
+                                                if (response.isSuccessful || response.code == 204) {
+                                                    context.getString(R.string.proxy_connection_success)
+                                                } else {
+                                                    context.getString(R.string.proxy_connection_failed, "HTTP ${response.code}")
+                                                }
+                                        }
+                                    } catch (e: Exception) {
                                         testResult =
                                             context.getString(
                                                 R.string.proxy_connection_failed,
-                                                context.getString(R.string.proxy_connection_invalid_configuration),
+                                                e.message ?: context.getString(R.string.error_unknown),
                                             )
-                                        return@launch
+                                    } finally {
+                                        testingProxy = false
                                     }
-                                    val clientBuilder =
-                                        OkHttpClient
-                                            .Builder()
-                                            .proxy(proxy)
-                                            .connectTimeout(10, TimeUnit.SECONDS)
-                                            .readTimeout(10, TimeUnit.SECONDS)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
 
-                                    if (proxyUsername.isNotBlank() && proxyPassword.isNotBlank()) {
-                                        clientBuilder.proxyAuthenticator { _, response ->
-                                            val credential = okhttp3.Credentials.basic(proxyUsername, proxyPassword)
-                                            response.request
-                                                .newBuilder()
-                                                .header("Proxy-Authorization", credential)
-                                                .build()
-                                        }
+            PreferenceGroup(title = stringResource(R.string.ip_rotation)) {
+                item {
+                    IpRotationPreference(
+                        title = { Text(stringResource(R.string.ip_rotation)) },
+                        description = ipRotationDescription,
+                        icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
+                        checked = ipRotationEnabled,
+                        isBusy = loadingIpRotation || refreshingIpRotation,
+                        onCheckedChange = { enabled ->
+                            onIpRotationEnabledChange(enabled)
+                            if (enabled) {
+                                scope.launch {
+                                    loadingIpRotation = true
+                                    try {
+                                        YouTube.enableIpRotation()
+                                    } catch (_: Exception) {
+                                        onIpRotationEnabledChange(false)
+                                    } finally {
+                                        loadingIpRotation = false
                                     }
-
-                                    val client = clientBuilder.build()
-                                    val request =
-                                        Request
-                                            .Builder()
-                                            .url("https://music.youtube.com/generate_204")
-                                            .build()
-                                    client.newCall(request).execute().use { response ->
-                                        testResult =
-                                            if (response.isSuccessful || response.code == 204) {
-                                                context.getString(R.string.proxy_connection_success)
-                                            } else {
-                                                context.getString(R.string.proxy_connection_failed, "HTTP ${response.code}")
-                                            }
-                                    }
-                                } catch (e: Exception) {
-                                    testResult =
-                                        context.getString(
-                                            R.string.proxy_connection_failed,
-                                            e.message ?: context.getString(R.string.error_unknown),
-                                        )
+                                }
+                            } else {
+                                YouTube.disableIpRotation()
+                            }
+                        },
+                        onRefresh = refreshIp@{
+                            if (loadingIpRotation || refreshingIpRotation) return@refreshIp
+                            scope.launch {
+                                refreshingIpRotation = true
+                                try {
+                                    YouTube.refreshIpRotation()
+                                } catch (_: Exception) {
                                 } finally {
-                                    testingProxy = false
+                                    refreshingIpRotation = false
                                 }
                             }
                         },
                     )
                 }
             }
-        }
-
-        PreferenceGroup(title = stringResource(R.string.ip_rotation)) {
-            item {
-                IpRotationPreference(
-                    title = { Text(stringResource(R.string.ip_rotation)) },
-                    description = ipRotationDescription,
-                    icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
-                    checked = ipRotationEnabled,
-                    isBusy = loadingIpRotation || refreshingIpRotation,
-                    onCheckedChange = { enabled ->
-                        onIpRotationEnabledChange(enabled)
-                        if (enabled) {
-                            scope.launch {
-                                loadingIpRotation = true
-                                try {
-                                    YouTube.enableIpRotation()
-                                } catch (_: Exception) {
-                                    onIpRotationEnabledChange(false)
-                                } finally {
-                                    loadingIpRotation = false
-                                }
-                            }
-                        } else {
-                            YouTube.disableIpRotation()
-                        }
-                    },
-                    onRefresh = refreshIp@{
-                        if (loadingIpRotation || refreshingIpRotation) return@refreshIp
-                        scope.launch {
-                            refreshingIpRotation = true
-                            try {
-                                YouTube.refreshIpRotation()
-                            } catch (_: Exception) {
-                            } finally {
-                                refreshingIpRotation = false
-                            }
-                        }
-                    },
-                )
-            }
-        }
         }
     }
 

@@ -72,7 +72,6 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
 import androidx.media3.datasource.cache.ContentMetadata
-import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -158,7 +157,6 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.HistoryDuration
-import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.LastFMSessionKey
 import moe.rukamori.archivetune.constants.LastFMUseNowPlaying
 import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
@@ -185,7 +183,6 @@ import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
 import moe.rukamori.archivetune.constants.WakelockKey
-import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.ArtistEntity
@@ -213,20 +210,16 @@ import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
-import moe.rukamori.archivetune.lyrics.LyricsUtils.displayLyricsText
-import moe.rukamori.archivetune.moriextractor.ArchiveTuneExtractorException
-import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
-import moe.rukamori.archivetune.models.QueueData
-import moe.rukamori.archivetune.models.QueueType
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.moriextractor.ArchiveTuneExtractorException
+import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
 import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
@@ -249,7 +242,6 @@ import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.getAsync
-import moe.rukamori.archivetune.utils.isInternetAvailable
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.reportException
@@ -281,7 +273,6 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import kotlin.math.sin
 import kotlin.time.Duration.Companion.seconds
-import android.media.AudioAttributes as LegacyAudioAttributes
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
 @AndroidEntryPoint
@@ -4590,8 +4581,14 @@ class MusicService :
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         ioScope.launch(SilentHandler) {
             when {
-                server != null -> server.transferHostOwnership(targetId)
-                onlineHost != null -> onlineHost.transferHostOwnership(targetId)
+                server != null -> {
+                    server.transferHostOwnership(targetId)
+                }
+
+                onlineHost != null -> {
+                    onlineHost.transferHostOwnership(targetId)
+                }
+
                 joined?.role is moe.rukamori.archivetune.together.TogetherRole.Host && client != null -> {
                     client.transferHostOwnership(joined.sessionId, targetId)
                 }
@@ -4929,7 +4926,9 @@ class MusicService :
                         )
                 }
 
-                else -> Unit
+                else -> {
+                    Unit
+                }
             }
         }
     }
@@ -6820,24 +6819,24 @@ class MusicService :
 
         val playbackData =
             runBlocking(Dispatchers.IO) {
-                    retryWithoutPlaybackLoginContext {
-                        YTPlayerUtils.playerResponseForPlayback(
-                            mediaId,
-                            audioQuality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
-                            connectivityManager = connectivityManager,
-                            preferredStreamClient = preferredStreamClient,
-                            networkMetered = lowDataModeActive,
-                        )
-                    }.recoverCatching { youtubeFailure ->
-                        if (youtubeFailure !is YTPlayerUtils.BotDetectionPlaybackException) throw youtubeFailure
+                retryWithoutPlaybackLoginContext {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        mediaId,
+                        audioQuality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                        connectivityManager = connectivityManager,
+                        preferredStreamClient = preferredStreamClient,
+                        networkMetered = lowDataModeActive,
+                    )
+                }.recoverCatching { youtubeFailure ->
+                    if (youtubeFailure !is YTPlayerUtils.BotDetectionPlaybackException) throw youtubeFailure
 
-                        Timber.tag("MusicService").w(
-                            youtubeFailure,
-                            "YouTube stream clients hit bot detection for %s; trying external audio fallback",
-                            mediaId,
-                        )
-                        throw youtubeFailure
-                    }
+                    Timber.tag("MusicService").w(
+                        youtubeFailure,
+                        "YouTube stream clients hit bot detection for %s; trying external audio fallback",
+                        mediaId,
+                    )
+                    throw youtubeFailure
+                }
             }.getOrElse { throwable ->
                 when {
                     throwable is YTPlayerUtils.InvalidPlaybackLoginContextException -> {
@@ -7070,8 +7069,7 @@ class MusicService :
             ?: poToken.normalizeExtractorRequestValue()
             ?: poTokenPlayer.normalizeExtractorRequestValue()
 
-    private fun PlaybackAuthState.resolveExtractorCookies(): String? =
-        cookie.normalizeExtractorRequestValue()
+    private fun PlaybackAuthState.resolveExtractorCookies(): String? = cookie.normalizeExtractorRequestValue()
 
     private fun String?.normalizeExtractorRequestValue(): String? {
         val trimmed = this?.trim()
@@ -7435,13 +7433,12 @@ class MusicService :
         }
     }
 
-    private fun currentPresenceSong(): Song? {
-        return resolvePresenceSong(
+    private fun currentPresenceSong(): Song? =
+        resolvePresenceSong(
             dbSong = currentSong.value,
             mediaMetadata = player.currentMetadata,
             durationMs = player.duration,
         )
-    }
 
     private fun resolvePresenceSong(
         dbSong: Song?,
@@ -7488,8 +7485,7 @@ class MusicService :
         return song.copy(song = song.song.copy(duration = durationSeconds))
     }
 
-    private fun ArtistEntity.hasRemotePresenceId(): Boolean =
-        channelId.isRemotePresenceId() || id.isRemotePresenceId()
+    private fun ArtistEntity.hasRemotePresenceId(): Boolean = channelId.isRemotePresenceId() || id.isRemotePresenceId()
 
     private fun String?.isRemotePresenceId(): Boolean {
         val id = this?.trim()?.takeIf { it.isNotBlank() } ?: return false

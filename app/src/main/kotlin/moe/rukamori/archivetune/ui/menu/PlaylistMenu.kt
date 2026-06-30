@@ -888,10 +888,14 @@ fun PlaylistMenu(
                     ListItem(
                         headlineContent = {
                             Text(
-                                text = stringResource(
-                                    if (playlist.playlist.isHidden) R.string.unhide_playlist
-                                    else R.string.hide_playlist
-                                ),
+                                text =
+                                    stringResource(
+                                        if (playlist.playlist.isHidden) {
+                                            R.string.unhide_playlist
+                                        } else {
+                                            R.string.hide_playlist
+                                        },
+                                    ),
                             )
                         },
                         leadingContent = {

@@ -65,7 +65,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -73,7 +72,6 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,6 +89,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -117,7 +116,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -231,6 +229,8 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.musicrecognition.ACTION_MUSIC_RECOGNITION
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.musicrecognition.openMusicRecognition
+import moe.rukamori.archivetune.onboarding.OnboardingScreenState
+import moe.rukamori.archivetune.onboarding.OnboardingViewModel
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.MusicService.MusicBinder
@@ -262,15 +262,13 @@ import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.navigationBuilder
+import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.search.LocalSearchScreen
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchScreen
 import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
-import moe.rukamori.archivetune.onboarding.OnboardingScreenState
-import moe.rukamori.archivetune.onboarding.OnboardingViewModel
-import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
@@ -285,7 +283,6 @@ import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
-import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -329,6 +326,7 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var isMusicServiceBound = false
+    private var immersiveStatusBarsHidden = false
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -470,6 +468,13 @@ class MainActivity : ComponentActivity() {
             safeUnbindMusicService()
             stopService(Intent(this, MusicService::class.java))
             playerConnection = null
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && immersiveStatusBarsHidden) {
+            setStatusBarsHidden(true)
         }
     }
 
@@ -1065,14 +1070,7 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
-                        val controller = WindowCompat.getInsetsController(window, window.decorView)
-                        if (shouldHideStatusBars) {
-                            controller.systemBarsBehavior =
-                                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                            controller.hide(WindowInsetsCompat.Type.statusBars())
-                        } else {
-                            controller.show(WindowInsetsCompat.Type.statusBars())
-                        }
+                        setStatusBarsHidden(shouldHideStatusBars)
                     }
 
                     LaunchedEffect(isYearInMusicScreen, playerConnection) {
@@ -2609,6 +2607,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun setStatusBarsHidden(hidden: Boolean) {
+        immersiveStatusBarsHidden = hidden
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes =
+                window.attributes.apply {
+                    layoutInDisplayCutoutMode =
+                        if (hidden) {
+                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                        } else {
+                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                        }
+                }
+        }
+
+        if (hidden) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+            controller.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
     @Composable
     private fun BackupRestoreFromIntentDialog(
         uri: Uri,
@@ -2645,10 +2671,11 @@ class MainActivity : ComponentActivity() {
                             },
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 72.dp)
-                                    .padding(horizontal = 4.dp, vertical = 10.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 72.dp)
+                                        .padding(horizontal = 4.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {

@@ -41,7 +41,9 @@ internal fun String.toLyricsWrappingUnits(): List<String> {
                 units += grapheme
             }
 
-            else -> currentWord.append(grapheme)
+            else -> {
+                currentWord.append(grapheme)
+            }
         }
         start = end
         end = characterIterator.next()

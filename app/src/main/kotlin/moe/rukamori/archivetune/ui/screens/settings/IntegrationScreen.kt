@@ -41,9 +41,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IntegrationScreen(
-    navController: NavController,
-) {
+fun IntegrationScreen(navController: NavController) {
     val (listenBrainzEnabled, onListenBrainzEnabledChange) = rememberPreference(ListenBrainzEnabledKey, false)
     val (listenBrainzToken, onListenBrainzTokenChange) = rememberPreference(ListenBrainzTokenKey, "")
 
@@ -79,53 +77,53 @@ fun IntegrationScreen(
             PreferenceGroup(title = stringResource(R.string.general)) {
                 item {
                     PreferenceEntry(
-                    title = { Text(stringResource(R.string.discord_integration)) },
-                    icon = { Icon(painterResource(R.drawable.discord), null) },
-                    onClick = {
-                        navController.navigate("settings/discord")
-                    },
-                )
+                        title = { Text(stringResource(R.string.discord_integration)) },
+                        icon = { Icon(painterResource(R.drawable.discord), null) },
+                        onClick = {
+                            navController.navigate("settings/discord")
+                        },
+                    )
+                }
             }
-        }
 
-        PreferenceGroup(title = stringResource(R.string.scrobbling)) {
+            PreferenceGroup(title = stringResource(R.string.scrobbling)) {
                 item {
                     PreferenceEntry(
-                    title = { Text(stringResource(R.string.lastfm_integration)) },
-                    icon = { Icon(painterResource(R.drawable.token), null) },
-                    onClick = {
-                        navController.navigate("settings/lastfm")
-                    },
-                )
-            }
+                        title = { Text(stringResource(R.string.lastfm_integration)) },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        onClick = {
+                            navController.navigate("settings/lastfm")
+                        },
+                    )
+                }
 
-            item {
+                item {
                     SwitchPreference(
-                    title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
-                    description = stringResource(R.string.listenbrainz_scrobbling_description),
-                    icon = { Icon(painterResource(R.drawable.token), null) },
-                    checked = listenBrainzEnabled,
-                    onCheckedChange = onListenBrainzEnabledChange,
-                )
-            }
+                        title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
+                        description = stringResource(R.string.listenbrainz_scrobbling_description),
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        checked = listenBrainzEnabled,
+                        onCheckedChange = onListenBrainzEnabledChange,
+                    )
+                }
 
-            item {
+                item {
                     PreferenceEntry(
-                    title = {
-                        Text(
-                            if (listenBrainzToken.isBlank()) {
-                                stringResource(
-                                    R.string.set_listenbrainz_token,
-                                )
-                            } else {
-                                stringResource(R.string.edit_listenbrainz_token)
-                            },
-                        )
-                    },
-                    icon = { Icon(painterResource(R.drawable.token), null) },
-                    onClick = { showListenBrainzTokenEditor.value = true },
-                )
-            }
+                        title = {
+                            Text(
+                                if (listenBrainzToken.isBlank()) {
+                                    stringResource(
+                                        R.string.set_listenbrainz_token,
+                                    )
+                                } else {
+                                    stringResource(R.string.edit_listenbrainz_token)
+                                },
+                            )
+                        },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        onClick = { showListenBrainzTokenEditor.value = true },
+                    )
+                }
             }
         }
     }

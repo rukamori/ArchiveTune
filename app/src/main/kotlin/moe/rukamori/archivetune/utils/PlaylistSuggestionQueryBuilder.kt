@@ -12,7 +12,6 @@ import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.models.PlaylistSuggestionQuery
 import java.time.LocalDateTime
 import java.time.Year
-import java.time.format.DateTimeFormatter
 
 object PlaylistSuggestionQueryBuilder {
     private val genreKeywords =

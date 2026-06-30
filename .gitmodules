@@ -7,3 +7,6 @@
 [submodule "moriextractor"]
 	path = moriextractor
 	url = https://github.com/ArchiveTuneApp/moriextractor
+[submodule "IconPack"]
+	path = IconPack
+	url = https://github.com/ArchiveTuneApp/IconPack

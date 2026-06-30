@@ -904,7 +904,9 @@ private data class StorageFileMove(
 private fun StorageFolderKind.toCacheKind(): StorageCacheKind =
     when (this) {
         StorageFolderKind.SONG_CACHE -> StorageCacheKind.SONGS
+
         StorageFolderKind.DOWNLOADS -> StorageCacheKind.DOWNLOADS
+
         StorageFolderKind.IMAGE_CACHE,
         StorageFolderKind.ARTWORK_CACHE,
         -> StorageCacheKind.IMAGES

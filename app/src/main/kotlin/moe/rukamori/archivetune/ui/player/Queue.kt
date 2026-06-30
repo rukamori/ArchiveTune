@@ -43,7 +43,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -51,7 +50,6 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,8 +57,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.carousel.CarouselDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,7 +85,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.media3.common.Timeline
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +102,6 @@ import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.QueueEditLockKey
-import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.extensions.metadata
@@ -115,7 +109,6 @@ import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.extensions.toggleRepeatMode
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
@@ -125,7 +118,6 @@ import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
-import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import sh.calvin.reorderable.ReorderableItem
@@ -170,6 +162,7 @@ fun Queue(
     val selectedSongs = remember { mutableStateListOf<MediaMetadata>() }
     val selectedItems = remember { mutableStateListOf<Timeline.Window>() }
     var selection by remember { mutableStateOf(false) }
+
     fun clearSelection() {
         selection = false
         selectedSongs.clear()
@@ -236,7 +229,7 @@ fun Queue(
                     else -> {
                         context.getString(R.string.added_n_songs_to_n_playlists, songCount, playlistNames.size)
                     }
-            }
+                }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             clearSelection()
         },
@@ -255,7 +248,7 @@ fun Queue(
             initialTextFieldValue = TextFieldValue(queueTitle ?: context.getString(R.string.queue)),
             isInputValid = { it.trim().isNotEmpty() && selectedSongs.isNotEmpty() },
             onDismiss = { showCreateQueuePlaylistDialog = false },
-            onDone = onDone@ { rawPlaylistName ->
+            onDone = onDone@{ rawPlaylistName ->
                 val playlistName = rawPlaylistName.trim()
                 val songs = selectedSongs.toList()
                 if (playlistName.isEmpty() || songs.isEmpty()) return@onDone

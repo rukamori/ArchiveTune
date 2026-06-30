@@ -738,18 +738,19 @@ fun UpdateScreen(
         val determinateIndicatorModifier = remember { Modifier.fillMaxSize() }
         val indeterminateIndicatorModifier = remember { Modifier.size(72.dp) }
 
-        val downloadTitle = buildString {
-            when (updateChannel) {
-                UpdateChannel.DAILY_NIGHTLY -> append("${context.getString(R.string.app_name)} Nightly")
-                else -> append(context.getString(R.string.app_name))
+        val downloadTitle =
+            buildString {
+                when (updateChannel) {
+                    UpdateChannel.DAILY_NIGHTLY -> append("${context.getString(R.string.app_name)} Nightly")
+                    else -> append(context.getString(R.string.app_name))
+                }
+                append(' ')
+                if (updateChannel == UpdateChannel.NIGHTLY) {
+                    append(latestCommit?.sha?.take(7) ?: updateSheetVersion ?: "?")
+                } else {
+                    append(updateSheetVersion ?: "?")
+                }
             }
-            append(' ')
-            if (updateChannel == UpdateChannel.NIGHTLY) {
-                append(latestCommit?.sha?.take(7) ?: updateSheetVersion ?: "?")
-            } else {
-                append(updateSheetVersion ?: "?")
-            }
-        }
 
         AlertDialog(
             onDismissRequest = {},
@@ -1288,13 +1289,20 @@ private fun CommitHistorySection(
                     Text(
                         text =
                             when {
-                                isLoading -> stringResource(R.string.updates_loading_commits)
-                                commits.isEmpty() -> stringResource(R.string.updates_no_commits)
-                                else ->
+                                isLoading -> {
+                                    stringResource(R.string.updates_loading_commits)
+                                }
+
+                                commits.isEmpty() -> {
+                                    stringResource(R.string.updates_no_commits)
+                                }
+
+                                else -> {
                                     stringResource(
                                         R.string.updates_recent_commits_count,
                                         commits.size,
                                     )
+                                }
                             },
                     )
                 },

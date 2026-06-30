@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -214,9 +213,18 @@ fun MusicTogetherScreen(
                     ),
         ) {
             when (val state = screenState) {
-                MusicTogetherScreenState.Loading -> LoadingContent()
-                MusicTogetherScreenState.Empty -> EmptyContent()
-                is MusicTogetherScreenState.Error -> ErrorContent(messageResId = state.messageResId)
+                MusicTogetherScreenState.Loading -> {
+                    LoadingContent()
+                }
+
+                MusicTogetherScreenState.Empty -> {
+                    EmptyContent()
+                }
+
+                is MusicTogetherScreenState.Error -> {
+                    ErrorContent(messageResId = state.messageResId)
+                }
+
                 is MusicTogetherScreenState.Success -> {
                     MusicTogetherContent(
                         model = state.model,
@@ -362,7 +370,10 @@ private fun MusicTogetherDialogs(
     }
 
     when (val dialog = model.dialog) {
-        MusicTogetherDialogUiState.None -> Unit
+        MusicTogetherDialogUiState.None -> {
+            Unit
+        }
+
         is MusicTogetherDialogUiState.DisplayName -> {
             TextFieldDialog(
                 title = { Text(text = stringResource(R.string.together_display_name)) },
@@ -401,7 +412,8 @@ private fun MusicTogetherDialogs(
                     if (dialog.onlineMode) {
                         it.trim().isNotBlank()
                     } else {
-                        moe.rukamori.archivetune.together.TogetherLink.decode(it) != null
+                        moe.rukamori.archivetune.together.TogetherLink
+                            .decode(it) != null
                     }
                 },
                 onDone = viewModel::submitJoinInput,
@@ -960,7 +972,9 @@ private fun ParticipantRow(
                 }
             }
         },
-        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            androidx.compose.material3.ListItemDefaults
+                .colors(containerColor = Color.Transparent),
     )
 }
 
@@ -1150,7 +1164,9 @@ private fun SettingsRow(
             Modifier
                 .clip(MaterialTheme.shapes.large)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            androidx.compose.material3.ListItemDefaults
+                .colors(containerColor = Color.Transparent),
     )
 }
 
@@ -1185,7 +1201,9 @@ private fun ToggleRow(
                     role = Role.Switch,
                     onValueChange = onCheckedChange,
                 ),
-        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            androidx.compose.material3.ListItemDefaults
+                .colors(containerColor = Color.Transparent),
     )
 }
 
@@ -1285,7 +1303,9 @@ private fun EmptyContent() {
 }
 
 @Composable
-private fun ErrorContent(@StringRes messageResId: Int) {
+private fun ErrorContent(
+    @StringRes messageResId: Int,
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

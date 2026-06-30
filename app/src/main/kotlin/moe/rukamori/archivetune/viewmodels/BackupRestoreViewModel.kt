@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
@@ -40,7 +39,6 @@ import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.extensions.div
-import moe.rukamori.archivetune.extensions.tryOrNull
 import moe.rukamori.archivetune.extensions.zipInputStream
 import moe.rukamori.archivetune.extensions.zipOutputStream
 import moe.rukamori.archivetune.playback.MusicService
@@ -743,66 +741,67 @@ class BackupRestoreViewModel
         suspend fun validateBackup(
             context: Context,
             uri: Uri,
-        ): BackupValidationResult = withContext(Dispatchers.IO) {
-            try {
-                val stream =
-                    context.applicationContext.contentResolver.openInputStream(uri)
-                if (stream == null) {
-                    return@withContext BackupValidationResult(
+        ): BackupValidationResult =
+            withContext(Dispatchers.IO) {
+                try {
+                    val stream =
+                        context.applicationContext.contentResolver.openInputStream(uri)
+                    if (stream == null) {
+                        return@withContext BackupValidationResult(
+                            isValid = false,
+                            availableCategories = emptySet(),
+                            errorMessage = context.getString(R.string.restore_file_not_found),
+                        )
+                    }
+                    stream.use { inputStream ->
+                        val zipStream = inputStream.zipInputStream()
+                        val entryNames = mutableSetOf<String>()
+                        zipStream.use { zip ->
+                            var entry = zip.nextEntry
+                            while (entry != null) {
+                                entryNames.add(entry.name)
+                                entry = zip.nextEntry
+                            }
+                        }
+                        if (entryNames.isEmpty()) {
+                            return@withContext BackupValidationResult(
+                                isValid = false,
+                                availableCategories = emptySet(),
+                                errorMessage = context.getString(R.string.restore_invalid_file),
+                            )
+                        }
+                        val categories = mutableSetOf<BackupCategory>()
+                        val hasSettings = SETTINGS_XML_FILENAME in entryNames || SETTINGS_FILENAME in entryNames
+                        val hasDb = entryNames.any { it.startsWith(InternalDatabase.DB_NAME) }
+                        if (hasSettings) {
+                            categories.add(BackupCategory.SETTINGS)
+                            categories.add(BackupCategory.ACCOUNT)
+                        }
+                        if (hasDb) {
+                            categories.add(BackupCategory.LIBRARY)
+                        }
+                        if (categories.isEmpty()) {
+                            return@withContext BackupValidationResult(
+                                isValid = false,
+                                availableCategories = emptySet(),
+                                errorMessage = context.getString(R.string.restore_missing_content),
+                            )
+                        }
+                        BackupValidationResult(
+                            isValid = true,
+                            availableCategories = categories,
+                            errorMessage = null,
+                        )
+                    }
+                } catch (e: Exception) {
+                    reportException(e)
+                    BackupValidationResult(
                         isValid = false,
                         availableCategories = emptySet(),
-                        errorMessage = context.getString(R.string.restore_file_not_found),
+                        errorMessage = context.getString(R.string.restore_corrupted),
                     )
                 }
-                stream.use { inputStream ->
-                    val zipStream = inputStream.zipInputStream()
-                    val entryNames = mutableSetOf<String>()
-                    zipStream.use { zip ->
-                        var entry = zip.nextEntry
-                        while (entry != null) {
-                            entryNames.add(entry.name)
-                            entry = zip.nextEntry
-                        }
-                    }
-                    if (entryNames.isEmpty()) {
-                        return@withContext BackupValidationResult(
-                            isValid = false,
-                            availableCategories = emptySet(),
-                            errorMessage = context.getString(R.string.restore_invalid_file),
-                        )
-                    }
-                    val categories = mutableSetOf<BackupCategory>()
-                    val hasSettings = SETTINGS_XML_FILENAME in entryNames || SETTINGS_FILENAME in entryNames
-                    val hasDb = entryNames.any { it.startsWith(InternalDatabase.DB_NAME) }
-                    if (hasSettings) {
-                        categories.add(BackupCategory.SETTINGS)
-                        categories.add(BackupCategory.ACCOUNT)
-                    }
-                    if (hasDb) {
-                        categories.add(BackupCategory.LIBRARY)
-                    }
-                    if (categories.isEmpty()) {
-                        return@withContext BackupValidationResult(
-                            isValid = false,
-                            availableCategories = emptySet(),
-                            errorMessage = context.getString(R.string.restore_missing_content),
-                        )
-                    }
-                    BackupValidationResult(
-                        isValid = true,
-                        availableCategories = categories,
-                        errorMessage = null,
-                    )
-                }
-            } catch (e: Exception) {
-                reportException(e)
-                BackupValidationResult(
-                    isValid = false,
-                    availableCategories = emptySet(),
-                    errorMessage = context.getString(R.string.restore_corrupted),
-                )
             }
-        }
 
         companion object {
             const val SETTINGS_FILENAME = "settings.preferences_pb"

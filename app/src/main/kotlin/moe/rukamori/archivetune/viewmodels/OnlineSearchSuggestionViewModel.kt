@@ -36,9 +36,9 @@ class OnlineSearchSuggestionViewModel
     @Inject
     constructor(
         @ApplicationContext val context: Context,
-        database: MusicDatabase,
+        private val database: MusicDatabase,
     ) : ViewModel() {
-        val query = MutableStateFlow("")
+        private val query = MutableStateFlow("")
         private val _viewState = MutableStateFlow(SearchSuggestionViewState())
         val viewState = _viewState.asStateFlow()
 
@@ -82,6 +82,16 @@ class OnlineSearchSuggestionViewModel
                     }.collect {
                         _viewState.value = it
                     }
+            }
+        }
+
+        fun updateQuery(query: String) {
+            this.query.value = query
+        }
+
+        fun deleteHistory(history: SearchHistory) {
+            database.query {
+                delete(history)
             }
         }
     }

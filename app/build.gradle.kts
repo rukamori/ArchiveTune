@@ -343,6 +343,46 @@ dependencies {
     implementation("org.json:json:20240303")
 }
 
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val capitalizedVariantName =
+            variant.name.replaceFirstChar { character ->
+                if (character.isLowerCase()) character.titlecase() else character.toString()
+            }
+        val generateIconPack =
+            tasks.register<GenerateIconPackTask>("generate${capitalizedVariantName}IconPack") {
+                metadataFile.set(rootProject.layout.projectDirectory.file("IconPack/metadata.json"))
+                xmlDirectory.set(rootProject.layout.projectDirectory.dir("IconPack/xml"))
+                applicationId.set(variant.applicationId)
+                targetActivityClassName.set("moe.rukamori.archivetune.MainActivity")
+                resourceOutputDirectory.set(
+                    layout.buildDirectory.dir("generated/iconPack/${variant.name}/res"),
+                )
+                assetOutputDirectory.set(
+                    layout.buildDirectory.dir("generated/iconPack/${variant.name}/assets"),
+                )
+                manifestOutputFile.set(
+                    layout.buildDirectory.file(
+                        "generated/iconPack/${variant.name}/AndroidManifest.xml",
+                    ),
+                )
+            }
+
+        variant.sources.res?.addGeneratedSourceDirectory(
+            generateIconPack,
+            GenerateIconPackTask::resourceOutputDirectory,
+        )
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            generateIconPack,
+            GenerateIconPackTask::assetOutputDirectory,
+        )
+        variant.sources.manifests.addGeneratedManifestFile(
+            generateIconPack,
+            GenerateIconPackTask::manifestOutputFile,
+        )
+    }
+}
+
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21)

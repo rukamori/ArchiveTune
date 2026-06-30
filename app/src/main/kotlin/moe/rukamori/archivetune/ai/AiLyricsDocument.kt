@@ -205,7 +205,15 @@ private data class TtmlLyricsDocument(
                 val translated =
                     translations[paragraph.segmentId]
                         ?.trim()
-                        ?.takeIf { it.isNotBlank() && !it.equals(paragraph.element.textContent?.trim().orEmpty(), ignoreCase = true) }
+                        ?.takeIf {
+                            it.isNotBlank() &&
+                                !it.equals(
+                                    paragraph.element.textContent
+                                        ?.trim()
+                                        .orEmpty(),
+                                    ignoreCase = true,
+                                )
+                        }
                         ?: return@mapNotNull null
                 paragraph to translated
             }

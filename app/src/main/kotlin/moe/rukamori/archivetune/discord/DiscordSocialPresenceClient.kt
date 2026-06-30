@@ -22,7 +22,9 @@ object DiscordSocialPresenceClient {
     private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Volatile private var gateway: GatewayClient? = null
+
     @Volatile private var activeToken: String? = null
+
     @Volatile private var transportInvalidatedListener: ((String) -> Unit)? = null
 
     val isStarted: Boolean

@@ -9,15 +9,19 @@ package moe.rukamori.archivetune.ui.utils
 
 private const val PlayerArtworkHighResPx = 1080
 
-enum class YTThumbQuality(val value: String) {
+enum class YTThumbQuality(
+    val value: String,
+) {
     MAXRES("maxresdefault"),
     HQ("hqdefault"),
     MQ("mqdefault"),
     DEFAULT("default"),
 }
 
-fun buildYTThumbnailUrl(videoId: String, quality: YTThumbQuality = YTThumbQuality.MAXRES): String =
-    "https://i.ytimg.com/vi/$videoId/${quality.value}.jpg"
+fun buildYTThumbnailUrl(
+    videoId: String,
+    quality: YTThumbQuality = YTThumbQuality.MAXRES,
+): String = "https://i.ytimg.com/vi/$videoId/${quality.value}.jpg"
 
 private val wHPathRegex = Regex("w\\d+-h\\d+")
 private val wHParamRegex = Regex("=w(\\d+)-h(\\d+)")

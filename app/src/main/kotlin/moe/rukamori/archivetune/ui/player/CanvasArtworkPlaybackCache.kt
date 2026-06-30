@@ -378,8 +378,7 @@ object CanvasArtworkPlaybackCache {
                     .resolve(fileName)
                     .takeIf(File::isUsableFile)
                     ?.takeIf(File::isPlayableCanvasVideo) != null
-            }
-            ?.let { return it }
+            }?.let { return it }
         if (url.isNullOrBlank()) return null
         val fileName = canvasFileName(mediaId, variant, url)
         val target = directory.resolve(fileName)
@@ -681,11 +680,12 @@ private fun MediaFormat.isSupportedCanvasVideoFormat(): Boolean {
                     width = width,
                     height = height,
                     frameRate = frameRate,
-                ) || videoCapabilities.supportsCanvasSize(
-                    width = height,
-                    height = width,
-                    frameRate = frameRate,
-                )
+                ) ||
+                    videoCapabilities.supportsCanvasSize(
+                        width = height,
+                        height = width,
+                        frameRate = frameRate,
+                    )
             }
     }.getOrDefault(false)
 }

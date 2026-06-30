@@ -13,7 +13,6 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 object ImageBlurUtils {
-
     /**
      * Apply a stack blur to a bitmap. For large bitmaps (>720px on longest side),
      * the image is downscaled before blurring for performance.
@@ -188,9 +187,9 @@ object ImageBlurUtils {
             for (y in 0 until height) {
                 pixels[yiIndex] =
                     pixels[yiIndex] and -0x1000000 or
-                        (divTable[rsum] shl 16) or
-                        (divTable[gsum] shl 8) or
-                        divTable[bsum]
+                    (divTable[rsum] shl 16) or
+                    (divTable[gsum] shl 8) or
+                    divTable[bsum]
 
                 rsum -= routsum
                 gsum -= goutsum

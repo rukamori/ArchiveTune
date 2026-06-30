@@ -70,8 +70,8 @@ include(":moriextractor")
 //      implementation(libs.newpipe.extractor)
 // To:
 //      implementation("com.github.TeamNewPipe:NewPipeExtractor")
-//includeBuild("../NewPipeExtractor") {
+// includeBuild("../NewPipeExtractor") {
 //    dependencySubstitution {
 //        substitute(module("com.github.TeamNewPipe:NewPipeExtractor")).using(project(":extractor"))
 //    }
-//}
+// }

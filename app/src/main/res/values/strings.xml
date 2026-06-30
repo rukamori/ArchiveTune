@@ -317,6 +317,12 @@
     <string name="music_player">Music Player</string>
     <string name="settings">Settings</string>
     <string name="appearance">Appearance</string>
+    <string name="app_icon_description">Choose the launcher icon</string>
+    <string name="app_icon_default">Default</string>
+    <string name="app_icon_by_author">By %1$s</string>
+    <string name="app_icon_empty">No app icons are available</string>
+    <string name="app_icon_load_failed">Couldn\'t load app icons</string>
+    <string name="app_icon_change_failed">Couldn\'t change the app icon</string>
     <string name="theme">Theme</string>
     <string name="enable_dynamic_theme">Enable dynamic theme</string>
     <string name="random_theme_on_startup">Random theme on startup</string>

@@ -29,8 +29,7 @@ internal object TogetherPlaybackSync {
             lastAppliedSentAtElapsedRealtimeMs > 0L &&
             sentAtElapsedRealtimeMs <= lastAppliedSentAtElapsedRealtimeMs
 
-    fun echoSuppressionUntil(nowElapsedRealtimeMs: Long): Long =
-        nowElapsedRealtimeMs + EchoSuppressionMs
+    fun echoSuppressionUntil(nowElapsedRealtimeMs: Long): Long = nowElapsedRealtimeMs + EchoSuppressionMs
 
     fun targetPositionMs(
         state: TogetherRoomState,
