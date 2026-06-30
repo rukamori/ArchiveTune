@@ -34,9 +34,10 @@ fun rememberThumbnailSwapState(
     videoId: String?,
     ytmUrl: String?,
     lowDataMode: Boolean,
+    isMusicVideo: Boolean = false,
 ): ThumbnailSwapState {
     val context = LocalContext.current
-    val shouldAttemptYT = videoId != null && !lowDataMode
+    val shouldAttemptYT = videoId != null && !lowDataMode && isMusicVideo
 
     var displayUrl by remember { mutableStateOf(ytmUrl) }
     var isYTReady by remember { mutableStateOf(false) }

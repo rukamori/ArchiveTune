@@ -2060,6 +2060,7 @@ fun V8PlayerContent(
         videoId = mediaMetadata.id,
         ytmUrl = baseArtworkUrl,
         lowDataMode = rememberLowDataModeActive(),
+        isMusicVideo = mediaMetadata.isMusicVideo,
     )
     val artworkUrl = thumbnailSwapState.displayUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
@@ -2949,6 +2950,7 @@ fun V9PlayerContent(
         videoId = mediaMetadata.id,
         ytmUrl = baseArtworkUrl,
         lowDataMode = rememberLowDataModeActive(),
+        isMusicVideo = mediaMetadata.isMusicVideo,
     )
     val artworkUrl = thumbnailSwapState.displayUrl
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
@@ -3689,6 +3691,7 @@ fun PlayerBackground(
         videoId = mediaMetadata?.id,
         ytmUrl = mediaMetadata?.thumbnailUrl,
         lowDataMode = rememberLowDataModeActive(),
+        isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
     )
     val backgroundThumbnailUrl = backgroundSwapState.displayUrl
     val styleAppliesBlur =

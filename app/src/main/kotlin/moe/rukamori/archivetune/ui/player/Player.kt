@@ -1273,6 +1273,7 @@ fun BottomSheetPlayer(
                             videoId = mediaMetadata?.id,
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                         )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1333,6 +1334,7 @@ fun BottomSheetPlayer(
                             videoId = mediaMetadata?.id,
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                         )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
@@ -1544,6 +1546,7 @@ fun BottomSheetPlayer(
                             videoId = mediaMetadata?.id,
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                         )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1602,6 +1605,7 @@ fun BottomSheetPlayer(
                             videoId = mediaMetadata?.id,
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
+                            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                         )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,

@@ -349,6 +349,7 @@ private fun MiniPlayerArtwork(
                     videoId = mediaMetadata?.id,
                     ytmUrl = baseThumbnailUrl,
                     lowDataMode = rememberLowDataModeActive(),
+                    isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                 )
                 AsyncImage(
                     model = thumbnailSwapState.displayUrl,
