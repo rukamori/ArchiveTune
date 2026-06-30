@@ -308,7 +308,7 @@ class DownloadedSongExporter
                     file.isFile &&
                         (
                             file.name.contains(marker) ||
-                                (expectedBaseName != null && file.nameWithoutKnownAudioExtension() == expectedBaseName)
+                                (expectedBaseName != null && file.name.nameWithoutKnownAudioExtension() == expectedBaseName)
                         )
                 }
                 ?.forEach { file ->
