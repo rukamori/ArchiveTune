@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Omah</string>
     <string name="songs">Lagu</string>
@@ -307,9 +307,6 @@
     <string name="haptics">Getaran</string>
     <string name="haptics_desc">Aktifkan umpan balik haptik pada elemen interaktif</string>
     <string name="default_open_tab">Tab terbuka bawaan</string>
-    <string name="grid_cell_size">Ukuran sel kisi</string>
-    <string name="small">Kecil</string>
-    <string name="big">Besar</string>
     <string name="lyrics_animation_style">Gaya animasi lirik</string>
     <string name="lyrics_mode">Mode lirik</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
@@ -765,6 +762,5 @@
     <string name="library_artists_subtitle">Kabeh artis Kowe, di satu tempat</string>
     <string name="library_albums_subtitle">Kabeh album Kowe, tersusun rapi</string>
     <string name="most_played_badge">PALING SERING DIPUTAR</string>
-    <string name="favorite_songs_title">Lagu Favorit</string>
     <string name="play_all">Puter semua</string>
 </resources>

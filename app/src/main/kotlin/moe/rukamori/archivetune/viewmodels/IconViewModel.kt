@@ -52,6 +52,7 @@ data class IconScreenUiModel(
     val icons: AppIconUiCollection,
     val selectedIcon: AppIconUiModel,
     val selectionInProgressId: String?,
+    val hasCommunityIcons: Boolean,
 )
 
 @Immutable
@@ -175,6 +176,7 @@ class IconViewModel
                     icons = AppIconUiCollection.from(uiIcons),
                     selectedIcon = uiIcons.firstOrNull(AppIconUiModel::isSelected) ?: uiIcons.first(),
                     selectionInProgressId = null,
+                    hasCommunityIcons = uiIcons.any { icon -> !icon.isDefault },
                 ),
             )
         }

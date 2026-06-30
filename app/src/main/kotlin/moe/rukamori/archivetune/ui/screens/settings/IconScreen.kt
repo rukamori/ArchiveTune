@@ -240,11 +240,6 @@ private fun AppIconList(
     onOpenAuthorProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hasCommunityIcons =
-        remember(model.icons) {
-            model.icons.any { icon -> !icon.isDefault }
-        }
-
     LazyColumn(
         modifier = modifier.selectableGroup(),
         contentPadding = contentPadding,
@@ -298,7 +293,7 @@ private fun AppIconList(
                 onOpenAuthorProfile = onOpenAuthorProfile,
             )
         }
-        if (hasCommunityIcons) {
+        if (model.hasCommunityIcons) {
             item(
                 key = CommunityNoticeContentKey,
                 contentType = CommunityNoticeContentType,
