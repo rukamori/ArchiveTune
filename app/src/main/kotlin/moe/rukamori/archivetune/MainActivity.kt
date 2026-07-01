@@ -1630,12 +1630,23 @@ class MainActivity : ComponentActivity() {
                                                         )
                                                     },
                                         ) {
-                                            // Gradient shadow background
-                                            if (shouldShowBlurBackground) {
+                                            // Gradient shadow background. It lives inside the
+                                            // translating Box (which moves by the full heightOffset,
+                                            // so the TopAppBar fully hides), but a counter-offset
+                                            // clamps the gradient's net translation to [-appBarHeight, 0]
+                                            // so it parks with its top band over the status bar instead
+                                            // of sliding fully off — a legibility scrim once the header
+                                            // is hidden.
+                                            if (shouldShowBlurBackground && !isLibraryRoute) {
+                                                val appBarHeightPx = with(LocalDensity.current) { AppBarHeight.toPx() }
                                                 Box(
                                                     modifier =
                                                         Modifier
-                                                            .fillMaxWidth()
+                                                            .offset {
+                                                                val raw = currentScrollBehavior.state.heightOffset
+                                                                val clamped = raw.coerceAtLeast(-appBarHeightPx)
+                                                                IntOffset(x = 0, y = (clamped - raw).roundToInt())
+                                                            }.fillMaxWidth()
                                                             .height(
                                                                 AppBarHeight +
                                                                     with(LocalDensity.current) {
