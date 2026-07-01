@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavGraphBuilder
@@ -80,9 +81,11 @@ fun NavGraphBuilder.navigationBuilder(
     latestVersionName: () -> String,
     disableAnimations: Boolean = false,
     onClearUpdateBadge: () -> Unit = {},
+    homeScrollConnection: NestedScrollConnection? = null,
+    searchScrollConnection: NestedScrollConnection? = null,
 ) {
     composable(Screens.Home.route) {
-        HomeScreen(navController)
+        HomeScreen(navController, headerScrollConnection = homeScrollConnection)
     }
     composable(
         Screens.Library.route,
@@ -97,6 +100,7 @@ fun NavGraphBuilder.navigationBuilder(
                     ?.savedStateHandle
                     ?.set("openSearch", true)
             },
+            headerScrollConnection = searchScrollConnection,
         )
     }
     composable("local_songs") {

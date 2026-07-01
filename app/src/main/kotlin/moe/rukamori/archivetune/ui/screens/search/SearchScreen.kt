@@ -55,6 +55,8 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -98,6 +100,7 @@ import moe.rukamori.archivetune.viewmodels.SearchDiscoveryViewModel
 fun SearchScreen(
     navController: NavController,
     onSearchClick: () -> Unit,
+    headerScrollConnection: NestedScrollConnection? = null,
     viewModel: SearchDiscoveryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -120,7 +123,20 @@ fun SearchScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .then(
+                    // Step 2b: attach the shell's floating-header connection here so Search's
+                    // scroll/fling writes Search's own header state and can't leak elsewhere.
+                    if (headerScrollConnection != null) {
+                        Modifier.nestedScroll(headerScrollConnection)
+                    } else {
+                        Modifier
+                    },
+                ),
+    ) {
         if (!disableBlur) {
             Box(
                 modifier =

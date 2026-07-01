@@ -2246,24 +2246,16 @@ class MainActivity : ComponentActivity() {
                                                     Modifier
                                                 },
                                             ).nestedScroll(
-                                                // Step 2a: the top-level arm now writes the CURRENT
-                                                // route's own per-route state (Home/Search), so
-                                                // steady-state carry-over between tabs is gone.
-                                                // (Connection is still shared at the NavHost level
-                                                // here; Step 2b moves it into each screen to also
-                                                // sever fling carry-over.)
-                                                when (navBackStackEntry?.destination?.route) {
-                                                    Screens.Home.route -> homeScrollBehavior.nestedScrollConnection
-                                                    Screens.Search.route -> searchScrollBehavior.nestedScrollConnection
-                                                    else ->
-                                                        if (navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == true) {
-                                                            // OnlineSearchResult: canScroll=false gates it;
-                                                            // route to search state harmlessly.
-                                                            searchScrollBehavior.nestedScrollConnection
-                                                        } else {
-                                                            topAppBarScrollBehavior.nestedScrollConnection
-                                                        }
-                                                },
+                                                // Step 2b: the NavHost-level connection now serves
+                                                // ONLY shell-driven sub-screens (Album/Artist/
+                                                // Playlist/...). Home and Search attach their own
+                                                // per-route connection inside their screen, so a
+                                                // departing screen's fling can no longer reach the
+                                                // incoming route's header state (fling carry-over is
+                                                // severed structurally). Library is self-contained
+                                                // and OnlineSearchResult is gated by canScroll=false,
+                                                // so routing them through this shared arm is harmless.
+                                                topAppBarScrollBehavior.nestedScrollConnection,
                                             ),
                                 ) {
                                     navigationBuilder(
@@ -2272,6 +2264,8 @@ class MainActivity : ComponentActivity() {
                                         { latestVersionName },
                                         disableAnimations,
                                         onClearUpdateBadge = { latestVersionName = BuildConfig.VERSION_NAME },
+                                        homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
+                                        searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                                     )
                                 }
                             }

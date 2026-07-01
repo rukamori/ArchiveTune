@@ -43,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -74,6 +76,7 @@ private val HomeSectionSpacing = 18.dp
 @Composable
 fun HomeScreen(
     navController: NavController,
+    headerScrollConnection: NestedScrollConnection? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -136,6 +139,21 @@ fun HomeScreen(
         }
     }
 
+    // Attach the shell's floating-header connection inside this screen (Step 2b) so
+    // Home's scroll/fling writes Home's own header state and can't leak into another
+    // route's header. Bubbling reaches this ancestor Box before any shell connection.
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .then(
+                    if (headerScrollConnection != null) {
+                        Modifier.nestedScroll(headerScrollConnection)
+                    } else {
+                        Modifier
+                    },
+                ),
+    ) {
     when (val state = screenState) {
         HomeScreenState.Loading -> {
             HomeStatePane(
@@ -178,6 +196,7 @@ fun HomeScreen(
                 onAction = viewModel::onAction,
             )
         }
+    }
     }
 }
 
