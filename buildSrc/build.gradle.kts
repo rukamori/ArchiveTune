@@ -11,4 +11,5 @@ repositories {
 dependencies {
     implementation(gradleApi())
     implementation(localGroovy())
+    implementation("com.android.tools:sdk-common:32.2.1")
 }
