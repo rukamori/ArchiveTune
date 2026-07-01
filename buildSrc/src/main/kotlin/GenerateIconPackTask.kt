@@ -578,7 +578,7 @@ ${aliases.prependIndent("        ")}
     }
 
     private companion object {
-        const val AdaptiveIconForegroundInset = "21dp"
+        const val AdaptiveIconForegroundInset = "15dp"
         const val AndroidNamespace = "http://schemas.android.com/apk/res/android"
         const val SvgNamespace = "http://www.w3.org/2000/svg"
         const val CatalogAssetPath = "icon_pack/catalog.json"
