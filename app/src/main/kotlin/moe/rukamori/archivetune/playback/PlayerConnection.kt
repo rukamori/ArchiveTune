@@ -87,12 +87,14 @@ class PlayerConnection(
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
-    val hasVideoTracks = MutableStateFlow(player.tracks.groups.any { group ->
-        (0 until group.length).any { group.getTrackFormat(it).sampleMimeType?.startsWith("video/") == true }
-    })
+    val hasVideoTracks = MutableStateFlow(false)
 
     init {
         player.addListener(this)
+
+        hasVideoTracks.value = player.currentTracks.groups.any { group ->
+            (0 until group.length).any { group.getTrackFormat(it).sampleMimeType?.startsWith("video/") == true }
+        }
 
         playbackState.value = player.playbackState
         playWhenReady.value = player.playWhenReady
