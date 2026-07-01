@@ -165,6 +165,7 @@ fun Thumbnail(
     val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val hasVideoTracks by playerConnection.hasVideoTracks.collectAsState()
 
     // Player background style for consistent theming
     val playerBackground by rememberEnumPreference(
@@ -564,6 +565,7 @@ fun Thumbnail(
                                             ytmUrl = baseArtworkUrl,
                                             lowDataMode = lowDataModeActive,
                                             isMusicVideo = item.metadata?.isMusicVideo ?: false,
+                                            hasVideoTracks = hasVideoTracks,
                                         )
 
                                         val displayUrl = thumbnailSwapState.displayUrl

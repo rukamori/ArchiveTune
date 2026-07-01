@@ -309,6 +309,7 @@ private fun MiniPlayerArtwork(
     duration: Long,
     isLoading: Boolean,
     colors: MiniPlayerContentColors,
+    hasVideoTracks: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -350,6 +351,7 @@ private fun MiniPlayerArtwork(
                     ytmUrl = baseThumbnailUrl,
                     lowDataMode = rememberLowDataModeActive(),
                     isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                    hasVideoTracks = hasVideoTracks,
                 )
                 AsyncImage(
                     model = thumbnailSwapState.displayUrl,
@@ -501,6 +503,7 @@ fun NewMiniPlayerContent(
     val togetherSessionState by playerConnection.service.togetherSessionState.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
+    val hasVideoTracks by playerConnection.hasVideoTracks.collectAsStateWithLifecycle()
 
     val isLoading = playbackState == Player.STATE_BUFFERING
 
@@ -516,6 +519,7 @@ fun NewMiniPlayerContent(
             position = position,
             duration = duration,
             isLoading = isLoading,
+            hasVideoTracks = hasVideoTracks,
             colors = colors,
         )
 

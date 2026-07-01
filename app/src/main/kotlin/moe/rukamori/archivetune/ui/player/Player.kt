@@ -431,6 +431,7 @@ fun BottomSheetPlayer(
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
+    val hasVideoTracks by playerConnection.hasVideoTracks.collectAsState()
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 8f)
     val archiveTuneCanvasEnabled by rememberPreference(ArchiveTuneCanvasKey, false)
     val lowDataModeActive = rememberLowDataModeActive()
@@ -1274,6 +1275,7 @@ fun BottomSheetPlayer(
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
                             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            hasVideoTracks = hasVideoTracks,
                         )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1335,6 +1337,7 @@ fun BottomSheetPlayer(
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
                             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            hasVideoTracks = hasVideoTracks,
                         )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
@@ -1547,6 +1550,7 @@ fun BottomSheetPlayer(
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
                             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            hasVideoTracks = hasVideoTracks,
                         )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1606,6 +1610,7 @@ fun BottomSheetPlayer(
                             ytmUrl = mediaMetadata?.thumbnailUrl,
                             lowDataMode = lowDataModeActive,
                             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+                            hasVideoTracks = hasVideoTracks,
                         )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,

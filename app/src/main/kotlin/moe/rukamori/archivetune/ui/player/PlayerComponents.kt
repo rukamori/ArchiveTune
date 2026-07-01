@@ -2056,11 +2056,13 @@ fun V8PlayerContent(
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
     val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val hasVideoTracks by playerConnection.hasVideoTracks.collectAsState()
     val thumbnailSwapState = rememberThumbnailSwapState(
         videoId = mediaMetadata.id,
         ytmUrl = baseArtworkUrl,
         lowDataMode = rememberLowDataModeActive(),
         isMusicVideo = mediaMetadata.isMusicVideo,
+        hasVideoTracks = hasVideoTracks,
     )
     val artworkUrl = thumbnailSwapState.displayUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
@@ -2946,11 +2948,13 @@ fun V9PlayerContent(
     landscape: Boolean = false,
 ) {
     val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val hasVideoTracks by playerConnection.hasVideoTracks.collectAsState()
     val thumbnailSwapState = rememberThumbnailSwapState(
         videoId = mediaMetadata.id,
         ytmUrl = baseArtworkUrl,
         lowDataMode = rememberLowDataModeActive(),
         isMusicVideo = mediaMetadata.isMusicVideo,
+        hasVideoTracks = hasVideoTracks,
     )
     val artworkUrl = thumbnailSwapState.displayUrl
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
@@ -3687,11 +3691,14 @@ fun PlayerBackground(
     val effectiveBlurRadius = blurRadius.coerceIn(0f, PlayerBackgroundMaxBlurRadius)
     val shouldApplyBlur = !disableBlur && effectiveBlurRadius > 0f
 
+    val resolvedPlayerConnection = LocalPlayerConnection.current
+    val hasVideoTracks by (resolvedPlayerConnection?.hasVideoTracks?.collectAsState() ?: remember { mutableStateOf(false) })
     val backgroundSwapState = rememberThumbnailSwapState(
         videoId = mediaMetadata?.id,
         ytmUrl = mediaMetadata?.thumbnailUrl,
         lowDataMode = rememberLowDataModeActive(),
         isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+        hasVideoTracks = hasVideoTracks,
     )
     val backgroundThumbnailUrl = backgroundSwapState.displayUrl
     val styleAppliesBlur =

@@ -18,6 +18,7 @@ import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +87,10 @@ class PlayerConnection(
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
+    val hasVideoTracks = MutableStateFlow(player.tracks.groups.any { group ->
+        (0 until group.length).any { group.getTrackFormat(it).sampleMimeType?.startsWith("video/") == true }
+    })
+
     init {
         player.addListener(this)
 
@@ -151,6 +156,12 @@ class PlayerConnection(
         player.seekToPrevious()
         player.prepare()
         player.playWhenReady = true
+    }
+
+    override fun onTracksChanged(tracks: Tracks) {
+        hasVideoTracks.value = tracks.groups.any { group ->
+            (0 until group.length).any { group.getTrackFormat(it).sampleMimeType?.startsWith("video/") == true }
+        }
     }
 
     override fun onPlaybackStateChanged(state: Int) {
