@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Исследовать</string>
     <string name="local_history">Локальная</string>
@@ -284,4 +284,48 @@
     <string name="audio_crossfade_seconds">%1$s сек</string>
     <string name="crossfade_gapless_title">Кроссфейд без пробелов</string>
     <string name="crossfade_gapless_description">Затухание и появление без перекрываний звука.</string>
+    <string name="about_position_yuki">Чисто для показа 😂 | Админ</string>
+    <string name="about_position_mo_agamy">Базовая структура | Metrolist</string>
+    <string name="about_position_zion_huang">Создатель InnerTune · Основатель проектов Metrolist, ArchiveTune и других форков</string>
+    <string name="about_content_desc_github">GitHub</string>
+    <string name="about_content_desc_website">Веб-сайт</string>
+    <string name="about_content_desc_discord">Discord</string>
+    <string name="about_content_desc_telegram">Телеграм</string>
+    <string name="about_content_desc_donate">Пожертвование</string>
+    <string name="suggestions">Предложения</string>
+    <string name="music_recognition_history">История распознования</string>
+    <string name="music_recognition_history_search">Искать опознанные песни</string>
+    <string name="music_recognition_history_empty_title">Пока нет опознанных песен</string>
+    <string name="music_recognition_history_empty_body">После успешного распознавания здесь появятся найденные песни.</string>
+    <string name="music_recognition_history_no_results_title">Результатов поиска не найдено</string>
+    <string name="music_recognition_history_no_results_body">Попробуйте другую песню, исполнителя, альбом или код.</string>
+    <string name="music_recognition_history_recognized_at">Распознано %1$s</string>
+    <string name="local_songs_scan_included_folders_title">Включенные папки</string>
+    <string name="local_songs_scan_included_folders_desc">Сканировать только те песни, которые хранятся в папках, соответствующих любому из этих путей.</string>
+    <string name="local_songs_scan_included_folders_empty">Все папки включены.</string>
+    <string name="local_songs_scan_included_folders_add">Включить папку</string>
+    <string name="news">Новости от разработчиков</string>
+    <string name="news_loading">Загрузка новостей…</string>
+    <string name="news_empty_title">Пока здесь ничего нет</string>
+    <string name="news_empty_desc">На данный момент объявлений нет. Загляните позже.</string>
+    <string name="news_error_title">Не удалось загрузить новости</string>
+    <string name="news_error_desc">Проверьте подключение к Интернету и попробуйте ещё раз.</string>
+    <string name="news_retry">Повторить попытку</string>
+    <string name="news_search_placeholder">Поиск новостей…</string>
+    <string name="news_search_results_title">Результаты поиска</string>
+    <string name="news_no_results_title">Статей по этому запросу не найдено</string>
+    <string name="news_no_results_desc">Попробуйте ввести другой поисковый запрос.</string>
+    <string name="news_important_badge">Важно</string>
+    <string name="news_tooltip_title">Новые объявления</string>
+    <string name="news_tooltip_body">У вас есть непрочитанные объявления от разработчиков.</string>
+    <string name="news_author_on_date">%1$s · %2$s</string>
+    <plurals name="news_article_count">
+        <item quantity="one">%d статья</item>
+        <item quantity="few">%d статьи</item>
+        <item quantity="many">%d статей</item>
+        <item quantity="other">%d статей</item>
+    </plurals>
+    <string name="aod_customize_title">Настройка AOD</string>
+    <string name="aod_customize_subtitle">Форма, компоновка, элементы управления и стилизация интерфейса</string>
+    <string name="aod_customize_entry_desc">Настройка always-on экрана проигрывателя</string>
 </resources>

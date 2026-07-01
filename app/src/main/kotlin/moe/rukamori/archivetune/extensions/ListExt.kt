@@ -45,19 +45,18 @@ fun <T : Any> List<T>.mergeNearbyElements(
 
 // Extension function to filter explicit content for local Song entities
 fun List<Song>.filterExplicit(enabled: Boolean = true) =
-    if (enabled) {
-        filter { !it.song.explicit }
-    } else {
-        this
+    filter { song ->
+        song.artists.none { it.blockedAt != null } && (!enabled || !song.song.explicit)
     }
 
 // Extension function to filter explicit content for local Album entities
 fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
-    if (enabled) {
-        filter { !it.album.explicit }
-    } else {
-        this
+    filter { album ->
+        album.artists.none { it.blockedAt != null } && (!enabled || !album.album.explicit)
     }
+
+fun List<Song>.filterBlockedArtists() =
+    filter { song -> song.artists.none { it.blockedAt != null } }
 
 // No-op for local songs: local Song entities do not contain video metadata to filter reliably
 fun List<Song>.filterVideo(enabled: Boolean = true) = this

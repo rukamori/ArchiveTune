@@ -282,6 +282,13 @@ class LyricsMenuViewModel
             val preview = displayLyricsText(lyrics)
             val lineCount = preview.lineSequence().count { it.isNotBlank() }
             val isTtmlLyrics = isTtml(lyrics)
+            val ttmlEntries =
+                if (isTtmlLyrics) {
+                    runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList())
+                } else {
+                    emptyList()
+                }
+            val isWordSynced = ttmlEntries.any { !it.words.isNullOrEmpty() }
 
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
@@ -290,8 +297,13 @@ class LyricsMenuViewModel
                 preview = preview,
                 lineCount = lineCount,
                 characterCount = preview.length,
-                isLineSynced = !isTtmlLyrics && isLineSyncedLrc(lyrics),
-                isWordSynced = isTtmlLyrics,
+                isLineSynced =
+                    if (isTtmlLyrics) {
+                        ttmlEntries.isNotEmpty() && !isWordSynced
+                    } else {
+                        isLineSyncedLrc(lyrics)
+                    },
+                isWordSynced = isWordSynced,
             )
         }
     }

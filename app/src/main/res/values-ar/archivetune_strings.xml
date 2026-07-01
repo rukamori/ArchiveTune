@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">تصفح</string>
     <string name="local_history">على الجهاز</string>
@@ -23,7 +23,7 @@
     <string name="sync_disabled">المزامنة غير مفعلة</string>
     <string name="allows_for_sync_witch_youtube">ملاحظة: يسمح هذا بالمزامنة مع YouTube Music. لا يمكن تغيير هذا لاحقًا.</string>
     <string name="generating_image">جاري إنشاء الصورة</string>
-    <string name="please_wait">بس اصبر اروحلك فدوة</string>
+    <string name="please_wait">انتظر من فضلك</string>
     <string name="cancel">إلغاﺀ</string>
     <string name="share_lyrics">شارك الكلمات</string>
     <string name="share_as_text">المشاركة كنص</string>
@@ -202,4 +202,24 @@
     <string name="music_recognition_processing">جاري التحليل…</string>
     <string name="music_recognition_no_match">لا توجد نتائج مطابقة</string>
     <string name="music_recognition_recognition_failed">فشل التعرف</string>
+    <string name="top_songs">أفضل الأغاني</string>
+    <string name="theme_creator_title">منشئ السمات</string>
+    <string name="theme_applied">تم تطبيق السمة</string>
+    <string name="theme_export_success">تم تصدير السمة</string>
+    <string name="theme_export_failed">فشل التصدير</string>
+    <string name="theme_import_failed_title">لا يمكن استيراد السمة</string>
+    <string name="show_home_category_chips">إظهار أزرار تصنيفات الصفحة الرئيسية</string>
+    <string name="show_home_category_chips_desc">إظهار أزرار تصفية التصنيفات في الصفحة الرئيسية</string>
+    <string name="player_design_v6">معبر</string>
+    <string name="album_not_found">لم يتم العثور على الألبوم</string>
+    <string name="album_not_found_desc">تعذر تحميل الألبوم المطلوب</string>
+    <string name="empty_album">ألبوم فارغ</string>
+    <string name="empty_album_desc">هذا الألبوم لا يحتوى على أغاني</string>
+    <string name="music_recognition_signature_failed">تعذر إنشاء توقيع</string>
+    <string name="music_recognition_open_shazam">فتح شازام</string>
+    <string name="music_recognition_lyrics_preview">عرض الكلمات</string>
+    <string name="music_recognition_permission_title">إذن الميكروفون</string>
+    <string name="music_recognition_permission_desc">السماح بالوصول إلى الميكروفون للتعرف على الموسيقى القريبة.</string>
+    <string name="music_recognition_permission_action">سماح</string>
+    <string name="music_recognition_error">حدث شيء خاطئ</string>
 </resources>

@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Inicio</string>
     <string name="songs">Canciones</string>
@@ -661,7 +661,7 @@
     <string name="updates_loading_commits">Cargando las últimas modificaciones</string>
     <string name="updates_recent_commits_count">%1$d commits recientes</string>
     <string name="updates_no_commits">Sin cambios recientes</string>
-    <string name="you_might_like_source">Podría gustarte la fuente</string>
+    <string name="you_might_like_source">Origen de las recomendaciones de las listas de reproducción</string>
     <string name="playlist_suggestion_source_title">Título de la lista de reproducción</string>
     <string name="playlist_suggestion_source_content">Contenido de la lista de reproducción</string>
     <string name="playlist_suggestion_source_both">Título y contenido de la lista de reproducción</string>
@@ -853,4 +853,18 @@
     <string name="no_saved_accounts">Aún no hay cuentas guardadas</string>
     <string name="remove_account">Eliminar cuenta</string>
     <string name="youtube_channels">Canales de YouTube</string>
+    <string name="enable_youlyplus_lyrics">Activar las letras de YouLyPlus</string>
+    <string name="source">Origen</string>
+    <plurals name="widget_total_plays">
+        <item quantity="one">Una reproducción</item>
+        <item quantity="many">%d reproducciones</item>
+        <item quantity="other">%d reproducciones</item>
+    </plurals>
+    <string name="widget_top_song_summary">Lo más destacado recientemente: %1$s</string>
+    <string name="widget_no_recent_songs">Aún no hay canciones recientes</string>
+    <string name="widget_no_genres">Aún no hay géneros</string>
+    <string name="widget_no_recommendations">Sin recomendaciones</string>
+    <string name="library_top_mixes_loading">Preparando tus mezclas de IA…</string>
+    <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
+    <string name="library_top_mixes_configure_ai">Configurar la IA</string>
 </resources>

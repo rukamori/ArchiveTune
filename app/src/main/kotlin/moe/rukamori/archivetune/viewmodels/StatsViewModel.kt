@@ -78,7 +78,7 @@ class StatsViewModel
                         fromTimeStamp = statToPeriod(selection, t),
                         limit = -1,
                         toTimeStamp = toTimestamp(selection, t),
-                    )
+                    ).map { songs -> songs.filter { song -> song.artists.none { it.blockedAt != null } } }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         val mostPlayedArtists =
@@ -89,7 +89,9 @@ class StatsViewModel
                             statToPeriod(selection, t),
                             limit = -1,
                             toTimeStamp = toTimestamp(selection, t),
-                        ).map { artists -> artists.filter { it.artist.isYouTubeArtist } }
+                        ).map { artists ->
+                            artists.filter { it.artist.blockedAt == null && it.artist.isYouTubeArtist }
+                        }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         val mostPlayedAlbums =
@@ -99,7 +101,7 @@ class StatsViewModel
                         statToPeriod(selection, t),
                         limit = -1,
                         toTimeStamp = toTimestamp(selection, t),
-                    )
+                    ).map { albums -> albums.filter { album -> album.artists.none { it.blockedAt != null } } }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         val listeningByHour =

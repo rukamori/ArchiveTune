@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Ana sayfa</string>
     <string name="songs">Şarkılar</string>
@@ -16,7 +16,7 @@
     <string name="quick_picks">Hızlı seçimler</string>
     <string name="forgotten_favorites">Unutulan favoriler</string>
     <string name="keep_listening">Dinlemeye devam et</string>
-    <string name="your_youtube_playlists">YouTube oynatma listeleriniz</string>
+    <string name="your_youtube_playlists">YouTube çalma listeleriniz</string>
     <string name="similar_to">benzer</string>
     <string name="new_release_albums">Yeni çıkan albümler</string>
     <string name="integration">Entegrasyon</string>
@@ -37,15 +37,15 @@
     <string name="filter_albums">Albümler</string>
     <string name="filter_artists">Sanatçılar</string>
     <string name="filter_playlists">Çalma listeleri</string>
-    <string name="filter_community_playlists">Topluluk oynatma listeleri</string>
-    <string name="filter_featured_playlists">Öne çıkan oynatma listeleri</string>
+    <string name="filter_community_playlists">Topluluk çalma listeleri</string>
+    <string name="filter_featured_playlists">Öne çıkan çalma listeleri</string>
     <string name="no_results_found">Sonuç bulunamadı</string>
     <string name="other_versions">Diğer sürümler</string>
     <string name="liked_songs">Beğenilen şarkılar</string>
     <string name="downloaded_songs">İndirilen şarkılar</string>
     <string name="playlist_is_empty">Çalma listesi boş</string>
     <string name="remove_download_playlist_confirm">Gerçekten tüm \"%s\" çalma listesi şarkısını İndirilen Şarkılar deposundan kaldırmak istiyor musunuz?</string>
-    <string name="delete_playlist_confirm">Gerçekten \"%s\" oynatma listesini silmek istiyor musunuz?</string>
+    <string name="delete_playlist_confirm">Gerçekten \"%s\" çalma listesini silmek istiyor musunuz?</string>
     <string name="retry">Yeniden dene</string>
     <string name="radio">Radyo</string>
     <string name="shuffle">Karıştır</string>
@@ -479,4 +479,38 @@
     <string name="album_backdrop_desc">Sanat eserini oynatıcıda bulanık arka plan olarak göster</string>
     <string name="backdrop_blur_amount">Arka plan bulanıklık miktarı</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <string name="top_results">En İyi Sonuçlar</string>
+    <string name="library_title">Kütüphanen</string>
+    <string name="library_subtitle">Müziğiniz, sizin için düzenlendi</string>
+    <string name="library_playlists_subtitle">Bütün çalma listeleriniz, sizin için düzenlendi</string>
+    <string name="library_songs_subtitle">Bütün şarkılarınız, sizin için düzenlendi</string>
+    <string name="library_artists_subtitle">Bütün sanatçılarınız, tek bir yerde</string>
+    <string name="library_albums_subtitle">Bütün albümleriniz, güzel bir şekilde düzenlendi</string>
+    <string name="most_played_badge">EN ÇOK ÇALINAN</string>
+    <string name="play_all">Hepsini oynat</string>
+    <string name="offline_shortcut">Çevrimdışı</string>
+    <string name="cached">Önbellekte</string>
+    <string name="local_files">Yerel Dosyalar</string>
+    <string name="downloaded_desc">İndirilenler</string>
+    <string name="instant_playback">Anında playback</string>
+    <string name="on_device">Cihazda</string>
+    <string name="recently_played">Yakın Zamanda Oynatılmış</string>
+    <string name="top_mixes">Sizin için en iyi Mix\'ler</string>
+    <string name="library_top_mixes_loading">YZ mix\'leriniz hazırlanıyor…</string>
+    <string name="library_top_mixes_refresh">Mix\'leri yenile</string>
+    <string name="library_top_mixes_configure_ai">YZ\'yi Yapılandır</string>
+    <string name="library_top_mixes_ai_not_configured_title">Mix oluşturmak için YZ\'yi yapılandır</string>
+    <string name="library_top_mixes_ai_not_configured_desc">ArchiveTune\'un kişisel mix oluşturabilmesi için YZ yapılandırması gereklidir.</string>
+    <string name="library_top_mixes_no_recent_history_title">Henüz yakın zamanda dinlenenler mix\'i oluşturulmamış</string>
+    <string name="together_welcome_join_title">Başka bir cihazdan katıl</string>
+    <string name="together_welcome_join_body">Paylaşılan bağlantıyı açın veya kodu girip Katıl\'a basın. Oynatma sıranız ve playback ana cihazı takip edecek.</string>
+    <string name="together_welcome_permissions_title">İzinler ve güvenlik</string>
+    <string name="together_welcome_permissions_body">Ana cihazlar misafirlerin şarkı eklemesine, playback\'i kontrol etmesine veya katılmak için izin isteyip istemeyeceğine karar verebilirler.</string>
+    <string name="visitor_data">Ziyaretçi Verisi</string>
+    <string name="supported_clients">Desteklenen İstemciler</string>
+    <string name="use_visitor_data">Ziyaretçi Verisini Kullan</string>
+    <string name="cookies_must_be_disabled">Ziyaretçi verisinin kullanılması için çerezler kapalı olmalı</string>
+    <string name="regenerate">Yeniden oluştur</string>
+    <string name="source_url">Kaynak URL\'si</string>
+    <string name="source_url_placeholder">https://youtube.com/account</string>
 </resources>

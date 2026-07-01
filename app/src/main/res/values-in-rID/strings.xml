@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Beranda</string>
     <string name="songs">Lagu</string>
@@ -42,7 +42,7 @@
     <string name="no_results_found">Tidak ada hasil yang ditemukan</string>
     <string name="top_results">Hasil Teratas</string>
     <string name="other_versions">Versi lainnya</string>
-    <string name="liked_songs">Lagu yang disukai</string>
+    <string name="liked_songs">Disukai</string>
     <string name="downloaded_songs">Lagu yang diunduh</string>
     <string name="playlist_is_empty">Playlist-nya kosong</string>
     <string name="remove_download_playlist_confirm">Apakah Anda yakin ingin menghapus semua lagu playlist \"%s\" dari penyimpanan Lagu Unduhan?</string>
@@ -511,7 +511,7 @@
     <string name="discord_url_source_artist">URL Artis</string>
     <string name="discord_url_source_album">URL Album</string>
     <string name="discord_url_source_custom">URL Kustom</string>
-    <string name="album_name">Nama Album</string>
+    <string name="album_name">Nama album</string>
     <string name="app_icon">Ikon Aplikasi</string>
     <string name="large_image_custom_url">URL khusus gambar besar</string>
     <string name="large_image">Gambar Besar</string>
@@ -790,8 +790,8 @@
     <string name="your_artists">Artis Anda</string>
     <string name="font_preference_system">Sistem</string>
     <string name="duration_sort">Durasi</string>
-    <string name="offline_shortcut">Luring</string>
-    <string name="cached">Disimpan</string>
+    <string name="offline_shortcut">Offline</string>
+    <string name="cached">Tersimpan di Cache</string>
     <string name="account_integrations_summary">Discord, Last.fm. Libre.fm, ListenBrainz</string>
     <string name="instant_playback">Pemutaran Instan</string>
     <string name="on_device">Di perangkat ini</string>
@@ -804,4 +804,6 @@
     <string name="library_top_mixes_ai_not_configured_desc">Integrasi AI diperlukan sebelum ArchiveTune dapat membuat mix teratas pribadi.</string>
     <string name="library_top_mixes_no_recent_history_title">Tidak ada riwayat mix mendengarkan saat ini</string>
     <string name="library_top_mixes_no_recent_history">Dengarkan lagu lainnya, kemudian segarkan untuk membuat mix AI dari riwayat mendengarkan anda.</string>
+    <string name="library_top_mixes_failed">Gagal membuat mix teratas</string>
+    <string name="playing_desc">Sedang memutar</string>
 </resources>

@@ -221,6 +221,8 @@
     <string name="dislike_all">Dislike all</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
+    <string name="block_artist">Block artist</string>
+    <string name="unblock_artist">Unblock artist</string>
     <string name="now_playing">Now Playing</string>
     <string name="close">Close</string>
     <string name="minimum_volume">Minimum Volume</string>

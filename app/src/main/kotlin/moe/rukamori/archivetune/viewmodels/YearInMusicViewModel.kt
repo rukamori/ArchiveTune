@@ -84,7 +84,7 @@ class YearInMusicViewModel
                         fromTimeStamp = getYearStartTimestamp(year),
                         limit = 5,
                         toTimeStamp = getYearEndTimestamp(year),
-                    )
+                    ).map { songs -> songs.filter { song -> song.artists.none { it.blockedAt != null } } }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         private val topArtists =
@@ -96,7 +96,7 @@ class YearInMusicViewModel
                             limit = 5,
                             toTimeStamp = getYearEndTimestamp(year),
                         ).map { artists ->
-                            artists.filter { it.artist.isYouTubeArtist }
+                            artists.filter { it.artist.blockedAt == null && it.artist.isYouTubeArtist }
                         }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -107,7 +107,7 @@ class YearInMusicViewModel
                         fromTimeStamp = getYearStartTimestamp(year),
                         limit = 5,
                         toTimeStamp = getYearEndTimestamp(year),
-                    )
+                    ).map { albums -> albums.filter { album -> album.artists.none { it.blockedAt != null } } }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         private val listeningTotals =

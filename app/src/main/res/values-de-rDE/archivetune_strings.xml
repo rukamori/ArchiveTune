@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Erkunden</string>
     <string name="local_history">Lokal</string>
@@ -88,7 +88,7 @@
     <string name="yt_sync">Automatische Synchronisierung mit Konto</string>
     <string name="more_content">Mehr Inhalt</string>
     <string name="general">Allgemein</string>
-    <string name="proxy">Stellvertreter</string>
+    <string name="proxy">Proxy</string>
     <string name="default_lib_chips">Ändern Sie den Standard-Bibliothekschip</string>
     <string name="set_quick_picks">Legen Sie schnelle Tipps fest</string>
     <string name="last_song_listened">Basierend auf dem zuletzt gehörten Lied</string>
@@ -133,7 +133,7 @@
     <string name="empty_playlist">Leere Playlist</string>
     <string name="empty_playlist_desc">Diese Playlist enthält keine Songs</string>
     <plurals name="seconds">
-        <item quantity="one">1 second</item>
+        <item quantity="one">1 Sekunde</item>
         <item quantity="other">%d Sekunden</item>
     </plurals>
     <string name="settings_section_player_content">Inhalt von Spieler &amp;</string>
@@ -219,10 +219,12 @@
     <string name="music_recognition_history_empty_title">Keine Lieder bisher erkannt</string>
     <string name="history_remote_error_title">Remote Verlauf konnte nicht geladen werden</string>
     <string name="clear_selection">Selektion aufheben</string>
-    <string name="history_no_results_desc">Versuche einen anderen Song oder Künstlername</string>
+    <string name="history_no_results_desc">Versuche einen anderen Song oder Künstlername.</string>
     <string name="local_songs_scan_summary">Letzter Scan: %1$d lieder gefunden, %2$d entfernt</string>
     <string name="history_remote_error_desc">Versuche es später erneut.</string>
     <string name="local_songs_scan_title">Scanne lokale Lieder</string>
     <string name="history_no_results_title">Keine Treffenden Songs</string>
     <string name="scanning_device">Durchsuche Gerät…</string>
+    <string name="settings_internet_subtitle">Proxy-, DNS- und Netzwerkwiedergabeverhalten</string>
+    <string name="backup_category_account_desc">YouTube, Spotify, Last.fm, Discord &amp; Proxy-Anmeldedaten</string>
 </resources>

@@ -49,6 +49,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -173,10 +174,14 @@ fun StorageSettings(
     var clearDownloads by remember { mutableStateOf(false) }
     var clearImageCacheDialog by remember { mutableStateOf(false) }
     var clearCanvasCacheDialog by remember { mutableStateOf(false) }
-    var imageCacheSize by remember { mutableStateOf(tryOrNull { imageDiskCache.size } ?: 0L) }
-    var playerCacheSize by remember { mutableStateOf(0L) }
-    var downloadCacheSize by remember { mutableStateOf(0L) }
-    var canvasCacheBytes by remember { mutableStateOf(0L) }
+    var imageCacheSize by remember { mutableLongStateOf(0L) }
+    var playerCacheSize by remember { mutableLongStateOf(0L) }
+    var downloadCacheSize by remember { mutableLongStateOf(0L) }
+    var canvasCacheBytes by remember { mutableLongStateOf(0L) }
+    val isCacheClearInProgress =
+        (screenState as? StorageSettingsScreenState.Success)
+            ?.model
+            ?.cacheClear != null
 
     val maxImageCacheSizeBytes =
         if (maxImageCacheSize > 0) {
@@ -239,33 +244,40 @@ fun StorageSettings(
             viewModel.clearCanvasCache(showFeedback = false)
         }
     }
-    LaunchedEffect(imageDiskCache) {
+    LaunchedEffect(imageDiskCache, isCacheClearInProgress) {
+        if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
+            imageCacheSize =
+                withContext(Dispatchers.IO) {
+                    tryOrNull { imageDiskCache.size } ?: 0L
+                }
             delay(StorageRefreshIntervalMillis)
-            imageCacheSize = tryOrNull { imageDiskCache.size } ?: 0L
         }
     }
-    LaunchedEffect(playerCache, playerCacheDir) {
+    LaunchedEffect(playerCache, playerCacheDir, isCacheClearInProgress) {
+        if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
-            delay(StorageRefreshIntervalMillis)
             playerCacheSize =
                 withContext(Dispatchers.IO) {
                     val cacheSpace = tryOrNull { playerCache.cacheSpace } ?: 0L
                     if (cacheSpace == 0L) playerCacheDir.directorySizeBytes() else cacheSpace
                 }
+            delay(StorageRefreshIntervalMillis)
         }
     }
-    LaunchedEffect(downloadCache, downloadCacheDir) {
+    LaunchedEffect(downloadCache, downloadCacheDir, isCacheClearInProgress) {
+        if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
-            delay(StorageRefreshIntervalMillis)
             downloadCacheSize =
                 withContext(Dispatchers.IO) {
                     val cacheSpace = tryOrNull { downloadCache.cacheSpace } ?: 0L
                     if (cacheSpace == 0L) downloadCacheDir.directorySizeBytes() else cacheSpace
                 }
+            delay(StorageRefreshIntervalMillis)
         }
     }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isCacheClearInProgress) {
+        if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
             canvasCacheBytes =
                 withContext(Dispatchers.IO) {

@@ -588,7 +588,7 @@ fun LocalPlaylistScreen(
 
     val transparentAppBar by remember {
         derivedStateOf {
-            !disableBlur && !selection && !showTopBarTitle
+            !disableBlur && !selection && !showTopBarTitle && !isSearching
         }
     }
 
@@ -601,7 +601,7 @@ fun LocalPlaylistScreen(
                 .background(surfaceColor),
     ) {
         // Mesh gradient background layer
-        if (!disableBlur && gradientColors.isNotEmpty() && gradientAlpha > 0f) {
+        if (!isSearching && !disableBlur && gradientColors.isNotEmpty() && gradientAlpha > 0f) {
             Box(
                 modifier =
                     Modifier
@@ -1175,38 +1175,40 @@ fun LocalPlaylistScreen(
                         }
                     }
 
-                    // Sort Header
-                    item(key = "sort_header") {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 16.dp),
-                        ) {
-                            SortHeader(
-                                sortType = sortType,
-                                sortDescending = sortDescending,
-                                onSortTypeChange = onSortTypeChange,
-                                onSortDescendingChange = onSortDescendingChange,
-                                sortTypeText = { sortType ->
-                                    when (sortType) {
-                                        PlaylistSongSortType.CUSTOM -> R.string.sort_by_custom
-                                        PlaylistSongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                        PlaylistSongSortType.NAME -> R.string.sort_by_name
-                                        PlaylistSongSortType.ARTIST -> R.string.sort_by_artist
-                                        PlaylistSongSortType.PLAY_TIME -> R.string.sort_by_play_time
+                    if (!isSearching) {
+                        // Sort Header
+                        item(key = "sort_header") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 16.dp),
+                            ) {
+                                SortHeader(
+                                    sortType = sortType,
+                                    sortDescending = sortDescending,
+                                    onSortTypeChange = onSortTypeChange,
+                                    onSortDescendingChange = onSortDescendingChange,
+                                    sortTypeText = { sortType ->
+                                        when (sortType) {
+                                            PlaylistSongSortType.CUSTOM -> R.string.sort_by_custom
+                                            PlaylistSongSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            PlaylistSongSortType.NAME -> R.string.sort_by_name
+                                            PlaylistSongSortType.ARTIST -> R.string.sort_by_artist
+                                            PlaylistSongSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (editable && sortType == PlaylistSongSortType.CUSTOM) {
+                                    IconButton(
+                                        onClick = { locked = !locked },
+                                        onLongClick = {},
+                                        modifier = Modifier.padding(horizontal = 6.dp),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
+                                            contentDescription = null,
+                                        )
                                     }
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (editable && sortType == PlaylistSongSortType.CUSTOM) {
-                                IconButton(
-                                    onClick = { locked = !locked },
-                                    onLongClick = {},
-                                    modifier = Modifier.padding(horizontal = 6.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
-                                        contentDescription = null,
-                                    )
                                 }
                             }
                         }
@@ -1603,7 +1605,7 @@ fun LocalPlaylistScreen(
                     Icon(
                         painter =
                             painterResource(
-                                if (selection) R.drawable.close else R.drawable.arrow_back,
+                                if (selection || isSearching) R.drawable.close else R.drawable.arrow_back,
                             ),
                         contentDescription = null,
                     )

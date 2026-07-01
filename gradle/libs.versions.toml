@@ -41,7 +41,7 @@ rhino = "1.9.1"
 markwon = "4.6.2"
 okhttp = "5.4.0"
 accompanist = "1.0.19"
-accompanist-core = "0.4.5"
+accompanist-core = "0.4.6"
 androidsvg = "1.4"
 aboutLibraries = "15.0.3"
 

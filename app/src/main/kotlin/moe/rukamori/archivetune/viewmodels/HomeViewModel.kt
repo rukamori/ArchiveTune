@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.*
 import moe.rukamori.archivetune.extensions.toEnum
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomePresentationPreferences
 import moe.rukamori.archivetune.home.HomeScreenState
@@ -296,7 +297,11 @@ class HomeViewModel
                 it.title.contains("podcasts", ignoreCase = true)
             }
 
-        private fun List<Song>.toQuickPickSample(): List<Song> = distinctBy { it.id }.shuffled().take(20)
+        private fun List<Song>.toQuickPickSample(): List<Song> =
+            filter { song -> song.artists.none { it.blockedAt != null } }
+                .distinctBy { it.id }
+                .shuffled()
+                .take(20)
 
         private fun List<Song>.hasSameSongIdsAs(other: List<Song>): Boolean {
             if (size != other.size) return false
@@ -427,6 +432,13 @@ class HomeViewModel
                         SpeedDialPinType.PLAYLIST.value -> playlistsById[pin.id]
                         else -> null
                     }
+                }.filter { item ->
+                    when (item) {
+                        is Song -> item.artists.none { it.blockedAt != null }
+                        is Album -> item.artists.none { it.blockedAt != null }
+                        is Artist -> item.artist.blockedAt == null
+                        else -> true
+                    }
                 }
         }
 
@@ -439,6 +451,7 @@ class HomeViewModel
                 supervisorScope {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
                     launch { loadSpeedDialItems() }
@@ -447,6 +460,7 @@ class HomeViewModel
                             database
                                 .forgottenFavorites()
                                 .first()
+                                .filter { song -> song.artists.none { it.blockedAt != null } }
                                 .shuffled()
                                 .take(20)
                     }
@@ -456,20 +470,25 @@ class HomeViewModel
                             database
                                 .mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5)
                                 .first()
+                                .filter { song -> song.artists.none { it.blockedAt != null } }
                                 .shuffled()
                                 .take(10)
                         val keepListeningAlbums =
                             database
                                 .mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2)
                                 .first()
-                                .filter { it.album.thumbnailUrl != null }
+                                .filter { it.album.thumbnailUrl != null && it.artists.none { artist -> artist.blockedAt != null } }
                                 .shuffled()
                                 .take(5)
                         val keepListeningArtists =
                             database
                                 .mostPlayedArtists(fromTimeStamp)
                                 .first()
-                                .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }
+                                .filter {
+                                    it.artist.blockedAt == null &&
+                                        it.artist.isYouTubeArtist &&
+                                        it.artist.thumbnailUrl != null
+                                }
                                 .shuffled()
                                 .take(5)
                         keepListening.value = (keepListeningSongs + keepListeningAlbums + keepListeningArtists).shuffled()
@@ -484,7 +503,13 @@ class HomeViewModel
                                         chips = filterHomeChips(page.chips),
                                         sections =
                                             page.sections.map { section ->
-                                                section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
+                                                section.copy(
+                                                    items =
+                                                        section.items
+                                                            .filterExplicit(hideExplicit)
+                                                            .filterVideo(hideVideo)
+                                                            .filterBlockedArtists(blockedArtistIds),
+                                                )
                                             },
                                     )
                             }.onFailure {
@@ -521,13 +546,14 @@ class HomeViewModel
         private suspend fun loadSimilarRecommendations() {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val blockedArtistIds = database.getBlockedArtistIds().toSet()
             val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
             val artistRecommendations =
                 database
                     .mostPlayedArtists(fromTimeStamp, limit = 10)
                     .first()
-                    .filter { it.artist.isYouTubeArtist }
+                    .filter { it.artist.blockedAt == null && it.artist.isYouTubeArtist }
                     .shuffled()
                     .take(3)
                     .mapNotNull {
@@ -550,6 +576,7 @@ class HomeViewModel
                                 items
                                     .filterExplicit(hideExplicit)
                                     .filterVideo(hideVideo)
+                                    .filterBlockedArtists(blockedArtistIds)
                                     .shuffled()
                                     .ifEmpty { return@mapNotNull null },
                         )
@@ -577,6 +604,7 @@ class HomeViewModel
                                         page.playlists.shuffled().take(4)
                                 ).filterExplicit(hideExplicit)
                                     .filterVideo(hideVideo)
+                                    .filterBlockedArtists(blockedArtistIds)
                                     .shuffled()
                                     .ifEmpty { return@mapNotNull null },
                         )
@@ -685,13 +713,20 @@ class HomeViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 isLoadingMore.value = true
                 try {
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val nextSections = YouTube.home(continuation).getOrNull() ?: return@launch
                     homePage.value =
                         nextSections.copy(
                             chips = homePage.value?.chips,
                             sections =
                                 (homePage.value?.sections.orEmpty() + nextSections.sections).map { section ->
-                                    section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
+                                    section.copy(
+                                        items =
+                                            section.items
+                                                .filterExplicit(hideExplicit)
+                                                .filterVideo(hideVideo)
+                                                .filterBlockedArtists(blockedArtistIds),
+                                    )
                                 },
                         )
                 } finally {
@@ -717,6 +752,7 @@ class HomeViewModel
                 viewModelScope.launch(Dispatchers.IO) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val nextSections = YouTube.home(params = chip?.endpoint?.params).getOrNull() ?: return@launch
 
                     homePage.value =
@@ -724,7 +760,13 @@ class HomeViewModel
                             chips = homePage.value?.chips,
                             sections =
                                 nextSections.sections.map { section ->
-                                    section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
+                                    section.copy(
+                                        items =
+                                            section.items
+                                                .filterExplicit(hideExplicit)
+                                                .filterVideo(hideVideo)
+                                                .filterBlockedArtists(blockedArtistIds),
+                                    )
                                 },
                         )
                     selectedChip.value = chip

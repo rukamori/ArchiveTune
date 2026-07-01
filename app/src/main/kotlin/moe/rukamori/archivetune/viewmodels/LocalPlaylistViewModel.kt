@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.constants.PlaylistSuggestionSourceKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.extensions.reversed
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -93,23 +94,24 @@ class LocalPlaylistViewModel
                 sortType,
                 sortDescending,
             ) { songs, sortType, sortDescending ->
+                val visibleSongs = songs.filter { playlistSong -> playlistSong.song.artists.none { it.blockedAt != null } }
                 when (sortType) {
                     PlaylistSongSortType.CUSTOM -> {
-                        songs
+                        visibleSongs
                     }
 
                     PlaylistSongSortType.CREATE_DATE -> {
-                        songs.sortedBy { it.map.id }
+                        visibleSongs.sortedBy { it.map.id }
                     }
 
                     PlaylistSongSortType.NAME -> {
-                        songs.sortedBy { it.song.song.title }
+                        visibleSongs.sortedBy { it.song.song.title }
                     }
 
                     PlaylistSongSortType.ARTIST -> {
                         val collator = Collator.getInstance(Locale.getDefault())
                         collator.strength = Collator.PRIMARY
-                        songs
+                        visibleSongs
                             .sortedWith(compareBy(collator) { song -> song.song.artists.joinToString("") { artist -> artist.name } })
                             .groupBy { it.song.album?.title }
                             .flatMap { (_, songsByAlbum) ->
@@ -120,7 +122,7 @@ class LocalPlaylistViewModel
                     }
 
                     PlaylistSongSortType.PLAY_TIME -> {
-                        songs.sortedBy { it.song.song.totalPlayTime }
+                        visibleSongs.sortedBy { it.song.song.totalPlayTime }
                     }
                 }.reversed(sortDescending && sortType != PlaylistSongSortType.CUSTOM)
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -614,9 +616,9 @@ class LocalPlaylistViewModel
             val hideVideos = context.dataStore.data.first()[HideVideoKey] ?: false
 
             var filteredItems =
-                items.filter { item ->
-                    item.id !in suggestedSongIds.value
-                }
+                items
+                    .filter { item -> item.id !in suggestedSongIds.value }
+                    .filterBlockedArtists(database.getBlockedArtistIds().toSet())
 
             if (hideExplicit) {
                 filteredItems = filteredItems.filterExplicit()

@@ -1168,16 +1168,17 @@ class MainActivity : ComponentActivity() {
                             },
                         )
 
-                    val handlePrimaryNavigationClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
+                     val handlePrimaryNavigationClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
                         if (isSelected) {
-                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                            // Reselect resets the reselected tab's own header. Library is
-                            // self-contained (its own internal header), so it only scrolls to
-                            // top — no shell header reset.
-                            when (screen) {
-                                Screens.Home -> coroutineScope.launch { homeScrollBehavior.state.resetHeightOffset() }
-                                Screens.Search -> coroutineScope.launch { searchScrollBehavior.state.resetHeightOffset() }
-                                else -> {}
+                            if (screen == Screens.Search) {
+                                openSearch()
+                                coroutineScope.launch { searchScrollBehavior.state.resetHeightOffset() }
+                            } else {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                when (screen) {
+                                    Screens.Home -> coroutineScope.launch { homeScrollBehavior.state.resetHeightOffset() }
+                                    else -> {}
+                                }
                             }
                         } else {
                             navController.navigate(screen.route) {
@@ -1190,12 +1191,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Centralized, header-only reset-on-enter (single owner for top-level
-                    // header reset). Fires on committed route change; resets only the entered
-                    // route's own state, never touching LazyListState (scroll position stays).
-                    // A same-route reselect does not change currentRoute, so this won't fire on
-                    // reselect (handlePrimaryNavigationClick owns that path). Library/OnlineSearch
-                    // are intentionally excluded (self-contained / overlay).
                     LaunchedEffect(currentRoute) {
                         when (currentRoute) {
                             Screens.Home.route -> homeScrollBehavior.state.resetHeightOffset()
@@ -1208,11 +1203,6 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(navBackStackEntry) {
                         val currentRoute = navBackStackEntry?.destination?.route
-                        // Note: top-level header reset on entry is now owned by the centralized
-                        // LaunchedEffect(currentRoute) above (Home/Search). The former
-                        // wasOnScrollResetSourceRoute / isReturningToHomeOrLibrary reset block was
-                        // removed as redundant (Library is self-contained). Sub-screen housekeeping
-                        // below is unrelated and retained.
 
                         val isEnteringSubScreen =
                             currentRoute != null &&
@@ -1251,16 +1241,10 @@ class MainActivity : ComponentActivity() {
                             navBackStackEntry?.destination?.route in topLevelScreens
                         ) {
                             onQueryChange(TextFieldValue())
-                            // Header reset on entering a top-level route is handled centrally
-                            // by LaunchedEffect(currentRoute) above (Home + Search), so the
-                            // former route != Home reset (the carry-over bug) is removed here.
                         }
                     }
                     LaunchedEffect(active) {
                         if (active) {
-                            // Opening the search overlay resets the underlying route's header to 0
-                            // so it's clean when the overlay closes (decision A). Reset only the
-                            // active top-level route's own behavior.
                             when (currentRoute) {
                                 Screens.Home.route -> homeScrollBehavior.state.resetHeightOffset()
                                 Screens.Search.route -> searchScrollBehavior.state.resetHeightOffset()

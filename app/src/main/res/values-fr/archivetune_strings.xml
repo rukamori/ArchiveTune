@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Explorer</string>
     <string name="local_history">Locale</string>
@@ -550,4 +550,28 @@
     <string name="aod_customize_show_exit_button">Afficher le bouton « Quitter »</string>
     <string name="storage_migration_downloads_progress">Transfert des téléchargements... %1$d%%</string>
     <string name="aod_customize_content_position">Position du contenu</string>
+    <string name="suggestions">Suggestions</string>
+    <string name="restore_missing_content">L\'archive de sauvegarde ne contient aucune donnée pouvant être restaurée.</string>
+    <string name="restore_corrupted">Le fichier de sauvegarde semble être corrompu et n\'a pas pu être lu.</string>
+    <string name="restore_file_not_found">Impossible d\'ouvrir le fichier sélectionné.</string>
+    <string name="restore_select_backup">Sélectionnez un fichier de sauvegarde à restaurer.</string>
+    <string name="about_license">LICENCE</string>
+    <string name="about_license_unknown">Licence inconnue</string>
+    <string name="about_position_developers">Développeur | Équipe</string>
+    <string name="about_position_yuki">Juste pour le plaisir 😂 | Administrateur</string>
+    <string name="storage_clear_song_cache_progress">Effacement du cache des titres... %1$d %%</string>
+    <string name="storage_clear_downloads_progress">Suppression des téléchargements... %1$d %%</string>
+    <string name="storage_clear_image_cache_progress">Effacement du cache d\'images... %1$d %%</string>
+    <string name="storage_clear_canvas_cache_progress">Effacement du cache du canevas... %1$d %%</string>
+    <string name="storage_cache_clear_warning">Laissez ArchiveTune ouvert pendant la suppression des fichiers de cache.</string>
+    <string name="history_duration_desc">Durée minimale d\'écoute pour qu\'un morceau soit considéré comme écouté</string>
+    <string name="history_duration_seconds">%1$s s</string>
+    <string name="top_albums">Meilleurs Albums</string>
+    <string name="theme_import_failed_title">Impossible d\'importer le thème</string>
+    <string name="theme_applied">Thème appliqué</string>
+    <string name="theme_export_success">Thème exporté</string>
+    <string name="theme_export_failed">Échec de l\'exportation</string>
+    <string name="restore_invalid_file">Le fichier sélectionné n\'est pas une archive de sauvegarde valide.</string>
+    <string name="about_contributor_translation">Traduction par un Contributeur</string>
+    <string name="theme_creator_title">Créateur de thèmes</string>
 </resources>

@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
@@ -41,6 +42,7 @@ class ExploreViewModel
             YouTube
                 .explore()
                 .onSuccess { page ->
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val artists: MutableMap<Int, String> = mutableMapOf()
                     val favouriteArtists: MutableMap<Int, String> = mutableMapOf()
                     database.allArtistsByPlayTime().first().let { list ->
@@ -70,7 +72,8 @@ class ExploreViewModel
                                         firstArtistKey
                                     }.filterExplicit(
                                         context.dataStore.get(HideExplicitKey, false),
-                                    ).filterVideo(context.dataStore.get(HideVideoKey, false)),
+                                    ).filterVideo(context.dataStore.get(HideVideoKey, false))
+                                    .filterBlockedArtists(blockedArtistIds),
                         )
                 }.onFailure {
                     reportException(it)
