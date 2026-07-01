@@ -867,4 +867,22 @@
     <string name="library_top_mixes_loading">Preparando tus mezclas de IA…</string>
     <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
     <string name="library_top_mixes_configure_ai">Configurar la IA</string>
+    <string name="app_icon_change_failed">No he podido cambiar el icono de la aplicación</string>
+    <string name="app_icon_load_failed">No se han podido cargar los iconos de las aplicaciones</string>
+    <string name="app_icon_empty">Sin iconos para la aplicación</string>
+    <plurals name="app_icon_count">
+        <item quantity="one">%d icono</item>
+        <item quantity="many">%d iconos</item>
+        <item quantity="other">%d iconos</item>
+    </plurals>
+    <string name="app_icon_community_notice">Los iconos de la comunidad los crean los usuarios y pueden cambiar con el tiempo.</string>
+    <string name="app_icon_identifier">ID %1$s</string>
+    <string name="app_icon_builtin_description">Icono original de ArchiveTune</string>
+    <string name="app_icon_community">Icono de la comunidad</string>
+    <string name="app_icon_builtin">Integrado en</string>
+    <string name="app_icon_available">Iconos disponibles</string>
+    <string name="app_icon_current">Icono actual</string>
+    <string name="app_icon_subtitle">Personaliza tu lanzador</string>
+    <string name="app_icon_default">Por defecto</string>
+    <string name="app_icon_description">Elige el icono del lanzador</string>
 </resources>
