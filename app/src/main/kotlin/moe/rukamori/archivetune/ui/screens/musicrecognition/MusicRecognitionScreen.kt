@@ -18,6 +18,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,8 +49,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -53,6 +60,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -66,12 +74,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -278,51 +288,67 @@ private fun MusicRecognitionContent(
             ) {
                 item(
                     key = MusicRecognitionStateItemKey,
-                    contentType =
-                        when (state) {
-                            is MusicRecognitionScreenState.Empty -> "empty"
-                            is MusicRecognitionScreenState.Error -> "error"
-                            is MusicRecognitionScreenState.Loading -> "loading"
-                            is MusicRecognitionScreenState.Success -> "success"
-                        },
+                    contentType = MusicRecognitionStateItemContentType,
                 ) {
-                    when (state) {
-                        is MusicRecognitionScreenState.Empty -> {
-                            RecognitionTaskState(
-                                phase = null,
-                                onListen = onListen,
-                                onCancel = onCancel,
+                    val motionScheme = MaterialTheme.motionScheme
+                    AnimatedContent(
+                        targetState = state,
+                        contentKey = MusicRecognitionScreenState::contentKey,
+                        transitionSpec = {
+                            (
+                                fadeIn(motionScheme.defaultEffectsSpec()) +
+                                    scaleIn(
+                                        animationSpec = motionScheme.defaultSpatialSpec(),
+                                        initialScale = StateTransitionInitialScale,
+                                    )
+                            ).togetherWith(
+                                fadeOut(motionScheme.fastEffectsSpec()) +
+                                    scaleOut(
+                                        animationSpec = motionScheme.fastSpatialSpec(),
+                                        targetScale = StateTransitionTargetScale,
+                                    ),
                             )
-                        }
+                        },
+                        label = "MusicRecognitionState",
+                    ) { animatedState ->
+                        when (animatedState) {
+                            is MusicRecognitionScreenState.Empty -> {
+                                RecognitionTaskState(
+                                    phase = null,
+                                    onListen = onListen,
+                                    onCancel = onCancel,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Loading -> {
-                            RecognitionTaskState(
-                                phase = state.phase,
-                                onListen = onListen,
-                                onCancel = onCancel,
-                            )
-                        }
+                            is MusicRecognitionScreenState.Loading -> {
+                                RecognitionTaskState(
+                                    phase = animatedState.phase,
+                                    onListen = onListen,
+                                    onCancel = onCancel,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Error -> {
-                            RecognitionErrorState(
-                                error = state.error,
-                                onListen = onListen,
-                                onAllowPermission = onAllowPermission,
-                            )
-                        }
+                            is MusicRecognitionScreenState.Error -> {
+                                RecognitionErrorState(
+                                    error = animatedState.error,
+                                    onListen = onListen,
+                                    onAllowPermission = onAllowPermission,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Success -> {
-                            val searchResult =
-                                remember(state.track.searchQuery, onSearch) {
-                                    { onSearch(state.track.searchQuery) }
-                                }
-                            RecognitionResultContent(
-                                track = state.track,
-                                useWideLayout = useWideLayout,
-                                onListenAgain = onListen,
-                                onSearch = searchResult,
-                                onOpenUri = onOpenUri,
-                            )
+                            is MusicRecognitionScreenState.Success -> {
+                                val searchResult =
+                                    remember(animatedState.track.searchQuery, onSearch) {
+                                        { onSearch(animatedState.track.searchQuery) }
+                                    }
+                                RecognitionResultContent(
+                                    track = animatedState.track,
+                                    useWideLayout = useWideLayout,
+                                    onListenAgain = onListen,
+                                    onSearch = searchResult,
+                                    onOpenUri = onOpenUri,
+                                )
+                            }
                         }
                     }
                 }
@@ -350,6 +376,7 @@ private fun RecognitionTaskState(
             RecognitionPhaseUi.Processing -> R.drawable.cached
             null -> R.drawable.mic
         }
+    val heroShape = remember { MaterialShapes.Cookie9Sided.toShape() }
 
     Column(
         modifier =
@@ -359,31 +386,46 @@ private fun RecognitionTaskState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        Surface(
-            modifier = Modifier.size(176.dp),
-            shape = CircleShape,
-            color =
-                if (isLoading) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
+        Box(
+            modifier = Modifier.size(192.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (phase == RecognitionPhaseUi.Processing) {
-                    LoadingIndicator(modifier = Modifier.size(72.dp))
-                } else {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint =
-                            if (isLoading) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
+            if (phase == RecognitionPhaseUi.Listening) {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                )
+            }
+            Surface(
+                modifier = Modifier.size(152.dp),
+                shape = heroShape,
+                color =
+                    if (isLoading) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                contentColor =
+                    if (isLoading) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (phase == RecognitionPhaseUi.Processing) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(72.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                        )
+                    }
                 }
             }
         }
@@ -399,13 +441,10 @@ private fun RecognitionTaskState(
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
-                if (phase == RecognitionPhaseUi.Listening) {
-                    LoadingIndicator(modifier = Modifier.size(32.dp))
-                }
             }
         }
 
-        if (phase == RecognitionPhaseUi.Listening) {
+        if (isLoading) {
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.heightIn(min = 48.dp),
@@ -569,11 +608,11 @@ private fun RecognitionResultContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Card(
+        ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge,
             colors =
-                CardDefaults.cardColors(
+                CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
         ) {
@@ -626,6 +665,7 @@ private fun ResultIdentity(
     artworkSize: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val artworkShape = remember { MaterialShapes.Cookie4Sided.toShape() }
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -634,6 +674,7 @@ private fun ResultIdentity(
         CoverArt(
             artworkUrl = track.artworkUrl,
             displaySize = artworkSize,
+            shape = artworkShape,
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1155,6 +1196,7 @@ private fun RecognitionHistoryEmptyState(
 private fun CoverArt(
     artworkUrl: String?,
     displaySize: Dp,
+    shape: Shape = MaterialTheme.shapes.large,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1173,7 +1215,7 @@ private fun CoverArt(
 
     Surface(
         modifier = Modifier.size(displaySize),
-        shape = MaterialTheme.shapes.large,
+        shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         if (imageRequest != null) {
@@ -1198,4 +1240,27 @@ private fun CoverArt(
 }
 
 private const val RecognitionHistoryItemContentType = "recognition_history_item"
+private const val MusicRecognitionStateItemContentType = "music_recognition_state"
 private const val MusicRecognitionStateItemKey = "music_recognition_state"
+private const val StateTransitionInitialScale = 0.96f
+private const val StateTransitionTargetScale = 0.98f
+
+private enum class MusicRecognitionContentKey {
+    Empty,
+    Listening,
+    Processing,
+    Success,
+    Error,
+}
+
+private fun MusicRecognitionScreenState.contentKey(): MusicRecognitionContentKey =
+    when (this) {
+        is MusicRecognitionScreenState.Empty -> MusicRecognitionContentKey.Empty
+        is MusicRecognitionScreenState.Loading ->
+            when (phase) {
+                RecognitionPhaseUi.Listening -> MusicRecognitionContentKey.Listening
+                RecognitionPhaseUi.Processing -> MusicRecognitionContentKey.Processing
+            }
+        is MusicRecognitionScreenState.Success -> MusicRecognitionContentKey.Success
+        is MusicRecognitionScreenState.Error -> MusicRecognitionContentKey.Error
+    }
