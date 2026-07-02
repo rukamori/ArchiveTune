@@ -21,7 +21,6 @@ import android.graphics.Canvas
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -695,8 +695,8 @@ private fun AppIconPreview(
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         tonalElevation = 1.dp,
     ) {
-        Image(
-            painter = painterResource(icon.previewDrawableResId),
+        AsyncImage(
+            model = icon.previewDrawableResId,
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier =
