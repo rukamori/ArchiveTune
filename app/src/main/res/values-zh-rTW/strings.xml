@@ -91,7 +91,7 @@
     <string name="list_view">清單布局</string>
     <string name="grid_view">網格布局</string>
     <string name="personal_label">個人</string>
-    <string name="youtube_synced">已同步 YouTube</string>
+    <string name="youtube_synced">已同步</string>
     <string name="options_label">選項</string>
     <string name="top_artist_badge">最愛藝人</string>
     <string name="no_artist_yet">暫無藝人</string>
@@ -234,7 +234,7 @@
     <string name="unknown">未知</string>
     <string name="copied">已複製到剪貼簿</string>
     <string name="search_lyrics">搜尋歌詞</string>
-    <string name="lyrics_synced_badge">已同步</string>
+    <string name="lyrics_synced_badge">自動同步</string>
     <string name="lyrics_search_plain_badge">純文字</string>
     <string name="lyrics_searching_providers">正在搜尋歌詞來源</string>
     <string name="lyrics_search_still_searching">仍在搜尋中</string>
