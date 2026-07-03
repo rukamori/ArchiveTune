@@ -631,18 +631,7 @@ fun Queue(
                 }
 
                 PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
-                    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
-                    val activeDevice =
-                        remember(audioManager) {
-                            audioManager
-                                .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
-                                .firstOrNull {
-                                    it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                                        it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                                        it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
-                                }?.productName
-                                ?.toString() ?: "Speaker"
-                        }
+                    val audioDevice by playerConnection.service.activeAudioDevice.collectAsState()
                     QueueCollapsedContentV7(
                         showCodecOnPlayer = showCodecOnPlayer,
                         currentFormat = currentFormat,
@@ -661,7 +650,7 @@ fun Queue(
                         onDeviceClick = {
                             SystemMediaControlResolver.openMediaOutputSwitcher(context)
                         },
-                        deviceName = activeDevice,
+                        device = audioDevice,
                     )
                 }
             }
