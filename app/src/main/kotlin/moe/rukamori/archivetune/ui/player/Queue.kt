@@ -119,6 +119,7 @@ import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.utils.oem.SystemMediaControlResolver
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import sh.calvin.reorderable.ReorderableItem
@@ -658,9 +659,7 @@ fun Queue(
                             }
                         },
                         onDeviceClick = {
-                            val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
-                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
+                            SystemMediaControlResolver.openMediaOutputSwitcher(context)
                         },
                         deviceName = activeDevice,
                     )
