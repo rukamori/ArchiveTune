@@ -13,7 +13,6 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
 
 class MusicRecognitionTileService : TileService() {
@@ -25,9 +24,13 @@ class MusicRecognitionTileService : TileService() {
     override fun onClick() {
         super.onClick()
 
+        if (MusicRecognitionRuntimeState.state != BackgroundRecognitionState.Idle) {
+            startService(BackgroundMusicRecognitionService.cancelIntent(this))
+            return
+        }
+
         val launchIntent =
-            Intent(this, MainActivity::class.java).apply {
-                action = ACTION_MUSIC_RECOGNITION
+            Intent(this, MusicRecognitionCaptureActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
 
@@ -48,8 +51,25 @@ class MusicRecognitionTileService : TileService() {
 
     private fun updateTile() {
         qsTile?.apply {
-            state = Tile.STATE_INACTIVE
+            val recognitionState = MusicRecognitionRuntimeState.state
+            state =
+                if (recognitionState == BackgroundRecognitionState.Idle) {
+                    Tile.STATE_INACTIVE
+                } else {
+                    Tile.STATE_ACTIVE
+                }
             label = getString(R.string.music_recognition)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                subtitle =
+                    when (recognitionState) {
+                        BackgroundRecognitionState.Idle ->
+                            getString(R.string.music_recognition_tap_to_listen)
+                        BackgroundRecognitionState.Listening ->
+                            getString(R.string.music_recognition_listening)
+                        BackgroundRecognitionState.Processing ->
+                            getString(R.string.music_recognition_processing)
+                    }
+            }
             icon = Icon.createWithResource(this@MusicRecognitionTileService, R.drawable.mic)
             updateTile()
         }

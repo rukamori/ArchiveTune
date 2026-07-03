@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.musicrecognition
 
+import android.media.projection.MediaProjection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -18,10 +19,29 @@ class RecognizeMusicUseCase
         private val repository: MusicRecognitionRepository,
     ) {
         suspend operator fun invoke(onPhaseChanged: (RecognitionPhase) -> Unit): Result<RecognizedTrack> {
+            return recognize(
+                captureAudio = repository::captureAudio,
+                onPhaseChanged = onPhaseChanged,
+            )
+        }
+
+        suspend fun fromDevicePlayback(
+            mediaProjection: MediaProjection,
+            onPhaseChanged: (RecognitionPhase) -> Unit,
+        ): Result<RecognizedTrack> =
+            recognize(
+                captureAudio = { repository.captureDevicePlayback(mediaProjection) },
+                onPhaseChanged = onPhaseChanged,
+            )
+
+        private suspend fun recognize(
+            captureAudio: suspend () -> ShortArray,
+            onPhaseChanged: (RecognitionPhase) -> Unit,
+        ): Result<RecognizedTrack> {
             onPhaseChanged(RecognitionPhase.Listening)
             val samples =
                 try {
-                    repository.captureAudio()
+                    captureAudio()
                 } catch (cancellationException: CancellationException) {
                     throw cancellationException
                 } catch (throwable: Throwable) {

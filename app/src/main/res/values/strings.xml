@@ -884,6 +884,8 @@
     <string name="onboarding_permission_unavailable">Unavailable</string>
     <string name="onboarding_permission_notifications_title">Notifications</string>
     <string name="onboarding_permission_notifications_desc">Show playback controls and music activity in the notification shade.</string>
+    <string name="onboarding_permission_device_audio_capture_title">On-device audio recognition</string>
+    <string name="onboarding_permission_device_audio_capture_desc">Recognize music playing in other apps without using the microphone. Android asks for screen and audio capture approval each time, ArchiveTune processes audio only.</string>
     <string name="onboarding_permission_bluetooth_connect_title">Bluetooth audio connection</string>
     <string name="onboarding_permission_bluetooth_connect_desc">Connect to nearby Bluetooth audio devices for playback.</string>
     <string name="onboarding_permission_network_title">Network access</string>
