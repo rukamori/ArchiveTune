@@ -85,6 +85,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
@@ -193,6 +196,8 @@ fun Queue(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var dismissJob: Job? by remember { mutableStateOf(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var devicePollingJob by remember { mutableStateOf<Job?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
     var showChoosePlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -649,6 +654,22 @@ fun Queue(
                         },
                         onDeviceClick = {
                             SystemMediaControlResolver.openMediaOutputSwitcher(context)
+                            // Action-triggered polling: Android exposes no reliable reactive
+                            // callback for pure media-route switches (see androidx/media#2080),
+                            // so after the user opens the system output switcher we poll the
+                            // ground-truth query for a bounded window to catch the new route.
+                            // Lifecycle-scoped to RESUMED so polling stops if the app is
+                            // backgrounded, and the job is cancelled/restarted on each tap.
+                            devicePollingJob?.cancel()
+                            devicePollingJob = coroutineScope.launch {
+                                lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                                    // 7 polls x 3s = 21s window, then stops automatically.
+                                    repeat(7) {
+                                        delay(3000)
+                                        playerConnection.service.refreshActiveDevice()
+                                    }
+                                }
+                            }
                         },
                         device = audioDevice,
                     )

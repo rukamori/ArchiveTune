@@ -433,6 +433,16 @@ class MusicService :
             }
     }
 
+    /**
+     * Forces an immediate re-resolve of the active output device and emits the new value.
+     * Used as an on-demand refresh by callers that know a routing change may have just
+     * occurred but was not accompanied by a device connect/disconnect event (for which the
+     * AudioDeviceCallback already covers).
+     */
+    fun refreshActiveDevice() {
+        _activeAudioDevice.value = resolveActiveDevice()
+    }
+
     private val audioDeviceCallback =
         object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
