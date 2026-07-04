@@ -189,7 +189,7 @@ private fun mergeCapturedAndLogcatEntries(
 
                     val logcatEntry = logcatEntries[index]
                     logcatEntry.level == capturedEntry.level &&
-                        logcatEntry.tag == capturedEntry.tag &&
+                        (capturedEntry.tag == null || logcatEntry.tag == capturedEntry.tag) &&
                         logcatEntry.message == chunk &&
                         abs(logcatEntry.time - capturedEntry.time) <= DUPLICATE_WINDOW_MILLIS
                 }
