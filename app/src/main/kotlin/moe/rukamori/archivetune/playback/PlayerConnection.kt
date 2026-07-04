@@ -107,6 +107,14 @@ class PlayerConnection(
         service.playQueue(queue)
     }
 
+    /** See [MusicService.captureQueueSnapshot]. */
+    suspend fun captureQueueSnapshot(title: String?) = service.captureQueueSnapshot(title)
+
+    /** See [MusicService.restoreSavedQueue]. */
+    fun restoreSavedQueue(snapshot: moe.rukamori.archivetune.models.QueueSnapshot) {
+        service.restoreSavedQueue(snapshot)
+    }
+
     fun startRadioSeamlessly() {
         service.startRadioSeamlessly()
     }

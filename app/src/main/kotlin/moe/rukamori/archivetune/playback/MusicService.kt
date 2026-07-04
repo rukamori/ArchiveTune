@@ -217,6 +217,7 @@ import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
+import moe.rukamori.archivetune.models.QueueSnapshot
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.moriextractor.ArchiveTuneExtractorException
 import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
@@ -3485,6 +3486,89 @@ class MusicService :
                 if (player.shuffleModeEnabled) {
                     applyCurrentFirstShuffleOrder()
                 }
+            }
+        }
+    }
+
+    /**
+     * Captures a fully self-contained snapshot of the queue currently loaded in the player:
+     * item order + metadata, currently playing index/position, shuffle state and repeat mode.
+     * Used by the "Save Queue" feature to create a [moe.rukamori.archivetune.db.entities.SavedQueueEntity].
+     * Returns null if there is currently nothing to save.
+     */
+    suspend fun captureQueueSnapshot(title: String?): QueueSnapshot? =
+        withContext(Dispatchers.Main.immediate) {
+            val mediaItemsSnapshot = player.mediaItems.mapNotNull { it.toPersistableMetadata() }
+            if (mediaItemsSnapshot.isEmpty()) return@withContext null
+
+            val persistQueue =
+                currentQueue.toPersistQueue(
+                    title = title,
+                    items = mediaItemsSnapshot,
+                    mediaItemIndex = player.currentMediaItemIndex,
+                    position = player.currentPosition,
+                )
+
+            QueueSnapshot(
+                persistQueue = persistQueue,
+                repeatMode = player.repeatMode,
+                shuffleModeEnabled = player.shuffleModeEnabled,
+            )
+        }
+
+    /**
+     * Restores a previously saved queue (see [captureQueueSnapshot]) and immediately starts
+     * playing it, preserving the original song order, currently playing index/position, shuffle
+     * state and repeat mode. This intentionally starts playback (matching how "Save Queue"
+     * restoration behaves in YouTube Music) rather than only loading the queue silently.
+     */
+    fun restoreSavedQueue(snapshot: QueueSnapshot) {
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (!isTogetherApplyingRemote() && joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_RESTORE_SAVED_QUEUE_DISABLED")
+            return
+        }
+
+        cancelIdleStop()
+        promoteToStartedService()
+        ensureStartedAsForeground()
+        cancelRestoredQueueHydration()
+        ensureScopesActive()
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        suppressAutoPlayback = false
+
+        val queue = snapshot.persistQueue.toQueue()
+        currentQueue = queue
+        queueTitle = snapshot.persistQueue.title
+
+        clearAutomix()
+        autoAddedMediaIds.clear()
+
+        scope.launch(SilentHandler) {
+            val hideExplicit = dataStore.get(HideExplicitKey, false)
+            val hideVideo = dataStore.get(HideVideoKey, false)
+            val initialStatus =
+                withContext(Dispatchers.IO) {
+                    queue
+                        .getInitialStatus()
+                        .filterExplicit(hideExplicit)
+                        .filterVideo(hideVideo)
+                }
+            if (initialStatus.items.isEmpty()) return@launch
+
+            withContext(Dispatchers.Main) {
+                player.setMediaItems(initialStatus.items, initialStatus.mediaItemIndex, initialStatus.position)
+                player.repeatMode = snapshot.repeatMode
+                if (!dataStore.get(PermanentShuffleKey, false)) {
+                    player.shuffleModeEnabled = snapshot.shuffleModeEnabled
+                }
+                player.prepare()
+                player.playWhenReady = true
+                if (player.shuffleModeEnabled) {
+                    applyCurrentFirstShuffleOrder()
+                }
+                currentMediaMetadata.value = player.currentMetadata
+                updateNotification()
             }
         }
     }
