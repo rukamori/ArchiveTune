@@ -42,7 +42,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.PowerManager
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
@@ -105,7 +104,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -216,11 +214,9 @@ import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
-import moe.rukamori.archivetune.models.ActiveOutputDevice
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
-import moe.rukamori.archivetune.models.PlayerOutputDevice
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.moriextractor.ArchiveTuneExtractorException
 import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
@@ -319,129 +315,20 @@ class MusicService :
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
 
-    private val _activeAudioDevice = MutableStateFlow(
-        ActiveOutputDevice(PlayerOutputDevice.Unknown, PlayerOutputDevice.Unknown.defaultName)
-    )
+    /**
+     * Resolves the currently active output device. Constructed in [onCreate] once
+     * [audioManager] is ready (see [AudioOutputResolver] kdoc for the refresh contract).
+     */
+    private lateinit var audioOutputResolver: AudioOutputResolver
+
+    /** The active output device flow observed by the player UI (V7/V8 device pill). */
+    val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
 
     /**
-     * Framework [android.media.AudioAttributes] for USAGE_MEDIA / CONTENT_TYPE_MUSIC, used to
-     * query the system's actual media routing. Built once and cached. Note: this is distinct
-     * from media3's `androidx.media3.common.AudioAttributes` returned by
-     * [playbackAudioAttributes]; the framework query API requires the framework type.
+     * Forces an immediate re-resolve of the active output device. Used by the
+     * action-triggered polling in Queue.kt after the user opens the output switcher.
      */
-    private val mediaQueryAttributes = android.media.AudioAttributes.Builder()
-        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-        .build()
-
-    /**
-     * The currently active audio output device, reactively updated when output devices are
-     * connected/disconnected. Observed by the player UI (V7/V8 device pill).
-     */
-    val activeAudioDevice = _activeAudioDevice.asStateFlow()
-
-    /**
-     * Best-effort detection of the current output device.
-     *
-     * On API 33+ (TIRAMISU) this queries the system for the actual media routing via
-     * [getAudioDevicesForAttributes] — the device(s) the system would route a USAGE_MEDIA
-     * AudioTrack to. This is ground-truth and respects manual overrides the user makes via
-     * the system output switcher, even when other devices remain connected.
-     *
-     * On API < 33, or as a fallback if the API returns nothing, it falls back to a
-     * connect-status priority heuristic (Bluetooth > USB > Headset > HDMI > Speaker).
-     *
-     * NOTE on reactivity: this query is accurate *when called*, but Android exposes no
-     * public, reliable *reactive* API for media-route changes:
-     *  - [android.media.MediaRouter2.ControllerCallback] exists but is documented as
-     *    "not necessarily reliable in all situations" (see androidx/media#2080).
-     *  - [getAudioDevicesForAttributes] has no associated change-listener.
-     *  - ExoPlayer's internal `DefaultAudioSink.routedDevice` is the true source of truth
-     *    but is not exposed publicly in media3 1.10.1.
-     *
-     * Consequently the pill is correct whenever it (re)renders, but will NOT auto-update on
-     * a manual route switch that isn't accompanied by a device connect/disconnect event.
-     * The AudioDeviceCallback already registered here drives the common cases (plug/unplug,
-     * BT connect/disconnect); improved reactivity for the pure-switch case is deferred.
-     */
-    private fun resolveActiveDevice(): ActiveOutputDevice {
-        val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            resolveActiveDeviceApi33() ?: resolveActiveDeviceHeuristic()
-        } else {
-            resolveActiveDeviceHeuristic()
-        }
-
-        val type = PlayerOutputDevice.from(device)
-        val name = if (type.isProduct) {
-            device?.productName?.toString()?.takeUnless { it.isBlank() } ?: type.defaultName
-        } else {
-            type.defaultName
-        }
-        return ActiveOutputDevice(type, name)
-    }
-
-    /**
-     * Ground-truth query: asks the system which device(s) a USAGE_MEDIA AudioTrack would be
-     * routed to right now. Respects the user's manual selection in the system output switcher.
-     * API 33+ (TIRAMISU) only.
-     */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun resolveActiveDeviceApi33(): AudioDeviceInfo? {
-        return audioManager
-            .getAudioDevicesForAttributes(mediaQueryAttributes)
-            .firstOrNull { it.isSink }
-    }
-
-    /**
-     * Fallback heuristic: connect-status + a fixed priority order. Used on API < 33, and as
-     * a safety net when [resolveActiveDeviceApi33] returns an empty list.
-     *
-     * Caveat: this reflects what is *connected*, not necessarily what is *routing*. If a
-     * device is connected but audio is routed elsewhere, the heuristic may report the
-     * connected device rather than the actively-routed one.
-     */
-    private fun resolveActiveDeviceHeuristic(): AudioDeviceInfo? {
-        val sinks = audioManager
-            .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            .filter { it.isSink }
-
-        return sinks.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
-            ?: sinks.firstOrNull {
-                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                    it.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER ||
-                    it.type == AudioDeviceInfo.TYPE_HEARING_AID
-            }
-            ?: sinks.firstOrNull {
-                it.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
-                    it.type == AudioDeviceInfo.TYPE_USB_ACCESSORY
-            }
-            ?: sinks.firstOrNull {
-                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
-            }
-            ?: sinks.firstOrNull {
-                it.type == AudioDeviceInfo.TYPE_HDMI ||
-                    it.type == AudioDeviceInfo.TYPE_HDMI_ARC ||
-                    it.type == AudioDeviceInfo.TYPE_HDMI_EARC
-            }
-            ?: sinks.firstOrNull {
-                it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER ||
-                    it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE ||
-                    it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
-            }
-    }
-
-    /**
-     * Forces an immediate re-resolve of the active output device and emits the new value.
-     * Used as an on-demand refresh by callers that know a routing change may have just
-     * occurred but was not accompanied by a device connect/disconnect event (for which the
-     * AudioDeviceCallback already covers).
-     */
-    fun refreshActiveDevice() {
-        _activeAudioDevice.value = resolveActiveDevice()
-    }
+    fun refreshActiveDevice() = audioOutputResolver.refresh()
 
     private val audioDeviceCallback =
         object : AudioDeviceCallback() {
@@ -1110,6 +997,7 @@ class MusicService :
             )
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioOutputResolver = AudioOutputResolver(audioManager)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             audioManager.setAllowedCapturePolicy(android.media.AudioAttributes.ALLOW_CAPTURE_BY_ALL)
         }
@@ -1121,7 +1009,7 @@ class MusicService :
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, android.os.Handler(mainLooper))
         audioDeviceCallbackRegistered = true
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
-        _activeAudioDevice.value = resolveActiveDevice()
+        audioOutputResolver.refresh()
 
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
@@ -2146,7 +2034,7 @@ class MusicService :
         val outputSignature = currentAudioOutputDeviceSignature()
         if (outputSignature == lastAudioOutputDeviceSignature) return
         lastAudioOutputDeviceSignature = outputSignature
-        _activeAudioDevice.value = resolveActiveDevice()
+        audioOutputResolver.refresh()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         player.setAudioAttributes(playbackAudioAttributes(), false)
         audioRouteRecoveryJob?.cancel()
