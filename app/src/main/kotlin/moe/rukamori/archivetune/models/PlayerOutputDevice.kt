@@ -10,12 +10,6 @@ import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
 
-/**
- * Represents the category of an audio output device as shown in the player pill (V7/V8).
- *
- * [isProduct] is true for devices that carry a real product name (Bluetooth, USB DACs).
- * For those, [ActiveOutputDevice.name] is derived from the device's [AudioDeviceInfo.getProductName].
- */
 enum class PlayerOutputDevice(
     val imageVector: ImageVector,
     val isProduct: Boolean,
@@ -56,13 +50,6 @@ enum class PlayerOutputDevice(
     }
 }
 
-/**
- * The currently active audio output device, exposed to the UI layer.
- *
- * @param type the device category (drives the icon shown in the pill).
- * @param name the display name: the product name for Bluetooth/USB devices, or a
- *             generic label (e.g. "Speaker") otherwise.
- */
 @Immutable
 data class ActiveOutputDevice(
     val type: PlayerOutputDevice,

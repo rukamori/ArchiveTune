@@ -315,19 +315,10 @@ class MusicService :
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
 
-    /**
-     * Resolves the currently active output device. Constructed in [onCreate] once
-     * [audioManager] is ready (see [AudioOutputResolver] kdoc for the refresh contract).
-     */
     private lateinit var audioOutputResolver: AudioOutputResolver
 
-    /** The active output device flow observed by the player UI (V7/V8 device pill). */
     val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
 
-    /**
-     * Forces an immediate re-resolve of the active output device. Used by the
-     * action-triggered polling in Queue.kt after the user opens the output switcher.
-     */
     fun refreshActiveDevice() = audioOutputResolver.refresh()
 
     private val audioDeviceCallback =

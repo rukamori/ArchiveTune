@@ -637,11 +637,6 @@ fun Queue(
                 PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
                     val audioDevice by playerConnection.service.activeAudioDevice.collectAsStateWithLifecycle()
 
-                    // Android exposes no reliable reactive callback for pure media-route
-                    // switches (see androidx/media#2080), so re-resolve the active device when
-                    // the window regains focus — e.g. after the user closes the system output
-                    // switcher, the quick settings shade, the notification shade, or returns
-                    // from another app. One-shot, no polling loop.
                     val view = LocalView.current
                     DisposableEffect(view) {
                         val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
