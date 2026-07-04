@@ -221,23 +221,26 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Move unsigned APK
+      - name: Sign APK
+        uses: ilharp/sign-android-release@v2.0.0
+        with:
+          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
+          signingKey: ${{ secrets.KEYSTORE }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+          buildToolsVersion: 35.0.0
+      
+      - name: Move signed APK
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          # No signing step is run in this workflow, so every variant produces
-          # a plain unsigned APK directly in the release output directory.
-          APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)"
-          if [ -z "${APK:-}" ] || [ ! -f "$APK" ]; then
-            echo "Could not find unsigned APK in $RELEASE_DIR"
-            find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
-            exit 1
-          fi
-          mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
+          mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
-      - name: Upload Unsigned APK
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.variant.outputs.artifact_name }}
