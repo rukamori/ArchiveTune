@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.Cable
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -62,6 +63,7 @@ enum class PlayerOutputDevice(
  * @param name the display name: the product name for Bluetooth/USB devices, or a
  *             generic label (e.g. "Speaker") otherwise.
  */
+@Immutable
 data class ActiveOutputDevice(
     val type: PlayerOutputDevice,
     val name: String,
