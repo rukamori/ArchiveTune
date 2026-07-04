@@ -48,16 +48,20 @@ import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HistoryDuration
+import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
+import moe.rukamori.archivetune.constants.PoTokenGvsKey
+import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.WakelockKey
+import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
 import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
@@ -200,6 +204,15 @@ fun PlayerSettings(navController: NavController) {
             WakelockKey,
             defaultValue = false,
         )
+    val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, defaultValue = "")
+    val (poTokenGvs, _) = rememberPreference(PoTokenGvsKey, defaultValue = "")
+    val (poTokenPlayer, _) = rememberPreference(PoTokenPlayerKey, defaultValue = "")
+    val isArchiveTuneExtractorEnabled =
+        remember(innerTubeCookie, poTokenGvs, poTokenPlayer) {
+            hasYouTubeLoginCookie(innerTubeCookie) &&
+                poTokenGvs.isNotBlank() &&
+                poTokenPlayer.isNotBlank()
+        }
     val playerStreamClients =
         remember {
             listOf(
@@ -215,13 +228,26 @@ fun PlayerSettings(navController: NavController) {
             PlayerStreamClient.ANDROID_VR
         }
     val audioQualityEnabled = selectedPlayerStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
+    val isPlayerStreamClientEnabled =
+        remember(isArchiveTuneExtractorEnabled) {
+            { client: PlayerStreamClient ->
+                client != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR ||
+                    isArchiveTuneExtractorEnabled
+            }
+        }
 
     var showArtistSeparatorsDialog by remember { mutableStateOf(false) }
     var showTagsManagementDialog by remember { mutableStateOf(false) }
     var showExternalDownloaderPackageDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(playerStreamClient) {
-        if (playerStreamClient !in playerStreamClients) {
+    LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled) {
+        if (
+            playerStreamClient !in playerStreamClients ||
+            (
+                playerStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR &&
+                    !isArchiveTuneExtractorEnabled
+            )
+        ) {
             onPlayerStreamClientChange(PlayerStreamClient.ANDROID_VR)
         }
     }
@@ -312,6 +338,7 @@ fun PlayerSettings(navController: NavController) {
                         selectedValue = selectedPlayerStreamClient,
                         values = playerStreamClients,
                         onValueSelected = onPlayerStreamClientChange,
+                        isValueEnabled = isPlayerStreamClientEnabled,
                         valueText = {
                             when (it) {
                                 PlayerStreamClient.ANDROID_VR -> {
@@ -344,9 +371,15 @@ fun PlayerSettings(navController: NavController) {
                                 }
 
                                 PlayerStreamClient.ARCHIVETUNE_EXTRACTOR -> {
-                                    stringResource(
-                                        R.string.player_stream_client_archivetune_extractor_desc,
-                                    )
+                                    if (isArchiveTuneExtractorEnabled) {
+                                        stringResource(
+                                            R.string.player_stream_client_archivetune_extractor_desc,
+                                        )
+                                    } else {
+                                        stringResource(
+                                            R.string.player_stream_client_archivetune_extractor_login_required,
+                                        )
+                                    }
                                 }
 
                                 else -> {
@@ -354,6 +387,15 @@ fun PlayerSettings(navController: NavController) {
                                 }
                             }
                         },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.mori_cipher_settings_title)) },
+                        description = stringResource(R.string.mori_cipher_settings_description),
+                        icon = { Icon(painterResource(R.drawable.security), null) },
+                        onClick = { navController.navigate("settings/player/chiper") },
                     )
                 }
 

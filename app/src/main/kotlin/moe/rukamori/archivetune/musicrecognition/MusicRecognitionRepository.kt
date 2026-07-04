@@ -15,6 +15,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -22,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -54,6 +57,27 @@ class MusicRecognitionRepository
                     Timber.e(throwable, "Failed to observe music recognition history")
                     emit(emptyList())
                 }.flowOn(Dispatchers.IO)
+
+        fun observeBackgroundRecognitionEnabled(): Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences ->
+                    preferences[BackgroundRecognitionEnabledKey] ?: BackgroundRecognitionEnabledDefault
+                }.distinctUntilChanged()
+                .flowOn(Dispatchers.IO)
+
+        suspend fun isBackgroundRecognitionEnabled(): Boolean =
+            withContext(Dispatchers.IO) {
+                context.dataStore.data.first()[BackgroundRecognitionEnabledKey]
+                    ?: BackgroundRecognitionEnabledDefault
+            }
+
+        suspend fun setBackgroundRecognitionEnabled(enabled: Boolean) {
+            withContext(Dispatchers.IO) {
+                context.dataStore.edit { preferences ->
+                    preferences[BackgroundRecognitionEnabledKey] = enabled
+                }
+            }
+        }
 
         suspend fun captureAudio(): ShortArray =
             withContext(Dispatchers.IO) {
@@ -191,8 +215,11 @@ private const val SampleRateHz = 16_000
 private const val RecordingDurationMillis = 4_200L
 private const val MinimumBufferSizeBytes = 4_096
 private const val MusicRecognitionHistoryLimit = 50
+private const val BackgroundRecognitionEnabledDefault = true
 
 private val MusicRecognitionHistoryJsonKey = stringPreferencesKey("musicRecognitionHistoryJson")
+private val BackgroundRecognitionEnabledKey =
+    booleanPreferencesKey("musicRecognitionBackgroundEnabled")
 
 private val HistoryJson =
     Json {

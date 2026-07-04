@@ -398,19 +398,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DISTRIBUTION="${{ steps.variant.outputs.distribution }}"
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          if [ "$DISTRIBUTION" = "gms" ]; then
-            APK="$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)"
-          else
-            APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" | head -n 1)"
-          fi
-          if [ -z "${APK:-}" ] || [ ! -f "$APK" ]; then
-            echo "Could not find APK for DISTRIBUTION=$DISTRIBUTION in $RELEASE_DIR"
+          mapfile -t SIGNED_APKS < <(
+            find "$RELEASE_DIR" -maxdepth 1 -type f \
+              \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \)
+          )
+          if [ "${#SIGNED_APKS[@]}" -ne 1 ]; then
+            echo "Expected exactly one signed APK in $RELEASE_DIR, found ${#SIGNED_APKS[@]}"
             find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
             exit 1
           fi
+          APK="${SIGNED_APKS[0]}"
           mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
       - name: Upload APK

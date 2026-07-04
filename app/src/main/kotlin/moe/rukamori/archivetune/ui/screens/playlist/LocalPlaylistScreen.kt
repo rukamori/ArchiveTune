@@ -281,7 +281,6 @@ fun LocalPlaylistScreen(
     val downloadUtil = LocalDownloadUtil.current
     var downloads by remember { mutableStateOf<Map<String, Download>>(emptyMap()) }
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
-    var downloadsPaused by remember { mutableStateOf(false) }
     var downloadProgressToolbarDismissed by remember { mutableStateOf(true) }
 
     val editable: Boolean = playlist?.playlist?.isEditable == true
@@ -300,12 +299,6 @@ fun LocalPlaylistScreen(
         downloadUtil.downloads.collect { currentDownloads ->
             downloads = currentDownloads
             downloadState = headerDownloadState(songIds, currentDownloads)
-        }
-    }
-
-    LaunchedEffect(downloadState) {
-        if (downloadState !is HeaderDownloadState.Partial) {
-            downloadsPaused = false
         }
     }
 
@@ -1029,12 +1022,22 @@ fun LocalPlaylistScreen(
                                     ToggleButton(
                                         checked = downloadState == HeaderDownloadState.Completed,
                                         onCheckedChange = {
-                                            when (downloadState) {
+                                            val currentDownloadState = downloadState
+                                            when (currentDownloadState) {
                                                 HeaderDownloadState.Completed -> {
                                                     showRemoveDownloadDialog = true
                                                 }
 
-                                                else -> {
+                                                is HeaderDownloadState.Partial -> {
+                                                    val songIds = songs.map { it.song.id }
+                                                    if (currentDownloadState.paused) {
+                                                        sendResumeDownloads(context, songIds)
+                                                    } else {
+                                                        sendPauseDownloads(context, songIds)
+                                                    }
+                                                }
+
+                                                HeaderDownloadState.None -> {
                                                     downloadProgressToolbarDismissed = false
                                                     sendAddMissingDownloads(
                                                         context = context,
@@ -1071,7 +1074,10 @@ fun LocalPlaylistScreen(
                                             }
 
                                             is HeaderDownloadState.Partial -> {
-                                                HeaderDownloadProgressIndicator(progress = state.progress)
+                                                HeaderDownloadProgressIndicator(
+                                                    progress = state.progress,
+                                                    paused = state.paused,
+                                                )
                                             }
 
                                             else -> {
@@ -1689,19 +1695,17 @@ fun LocalPlaylistScreen(
                     state =
                         DownloadProgressToolbarState(
                             progress = currentDownloadState.progress,
-                            paused = downloadsPaused,
+                            paused = currentDownloadState.paused,
                             canPause = hasActiveDownloads(songIds, downloads),
                         ),
                     onPauseResume = {
-                        if (downloadsPaused) {
+                        if (currentDownloadState.paused) {
                             sendResumeDownloads(context, songIds)
                         } else {
                             sendPauseDownloads(context, songIds)
                         }
-                        downloadsPaused = !downloadsPaused
                     },
                     onDismiss = {
-                        downloadsPaused = false
                         downloadProgressToolbarDismissed = true
                     },
                 )

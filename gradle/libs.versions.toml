@@ -117,6 +117,7 @@ re2j = { module = "com.google.re2j:re2j", version.ref = "re2j" }
 
 json = { module = "org.json:json", version.ref = "json" }
 okhttp_dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 brotli = { module = "org.brotli:dec", version.ref = "brotli" }
 rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }

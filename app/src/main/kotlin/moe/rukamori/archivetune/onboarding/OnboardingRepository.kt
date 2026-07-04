@@ -128,7 +128,10 @@ class OnboardingRepository
         }
 
         private fun deviceAudioCaptureData(): OnboardingPermissionData =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (
+                BuildConfig.DISTRIBUTION == DISTRIBUTION_GMS &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            ) {
                 installGrantedData(OnboardingPermissionId.DEVICE_AUDIO_CAPTURE)
             } else {
                 OnboardingPermissionData(

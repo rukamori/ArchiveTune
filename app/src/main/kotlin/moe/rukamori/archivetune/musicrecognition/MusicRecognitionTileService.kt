@@ -29,11 +29,14 @@ class MusicRecognitionTileService : TileService() {
             return
         }
 
-        val launchIntent =
-            Intent(this, MusicRecognitionCaptureActivity::class.java).apply {
+        launchAndCollapse(
+            Intent(this, MusicRecognitionTileActionActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
+            },
+        )
+    }
 
+    private fun launchAndCollapse(launchIntent: Intent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val pendingIntent =
                 PendingIntent.getActivity(

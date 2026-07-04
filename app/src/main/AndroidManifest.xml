@@ -17,7 +17,6 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission
@@ -175,7 +174,7 @@
         </activity>
 
         <activity
-            android:name=".musicrecognition.MusicRecognitionCaptureActivity"
+            android:name=".musicrecognition.MusicRecognitionTileActionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.ArchiveTune.Transparent" />
@@ -246,12 +245,6 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
-
-        <service
-            android:name=".musicrecognition.BackgroundMusicRecognitionService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone"
-            android:stopWithTask="false" />
 
         <service
             android:name=".aod.AodModeTileService"

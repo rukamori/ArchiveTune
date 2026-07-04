@@ -797,6 +797,11 @@
     <string name="last_start">Last Start</string>
     <string name="last_end">Last End</string>
     <string name="debug_logs">Debug Logs</string>
+    <string name="view_debug_logs_description">View and filter application logs</string>
+    <string name="resume_logs">Resume logs</string>
+    <string name="jump_to_latest_log">Jump to latest log</string>
+    <string name="copy_log_entry">Copy log entry</string>
+    <string name="export_logs_failed">Unable to export logs</string>
     <string name="log_level_verbose">Verbose</string>
     <string name="log_level_debug">Debug</string>
     <string name="log_level_info">Info</string>

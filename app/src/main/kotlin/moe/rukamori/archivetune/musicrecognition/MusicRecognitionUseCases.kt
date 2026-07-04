@@ -10,6 +10,9 @@ package moe.rukamori.archivetune.musicrecognition
 import android.media.projection.MediaProjection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import moe.rukamori.archivetune.BuildConfig
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -118,3 +121,43 @@ class FilterRecognitionHistoryUseCase
             }
         }
     }
+
+class ObserveBackgroundRecognitionSettingUseCase
+    @Inject
+    constructor(
+        private val repository: MusicRecognitionRepository,
+    ) {
+        operator fun invoke(): Flow<BackgroundRecognitionSetting> =
+            repository
+                .observeBackgroundRecognitionEnabled()
+                .map { enabled ->
+                    BackgroundRecognitionSetting(
+                        enabled = isBackgroundRecognitionAvailable && enabled,
+                        available = isBackgroundRecognitionAvailable,
+                    )
+                }.distinctUntilChanged()
+    }
+
+class SetBackgroundRecognitionEnabledUseCase
+    @Inject
+    constructor(
+        private val repository: MusicRecognitionRepository,
+    ) {
+        suspend operator fun invoke(enabled: Boolean) {
+            if (!isBackgroundRecognitionAvailable) return
+            repository.setBackgroundRecognitionEnabled(enabled)
+        }
+    }
+
+class IsBackgroundRecognitionEnabledUseCase
+    @Inject
+    constructor(
+        private val repository: MusicRecognitionRepository,
+    ) {
+        suspend operator fun invoke(): Boolean =
+            isBackgroundRecognitionAvailable &&
+                repository.isBackgroundRecognitionEnabled()
+    }
+
+private const val GMS_DISTRIBUTION = "gms"
+private val isBackgroundRecognitionAvailable = BuildConfig.DISTRIBUTION == GMS_DISTRIBUTION
