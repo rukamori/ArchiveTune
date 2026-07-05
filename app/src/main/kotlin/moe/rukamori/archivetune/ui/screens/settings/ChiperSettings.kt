@@ -453,8 +453,32 @@ private fun CipherCountdownText(
     val animationsDisabled = LocalAnimationsDisabled.current
     val durationMillis = if (animationsDisabled) 0 else 220
 
+    Row(modifier = modifier) {
+        countdown.forEach { character ->
+            if (character.isDigit()) {
+                CipherCountdownDigit(
+                    digit = character,
+                    durationMillis = durationMillis,
+                )
+            } else {
+                Text(
+                    text = character.toString(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CipherCountdownDigit(
+    digit: Char,
+    durationMillis: Int,
+    modifier: Modifier = Modifier,
+) {
     AnimatedContent(
-        targetState = countdown,
+        targetState = digit,
         modifier = modifier,
         transitionSpec = {
             (
@@ -470,11 +494,11 @@ private fun CipherCountdownText(
                     ) + fadeOut(tween(durationMillis))
                 )
         },
-        contentAlignment = Alignment.CenterStart,
-        label = "cipherCountdown",
+        contentAlignment = Alignment.Center,
+        label = "cipherCountdownDigit",
     ) { value ->
         Text(
-            text = value,
+            text = value.toString(),
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
         )
