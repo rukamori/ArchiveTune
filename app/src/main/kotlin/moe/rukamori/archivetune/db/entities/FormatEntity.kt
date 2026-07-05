@@ -57,12 +57,21 @@ fun FormatEntity.formattedFileSize(): String =
         var size = it.toDouble()
         var unitIndex = 0
 
-        while (size >= 1023.95 && unitIndex < units.lastIndex) {
+        while (size >= 1024.0 && unitIndex < units.lastIndex) {
             size /= 1024.0
             unitIndex++
         }
 
-        val rounded = kotlin.math.round(size * 10.0) / 10.0
+        var rounded = if (size >= 99.95) {
+            size.roundToInt().toDouble()
+        } else {
+            (size * 10.0).roundToInt() / 10.0
+        }
+
+        if (rounded >= 1023.95 && unitIndex < units.lastIndex) {
+            rounded = 1.0
+            unitIndex++
+        }
 
         if (rounded == rounded.toLong().toDouble()) {
             "${rounded.toLong()} ${units[unitIndex]}"
