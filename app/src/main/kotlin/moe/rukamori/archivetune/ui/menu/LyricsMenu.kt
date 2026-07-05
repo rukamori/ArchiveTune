@@ -63,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -135,12 +136,13 @@ fun LyricsMenu(
     mediaMetadataProvider: () -> MediaMetadata,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
-    showPlayerControls: Boolean,
+    showPlayerControlsState: State<Boolean>,
     onShowPlayerControlsChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val showPlayerControls by showPlayerControlsState
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)

@@ -156,8 +156,15 @@ fun LyricsScreen(
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
-    val (showPlayerControls, onShowPlayerControlsChange) =
+    val showPlayerControlsState =
         rememberPreference(ShowLyricsPlayerControlsKey, true)
+    val showPlayerControls by showPlayerControlsState
+    val onShowPlayerControlsChange =
+        remember(showPlayerControlsState) {
+            { showControls: Boolean ->
+                showPlayerControlsState.value = showControls
+            }
+        }
 
     val hapticClick =
         remember(enableHapticFeedback, view) {
@@ -290,7 +297,7 @@ fun LyricsScreen(
                 mediaMetadataProvider = { mediaMetadata },
                 lyricsSyncOffset = lyricsSyncOffset,
                 onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
-                showPlayerControls = showPlayerControls,
+                showPlayerControlsState = showPlayerControlsState,
                 onShowPlayerControlsChange = onShowPlayerControlsChange,
                 onDismiss = menuState::dismiss,
             )
