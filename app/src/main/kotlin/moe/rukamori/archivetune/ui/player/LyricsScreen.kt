@@ -101,6 +101,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
+import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -155,6 +156,8 @@ fun LyricsScreen(
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
+    val (showPlayerControls, onShowPlayerControlsChange) =
+        rememberPreference(ShowLyricsPlayerControlsKey, true)
 
     val hapticClick =
         remember(enableHapticFeedback, view) {
@@ -287,6 +290,8 @@ fun LyricsScreen(
                 mediaMetadataProvider = { mediaMetadata },
                 lyricsSyncOffset = lyricsSyncOffset,
                 onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
+                showPlayerControls = showPlayerControls,
+                onShowPlayerControlsChange = onShowPlayerControlsChange,
                 onDismiss = menuState::dismiss,
             )
         }
@@ -331,7 +336,7 @@ fun LyricsScreen(
                         .padding(horizontal = 24.dp),
             )
 
-            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (orientation == Configuration.ORIENTATION_LANDSCAPE && showPlayerControls) {
                 Row(
                     modifier =
                         Modifier
@@ -401,39 +406,41 @@ fun LyricsScreen(
                             .fillMaxWidth(),
                 )
 
-                AppleMusicControls(
-                    positionProvider = { positionState.longValue },
-                    durationProvider = { durationState.longValue },
-                    sliderPosition = sliderPosition,
-                    isPlaying = isPlaying,
-                    isLoading = isLoading,
-                    volume = deviceMusicVolumeController.volumeFraction,
-                    onPositionChange = { sliderPosition = it },
-                    onPositionChangeFinished = {
-                        sliderPosition?.let {
-                            player.seekTo(it)
-                            positionState.longValue = it
-                        }
-                        sliderPosition = null
-                    },
-                    onVolumeChange = onVolumeChange,
-                    onPreviousClick = {
-                        hapticClick()
-                        playerConnection.seekToPrevious()
-                    },
-                    onPlayPauseClick = {
-                        hapticClick()
-                        player.togglePlayPause()
-                    },
-                    onNextClick = {
-                        hapticClick()
-                        playerConnection.seekToNext()
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 40.dp),
-                )
+                if (showPlayerControls) {
+                    AppleMusicControls(
+                        positionProvider = { positionState.longValue },
+                        durationProvider = { durationState.longValue },
+                        sliderPosition = sliderPosition,
+                        isPlaying = isPlaying,
+                        isLoading = isLoading,
+                        volume = deviceMusicVolumeController.volumeFraction,
+                        onPositionChange = { sliderPosition = it },
+                        onPositionChangeFinished = {
+                            sliderPosition?.let {
+                                player.seekTo(it)
+                                positionState.longValue = it
+                            }
+                            sliderPosition = null
+                        },
+                        onVolumeChange = onVolumeChange,
+                        onPreviousClick = {
+                            hapticClick()
+                            playerConnection.seekToPrevious()
+                        },
+                        onPlayPauseClick = {
+                            hapticClick()
+                            player.togglePlayPause()
+                        },
+                        onNextClick = {
+                            hapticClick()
+                            playerConnection.seekToNext()
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 40.dp),
+                    )
+                }
             }
         }
     }
