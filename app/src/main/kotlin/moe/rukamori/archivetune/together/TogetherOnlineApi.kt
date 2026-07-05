@@ -185,4 +185,29 @@ class TogetherOnlineApi(
             if (status !in 200..299) throw TogetherOnlineApiException(errorMessageFromResponse(status, raw), statusCode = status)
             json.decodeFromString(TogetherOnlineResolveResponse.serializer(), raw)
         }
+
+    suspend fun endSession(
+        sessionId: String,
+        hostKey: String,
+    ) {
+        withRetry {
+            val normalizedSessionId = sessionId.trim()
+            val normalizedHostKey = hostKey.trim()
+            require(normalizedSessionId.isNotBlank()) { "Session ID is required" }
+            require(normalizedHostKey.isNotBlank()) { "Host key is required" }
+
+            val response =
+                client.post("$v1BaseUrl/together/sessions/$normalizedSessionId/end") {
+                    header("Authorization", "Bearer $normalizedHostKey")
+                }
+            val status = response.status.value
+            if (status !in 200..299 && status != 404) {
+                val raw = response.bodyAsText()
+                throw TogetherOnlineApiException(
+                    errorMessageFromResponse(status, raw),
+                    statusCode = status,
+                )
+            }
+        }
+    }
 }

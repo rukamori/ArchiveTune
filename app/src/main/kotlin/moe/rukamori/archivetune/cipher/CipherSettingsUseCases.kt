@@ -81,12 +81,15 @@ class RefreshCipherUseCase
                     resetsAtMillis = rateLimitResetsAtMillis ?: nowMillis + RATE_LIMIT_WINDOW_MILLIS,
                 )
             }
-            repository.refresh().getOrElse {
-                return ManualCipherRefreshResult.Failed(it)
-            }
+            val completedAtMillis =
+                repository
+                    .refresh()
+                    .getOrElse {
+                        return ManualCipherRefreshResult.Failed(it)
+                    }.refreshedAtMillis
             repository.recordSuccessfulManualRefresh(
-                timestampMillis = nowMillis,
-                validAfterMillis = nowMillis - RATE_LIMIT_WINDOW_MILLIS,
+                timestampMillis = completedAtMillis,
+                validAfterMillis = completedAtMillis - RATE_LIMIT_WINDOW_MILLIS,
             )
             return ManualCipherRefreshResult.Updated
         }

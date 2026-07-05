@@ -12,6 +12,13 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.morideobfuscator.CipherRuntimeStatus
@@ -427,17 +435,49 @@ private fun CipherRuntimeOverview(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = countdown,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+                CipherCountdownText(countdown = countdown)
                 LinearWavyProgressIndicator(
                     progress = intervalProgress,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CipherCountdownText(
+    countdown: String,
+    modifier: Modifier = Modifier,
+) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val durationMillis = if (animationsDisabled) 0 else 220
+
+    AnimatedContent(
+        targetState = countdown,
+        modifier = modifier,
+        transitionSpec = {
+            (
+                slideInVertically(
+                    animationSpec = tween(durationMillis),
+                    initialOffsetY = { -it },
+                ) + fadeIn(tween(durationMillis))
+            ) togetherWith
+                (
+                    slideOutVertically(
+                        animationSpec = tween(durationMillis),
+                        targetOffsetY = { it },
+                    ) + fadeOut(tween(durationMillis))
+                )
+        },
+        contentAlignment = Alignment.CenterStart,
+        label = "cipherCountdown",
+    ) { value ->
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

@@ -201,6 +201,7 @@
     <string name="together_song_change_failed">Song change not applied. Please try again.</string>
     <string name="together_participant_joined_notification">%1$s joined the room</string>
     <string name="together_participant_left_notification">%1$s left the room</string>
+    <string name="together_room_closed_inactivity_notification">Room closed because no one joined for 10 minutes</string>
     <string name="together_unknown_participant">Someone</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
