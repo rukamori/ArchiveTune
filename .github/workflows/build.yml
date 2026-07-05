@@ -1,43 +1,367 @@
-name: Build Debug APK
+name: Build APKs
 
 on:
   workflow_dispatch:
   push:
     branches: [ 'main', 'dev' ]
+    paths-ignore:
+      - 'README.md'
+      - 'fastlane/**'
+      - 'assets/**'
+      - '.github/**/*.md'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
 
 permissions:
   contents: write
+  discussions: write
   actions: write
 
 jobs:
+  notifyTelegram:
+    name: Notify Telegram
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests
+
+      - name: Send a message to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+        run: |
+          python ./.github/workflows/notify_telegram.py
+        continue-on-error: true
+
+  build:
+    name: Build Release APKs (${{ matrix.distribution }}-${{ matrix.device }}-${{ matrix.abi }})
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    runs-on: ubuntu-latest
+    needs: notifyTelegram
+
+    strategy:
+      matrix:
+        include:
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: arm64
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: armeabi
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: x86
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: x86_64
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: universal
+          - device: tv
+            distribution: gms
+            distributionName: Gms
+            deviceName: Tv
+            abi: universal
+          - device: mobile
+            distribution: foss
+            distributionName: Foss
+            deviceName: Mobile
+            abi: universal
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
+          
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Resolve variant names
+        id: variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISTRIBUTION="${{ matrix.distribution }}"
+          DISTRIBUTION_CAP="${{ matrix.distributionName }}"
+          DEVICE="${{ matrix.device }}"
+          ABI="${{ matrix.abi }}"
+          DEVICE_CAP="${{ matrix.deviceName }}"
+          ABI_CAP="$(tr '[:lower:]' '[:upper:]' <<< "${ABI:0:1}")${ABI:1}"
+          echo "distribution=$DISTRIBUTION" >> "$GITHUB_OUTPUT"
+          echo "distribution_cap=$DISTRIBUTION_CAP" >> "$GITHUB_OUTPUT"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+          echo "abi=$ABI" >> "$GITHUB_OUTPUT"
+          echo "device_cap=$DEVICE_CAP" >> "$GITHUB_OUTPUT"
+          echo "abi_cap=$ABI_CAP" >> "$GITHUB_OUTPUT"
+          echo "gradle_task=assemble${DISTRIBUTION_CAP}${DEVICE_CAP}${ABI_CAP}Release" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release" >> "$GITHUB_OUTPUT"
+          echo "apk_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build hash
+        id: build_hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
+            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_TASK="${{ steps.variant.outputs.gradle_task }}"
+          ABI="${{ matrix.abi }}"
+
+          if [ "$ABI" = "armeabi" ] || [ "$ABI" = "x86" ]; then
+            ./gradlew "$GRADLE_TASK" 2>&1 | python3 -c "import re,sys;p=re.compile(r'^(WARNING: )?\[CXX5202\] This app only has 32-bit \[(armeabi-v7a|x86)\] native libraries\. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions\. For more information, visit https://g\.co/64-bit-requirement\$');[sys.stdout.write(l) for l in sys.stdin if not p.match(l.rstrip())]"
+          else
+            ./gradlew "$GRADLE_TASK"
+          fi
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+
+      - name: Resolve release output directory
+        id: release_dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISTRIBUTION="${{ steps.variant.outputs.distribution }}"
+          DEVICE="${{ steps.variant.outputs.device }}"
+          ABI="${{ steps.variant.outputs.abi }}"
+          DEVICE_CAP="${{ steps.variant.outputs.device_cap }}"
+          ABI_CAP="${{ steps.variant.outputs.abi_cap }}"
+          CANDIDATES=(
+            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/gms/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${ABI}/${DEVICE}/release"
+          )
+          for d in "${CANDIDATES[@]}"; do
+            if [ -d "$d" ]; then
+              echo "release_dir=$d" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          FOUND_METADATA="$(
+            find app/build/outputs/apk -type f -name "output-metadata.json" \
+              \( \
+                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" -o \
+                -path "*/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                -path "*/${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${ABI}/${DEVICE}/release/output-metadata.json" \
+              \) \
+              | head -n 1 || true
+          )"
+          if [ -n "${FOUND_METADATA:-}" ]; then
+            echo "release_dir=$(dirname "$FOUND_METADATA")" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Could not resolve APK release output directory for DISTRIBUTION=$DISTRIBUTION DEVICE=$DEVICE ABI=$ABI"
+          find app/build/outputs/apk -maxdepth 8 -type d -print || true
+          exit 1
+
+      - name: Sign APK
+        uses: ilharp/sign-android-release@v2.0.0
+        with:
+          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
+          signingKey: ${{ secrets.KEYSTORE }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+          buildToolsVersion: 35.0.0
+      
+      - name: Move signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
+          mkdir -p "$RELEASE_DIR/out"
+          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
+          mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+  
+      - name: Upload Signed APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.variant.outputs.artifact_name }}
+          path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+
+  aggregateAndSend:
+    name: Send APKs to Telegram
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: app-*-release
+          merge-multiple: true
+          path: app/build/outputs/apk/download
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          pip install telethon
+
+      - name: Get Git Commit Info
+        run: |
+          echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
+
+      - name: Restore Telegram session cache
+        uses: actions/cache@v6
+        id: telegram_session_cache
+        with:
+          path: bot_session.session
+          key: telegram-session-${{ runner.os }}-bot_session
+
+      - name: Send APKs to Telegram
+        env:
+          API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          APK_PATH: app/build/outputs/apk/download/*.apk
+        run: |
+          python ./.github/workflows/deploy_artifacts.py
+        continue-on-error: true
+
   build_debug:
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
-
+          
       - name: Set Up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
+          
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Resolve build hash
+        id: build_hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
+            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build Debug APK
         run: ./gradlew assembleGmsMobileUniversalDebug
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: app-mobile-universal-debug
+          name: app-gms-mobile-universal-debug
           path: |
+            app/build/outputs/apk/mobile/universal/debug/*.apk
             app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
             app/build/outputs/apk/gms/mobile/universal/debug/*.apk
-            app/build/outputs/apk/mobile/universal/debug/*.apk
+            app/build/outputs/apk/mobileUniversal/debug/*.apk
+
+  notifyUser:
+    name: Notify referenced issues
+    if: github.ref == 'refs/heads/dev' && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    needs:
+      - build
+      - aggregateAndSend
+      - build_debug
+    uses: ./.github/workflows/notify_user.yml
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+    secrets: inherit
