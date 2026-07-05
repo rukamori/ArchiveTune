@@ -144,13 +144,11 @@ fun LyricsMenu(
 
     var showTranslateDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
-    var showRefetchLoadingDialog by rememberSaveable { mutableStateOf(false) }
     val isRefetching by viewModel.isRefetching.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(isRefetching) {
-        if (!isRefetching && showRefetchLoadingDialog) {
-            showRefetchLoadingDialog = false
+    LaunchedEffect(viewModel) {
+        viewModel.refetchCompletionEvents.collect {
             onDismiss()
         }
     }
@@ -227,7 +225,7 @@ fun LyricsMenu(
         }
     }
 
-    if (showRefetchLoadingDialog) {
+    if (isRefetching) {
         DefaultDialog(onDismiss = {}) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -283,6 +281,16 @@ fun LyricsMenu(
             expandedResultId = expandedSearchResultId,
             onExpandedResultChange = { resultId ->
                 expandedSearchResultId = if (expandedSearchResultId == resultId) null else resultId
+            },
+            onRefetch = {
+                expandedSearchResultId = null
+                viewModel.search(
+                    searchMediaMetadata.id,
+                    titleField.text,
+                    artistField.text,
+                    searchMediaMetadata.album?.title,
+                    searchMediaMetadata.duration,
+                )
             },
             onResultSelected = { result ->
                 onDismiss()
@@ -715,7 +723,6 @@ fun LyricsMenu(
                                 },
                                 text = stringResource(R.string.refetch),
                                 onClick = {
-                                    showRefetchLoadingDialog = true
                                     viewModel.refetchLyrics(mediaMetadataProvider())
                                 },
                             ),
@@ -770,6 +777,7 @@ private fun LyricsSearchResultDialog(
     state: LyricsSearchScreenState,
     expandedResultId: String?,
     onExpandedResultChange: (String) -> Unit,
+    onRefetch: () -> Unit,
     onResultSelected: (LyricsSearchResultUiModel) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -805,6 +813,7 @@ private fun LyricsSearchResultDialog(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     LyricsSearchResultHeader(
                         state = state,
+                        onRefetch = onRefetch,
                         onDismiss = onDismiss,
                     )
                     LazyColumn(
@@ -865,6 +874,7 @@ private fun LyricsSearchResultDialog(
 @Composable
 private fun LyricsSearchResultHeader(
     state: LyricsSearchScreenState,
+    onRefetch: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val subtitle =
@@ -891,6 +901,14 @@ private fun LyricsSearchResultHeader(
     val isSearching =
         state == LyricsSearchScreenState.Loading ||
             state is LyricsSearchScreenState.Success && state.isSearching
+    val isSearchComplete =
+        when (state) {
+            LyricsSearchScreenState.Loading -> false
+            is LyricsSearchScreenState.Success -> !state.isSearching
+            LyricsSearchScreenState.Empty,
+            is LyricsSearchScreenState.Error,
+            -> true
+        }
     val rowArrangement = remember { Arrangement.spacedBy(16.dp) }
 
     Surface(
@@ -939,6 +957,18 @@ private fun LyricsSearchResultHeader(
                     modifier = Modifier.size(28.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
+            }
+            if (isSearchComplete) {
+                IconButton(
+                    onClick = onRefetch,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.cached),
+                        contentDescription = stringResource(R.string.refetch),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
             IconButton(
                 onClick = onDismiss,
