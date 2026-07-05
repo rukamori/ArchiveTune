@@ -696,6 +696,8 @@ class MusicService :
     private var togetherOnlineConnectJob: Job? = null
     private var togetherClientEventsJob: Job? = null
     private var togetherHeartbeatJob: Job? = null
+    private var togetherHostInactivityJob: Job? = null
+    private var togetherHostInactivityEndSession: (suspend () -> Unit)? = null
     private var togetherClock: moe.rukamori.archivetune.together.TogetherClock? = null
     private var togetherSelfParticipantId: String? = null
     private var togetherAuthorityParticipantId: String? = null
@@ -794,6 +796,103 @@ class MusicService :
         }.onFailure { error ->
             Timber.tag("Together").v(error, "Unable to show participant notification")
         }
+    }
+
+    private fun showTogetherInactivityNotification() {
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat
+                .Builder(this, TOGETHER_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_together))
+                .setContentText(getString(R.string.together_room_closed_inactivity_notification))
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(TOGETHER_INACTIVITY_NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            Timber.tag("Together").v(error, "Unable to show inactivity notification")
+        }
+    }
+
+    private fun cancelTogetherHostInactivityTimeout() {
+        togetherHostInactivityJob?.cancel()
+        togetherHostInactivityJob = null
+    }
+
+    private fun scheduleTogetherHostInactivityTimeout(
+        sessionId: String,
+        endOnlineSession: (suspend () -> Unit)? = togetherHostInactivityEndSession,
+    ) {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = endOnlineSession
+        togetherHostInactivityJob =
+            ioScope.launch(SilentHandler) {
+                delay(TOGETHER_HOST_INACTIVITY_TIMEOUT_MS)
+
+                val currentState = togetherSessionState.value
+                val isCurrentHostSession =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                            currentState.sessionId == sessionId &&
+                                currentState.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                        }
+
+                        else -> {
+                            false
+                        }
+                    }
+                val isLocalAuthority =
+                    togetherAuthorityParticipantId == null ||
+                        togetherAuthorityParticipantId == togetherHostId
+                val participants =
+                    togetherServer?.currentParticipants()
+                        ?: togetherOnlineHost?.currentParticipants()
+                        ?: emptyList()
+                val hasConnectedGuest =
+                    participants.any { participant ->
+                        participant.id != togetherHostId &&
+                            participant.isConnected &&
+                            !participant.isPending
+                    }
+                if (!isCurrentHostSession ||
+                    !isLocalAuthority ||
+                    togetherParticipantNames.isNotEmpty() ||
+                    hasConnectedGuest
+                ) {
+                    togetherHostInactivityJob = null
+                    return@launch
+                }
+
+                togetherHostInactivityJob = null
+                runCatching { endOnlineSession?.invoke() }
+                    .onFailure { error ->
+                        Timber.tag("Together").w(error, "Unable to end inactive online room")
+                    }
+                stopTogetherInternal()
+                togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+                showTogetherInactivityNotification()
+                scheduleStopIfIdle()
+            }
     }
 
     private suspend fun getOrCreateTogetherClientId(): String {
@@ -3866,6 +3965,7 @@ class MusicService :
 
             server.start(port)
             togetherServer = server
+            scheduleTogetherHostInactivityTimeout(sessionId)
 
             scope.launch(SilentHandler) {
                 togetherSessionState.value =
@@ -4009,6 +4109,12 @@ class MusicService :
             }
 
             togetherOnlineHost = onlineHost
+            scheduleTogetherHostInactivityTimeout(created.sessionId) {
+                api.endSession(
+                    sessionId = created.sessionId,
+                    hostKey = created.hostKey,
+                )
+            }
 
             scope.launch(SilentHandler) {
                 togetherSessionState.value =
@@ -4736,6 +4842,7 @@ class MusicService :
                 val participant = event.participant
                 if (!participant.isHost && !participant.isPending) {
                     togetherParticipantNames[participant.id] = participant.name
+                    cancelTogetherHostInactivityTimeout()
                     showTogetherParticipantNotification(participant.name, joined = true)
                 }
             }
@@ -4745,9 +4852,43 @@ class MusicService :
                     togetherParticipantNames.remove(event.participantId)
                         ?: return
                 showTogetherParticipantNotification(participantName, joined = false)
+                if (togetherParticipantNames.isEmpty()) {
+                    val sessionId =
+                        when (val state = togetherSessionState.value) {
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                                state.sessionId.takeIf {
+                                    state.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                                }
+                            }
+
+                            else -> null
+                        }
+                    if (sessionId != null) {
+                        scheduleTogetherHostInactivityTimeout(sessionId)
+                    }
+                }
             }
 
             is moe.rukamori.archivetune.together.TogetherServerEvent.HostTransferred -> {
+                val currentState = togetherSessionState.value
+                val sessionId =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> currentState.sessionId
+                        else -> null
+                    }
+                if (event.participantId == togetherHostId &&
+                    togetherParticipantNames.isEmpty() &&
+                    sessionId != null
+                ) {
+                    scheduleTogetherHostInactivityTimeout(sessionId)
+                } else {
+                    cancelTogetherHostInactivityTimeout()
+                    togetherHostInactivityEndSession = null
+                }
                 handleTogetherHostTransferred(event.participantId)
             }
 
@@ -5165,6 +5306,9 @@ class MusicService :
     }
 
     private suspend fun stopTogetherInternal() {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = null
+
         togetherBroadcastJob?.cancel()
         togetherBroadcastJob = null
 
@@ -8006,6 +8150,8 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
         private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
+        private const val TOGETHER_INACTIVITY_NOTIFICATION_ID = 892
+        private const val TOGETHER_HOST_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000L
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 8 * 1024 * 1024L
         val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)
