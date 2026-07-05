@@ -170,6 +170,7 @@ import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.PreventDuplicateTracksInQueueKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
@@ -3705,6 +3706,15 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
+        if (dataStore.get(PreventDuplicateTracksInQueueKey, false) && player.mediaItemCount > 0) {
+               val itemIds = items.map { it.mediaId }.toSet()
+               val currentIndex = player.currentMediaItemIndex
+               val indicesToRemove =
+                   (0 until player.mediaItemCount).filter { i ->
+                       i != currentIndex && player.getMediaItemAt(i).mediaId in itemIds
+                   }
+               indicesToRemove.sortedDescending().forEach { index -> player.removeMediaItem(index) }
+        }
         val insertionIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
         val playNextShuffleOrder =
             if (player.shuffleModeEnabled && player.mediaItemCount > 0) {
@@ -3744,6 +3754,15 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
+        if (dataStore.get(PreventDuplicateTracksInQueueKey, false) && player.mediaItemCount > 0) {
+               val itemIds = items.map { it.mediaId }.toSet()
+               val currentIndex = player.currentMediaItemIndex
+               val indicesToRemove =
+                   (0 until player.mediaItemCount).filter { i ->
+                       i != currentIndex && player.getMediaItemAt(i).mediaId in itemIds
+                   }
+               indicesToRemove.sortedDescending().forEach { index -> player.removeMediaItem(index) }
+        }
         player.addMediaItems(items)
         player.prepare()
     }
