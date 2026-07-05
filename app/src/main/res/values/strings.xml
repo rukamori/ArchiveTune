@@ -201,6 +201,7 @@
     <string name="together_song_change_failed">Song change not applied. Please try again.</string>
     <string name="together_participant_joined_notification">%1$s joined the room</string>
     <string name="together_participant_left_notification">%1$s left the room</string>
+    <string name="together_room_closed_inactivity_notification">Room closed because no one joined for 10 minutes</string>
     <string name="together_unknown_participant">Someone</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
@@ -799,6 +800,11 @@
     <string name="last_start">Last Start</string>
     <string name="last_end">Last End</string>
     <string name="debug_logs">Debug Logs</string>
+    <string name="view_debug_logs_description">View and filter application logs</string>
+    <string name="resume_logs">Resume logs</string>
+    <string name="jump_to_latest_log">Jump to latest log</string>
+    <string name="copy_log_entry">Copy log entry</string>
+    <string name="export_logs_failed">Unable to export logs</string>
     <string name="log_level_verbose">Verbose</string>
     <string name="log_level_debug">Debug</string>
     <string name="log_level_info">Info</string>
@@ -886,6 +892,8 @@
     <string name="onboarding_permission_unavailable">Unavailable</string>
     <string name="onboarding_permission_notifications_title">Notifications</string>
     <string name="onboarding_permission_notifications_desc">Show playback controls and music activity in the notification shade.</string>
+    <string name="onboarding_permission_device_audio_capture_title">On-device audio recognition</string>
+    <string name="onboarding_permission_device_audio_capture_desc">Recognize music playing in other apps without using the microphone. Android asks for screen and audio capture approval each time, ArchiveTune processes audio only.</string>
     <string name="onboarding_permission_bluetooth_connect_title">Bluetooth audio connection</string>
     <string name="onboarding_permission_bluetooth_connect_desc">Connect to nearby Bluetooth audio devices for playback.</string>
     <string name="onboarding_permission_network_title">Network access</string>

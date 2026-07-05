@@ -316,6 +316,12 @@ class MusicService :
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
 
+    private lateinit var audioOutputResolver: AudioOutputResolver
+
+    val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
+
+    fun refreshActiveDevice() = audioOutputResolver.refresh()
+
     private val audioDeviceCallback =
         object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
@@ -412,6 +418,8 @@ class MusicService :
 
     private var currentQueue: Queue = EmptyQueue
     var queueTitle: String? = null
+    private var infiniteQueueJob: Job? = null
+    private var infiniteQueueGeneration = 0L
     private val persistentStateLock = Any()
     private val persistentSaveGeneration = AtomicLong(0L)
 
@@ -449,6 +457,7 @@ class MusicService :
     private var discordSyncWorkerJob: Job? = null
     private val pendingDiscordRefreshWaiters = mutableListOf<CompletableDeferred<Boolean>>()
     private val discordRefreshWaitersMutex = Mutex()
+    private val toggleLikeMutex = Mutex()
 
     @Volatile
     private var lastLoginRecoveryPrompt: Pair<String, Long>? = null
@@ -694,6 +703,8 @@ class MusicService :
     private var togetherOnlineConnectJob: Job? = null
     private var togetherClientEventsJob: Job? = null
     private var togetherHeartbeatJob: Job? = null
+    private var togetherHostInactivityJob: Job? = null
+    private var togetherHostInactivityEndSession: (suspend () -> Unit)? = null
     private var togetherClock: moe.rukamori.archivetune.together.TogetherClock? = null
     private var togetherSelfParticipantId: String? = null
     private var togetherAuthorityParticipantId: String? = null
@@ -792,6 +803,103 @@ class MusicService :
         }.onFailure { error ->
             Timber.tag("Together").v(error, "Unable to show participant notification")
         }
+    }
+
+    private fun showTogetherInactivityNotification() {
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat
+                .Builder(this, TOGETHER_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_together))
+                .setContentText(getString(R.string.together_room_closed_inactivity_notification))
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(TOGETHER_INACTIVITY_NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            Timber.tag("Together").v(error, "Unable to show inactivity notification")
+        }
+    }
+
+    private fun cancelTogetherHostInactivityTimeout() {
+        togetherHostInactivityJob?.cancel()
+        togetherHostInactivityJob = null
+    }
+
+    private fun scheduleTogetherHostInactivityTimeout(
+        sessionId: String,
+        endOnlineSession: (suspend () -> Unit)? = togetherHostInactivityEndSession,
+    ) {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = endOnlineSession
+        togetherHostInactivityJob =
+            ioScope.launch(SilentHandler) {
+                delay(TOGETHER_HOST_INACTIVITY_TIMEOUT_MS)
+
+                val currentState = togetherSessionState.value
+                val isCurrentHostSession =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                            currentState.sessionId == sessionId &&
+                                currentState.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                        }
+
+                        else -> {
+                            false
+                        }
+                    }
+                val isLocalAuthority =
+                    togetherAuthorityParticipantId == null ||
+                        togetherAuthorityParticipantId == togetherHostId
+                val participants =
+                    togetherServer?.currentParticipants()
+                        ?: togetherOnlineHost?.currentParticipants()
+                        ?: emptyList()
+                val hasConnectedGuest =
+                    participants.any { participant ->
+                        participant.id != togetherHostId &&
+                            participant.isConnected &&
+                            !participant.isPending
+                    }
+                if (!isCurrentHostSession ||
+                    !isLocalAuthority ||
+                    togetherParticipantNames.isNotEmpty() ||
+                    hasConnectedGuest
+                ) {
+                    togetherHostInactivityJob = null
+                    return@launch
+                }
+
+                togetherHostInactivityJob = null
+                runCatching { endOnlineSession?.invoke() }
+                    .onFailure { error ->
+                        Timber.tag("Together").w(error, "Unable to end inactive online room")
+                    }
+                stopTogetherInternal()
+                togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+                showTogetherInactivityNotification()
+                scheduleStopIfIdle()
+            }
     }
 
     private suspend fun getOrCreateTogetherClientId(): String {
@@ -982,6 +1090,7 @@ class MusicService :
             )
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioOutputResolver = AudioOutputResolver(audioManager)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             audioManager.setAllowedCapturePolicy(android.media.AudioAttributes.ALLOW_CAPTURE_BY_ALL)
         }
@@ -993,6 +1102,7 @@ class MusicService :
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, android.os.Handler(mainLooper))
         audioDeviceCallbackRegistered = true
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
+        audioOutputResolver.refresh()
 
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
@@ -2017,6 +2127,7 @@ class MusicService :
         val outputSignature = currentAudioOutputDeviceSignature()
         if (outputSignature == lastAudioOutputDeviceSignature) return
         lastAudioOutputDeviceSignature = outputSignature
+        audioOutputResolver.refresh()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         player.setAudioAttributes(playbackAudioAttributes(), false)
         audioRouteRecoveryJob?.cancel()
@@ -3414,6 +3525,7 @@ class MusicService :
         cancelRestoredQueueHydration()
         ensureScopesActive()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
         currentQueue = queue
         queueTitle = null
@@ -3562,6 +3674,7 @@ class MusicService :
             showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_RADIO_UNSUPPORTED")
             return
         }
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
         val currentMediaMetadata = player.currentMetadata ?: return
 
@@ -3614,7 +3727,7 @@ class MusicService :
     }
 
     fun onInfiniteQueueDisabled() {
-        infiniteQueueLoading.value = false
+        cancelInfiniteQueueBootstrap()
         val currentIndex = player.currentMediaItemIndex
         val idsToRemove = synchronized(autoAddedMediaIds) { autoAddedMediaIds.toSet() }
         if (idsToRemove.isEmpty()) {
@@ -3634,38 +3747,85 @@ class MusicService :
     fun onInfiniteQueueEnabled() {
         val currentMeta = player.currentMetadata ?: return
         if (isCurrentPlaybackItemLocal(currentMeta)) return
-        if (infiniteQueueLoading.value) return
+        if (infiniteQueueJob?.isActive == true) return
+
+        val seedMediaId = currentMeta.id.trim().ifBlank { return }
+        val generation = ++infiniteQueueGeneration
         infiniteQueueLoading.value = true
 
-        scope.launch(SilentHandler) {
-            try {
-                val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMeta.id), followAutomixPreview = true)
-                val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
+        infiniteQueueJob =
+            scope.launch(SilentHandler) {
+                try {
+                    val hideExplicit = dataStore.get(HideExplicitKey, false)
+                    val hideVideo = dataStore.get(HideVideoKey, false)
+                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedMediaId), followAutomixPreview = true)
+                    val status =
+                        withContext(Dispatchers.IO) {
+                            radioQueue
+                                .getInitialStatus()
+                                .filterExplicit(hideExplicit)
+                                .filterVideo(hideVideo)
+                        }
+                    val knownIds =
+                        (0 until player.mediaItemCount)
+                            .mapTo(mutableSetOf()) { player.getMediaItemAt(it).mediaId }
+                    val newItems = status.items.filter { knownIds.add(it.mediaId) }.toMutableList()
+                    var loadedPageCount = 1
 
-                val existingIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
-                val newItems = status.items.filter { it.mediaId !in existingIds }
+                    while (
+                        newItems.isEmpty() &&
+                        radioQueue.hasNextPage() &&
+                        loadedPageCount < INFINITE_QUEUE_MAX_BOOTSTRAP_PAGES
+                    ) {
+                        loadedPageCount++
+                        val page =
+                            withContext(Dispatchers.IO) {
+                                radioQueue
+                                    .nextPage()
+                                    .filterExplicit(hideExplicit)
+                                    .filterVideo(hideVideo)
+                            }
+                        newItems += page.filter { knownIds.add(it.mediaId) }
+                    }
 
-                if (newItems.isNotEmpty()) {
-                    player.addMediaItems(newItems)
-                    newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
+                    if (generation != infiniteQueueGeneration) return@launch
+
+                    if (newItems.isNotEmpty()) {
+                        player.addMediaItems(newItems)
+                        newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
+                    }
+
+                    currentQueue = radioQueue
+
+                    if (player.playbackState == Player.STATE_ENDED ||
+                        player.mediaItemCount == player.currentMediaItemIndex + 1
+                    ) {
+                        player.seekToNext()
+                        player.play()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to bootstrap auto-queue")
+                } finally {
+                    if (generation == infiniteQueueGeneration) {
+                        infiniteQueueJob = null
+                        infiniteQueueLoading.value = false
+                    }
                 }
-
-                currentQueue = radioQueue
-
-                if (player.playbackState == Player.STATE_ENDED || player.mediaItemCount == player.currentMediaItemIndex + 1) {
-                    player.seekToNext()
-                    player.play()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to bootstrap auto-queue")
-            } finally {
-                infiniteQueueLoading.value = false
             }
-        }
+    }
+
+    private fun cancelInfiniteQueueBootstrap() {
+        infiniteQueueGeneration++
+        infiniteQueueJob?.cancel()
+        infiniteQueueJob = null
+        infiniteQueueLoading.value = false
     }
 
     fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
         cancelRestoredQueueHydration()
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = true
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         clearAutomix()
@@ -3833,6 +3993,7 @@ class MusicService :
 
             server.start(port)
             togetherServer = server
+            scheduleTogetherHostInactivityTimeout(sessionId)
 
             scope.launch(SilentHandler) {
                 togetherSessionState.value =
@@ -3976,6 +4137,12 @@ class MusicService :
             }
 
             togetherOnlineHost = onlineHost
+            scheduleTogetherHostInactivityTimeout(created.sessionId) {
+                api.endSession(
+                    sessionId = created.sessionId,
+                    hostKey = created.hostKey,
+                )
+            }
 
             scope.launch(SilentHandler) {
                 togetherSessionState.value =
@@ -4703,6 +4870,7 @@ class MusicService :
                 val participant = event.participant
                 if (!participant.isHost && !participant.isPending) {
                     togetherParticipantNames[participant.id] = participant.name
+                    cancelTogetherHostInactivityTimeout()
                     showTogetherParticipantNotification(participant.name, joined = true)
                 }
             }
@@ -4712,9 +4880,43 @@ class MusicService :
                     togetherParticipantNames.remove(event.participantId)
                         ?: return
                 showTogetherParticipantNotification(participantName, joined = false)
+                if (togetherParticipantNames.isEmpty()) {
+                    val sessionId =
+                        when (val state = togetherSessionState.value) {
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                                state.sessionId.takeIf {
+                                    state.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                                }
+                            }
+
+                            else -> null
+                        }
+                    if (sessionId != null) {
+                        scheduleTogetherHostInactivityTimeout(sessionId)
+                    }
+                }
             }
 
             is moe.rukamori.archivetune.together.TogetherServerEvent.HostTransferred -> {
+                val currentState = togetherSessionState.value
+                val sessionId =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> currentState.sessionId
+                        else -> null
+                    }
+                if (event.participantId == togetherHostId &&
+                    togetherParticipantNames.isEmpty() &&
+                    sessionId != null
+                ) {
+                    scheduleTogetherHostInactivityTimeout(sessionId)
+                } else {
+                    cancelTogetherHostInactivityTimeout()
+                    togetherHostInactivityEndSession = null
+                }
                 handleTogetherHostTransferred(event.participantId)
             }
 
@@ -5132,6 +5334,9 @@ class MusicService :
     }
 
     private suspend fun stopTogetherInternal() {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = null
+
         togetherBroadcastJob?.cancel()
         togetherBroadcastJob = null
 
@@ -5219,10 +5424,25 @@ class MusicService :
     }
 
     fun toggleLike() {
-        database.query {
-            currentSong.value?.let {
-                val song = it.song.toggleLike()
-                update(song)
+        val mediaMetadata = currentMediaMetadata.value ?: return
+        ioScope.launch {
+            try {
+                val song =
+                    toggleLikeMutex.withLock {
+                        database.withTransaction {
+                            val currentSongEntity =
+                                getSongById(mediaMetadata.id)
+                                    ?: run {
+                                        insert(mediaMetadata) {
+                                            it.copy(isLocal = mediaMetadata.id.isLocalMediaId())
+                                        }
+                                        getSongById(mediaMetadata.id)
+                                    }
+                                    ?: return@withTransaction null
+                            currentSongEntity.song.toggleLike().also(::update)
+                        }
+                    } ?: return@launch
+
                 syncUtils.likeSong(song)
 
                 // Check if auto-download on like is enabled and the song is now liked
@@ -5241,6 +5461,10 @@ class MusicService :
                         false,
                     )
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                reportException(error)
             }
         }
     }
@@ -5966,29 +6190,7 @@ class MusicService :
             player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
             !currentQueue.hasNextPage()
         ) {
-            scope.launch(SilentHandler) {
-                if (suppressAutoPlayback || player.mediaItemCount == 0) return@launch
-
-                val currentMediaMetadata = player.currentMetadata ?: return@launch
-                val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
-                if (isCurrentPlaybackItemLocal(currentMediaMetadata)) return@launch
-
-                try {
-                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMediaId), followAutomixPreview = true)
-                    val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
-
-                    val queueIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
-                    val newItems = status.items.filter { it.mediaId !in queueIds }
-
-                    if (newItems.isNotEmpty()) {
-                        player.addMediaItems(newItems)
-                        newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
-                    }
-                    currentQueue = radioQueue
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to inject YouTube replacement queue")
-                }
-            }
+            onInfiniteQueueEnabled()
         }
 
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
@@ -6025,6 +6227,14 @@ class MusicService :
             enqueueCurrentHistorySessionForFinalization()
             if (!isCrossfading || playbackState == Player.STATE_IDLE) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            }
+            if (playbackState == Player.STATE_ENDED &&
+                !suppressAutoPlayback &&
+                dataStore.get(AutoLoadMoreKey, true) &&
+                player.repeatMode == REPEAT_MODE_OFF &&
+                player.currentMediaItem != null
+            ) {
+                onInfiniteQueueEnabled()
             }
         } else if (playbackState == Player.STATE_READY) {
             scheduleCrossfade()
@@ -6098,56 +6308,6 @@ class MusicService :
         widgetUpdater.updateProgressTracking()
     }
 
-    private fun onMediaItemTransitionInternal() {
-        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-            scrobbleManager?.onSongStop()
-        }
-
-        // Auto-start recommendations when playback ends (handoff finite queues into infinite)
-        if (!suppressAutoPlayback &&
-            player.playbackState == Player.STATE_ENDED &&
-            dataStore.get(AutoLoadMoreKey, true) &&
-            player.repeatMode == REPEAT_MODE_OFF &&
-            player.currentMediaItem != null
-        ) {
-            onInfiniteQueueEnabled()
-        }
-
-        requestDiscordSync(
-            reason = "media_item_transition",
-            force = true,
-        )
-        scope.launch {
-            try {
-                val mediaId = player.currentMediaItem?.mediaId
-                val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
-                val finalSong =
-                    resolvePresenceSong(
-                        dbSong = song,
-                        mediaMetadata = player.currentMetadata,
-                        durationMs = player.duration,
-                    ) ?: return@launch
-
-                try {
-                    val lbEnabled = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzEnabledKey, false) }
-                    val lbToken = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzTokenKey, "") }
-                    if (lbEnabled && !lbToken.isNullOrBlank()) {
-                        scope.launch(Dispatchers.IO) {
-                            try {
-                                ListenBrainzManager.submitPlayingNow(this@MusicService, lbToken, finalSong, player.currentPosition)
-                            } catch (ie: Exception) {
-                                Timber.tag("MusicService").v(ie, "ListenBrainz playing_now submit failed")
-                            }
-                        }
-                    }
-                } catch (_: Exception) {
-                }
-            } catch (e: Exception) {
-                Timber.tag("MusicService").v(e, "media item transition follow-up work failed")
-            }
-        }
-    }
-
     override fun onEvents(
         player: Player,
         events: Player.Events,
@@ -6166,6 +6326,10 @@ class MusicService :
             (events.contains(Player.EVENT_IS_PLAYING_CHANGED) && player.isPlaying)
         ) {
             playbackStreamRecoveryTracker.onPlaybackRecovered(currentMediaId)
+            currentMediaId
+                ?.let(playbackUrlCache::get)
+                ?.url
+                ?.let(YTPlayerUtils::markStreamUrlSuccessful)
             ensureAudiblePlaybackVolume("player_event")
         }
         if (events.containsAny(
@@ -7088,8 +7252,7 @@ class MusicService :
     }
 
     private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
-        resolveExtractorGvsToken()
-            ?: poTokenPlayer.normalizeExtractorRequestValue()
+        poTokenPlayer.normalizeExtractorRequestValue()
 
     private fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
         resolveGvsPoToken().normalizeExtractorRequestValue()
@@ -8004,6 +8167,7 @@ class MusicService :
         private const val TAG = "MusicService"
         private const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4
         private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
+        private const val INFINITE_QUEUE_MAX_BOOTSTRAP_PAGES = 3
         private const val DISCORD_SYNC_TAG = "DiscordSync"
         private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
         const val CHANNEL_ID = "music_channel_01"
@@ -8014,6 +8178,8 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
         private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
+        private const val TOGETHER_INACTIVITY_NOTIFICATION_ID = 892
+        private const val TOGETHER_HOST_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000L
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 8 * 1024 * 1024L
         val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)

@@ -80,6 +80,7 @@ import moe.rukamori.archivetune.db.entities.containerLabel
 import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.db.entities.formattedFileSize
 import moe.rukamori.archivetune.db.entities.formattedSampleRate
+import moe.rukamori.archivetune.models.ActiveOutputDevice
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.BottomSheetState
@@ -1226,7 +1227,7 @@ fun QueueCollapsedContentV7(
     onShowLyrics: () -> Unit,
     onSleepTimerClick: () -> Unit,
     onDeviceClick: () -> Unit,
-    deviceName: String,
+    device: ActiveOutputDevice,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1356,14 +1357,14 @@ fun QueueCollapsedContentV7(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.bluetooth),
+                        imageVector = device.type.imageVector,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = textBackgroundColor,
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = deviceName,
+                        text = device.name,
                         style = MaterialTheme.typography.labelMedium,
                         color = textBackgroundColor,
                         maxLines = 1,

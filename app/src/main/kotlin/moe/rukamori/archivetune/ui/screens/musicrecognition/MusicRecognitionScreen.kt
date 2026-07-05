@@ -104,11 +104,13 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionErrorUi
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionEvent
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionScreenState
+import moe.rukamori.archivetune.viewmodels.MusicRecognitionSettingsUiState
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionViewModel
 import moe.rukamori.archivetune.viewmodels.RecognitionHistoryItemUiModel
 import moe.rukamori.archivetune.viewmodels.RecognitionHistorySheetUiState
@@ -126,7 +128,9 @@ fun MusicRecognitionScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val historySheetState by viewModel.historySheetState.collectAsStateWithLifecycle()
-    val modalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
+    val historyModalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val settingsModalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val onNavigateBack =
         remember(navController) {
             {
@@ -135,9 +139,15 @@ fun MusicRecognitionScreen(
             }
         }
     val onShowHistory = remember(viewModel) { { viewModel.onHistoryVisibilityChanged(true) } }
+    val onShowSettings = remember(viewModel) { { viewModel.onSettingsVisibilityChanged(true) } }
     val onListen = remember(viewModel) { { viewModel.onListenRequested() } }
     val onCancel = remember(viewModel) { { viewModel.onCancelRecognition() } }
     val onHistoryDismiss = remember(viewModel) { { viewModel.onHistoryVisibilityChanged(false) } }
+    val onSettingsDismiss = remember(viewModel) { { viewModel.onSettingsVisibilityChanged(false) } }
+    val onBackgroundRecognitionEnabledChange =
+        remember(viewModel) {
+            { enabled: Boolean -> viewModel.onBackgroundRecognitionEnabledChanged(enabled) }
+        }
     val onHistoryQueryChange =
         remember(viewModel) { { query: String -> viewModel.onHistoryQueryChanged(query) } }
     val onSearch =
@@ -186,6 +196,7 @@ fun MusicRecognitionScreen(
         state = screenState,
         onNavigateBack = onNavigateBack,
         onShowHistory = onShowHistory,
+        onShowSettings = onShowSettings,
         onListen = onListen,
         onCancel = onCancel,
         onAllowPermission = onListen,
@@ -196,11 +207,20 @@ fun MusicRecognitionScreen(
     if (historySheetState.visible) {
         RecognitionHistoryBottomSheet(
             state = historySheetState,
-            sheetState = modalSheetState,
+            sheetState = historyModalSheetState,
             onDismiss = onHistoryDismiss,
             onQueryChange = onHistoryQueryChange,
             onSearch = onSearch,
             onOpenUri = onOpenUri,
+        )
+    }
+
+    if (settingsState.visible) {
+        MusicRecognitionSettingsBottomSheet(
+            state = settingsState,
+            sheetState = settingsModalSheetState,
+            onDismiss = onSettingsDismiss,
+            onBackgroundRecognitionEnabledChange = onBackgroundRecognitionEnabledChange,
         )
     }
 }
@@ -211,6 +231,7 @@ private fun MusicRecognitionContent(
     state: MusicRecognitionScreenState,
     onNavigateBack: () -> Unit,
     onShowHistory: () -> Unit,
+    onShowSettings: () -> Unit,
     onListen: () -> Unit,
     onCancel: () -> Unit,
     onAllowPermission: () -> Unit,
@@ -252,6 +273,12 @@ private fun MusicRecognitionContent(
                         Icon(
                             painter = painterResource(R.drawable.history),
                             contentDescription = stringResource(R.string.music_recognition_history),
+                        )
+                    }
+                    FilledTonalIconButton(onClick = onShowSettings) {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = stringResource(R.string.music_recognition_settings),
                         )
                     }
                 },
@@ -900,6 +927,80 @@ private fun MetadataPill(
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MusicRecognitionSettingsBottomSheet(
+    state: MusicRecognitionSettingsUiState,
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+    onBackgroundRecognitionEnabledChange: (Boolean) -> Unit,
+) {
+    val description =
+        stringResource(
+            if (state.backgroundRecognitionAvailable) {
+                R.string.music_recognition_background_description
+            } else {
+                R.string.music_recognition_background_foss_description
+            },
+        )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .widthIn(max = 680.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp)
+                    .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.music_recognition_settings),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = stringResource(R.string.close),
+                    )
+                }
+            }
+
+            SwitchPreference(
+                title = {
+                    Text(stringResource(R.string.music_recognition_background_title))
+                },
+                description = description,
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.mic),
+                        contentDescription = null,
+                    )
+                },
+                checked = state.backgroundRecognitionEnabled,
+                onCheckedChange = onBackgroundRecognitionEnabledChange,
+                isEnabled = state.backgroundRecognitionAvailable,
             )
         }
     }

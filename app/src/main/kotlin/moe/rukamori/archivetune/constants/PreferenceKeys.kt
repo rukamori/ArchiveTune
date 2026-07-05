@@ -831,6 +831,7 @@ val RemindAfterKey = intPreferencesKey("remind_after")
 val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
 val UpdateChannelKey = stringPreferencesKey("updateChannel")
 val LastUpdateCheckKey = longPreferencesKey("lastUpdateCheck")
+val MoriCipherManualRefreshHistoryKey = stringSetPreferencesKey("moriCipherManualRefreshHistory")
 val LastNotifiedVersionKey = stringPreferencesKey("lastNotifiedVersion")
 
 val GitHubContributorsEtagKey = stringPreferencesKey("github_contributors_etag")

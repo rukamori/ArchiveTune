@@ -53,6 +53,7 @@ import moe.rukamori.archivetune.ui.screens.settings.AodCustomizedScreen
 import moe.rukamori.archivetune.ui.screens.settings.AppearanceSettings
 import moe.rukamori.archivetune.ui.screens.settings.BackupAndRestore
 import moe.rukamori.archivetune.ui.screens.settings.ChangelogScreen
+import moe.rukamori.archivetune.ui.screens.settings.ChiperSettings
 import moe.rukamori.archivetune.ui.screens.settings.ContentSettings
 import moe.rukamori.archivetune.ui.screens.settings.CustomizeBackground
 import moe.rukamori.archivetune.ui.screens.settings.DebugSettings
@@ -62,6 +63,7 @@ import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
 import moe.rukamori.archivetune.ui.screens.settings.LastFMSettings
+import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
 import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
@@ -397,6 +399,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/player") {
         PlayerSettings(navController)
     }
+    composable("settings/player/chiper") {
+        ChiperSettings(navController)
+    }
     composable("settings/storage") {
         StorageSettings(navController)
     }
@@ -427,6 +432,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/misc") {
         DebugSettings(navController)
+    }
+    composable("settings/logcat") {
+        LogcatScreen(navController)
     }
     if (BuildConfig.UPDATER_AVAILABLE) {
         composable("settings/update") {

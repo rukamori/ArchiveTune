@@ -53,7 +53,15 @@ data class IconScreenUiModel(
     val selectedIcon: AppIconUiModel,
     val selectionInProgressId: String?,
     val hasCommunityIcons: Boolean,
+    val searchQuery: String,
+    val sortOrder: AppIconSortOrder,
+    val isSortMenuExpanded: Boolean,
 )
+
+enum class AppIconSortOrder {
+    NEW_ADDED,
+    ALPHABETICAL,
+}
 
 @Immutable
 data class AppIconUiModel(
@@ -95,6 +103,10 @@ class IconViewModel
 
         private var loadJob: Job? = null
         private var selectionJob: Job? = null
+        private var catalogIcons: List<AppIconUiModel> = emptyList()
+        private var searchQuery: String = ""
+        private var sortOrder: AppIconSortOrder = AppIconSortOrder.NEW_ADDED
+        private var isSortMenuExpanded: Boolean = false
 
         init {
             load()
@@ -108,15 +120,12 @@ class IconViewModel
             val currentModel = (_state.value as? IconScreenState.Success)?.model ?: return
             if (selectionJob?.isActive == true ||
                 currentModel.selectionInProgressId != null ||
-                currentModel.icons.findById(iconId)?.isSelected != false
+                catalogIcons.findById(iconId)?.isSelected != false
             ) {
                 return
             }
 
-            _state.value =
-                IconScreenState.Success(
-                    currentModel.copy(selectionInProgressId = iconId),
-                )
+            publishSuccess(selectionInProgressId = iconId)
             selectionJob =
                 viewModelScope.launch {
                     try {
@@ -131,13 +140,36 @@ class IconViewModel
 
         fun openAuthorProfile(iconId: String) {
             val icon =
-                (_state.value as? IconScreenState.Success)
-                    ?.model
-                    ?.icons
-                    ?.findById(iconId)
-                    ?: return
+                catalogIcons.findById(iconId) ?: return
             val githubAuthorUrl = icon.githubAuthorUrl?.takeIf(String::isNotBlank) ?: return
             _effects.tryEmit(IconScreenEffect.OpenUri(githubAuthorUrl))
+        }
+
+        fun updateSearchQuery(query: String) {
+            if (_state.value !is IconScreenState.Success) return
+            val sanitizedQuery = query.take(MaxSearchQueryLength)
+            if (searchQuery == sanitizedQuery) return
+            searchQuery = sanitizedQuery
+            publishSuccess()
+        }
+
+        fun showSortMenu() {
+            if (_state.value !is IconScreenState.Success || isSortMenuExpanded) return
+            isSortMenuExpanded = true
+            publishSuccess()
+        }
+
+        fun dismissSortMenu() {
+            if (_state.value !is IconScreenState.Success || !isSortMenuExpanded) return
+            isSortMenuExpanded = false
+            publishSuccess()
+        }
+
+        fun updateSortOrder(order: AppIconSortOrder) {
+            if (_state.value !is IconScreenState.Success) return
+            sortOrder = order
+            isSortMenuExpanded = false
+            publishSuccess()
         }
 
         private fun load() {
@@ -157,7 +189,7 @@ class IconViewModel
 
         private fun AppIconCatalog.toScreenState(): IconScreenState {
             if (icons.isEmpty()) return IconScreenState.Empty
-            val uiIcons =
+            catalogIcons =
                 icons.map { icon ->
                     AppIconUiModel(
                         id = icon.id,
@@ -170,21 +202,70 @@ class IconViewModel
                         isDefault = icon.isDefault,
                     )
                 }
+            return createSuccessState()
+        }
+
+        private fun publishSuccess(
+            selectionInProgressId: String? =
+                (_state.value as? IconScreenState.Success)?.model?.selectionInProgressId,
+        ) {
+            _state.value = createSuccessState(selectionInProgressId)
+        }
+
+        private fun createSuccessState(selectionInProgressId: String? = null): IconScreenState.Success {
+            val selectedIcon =
+                catalogIcons.firstOrNull(AppIconUiModel::isSelected)
+                    ?: catalogIcons.first()
             return IconScreenState.Success(
                 IconScreenUiModel(
-                    icons = AppIconUiCollection.from(uiIcons),
-                    selectedIcon = uiIcons.firstOrNull(AppIconUiModel::isSelected) ?: uiIcons.first(),
-                    selectionInProgressId = null,
-                    hasCommunityIcons = uiIcons.any { icon -> !icon.isDefault },
+                    icons = AppIconUiCollection.from(visibleIcons()),
+                    selectedIcon = selectedIcon,
+                    selectionInProgressId = selectionInProgressId,
+                    hasCommunityIcons = catalogIcons.any { icon -> !icon.isDefault },
+                    searchQuery = searchQuery,
+                    sortOrder = sortOrder,
+                    isSortMenuExpanded = isSortMenuExpanded,
                 ),
             )
         }
 
-        private fun AppIconUiCollection.findById(iconId: String): AppIconUiModel? {
-            for (index in 0 until size) {
-                val icon = this[index]
-                if (icon.id == iconId) return icon
+        private fun visibleIcons(): List<AppIconUiModel> {
+            val defaultIcon = catalogIcons.firstOrNull(AppIconUiModel::isDefault)
+            val normalizedQuery = searchQuery.trim()
+            val communityIcons =
+                catalogIcons
+                    .asSequence()
+                    .filterNot(AppIconUiModel::isDefault)
+                    .filter { icon -> normalizedQuery.isEmpty() || icon.matches(normalizedQuery) }
+                    .toList()
+                    .let { icons ->
+                        when (sortOrder) {
+                            AppIconSortOrder.NEW_ADDED -> icons.asReversed()
+                            AppIconSortOrder.ALPHABETICAL ->
+                                icons.sortedWith(
+                                    compareBy<AppIconUiModel, String>(
+                                        String.CASE_INSENSITIVE_ORDER,
+                                    ) { icon ->
+                                        icon.name.orEmpty()
+                                    }.thenBy { icon -> icon.id },
+                                )
+                        }
+                    }
+            return buildList(communityIcons.size + 1) {
+                defaultIcon?.let(::add)
+                addAll(communityIcons)
             }
-            return null
+        }
+
+        private fun AppIconUiModel.matches(query: String): Boolean =
+            name?.contains(query, ignoreCase = true) == true ||
+                author?.contains(query, ignoreCase = true) == true ||
+                id.contains(query, ignoreCase = true)
+
+        private fun List<AppIconUiModel>.findById(iconId: String): AppIconUiModel? =
+            firstOrNull { icon -> icon.id == iconId }
+
+        private companion object {
+            const val MaxSearchQueryLength = 100
         }
     }

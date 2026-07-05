@@ -42,11 +42,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton as MaterialIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
@@ -54,6 +57,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -88,6 +94,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.viewmodels.AppIconSortOrder
 import moe.rukamori.archivetune.viewmodels.AppIconUiModel
 import moe.rukamori.archivetune.viewmodels.IconScreenEffect
 import moe.rukamori.archivetune.viewmodels.IconScreenState
@@ -143,6 +150,16 @@ fun IconScreen(
         remember(viewModel) {
             { iconId: String -> viewModel.openAuthorProfile(iconId) }
         }
+    val updateSearchQuery =
+        remember(viewModel) {
+            { query: String -> viewModel.updateSearchQuery(query) }
+        }
+    val showSortMenu = remember(viewModel) { { viewModel.showSortMenu() } }
+    val dismissSortMenu = remember(viewModel) { { viewModel.dismissSortMenu() } }
+    val updateSortOrder =
+        remember(viewModel) {
+            { order: AppIconSortOrder -> viewModel.updateSortOrder(order) }
+        }
 
     IconScreenContent(
         state = state,
@@ -151,6 +168,10 @@ fun IconScreen(
         onRetry = retry,
         onSelectIcon = selectIcon,
         onOpenAuthorProfile = openAuthorProfile,
+        onSearchQueryChange = updateSearchQuery,
+        onShowSortMenu = showSortMenu,
+        onDismissSortMenu = dismissSortMenu,
+        onSortOrderChange = updateSortOrder,
     )
 }
 
@@ -162,6 +183,10 @@ private fun IconScreenContent(
     onRetry: () -> Unit,
     onSelectIcon: (String) -> Unit,
     onOpenAuthorProfile: (String) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onShowSortMenu: () -> Unit,
+    onDismissSortMenu: () -> Unit,
+    onSortOrderChange: (AppIconSortOrder) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -248,6 +273,10 @@ private fun IconScreenContent(
                         ),
                     onSelectIcon = onSelectIcon,
                     onOpenAuthorProfile = onOpenAuthorProfile,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onShowSortMenu = onShowSortMenu,
+                    onDismissSortMenu = onDismissSortMenu,
+                    onSortOrderChange = onSortOrderChange,
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -264,6 +293,10 @@ private fun AppIconList(
     contentPadding: PaddingValues,
     onSelectIcon: (String) -> Unit,
     onOpenAuthorProfile: (String) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onShowSortMenu: () -> Unit,
+    onDismissSortMenu: () -> Unit,
+    onSortOrderChange: (AppIconSortOrder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -282,7 +315,26 @@ private fun AppIconList(
                     Modifier
                         .widthIn(max = IconListMaxWidth)
                         .fillMaxWidth()
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = 16.dp),
+            )
+        }
+        item(
+            key = IconSearchContentKey,
+            contentType = IconSearchContentType,
+        ) {
+            AppIconSearchBar(
+                query = model.searchQuery,
+                sortOrder = model.sortOrder,
+                isSortMenuExpanded = model.isSortMenuExpanded,
+                onQueryChange = onSearchQueryChange,
+                onShowSortMenu = onShowSortMenu,
+                onDismissSortMenu = onDismissSortMenu,
+                onSortOrderChange = onSortOrderChange,
+                modifier =
+                    Modifier
+                        .widthIn(max = IconListMaxWidth)
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
             )
         }
         item(
@@ -334,6 +386,115 @@ private fun AppIconList(
             }
         }
     }
+}
+
+@Composable
+private fun AppIconSearchBar(
+    query: String,
+    sortOrder: AppIconSortOrder,
+    isSortMenuExpanded: Boolean,
+    onQueryChange: (String) -> Unit,
+    onShowSortMenu: () -> Unit,
+    onDismissSortMenu: () -> Unit,
+    onSortOrderChange: (AppIconSortOrder) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val submitSearch =
+        remember(keyboardController) {
+            { _: String ->
+                keyboardController?.hide()
+                Unit
+            }
+        }
+    val clearSearch = remember(onQueryChange) { { onQueryChange("") } }
+
+    SearchBar(
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = submitSearch,
+                expanded = false,
+                onExpandedChange = {},
+                placeholder = {
+                    Text(text = stringResource(R.string.search))
+                },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.search),
+                        contentDescription = null,
+                    )
+                },
+                trailingIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (query.isNotEmpty()) {
+                            MaterialIconButton(onClick = clearSearch) {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = stringResource(R.string.clear),
+                                )
+                            }
+                        }
+                        Box {
+                            MaterialIconButton(onClick = onShowSortMenu) {
+                                Icon(
+                                    painter = painterResource(R.drawable.filter_alt),
+                                    contentDescription = null,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = isSortMenuExpanded,
+                                onDismissRequest = onDismissSortMenu,
+                                modifier = Modifier.widthIn(min = 184.dp),
+                            ) {
+                                AppIconSortOrder.entries.forEach { order ->
+                                    val selectOrder =
+                                        remember(order, onSortOrderChange) {
+                                            { onSortOrderChange(order) }
+                                        }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text =
+                                                    stringResource(
+                                                        when (order) {
+                                                            AppIconSortOrder.NEW_ADDED ->
+                                                                R.string.recently_added
+
+                                                            AppIconSortOrder.ALPHABETICAL ->
+                                                                R.string.sort_a_to_z
+                                                        },
+                                                    ),
+                                            )
+                                        },
+                                        trailingIcon = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        if (sortOrder == order) {
+                                                            R.drawable.radio_button_checked
+                                                        } else {
+                                                            R.drawable.radio_button_unchecked
+                                                        },
+                                                    ),
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        onClick = selectOrder,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+        },
+        expanded = false,
+        onExpandedChange = {},
+        modifier = modifier,
+        windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+    ) {}
 }
 
 @Composable
@@ -804,6 +965,8 @@ private suspend fun Activity.updateTaskIcon(
 private const val AppIconContentType = "app_icon"
 private const val CurrentIconContentKey = "current_icon"
 private const val CurrentIconContentType = "current_icon_summary"
+private const val IconSearchContentKey = "icon_search"
+private const val IconSearchContentType = "icon_search"
 private const val IconSectionHeaderKey = "icon_section_header"
 private const val IconSectionHeaderContentType = "icon_section_header"
 private const val CommunityNoticeContentKey = "community_icon_notice"

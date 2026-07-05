@@ -65,6 +65,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Slider
@@ -2372,13 +2373,13 @@ private fun LittlePlayerContent(
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "little_title",
                     ) { title ->
-                        Text(
-                            text = title,
+                        PlayerTitleText(
+                            title = title,
+                            explicit = mediaMetadata.explicit,
                             color = titleColor,
+                            style = LocalTextStyle.current,
                             fontSize = titleSize,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.basicMarquee(),
                         )
                     }

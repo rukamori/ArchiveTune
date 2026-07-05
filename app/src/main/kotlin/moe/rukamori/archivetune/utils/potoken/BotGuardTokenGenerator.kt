@@ -113,7 +113,7 @@ object BotGuardTokenGenerator {
     suspend fun preWarm(sessionId: String) {
         val ctx = appContext ?: return
         if (permanentlyBroken) return
-        if (engineReady) return
+        if (sessionId.isBlank()) return
 
         try {
             withTimeout(COLD_START_TIMEOUT_MS) {
@@ -148,17 +148,23 @@ object BotGuardTokenGenerator {
             }
         if (permanentlyBroken) return null
 
-        // Check player token cache first
-        mutex.withLock {
-            val cachedPlayer = playerTokenCache[videoId]
-            if (cachedPlayer != null && cachedSessionToken != null && engineReady) {
-                Timber.tag(TAG).d("Cache hit for $videoId")
-                return PoTokenResult(playerToken = cachedPlayer, sessionToken = cachedSessionToken!!)
+        val cachedResult =
+            mutex.withLock {
+                if (!isEngineReadyForSession(sessionId)) return@withLock null
+                val cachedPlayer = playerTokenCache[videoId] ?: return@withLock null
+                val sessionToken = cachedSessionToken ?: return@withLock null
+                PoTokenResult(playerToken = cachedPlayer, sessionToken = sessionToken)
             }
+        if (cachedResult != null) {
+            Timber.tag(TAG).d("Cache hit for $videoId")
+            return cachedResult
         }
 
-        val isFirstCall = !engineReady
-        val timeout = if (isFirstCall) COLD_START_TIMEOUT_MS else WARM_TIMEOUT_MS
+        val requiresColdStart =
+            mutex.withLock {
+                !isEngineReadyForSession(sessionId)
+            }
+        val timeout = if (requiresColdStart) COLD_START_TIMEOUT_MS else WARM_TIMEOUT_MS
 
         return try {
             withTimeout(timeout) {
@@ -223,7 +229,13 @@ object BotGuardTokenGenerator {
     private suspend fun ensureEngineReady(
         ctx: Context,
         sessionId: String,
-    ): PoTokenResult = mintTokenInternal(ctx, "__warmup__", sessionId, forceNewEngine = false)
+    ) {
+        getOrCreateEngine(
+            ctx = ctx,
+            sessionId = sessionId,
+            forceNewEngine = false,
+        )
+    }
 
     private suspend fun mintTokenInternal(
         ctx: Context,
@@ -232,25 +244,11 @@ object BotGuardTokenGenerator {
         forceNewEngine: Boolean,
     ): PoTokenResult {
         val (eng, sessionTok, wasNew) =
-            mutex.withLock {
-                val needsNew =
-                    forceNewEngine ||
-                        engine == null ||
-                        engine!!.isExpired ||
-                        engineSessionId != sessionId
-
-                if (needsNew) {
-                    withContext(Dispatchers.Main) {
-                        engine?.close()
-                    }
-                    engine = BotGuardEngine.create(ctx)
-                    engineSessionId = sessionId
-                    cachedSessionToken = engine!!.mint(sessionId)
-                    engineReady = true
-                }
-
-                Triple(engine!!, cachedSessionToken!!, needsNew)
-            }
+            getOrCreateEngine(
+                ctx = ctx,
+                sessionId = sessionId,
+                forceNewEngine = forceNewEngine,
+            )
 
         val playerTok =
             try {
@@ -263,6 +261,44 @@ object BotGuardTokenGenerator {
 
         return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
     }
+
+    private suspend fun getOrCreateEngine(
+        ctx: Context,
+        sessionId: String,
+        forceNewEngine: Boolean,
+    ): Triple<BotGuardEngine, String, Boolean> =
+        mutex.withLock {
+            val needsNew = forceNewEngine || !isEngineReadyForSession(sessionId)
+            if (needsNew) {
+                withContext(Dispatchers.Main) {
+                    engine?.close()
+                }
+                engine = null
+                engineSessionId = null
+                cachedSessionToken = null
+                engineReady = false
+                playerTokenCache.clear()
+
+                val newEngine = BotGuardEngine.create(ctx)
+                val newSessionToken = newEngine.mint(sessionId)
+                engine = newEngine
+                engineSessionId = sessionId
+                cachedSessionToken = newSessionToken
+                engineReady = true
+            }
+
+            Triple(
+                requireNotNull(engine),
+                requireNotNull(cachedSessionToken),
+                needsNew,
+            )
+        }
+
+    private fun isEngineReadyForSession(sessionId: String): Boolean =
+        engineReady &&
+            engineSessionId == sessionId &&
+            cachedSessionToken != null &&
+            engine?.isExpired == false
 
     private suspend fun destroyEngine() {
         withContext(Dispatchers.Main) {

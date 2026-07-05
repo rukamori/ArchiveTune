@@ -28,10 +28,13 @@ import moe.rukamori.archivetune.musicrecognition.MusicRecognitionAutoStartReques
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionException
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionFailure
 import moe.rukamori.archivetune.musicrecognition.ObserveRecognitionHistoryUseCase
+import moe.rukamori.archivetune.musicrecognition.ObserveBackgroundRecognitionSettingUseCase
 import moe.rukamori.archivetune.musicrecognition.RecognitionHistoryEntry
 import moe.rukamori.archivetune.musicrecognition.RecognitionPhase
 import moe.rukamori.archivetune.musicrecognition.RecognizeMusicUseCase
 import moe.rukamori.archivetune.musicrecognition.RecognizedTrack
+import moe.rukamori.archivetune.musicrecognition.SetBackgroundRecognitionEnabledUseCase
+import timber.log.Timber
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
@@ -115,6 +118,13 @@ data class RecognitionHistorySheetUiState(
     val filteredItems: RecognitionHistoryUiModel,
 )
 
+@Immutable
+data class MusicRecognitionSettingsUiState(
+    val visible: Boolean,
+    val backgroundRecognitionEnabled: Boolean,
+    val backgroundRecognitionAvailable: Boolean,
+)
+
 sealed interface MusicRecognitionEvent {
     data object RequestMicrophonePermission : MusicRecognitionEvent
 
@@ -135,8 +145,10 @@ class MusicRecognitionViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         observeRecognitionHistory: ObserveRecognitionHistoryUseCase,
+        observeBackgroundRecognitionSetting: ObserveBackgroundRecognitionSettingUseCase,
         private val filterRecognitionHistory: FilterRecognitionHistoryUseCase,
         private val recognizeMusic: RecognizeMusicUseCase,
+        private val setBackgroundRecognitionEnabled: SetBackgroundRecognitionEnabledUseCase,
     ) : ViewModel() {
         private val emptyHistory = RecognitionHistoryUiModel(emptyList())
         private val _screenState =
@@ -151,6 +163,16 @@ class MusicRecognitionViewModel
         private val historyEntries =
             observeRecognitionHistory()
                 .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+        private val _settingsState =
+            MutableStateFlow(
+                MusicRecognitionSettingsUiState(
+                    visible = false,
+                    backgroundRecognitionEnabled = false,
+                    backgroundRecognitionAvailable = false,
+                ),
+            )
+        val settingsState: StateFlow<MusicRecognitionSettingsUiState> = _settingsState.asStateFlow()
 
         val historySheetState: StateFlow<RecognitionHistorySheetUiState> =
             combine(
@@ -190,6 +212,8 @@ class MusicRecognitionViewModel
         val events = _events.receiveAsFlow()
 
         private var recognitionJob: Job? = null
+        private var settingsUpdateJob: Job? = null
+        private var persistedBackgroundRecognitionEnabled = false
 
         init {
             viewModelScope.launch {
@@ -197,6 +221,17 @@ class MusicRecognitionViewModel
                     val history = entries.toUiModel()
                     _historyUi.value = history
                     updateHistory(history)
+                }
+            }
+
+            viewModelScope.launch {
+                observeBackgroundRecognitionSetting().collect { setting ->
+                    persistedBackgroundRecognitionEnabled = setting.enabled
+                    _settingsState.value =
+                        _settingsState.value.copy(
+                            backgroundRecognitionEnabled = setting.enabled,
+                            backgroundRecognitionAvailable = setting.available,
+                        )
                 }
             }
 
@@ -238,6 +273,32 @@ class MusicRecognitionViewModel
         fun onHistoryVisibilityChanged(visible: Boolean) {
             _historyVisible.value = visible
             if (!visible) _historyQuery.value = ""
+        }
+
+        fun onSettingsVisibilityChanged(visible: Boolean) {
+            _settingsState.value = _settingsState.value.copy(visible = visible)
+        }
+
+        fun onBackgroundRecognitionEnabledChanged(enabled: Boolean) {
+            if (!_settingsState.value.backgroundRecognitionAvailable) return
+
+            _settingsState.value =
+                _settingsState.value.copy(backgroundRecognitionEnabled = enabled)
+            settingsUpdateJob?.cancel()
+            settingsUpdateJob =
+                viewModelScope.launch {
+                    runCatching {
+                        setBackgroundRecognitionEnabled(enabled)
+                    }.onFailure { throwable ->
+                        if (throwable is CancellationException) throw throwable
+                        Timber.e(throwable, "Failed to update background recognition setting")
+                        _settingsState.value =
+                            _settingsState.value.copy(
+                                backgroundRecognitionEnabled =
+                                    persistedBackgroundRecognitionEnabled,
+                            )
+                    }
+                }
         }
 
         fun onHistoryQueryChanged(query: String) {

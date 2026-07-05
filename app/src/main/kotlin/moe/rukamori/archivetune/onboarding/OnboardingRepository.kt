@@ -40,6 +40,7 @@ class OnboardingRepository
                     add(runtimePermissionData(OnboardingPermissionId.NOTIFICATIONS, notificationPermission()))
                     add(runtimePermissionData(OnboardingPermissionId.LOCAL_AUDIO, localAudioPermission()))
                     add(runtimePermissionData(OnboardingPermissionId.MICROPHONE, Manifest.permission.RECORD_AUDIO))
+                    add(deviceAudioCaptureData())
                     add(runtimePermissionData(OnboardingPermissionId.BLUETOOTH_CONNECT, bluetoothConnectPermission()))
                     add(installGrantedData(OnboardingPermissionId.NETWORK))
                     add(installGrantedData(OnboardingPermissionId.PLAYBACK_SERVICE))
@@ -125,6 +126,20 @@ class OnboardingRepository
                 )
             }
         }
+
+        private fun deviceAudioCaptureData(): OnboardingPermissionData =
+            if (
+                BuildConfig.DISTRIBUTION == DISTRIBUTION_GMS &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            ) {
+                installGrantedData(OnboardingPermissionId.DEVICE_AUDIO_CAPTURE)
+            } else {
+                OnboardingPermissionData(
+                    id = OnboardingPermissionId.DEVICE_AUDIO_CAPTURE,
+                    status = OnboardingPermissionStatus.UNAVAILABLE,
+                    action = null,
+                )
+            }
 
         private fun installGrantedData(id: OnboardingPermissionId): OnboardingPermissionData =
             OnboardingPermissionData(

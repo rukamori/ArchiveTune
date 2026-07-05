@@ -11,6 +11,7 @@ package moe.rukamori.archivetune.ui.player
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -59,6 +60,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -80,11 +82,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
@@ -119,6 +123,7 @@ import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.utils.oem.SystemMediaControlResolver
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import sh.calvin.reorderable.ReorderableItem
@@ -630,18 +635,17 @@ fun Queue(
                 }
 
                 PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
-                    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
-                    val activeDevice =
-                        remember(audioManager) {
-                            audioManager
-                                .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
-                                .firstOrNull {
-                                    it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                                        it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                                        it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
-                                }?.productName
-                                ?.toString() ?: "Speaker"
+                    val audioDevice by playerConnection.service.activeAudioDevice.collectAsStateWithLifecycle()
+
+                    val view = LocalView.current
+                    DisposableEffect(view) {
+                        val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+                            if (hasFocus) playerConnection.service.refreshActiveDevice()
                         }
+                        view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+                        onDispose { view.viewTreeObserver.removeOnWindowFocusChangeListener(listener) }
+                    }
+
                     QueueCollapsedContentV7(
                         showCodecOnPlayer = showCodecOnPlayer,
                         currentFormat = currentFormat,
@@ -658,11 +662,9 @@ fun Queue(
                             }
                         },
                         onDeviceClick = {
-                            val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
-                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
+                            SystemMediaControlResolver.openMediaOutputSwitcher(context)
                         },
-                        deviceName = activeDevice,
+                        device = audioDevice,
                     )
                 }
             }

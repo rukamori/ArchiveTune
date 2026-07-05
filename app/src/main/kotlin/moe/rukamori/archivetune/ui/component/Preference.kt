@@ -360,6 +360,7 @@ fun <T> ListPreference(
     values: List<T>,
     valueText: @Composable (T) -> String,
     valueDescription: (@Composable (T) -> String)? = null,
+    isValueEnabled: (T) -> Boolean = { true },
     onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
 ) {
@@ -376,6 +377,7 @@ fun <T> ListPreference(
             selectedValue = selectedValue,
             valueText = valueText,
             valueDescription = valueDescription,
+            isValueEnabled = isValueEnabled,
             sheetState = sheetState,
             onDismiss = { showBottomSheet = false },
             onValueSelected = { value ->
@@ -446,6 +448,7 @@ private fun <T> PreferenceSelectionBottomSheet(
     selectedValue: T,
     valueText: @Composable (T) -> String,
     valueDescription: (@Composable (T) -> String)? = null,
+    isValueEnabled: (T) -> Boolean,
     sheetState: SheetState,
     onDismiss: () -> Unit,
     onValueSelected: (T) -> Unit,
@@ -502,6 +505,7 @@ private fun <T> PreferenceSelectionBottomSheet(
                         text = valueText(value),
                         description = valueDescription?.invoke(value),
                         selected = value == selectedValue,
+                        enabled = isValueEnabled(value),
                         onClick = { onValueSelected(value) },
                     )
                 }
@@ -515,6 +519,7 @@ private fun PreferenceSelectionOption(
     text: String,
     description: String? = null,
     selected: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val containerColor =
@@ -529,10 +534,12 @@ private fun PreferenceSelectionOption(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = if (description == null) 72.dp else 96.dp)
+                .alpha(if (enabled) 1f else 0.5f)
                 .clip(MaterialTheme.shapes.extraLarge)
                 .background(containerColor)
                 .selectable(
                     selected = selected,
+                    enabled = enabled,
                     onClick = onClick,
                     role = Role.RadioButton,
                 ).padding(horizontal = 24.dp, vertical = 20.dp),

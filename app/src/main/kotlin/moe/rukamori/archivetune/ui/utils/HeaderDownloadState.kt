@@ -24,6 +24,7 @@ sealed interface HeaderDownloadState {
     @Immutable
     data class Partial(
         val progress: Float,
+        val paused: Boolean,
     ) : HeaderDownloadState
 }
 
@@ -42,6 +43,8 @@ fun headerDownloadState(
     var completedCount = 0
     var progressTotal = 0f
     var hasAnyDownload = false
+    var hasRunningDownload = false
+    var hasPausedDownload = false
 
     val distinctSongIds = songIds.distinct()
 
@@ -65,6 +68,7 @@ fun headerDownloadState(
                         ?: 0f
                 progressTotal += progress.coerceIn(0f, 1f)
                 hasAnyDownload = true
+                hasRunningDownload = true
             }
 
             Download.STATE_STOPPED -> {
@@ -76,6 +80,8 @@ fun headerDownloadState(
                             ?: 0f
                     progressTotal += progress.coerceIn(0f, 1f)
                     hasAnyDownload = true
+                    hasPausedDownload =
+                        hasPausedDownload || download.stopReason == COLLECTION_PAUSE_STOP_REASON
                 }
             }
         }
@@ -90,6 +96,7 @@ fun headerDownloadState(
         hasAnyDownload -> {
             HeaderDownloadState.Partial(
                 progress = (progressTotal / distinctCount).coerceIn(0f, 1f),
+                paused = hasPausedDownload && !hasRunningDownload,
             )
         }
 

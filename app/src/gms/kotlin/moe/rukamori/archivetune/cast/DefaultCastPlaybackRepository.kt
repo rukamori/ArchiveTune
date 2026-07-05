@@ -19,6 +19,7 @@ import androidx.media3.cast.MediaItemConverter
 import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlayerTransferState
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.MediaInfo
@@ -104,6 +105,7 @@ class DefaultCastPlaybackRepository(
             .Builder(context.applicationContext)
             .setLocalPlayer(localPlayer)
             .setRemotePlayer(remotePlayer)
+            .setTransferCallback(SafeCastTransferCallback(localPlayer))
             .build()
     }
 
@@ -202,6 +204,76 @@ class DefaultCastPlaybackRepository(
                 ),
             )
     }
+}
+
+private class SafeCastTransferCallback(
+    private val localPlayer: Player,
+) : CastPlayer.TransferCallback {
+    override fun transferState(
+        sourcePlayer: Player,
+        targetPlayer: Player,
+    ) {
+        val transferState = PlayerTransferState.fromPlayer(sourcePlayer)
+        if (targetPlayer !== localPlayer || transferState.mediaItems.all { it.localConfiguration != null }) {
+            transferState.setToPlayer(targetPlayer)
+            return
+        }
+
+        val localItems = localPlayer.mediaItems()
+        val sourceCurrentIndex = transferState.currentMediaItemIndex
+        val repairedItems = ArrayList<MediaItem>(transferState.mediaItems.size)
+        var repairedCurrentIndex = 0
+
+        transferState.mediaItems.forEachIndexed { sourceIndex, mediaItem ->
+            val repairedItem =
+                mediaItem.takeIf { it.localConfiguration != null }
+                    ?: localItems.firstOrNull {
+                        it.localConfiguration != null &&
+                            mediaItem.mediaId.isNotBlank() &&
+                            mediaItem.mediaId != MediaItem.DEFAULT_MEDIA_ID &&
+                            it.mediaId == mediaItem.mediaId
+                    }
+                    ?: localItems.getOrNull(sourceIndex)?.takeIf {
+                        it.localConfiguration != null &&
+                            (mediaItem.mediaId.isBlank() || mediaItem.mediaId == MediaItem.DEFAULT_MEDIA_ID)
+                    }
+                    ?: mediaItem
+                        .mediaId
+                        .takeIf { it.isNotBlank() && it != MediaItem.DEFAULT_MEDIA_ID }
+                        ?.let { mediaId -> mediaItem.buildUpon().setUri(mediaId).build() }
+
+            if (repairedItem != null) {
+                if (sourceIndex == sourceCurrentIndex) {
+                    repairedCurrentIndex = repairedItems.size
+                }
+                repairedItems += repairedItem
+            }
+        }
+
+        val playableItems =
+            repairedItems.ifEmpty {
+                localItems.filter { it.localConfiguration != null }
+            }
+        if (repairedItems.isEmpty()) {
+            repairedCurrentIndex = sourceCurrentIndex
+        }
+        val safeCurrentIndex =
+            if (playableItems.isEmpty()) {
+                0
+            } else {
+                repairedCurrentIndex.coerceIn(playableItems.indices)
+            }
+
+        transferState
+            .buildUpon()
+            .setMediaItems(playableItems)
+            .setCurrentMediaItemIndex(safeCurrentIndex)
+            .build()
+            .setToPlayer(targetPlayer)
+    }
+
+    private fun Player.mediaItems(): List<MediaItem> =
+        List(mediaItemCount) { index -> getMediaItemAt(index) }
 }
 
 private class GmsCastMediaItemConverter(

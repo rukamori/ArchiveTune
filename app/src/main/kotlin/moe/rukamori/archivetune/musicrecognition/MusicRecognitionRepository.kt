@@ -8,10 +8,14 @@
 package moe.rukamori.archivetune.musicrecognition
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.projection.MediaProjection
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -19,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -52,6 +58,27 @@ class MusicRecognitionRepository
                     emit(emptyList())
                 }.flowOn(Dispatchers.IO)
 
+        fun observeBackgroundRecognitionEnabled(): Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences ->
+                    preferences[BackgroundRecognitionEnabledKey] ?: BackgroundRecognitionEnabledDefault
+                }.distinctUntilChanged()
+                .flowOn(Dispatchers.IO)
+
+        suspend fun isBackgroundRecognitionEnabled(): Boolean =
+            withContext(Dispatchers.IO) {
+                context.dataStore.data.first()[BackgroundRecognitionEnabledKey]
+                    ?: BackgroundRecognitionEnabledDefault
+            }
+
+        suspend fun setBackgroundRecognitionEnabled(enabled: Boolean) {
+            withContext(Dispatchers.IO) {
+                context.dataStore.edit { preferences ->
+                    preferences[BackgroundRecognitionEnabledKey] = enabled
+                }
+            }
+        }
+
         suspend fun captureAudio(): ShortArray =
             withContext(Dispatchers.IO) {
                 val channel = AudioFormat.CHANNEL_IN_MONO
@@ -69,30 +96,41 @@ class MusicRecognitionRepository
                         minimumBufferSize,
                     )
 
-                if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
-                    audioRecord.release()
-                    error("AudioRecord failed to initialize")
-                }
+                captureSamples(audioRecord, minimumBufferSize)
+            }
 
-                val output = ShortArray((RecordingDurationMillis * SampleRateHz / 1_000L).toInt())
-                val buffer = ShortArray(minimumBufferSize / Short.SIZE_BYTES)
+        suspend fun captureDevicePlayback(mediaProjection: MediaProjection): ShortArray =
+            withContext(Dispatchers.IO) {
+                val audioFormat =
+                    AudioFormat
+                        .Builder()
+                        .setSampleRate(SampleRateHz)
+                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .build()
+                val minimumBufferSize =
+                    AudioRecord
+                        .getMinBufferSize(
+                            SampleRateHz,
+                            AudioFormat.CHANNEL_IN_MONO,
+                            AudioFormat.ENCODING_PCM_16BIT,
+                        ).coerceAtLeast(MinimumBufferSizeBytes)
+                val captureConfiguration =
+                    AudioPlaybackCaptureConfiguration
+                        .Builder(mediaProjection)
+                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                        .build()
+                val audioRecord =
+                    AudioRecord
+                        .Builder()
+                        .setAudioFormat(audioFormat)
+                        .setBufferSizeInBytes(minimumBufferSize)
+                        .setAudioPlaybackCaptureConfig(captureConfiguration)
+                        .build()
 
-                try {
-                    audioRecord.startRecording()
-                    var written = 0
-                    while (written < output.size) {
-                        coroutineContext.ensureActive()
-                        val read = audioRecord.read(buffer, 0, minOf(buffer.size, output.size - written))
-                        if (read < 0) error("AudioRecord read failed with code $read")
-                        if (read == 0) continue
-                        buffer.copyInto(output, destinationOffset = written, endIndex = read)
-                        written += read
-                    }
-                    output.copyOf(written)
-                } finally {
-                    runCatching { audioRecord.stop() }
-                    audioRecord.release()
-                }
+                captureSamples(audioRecord, minimumBufferSize)
             }
 
         suspend fun recognize(samples: ShortArray): Result<RecognizedTrack> {
@@ -143,12 +181,45 @@ class MusicRecognitionRepository
         }
     }
 
+private suspend fun captureSamples(
+    audioRecord: AudioRecord,
+    bufferSizeBytes: Int,
+): ShortArray {
+    if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+        audioRecord.release()
+        error("AudioRecord failed to initialize")
+    }
+
+    val output = ShortArray((RecordingDurationMillis * SampleRateHz / 1_000L).toInt())
+    val buffer = ShortArray(bufferSizeBytes / Short.SIZE_BYTES)
+
+    try {
+        audioRecord.startRecording()
+        var written = 0
+        while (written < output.size) {
+            coroutineContext.ensureActive()
+            val read = audioRecord.read(buffer, 0, minOf(buffer.size, output.size - written))
+            if (read < 0) error("AudioRecord read failed with code $read")
+            if (read == 0) continue
+            buffer.copyInto(output, destinationOffset = written, endIndex = read)
+            written += read
+        }
+        return output.copyOf(written)
+    } finally {
+        runCatching { audioRecord.stop() }
+        audioRecord.release()
+    }
+}
+
 private const val SampleRateHz = 16_000
 private const val RecordingDurationMillis = 4_200L
 private const val MinimumBufferSizeBytes = 4_096
 private const val MusicRecognitionHistoryLimit = 50
+private const val BackgroundRecognitionEnabledDefault = true
 
 private val MusicRecognitionHistoryJsonKey = stringPreferencesKey("musicRecognitionHistoryJson")
+private val BackgroundRecognitionEnabledKey =
+    booleanPreferencesKey("musicRecognitionBackgroundEnabled")
 
 private val HistoryJson =
     Json {
