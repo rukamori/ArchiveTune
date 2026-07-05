@@ -259,6 +259,7 @@ enum class PlayerStreamClient {
 
 val PersistentQueueKey = booleanPreferencesKey("persistentQueue")
 val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
+val PreventDuplicateTracksInQueueKey = booleanPreferencesKey("preventDuplicateTracksInQueue")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
 val AudioOffload = booleanPreferencesKey("audioOffload")
