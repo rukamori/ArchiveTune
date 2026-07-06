@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.AlbumReleaseType
@@ -79,6 +80,7 @@ class NewReleaseViewModel
                 _uiState.value = NewReleaseUiState.Loading
                 try {
                     val albums = YouTube.newReleaseAlbums().getOrThrow()
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val artistRanks: MutableMap<String, Int> = mutableMapOf()
                     val favouriteArtistRanks: MutableMap<String, Int> = mutableMapOf()
                     database.allArtistsByPlayTime().first().let { list ->
@@ -102,6 +104,7 @@ class NewReleaseViewModel
                                 firstArtistKey
                             }.filterExplicit(context.dataStore.get(HideExplicitKey, false))
                             .filterVideo(context.dataStore.get(HideVideoKey, false))
+                            .filterBlockedArtists(blockedArtistIds)
                             .distinctBy { it.id }
                     val content = filtered.toNewReleaseContent()
                     _uiState.value =

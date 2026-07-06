@@ -11,8 +11,8 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.util.Base64
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -114,7 +114,10 @@ fun ArchiveTuneTheme(
                 else -> typographyFor(resolvedFontFamily)
             }
         }
-    val expressiveMotionScheme = remember { MotionScheme.expressive() }
+    val motionScheme =
+        remember(disableAnimations) {
+            if (disableAnimations) DisabledMotionScheme else MotionScheme.expressive()
+        }
     val paletteStyle =
         remember(themeColor, seedPalette) {
             paletteStyleFor(seedPalette?.primary ?: themeColor)
@@ -148,7 +151,15 @@ fun ArchiveTuneTheme(
             if (darkTheme && pureBlack) baseColorScheme.pureBlack(true) else baseColorScheme
         }
 
-    val animatedColorScheme = if (disableAnimations) colorScheme else animateColorScheme(colorScheme)
+    val animatedColorScheme =
+        if (disableAnimations) {
+            colorScheme
+        } else {
+            animateColorScheme(
+                targetColorScheme = colorScheme,
+                animationSpec = motionScheme.defaultEffectsSpec(),
+            )
+        }
 
     val expressiveShapes =
         remember {
@@ -177,7 +188,7 @@ fun ArchiveTuneTheme(
     ) {
         MaterialExpressiveTheme(
             colorScheme = animatedColorScheme,
-            motionScheme = expressiveMotionScheme,
+            motionScheme = motionScheme,
             typography = typography,
             shapes = expressiveShapes,
             content = content,
@@ -186,9 +197,11 @@ fun ArchiveTuneTheme(
 }
 
 @Composable
-private fun animateColorScheme(targetColorScheme: ColorScheme): ColorScheme {
-    val animationSpec = spring<Color>(stiffness = Spring.StiffnessLow)
-    return ColorScheme(
+private fun animateColorScheme(
+    targetColorScheme: ColorScheme,
+    animationSpec: FiniteAnimationSpec<Color>,
+): ColorScheme =
+    ColorScheme(
         primary = animateColorAsState(targetColorScheme.primary, animationSpec, label = "primary").value,
         onPrimary = animateColorAsState(targetColorScheme.onPrimary, animationSpec, label = "onPrimary").value,
         primaryContainer = animateColorAsState(targetColorScheme.primaryContainer, animationSpec, label = "primaryContainer").value,
@@ -256,6 +269,20 @@ private fun animateColorScheme(targetColorScheme: ColorScheme): ColorScheme {
                 label = "surfaceContainerHighest",
             ).value,
     )
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private object DisabledMotionScheme : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
 
 private fun exactPaletteColorScheme(

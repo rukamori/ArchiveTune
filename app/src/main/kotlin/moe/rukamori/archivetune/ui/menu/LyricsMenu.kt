@@ -58,10 +58,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +111,7 @@ import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.component.NewMenuItem
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.utils.TranslatorLang
 import moe.rukamori.archivetune.utils.TranslatorLanguages
@@ -133,10 +136,13 @@ fun LyricsMenu(
     mediaMetadataProvider: () -> MediaMetadata,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
+    showPlayerControlsState: State<Boolean>,
+    onShowPlayerControlsChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val showPlayerControls by showPlayerControlsState
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
@@ -144,13 +150,11 @@ fun LyricsMenu(
 
     var showTranslateDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
-    var showRefetchLoadingDialog by rememberSaveable { mutableStateOf(false) }
     val isRefetching by viewModel.isRefetching.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(isRefetching) {
-        if (!isRefetching && showRefetchLoadingDialog) {
-            showRefetchLoadingDialog = false
+    LaunchedEffect(viewModel) {
+        viewModel.refetchCompletionEvents.collect {
             onDismiss()
         }
     }
@@ -227,7 +231,7 @@ fun LyricsMenu(
         }
     }
 
-    if (showRefetchLoadingDialog) {
+    if (isRefetching) {
         DefaultDialog(onDismiss = {}) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -283,6 +287,16 @@ fun LyricsMenu(
             expandedResultId = expandedSearchResultId,
             onExpandedResultChange = { resultId ->
                 expandedSearchResultId = if (expandedSearchResultId == resultId) null else resultId
+            },
+            onRefetch = {
+                expandedSearchResultId = null
+                viewModel.search(
+                    searchMediaMetadata.id,
+                    titleField.text,
+                    artistField.text,
+                    searchMediaMetadata.album?.title,
+                    searchMediaMetadata.duration,
+                )
             },
             onResultSelected = { result ->
                 onDismiss()
@@ -715,7 +729,6 @@ fun LyricsMenu(
                                 },
                                 text = stringResource(R.string.refetch),
                                 onClick = {
-                                    showRefetchLoadingDialog = true
                                     viewModel.refetchLyrics(mediaMetadataProvider())
                                 },
                             ),
@@ -759,6 +772,26 @@ fun LyricsMenu(
                         ),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
                 )
+                NewMenuItem(
+                    headlineContent = {
+                        Text(stringResource(R.string.show_lyrics_player_controls))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = showPlayerControls,
+                            onCheckedChange = onShowPlayerControlsChange,
+                        )
+                    },
+                    onClick = {
+                        onShowPlayerControlsChange(!showPlayerControls)
+                    },
+                    modifier =
+                        Modifier.padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 8.dp,
+                        ),
+                )
             }
         }
     }
@@ -770,6 +803,7 @@ private fun LyricsSearchResultDialog(
     state: LyricsSearchScreenState,
     expandedResultId: String?,
     onExpandedResultChange: (String) -> Unit,
+    onRefetch: () -> Unit,
     onResultSelected: (LyricsSearchResultUiModel) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -805,6 +839,7 @@ private fun LyricsSearchResultDialog(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     LyricsSearchResultHeader(
                         state = state,
+                        onRefetch = onRefetch,
                         onDismiss = onDismiss,
                     )
                     LazyColumn(
@@ -865,6 +900,7 @@ private fun LyricsSearchResultDialog(
 @Composable
 private fun LyricsSearchResultHeader(
     state: LyricsSearchScreenState,
+    onRefetch: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val subtitle =
@@ -891,6 +927,14 @@ private fun LyricsSearchResultHeader(
     val isSearching =
         state == LyricsSearchScreenState.Loading ||
             state is LyricsSearchScreenState.Success && state.isSearching
+    val isSearchComplete =
+        when (state) {
+            LyricsSearchScreenState.Loading -> false
+            is LyricsSearchScreenState.Success -> !state.isSearching
+            LyricsSearchScreenState.Empty,
+            is LyricsSearchScreenState.Error,
+            -> true
+        }
     val rowArrangement = remember { Arrangement.spacedBy(16.dp) }
 
     Surface(
@@ -939,6 +983,18 @@ private fun LyricsSearchResultHeader(
                     modifier = Modifier.size(28.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
+            }
+            if (isSearchComplete) {
+                IconButton(
+                    onClick = onRefetch,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.cached),
+                        contentDescription = stringResource(R.string.refetch),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
             IconButton(
                 onClick = onDismiss,

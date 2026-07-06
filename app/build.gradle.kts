@@ -44,8 +44,8 @@ android {
     applicationId = "moe.rukamori.archivetune"
         minSdk = 26
         targetSdk = 37
-        versionCode = 137
-        versionName = "13.6.0"
+        versionCode = 138
+        versionName = "13.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -318,6 +318,7 @@ dependencies {
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
     implementation(project(":moriextractor"))
+    implementation(project(":morideobfuscator"))
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
 
     implementation(libs.ktor.client.core)
@@ -352,7 +353,7 @@ androidComponents {
         val generateIconPack =
             tasks.register<GenerateIconPackTask>("generate${capitalizedVariantName}IconPack") {
                 metadataFile.set(rootProject.layout.projectDirectory.file("IconPack/metadata.json"))
-                xmlDirectory.set(rootProject.layout.projectDirectory.dir("IconPack/xml"))
+                svgDirectory.set(rootProject.layout.projectDirectory.dir("IconPack/svg"))
                 applicationId.set(variant.applicationId)
                 targetActivityClassName.set("moe.rukamori.archivetune.MainActivity")
                 resourceOutputDirectory.set(

@@ -51,20 +51,29 @@ class LocalSearchViewModel
                                 database.searchArtists(query, PREVIEW_SIZE),
                                 database.searchPlaylists(query, PREVIEW_SIZE),
                             ) { songs, albums, artists, playlists ->
-                                songs + albums + artists + playlists
+                                songs.filter { song -> song.artists.none { it.blockedAt != null } } +
+                                    albums.filter { album -> album.artists.none { it.blockedAt != null } } +
+                                    artists.filter { artist -> artist.artist.blockedAt == null } +
+                                    playlists
                             }
                         }
 
                         LocalFilter.SONG -> {
-                            database.searchSongs(query)
+                            database.searchSongs(query).map { songs ->
+                                songs.filter { song -> song.artists.none { it.blockedAt != null } }
+                            }
                         }
 
                         LocalFilter.ALBUM -> {
-                            database.searchAlbums(query)
+                            database.searchAlbums(query).map { albums ->
+                                albums.filter { album -> album.artists.none { it.blockedAt != null } }
+                            }
                         }
 
                         LocalFilter.ARTIST -> {
-                            database.searchArtists(query)
+                            database.searchArtists(query).map { artists ->
+                                artists.filter { artist -> artist.artist.blockedAt == null }
+                            }
                         }
 
                         LocalFilter.PLAYLIST -> {

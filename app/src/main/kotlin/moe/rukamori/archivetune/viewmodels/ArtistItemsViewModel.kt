@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -32,6 +34,7 @@ class ArtistItemsViewModel
     @Inject
     constructor(
         @ApplicationContext val context: Context,
+        private val database: MusicDatabase,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val browseId = savedStateHandle.get<String>("browseId")!!
@@ -60,7 +63,8 @@ class ArtistItemsViewModel
                                 items =
                                     artistItemsPage.items
                                         .distinctBy { it.id }
-                                        .filterExplicit(context.dataStore.get(HideExplicitKey, false)),
+                                        .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                        .filterBlockedArtists(database.getBlockedArtistIds().toSet()),
                                 continuation = artistItemsPage.continuation,
                             )
                     }.onFailure {
@@ -81,7 +85,8 @@ class ArtistItemsViewModel
                                 items =
                                     (oldItemsPage.items + artistItemsContinuationPage.items)
                                         .distinctBy { it.id }
-                                        .filterExplicit(context.dataStore.get(HideExplicitKey, false)),
+                                        .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                        .filterBlockedArtists(database.getBlockedArtistIds().toSet()),
                                 continuation = artistItemsContinuationPage.continuation,
                             )
                         }

@@ -49,25 +49,36 @@ object DiscordImageResolver {
         isMusicVideo: Boolean = false,
     ): ResolvedDiscordImages {
         val songId = song.song.id
-        getCachedImages(songId)?.let { cached ->
-            Timber.tag(TAG).d("Using cached images for song: %s", songId)
-            return cached
-        }
-
         val thumbnailUrl = song.song.thumbnailUrl?.asHttpUrl()
-        val ytThumbnailUrl = getMusicVideoYTThumbnail(songId, thumbnailUrl, isMusicVideo)
-        if (isMusicVideo && ytThumbnailUrl != thumbnailUrl) {
-            Timber.tag(TAG).d("Using YT thumbnail for music video songId=%s ytUrl=%s", songId, ytThumbnailUrl)
-        }
         val artistUrl =
             song.artists
                 .firstOrNull()
                 ?.thumbnailUrl
                 ?.asHttpUrl()
+
+        getCachedImages(songId)
+            ?.takeIf { cached ->
+                cached.thumbnailOriginalUrl == thumbnailUrl &&
+                    cached.artistOriginalUrl == artistUrl
+            }?.let { cached ->
+                Timber.tag(TAG).d("Using cached images for song: %s", songId)
+                return cached
+            }
+
+        val ytThumbnailUrl = getMusicVideoYTThumbnail(songId, thumbnailUrl, isMusicVideo)
+        if (isMusicVideo && ytThumbnailUrl != thumbnailUrl) {
+            Timber.tag(TAG).d("Using YT thumbnail for music video songId=%s ytUrl=%s", songId, ytThumbnailUrl)
+        }
         val savedArtwork = ArtworkStorage.findBySongId(context, songId)
 
         val thumbnail = ytThumbnailUrl ?: savedArtwork?.thumbnail?.asHttpUrl() ?: thumbnailUrl
-        val artist = savedArtwork?.artist?.asHttpUrl() ?: artistUrl ?: thumbnail
+        val savedArtistUrl =
+            savedArtwork
+                ?.artist
+                ?.asHttpUrl()
+                ?.takeUnless { it == savedArtwork?.thumbnail?.asHttpUrl() }
+        val persistedArtist = artistUrl ?: savedArtistUrl
+        val artist = persistedArtist ?: thumbnail
 
         val images =
             ResolvedDiscordImages(
@@ -77,7 +88,7 @@ object DiscordImageResolver {
                 artistResolvedId = artist,
             )
 
-        if (thumbnail != savedArtwork?.thumbnail || artist != savedArtwork?.artist) {
+        if (thumbnail != savedArtwork?.thumbnail || persistedArtist != savedArtwork?.artist) {
             runCatching {
                 ArtworkStorage.saveOrUpdate(
                     context = context,
@@ -85,7 +96,7 @@ object DiscordImageResolver {
                         SavedArtwork(
                             songId = songId,
                             thumbnail = thumbnail,
-                            artist = artist,
+                            artist = persistedArtist,
                         ),
                 )
             }.onFailure {

@@ -65,6 +65,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Slider
@@ -172,6 +173,7 @@ import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.QueuePeekHeight
+import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
@@ -307,6 +309,10 @@ fun BottomSheetPlayer(
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
         defaultValue = PlayerDesignStyle.V4,
+    )
+    val showPlayerVolumeBar by rememberPreference(
+        key = ShowPlayerVolumeBarKey,
+        defaultValue = true,
     )
 
     val storedPlayerBackground by rememberEnumPreference(
@@ -1243,6 +1249,7 @@ fun BottomSheetPlayer(
                                 videoId = mediaMetadata?.id,
                                 ytmUrl = mediaMetadata?.thumbnailUrl,
                                 lowDataMode = lowDataModeActive,
+                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1279,6 +1286,7 @@ fun BottomSheetPlayer(
                                     position = position,
                                     duration = duration,
                                     volume = deviceMusicVolumeController.volumeFraction,
+                                    showVolumeBar = showPlayerVolumeBar,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1304,6 +1312,7 @@ fun BottomSheetPlayer(
                                 videoId = mediaMetadata?.id,
                                 ytmUrl = mediaMetadata?.thumbnailUrl,
                                 lowDataMode = lowDataModeActive,
+                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
@@ -1324,6 +1333,7 @@ fun BottomSheetPlayer(
                                 position = position,
                                 duration = duration,
                                 volume = deviceMusicVolumeController.volumeFraction,
+                                showVolumeBar = showPlayerVolumeBar,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,
@@ -1516,6 +1526,7 @@ fun BottomSheetPlayer(
                                 videoId = mediaMetadata?.id,
                                 ytmUrl = mediaMetadata?.thumbnailUrl,
                                 lowDataMode = lowDataModeActive,
+                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
                             thumbnailUrl = v7SwapState.displayUrl,
@@ -1551,6 +1562,7 @@ fun BottomSheetPlayer(
                                     position = position,
                                     duration = duration,
                                     volume = deviceMusicVolumeController.volumeFraction,
+                                    showVolumeBar = showPlayerVolumeBar,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1575,6 +1587,7 @@ fun BottomSheetPlayer(
                                 videoId = mediaMetadata?.id,
                                 ytmUrl = mediaMetadata?.thumbnailUrl,
                                 lowDataMode = lowDataModeActive,
+                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
@@ -1595,6 +1608,7 @@ fun BottomSheetPlayer(
                                 position = position,
                                 duration = duration,
                                 volume = deviceMusicVolumeController.volumeFraction,
+                                showVolumeBar = showPlayerVolumeBar,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,
@@ -2368,13 +2382,13 @@ private fun LittlePlayerContent(
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "little_title",
                     ) { title ->
-                        Text(
-                            text = title,
+                        PlayerTitleText(
+                            title = title,
+                            explicit = mediaMetadata.explicit,
                             color = titleColor,
+                            style = LocalTextStyle.current,
                             fontSize = titleSize,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.basicMarquee(),
                         )
                     }

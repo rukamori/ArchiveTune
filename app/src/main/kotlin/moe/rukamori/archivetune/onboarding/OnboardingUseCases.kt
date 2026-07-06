@@ -71,6 +71,8 @@ class BuildOnboardingUiStateUseCase
                 OnboardingPermissionId.NOTIFICATIONS -> R.string.onboarding_permission_notifications_title
                 OnboardingPermissionId.LOCAL_AUDIO -> R.string.permission_storage_title
                 OnboardingPermissionId.MICROPHONE -> R.string.music_recognition_permission_title
+                OnboardingPermissionId.DEVICE_AUDIO_CAPTURE ->
+                    R.string.onboarding_permission_device_audio_capture_title
                 OnboardingPermissionId.BLUETOOTH_CONNECT -> R.string.onboarding_permission_bluetooth_connect_title
                 OnboardingPermissionId.NETWORK -> R.string.onboarding_permission_network_title
                 OnboardingPermissionId.PLAYBACK_SERVICE -> R.string.onboarding_permission_playback_service_title
@@ -84,6 +86,8 @@ class BuildOnboardingUiStateUseCase
                 OnboardingPermissionId.NOTIFICATIONS -> R.string.onboarding_permission_notifications_desc
                 OnboardingPermissionId.LOCAL_AUDIO -> R.string.permission_storage_desc
                 OnboardingPermissionId.MICROPHONE -> R.string.music_recognition_permission_desc
+                OnboardingPermissionId.DEVICE_AUDIO_CAPTURE ->
+                    R.string.onboarding_permission_device_audio_capture_desc
                 OnboardingPermissionId.BLUETOOTH_CONNECT -> R.string.onboarding_permission_bluetooth_connect_desc
                 OnboardingPermissionId.NETWORK -> R.string.onboarding_permission_network_desc
                 OnboardingPermissionId.PLAYBACK_SERVICE -> R.string.onboarding_permission_playback_service_desc
@@ -97,6 +101,7 @@ class BuildOnboardingUiStateUseCase
                 OnboardingPermissionId.NOTIFICATIONS -> R.drawable.music_note
                 OnboardingPermissionId.LOCAL_AUDIO -> R.drawable.storage
                 OnboardingPermissionId.MICROPHONE -> R.drawable.mic
+                OnboardingPermissionId.DEVICE_AUDIO_CAPTURE -> R.drawable.screenshot
                 OnboardingPermissionId.BLUETOOTH_CONNECT -> R.drawable.bluetooth
                 OnboardingPermissionId.NETWORK -> R.drawable.wifi_proxy
                 OnboardingPermissionId.PLAYBACK_SERVICE -> R.drawable.library_music

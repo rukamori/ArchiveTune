@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -119,12 +118,15 @@ import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
+import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
+import moe.rukamori.archivetune.ui.utils.sendPauseDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
+import moe.rukamori.archivetune.ui.utils.sendResumeDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -606,12 +608,22 @@ fun AutoPlaylistScreen(
                                 ToggleButton(
                                     checked = downloadState == HeaderDownloadState.Completed,
                                     onCheckedChange = {
-                                        when (downloadState) {
+                                        val currentDownloadState = downloadState
+                                        when (currentDownloadState) {
                                             HeaderDownloadState.Completed -> {
                                                 showRemoveDownloadDialog = true
                                             }
 
-                                            else -> {
+                                            is HeaderDownloadState.Partial -> {
+                                                val songIds = songs.map { it.song.id }
+                                                if (currentDownloadState.paused) {
+                                                    sendResumeDownloads(context, songIds)
+                                                } else {
+                                                    sendPauseDownloads(context, songIds)
+                                                }
+                                            }
+
+                                            HeaderDownloadState.None -> {
                                                 sendAddMissingDownloads(
                                                     context = context,
                                                     songs =
@@ -647,12 +659,9 @@ fun AutoPlaylistScreen(
                                         }
 
                                         is HeaderDownloadState.Partial -> {
-                                            CircularProgressIndicator(
-                                                progress = { state.progress },
-                                                modifier = Modifier.size(24.dp),
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                                strokeWidth = 2.dp,
+                                            HeaderDownloadProgressIndicator(
+                                                progress = state.progress,
+                                                paused = state.paused,
                                             )
                                         }
 

@@ -94,7 +94,10 @@ class LyricsMenuViewModel
         private var aiTranslationJob: Job? = null
         private val _lyricsSearchState = MutableStateFlow<LyricsSearchScreenState>(LyricsSearchScreenState.Empty)
         val lyricsSearchState: StateFlow<LyricsSearchScreenState> = _lyricsSearchState.asStateFlow()
-        val isRefetching = MutableStateFlow(false)
+        private val _isRefetching = MutableStateFlow(false)
+        val isRefetching: StateFlow<Boolean> = _isRefetching.asStateFlow()
+        private val _refetchCompletionEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        val refetchCompletionEvents: SharedFlow<Unit> = _refetchCompletionEvents.asSharedFlow()
         val isAiTranslating = MutableStateFlow(false)
 
         private val _aiTranslationEvents = MutableSharedFlow<String>()
@@ -172,20 +175,24 @@ class LyricsMenuViewModel
         }
 
         fun refetchLyrics(mediaMetadata: MediaMetadata) {
+            if (!_isRefetching.compareAndSet(expect = false, update = true)) return
+
             viewModelScope.launch(Dispatchers.IO) {
-                isRefetching.value = true
                 try {
                     val lyrics = lyricsHelper.getLyrics(mediaMetadata)
-                    database.query {
+                    database.withTransaction {
                         replaceLyrics(
                             id = mediaMetadata.id,
                             lyrics = lyrics,
                             source = LyricsEntity.Source.REMOTE.value,
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                 } finally {
-                    isRefetching.value = false
+                    _isRefetching.value = false
+                    _refetchCompletionEvents.tryEmit(Unit)
                 }
             }
         }
@@ -282,6 +289,13 @@ class LyricsMenuViewModel
             val preview = displayLyricsText(lyrics)
             val lineCount = preview.lineSequence().count { it.isNotBlank() }
             val isTtmlLyrics = isTtml(lyrics)
+            val ttmlEntries =
+                if (isTtmlLyrics) {
+                    runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList())
+                } else {
+                    emptyList()
+                }
+            val isWordSynced = ttmlEntries.any { !it.words.isNullOrEmpty() }
 
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
@@ -290,8 +304,13 @@ class LyricsMenuViewModel
                 preview = preview,
                 lineCount = lineCount,
                 characterCount = preview.length,
-                isLineSynced = !isTtmlLyrics && isLineSyncedLrc(lyrics),
-                isWordSynced = isTtmlLyrics,
+                isLineSynced =
+                    if (isTtmlLyrics) {
+                        ttmlEntries.isNotEmpty() && !isWordSynced
+                    } else {
+                        isLineSyncedLrc(lyrics)
+                    },
+                isWordSynced = isWordSynced,
             )
         }
     }

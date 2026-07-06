@@ -16,9 +16,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.utils.reportException
@@ -58,7 +60,16 @@ class AlbumViewModel
         val albumWithSongs =
             database
                 .albumWithSongs(albumId)
-                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+                .map { album ->
+                    album?.copy(
+                        songs =
+                            if (album.artists.any { it.blockedAt != null }) {
+                                emptyList()
+                            } else {
+                                album.songs.filterBlockedArtists()
+                            },
+                    )
+                }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
         var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
 
         private val _fetchState = MutableStateFlow<FetchState>(FetchState.Pending)
@@ -87,7 +98,11 @@ class AlbumViewModel
                     .album(albumId)
                     .onSuccess {
                         playlistId.value = it.album.playlistId
-                        otherVersions.value = it.otherVersions
+                        val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                        otherVersions.value =
+                            it.otherVersions.filter { version ->
+                                version.artists.orEmpty().none { artist -> artist.id in blockedArtistIds }
+                            }
                         database.withTransaction {
                             if (album == null) {
                                 insert(it)

@@ -26,6 +26,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -37,7 +38,7 @@ class OnlinePlaylistViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
-        database: MusicDatabase,
+        private val database: MusicDatabase,
     ) : ViewModel() {
         private val playlistId = savedStateHandle.get<String>("playlistId")!!
 
@@ -91,11 +92,13 @@ class OnlinePlaylistViewModel
                     YouTube
                         .playlistContinuation(it, playlistId)
                         .onSuccess { playlistContinuationPage ->
+                            val visibleSongs =
+                                playlistContinuationPage.songs.filterBlockedArtists(database.getBlockedArtistIds().toSet())
                             val currentSongs = _playlistSongs.value.toMutableList()
-                            currentSongs.addAll(playlistContinuationPage.songs)
+                            currentSongs.addAll(visibleSongs)
                             _playlistSongs.value = currentSongs
                             continuation = playlistContinuationPage.continuation
-                            prefetchViewCounts(playlistContinuationPage.songs.map { song -> song.id })
+                            prefetchViewCounts(visibleSongs.map { song -> song.id })
                             _isLoadingMore.value = false
                         }.onFailure { throwable ->
                             _isLoadingMore.value = false
@@ -124,10 +127,11 @@ class OnlinePlaylistViewModel
                 YouTube
                     .playlist(playlistId)
                     .onSuccess { playlistPage ->
+                        val visibleSongs = playlistPage.songs.filterBlockedArtists(database.getBlockedArtistIds().toSet())
                         _playlist.value = playlistPage.playlist
-                        _playlistSongs.value = playlistPage.songs
+                        _playlistSongs.value = visibleSongs
                         continuation = playlistPage.songsContinuation ?: playlistPage.continuation
-                        prefetchViewCounts(playlistPage.songs.map { song -> song.id })
+                        prefetchViewCounts(visibleSongs.map { song -> song.id })
                     }.onFailure { throwable ->
                         _error.value = throwable.message ?: "Failed to load playlist"
                         reportException(throwable)

@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
@@ -892,11 +891,13 @@ private fun AodShapePicker(
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
+                maxItemsInEachRow = 3,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 shapes.forEach { shape ->
                     AodShapeOption(
                         shape = shape,
+                        modifier = Modifier.weight(1f),
                         selected = shape == selectedShape,
                         cornerRadius = cornerRadius,
                         shapeRotation = shapeRotation,
@@ -911,6 +912,7 @@ private fun AodShapePicker(
 @Composable
 private fun AodShapeOption(
     shape: AodThumbnailShape,
+    modifier: Modifier = Modifier,
     selected: Boolean,
     cornerRadius: Float,
     shapeRotation: Int,
@@ -922,8 +924,7 @@ private fun AodShapeOption(
 
     Card(
         modifier =
-            Modifier
-                .width(102.dp)
+            modifier
                 .heightIn(min = 112.dp)
                 .selectable(
                     selected = selected,

@@ -48,6 +48,11 @@ data class RecognitionHistoryEntry(
         get() = "$title $artist".trim()
 }
 
+data class BackgroundRecognitionSetting(
+    val enabled: Boolean,
+    val available: Boolean,
+)
+
 enum class RecognitionPhase {
     Listening,
     Processing,

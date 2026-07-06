@@ -201,6 +201,7 @@
     <string name="together_song_change_failed">Song change not applied. Please try again.</string>
     <string name="together_participant_joined_notification">%1$s joined the room</string>
     <string name="together_participant_left_notification">%1$s left the room</string>
+    <string name="together_room_closed_inactivity_notification">Room closed because no one joined for 10 minutes</string>
     <string name="together_unknown_participant">Someone</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
@@ -231,6 +232,8 @@
     <string name="sample_rate">Sample rate</string>
     <string name="loudness">Loudness</string>
     <string name="volume">Volume</string>
+    <string name="show_player_volume_bar">Show volume bar</string>
+    <string name="player_volume_bar_v7_v8_only">Available only with V7 and V8 player styles</string>
     <string name="file_size">File size</string>
     <string name="unknown">Unknown</string>
     <string name="copied">Copied to clipboard</string>
@@ -319,7 +322,18 @@
     <string name="appearance">Appearance</string>
     <string name="app_icon_description">Choose the launcher icon</string>
     <string name="app_icon_default">Default</string>
-    <string name="app_icon_by_author">By %1$s</string>
+    <string name="app_icon_subtitle">Personalize your launcher</string>
+    <string name="app_icon_current">Current icon</string>
+    <string name="app_icon_available">Available icons</string>
+    <string name="app_icon_builtin">Built in</string>
+    <string name="app_icon_community">Community icon</string>
+    <string name="app_icon_builtin_description">Original ArchiveTune icon</string>
+    <string name="app_icon_identifier">ID %1$s</string>
+    <string name="app_icon_community_notice">Community icons are created by users and may change over time.</string>
+    <plurals name="app_icon_count">
+        <item quantity="one">%d icon</item>
+        <item quantity="other">%d icons</item>
+    </plurals>
     <string name="app_icon_empty">No app icons are available</string>
     <string name="app_icon_load_failed">Couldn\'t load app icons</string>
     <string name="app_icon_change_failed">Couldn\'t change the app icon</string>
@@ -434,6 +448,8 @@
     <string name="disable_blur_desc">Disable blur effects throughout the app</string>
     <string name="disable_animations">Disable animations</string>
     <string name="disable_animations_desc">Disable most app animations. Recommended for low-end devices</string>
+    <string name="force_high_refresh_rate">Force high refresh rate</string>
+    <string name="max_supported_refresh_rate">Max supported: %1$d Hz</string>
     <string name="blur_intensity">Blur intensity</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="album_backdrop">Backdrop blur</string>
@@ -784,6 +800,11 @@
     <string name="last_start">Last Start</string>
     <string name="last_end">Last End</string>
     <string name="debug_logs">Debug Logs</string>
+    <string name="view_debug_logs_description">View and filter application logs</string>
+    <string name="resume_logs">Resume logs</string>
+    <string name="jump_to_latest_log">Jump to latest log</string>
+    <string name="copy_log_entry">Copy log entry</string>
+    <string name="export_logs_failed">Unable to export logs</string>
     <string name="log_level_verbose">Verbose</string>
     <string name="log_level_debug">Debug</string>
     <string name="log_level_info">Info</string>
@@ -792,6 +813,7 @@
     <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">All</string>
     <string name="clear">Clear</string>
+    <string name="export">Export</string>
     <string name="logs_empty_message">Logs will appear here when available</string>
     <string name="real_time_playback_stats">Real-time playback statistics</string>
     <string name="copied_to_clipboard">Copied log to clipboard</string>
@@ -870,6 +892,8 @@
     <string name="onboarding_permission_unavailable">Unavailable</string>
     <string name="onboarding_permission_notifications_title">Notifications</string>
     <string name="onboarding_permission_notifications_desc">Show playback controls and music activity in the notification shade.</string>
+    <string name="onboarding_permission_device_audio_capture_title">On-device audio recognition</string>
+    <string name="onboarding_permission_device_audio_capture_desc">Recognize music playing in other apps without using the microphone. Android asks for screen and audio capture approval each time, ArchiveTune processes audio only.</string>
     <string name="onboarding_permission_bluetooth_connect_title">Bluetooth audio connection</string>
     <string name="onboarding_permission_bluetooth_connect_desc">Connect to nearby Bluetooth audio devices for playback.</string>
     <string name="onboarding_permission_network_title">Network access</string>

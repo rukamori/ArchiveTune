@@ -37,12 +37,9 @@ import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REM
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import timber.log.Timber
-import java.net.Proxy
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 
 object YTPlayerUtils {
     private const val logTag = "YTPlayerUtils"
@@ -107,27 +104,6 @@ object YTPlayerUtils {
         val status: String,
         val reason: String?,
     )
-
-    @Volatile private var streamClientPair: Pair<Proxy, OkHttpClient>? = null
-
-    private fun currentStreamClient(): OkHttpClient {
-        val current = YouTube.streamOkHttpProxy
-        streamClientPair?.let { (proxy, client) ->
-            if (proxy == current) return client
-        }
-        val client =
-            OkHttpClient
-                .Builder()
-                .proxy(current)
-                .connectTimeout(STREAM_PROBE_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .readTimeout(STREAM_PROBE_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .callTimeout(STREAM_PROBE_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .followRedirects(true)
-                .followSslRedirects(true)
-                .build()
-        streamClientPair = current to client
-        return client
-    }
 
     /**
      * The main client is used for metadata and initial streams.
@@ -314,6 +290,14 @@ object YTPlayerUtils {
     fun invalidateCachedStreamUrls(videoId: String) {
         val marker = ":$videoId:"
         streamUrlCache.keys.removeIf { it.contains(marker) }
+    }
+
+    fun markStreamUrlSuccessful(url: String) {
+        StreamClientUtils
+            .resolveRequestProfile(url)
+            .clientKey
+            .takeIf(String::isNotEmpty)
+            ?.let { lastSuccessfulClientKey = it }
     }
 
     fun isExpiredOrNearExpiredStreamUrl(
@@ -698,7 +682,6 @@ object YTPlayerUtils {
                     reason = "stale logged-in playback context",
                 )
             canUseLoggedInPlayback = false
-            YouTube.authState = authState
             clearPlaybackAuthCaches()
 
             val newSessionId = authState.visitorData
@@ -934,20 +917,7 @@ object YTPlayerUtils {
 
             Timber.tag(logTag).i("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
             Timber.tag(logTag).v("Stream expires in: $streamExpiresInSeconds seconds")
-
-            val valid = validateStatus(streamUrl)
-            if (valid) {
-                Timber.tag(logTag).i("Stream validated successfully with client: ${describeClient(client)}")
-                lastSuccessfulClientKey = StreamClientUtils.buildClientKey(client)
-                break
-            }
-
-            Timber.tag(logTag).w("Stream validation failed with client: ${describeClient(client)}, trying next fallback")
-            format = null
-            streamUrl = null
-            streamClientUsed = null
-            streamExpiresInSeconds = null
-            streamPlayerResponse = null
+            break
         }
 
         if (streamPlayerResponse == null) {
@@ -1235,72 +1205,9 @@ object YTPlayerUtils {
     }
 
     /**
-     * Checks if the stream url returns a successful status.
-     * If this returns true the url is likely to work.
-     * If this returns false the url might cause an error during playback.
-     */
-    private fun validateStatus(url: String): Boolean {
-        Timber.tag(logTag).v("Validating stream URL status")
-        try {
-            val requestProfile = StreamClientUtils.resolveRequestProfile(url)
-            val probeRanges = buildPlaybackProbeRanges()
-
-            var sawReadableProbe = false
-            for (range in probeRanges) {
-                val rangeRequest =
-                    StreamClientUtils
-                        .applyRequestProfile(
-                            okhttp3.Request
-                                .Builder()
-                                .get()
-                                .header("Range", range)
-                                .url(url),
-                            requestProfile,
-                        ).build()
-
-                val probeValid =
-                    currentStreamClient().newCall(rangeRequest).execute().use { response ->
-                        val code = response.code
-                        if (code == 403) return@use false
-                        if (code !in 200..399 && code != 416) return@use false
-                        if (code == 416) return@use sawReadableProbe
-
-                        val contentType = response.header("Content-Type").orEmpty().lowercase(Locale.US)
-                        if (
-                            contentType.startsWith("text/html") ||
-                            contentType.startsWith("text/plain") ||
-                            contentType.startsWith("application/json") ||
-                            contentType.startsWith("application/xml") ||
-                            contentType.startsWith("text/xml")
-                        ) {
-                            Timber.tag(logTag).w(
-                                "Rejecting stream probe because it returned non-media content-type: %s",
-                                contentType,
-                            )
-                            return@use false
-                        }
-
-                        val readable = response.body?.source()?.request(1) == true
-                        if (readable) {
-                            sawReadableProbe = true
-                        }
-                        readable
-                    }
-                if (!probeValid) return false
-            }
-
-            return true
-        } catch (e: Exception) {
-            Timber.tag(logTag).e(e, "Stream URL validation failed with exception")
-            reportException(e)
-        }
-        return false
-    }
-
-    /**
      * Wrapper around the [NewPipeUtils.getSignatureTimestamp] function which reports exceptions
      */
-    private fun getSignatureTimestampOrNull(videoId: String): Int? {
+    private suspend fun getSignatureTimestampOrNull(videoId: String): Int? {
         Timber.tag(logTag).i("Getting signature timestamp for videoId: $videoId")
         return NewPipeUtils
             .getSignatureTimestamp(videoId)
@@ -1315,7 +1222,7 @@ object YTPlayerUtils {
      * Wrapper around the [NewPipeUtils.getStreamUrl] function which reports exceptions.
      * Also patches cver to match the client version.
      */
-    private fun findUrlOrNull(
+    private suspend fun findUrlOrNull(
         format: PlayerResponse.StreamingData.Format,
         videoId: String,
         client: YouTubeClient? = null,
@@ -1328,7 +1235,9 @@ object YTPlayerUtils {
                 .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
                 .onFailure {
                     if (it.isJavaScriptPlayerExtractorFailure()) {
-                        Timber.tag(logTag).w(it, "Skipping stream candidate because YouTube JavaScript decipher failed")
+                        Timber
+                            .tag(logTag)
+                            .w("Skipping stream candidate because YouTube JavaScript decipher is unavailable: ${it.message}")
                     } else {
                         Timber.tag(logTag).e(it, "Failed to get stream URL")
                         reportException(it)
@@ -1457,16 +1366,5 @@ object YTPlayerUtils {
         return false
     }
 
-    private fun buildPlaybackProbeRanges(): List<String> =
-        listOf(
-            "bytes=0-0",
-            "bytes=0-524287",
-            "bytes=1048576-1049087",
-        )
-
     private fun describeClient(client: YouTubeClient): String = "${client.clientName}@${client.clientVersion}"
-
-    private const val STREAM_PROBE_CONNECT_TIMEOUT_SECONDS = 4L
-    private const val STREAM_PROBE_READ_TIMEOUT_SECONDS = 4L
-    private const val STREAM_PROBE_CALL_TIMEOUT_SECONDS = 6L
 }

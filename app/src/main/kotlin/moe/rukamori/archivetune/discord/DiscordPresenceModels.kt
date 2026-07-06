@@ -102,15 +102,16 @@ enum class DiscordOnlineStatus(
 
 enum class DiscordActivityPlatform(
     val bit: Int,
+    val wireValue: String,
 ) {
-    Desktop(1),
-    Xbox(2),
-    Samsung(4),
-    Ios(8),
-    Android(16),
-    Embedded(32),
-    Ps4(64),
-    Ps5(128),
+    Desktop(1, "desktop"),
+    Xbox(2, "xbox"),
+    Samsung(4, "samsung"),
+    Ios(8, "ios"),
+    Android(16, "android"),
+    Embedded(32, "embedded"),
+    Ps4(64, "ps4"),
+    Ps5(128, "ps5"),
     ;
 
     companion object {
@@ -125,5 +126,11 @@ enum class DiscordActivityPlatform(
                 "ps5" -> Ps5.bit
                 else -> Android.bit
             }
+
+        fun wireValueFromBit(bit: Int): String =
+            entries
+                .firstOrNull { platform -> platform.bit == bit }
+                ?.wireValue
+                ?: Android.wireValue
     }
 }

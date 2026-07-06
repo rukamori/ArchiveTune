@@ -529,21 +529,6 @@ class AboutViewModel
                                 ),
                         ),
                         TeamMember(
-                            avatarUrl = "https://avatars.githubusercontent.com/u/80249864?v=4",
-                            name = "sang765",
-                            positionResId = R.string.about_position_developers,
-                            profileUrl = "https://github.com/sang765",
-                            links =
-                                AboutLinkCollection.of(
-                                    AboutLinkUiModel(
-                                        id = "github",
-                                        iconResId = R.drawable.github,
-                                        labelResId = R.string.about_content_desc_github,
-                                        url = "https://github.com/sang765",
-                                    ),
-                                ),
-                        ),
-                        TeamMember(
                             avatarUrl = "https://avatars.githubusercontent.com/u/203143605?v=4",
                             name = "Yuki/Reze",
                             positionResId = R.string.about_position_yuki,

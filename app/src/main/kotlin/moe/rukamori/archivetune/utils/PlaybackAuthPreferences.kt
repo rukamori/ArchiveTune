@@ -83,9 +83,11 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
     val initialAuthState = YouTube.currentPlaybackAuthState()
     val initialResult = block()
     if (initialResult.isSuccess) {
+        val repairedAuthState = YouTube.currentPlaybackAuthState()
+        restoreTemporaryPlaybackLoginContext(initialAuthState, repairedAuthState)
         persistPlaybackAuthRepair(
             initialAuthState = initialAuthState,
-            repairedAuthState = YouTube.currentPlaybackAuthState(),
+            repairedAuthState = repairedAuthState,
         )
         return initialResult
     }
@@ -98,17 +100,36 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
 
     YouTube.authState = currentAuthState.withoutPlaybackLoginContext()
     YTPlayerUtils.clearPlaybackAuthCaches()
-    dataStore.edit { preferences ->
-        preferences.remove(DataSyncIdKey)
-    }
-    val retryResult = block()
+    var retryAuthState: PlaybackAuthState? = null
+    val retryResult =
+        try {
+            block().also {
+                retryAuthState = YouTube.currentPlaybackAuthState()
+            }
+        } finally {
+            restoreTemporaryPlaybackLoginContext(
+                initialAuthState = currentAuthState,
+                repairedAuthState = retryAuthState ?: YouTube.currentPlaybackAuthState(),
+            )
+        }
     if (retryResult.isSuccess) {
         persistPlaybackAuthRepair(
             initialAuthState = currentAuthState,
-            repairedAuthState = YouTube.currentPlaybackAuthState(),
+            repairedAuthState = requireNotNull(retryAuthState),
         )
     }
     return retryResult
+}
+
+private fun restoreTemporaryPlaybackLoginContext(
+    initialAuthState: PlaybackAuthState,
+    repairedAuthState: PlaybackAuthState,
+) {
+    val dataSyncId = initialAuthState.dataSyncId ?: return
+    if (repairedAuthState.dataSyncId != null) return
+    if (repairedAuthState.cookie != initialAuthState.cookie) return
+    if (YouTube.currentPlaybackAuthState().fingerprint != repairedAuthState.fingerprint) return
+    YouTube.authState = repairedAuthState.copy(dataSyncId = dataSyncId).normalized()
 }
 
 private suspend fun Context.persistPlaybackAuthRepair(
@@ -125,11 +146,6 @@ private suspend fun Context.persistPlaybackAuthRepair(
         repairedAuthState.dataSyncId
             ?.takeIf { it.isNotBlank() && it != initialAuthState.dataSyncId }
             ?.let { preferences[DataSyncIdKey] = it }
-            ?: run {
-                if (!initialAuthState.dataSyncId.isNullOrBlank() && repairedAuthState.dataSyncId.isNullOrBlank()) {
-                    preferences.remove(DataSyncIdKey)
-                }
-            }
     }
 }
 

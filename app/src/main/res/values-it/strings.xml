@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Home</string>
     <string name="songs">Canzoni</string>
@@ -39,7 +39,7 @@
     <string name="filter_community_playlists">Playlist della comunità</string>
     <string name="filter_featured_playlists">Playlist in primo piano</string>
     <string name="no_results_found">Nessun risultato trovato</string>
-    <string name="other_versions">Altre versioni</string>
+    <string name="other_versions">Ascolta anche</string>
     <string name="liked_songs">Canzoni che mi sono piaciute</string>
     <string name="downloaded_songs">Canzoni scaricate</string>
     <string name="playlist_is_empty">La playlist è vuota</string>
@@ -546,4 +546,19 @@
     <string name="backdrop_blur_amount">Quantità di sfocatura dello sfondo</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
     <string name="library_title">La tua Libreria</string>
+    <string name="library_subtitle">La tua musica, organizzata per te</string>
+    <string name="library_playlists_subtitle">Le tue playlist, organizzate per te</string>
+    <string name="library_songs_subtitle">Tutte le tue canzoni, organizzate per te</string>
+    <string name="library_artists_subtitle">Tutti i tuoi artisti preferiti, in un unico posto</string>
+    <string name="library_albums_subtitle">Tutti i tuoi album, perfettamente organizzati</string>
+    <string name="most_played_badge">PIÙ ASCOLTATO</string>
+    <string name="play_all">Riproduci tutto</string>
+    <string name="offline_shortcut">Offline</string>
+    <string name="cached">Memorizzato</string>
+    <string name="local_files">File Locali</string>
+    <string name="downloaded_desc">Scaricato</string>
+    <string name="instant_playback">Riproduzione istantanea</string>
+    <string name="recently_played">Riprodotto di recente</string>
+    <string name="top_mixes">Le migliori combinazioni per te</string>
+    <string name="library_top_mixes_loading">Preparando i tuoi Mixes AI</string>
 </resources>

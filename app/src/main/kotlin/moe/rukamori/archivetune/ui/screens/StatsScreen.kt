@@ -7,20 +7,16 @@
 
 package moe.rukamori.archivetune.ui.screens
 
-import androidx.compose.animation.AnimatedContent
+import android.graphics.Color as AndroidColor
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,67 +24,74 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.StatPeriod
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
@@ -99,29 +102,32 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.ChoiceChipsRow
-import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
-import moe.rukamori.archivetune.ui.component.ListItem
 import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
-import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.StatsScreenState
 import moe.rukamori.archivetune.viewmodels.StatsViewModel
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class,
+)
 @Composable
 fun StatsScreen(
     navController: NavController,
@@ -129,26 +135,59 @@ fun StatsScreen(
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val playerConnection = LocalPlayerConnection.current
+    val isPlayingFlow: Flow<Boolean> =
+        remember(playerConnection) { playerConnection?.isPlaying ?: flowOf(false) }
+    val mediaMetadataFlow: Flow<MediaMetadata?> =
+        remember(playerConnection) { playerConnection?.mediaMetadata ?: flowOf(null) }
+    val isPlaying by isPlayingFlow.collectAsStateWithLifecycle(initialValue = false)
+    val mediaMetadata by mediaMetadataFlow.collectAsStateWithLifecycle(initialValue = null)
     val context = LocalContext.current
 
-    val indexChips by viewModel.indexChips.collectAsStateWithLifecycle()
-    val mostPlayedSongs by viewModel.mostPlayedSongs.collectAsStateWithLifecycle()
-    val mostPlayedSongsStats by viewModel.mostPlayedSongsStats.collectAsStateWithLifecycle()
-    val mostPlayedArtists by viewModel.mostPlayedArtists.collectAsStateWithLifecycle()
-    val mostPlayedAlbums by viewModel.mostPlayedAlbums.collectAsStateWithLifecycle()
-    val firstEvent by viewModel.firstEvent.collectAsStateWithLifecycle()
-    val selectedOption by viewModel.selectedOption.collectAsStateWithLifecycle()
-    val listeningByHour by viewModel.listeningByHour.collectAsStateWithLifecycle()
-    val listeningByDayOfWeek by viewModel.listeningByDayOfWeek.collectAsStateWithLifecycle()
-    val listeningSummary by viewModel.listeningSummary.collectAsStateWithLifecycle()
+    val screenState by viewModel.screenState.collectAsStateWithLifecycle()
+    val isYearPickerOpen by viewModel.yearPickerOpen.collectAsStateWithLifecycle()
+
+    val data =
+        when (val state = screenState) {
+            StatsScreenState.Loading -> {
+                StatsStatusScreen(
+                    navController = navController,
+                    loading = true,
+                )
+                return
+            }
+
+            StatsScreenState.Empty -> {
+                StatsStatusScreen(navController = navController)
+                return
+            }
+
+            is StatsScreenState.Error -> {
+                StatsStatusScreen(
+                    navController = navController,
+                    errorMessage = stringResource(state.messageResId),
+                    onRetry = viewModel::retry,
+                )
+                return
+            }
+
+            is StatsScreenState.Success -> state.data
+        }
+
+    val indexChips = data.selectedPeriodIndex
+    val mostPlayedSongs = data.mostPlayedSongs
+    val mostPlayedSongsStats = data.visibleRankedSongs
+    val mostPlayedArtists = data.mostPlayedArtists
+    val mostPlayedAlbums = data.mostPlayedAlbums
+    val firstEvent = data.firstEvent
+    val selectedOption = data.selectedOption
+    val listeningByHour = data.listeningByHour
+    val listeningByDayOfWeek = data.listeningByDayOfWeek
+    val listeningSummary = data.listeningSummary
+    val songsById = remember(mostPlayedSongs) { mostPlayedSongs.associateBy { it.id } }
 
     val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
     val currentDate = remember { LocalDateTime.now() }
-    var isYearPickerOpen by remember { mutableStateOf(false) }
 
     val availableYears =
         remember(currentDate, firstEvent) {
@@ -197,361 +236,257 @@ fun StatsScreen(
                 .toList()
         }
 
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
-    val color1 = MaterialTheme.colorScheme.primary
-    val color2 = MaterialTheme.colorScheme.secondary
-    val color3 = MaterialTheme.colorScheme.tertiary
-    val color4 = MaterialTheme.colorScheme.primaryContainer
-    val color5 = MaterialTheme.colorScheme.secondaryContainer
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (!disableBlur) {
-            Box(
+    Scaffold(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.stats),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                subtitle = {
+                    Text(
+                        text = stringResource(R.string.settings_stats_subtitle),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = viewModel::showYearPicker,
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.auto_awesome),
+                            contentDescription = stringResource(R.string.year_in_music),
+                        )
+                    }
+                },
+                scrollBehavior = topAppBarScrollBehavior,
+            )
+        },
+    ) { scaffoldPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                contentPadding =
+                    LocalPlayerAwareWindowInsets.current
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                        .asPaddingValues(),
                 modifier =
                     Modifier
+                        .widthIn(max = 1040.dp)
+                        .fillMaxHeight()
                         .fillMaxWidth()
-                        .fillMaxSize(0.7f)
                         .align(Alignment.TopCenter)
-                        .zIndex(-1f)
-                        .drawWithCache {
-                            val width = this.size.width
-                            val height = this.size.height
-                            val brush1 =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            color1.copy(alpha = 0.38f),
-                                            color1.copy(alpha = 0.24f),
-                                            color1.copy(alpha = 0.14f),
-                                            color1.copy(alpha = 0.06f),
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(width * 0.15f, height * 0.1f),
-                                    radius = width * 0.55f,
-                                )
-                            val brush2 =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            color2.copy(alpha = 0.34f),
-                                            color2.copy(alpha = 0.2f),
-                                            color2.copy(alpha = 0.11f),
-                                            color2.copy(alpha = 0.05f),
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(width * 0.85f, height * 0.2f),
-                                    radius = width * 0.65f,
-                                )
-                            val brush3 =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            color3.copy(alpha = 0.3f),
-                                            color3.copy(alpha = 0.17f),
-                                            color3.copy(alpha = 0.09f),
-                                            color3.copy(alpha = 0.04f),
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(width * 0.3f, height * 0.45f),
-                                    radius = width * 0.6f,
-                                )
-                            val brush4 =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            color4.copy(alpha = 0.26f),
-                                            color4.copy(alpha = 0.14f),
-                                            color4.copy(alpha = 0.08f),
-                                            color4.copy(alpha = 0.03f),
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(width * 0.7f, height * 0.5f),
-                                    radius = width * 0.7f,
-                                )
-                            val brush5 =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            color5.copy(alpha = 0.22f),
-                                            color5.copy(alpha = 0.12f),
-                                            color5.copy(alpha = 0.06f),
-                                            color5.copy(alpha = 0.02f),
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(width * 0.5f, height * 0.75f),
-                                    radius = width * 0.8f,
-                                )
-                            val overlayBrush =
-                                Brush.verticalGradient(
-                                    colors =
-                                        listOf(
-                                            Color.Transparent,
-                                            Color.Transparent,
-                                            surfaceColor.copy(alpha = 0.22f),
-                                            surfaceColor.copy(alpha = 0.55f),
-                                            surfaceColor,
-                                        ),
-                                    startY = height * 0.4f,
-                                    endY = height,
-                                )
-                            onDrawBehind {
-                                drawRect(brush = brush1)
-                                drawRect(brush = brush2)
-                                drawRect(brush = brush3)
-                                drawRect(brush = brush4)
-                                drawRect(brush = brush5)
-                                drawRect(brush = overlayBrush)
-                            }
-                        },
-            )
-        }
+                        .padding(top = scaffoldPadding.calculateTopPadding()),
+            ) {
+            item(key = "rangeControls", contentType = "controls") {
+                StatsFilterPanel(modifier = Modifier.animateItem()) {
+                    ChoiceChipsRow(
+                        chips =
+                            when (selectedOption) {
+                                OptionStats.WEEKS -> weeklyDates
+                                OptionStats.MONTHS -> monthlyDates
+                                OptionStats.YEARS -> yearlyDates
+                                OptionStats.CONTINUOUS ->
+                                    listOf(
+                                        StatPeriod.WEEK_1.ordinal to pluralStringResource(R.plurals.n_week, 1, 1),
+                                        StatPeriod.MONTH_1.ordinal to pluralStringResource(R.plurals.n_month, 1, 1),
+                                        StatPeriod.MONTH_3.ordinal to pluralStringResource(R.plurals.n_month, 3, 3),
+                                        StatPeriod.MONTH_6.ordinal to pluralStringResource(R.plurals.n_month, 6, 6),
+                                        StatPeriod.YEAR_1.ordinal to pluralStringResource(R.plurals.n_year, 1, 1),
+                                        StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
+                                    )
+                            },
+                        options =
+                            listOf(
+                                OptionStats.CONTINUOUS to stringResource(R.string.continuous),
+                                OptionStats.WEEKS to stringResource(R.string.weeks),
+                                OptionStats.MONTHS to stringResource(R.string.months),
+                                OptionStats.YEARS to stringResource(R.string.years),
+                            ),
+                        selectedOption = selectedOption,
+                        onSelectionChange = viewModel::onOptionSelected,
+                        currentValue = indexChips,
+                        onValueUpdate = viewModel::onChipIndexChanged,
+                    )
+                }
+            }
 
-        LazyColumn(
-            state = lazyListState,
-            contentPadding =
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                    .asPaddingValues(),
-            modifier =
-                Modifier.windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-                ),
-        ) {
-            item(contentType = "chips") {
-                ChoiceChipsRow(
-                    chips =
-                        when (selectedOption) {
-                            OptionStats.WEEKS -> {
-                                weeklyDates
-                            }
-
-                            OptionStats.MONTHS -> {
-                                monthlyDates
-                            }
-
-                            OptionStats.YEARS -> {
-                                yearlyDates
-                            }
-
-                            OptionStats.CONTINUOUS -> {
-                                listOf(
-                                    StatPeriod.WEEK_1.ordinal to pluralStringResource(R.plurals.n_week, 1, 1),
-                                    StatPeriod.MONTH_1.ordinal to pluralStringResource(R.plurals.n_month, 1, 1),
-                                    StatPeriod.MONTH_3.ordinal to pluralStringResource(R.plurals.n_month, 3, 3),
-                                    StatPeriod.MONTH_6.ordinal to pluralStringResource(R.plurals.n_month, 6, 6),
-                                    StatPeriod.YEAR_1.ordinal to pluralStringResource(R.plurals.n_year, 1, 1),
-                                    StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
-                                )
-                            }
-                        },
-                    options =
-                        listOf(
-                            OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
-                            OptionStats.WEEKS to stringResource(R.string.weeks),
-                            OptionStats.MONTHS to stringResource(R.string.months),
-                            OptionStats.YEARS to stringResource(R.string.years),
-                        ),
-                    selectedOption = selectedOption,
-                    onSelectionChange = viewModel::onOptionSelected,
-                    currentValue = indexChips,
-                    onValueUpdate = viewModel::onChipIndexChanged,
+            item(key = "overview", contentType = "overview") {
+                StatsSummarySection(
+                    summary = listeningSummary,
+                    modifier = Modifier.animateItem(),
                 )
             }
 
-            item(contentType = "summary") {
-                AnimatedContent(
-                    targetState = listeningSummary,
-                    transitionSpec = {
-                        slideInVertically(tween(300)) { it / 4 } + fadeIn(tween(300)) togetherWith
-                            slideOutVertically(tween(200)) { -it / 4 } + fadeOut(tween(200))
-                    },
-                    modifier = Modifier.animateItem(),
-                    label = "summary",
-                ) { summary ->
-                    StatsSummarySection(summary = summary)
-                }
-            }
-
-            item(contentType = "highlights") {
-                AnimatedContent(
-                    targetState = mostPlayedArtists.firstOrNull() to mostPlayedSongsStats.firstOrNull(),
-                    transitionSpec = {
-                        slideInVertically(tween(300)) { it / 4 } + fadeIn(tween(300)) togetherWith
-                            slideOutVertically(tween(200)) { -it / 4 } + fadeOut(tween(200))
-                    },
-                    modifier = Modifier.animateItem(),
-                    label = "highlights",
-                ) { (topArtist, topSong) ->
-                    StatsHighlightsSection(
-                        topArtist = topArtist,
-                        topSong = topSong,
-                        topSongEntity = mostPlayedSongs.firstOrNull(),
-                        navController = navController,
-                    )
-                }
-            }
-
-            item(key = "artistDonutChart", contentType = "chart") {
+            item(key = "artistDistribution", contentType = "insights") {
                 if (mostPlayedArtists.isNotEmpty()) {
-                    Spacer(modifier = Modifier.size(8.dp))
-                    SegmentedArtistChart(
-                        artists = mostPlayedArtists.take(5),
-                        totalTimeListened = listeningSummary.totalTimeListened,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .animateItem(),
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
+                    Column(modifier = Modifier.animateItem()) {
+                        StatsSectionHeader(
+                            title = stringResource(R.string.stats_artist_breakdown),
+                            supportingText = mostPlayedArtists.take(5).size.toString(),
+                        )
+                        SegmentedArtistChart(
+                            artists = mostPlayedArtists.take(5),
+                            totalTimeListened = listeningSummary.totalTimeListened,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
                 }
             }
 
-            item(key = "listeningByDayChart", contentType = "chart") {
-                if (listeningByDayOfWeek.isNotEmpty()) {
-                    ListeningByDayChart(
-                        slots = listeningByDayOfWeek,
-                        currentDayOfWeek = remember { LocalDateTime.now().dayOfWeek.value % 7 },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .animateItem(),
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
+            item(key = "spotlights", contentType = "spotlights") {
+                val topSong = mostPlayedSongsStats.firstOrNull()
+                StatsHighlightsSection(
+                    topArtist = mostPlayedArtists.firstOrNull(),
+                    topSong = topSong,
+                    topSongEntity =
+                        topSong?.let { rankedSong ->
+                            mostPlayedSongs.firstOrNull { it.id == rankedSong.id }
+                        },
+                    navController = navController,
+                    modifier = Modifier.animateItem(),
+                )
             }
 
-            item(key = "listeningByHourChart", contentType = "chart") {
-                if (listeningByHour.isNotEmpty()) {
-                    ListeningByHourChart(
-                        slots = listeningByHour,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .animateItem(),
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
+            item(key = "listeningPatterns", contentType = "insights") {
+                StatsListeningPatterns(
+                    daySlots = listeningByDayOfWeek,
+                    hourSlots = listeningByHour,
+                    currentDayOfWeek = remember { LocalDateTime.now().dayOfWeek.value % 7 },
+                    modifier = Modifier.animateItem(),
+                )
             }
 
             item(key = "mostPlayedSongsHeader", contentType = "sectionHeader") {
-                NavigationTitle(
-                    title = "${mostPlayedSongsStats.size} ${stringResource(id = R.string.songs)}",
+                StatsSongsHeader(
+                    title = stringResource(R.string.stats_top_songs),
+                    count = data.rankedSongCount,
+                    shuffleEnabled = playerConnection != null && mostPlayedSongs.isNotEmpty(),
+                    onShuffle = {
+                        playerConnection?.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.most_played_songs),
+                                items = mostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
+                            ),
+                        )
+                    },
                     modifier = Modifier.animateItem(),
                 )
             }
 
-            val maxPlayCount = mostPlayedSongsStats.maxOfOrNull { it.songCountListened } ?: 1
+            val visibleRankedSongs = mostPlayedSongsStats
 
             itemsIndexed(
-                items = mostPlayedSongsStats,
+                items = visibleRankedSongs,
                 key = { _, song -> song.id },
                 contentType = { _, _ -> "ranked_song" },
             ) { index, song ->
-                val playFraction = song.songCountListened.toFloat() / maxPlayCount
-                val medalColor =
-                    when (index) {
-                        0 -> Color(0xFFFFD700)
-                        1 -> Color(0xFFC0C0C0)
-                        2 -> Color(0xFFCD7F32)
-                        else -> null
-                    }
-                val progressBarColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-
-                ListItem(
-                    title = "${index + 1}. ${song.title}",
-                    subtitle =
-                        joinByBullet(
-                            pluralStringResource(R.plurals.n_time, song.songCountListened, song.songCountListened),
-                            makeTimeString(song.timeListened),
-                        ),
-                    thumbnailContent = {
-                        Box {
-                            ItemThumbnail(
-                                thumbnailUrl = song.thumbnailUrl,
-                                isActive = song.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.size(56.dp),
+                val songEntity = songsById[song.id] ?: return@itemsIndexed
+                RankedSongItem(
+                    song = song,
+                    rank = index + 1,
+                    count = visibleRankedSongs.size,
+                    isActive = song.id == mediaMetadata?.id,
+                    isPlaying = isPlaying,
+                    onClick = {
+                        if (song.id == mediaMetadata?.id) {
+                            playerConnection?.player?.togglePlayPause()
+                        } else {
+                            playerConnection?.playQueue(
+                                YouTubeQueue(
+                                    endpoint = WatchEndpoint(song.id),
+                                    preloadItem = songEntity.toMediaMetadata(),
+                                ),
                             )
-                            if (medalColor != null) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .size(18.dp)
-                                            .clip(CircleShape)
-                                            .background(medalColor),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "${index + 1}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Black,
-                                    )
-                                }
-                            }
                         }
                     },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .drawBehind {
-                                drawRect(
-                                    color = progressBarColor,
-                                    size = Size(size.width * playFraction, size.height),
-                                )
-                            }.combinedClickable(
-                                onClick = {
-                                    if (song.id == mediaMetadata?.id) {
-                                        playerConnection.player.togglePlayPause()
-                                    } else {
-                                        playerConnection.playQueue(
-                                            YouTubeQueue(
-                                                endpoint = WatchEndpoint(song.id),
-                                                preloadItem = mostPlayedSongs[index].toMediaMetadata(),
-                                            ),
-                                        )
-                                    }
-                                },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
-                                        SongMenu(
-                                            originalSong = mostPlayedSongs[index],
-                                            navController = navController,
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                            ).animateItem(),
-                )
-            }
-
-            item(key = "mostPlayedArtists", contentType = "sectionHeader") {
-                NavigationTitle(
-                    title = "${mostPlayedArtists.size} ${stringResource(id = R.string.artists)}",
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuState.show {
+                            SongMenu(
+                                originalSong = songEntity,
+                                navController = navController,
+                                onDismiss = menuState::dismiss,
+                            )
+                        }
+                    },
                     modifier = Modifier.animateItem(),
                 )
             }
 
-            itemsIndexed(
-                items = mostPlayedArtists.chunked(2),
-                key = { _, rowArtists -> rowArtists.first().id },
-                contentType = { _, _ -> "artist_row" },
-            ) { _, rowArtists ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
+            if (data.canExpandSongList) {
+                item(key = "songListExpansion", contentType = "sectionAction") {
+                    TextButton(
+                        onClick = viewModel::toggleSongListExpanded,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .animateItem(),
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (data.isSongListExpanded) {
+                                        R.drawable.expand_less
+                                    } else {
+                                        R.drawable.expand_more
+                                    },
+                                ),
+                            contentDescription = null,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text =
+                                if (data.isSongListExpanded) {
+                                    stringResource(R.string.stats_show_top_songs)
+                                } else {
+                                    stringResource(R.string.stats_show_all_songs, data.rankedSongCount)
+                                },
+                        )
+                    }
+                }
+            }
+
+            item(key = "mostPlayedArtists", contentType = "sectionHeader") {
+                StatsSectionHeader(
+                    title = stringResource(R.string.artists),
+                    supportingText = mostPlayedArtists.size.toString(),
+                    modifier = Modifier.animateItem(),
+                )
+            }
+
+            item(key = "artistsShelf", contentType = "artists_shelf") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    rowArtists.forEach { artist ->
+                    items(
+                        items = mostPlayedArtists,
+                        key = { artist -> artist.id },
+                        contentType = { "artist" },
+                    ) { artist ->
                         LocalArtistsGrid(
                             title = artist.artist.name,
                             subtitle =
@@ -562,7 +497,7 @@ fun StatsScreen(
                             thumbnailUrl = artist.artist.thumbnailUrl,
                             modifier =
                                 Modifier
-                                    .weight(1f)
+                                    .width(164.dp)
                                     .combinedClickable(
                                         onClick = { navController.navigate("artist/${artist.id}") },
                                         onLongClick = {
@@ -575,16 +510,16 @@ fun StatsScreen(
                                                 )
                                             }
                                         },
-                                    ).animateItem(),
+                                    ),
                         )
                     }
-                    repeat(2 - rowArtists.size) { Spacer(modifier = Modifier.weight(1f)) }
                 }
             }
 
             item(key = "mostPlayedAlbumsHeader", contentType = "sectionHeader") {
-                NavigationTitle(
-                    title = "${mostPlayedAlbums.size} ${stringResource(id = R.string.albums)}",
+                StatsSectionHeader(
+                    title = stringResource(R.string.albums),
+                    supportingText = mostPlayedAlbums.size.toString(),
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -600,11 +535,12 @@ fun StatsScreen(
                             key = { _, album -> album.id },
                             contentType = { _, _ -> "album_grid" },
                         ) { index, album ->
+                            val playCount = album.songCountListened ?: 0
                             LocalAlbumsGrid(
                                 title = "${index + 1}. ${album.album.title}",
                                 subtitle =
                                     joinByBullet(
-                                        pluralStringResource(R.plurals.n_time, album.songCountListened!!, album.songCountListened),
+                                        pluralStringResource(R.plurals.n_time, playCount, playCount),
                                         makeTimeString(album.timeListened?.toLong()),
                                     ),
                                 thumbnailUrl = album.album.thumbnailUrl,
@@ -612,7 +548,7 @@ fun StatsScreen(
                                 isPlaying = isPlaying,
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
+                                        .width(172.dp)
                                         .combinedClickable(
                                             onClick = { navController.navigate("album/${album.id}") },
                                             onLongClick = {
@@ -631,64 +567,319 @@ fun StatsScreen(
                     }
                 }
             }
-        }
 
-        if (mostPlayedSongs.isNotEmpty()) {
-            HideOnScrollFAB(
-                visible = true,
-                lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
-                label = stringResource(R.string.shuffle),
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = context.getString(R.string.most_played_songs),
-                            items = mostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
-                        ),
-                    )
-                },
-            )
         }
-
-        TopAppBar(
-            title = { Text(stringResource(R.string.stats)) },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                }
-            },
-            actions = {
-                IconButton(
-                    onClick = { isYearPickerOpen = true },
-                    onLongClick = {},
-                ) {
-                    Icon(
-                        painterResource(R.drawable.auto_awesome),
-                        contentDescription = stringResource(R.string.year_in_music),
-                    )
-                }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                ),
-        )
 
         if (isYearPickerOpen) {
             StatsYearPickerDialog(
                 availableYears = availableYears,
                 selectedYear = currentDate.year,
                 onSelectYear = { year ->
-                    isYearPickerOpen = false
+                    viewModel.dismissYearPicker()
                     navController.navigate("year_in_music?year=$year")
                 },
-                onDismiss = { isYearPickerOpen = false },
+                onDismiss = viewModel::dismissYearPicker,
             )
         }
+    }
+}
+}
+
+@Composable
+private fun StatsStatusScreen(
+    navController: NavController,
+    loading: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: (() -> Unit)? = null,
+) {
+    Scaffold(
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text(stringResource(R.string.stats)) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                    }
+                },
+            )
+        },
+    ) { contentPadding ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (loading) {
+                LoadingIndicator(modifier = Modifier.size(48.dp))
+            } else {
+                Column(
+                    modifier = Modifier.widthIn(max = 420.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text =
+                            if (errorMessage == null) {
+                                stringResource(R.string.stats_empty_title)
+                            } else {
+                                errorMessage
+                            },
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (errorMessage == null) {
+                        Text(
+                            text = stringResource(R.string.stats_empty_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    if (onRetry != null) {
+                        Button(onClick = onRetry) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsFilterPanel(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.stats_time_range),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun StatsSongsHeader(
+    title: String,
+    count: Int,
+    shuffleEnabled: Boolean,
+    onShuffle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 24.dp, end = 16.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        FilledTonalButton(
+            onClick = onShuffle,
+            enabled = shuffleEnabled,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.shuffle),
+                contentDescription = null,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.shuffle))
+        }
+    }
+}
+
+@Composable
+private fun StatsListeningPatterns(
+    daySlots: List<ListeningBySlot>,
+    hourSlots: List<ListeningBySlot>,
+    currentDayOfWeek: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (daySlots.isEmpty() && hourSlots.isEmpty()) return
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.stats_listening_patterns),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        BoxWithConstraints {
+            if (maxWidth >= 720.dp && daySlots.isNotEmpty() && hourSlots.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ListeningByDayChart(
+                        slots = daySlots,
+                        currentDayOfWeek = currentDayOfWeek,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ListeningByHourChart(
+                        slots = hourSlots,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (daySlots.isNotEmpty()) {
+                        ListeningByDayChart(
+                            slots = daySlots,
+                            currentDayOfWeek = currentDayOfWeek,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (hourSlots.isNotEmpty()) {
+                        ListeningByHourChart(
+                            slots = hourSlots,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsSectionHeader(
+    title: String,
+    supportingText: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = supportingText,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RankedSongItem(
+    song: SongWithStats,
+    rank: Int,
+    count: Int,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rowShapes = ListItemDefaults.segmentedShapes(index = rank - 1, count = count)
+    val click = remember(song.id, onClick) { onClick }
+    val longClick = remember(song.id, onLongClick) { onLongClick }
+
+    SegmentedListItem(
+        onClick = click,
+        onLongClick = longClick,
+        shapes = rowShapes,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 1.dp),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        leadingContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = rank.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color =
+                        if (rank <= 3) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(24.dp),
+                )
+                ItemThumbnail(
+                    thumbnailUrl = song.thumbnailUrl,
+                    isActive = isActive,
+                    isPlaying = isPlaying,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.size(56.dp),
+                )
+            }
+        },
+        supportingContent = {
+            Text(
+                text =
+                    joinByBullet(
+                        pluralStringResource(
+                            R.plurals.n_time,
+                            song.songCountListened,
+                            song.songCountListened,
+                        ),
+                        makeTimeString(song.timeListened),
+                    ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    ) {
+        Text(
+            text = song.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -756,54 +947,94 @@ private fun StatsSummarySection(
 ) {
     if (summary.totalPlayCount == 0) return
 
-    Column(
+    Surface(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.elevatedCardColors(),
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.stats_total_time_listened),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    text = makeTimeString(summary.totalTimeListened) ?: "-",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+        BoxWithConstraints(modifier = Modifier.padding(20.dp)) {
+            val expanded = maxWidth >= 680.dp
+            if (expanded) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StatsListeningTimeHero(
+                        summary = summary,
+                        modifier = Modifier.weight(1.2f),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_total_plays),
+                            value = summary.totalPlayCount.toString(),
+                        )
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_unique_songs),
+                            value = summary.uniqueSongsCount.toString(),
+                        )
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_unique_artists),
+                            value = summary.uniqueArtistsCount.toString(),
+                        )
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    StatsListeningTimeHero(summary = summary)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_total_plays),
+                            value = summary.totalPlayCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_unique_songs),
+                            value = summary.uniqueSongsCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        StatMetricCard(
+                            label = stringResource(R.string.stats_unique_artists),
+                            value = summary.uniqueArtistsCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
+    }
+}
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+@Composable
+private fun StatsListeningTimeHero(
+    summary: ListeningSummary,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            StatMetricCard(
-                label = stringResource(R.string.stats_total_plays),
-                value = summary.totalPlayCount.toString(),
-                modifier = Modifier.weight(1f),
+            Text(
+                text = stringResource(R.string.stats_total_time_listened),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            StatMetricCard(
-                label = stringResource(R.string.stats_unique_songs),
-                value = summary.uniqueSongsCount.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            StatMetricCard(
-                label = stringResource(R.string.stats_unique_artists),
-                value = summary.uniqueArtistsCount.toString(),
-                modifier = Modifier.weight(1f),
+            Text(
+                text = makeTimeString(summary.totalTimeListened) ?: "-",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
@@ -815,29 +1046,23 @@ private fun StatMetricCard(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(
+    Column(
         modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -847,12 +1072,13 @@ private fun StatsHighlightsSection(
     topSong: SongWithStats?,
     topSongEntity: Song?,
     navController: NavController,
+    modifier: Modifier = Modifier,
 ) {
     if (topArtist == null && topSong == null) return
 
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -952,45 +1178,54 @@ private fun SegmentedArtistChart(
         remember(totalTimeListened, visibleArtistTime) {
             totalTimeListened.takeIf { it > 0L } ?: visibleArtistTime
         }
-    val chartTotalTime =
-        remember(displayTotalTime, visibleArtistTime) {
-            maxOf(displayTotalTime, visibleArtistTime)
-        }
-    if (chartTotalTime == 0L) return
+    if (visibleArtistTime == 0L) return
 
     val segmentData =
-        remember(artists, chartTotalTime) {
-            var startAngle = -90f
-            artists.mapNotNull { artist ->
-                val time = artist.timeListened?.toLong() ?: 0L
-                val sweep = (time.toFloat() / chartTotalTime) * 360f
-                if (sweep < 1f) return@mapNotNull null
-                val entry = Triple(artist, startAngle, sweep)
-                startAngle += sweep
-                entry
+        remember(artists, visibleArtistTime) {
+            val rawSegments =
+                artists.mapNotNull { artist ->
+                    val time = artist.timeListened?.toLong() ?: 0L
+                    if (time <= 0L) return@mapNotNull null
+                    artist to (time.toFloat() / visibleArtistTime) * 360f
+                }
+
+            if (rawSegments.isEmpty()) {
+                emptyList()
+            } else {
+                val topArtistId = rawSegments.maxByOrNull { it.second }?.first?.id
+                val retainedSegments =
+                    rawSegments
+                        .filter { (_, sweep) -> sweep >= 1f }
+                        .ifEmpty { listOf(rawSegments.maxBy { it.second }) }
+                val retainedSweep = retainedSegments.sumOf { it.second.toDouble() }.toFloat()
+                val remainderSweep = (360f - retainedSweep).coerceAtLeast(0f)
+                val completedSegments =
+                    retainedSegments.map { (artist, sweep) ->
+                        artist to
+                            if (artist.id == topArtistId) {
+                                sweep + remainderSweep
+                            } else {
+                                sweep
+                            }
+                    }
+
+                var startAngle = -90f
+                completedSegments.map { (artist, sweep) ->
+                    Triple(artist, startAngle, sweep).also {
+                        startAngle += sweep
+                    }
+                }
             }
         }
-    val visibleSegmentSweep =
-        remember(segmentData) {
-            segmentData.sumOf { it.third.toDouble() }.toFloat()
-        }
-    val remainingSweep =
-        remember(visibleSegmentSweep) {
-            (360f - visibleSegmentSweep)
-                .takeIf { it >= 1f }
-        }
 
+    val primaryColor = MaterialTheme.colorScheme.primary
     val segmentColors =
-        remember {
-            listOf(
-                Color(0xFF6750A4),
-                Color(0xFF4A8FA8),
-                Color(0xFF4CAF50),
-                Color(0xFFFF9800),
-                Color(0xFFE91E63),
+        remember(primaryColor, segmentData.size) {
+            createDistinctArtistColors(
+                seedColor = primaryColor,
+                count = segmentData.size,
             )
         }
-    val remainingColor = MaterialTheme.colorScheme.surfaceVariant
 
     ElevatedCard(
         modifier = modifier,
@@ -1026,17 +1261,6 @@ private fun SegmentedArtistChart(
                                         color = segmentColors[i % segmentColors.size],
                                         startAngle = startAngle + gapDeg / 2f,
                                         sweepAngle = (sweep - gapDeg).coerceAtLeast(0f),
-                                        useCenter = false,
-                                        topLeft = arcRect.topLeft,
-                                        size = Size(arcRect.width, arcRect.height),
-                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
-                                    )
-                                }
-                                remainingSweep?.let { sweep ->
-                                    drawArc(
-                                        color = remainingColor,
-                                        startAngle = -90f + visibleSegmentSweep,
-                                        sweepAngle = sweep,
                                         useCenter = false,
                                         topLeft = arcRect.topLeft,
                                         size = Size(arcRect.width, arcRect.height),
@@ -1092,6 +1316,27 @@ private fun SegmentedArtistChart(
                 )
             }
         }
+    }
+}
+
+private fun createDistinctArtistColors(
+    seedColor: Color,
+    count: Int,
+): List<Color> {
+    if (count <= 0) return emptyList()
+
+    val seedHsv = FloatArray(3)
+    AndroidColor.colorToHSV(seedColor.toArgb(), seedHsv)
+    val saturation = seedHsv[1].coerceAtLeast(0.62f)
+    val brightness = seedHsv[2].coerceIn(0.68f, 0.88f)
+    val hueStep = 360f / count
+
+    return List(count) { index ->
+        Color.hsv(
+            hue = (seedHsv[0] + hueStep * index) % 360f,
+            saturation = saturation,
+            value = brightness,
+        )
     }
 }
 
@@ -1189,11 +1434,14 @@ private fun ListeningByHourChart(
 
     val peakLabel =
         remember(peakSlot) {
-            peakSlot?.let {
-                val hour = it % 12
-                val adjusted = if (hour == 0) 12 else hour
-                val amPm = if (it < 12) "AM" else "PM"
-                "$adjusted$amPm"
+            val formatter = DateTimeFormatter.ofPattern("ha")
+            peakSlot?.let { LocalTime.of(it, 0).format(formatter) }
+        }
+    val timeLabels =
+        remember {
+            val formatter = DateTimeFormatter.ofPattern("ha")
+            listOf(0, 6, 12, 18, 0).map { hour ->
+                LocalTime.of(hour, 0).format(formatter)
             }
         }
 
@@ -1260,11 +1508,13 @@ private fun ListeningByHourChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(text = "12AM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(text = "6AM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(text = "12PM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(text = "6PM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(text = "12AM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                timeLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

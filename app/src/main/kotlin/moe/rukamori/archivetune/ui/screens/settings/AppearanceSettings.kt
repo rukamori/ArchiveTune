@@ -9,9 +9,13 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -55,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -76,6 +82,7 @@ import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
+import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
 import moe.rukamori.archivetune.constants.GridItemsSizeKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
@@ -93,6 +100,7 @@ import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
+import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
@@ -141,6 +149,11 @@ fun AppearanceSettings(navController: NavController) {
             PlayerDesignStyleKey,
             defaultValue = PlayerDesignStyle.V4,
         )
+    val (showPlayerVolumeBar, onShowPlayerVolumeBarChange) =
+        rememberPreference(
+            ShowPlayerVolumeBarKey,
+            defaultValue = true,
+        )
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(
             HidePlayerThumbnailKey,
@@ -177,6 +190,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             DisableAnimationsKey,
             defaultValue = defaultDisableAnimations,
+        )
+    val (forceHighRefreshRate, onForceHighRefreshRateChange) =
+        rememberPreference(
+            ForceHighRefreshRateKey,
+            defaultValue = false,
         )
     val (blurRadius, onBlurRadiusChange) = rememberPreference(BlurRadiusKey, defaultValue = 48f)
     val (backdropEnabled, onBackdropEnabledChange) = rememberPreference(BackdropEnabledKey, defaultValue = true)
@@ -297,6 +315,9 @@ fun AppearanceSettings(navController: NavController) {
 
             else -> true
         }
+    val isVolumeBarSupported =
+        playerDesignStyle == PlayerDesignStyle.V7 ||
+            playerDesignStyle == PlayerDesignStyle.V8
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkMode, isSystemInDarkTheme) {
@@ -308,6 +329,13 @@ fun AppearanceSettings(navController: NavController) {
             key = ChipSortTypeKey,
             defaultValue = LibraryFilter.LIBRARY,
         )
+    val supportedHighestFps = rememberSupportedHighestFps()
+    val isHighRefreshRateSupported = supportedHighestFps > HIGH_REFRESH_RATE_THRESHOLD_FPS
+
+    ApplyRefreshRate(
+        isEnabled = forceHighRefreshRate && isHighRefreshRateSupported,
+        targetFps = supportedHighestFps,
+    )
 
     var showSliderOptionDialog by rememberSaveable {
         mutableStateOf(false)
@@ -488,6 +516,21 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.force_high_refresh_rate)) },
+                        description =
+                            stringResource(
+                                R.string.max_supported_refresh_rate,
+                                supportedHighestFps.roundToInt(),
+                            ),
+                        icon = { Icon(painterResource(R.drawable.speed), null) },
+                        checked = forceHighRefreshRate,
+                        onCheckedChange = onForceHighRefreshRateChange,
+                        isEnabled = isHighRefreshRateSupported,
+                    )
+                }
+
+                item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.blur_intensity)) },
                         description = stringResource(R.string.blur_intensity_value, blurRadius.roundToInt()),
@@ -592,6 +635,22 @@ fun AppearanceSettings(navController: NavController) {
                                 PlayerDesignStyle.V9 -> stringResource(R.string.player_design_v9)
                             }
                         },
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.show_player_volume_bar)) },
+                        description =
+                            if (isVolumeBarSupported) {
+                                null
+                            } else {
+                                stringResource(R.string.player_volume_bar_v7_v8_only)
+                            },
+                        icon = { Icon(painterResource(R.drawable.volume_up), null) },
+                        checked = showPlayerVolumeBar,
+                        onCheckedChange = onShowPlayerVolumeBarChange,
+                        isEnabled = isVolumeBarSupported,
                     )
                 }
 
@@ -905,6 +964,76 @@ fun AppearanceSettings(navController: NavController) {
         }
     }
 }
+
+@Composable
+fun ApplyRefreshRate(
+    isEnabled: Boolean,
+    targetFps: Float,
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val activity = remember(context) { context.findActivity() }
+    val requestedFps = if (isEnabled) targetFps else DEFAULT_REFRESH_RATE_REQUEST
+
+    DisposableEffect(view, activity, requestedFps) {
+        applyRefreshRate(
+            view = view,
+            activity = activity,
+            requestedFps = requestedFps,
+        )
+
+        onDispose {
+            applyRefreshRate(
+                view = view,
+                activity = activity,
+                requestedFps = DEFAULT_REFRESH_RATE_REQUEST,
+            )
+        }
+    }
+}
+
+@Composable
+private fun rememberSupportedHighestFps(): Float {
+    val view = LocalView.current
+
+    return remember(view) {
+        val display = view.display
+        display?.supportedModes
+            ?.maxOfOrNull { mode -> mode.refreshRate }
+            ?: display?.refreshRate
+            ?: DEFAULT_STANDARD_REFRESH_RATE_FPS
+    }
+}
+
+private fun applyRefreshRate(
+    view: View,
+    activity: Activity?,
+    requestedFps: Float,
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        view.setRequestedFrameRate(requestedFps)
+        return
+    }
+
+    activity?.window?.let { window ->
+        val attributes = window.attributes
+        if (attributes.preferredRefreshRate != requestedFps) {
+            attributes.preferredRefreshRate = requestedFps
+            window.attributes = attributes
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
+
+private const val HIGH_REFRESH_RATE_THRESHOLD_FPS = 60.5f
+private const val DEFAULT_STANDARD_REFRESH_RATE_FPS = 60f
+private const val DEFAULT_REFRESH_RATE_REQUEST = 0f
 
 @Composable
 private fun SliderStyleOptionCard(

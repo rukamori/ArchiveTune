@@ -18,6 +18,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,8 +49,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -53,6 +60,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -66,12 +74,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -94,11 +104,13 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionErrorUi
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionEvent
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionScreenState
+import moe.rukamori.archivetune.viewmodels.MusicRecognitionSettingsUiState
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionViewModel
 import moe.rukamori.archivetune.viewmodels.RecognitionHistoryItemUiModel
 import moe.rukamori.archivetune.viewmodels.RecognitionHistorySheetUiState
@@ -116,12 +128,26 @@ fun MusicRecognitionScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val historySheetState by viewModel.historySheetState.collectAsStateWithLifecycle()
-    val modalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val onNavigateBack = remember(navController) { { navController.navigateUp(); Unit } }
+    val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
+    val historyModalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val settingsModalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val onNavigateBack =
+        remember(navController) {
+            {
+                navController.navigateUp()
+                Unit
+            }
+        }
     val onShowHistory = remember(viewModel) { { viewModel.onHistoryVisibilityChanged(true) } }
+    val onShowSettings = remember(viewModel) { { viewModel.onSettingsVisibilityChanged(true) } }
     val onListen = remember(viewModel) { { viewModel.onListenRequested() } }
     val onCancel = remember(viewModel) { { viewModel.onCancelRecognition() } }
     val onHistoryDismiss = remember(viewModel) { { viewModel.onHistoryVisibilityChanged(false) } }
+    val onSettingsDismiss = remember(viewModel) { { viewModel.onSettingsVisibilityChanged(false) } }
+    val onBackgroundRecognitionEnabledChange =
+        remember(viewModel) {
+            { enabled: Boolean -> viewModel.onBackgroundRecognitionEnabledChanged(enabled) }
+        }
     val onHistoryQueryChange =
         remember(viewModel) { { query: String -> viewModel.onHistoryQueryChanged(query) } }
     val onSearch =
@@ -170,6 +196,7 @@ fun MusicRecognitionScreen(
         state = screenState,
         onNavigateBack = onNavigateBack,
         onShowHistory = onShowHistory,
+        onShowSettings = onShowSettings,
         onListen = onListen,
         onCancel = onCancel,
         onAllowPermission = onListen,
@@ -180,11 +207,20 @@ fun MusicRecognitionScreen(
     if (historySheetState.visible) {
         RecognitionHistoryBottomSheet(
             state = historySheetState,
-            sheetState = modalSheetState,
+            sheetState = historyModalSheetState,
             onDismiss = onHistoryDismiss,
             onQueryChange = onHistoryQueryChange,
             onSearch = onSearch,
             onOpenUri = onOpenUri,
+        )
+    }
+
+    if (settingsState.visible) {
+        MusicRecognitionSettingsBottomSheet(
+            state = settingsState,
+            sheetState = settingsModalSheetState,
+            onDismiss = onSettingsDismiss,
+            onBackgroundRecognitionEnabledChange = onBackgroundRecognitionEnabledChange,
         )
     }
 }
@@ -195,6 +231,7 @@ private fun MusicRecognitionContent(
     state: MusicRecognitionScreenState,
     onNavigateBack: () -> Unit,
     onShowHistory: () -> Unit,
+    onShowSettings: () -> Unit,
     onListen: () -> Unit,
     onCancel: () -> Unit,
     onAllowPermission: () -> Unit,
@@ -238,6 +275,12 @@ private fun MusicRecognitionContent(
                             contentDescription = stringResource(R.string.music_recognition_history),
                         )
                     }
+                    FilledTonalIconButton(onClick = onShowSettings) {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = stringResource(R.string.music_recognition_settings),
+                        )
+                    }
                 },
                 colors =
                     TopAppBarDefaults.largeTopAppBarColors(
@@ -272,51 +315,67 @@ private fun MusicRecognitionContent(
             ) {
                 item(
                     key = MusicRecognitionStateItemKey,
-                    contentType =
-                        when (state) {
-                            is MusicRecognitionScreenState.Empty -> "empty"
-                            is MusicRecognitionScreenState.Error -> "error"
-                            is MusicRecognitionScreenState.Loading -> "loading"
-                            is MusicRecognitionScreenState.Success -> "success"
-                        },
+                    contentType = MusicRecognitionStateItemContentType,
                 ) {
-                    when (state) {
-                        is MusicRecognitionScreenState.Empty -> {
-                            RecognitionTaskState(
-                                phase = null,
-                                onListen = onListen,
-                                onCancel = onCancel,
+                    val motionScheme = MaterialTheme.motionScheme
+                    AnimatedContent(
+                        targetState = state,
+                        contentKey = MusicRecognitionScreenState::contentKey,
+                        transitionSpec = {
+                            (
+                                fadeIn(motionScheme.defaultEffectsSpec()) +
+                                    scaleIn(
+                                        animationSpec = motionScheme.defaultSpatialSpec(),
+                                        initialScale = StateTransitionInitialScale,
+                                    )
+                            ).togetherWith(
+                                fadeOut(motionScheme.fastEffectsSpec()) +
+                                    scaleOut(
+                                        animationSpec = motionScheme.fastSpatialSpec(),
+                                        targetScale = StateTransitionTargetScale,
+                                    ),
                             )
-                        }
+                        },
+                        label = "MusicRecognitionState",
+                    ) { animatedState ->
+                        when (animatedState) {
+                            is MusicRecognitionScreenState.Empty -> {
+                                RecognitionTaskState(
+                                    phase = null,
+                                    onListen = onListen,
+                                    onCancel = onCancel,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Loading -> {
-                            RecognitionTaskState(
-                                phase = state.phase,
-                                onListen = onListen,
-                                onCancel = onCancel,
-                            )
-                        }
+                            is MusicRecognitionScreenState.Loading -> {
+                                RecognitionTaskState(
+                                    phase = animatedState.phase,
+                                    onListen = onListen,
+                                    onCancel = onCancel,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Error -> {
-                            RecognitionErrorState(
-                                error = state.error,
-                                onListen = onListen,
-                                onAllowPermission = onAllowPermission,
-                            )
-                        }
+                            is MusicRecognitionScreenState.Error -> {
+                                RecognitionErrorState(
+                                    error = animatedState.error,
+                                    onListen = onListen,
+                                    onAllowPermission = onAllowPermission,
+                                )
+                            }
 
-                        is MusicRecognitionScreenState.Success -> {
-                            val searchResult =
-                                remember(state.track.searchQuery, onSearch) {
-                                    { onSearch(state.track.searchQuery) }
-                                }
-                            RecognitionResultContent(
-                                track = state.track,
-                                useWideLayout = useWideLayout,
-                                onListenAgain = onListen,
-                                onSearch = searchResult,
-                                onOpenUri = onOpenUri,
-                            )
+                            is MusicRecognitionScreenState.Success -> {
+                                val searchResult =
+                                    remember(animatedState.track.searchQuery, onSearch) {
+                                        { onSearch(animatedState.track.searchQuery) }
+                                    }
+                                RecognitionResultContent(
+                                    track = animatedState.track,
+                                    useWideLayout = useWideLayout,
+                                    onListenAgain = onListen,
+                                    onSearch = searchResult,
+                                    onOpenUri = onOpenUri,
+                                )
+                            }
                         }
                     }
                 }
@@ -344,6 +403,7 @@ private fun RecognitionTaskState(
             RecognitionPhaseUi.Processing -> R.drawable.cached
             null -> R.drawable.mic
         }
+    val heroShape = MaterialShapes.Cookie9Sided.toShape()
 
     Column(
         modifier =
@@ -353,31 +413,46 @@ private fun RecognitionTaskState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        Surface(
-            modifier = Modifier.size(176.dp),
-            shape = CircleShape,
-            color =
-                if (isLoading) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
+        Box(
+            modifier = Modifier.size(192.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (phase == RecognitionPhaseUi.Processing) {
-                    LoadingIndicator(modifier = Modifier.size(72.dp))
-                } else {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint =
-                            if (isLoading) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
+            if (phase == RecognitionPhaseUi.Listening) {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                )
+            }
+            Surface(
+                modifier = Modifier.size(152.dp),
+                shape = heroShape,
+                color =
+                    if (isLoading) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                contentColor =
+                    if (isLoading) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (phase == RecognitionPhaseUi.Processing) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(72.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                        )
+                    }
                 }
             }
         }
@@ -393,13 +468,10 @@ private fun RecognitionTaskState(
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
-                if (phase == RecognitionPhaseUi.Listening) {
-                    LoadingIndicator(modifier = Modifier.size(32.dp))
-                }
             }
         }
 
-        if (phase == RecognitionPhaseUi.Listening) {
+        if (isLoading) {
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.heightIn(min = 48.dp),
@@ -437,23 +509,37 @@ private fun RecognitionErrorState(
     val isPermissionError = error == MusicRecognitionErrorUi.PermissionRequired
     val title =
         when (error) {
-            MusicRecognitionErrorUi.PermissionRequired ->
+            MusicRecognitionErrorUi.PermissionRequired -> {
                 stringResource(R.string.music_recognition_permission_title)
-            MusicRecognitionErrorUi.NoMatch ->
+            }
+
+            MusicRecognitionErrorUi.NoMatch -> {
                 stringResource(R.string.music_recognition_no_match)
-            else ->
+            }
+
+            else -> {
                 stringResource(R.string.music_recognition_error)
+            }
         }
     val message =
         when (error) {
-            MusicRecognitionErrorUi.PermissionRequired ->
+            MusicRecognitionErrorUi.PermissionRequired -> {
                 stringResource(R.string.music_recognition_permission_desc)
-            MusicRecognitionErrorUi.SignatureFailed ->
+            }
+
+            MusicRecognitionErrorUi.SignatureFailed -> {
                 stringResource(R.string.music_recognition_signature_failed)
+            }
+
             MusicRecognitionErrorUi.RecordingFailed,
-            MusicRecognitionErrorUi.RecognitionFailed ->
+            MusicRecognitionErrorUi.RecognitionFailed,
+            -> {
                 stringResource(R.string.music_recognition_recognition_failed)
-            MusicRecognitionErrorUi.NoMatch -> null
+            }
+
+            MusicRecognitionErrorUi.NoMatch -> {
+                null
+            }
         }
 
     Column(
@@ -549,11 +635,11 @@ private fun RecognitionResultContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Card(
+        ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge,
             colors =
-                CardDefaults.cardColors(
+                CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
         ) {
@@ -606,6 +692,7 @@ private fun ResultIdentity(
     artworkSize: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val artworkShape = MaterialShapes.Cookie4Sided.toShape()
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -614,6 +701,7 @@ private fun ResultIdentity(
         CoverArt(
             artworkUrl = track.artworkUrl,
             displaySize = artworkSize,
+            shape = artworkShape,
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -846,6 +934,80 @@ private fun MetadataPill(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun MusicRecognitionSettingsBottomSheet(
+    state: MusicRecognitionSettingsUiState,
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+    onBackgroundRecognitionEnabledChange: (Boolean) -> Unit,
+) {
+    val description =
+        stringResource(
+            if (state.backgroundRecognitionAvailable) {
+                R.string.music_recognition_background_description
+            } else {
+                R.string.music_recognition_background_foss_description
+            },
+        )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .widthIn(max = 680.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp)
+                    .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.music_recognition_settings),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = stringResource(R.string.close),
+                    )
+                }
+            }
+
+            SwitchPreference(
+                title = {
+                    Text(stringResource(R.string.music_recognition_background_title))
+                },
+                description = description,
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.mic),
+                        contentDescription = null,
+                    )
+                },
+                checked = state.backgroundRecognitionEnabled,
+                onCheckedChange = onBackgroundRecognitionEnabledChange,
+                isEnabled = state.backgroundRecognitionAvailable,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun RecognitionHistoryBottomSheet(
     state: RecognitionHistorySheetUiState,
     sheetState: SheetState,
@@ -929,7 +1091,7 @@ private fun RecognitionHistoryBottomSheet(
                                     }
                                 } else {
                                     null
-                                }
+                                },
                         )
                     },
                     expanded = false,
@@ -1028,10 +1190,11 @@ private fun RecognitionHistoryListItem(
         },
         overlineContent = {
             Text(
-                text = stringResource(
-                    R.string.music_recognition_history_recognized_at,
-                    item.recognizedAt,
-                ),
+                text =
+                    stringResource(
+                        R.string.music_recognition_history_recognized_at,
+                        item.recognizedAt,
+                    ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1077,7 +1240,7 @@ private fun RecognitionHistoryListItem(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         },
@@ -1134,6 +1297,7 @@ private fun RecognitionHistoryEmptyState(
 private fun CoverArt(
     artworkUrl: String?,
     displaySize: Dp,
+    shape: Shape = MaterialTheme.shapes.large,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1152,7 +1316,7 @@ private fun CoverArt(
 
     Surface(
         modifier = Modifier.size(displaySize),
-        shape = MaterialTheme.shapes.large,
+        shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         if (imageRequest != null) {
@@ -1177,4 +1341,27 @@ private fun CoverArt(
 }
 
 private const val RecognitionHistoryItemContentType = "recognition_history_item"
+private const val MusicRecognitionStateItemContentType = "music_recognition_state"
 private const val MusicRecognitionStateItemKey = "music_recognition_state"
+private const val StateTransitionInitialScale = 0.96f
+private const val StateTransitionTargetScale = 0.98f
+
+private enum class MusicRecognitionContentKey {
+    Empty,
+    Listening,
+    Processing,
+    Success,
+    Error,
+}
+
+private fun MusicRecognitionScreenState.contentKey(): MusicRecognitionContentKey =
+    when (this) {
+        is MusicRecognitionScreenState.Empty -> MusicRecognitionContentKey.Empty
+        is MusicRecognitionScreenState.Loading ->
+            when (phase) {
+                RecognitionPhaseUi.Listening -> MusicRecognitionContentKey.Listening
+                RecognitionPhaseUi.Processing -> MusicRecognitionContentKey.Processing
+            }
+        is MusicRecognitionScreenState.Success -> MusicRecognitionContentKey.Success
+        is MusicRecognitionScreenState.Error -> MusicRecognitionContentKey.Error
+    }

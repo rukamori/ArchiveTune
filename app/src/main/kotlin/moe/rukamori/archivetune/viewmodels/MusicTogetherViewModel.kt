@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.together.TogetherRoomSettings
 import moe.rukamori.archivetune.together.TogetherRoomState
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.together.UpdateMusicTogetherPreferencesUseCase
+import moe.rukamori.archivetune.together.isConnectedToSession
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
@@ -562,7 +563,7 @@ class MusicTogetherViewModel
                         ?.isPending == true
             val isJoinedAsAcceptedGuest = isJoinedAsGuest && !isWaitingApproval
             val disableJoinUi = isHostRole || isCreatingSessionLoading || isJoinedAsGuest
-            val active = state !is TogetherSessionState.Idle
+            val active = state.isConnectedToSession
             val status =
                 MusicTogetherStatusUiModel(
                     titleResId = R.string.together_status,
@@ -597,7 +598,7 @@ class MusicTogetherViewModel
                     active = active,
                     error = state is TogetherSessionState.Error,
                     waitingApproval = isWaitingApproval,
-                    canLeave = active,
+                    canLeave = active || isJoining,
                 )
             val sessionShare =
                 when (state) {

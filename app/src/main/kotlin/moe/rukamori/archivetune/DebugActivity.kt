@@ -9,10 +9,12 @@
 
 package moe.rukamori.archivetune
 
+import android.content.ClipData
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -49,14 +51,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,7 +73,11 @@ import java.util.Locale
 class DebugActivity : ComponentActivity() {
     companion object {
         const val EXTRA_STACK_TRACE = "extra_stack_trace"
+        private const val CRASH_LOG_FILE_NAME = "Crashlog.txt"
+        private const val SHARED_CRASH_LOG_DIRECTORY = "shared_crash_logs"
     }
+
+    private var shareJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,10 +108,46 @@ class DebugActivity : ComponentActivity() {
                             startActivity(intent)
                         }
                     },
+                    onShare = { shareCrashReport(reportText) },
                     onClose = { finish() },
                 )
             }
         }
+    }
+
+    private fun shareCrashReport(reportText: String) {
+        if (shareJob?.isActive == true) return
+
+        shareJob =
+            lifecycleScope.launch {
+                try {
+                    val crashLogUri =
+                        withContext(Dispatchers.IO) {
+                            val shareDirectory = File(cacheDir, SHARED_CRASH_LOG_DIRECTORY)
+                            check(shareDirectory.exists() || shareDirectory.mkdirs())
+                            val crashLogFile = File(shareDirectory, CRASH_LOG_FILE_NAME)
+                            crashLogFile.writeText(reportText, Charsets.UTF_8)
+                            FileProvider.getUriForFile(
+                                this@DebugActivity,
+                                "$packageName.FileProvider",
+                                crashLogFile,
+                            )
+                        }
+
+                    val shareIntent =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_STREAM, crashLogUri)
+                            clipData = ClipData.newRawUri(CRASH_LOG_FILE_NAME, crashLogUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    startActivity(Intent.createChooser(shareIntent, getString(R.string.share_logs)))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    Toast.makeText(this@DebugActivity, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 }
 
@@ -110,9 +159,9 @@ private fun CrashReportScreen(
     stack: String,
     reportText: String,
     onRestart: () -> Unit,
+    onShare: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
 
     Surface(
@@ -125,14 +174,7 @@ private fun CrashReportScreen(
             deviceInfo = deviceInfo,
             stack = stack,
             onCopyAll = { clipboard.setText(AnnotatedString(reportText)) },
-            onShareAll = {
-                val share =
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, reportText)
-                    }
-                context.startActivity(Intent.createChooser(share, "Share crash log"))
-            },
+            onShareAll = onShare,
             onRestart = onRestart,
             onClose = onClose,
         )

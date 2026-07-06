@@ -38,6 +38,8 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
+import moe.rukamori.archivetune.morideobfuscator.MoriCipherConfig
+import moe.rukamori.archivetune.morideobfuscator.MoriCipherRuntime
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
@@ -49,6 +51,7 @@ import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.MoriCipherUpdateScheduler
 import moe.rukamori.archivetune.utils.clearPlaybackAuthSession
 import moe.rukamori.archivetune.utils.clearPlaybackWebAuthSession
 import moe.rukamori.archivetune.utils.dataStore
@@ -61,6 +64,7 @@ import timber.log.Timber
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.net.Proxy
+import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
@@ -115,6 +119,13 @@ class App :
     }
 
     private fun initializeCriticalSync() {
+        MoriCipherRuntime.initialize(
+            MoriCipherConfig(
+                cacheDirectory = File(noBackupFilesDir, "mori_cipher"),
+                proxyProvider = { YouTube.streamProxy },
+            ),
+        )
+        MoriCipherUpdateScheduler.schedule(this)
         CanvasArtworkPlaybackCache.init(this)
         ArchiveTuneCanvas.initialize(BuildConfig.CANVAS_BEARER_TOKEN)
         PaxsenixLyrics.setUserAgent("ArchiveTune", BuildConfig.VERSION_NAME)
@@ -139,6 +150,11 @@ class App :
     }
 
     private fun initializeDeferredAsync() {
+        applicationScope.launch(Dispatchers.IO) {
+            MoriCipherRuntime
+                .refresh(force = false)
+                .onFailure { Timber.w(it, "Mori cipher background initialization failed") }
+        }
         applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = dataStore.data.first()
@@ -172,14 +188,6 @@ class App :
 
                 if (prefs[UseLoginForBrowse] != false) {
                     YouTube.useLoginForBrowse = true
-                }
-
-                // Pre-warm BotGuard token generator
-                val initialVisitor = prefs[VisitorDataKey] ?: YouTube.visitorData
-                if (!initialVisitor.isNullOrBlank()) {
-                    applicationScope.launch(Dispatchers.IO) {
-                        BotGuardTokenGenerator.preWarm(initialVisitor)
-                    }
                 }
 
                 // Apply random theme on startup if enabled
@@ -246,9 +254,9 @@ class App :
                     YouTube.authState = authState
                     if (previousFingerprint != authState.fingerprint) {
                         YTPlayerUtils.clearPlaybackAuthCaches()
-                        val newSessionId = authState.sessionId
-                        if (!newSessionId.isNullOrBlank()) {
-                            BotGuardTokenGenerator.preWarm(newSessionId)
+                        val visitorData = authState.visitorData
+                        if (!visitorData.isNullOrBlank()) {
+                            BotGuardTokenGenerator.preWarm(visitorData)
                         }
                     }
                 }

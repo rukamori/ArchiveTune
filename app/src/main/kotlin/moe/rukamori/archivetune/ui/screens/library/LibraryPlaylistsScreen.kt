@@ -16,7 +16,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +42,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -136,9 +134,6 @@ fun LibraryPlaylistsScreen(
         )
     val (sortDescending, onSortDescendingChange) = rememberPreference(PlaylistSortDescendingKey, true)
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
-    val isDarkTheme = isSystemInDarkTheme()
-    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val filteredPlaylistIds by database
         .playlistIdsByTags(
@@ -487,20 +482,19 @@ fun LibraryPlaylistsScreen(
                     }
                 }
             } else {
-                val spaceBetween = if (isDarkTheme && pureBlack) 0.dp else 12.dp
                 val listPlaylists = if (sortType == PlaylistSortType.CUSTOM) mutablePlaylists else visiblePlaylists
                 val showDragHandles = sortType == PlaylistSortType.CUSTOM && !locked
                 LazyColumn(
                     state = lazyListState,
                     contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(spaceBetween),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     itemsIndexed(
                         items = listPlaylists,
                         key = { _, playlist -> playlist.id },
                         contentType = { _, _ -> "playlist_list" },
-                    ) { index, playlist ->
+                    ) { _, playlist ->
                         ReorderableItem(
                             state = reorderableState,
                             key = playlist.id,
@@ -509,14 +503,6 @@ fun LibraryPlaylistsScreen(
                                     compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                                 },
                         ) {
-                            val showDivider = isDarkTheme && pureBlack && index > 0
-                            if (showDivider) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                    thickness = 0.5.dp,
-                                )
-                            }
                             PlaylistListCard(
                                 playlist = playlist,
                                 onClick = {

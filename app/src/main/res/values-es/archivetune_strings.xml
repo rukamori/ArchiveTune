@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Explorar</string>
     <string name="local_history">Local</string>
@@ -49,7 +49,7 @@
     <string name="dislike_all">No me gustan todas</string>
     <string name="sort_by_last_updated">Fecha actualizada</string>
     <string name="link_copied">Enlace copiado en el portapapeles</string>
-    <string name="now_playing">Reproduciendo ahora</string>
+    <string name="now_playing">Reproduciendo</string>
     <string name="close">Cerrar</string>
     <string name="minimum_volume">Volumen minino</string>
     <string name="maximum_volume">Volumen máximo</string>
@@ -169,7 +169,7 @@
     <string name="clear_canvas_cache">Limpiar el cache del canvas</string>
     <string name="player_stream_client_web_remix">Cliente Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Extiende el soporte de formatos a costa de velocidad. El descifrado de firmas JavaScript introduce un retraso de inicio de entre 5 y 10 segundos.</string>
-    <string name="settings_section_player_content">Reproductor y Contenido</string>
+    <string name="settings_section_player_content">Reproductor y contenido</string>
     <string name="similar_content">Contenido similar</string>
     <string name="year_in_music">Año en Music</string>
     <string name="total_listening_time">Tiempo Total Escuchado</string>
@@ -550,4 +550,7 @@
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Donar</string>
     <string name="aod_customize_sample_title">Midnight Archive</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Utiliza el extractor del backend ArchiveTune para las transmisiones de reproducción. Se recomienda seleccionar «Audio de alta calidad automático».</string>
+    <string name="player_stream_client_archivetune_extractor">Extractor de ArchiveTune</string>
+    <string name="unblock_artist">Desbloquear artista</string>
 </resources>

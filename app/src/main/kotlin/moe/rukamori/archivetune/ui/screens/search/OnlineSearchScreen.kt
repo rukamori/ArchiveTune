@@ -394,24 +394,31 @@ private fun segmentedSearchItemShape(
     count: Int,
 ): Shape =
     when {
-        count <= 1 -> RoundedCornerShape(SearchGroupOuterCorner)
-        index == 0 ->
+        count <= 1 -> {
+            RoundedCornerShape(SearchGroupOuterCorner)
+        }
+
+        index == 0 -> {
             RoundedCornerShape(
                 topStart = SearchGroupOuterCorner,
                 topEnd = SearchGroupOuterCorner,
                 bottomEnd = SearchGroupInnerCorner,
                 bottomStart = SearchGroupInnerCorner,
             )
+        }
 
-        index == count - 1 ->
+        index == count - 1 -> {
             RoundedCornerShape(
                 topStart = SearchGroupInnerCorner,
                 topEnd = SearchGroupInnerCorner,
                 bottomEnd = SearchGroupOuterCorner,
                 bottomStart = SearchGroupOuterCorner,
             )
+        }
 
-        else -> RoundedCornerShape(SearchGroupInnerCorner)
+        else -> {
+            RoundedCornerShape(SearchGroupInnerCorner)
+        }
     }
 
 @Composable

@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Jelajah</string>
     <string name="music_recognition_tap_to_listen">Ketuk untuk mendengarkan</string>
@@ -482,11 +482,8 @@
     <string name="ai_fetch_models">Ambil model</string>
     <string name="ai_model_search">Golek model</string>
     <string name="ai_model_no_results">Ora ana model yang cocok dengan pencarian Kowe</string>
-    <string name="ai_translation">Terjemahan AI</string>
-    <string name="ai_translation_target">Target terjemahan</string>
     <string name="ai_api_connected">API terhubung</string>
     <string name="ai_api_test_failed">Uji API gagal</string>
     <string name="ai_translation_menu">Terjemahan AI</string>
-    <string name="ai_translating_lyrics">Menerjemahkan Lirik...</string>
     <string name="about_content_desc_donate">Donasi</string>
 </resources>

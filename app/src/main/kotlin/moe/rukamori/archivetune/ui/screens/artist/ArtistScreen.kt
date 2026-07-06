@@ -58,7 +58,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -115,6 +117,7 @@ import coil3.size.Size
 import coil3.toBitmap
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -165,6 +168,9 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.ArtistAction
+import moe.rukamori.archivetune.viewmodels.ArtistBlockState
+import moe.rukamori.archivetune.viewmodels.ArtistEvent
 import moe.rukamori.archivetune.viewmodels.ArtistViewModel
 import java.util.Locale
 
@@ -183,16 +189,61 @@ fun ArtistScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
-    val artistPage = viewModel.artistPage
+    val loadedArtistPage = viewModel.artistPage
     val libraryArtist by viewModel.libraryArtist.collectAsStateWithLifecycle()
-    val librarySongs by viewModel.librarySongs.collectAsStateWithLifecycle()
-    val libraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
+    val loadedLibrarySongs by viewModel.librarySongs.collectAsStateWithLifecycle()
+    val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
+    val blockState by viewModel.blockState.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val isArtistBlocked = (blockState as? ArtistBlockState.Success)?.isBlocked == true
+    val artistPage =
+        remember(loadedArtistPage, isArtistBlocked) {
+            if (isArtistBlocked) {
+                loadedArtistPage?.copy(
+                    artist =
+                        loadedArtistPage.artist.copy(
+                            playEndpoint = null,
+                            shuffleEndpoint = null,
+                            radioEndpoint = null,
+                        ),
+                    sections = emptyList(),
+                )
+            } else {
+                loadedArtistPage
+            }
+        }
+    val librarySongs = remember(loadedLibrarySongs, isArtistBlocked) { loadedLibrarySongs.takeUnless { isArtistBlocked }.orEmpty() }
+    val libraryAlbums = remember(loadedLibraryAlbums, isArtistBlocked) { loadedLibraryAlbums.takeUnless { isArtistBlocked }.orEmpty() }
 
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLocal by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ArtistEvent.Share -> {
+                    val shareIntent =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, event.link)
+                        }
+                    context.startActivity(Intent.createChooser(shareIntent, null))
+                }
+
+                is ArtistEvent.CopyLink -> {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.copy_link), event.link))
+                    Toast.makeText(context, R.string.link_copied, Toast.LENGTH_SHORT).show()
+                }
+
+                is ArtistEvent.ShowMessage -> {
+                    snackbarHostState.showSnackbar(context.getString(event.messageRes))
+                }
+            }
+        }
+    }
 
     // System bars padding
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
@@ -1182,44 +1233,37 @@ fun ArtistScreen(
             }
         },
         actions = {
-            // Share/Copy link button
             IconButton(
                 onClick = {
-                    viewModel.artistPage?.artist?.shareLink?.let { link ->
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Artist Link", link)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, R.string.link_copied, Toast.LENGTH_SHORT).show()
+                    menuState.show {
+                        ArtistOverflowMenu(
+                            isBlocked = isArtistBlocked,
+                            blockActionEnabled =
+                                blockState !is ArtistBlockState.Loading &&
+                                    (
+                                        artistPage
+                                            ?.artist
+                                            ?.title
+                                            .orEmpty()
+                                            .isNotBlank() ||
+                                            libraryArtist
+                                                ?.artist
+                                                ?.name
+                                                .orEmpty()
+                                                .isNotBlank()
+                                    ),
+                            onAction = { action ->
+                                viewModel.onAction(action)
+                                menuState.dismiss()
+                            },
+                        )
                     }
                 },
                 onLongClick = {},
             ) {
                 Icon(
-                    painterResource(R.drawable.link),
-                    contentDescription = null,
-                )
-            }
-
-            // Share button
-            IconButton(
-                onClick = {
-                    val shareIntent =
-                        Intent().apply {
-                            action = Intent.ACTION_SEND
-                            type = "text/plain"
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                viewModel.artistPage?.artist?.shareLink
-                                    ?: "https://music.youtube.com/channel/${viewModel.artistId}",
-                            )
-                        }
-                    context.startActivity(Intent.createChooser(shareIntent, null))
-                },
-                onLongClick = {},
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.share),
-                    contentDescription = null,
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = stringResource(R.string.more_options),
                 )
             }
         },
@@ -1231,6 +1275,81 @@ fun ArtistScreen(
             },
     )
 }
+
+@Composable
+private fun ArtistOverflowMenu(
+    isBlocked: Boolean,
+    blockActionEnabled: Boolean,
+    onAction: (ArtistAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        ArtistOverflowMenuItem(
+            text = stringResource(R.string.share),
+            iconRes = R.drawable.share,
+            index = 0,
+            count = ArtistOverflowMenuItemCount,
+            onClick = { onAction(ArtistAction.Share) },
+        )
+        ArtistOverflowMenuItem(
+            text = stringResource(R.string.copy_link),
+            iconRes = R.drawable.copy,
+            index = 1,
+            count = ArtistOverflowMenuItemCount,
+            onClick = { onAction(ArtistAction.CopyLink) },
+        )
+        ArtistOverflowMenuItem(
+            text = stringResource(if (isBlocked) R.string.unblock_artist else R.string.block_artist),
+            iconRes = R.drawable.block,
+            index = 2,
+            count = ArtistOverflowMenuItemCount,
+            enabled = blockActionEnabled,
+            onClick = { onAction(ArtistAction.ToggleBlock) },
+        )
+    }
+}
+
+@Composable
+private fun ArtistOverflowMenuItem(
+    text: String,
+    iconRes: Int,
+    index: Int,
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    SegmentedListItem(
+        onClick = onClick,
+        enabled = enabled,
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        leadingContent = {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+            )
+        },
+    ) {
+        Text(text = text)
+    }
+}
+
+private const val ArtistOverflowMenuItemCount = 3
 
 @Immutable
 private data class ArtistStatItemUiModel(

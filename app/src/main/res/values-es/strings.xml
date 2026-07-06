@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Inicio</string>
     <string name="songs">Canciones</string>
@@ -661,7 +661,7 @@
     <string name="updates_loading_commits">Cargando las últimas modificaciones</string>
     <string name="updates_recent_commits_count">%1$d commits recientes</string>
     <string name="updates_no_commits">Sin cambios recientes</string>
-    <string name="you_might_like_source">Podría gustarte la fuente</string>
+    <string name="you_might_like_source">Origen de las recomendaciones de las listas de reproducción</string>
     <string name="playlist_suggestion_source_title">Título de la lista de reproducción</string>
     <string name="playlist_suggestion_source_content">Contenido de la lista de reproducción</string>
     <string name="playlist_suggestion_source_both">Título y contenido de la lista de reproducción</string>
@@ -853,4 +853,36 @@
     <string name="no_saved_accounts">Aún no hay cuentas guardadas</string>
     <string name="remove_account">Eliminar cuenta</string>
     <string name="youtube_channels">Canales de YouTube</string>
+    <string name="enable_youlyplus_lyrics">Activar las letras de YouLyPlus</string>
+    <string name="source">Origen</string>
+    <plurals name="widget_total_plays">
+        <item quantity="one">Una reproducción</item>
+        <item quantity="many">%d reproducciones</item>
+        <item quantity="other">%d reproducciones</item>
+    </plurals>
+    <string name="widget_top_song_summary">Lo más destacado recientemente: %1$s</string>
+    <string name="widget_no_recent_songs">Aún no hay canciones recientes</string>
+    <string name="widget_no_genres">Aún no hay géneros</string>
+    <string name="widget_no_recommendations">Sin recomendaciones</string>
+    <string name="library_top_mixes_loading">Preparando tus mezclas de IA…</string>
+    <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
+    <string name="library_top_mixes_configure_ai">Configurar la IA</string>
+    <string name="app_icon_change_failed">No he podido cambiar el icono de la aplicación</string>
+    <string name="app_icon_load_failed">No se han podido cargar los iconos de las aplicaciones</string>
+    <string name="app_icon_empty">Sin iconos para la aplicación</string>
+    <plurals name="app_icon_count">
+        <item quantity="one">%d icono</item>
+        <item quantity="many">%d iconos</item>
+        <item quantity="other">%d iconos</item>
+    </plurals>
+    <string name="app_icon_community_notice">Los iconos de la comunidad los crean los usuarios y pueden cambiar con el tiempo.</string>
+    <string name="app_icon_identifier">ID %1$s</string>
+    <string name="app_icon_builtin_description">Icono original de ArchiveTune</string>
+    <string name="app_icon_community">Icono de la comunidad</string>
+    <string name="app_icon_builtin">Integrado en</string>
+    <string name="app_icon_available">Iconos disponibles</string>
+    <string name="app_icon_current">Icono actual</string>
+    <string name="app_icon_subtitle">Personaliza tu lanzador</string>
+    <string name="app_icon_default">Por defecto</string>
+    <string name="app_icon_description">Elige el icono del lanzador</string>
 </resources>

@@ -10,3 +10,6 @@
 [submodule "IconPack"]
 	path = IconPack
 	url = https://github.com/ArchiveTuneApp/IconPack
+[submodule "morideobfuscator"]
+	path = morideobfuscator
+	url = https://github.com/ArchiveTuneApp/morideobfuscator.git

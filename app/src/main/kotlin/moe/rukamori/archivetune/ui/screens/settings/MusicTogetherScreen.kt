@@ -277,8 +277,10 @@ private fun MusicTogetherContent(
                         HostControlsCard(host = model.host, viewModel = viewModel)
                     }
                 }
-                item(contentType = "join") {
-                    JoinControlsCard(join = model.join, viewModel = viewModel)
+                if (!model.status.active) {
+                    item(contentType = "join") {
+                        JoinControlsCard(join = model.join, viewModel = viewModel)
+                    }
                 }
             }
 
@@ -342,8 +344,10 @@ private fun MusicTogetherContent(
                     HostControlsCard(host = model.host, viewModel = viewModel)
                 }
             }
-            item(contentType = "join") {
-                JoinControlsCard(join = model.join, viewModel = viewModel)
+            if (!model.status.active) {
+                item(contentType = "join") {
+                    JoinControlsCard(join = model.join, viewModel = viewModel)
+                }
             }
             item(contentType = "participants") {
                 ParticipantsCard(participants = model.participants, viewModel = viewModel)

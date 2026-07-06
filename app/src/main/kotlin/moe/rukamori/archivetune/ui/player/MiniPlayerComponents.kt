@@ -80,7 +80,7 @@ import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.together.TogetherSessionState
+import moe.rukamori.archivetune.together.isConnectedToSession
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.absoluteValue
@@ -349,6 +349,7 @@ private fun MiniPlayerArtwork(
                         videoId = mediaMetadata?.id,
                         ytmUrl = baseThumbnailUrl,
                         lowDataMode = rememberLowDataModeActive(),
+                        isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                     )
                 AsyncImage(
                     model = thumbnailSwapState.displayUrl,
@@ -527,7 +528,7 @@ fun NewMiniPlayerContent(
             )
         } ?: Spacer(Modifier.weight(1f))
 
-        if (togetherSessionState !is TogetherSessionState.Idle) {
+        if (togetherSessionState.isConnectedToSession) {
             Spacer(modifier = Modifier.width(8.dp))
             Surface(
                 shape = RoundedCornerShape(999.dp),

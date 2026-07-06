@@ -51,8 +51,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -65,6 +70,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
@@ -84,6 +90,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButton
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButtonHeight
+import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryViewModel
@@ -93,10 +100,14 @@ import moe.rukamori.archivetune.viewmodels.SearchDiscoveryViewModel
 fun SearchScreen(
     navController: NavController,
     onSearchClick: () -> Unit,
+    headerScrollConnection: NestedScrollConnection? = null,
     viewModel: SearchDiscoveryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val tonalStart = MaterialTheme.colorScheme.primaryContainer
+    val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
     val lazyListState = rememberLazyListState()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
@@ -112,134 +123,168 @@ fun SearchScreen(
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-        modifier = Modifier.fillMaxSize(),
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .then(
+                    // Step 2b: attach the shell's floating-header connection here so Search's
+                    // scroll/fling writes Search's own header state and can't leak elsewhere.
+                    if (headerScrollConnection != null) {
+                        Modifier.nestedScroll(headerScrollConnection)
+                    } else {
+                        Modifier
+                    },
+                ),
     ) {
-        item(
-            key = "search_field",
-            contentType = "search_field",
-        ) {
-            SearchEntryField(
-                onClick = onSearchClick,
+        if (!disableBlur) {
+            Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .animateItem(),
-            )
-        }
-
-        item(
-            key = "search_tabs",
-            contentType = "search_tabs",
-        ) {
-            SearchDiscoveryTabs(
-                selectedTab = selectedTab,
-                onTabSelected = viewModel::selectTab,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .animateItem(),
-            )
-        }
-
-        when (val currentState = state) {
-            SearchDiscoveryScreenState.Loading -> {
-                item(
-                    key = "search_loading",
-                    contentType = "search_loading",
-                ) {
-                    SearchDiscoveryLoading(modifier = Modifier.animateItem())
-                }
-            }
-
-            SearchDiscoveryScreenState.Empty -> {
-                item(
-                    key = "search_empty",
-                    contentType = "search_empty",
-                ) {
-                    SearchStateMessage(
-                        message = stringResource(R.string.no_results_found),
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-            }
-
-            is SearchDiscoveryScreenState.Error -> {
-                item(
-                    key = "search_error",
-                    contentType = "search_error",
-                ) {
-                    SearchStateMessage(
-                        message = stringResource(currentState.messageResId),
-                        action = {
-                            Button(onClick = viewModel::retry) {
-                                Text(stringResource(R.string.retry_button))
-                            }
+                        .height(430.dp)
+                        .align(Alignment.TopCenter)
+                        .drawWithCache {
+                            val brush =
+                                Brush.verticalGradient(
+                                    0f to tonalStart.copy(alpha = 0.30f),
+                                    0.42f to tonalMiddle.copy(alpha = 0.14f),
+                                    1f to Color.Transparent,
+                                )
+                            onDrawBehind { drawRect(brush) }
                         },
-                        modifier = Modifier.animateItem(),
-                    )
-                }
+            )
+        }
+
+        LazyColumn(
+            state = lazyListState,
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item(
+                key = "search_field",
+                contentType = "search_field",
+            ) {
+                SearchEntryField(
+                    onClick = onSearchClick,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .animateItem(),
+                )
             }
 
-            is SearchDiscoveryScreenState.Success -> {
-                when (selectedTab) {
-                    SearchDiscoveryTab.EXPLORE -> {
-                        item(
-                            key = "search_explore_moods_title",
-                            contentType = "section_title",
-                        ) {
-                            NavigationTitle(
-                                title = stringResource(R.string.mood_and_genres),
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "search_explore_moods",
-                            contentType = "mood_genres_grid",
-                        ) {
-                            SearchMoodAndGenresGrid(
-                                data = currentState.data,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
+            item(
+                key = "search_tabs",
+                contentType = "search_tabs",
+            ) {
+                SearchDiscoveryTabs(
+                    selectedTab = selectedTab,
+                    onTabSelected = viewModel::selectTab,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .animateItem(),
+                )
+            }
+
+            when (val currentState = state) {
+                SearchDiscoveryScreenState.Loading -> {
+                    item(
+                        key = "search_loading",
+                        contentType = "search_loading",
+                    ) {
+                        SearchDiscoveryLoading(modifier = Modifier.animateItem())
                     }
+                }
 
-                    SearchDiscoveryTab.SUGGESTIONS -> {
-                        item(
-                            key = "search_suggestions_songs",
-                            contentType = "suggestion_songs",
-                        ) {
-                            SuggestedSongsSection(
-                                songs = currentState.data.suggestedSongs,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
+                SearchDiscoveryScreenState.Empty -> {
+                    item(
+                        key = "search_empty",
+                        contentType = "search_empty",
+                    ) {
+                        SearchStateMessage(
+                            message = stringResource(R.string.no_results_found),
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                is SearchDiscoveryScreenState.Error -> {
+                    item(
+                        key = "search_error",
+                        contentType = "search_error",
+                    ) {
+                        SearchStateMessage(
+                            message = stringResource(currentState.messageResId),
+                            action = {
+                                Button(onClick = viewModel::retry) {
+                                    Text(stringResource(R.string.retry_button))
+                                }
+                            },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                is SearchDiscoveryScreenState.Success -> {
+                    when (selectedTab) {
+                        SearchDiscoveryTab.EXPLORE -> {
+                            item(
+                                key = "search_explore_moods_title",
+                                contentType = "section_title",
+                            ) {
+                                NavigationTitle(
+                                    title = stringResource(R.string.mood_and_genres),
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "search_explore_moods",
+                                contentType = "mood_genres_grid",
+                            ) {
+                                SearchMoodAndGenresGrid(
+                                    data = currentState.data,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
 
-                        item(
-                            key = "search_suggestions_artists",
-                            contentType = "suggestion_artists",
-                        ) {
-                            SuggestedArtistsSection(
-                                artists = currentState.data.suggestedArtists,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
+                        SearchDiscoveryTab.SUGGESTIONS -> {
+                            item(
+                                key = "search_suggestions_songs",
+                                contentType = "suggestion_songs",
+                            ) {
+                                SuggestedSongsSection(
+                                    songs = currentState.data.suggestedSongs,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
 
-                        item(
-                            key = "search_suggestions_albums",
-                            contentType = "suggestion_albums",
-                        ) {
-                            TrendingAlbumsSection(
-                                albums = currentState.data.trendingAlbums,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
+                            item(
+                                key = "search_suggestions_artists",
+                                contentType = "suggestion_artists",
+                            ) {
+                                SuggestedArtistsSection(
+                                    artists = currentState.data.suggestedArtists,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+
+                            item(
+                                key = "search_suggestions_albums",
+                                contentType = "suggestion_albums",
+                            ) {
+                                TrendingAlbumsSection(
+                                    albums = currentState.data.trendingAlbums,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
                 }
@@ -305,6 +350,7 @@ private fun SearchDiscoveryTabs(
     PrimaryTabRow(
         selectedTabIndex = tabs.indexOf(selectedTab),
         modifier = modifier,
+        containerColor = Color.Transparent,
     ) {
         tabs.forEach { tab ->
             Tab(

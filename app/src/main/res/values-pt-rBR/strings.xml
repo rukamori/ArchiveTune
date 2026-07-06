@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Início</string>
     <string name="songs">Músicas</string>
@@ -6,6 +6,8 @@
     <string name="albums">Álbuns</string>
     <string name="playlists">Playlists</string>
     <plurals name="n_selected">
+        <item quantity="one">%d selecionado</item>
+        <item quantity="many">%d selecionados</item>
         <item quantity="other">%d selecionados</item>
     </plurals>
     <string name="history">Histórico</string>
@@ -42,11 +44,11 @@
     <string name="no_results_found">Nenhum resultado encontrado</string>
     <string name="top_results">Principais resultados</string>
     <string name="library_title">Sua biblioteca</string>
-    <string name="library_subtitle">Sua música, organizada para você</string>
-    <string name="library_playlists_subtitle">Todas as suas playlists, organizadas para você</string>
-    <string name="library_songs_subtitle">Todas as suas músicas, organizadas para você</string>
-    <string name="library_artists_subtitle">Todos os seus artistas em um só lugar</string>
-    <string name="library_albums_subtitle">Todos os seus álbuns, bem organizados</string>
+    <string name="library_subtitle">Sua música, organizada por você</string>
+    <string name="library_playlists_subtitle">Todas as suas playlists, organizadas por você</string>
+    <string name="library_songs_subtitle">Todas as suas músicas, organizadas por você</string>
+    <string name="library_artists_subtitle">Todos os seus artistas, em um só lugar</string>
+    <string name="library_albums_subtitle">Todos os seus álbuns, lindamente organizados</string>
     <string name="most_played_badge">MAIS TOCADAS</string>
     <string name="play_all">Tocar tudo</string>
     <string name="offline_shortcut">Offline</string>
@@ -148,6 +150,7 @@
     <string name="widget_listening_time_hours_minutes">%1$d h %2$d min</string>
     <plurals name="widget_total_plays">
         <item quantity="one">1 reprodução</item>
+        <item quantity="many">%d reproduções</item>
         <item quantity="other">%d reproduções</item>
     </plurals>
     <string name="widget_top_song_summary">Mais ouvida ultimamente: %1$s</string>
@@ -257,30 +260,37 @@
     <string name="duplicates_description_multiple">%d músicas já estão na sua playlist</string>
     <plurals name="n_song">
         <item quantity="one">%d música</item>
+        <item quantity="many">%d músicas</item>
         <item quantity="other">%d músicas</item>
     </plurals>
     <plurals name="n_artist">
         <item quantity="one">%d artista</item>
+        <item quantity="many">%d artistas</item>
         <item quantity="other">%d artistas</item>
     </plurals>
     <plurals name="n_album">
         <item quantity="one">%d álbum</item>
+        <item quantity="many">%d álbuns</item>
         <item quantity="other">%d álbuns</item>
     </plurals>
     <plurals name="n_playlist">
         <item quantity="one">%d playlist</item>
+        <item quantity="many">%d playlists</item>
         <item quantity="other">%d playlists</item>
     </plurals>
     <plurals name="n_week">
         <item quantity="one">%d semana</item>
+        <item quantity="many">%d semanas</item>
         <item quantity="other">%d semanas</item>
     </plurals>
     <plurals name="n_month">
         <item quantity="one">%d mês</item>
+        <item quantity="many">%d meses</item>
         <item quantity="other">%d meses</item>
     </plurals>
     <plurals name="n_year">
         <item quantity="one">%d ano</item>
+        <item quantity="many">%d anos</item>
         <item quantity="other">%d anos</item>
     </plurals>
     <string name="added_to_playlist">Adicionado a %s</string>
@@ -295,6 +305,7 @@
     <string name="end_of_song">Fim da música</string>
     <plurals name="minute">
         <item quantity="one">1 minuto</item>
+        <item quantity="many">%d minutos</item>
         <item quantity="other">%d minutos</item>
     </plurals>
     <string name="error_no_stream">Nenhum stream disponível</string>
@@ -739,7 +750,7 @@
     <string name="discord_show_when_paused_desc">Se ativado, o Rich Presence permanecerá visível durante a pausa com um ícone de pausa. Se desativado, o RPC desaparecerá quando pausado.</string>
     <string name="discord_paused">Pausado</string>
     <string name="logout_confirm_title">Confirmar saída</string>
-    <string name="logout_confirm_message">Tem certeza de que deseja sair do Discord?</string>
+    <string name="logout_confirm_message">Tem certeza de que deseja sair do Discord?.</string>
     <string name="logout_confirm_yes">Sair</string>
     <string name="logout_confirm_no">Cancelar</string>
     <string name="experiment_settings">Configurações experimentais</string>
@@ -881,7 +892,7 @@
     <string name="onboarding_community_donate_desc">Apoiar o desenvolvimento contínuo.</string>
     <string name="you_might_like">Você pode gostar</string>
     <string name="refresh_suggestions">Atualizar sugestões</string>
-    <string name="you_might_like_source">Fonte das sugestões</string>
+    <string name="you_might_like_source">Fonte de recomendações de playlists</string>
     <string name="playlist_suggestion_source_title">Título da playlist</string>
     <string name="playlist_suggestion_source_content">Conteúdo da playlist</string>
     <string name="playlist_suggestion_source_both">Título e conteúdo da playlist</string>
@@ -1007,4 +1018,6 @@
     <string name="hidden_playlists_description">Playlists ocultas da biblioteca aparecem aqui</string>
     <string name="no_hidden_playlists">Nenhuma playlist oculta</string>
     <string name="unhide">Reexibir</string>
+    <string name="source">Origem</string>
+    <string name="enable_youlyplus_lyrics">Ativar letras do YouLyPlus</string>
 </resources>

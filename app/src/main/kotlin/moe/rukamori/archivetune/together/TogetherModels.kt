@@ -102,3 +102,19 @@ sealed class TogetherSessionState {
         val recoverable: Boolean = true,
     ) : TogetherSessionState()
 }
+
+val TogetherSessionState.isConnectedToSession: Boolean
+    get() =
+        when (this) {
+            is TogetherSessionState.Hosting -> roomState != null
+
+            is TogetherSessionState.HostingOnline -> roomState != null
+
+            is TogetherSessionState.Joined -> true
+
+            TogetherSessionState.Idle,
+            is TogetherSessionState.Joining,
+            is TogetherSessionState.JoiningOnline,
+            is TogetherSessionState.Error,
+            -> false
+        }

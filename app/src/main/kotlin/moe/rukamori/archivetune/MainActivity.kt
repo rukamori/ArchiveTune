@@ -124,6 +124,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -297,6 +298,7 @@ import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -1134,7 +1136,15 @@ class MainActivity : ComponentActivity() {
                                 ).add(WindowInsets(top = AppBarHeight, bottom = bottom))
                         }
 
-                    val searchBarScrollBehavior =
+                    val homeScrollBehavior =
+                        appBarScrollBehavior(
+                            canScroll = {
+                                navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
+                                    navBackStackEntry?.destination?.route != Screens.Library.route &&
+                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                            },
+                        )
+                    val searchScrollBehavior =
                         appBarScrollBehavior(
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
@@ -1153,9 +1163,18 @@ class MainActivity : ComponentActivity() {
 
                     val handlePrimaryNavigationClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
                         if (isSelected) {
-                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                            coroutineScope.launch {
-                                searchBarScrollBehavior.state.resetHeightOffset()
+                            if (screen == Screens.Search) {
+                                openSearch()
+                                coroutineScope.launch { searchScrollBehavior.state.resetHeightOffset() }
+                            } else {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                when (screen) {
+                                    Screens.Home -> {
+                                        coroutineScope.launch { homeScrollBehavior.state.resetHeightOffset() }
+                                    }
+
+                                    else -> {}
+                                }
                             }
                         } else {
                             navController.navigate(screen.route) {
@@ -1168,29 +1187,31 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    LaunchedEffect(currentRoute) {
+                        when (currentRoute) {
+                            Screens.Home.route -> {
+                                homeScrollBehavior.state.resetHeightOffset()
+                            }
+
+                            Screens.Search.route -> {
+                                searchScrollBehavior.state.resetHeightOffset()
+                            }
+
+                            else -> {}
+                        }
+                    }
+
                     var previousRoute by rememberSaveable { mutableStateOf<String?>(null) }
 
                     LaunchedEffect(navBackStackEntry) {
                         val currentRoute = navBackStackEntry?.destination?.route
-                        val wasOnSettingsRootRoute = previousRoute == "settings"
-                        val wasOnScrollResetSourceRoute =
-                            previousRoute != null &&
-                                (previousRoute !in topLevelScreens || wasOnSettingsRootRoute) &&
-                                previousRoute?.startsWith(OnlineSearchResultRoutePrefix) != true
-                        val isReturningToHomeOrLibrary =
-                            currentRoute == Screens.Home.route ||
-                                currentRoute == Screens.Library.route
-
-                        if (wasOnScrollResetSourceRoute && isReturningToHomeOrLibrary) {
-                            searchBarScrollBehavior.state.resetHeightOffset()
-                            topAppBarScrollBehavior.state.resetHeightOffset()
-                        }
 
                         val isEnteringSubScreen =
                             currentRoute != null &&
                                 currentRoute !in topLevelScreens &&
                                 currentRoute.startsWith(OnlineSearchResultRoutePrefix) != true
                         if (isEnteringSubScreen) {
+                            topAppBarScrollBehavior.state.heightOffset = 0f
                             topAppBarScrollBehavior.state.contentOffset = 0f
                         }
 
@@ -1223,16 +1244,21 @@ class MainActivity : ComponentActivity() {
                             navBackStackEntry?.destination?.route in topLevelScreens
                         ) {
                             onQueryChange(TextFieldValue())
-                            if (navBackStackEntry?.destination?.route != Screens.Home.route) {
-                                searchBarScrollBehavior.state.resetHeightOffset()
-                                topAppBarScrollBehavior.state.resetHeightOffset()
-                            }
                         }
                     }
                     LaunchedEffect(active) {
                         if (active) {
-                            searchBarScrollBehavior.state.resetHeightOffset()
-                            topAppBarScrollBehavior.state.resetHeightOffset()
+                            when (currentRoute) {
+                                Screens.Home.route -> {
+                                    homeScrollBehavior.state.resetHeightOffset()
+                                }
+
+                                Screens.Search.route -> {
+                                    searchScrollBehavior.state.resetHeightOffset()
+                                }
+
+                                else -> {}
+                            }
                             searchBarFocusRequester.requestFocus()
                         }
                     }
@@ -1550,24 +1576,87 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                         val surfaceColor = MaterialTheme.colorScheme.surface
-                                        val currentScrollBehavior = if (shouldUseFloatingTopBar) searchBarScrollBehavior else topAppBarScrollBehavior
+                                        val currentScrollBehavior =
+                                            when (navBackStackEntry?.destination?.route) {
+                                                Screens.Home.route -> homeScrollBehavior
+
+                                                Screens.Search.route -> searchScrollBehavior
+
+                                                // Library hits else but is offset 0 (self-contained);
+                                                // sub-screens use the shared shell behavior.
+                                                else -> topAppBarScrollBehavior
+                                            }
                                         val isLibraryRoute = navBackStackEntry?.destination?.route == Screens.Library.route
+
+                                        // Rigid slide (Step 3): the header translates as a block via
+                                        // Modifier.offset while the M3 TopAppBar itself gets
+                                        // scrollBehavior = null (below), so it never collapses or
+                                        // double-renders. The floating behavior only listens to
+                                        // scroll (non-consuming) and updates heightOffset.
+                                        //
+                                        // heightOffsetLimit must be set from the measured header
+                                        // height. The header Box is a single shared shell composable
+                                        // whose size is identical for Home/Search, so onSizeChanged
+                                        // fires only once (size doesn't change on tab switch).
+                                        // Therefore: measure once here, then apply the limit to the
+                                        // CURRENT route's state via LaunchedEffect so every route gets
+                                        // its limit on entry (not just the first-measured one).
+                                        var headerHeightPx by remember { mutableStateOf(0) }
+                                        LaunchedEffect(currentScrollBehavior, headerHeightPx) {
+                                            if (headerHeightPx > 0 && !isLibraryRoute) {
+                                                val limit = -headerHeightPx.toFloat()
+                                                val state = currentScrollBehavior.state
+                                                if (state.heightOffsetLimit != limit) {
+                                                    state.heightOffsetLimit = limit
+                                                    state.heightOffset = state.heightOffset.coerceIn(limit, 0f)
+                                                }
+                                            }
+                                        }
 
                                         Box(
                                             modifier =
-                                                Modifier.offset {
-                                                    IntOffset(
-                                                        x = 0,
-                                                        y = if (isLibraryRoute) 0 else currentScrollBehavior.state.heightOffset.toInt(),
-                                                    )
-                                                },
+                                                Modifier
+                                                    .onSizeChanged { size ->
+                                                        if (size.height > 0) headerHeightPx = size.height
+                                                    }.offset {
+                                                        IntOffset(
+                                                            x = 0,
+                                                            y =
+                                                                if (isLibraryRoute) {
+                                                                    0
+                                                                } else {
+                                                                    currentScrollBehavior.state.heightOffset
+                                                                        .roundToInt()
+                                                                },
+                                                        )
+                                                    },
                                         ) {
-                                            // Gradient shadow background
+                                            // Gradient shadow background. It lives inside the
+                                            // translating Box (which moves by the full heightOffset,
+                                            // so the TopAppBar fully hides), but a counter-offset
+                                            // clamps the gradient's net translation to [-appBarHeight, 0]
+                                            // so it parks with its top band over the status bar instead
+                                            // of sliding fully off — a legibility scrim once the header
+                                            // is hidden.
                                             if (shouldShowBlurBackground) {
+                                                val appBarHeightPx = with(LocalDensity.current) { AppBarHeight.toPx() }
                                                 Box(
                                                     modifier =
                                                         Modifier
-                                                            .fillMaxWidth()
+                                                            .offset {
+                                                                if (isLibraryRoute) {
+                                                                    // Library owns its scroll; the shell gradient
+                                                                    // stays static (mirrors the header Box above and
+                                                                    // matches upstream, which ships a static Library
+                                                                    // gradient). Keeping it rendered avoids the
+                                                                    // Library→Home predictive-back scrim pop.
+                                                                    IntOffset(x = 0, y = 0)
+                                                                } else {
+                                                                    val raw = currentScrollBehavior.state.heightOffset
+                                                                    val clamped = raw.coerceAtLeast(-appBarHeightPx)
+                                                                    IntOffset(x = 0, y = (clamped - raw).roundToInt())
+                                                                }
+                                                            }.fillMaxWidth()
                                                             .height(
                                                                 AppBarHeight +
                                                                     with(LocalDensity.current) {
@@ -1692,12 +1781,16 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 scrollBehavior =
-                                                    if (navBackStackEntry?.destination?.route ==
-                                                        Screens.Library.route
+                                                    if (navBackStackEntry?.destination?.route == Screens.Library.route ||
+                                                        shouldUseFloatingTopBar
                                                     ) {
+                                                        // Library is fixed, and floating routes
+                                                        // (Home/Search) now slide rigidly via the
+                                                        // outer Box.offset — passing a behavior here
+                                                        // would make M3 collapse/co-render and
+                                                        // double-move the header. Only non-floating
+                                                        // sub-screens use M3's collapse behavior.
                                                         null
-                                                    } else if (shouldUseFloatingTopBar) {
-                                                        searchBarScrollBehavior
                                                     } else {
                                                         topAppBarScrollBehavior
                                                     },
@@ -2103,10 +2196,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 },
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .nestedScroll(searchBarScrollBehavior.nestedScrollConnection),
+                                modifier = Modifier.fillMaxSize(),
                             ) {
                                 var transitionDirection =
                                     AnimatedContentTransitionScope.SlideDirection.Left
@@ -2209,13 +2299,16 @@ class MainActivity : ComponentActivity() {
                                                     Modifier
                                                 },
                                             ).nestedScroll(
-                                                if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
-                                                    navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == true
-                                                ) {
-                                                    searchBarScrollBehavior.nestedScrollConnection
-                                                } else {
-                                                    topAppBarScrollBehavior.nestedScrollConnection
-                                                },
+                                                // Step 2b: the NavHost-level connection now serves
+                                                // ONLY shell-driven sub-screens (Album/Artist/
+                                                // Playlist/...). Home and Search attach their own
+                                                // per-route connection inside their screen, so a
+                                                // departing screen's fling can no longer reach the
+                                                // incoming route's header state (fling carry-over is
+                                                // severed structurally). Library is self-contained
+                                                // and OnlineSearchResult is gated by canScroll=false,
+                                                // so routing them through this shared arm is harmless.
+                                                topAppBarScrollBehavior.nestedScrollConnection,
                                             ),
                                 ) {
                                     navigationBuilder(
@@ -2224,6 +2317,8 @@ class MainActivity : ComponentActivity() {
                                         { latestVersionName },
                                         disableAnimations,
                                         onClearUpdateBadge = { latestVersionName = BuildConfig.VERSION_NAME },
+                                        homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
+                                        searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                                     )
                                 }
                             }

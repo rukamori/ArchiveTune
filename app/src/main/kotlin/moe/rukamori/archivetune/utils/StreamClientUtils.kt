@@ -18,7 +18,6 @@ import java.util.Locale
  * based on the stream client query parameters embedded in YouTube stream URLs.
  *
  * This centralizes the logic that was previously duplicated across:
- * - [YTPlayerUtils.validateStatus]
  * - MusicService OkHttp interceptor
  * - DownloadUtil OkHttp interceptor
  */

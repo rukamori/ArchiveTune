@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.pages.BrowseResult
 import moe.rukamori.archivetune.utils.dataStore
@@ -29,6 +31,7 @@ class YouTubeBrowseViewModel
     @Inject
     constructor(
         @ApplicationContext val context: Context,
+        private val database: MusicDatabase,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val browseId = savedStateHandle.get<String>("browseId")!!
@@ -42,7 +45,11 @@ class YouTubeBrowseViewModel
                     .browse(browseId, params)
                     .onSuccess {
                         val hideVideo = context.dataStore.get(HideVideoKey, false)
-                        result.value = it.filterExplicit(context.dataStore.get(HideExplicitKey, false)).filterVideo(hideVideo)
+                        result.value =
+                            it
+                                .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                .filterVideo(hideVideo)
+                                .filterBlockedArtists(database.getBlockedArtistIds().toSet())
                     }.onFailure {
                         reportException(it)
                     }

@@ -302,7 +302,10 @@ object DiscordSocialPresenceClient {
             activityJson.put("metadata", metadata)
         }
 
-        activityJson.put("platform", "android")
+        activityJson.put(
+            "platform",
+            DiscordActivityPlatform.wireValueFromBit(activity.supportedPlatforms),
+        )
 
         val activities = JSONArray()
         activities.put(activityJson)

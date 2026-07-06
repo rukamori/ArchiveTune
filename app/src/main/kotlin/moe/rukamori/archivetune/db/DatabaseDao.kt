@@ -137,7 +137,9 @@ interface DatabaseDao {
         SongSortType.PLAY_TIME -> {
             songsByPlayTimeAsc()
         }
-    }.map { it.reversed(descending) }
+    }.map { songs ->
+        songs.filter { song -> song.artists.none { it.blockedAt != null } }.reversed(descending)
+    }
 
     @Transaction
     @Query(
@@ -251,7 +253,9 @@ interface DatabaseDao {
         SongSortType.PLAY_TIME -> {
             likedSongsByPlayTimeAsc()
         }
-    }.map { it.reversed(descending) }
+    }.map { songs ->
+        songs.filter { song -> song.artists.none { it.blockedAt != null } }.reversed(descending)
+    }
 
     @Transaction
     @Query(
@@ -351,7 +355,9 @@ interface DatabaseDao {
         ArtistSongSortType.PLAY_TIME -> {
             artistSongsByPlayTimeAsc(artistId)
         }
-    }.map { it.reversed(descending) }
+    }.map { songs ->
+        songs.filter { song -> song.artists.none { it.blockedAt != null } }.reversed(descending)
+    }
 
     @Transaction
     @Query(
@@ -444,6 +450,14 @@ interface DatabaseDao {
                      ORDER BY SUM(playTime) DESC
                      LIMIT :limit)
         ON song.id = songId
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM song_artist_map
+            JOIN artist ON artist.id = song_artist_map.artistId
+            WHERE song_artist_map.songId = song.id
+              AND artist.blockedAt IS NOT NULL
+        )
+        ORDER BY songCountListened DESC, timeListened DESC, song.id ASC
         LIMIT :limit
         OFFSET :offset
     """,
@@ -477,6 +491,14 @@ interface DatabaseDao {
                      ORDER BY SUM(playTime) DESC
                      LIMIT :limit)
         ON song.id = songId
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM song_artist_map
+            JOIN artist ON artist.id = song_artist_map.artistId
+            WHERE song_artist_map.songId = song.id
+              AND artist.blockedAt IS NOT NULL
+        )
+        ORDER BY songCountListened DESC, timeListened DESC, song.id ASC
         LIMIT :limit
         OFFSET :offset
     """,
@@ -517,6 +539,7 @@ interface DatabaseDao {
                       LIMIT :limit
                       OFFSET :offset)
                      ON artist.id = artistId
+        WHERE artist.blockedAt IS NULL
     """,
     )
     fun mostPlayedArtists(
@@ -555,6 +578,13 @@ interface DatabaseDao {
         GROUP BY sam.albumId
         HAVING sam.albumId IS NOT NULL
     )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM album_artist_map blocked_album_artist
+          JOIN artist ON artist.id = blocked_album_artist.artistId
+          WHERE blocked_album_artist.albumId = album.id
+            AND artist.blockedAt IS NOT NULL
+      )
     GROUP BY album.id
     ORDER BY timeListened DESC
     LIMIT :limit OFFSET :offset
@@ -834,7 +864,7 @@ interface DatabaseDao {
         ArtistSortType.PLAY_TIME -> artistsByPlayTimeAsc()
     }.map { artists ->
         artists
-            .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // TODO: add ui to filter by local or remote or something idk
+            .filter { it.artist.blockedAt == null && (it.artist.isYouTubeArtist || it.artist.isLocal) }
             .reversed(descending)
     }
 
@@ -848,7 +878,7 @@ interface DatabaseDao {
         ArtistSortType.PLAY_TIME -> artistsBookmarkedByPlayTimeAsc()
     }.map { artists ->
         artists
-            .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // TODO: add ui to filter by local or remote or something idk
+            .filter { it.artist.blockedAt == null && (it.artist.isYouTubeArtist || it.artist.isLocal) }
             .reversed(descending)
     }
 
@@ -987,7 +1017,9 @@ interface DatabaseDao {
         AlbumSortType.PLAY_TIME -> {
             albumsByPlayTimeAsc()
         }
-    }.map { it.reversed(descending) }
+    }.map { albums ->
+        albums.filter { album -> album.artists.none { it.blockedAt != null } }.reversed(descending)
+    }
 
     fun albumsLiked(
         sortType: AlbumSortType,
@@ -1028,7 +1060,9 @@ interface DatabaseDao {
         AlbumSortType.PLAY_TIME -> {
             albumsLikedByPlayTimeAsc()
         }
-    }.map { it.reversed(descending) }
+    }.map { albums ->
+        albums.filter { album -> album.artists.none { it.blockedAt != null } }.reversed(descending)
+    }
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1116,7 +1150,9 @@ interface DatabaseDao {
             AlbumSortType.PLAY_TIME -> {
                 albumsByPlayTime(ids)
             }
-        }.map { it.reversed(descending) }
+        }.map { albums ->
+            albums.filter { album -> album.artists.none { it.blockedAt != null } }.reversed(descending)
+        }
     }
 
     @Transaction
@@ -1535,6 +1571,12 @@ interface DatabaseDao {
 
     @Query("SELECT * FROM artist WHERE id = :id LIMIT 1")
     fun getArtistById(id: String): ArtistEntity?
+
+    @Query("SELECT id FROM artist WHERE blockedAt IS NOT NULL")
+    fun blockedArtistIds(): Flow<List<String>>
+
+    @Query("SELECT id FROM artist WHERE blockedAt IS NOT NULL")
+    suspend fun getBlockedArtistIds(): List<String>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(song: SongEntity): Long

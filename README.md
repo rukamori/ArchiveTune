@@ -233,7 +233,7 @@
   <tbody>
     <tr>
       <td align="center">
-        <a href="https://nightly.link/ArchiveTuneApp/ArchiveTune/workflows/build/dev/app-mobile-universal-release">
+        <a href="https://nightly.link/ArchiveTuneApp/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release">
           <img src="https://raw.githubusercontent.com/ArchiveTuneApp/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune nightly build">
         </a>
       </td>
@@ -302,5 +302,5 @@ ArchiveTune is an independent third-party client.
   <img src="https://raw.githubusercontent.com/ArchiveTuneApp/ArchiveTune/refs/heads/dev/fastlane/metadata/android/en-US/images/ArchiveTuneFull.png" alt="ArchiveTune Banner" style="width: 100%; max-width: 500px;">
   <p><b>If ArchiveTune elevated your music experience, please consider giving us a ⭐</b></p>
   <br />
-  <img src="https://raw.githubusercontent.com/ArchiveTuneApp/ArchiveTune/refs/heads/dev/assets/badge_part.png" alt="ArchiveTune Banner" style="width: 160px">
+  <img src="https://raw.githubusercontent.com/ArchiveTuneApp/ArchiveTune/refs/heads/dev/assets/badge_part.png" alt="ArchiveTune Banner" style="width: 180px">
 </div>

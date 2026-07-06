@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Esplora</string>
     <string name="local_history">Locale</string>
@@ -283,4 +283,7 @@
     <string name="restore_step_restoring_file">reimpostando %1$s</string>
     <string name="restore_step_restarting">Riavviando app</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
+    <string name="suggestions">Suggerimenti</string>
+    <string name="stats_unique_songs">Canzoni che potrebbero piacerti</string>
+    <string name="stats_unique_artists">Artisti che potrebbero piacerti</string>
 </resources>
