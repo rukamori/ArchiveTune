@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.storage
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -16,6 +17,11 @@ import androidx.core.net.toUri
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.exoplayer.offline.Download
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +84,7 @@ class DownloadedSongExporter
                             metadata = metadata,
                             mimeType = format?.mimeType,
                         )
+                    val artworkBytes = fetchArtworkBytes(metadata.thumbnailUrl)
                     if (
                         exportToSelectedFolder(
                             songId = songId,
@@ -86,6 +93,7 @@ class DownloadedSongExporter
                             metadata = metadata,
                             format = format,
                             spans = cachedSpans,
+                            artworkBytes = artworkBytes,
                         )
                     ) {
                         return@withContext true
@@ -112,6 +120,7 @@ class DownloadedSongExporter
                         audioFile = targetFile,
                         metadata = metadata,
                         format = format,
+                        artworkBytes = artworkBytes,
                     )
                     MediaScannerConnection.scanFile(
                         context,
@@ -188,6 +197,26 @@ class DownloadedSongExporter
                 ?.takeIf(String::isNotBlank)
                 ?.toUri()
 
+        private suspend fun fetchArtworkBytes(thumbnailUrl: String?): ByteArray? {
+            if (thumbnailUrl.isNullOrBlank()) return null
+            return runCatching {
+                val request = ImageRequest.Builder(context)
+                    .data(thumbnailUrl)
+                    .allowHardware(false)
+                    .build()
+                val result = context.imageLoader.execute(request)
+                if (result is SuccessResult) {
+                    val bitmap = result.image.toBitmap()
+                    ByteArrayOutputStream().use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                        outputStream.toByteArray()
+                    }
+                } else {
+                    null
+                }
+            }.getOrNull()
+        }
+
         private suspend fun exportToSelectedFolder(
             songId: String,
             fileName: String,
@@ -195,6 +224,7 @@ class DownloadedSongExporter
             metadata: ExportedSongMetadata,
             format: FormatEntity?,
             spans: List<CacheSpan>,
+            artworkBytes: ByteArray?,
         ): Boolean {
             val treeUri = selectedTreeUri() ?: return false
             return runCatching {
@@ -221,6 +251,7 @@ class DownloadedSongExporter
                                 audioFile = tempFile,
                                 metadata = metadata,
                                 format = format,
+                                artworkBytes = artworkBytes,
                             )
                     } catch (throwable: Throwable) {
                         tempFile.delete()
@@ -280,13 +311,14 @@ class DownloadedSongExporter
             audioFile: File,
             metadata: ExportedSongMetadata,
             format: FormatEntity?,
+            artworkBytes: ByteArray?,
         ): Boolean =
             runCatching {
                 when (exportFileExtension(format?.mimeType)) {
-                    "m4a" -> audioFile.writeMp4Metadata(metadata)
+                    "m4a" -> audioFile.writeMp4Metadata(metadata, artworkBytes)
                     "aac",
                     "mp3",
-                    -> audioFile.writeId3Metadata(metadata, format)
+                    -> audioFile.writeId3Metadata(metadata, format, artworkBytes)
 
                     else -> true
                 }
@@ -436,6 +468,7 @@ private fun exportMimeType(mimeType: String?): String =
 private fun File.writeId3Metadata(
     metadata: ExportedSongMetadata,
     format: FormatEntity?,
+    artworkBytes: ByteArray?,
 ): Boolean {
     val original = readBytes()
     val audioBytes =
@@ -445,7 +478,7 @@ private fun File.writeId3Metadata(
         } else {
             original
         }
-    val tag = buildId3Tag(metadata, format)
+    val tag = buildId3Tag(metadata, format, artworkBytes)
     outputStream().use { outputStream ->
         outputStream.write(tag)
         outputStream.write(audioBytes)
@@ -453,7 +486,10 @@ private fun File.writeId3Metadata(
     return true
 }
 
-private fun File.writeMp4Metadata(metadata: ExportedSongMetadata): Boolean {
+private fun File.writeMp4Metadata(
+    metadata: ExportedSongMetadata,
+    artworkBytes: ByteArray?,
+): Boolean {
     val original = readBytes()
     val atoms = original.readMp4Atoms(start = 0, end = original.size)
     val moov = atoms.firstOrNull { atom -> atom.type == "moov" } ?: return true
@@ -465,7 +501,7 @@ private fun File.writeMp4Metadata(metadata: ExportedSongMetadata): Boolean {
     val newPayload =
         ByteArrayOutputStream().use { outputStream ->
             outputStream.write(oldPayload)
-            outputStream.write(buildMp4UdtaAtom(metadata))
+            outputStream.write(buildMp4UdtaAtom(metadata, artworkBytes))
             outputStream.toByteArray()
         }
     var newMoov = buildMp4Atom("moov".toByteArray(), newPayload)
@@ -488,6 +524,7 @@ private fun File.writeMp4Metadata(metadata: ExportedSongMetadata): Boolean {
 private fun buildId3Tag(
     metadata: ExportedSongMetadata,
     format: FormatEntity?,
+    artworkBytes: ByteArray?,
 ): ByteArray {
     val frames =
         listOfNotNull(
@@ -501,6 +538,7 @@ private fun buildId3Tag(
             format?.mimeType?.let { mimeType -> id3TextFrame("TMED", mimeType) },
             id3TextFrame("TSSE", "ArchiveTune"),
             id3UserTextFrame(description = "ArchiveTune ID", value = metadata.id),
+            artworkBytes?.let { bytes -> id3PictureFrame(bytes) }
         )
     val payload =
         ByteArrayOutputStream().use { outputStream ->
@@ -545,7 +583,10 @@ private fun id3Frame(
         outputStream.toByteArray()
     }
 
-private fun buildMp4UdtaAtom(metadata: ExportedSongMetadata): ByteArray =
+private fun buildMp4UdtaAtom(
+    metadata: ExportedSongMetadata,
+    artworkBytes: ByteArray?,
+): ByteArray =
     buildMp4Atom(
         "udta".toByteArray(),
         buildMp4Atom(
@@ -553,7 +594,7 @@ private fun buildMp4UdtaAtom(metadata: ExportedSongMetadata): ByteArray =
             ByteArrayOutputStream().use { outputStream ->
                 outputStream.write(byteArrayOf(0, 0, 0, 0))
                 outputStream.write(buildMp4HandlerAtom())
-                outputStream.write(buildMp4IlstAtom(metadata))
+                outputStream.write(buildMp4IlstAtom(metadata, artworkBytes))
                 outputStream.toByteArray()
             },
         ),
@@ -574,7 +615,10 @@ private fun buildMp4HandlerAtom(): ByteArray =
         },
     )
 
-private fun buildMp4IlstAtom(metadata: ExportedSongMetadata): ByteArray =
+private fun buildMp4IlstAtom(
+    metadata: ExportedSongMetadata,
+    artworkBytes: ByteArray?,
+): ByteArray =
     buildMp4Atom(
         "ilst".toByteArray(),
         ByteArrayOutputStream().use { outputStream ->
@@ -585,6 +629,7 @@ private fun buildMp4IlstAtom(metadata: ExportedSongMetadata): ByteArray =
             metadata.thumbnailUrl?.let { thumbnailUrl -> outputStream.writeMp4TextItem(Mp4UrlAtom, thumbnailUrl) }
             outputStream.writeMp4TextItem(Mp4EncoderAtom, "ArchiveTune")
             outputStream.writeMp4TextItem(Mp4CommentAtom, "ArchiveTune ID: ${metadata.id}")
+            artworkBytes?.let { bytes -> outputStream.writeMp4ImageItem(Mp4CoverAtom, bytes) }
             outputStream.toByteArray()
         },
     )
@@ -603,6 +648,27 @@ private fun ByteArrayOutputStream.writeMp4TextItem(
                     outputStream.writeInt(1)
                     outputStream.writeInt(0)
                     outputStream.write(value.toByteArray(Charsets.UTF_8))
+                    outputStream.toByteArray()
+                },
+            ),
+        ),
+    )
+}
+
+private fun ByteArrayOutputStream.writeMp4ImageItem(
+    type: ByteArray,
+    imageBytes: ByteArray,
+) {
+    if (imageBytes.isEmpty()) return
+    write(
+        buildMp4Atom(
+            type,
+            buildMp4Atom(
+                "data".toByteArray(),
+                ByteArrayOutputStream().use { outputStream ->
+                    outputStream.writeInt(13) // Type indicator: JPEG/PNG image is 13
+                    outputStream.writeInt(0)
+                    outputStream.write(imageBytes)
                     outputStream.toByteArray()
                 },
             ),
@@ -904,6 +970,7 @@ private val Mp4DayAtom = byteArrayOf(0xA9.toByte(), 'd'.code.toByte(), 'a'.code.
 private val Mp4CommentAtom = byteArrayOf(0xA9.toByte(), 'c'.code.toByte(), 'm'.code.toByte(), 't'.code.toByte())
 private val Mp4EncoderAtom = byteArrayOf(0xA9.toByte(), 't'.code.toByte(), 'o'.code.toByte(), 'o'.code.toByte())
 private val Mp4UrlAtom = "purl".toByteArray()
+private val Mp4CoverAtom = "covr".toByteArray()
 private const val Id3HeaderSize = 10
 private const val Id3Utf8EncodingByte: Byte = 3
 private const val Mp4AtomHeaderSize = 8
@@ -911,6 +978,20 @@ private const val Mp4ExtendedAtomHeaderSize = 16
 private const val Mp4FullBoxHeaderSize = 4
 private const val UIntMaxValue = 0xFFFF_FFFFL
 private const val CopyBufferSizeBytes = 256 * 1024
+
+private fun id3PictureFrame(imageBytes: ByteArray): ByteArray {
+    val mimeTypeBytes = "image/jpeg".toByteArray(Charsets.ISO_8859_1)
+    val payload = ByteArrayOutputStream().use { outputStream ->
+        outputStream.write(0) // Text encoding: ISO-8859-1
+        outputStream.write(mimeTypeBytes)
+        outputStream.write(0) // Null terminator for MIME type
+        outputStream.write(3) // Picture type: Cover (front)
+        outputStream.write(0) // Description null terminator
+        outputStream.write(imageBytes)
+        outputStream.toByteArray()
+    }
+    return id3Frame("APIC", payload)
+}
 
 private data class ExportedSongMetadata(
     val id: String,
