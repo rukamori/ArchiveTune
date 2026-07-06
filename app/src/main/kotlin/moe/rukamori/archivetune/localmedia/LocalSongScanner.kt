@@ -108,6 +108,7 @@ class LocalSongScanner
                     val existingLyrics = loadLyrics(scannedIds)
                     val existingArtists = loadArtists(snapshot.artists.map(LocalArtistRecord::id))
                     val existingAlbums = loadAlbums(snapshot.albums.map(LocalAlbumRecord::id))
+                    val existingFormats = database.getFormatsByIds(scannedIds).associateBy { it.id }
 
                     snapshot.artists.forEach { artist ->
                         val existingArtist = existingArtists[artist.id]
@@ -165,7 +166,7 @@ class LocalSongScanner
 
                     snapshot.tracks.forEach { track ->
                         val existingSong = existingSongs[track.id]?.song
-                        val existingFormat = database.getFormatById(track.id)
+                        val existingFormat = existingFormats[track.id]
                         upsert(
                             SongEntity(
                                 id = track.id,
@@ -186,14 +187,16 @@ class LocalSongScanner
                                 isLocal = true,
                             ),
                         )
+                        // Reset bitrate and sampleRate cached metadata only if the file size has changed
+                        val isSizeUnchanged = existingFormat != null && existingFormat.contentLength == track.sizeBytes
                         upsert(
                             FormatEntity(
                                 id = track.id,
                                 itag = -1,
                                 mimeType = track.mimeType,
                                 codecs = existingFormat?.codecs ?: "",
-                                bitrate = if (existingFormat != null && existingFormat.bitrate != 0) existingFormat.bitrate else 0,
-                                sampleRate = existingFormat?.sampleRate,
+                                bitrate = if (isSizeUnchanged && existingFormat != null && existingFormat.bitrate != 0) existingFormat.bitrate else 0,
+                                sampleRate = if (isSizeUnchanged) existingFormat?.sampleRate else null,
                                 contentLength = track.sizeBytes,
                                 loudnessDb = existingFormat?.loudnessDb,
                                 perceptualLoudnessDb = existingFormat?.perceptualLoudnessDb,

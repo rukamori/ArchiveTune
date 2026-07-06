@@ -116,8 +116,8 @@ class PlayerConnection(
                     val mediaId = metadata?.id ?: return@collectLatest
                     if (mediaId.isLocalMediaId()) {
                         val storedFormat = database.format(mediaId).first()
-                        // Extract only if the format exists in DB and bitrate is 0 (unevaluated)
-                        if (storedFormat != null && storedFormat.bitrate == 0) {
+                        // Extract only if the format exists in DB, and both bitrate and sampleRate are unevaluated (bitrate == 0 and sampleRate == null)
+                        if (storedFormat != null && storedFormat.bitrate == 0 && storedFormat.sampleRate == null) {
                             val (extractedBitrate, extractedSampleRate) = extractLocalAudioProperties(context, mediaId)
                             if (isActive) {
                                 val finalBitrate = if (extractedBitrate <= 0 && extractedSampleRate == null) {
