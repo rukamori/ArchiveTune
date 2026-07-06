@@ -165,6 +165,7 @@ class LocalSongScanner
 
                     snapshot.tracks.forEach { track ->
                         val existingSong = existingSongs[track.id]?.song
+                        val existingFormat = database.getFormatById(track.id)
                         upsert(
                             SongEntity(
                                 id = track.id,
@@ -190,12 +191,12 @@ class LocalSongScanner
                                 id = track.id,
                                 itag = -1,
                                 mimeType = track.mimeType,
-                                codecs = "",
-                                bitrate = 0,
-                                sampleRate = null,
+                                codecs = existingFormat?.codecs ?: "",
+                                bitrate = if (existingFormat != null && existingFormat.bitrate != 0) existingFormat.bitrate else 0,
+                                sampleRate = existingFormat?.sampleRate,
                                 contentLength = track.sizeBytes,
-                                loudnessDb = null,
-                                perceptualLoudnessDb = null,
+                                loudnessDb = existingFormat?.loudnessDb,
+                                perceptualLoudnessDb = existingFormat?.perceptualLoudnessDb,
                                 playbackUrl = null,
                             ),
                         )

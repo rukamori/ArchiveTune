@@ -22,15 +22,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.getCurrentQueueIndex
 import moe.rukamori.archivetune.extensions.getQueueWindows
 import moe.rukamori.archivetune.playback.MusicService.MusicBinder
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -101,6 +107,60 @@ class PlayerConnection(
         if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
             service.currentMediaMetadata.value = player.currentMetadata
         }
+
+        // Lazy load bitrate and sample rate for local audio files dynamically
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            mediaMetadata
+                .distinctUntilChangedBy { it?.id }
+                .collectLatest { metadata ->
+                    val mediaId = metadata?.id ?: return@collectLatest
+                    if (mediaId.isLocalMediaId()) {
+                        val storedFormat = database.format(mediaId).first()
+                        // Extract only if the format exists in DB and bitrate is 0 (unevaluated)
+                        if (storedFormat != null && storedFormat.bitrate == 0) {
+                            val (extractedBitrate, extractedSampleRate) = extractLocalAudioProperties(context, mediaId)
+                            if (isActive) {
+                                val finalBitrate = if (extractedBitrate <= 0 && extractedSampleRate == null) {
+                                    -1 // Sentinel -1 to mark failed files so we don't loop I/O repeatedly
+                                } else {
+                                    extractedBitrate
+                                }
+                                database.updateLocalAudioMetadata(mediaId, finalBitrate, extractedSampleRate)
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun extractLocalAudioProperties(context: Context, uriString: String): Pair<Int, Int?> {
+        val extractor = android.media.MediaExtractor()
+        var bitrate = 0
+        var sampleRate: Int? = null
+        try {
+            val uri = android.net.Uri.parse(uriString)
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                extractor.setDataSource(pfd.fileDescriptor)
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(android.media.MediaFormat.KEY_MIME) ?: ""
+                    if (mime.startsWith("audio/")) {
+                        if (format.containsKey(android.media.MediaFormat.KEY_BIT_RATE)) {
+                            bitrate = format.getInteger(android.media.MediaFormat.KEY_BIT_RATE)
+                        }
+                        if (format.containsKey(android.media.MediaFormat.KEY_SAMPLE_RATE)) {
+                            sampleRate = format.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE)
+                        }
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Failed to extract local metadata for %s", uriString)
+        } finally {
+            runCatching { extractor.release() }
+        }
+        return Pair(bitrate, sampleRate)
     }
 
     fun playQueue(queue: Queue) {
