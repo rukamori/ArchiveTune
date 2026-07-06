@@ -11,6 +11,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.MoriCipherManualRefreshHistoryKey
 import moe.rukamori.archivetune.morideobfuscator.CipherRefreshResult
@@ -30,35 +31,41 @@ class CipherSettingsRepository
 
         val manualRefreshHistory: Flow<List<Long>> =
             context.dataStore.data.map { preferences ->
-                preferences[MoriCipherManualRefreshHistoryKey]
-                    .orEmpty()
-                    .mapNotNull(String::toLongOrNull)
-                    .sorted()
+                preferences[MoriCipherManualRefreshHistoryKey].toManualRefreshHistory()
             }
+
+        suspend fun getManualRefreshHistory(): List<Long> =
+            context.dataStore.data
+                .first()[MoriCipherManualRefreshHistoryKey]
+                .toManualRefreshHistory()
 
         suspend fun refresh(): Result<CipherRefreshResult> =
             MoriCipherRuntime.refresh(force = true)
 
         suspend fun recordSuccessfulManualRefresh(
             timestampMillis: Long,
-            validAfterMillis: Long,
+            windowStartsAtMillis: Long,
+            windowEndsAtMillis: Long,
+            maximumEntries: Int,
         ) {
             context.dataStore.edit { preferences ->
                 val retained =
                     preferences[MoriCipherManualRefreshHistoryKey]
-                        .orEmpty()
-                        .mapNotNull(String::toLongOrNull)
-                        .filter { it in validAfterMillis..timestampMillis }
+                        .toManualRefreshHistory()
+                        .filter { it >= windowStartsAtMillis && it < windowEndsAtMillis }
                         .plus(timestampMillis)
+                        .distinct()
                         .sorted()
-                        .takeLast(MAX_MANUAL_REFRESHES)
+                        .take(maximumEntries.coerceAtLeast(1))
                         .map(Long::toString)
                         .toSet()
                 preferences[MoriCipherManualRefreshHistoryKey] = retained
             }
         }
-
-        private companion object {
-            const val MAX_MANUAL_REFRESHES = 3
-        }
     }
+
+private fun Set<String>?.toManualRefreshHistory(): List<Long> =
+    orEmpty()
+        .mapNotNull(String::toLongOrNull)
+        .distinct()
+        .sorted()

@@ -32,7 +32,7 @@ class ObserveCipherSettingsUseCase
                 repository.manualRefreshHistory,
                 ticker(),
             ) { runtime, history, now ->
-                val validHistory = history.filter { it in (now - RATE_LIMIT_WINDOW_MILLIS)..now }
+                val validHistory = history.activeManualRefreshWindow(now)
                 CipherSettingsDomainState(
                     runtime = runtime,
                     nowMillis = now,
@@ -71,14 +71,15 @@ class RefreshCipherUseCase
     constructor(
         private val repository: CipherSettingsRepository,
     ) {
-        suspend operator fun invoke(
-            nowMillis: Long,
-            remainingRefreshes: Int,
-            rateLimitResetsAtMillis: Long?,
-        ): ManualCipherRefreshResult {
-            if (remainingRefreshes <= 0) {
+        suspend operator fun invoke(): ManualCipherRefreshResult {
+            val nowMillis = System.currentTimeMillis()
+            val activeHistory =
+                repository
+                    .getManualRefreshHistory()
+                    .activeManualRefreshWindow(nowMillis)
+            if (activeHistory.size >= MAX_MANUAL_REFRESHES) {
                 return ManualCipherRefreshResult.RateLimited(
-                    resetsAtMillis = rateLimitResetsAtMillis ?: nowMillis + RATE_LIMIT_WINDOW_MILLIS,
+                    resetsAtMillis = activeHistory.first().rateLimitWindowEnd(),
                 )
             }
             val completedAtMillis =
@@ -87,12 +88,37 @@ class RefreshCipherUseCase
                     .getOrElse {
                         return ManualCipherRefreshResult.Failed(it)
                     }.refreshedAtMillis
+            val completedHistory =
+                repository
+                    .getManualRefreshHistory()
+                    .activeManualRefreshWindow(completedAtMillis)
+            val windowStartsAtMillis = completedHistory.firstOrNull() ?: completedAtMillis
             repository.recordSuccessfulManualRefresh(
                 timestampMillis = completedAtMillis,
-                validAfterMillis = completedAtMillis - RATE_LIMIT_WINDOW_MILLIS,
+                windowStartsAtMillis = windowStartsAtMillis,
+                windowEndsAtMillis = windowStartsAtMillis.rateLimitWindowEnd(),
+                maximumEntries = MAX_MANUAL_REFRESHES,
             )
             return ManualCipherRefreshResult.Updated
         }
+    }
+
+private fun List<Long>.activeManualRefreshWindow(nowMillis: Long): List<Long> {
+    val chronological =
+        asSequence()
+            .filter { it in 0..nowMillis }
+            .distinct()
+            .sorted()
+            .toList()
+    val windowStartsAtMillis = chronological.firstOrNull() ?: return emptyList()
+    return chronological.takeIf { nowMillis < windowStartsAtMillis.rateLimitWindowEnd() }.orEmpty()
+}
+
+private fun Long.rateLimitWindowEnd(): Long =
+    if (this > Long.MAX_VALUE - RATE_LIMIT_WINDOW_MILLIS) {
+        Long.MAX_VALUE
+    } else {
+        this + RATE_LIMIT_WINDOW_MILLIS
     }
 
 internal const val MAX_MANUAL_REFRESHES = 3

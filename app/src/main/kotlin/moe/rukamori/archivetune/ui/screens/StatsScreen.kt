@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.screens
 
+import android.graphics.Color as AndroidColor
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -66,8 +67,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -333,6 +336,25 @@ fun StatsScreen(
                 )
             }
 
+            item(key = "artistDistribution", contentType = "insights") {
+                if (mostPlayedArtists.isNotEmpty()) {
+                    Column(modifier = Modifier.animateItem()) {
+                        StatsSectionHeader(
+                            title = stringResource(R.string.stats_artist_breakdown),
+                            supportingText = mostPlayedArtists.take(5).size.toString(),
+                        )
+                        SegmentedArtistChart(
+                            artists = mostPlayedArtists.take(5),
+                            totalTimeListened = listeningSummary.totalTimeListened,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+
             item(key = "spotlights", contentType = "spotlights") {
                 val topSong = mostPlayedSongsStats.firstOrNull()
                 StatsHighlightsSection(
@@ -546,24 +568,6 @@ fun StatsScreen(
                 }
             }
 
-            item(key = "artistDistribution", contentType = "insights") {
-                if (mostPlayedArtists.isNotEmpty()) {
-                    Column(modifier = Modifier.animateItem()) {
-                        StatsSectionHeader(
-                            title = stringResource(R.string.stats_artist_breakdown),
-                            supportingText = mostPlayedArtists.take(5).size.toString(),
-                        )
-                        SegmentedArtistChart(
-                            artists = mostPlayedArtists.take(5),
-                            totalTimeListened = listeningSummary.totalTimeListened,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
         }
 
         if (isYearPickerOpen) {
@@ -1214,15 +1218,12 @@ private fun SegmentedArtistChart(
             }
         }
 
-    val colorScheme = MaterialTheme.colorScheme
+    val primaryColor = MaterialTheme.colorScheme.primary
     val segmentColors =
-        remember(colorScheme) {
-            listOf(
-                colorScheme.primary,
-                colorScheme.secondary,
-                colorScheme.tertiary,
-                colorScheme.error,
-                colorScheme.secondaryContainer,
+        remember(primaryColor, segmentData.size) {
+            createDistinctArtistColors(
+                seedColor = primaryColor,
+                count = segmentData.size,
             )
         }
 
@@ -1315,6 +1316,27 @@ private fun SegmentedArtistChart(
                 )
             }
         }
+    }
+}
+
+private fun createDistinctArtistColors(
+    seedColor: Color,
+    count: Int,
+): List<Color> {
+    if (count <= 0) return emptyList()
+
+    val seedHsv = FloatArray(3)
+    AndroidColor.colorToHSV(seedColor.toArgb(), seedHsv)
+    val saturation = seedHsv[1].coerceAtLeast(0.62f)
+    val brightness = seedHsv[2].coerceIn(0.68f, 0.88f)
+    val hueStep = 360f / count
+
+    return List(count) { index ->
+        Color.hsv(
+            hue = (seedHsv[0] + hueStep * index) % 360f,
+            saturation = saturation,
+            value = brightness,
+        )
     }
 }
 

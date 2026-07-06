@@ -94,16 +94,12 @@ class ChiperSettingsViewModel
 
         fun refresh() {
             if (refreshJob?.isActive == true) return
-            val domain = latestDomainState ?: return
+            if (latestDomainState == null) return
             refreshJob =
                 viewModelScope.launch {
                     try {
                         val refreshResult =
-                            refreshCipher(
-                                nowMillis = domain.nowMillis,
-                                remainingRefreshes = domain.remainingRefreshes,
-                                rateLimitResetsAtMillis = domain.rateLimitResetsAtMillis,
-                            )
+                            refreshCipher()
                         when (refreshResult) {
                             ManualCipherRefreshResult.Updated -> {
                                 mutableEvents.emit(ChiperSettingsSnackbarEvent(R.string.mori_cipher_refresh_success))
