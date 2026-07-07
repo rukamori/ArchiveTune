@@ -108,7 +108,12 @@ class LocalSongScanner
                     val existingLyrics = loadLyrics(scannedIds)
                     val existingArtists = loadArtists(snapshot.artists.map(LocalArtistRecord::id))
                     val existingAlbums = loadAlbums(snapshot.albums.map(LocalAlbumRecord::id))
-                    val existingFormats = database.getFormatsByIds(scannedIds).associateBy { it.id }
+
+                    // Batch load formats in chunks to prevent SQLiteException (too many SQL variables)
+                    val existingFormats = scannedIds
+                        .chunked(SqlBatchSize)
+                        .flatMap { chunk -> database.getFormatsByIds(chunk) }
+                        .associateBy { it.id }
 
                     snapshot.artists.forEach { artist ->
                         val existingArtist = existingArtists[artist.id]

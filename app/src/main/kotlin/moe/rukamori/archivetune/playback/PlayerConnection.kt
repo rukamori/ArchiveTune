@@ -19,7 +19,9 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.getCurrentQueueIndex
@@ -109,7 +112,7 @@ class PlayerConnection(
         }
 
         // Lazy load bitrate and sample rate for local audio files dynamically
-        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             mediaMetadata
                 .distinctUntilChangedBy { it?.id }
                 .collectLatest { metadata ->
@@ -119,49 +122,50 @@ class PlayerConnection(
                         // Extract only if the format exists in DB, and both bitrate and sampleRate are unevaluated (bitrate == 0 and sampleRate == null)
                         if (storedFormat != null && storedFormat.bitrate == 0 && storedFormat.sampleRate == null) {
                             val (extractedBitrate, extractedSampleRate) = extractLocalAudioProperties(context, mediaId)
-                            if (isActive) {
-                                val finalBitrate = if (extractedBitrate <= 0 && extractedSampleRate == null) {
-                                    -1 // Sentinel -1 to mark failed files so we don't loop I/O repeatedly
-                                } else {
-                                    extractedBitrate
-                                }
-                                database.updateLocalAudioMetadata(mediaId, finalBitrate, extractedSampleRate)
+                            ensureActive()
+                            val finalBitrate = if (extractedBitrate <= 0 && extractedSampleRate == null) {
+                                -1 // Sentinel -1 to mark failed files so we don't loop I/O repeatedly
+                            } else {
+                                extractedBitrate
                             }
+                            database.updateLocalAudioMetadata(mediaId, finalBitrate, extractedSampleRate)
                         }
                     }
                 }
         }
     }
 
-    private fun extractLocalAudioProperties(context: Context, uriString: String): Pair<Int, Int?> {
-        val extractor = android.media.MediaExtractor()
-        var bitrate = 0
-        var sampleRate: Int? = null
-        try {
-            val uri = android.net.Uri.parse(uriString)
-            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                extractor.setDataSource(pfd.fileDescriptor)
-                for (i in 0 until extractor.trackCount) {
-                    val format = extractor.getTrackFormat(i)
-                    val mime = format.getString(android.media.MediaFormat.KEY_MIME) ?: ""
-                    if (mime.startsWith("audio/")) {
-                        if (format.containsKey(android.media.MediaFormat.KEY_BIT_RATE)) {
-                            bitrate = format.getInteger(android.media.MediaFormat.KEY_BIT_RATE)
+    private suspend fun extractLocalAudioProperties(context: Context, uriString: String): Pair<Int, Int?> =
+        withContext(Dispatchers.IO) {
+            val extractor = android.media.MediaExtractor()
+            var bitrate = 0
+            var sampleRate: Int? = null
+            try {
+                val uri = android.net.Uri.parse(uriString)
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    extractor.setDataSource(pfd.fileDescriptor)
+                    for (i in 0 until extractor.trackCount) {
+                        val format = extractor.getTrackFormat(i)
+                        val mime = format.getString(android.media.MediaFormat.KEY_MIME) ?: ""
+                        if (mime.startsWith("audio/")) {
+                            if (format.containsKey(android.media.MediaFormat.KEY_BIT_RATE)) {
+                                bitrate = format.getInteger(android.media.MediaFormat.KEY_BIT_RATE)
+                            }
+                            if (format.containsKey(android.media.MediaFormat.KEY_SAMPLE_RATE)) {
+                                sampleRate = format.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE)
+                            }
+                            break
                         }
-                        if (format.containsKey(android.media.MediaFormat.KEY_SAMPLE_RATE)) {
-                            sampleRate = format.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE)
-                        }
-                        break
                     }
                 }
+            } catch (e: Exception) {
+                ensureActive()
+                timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Failed to extract local metadata for %s", uriString)
+            } finally {
+                runCatching { extractor.release() }
             }
-        } catch (e: Exception) {
-            timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Failed to extract local metadata for %s", uriString)
-        } finally {
-            runCatching { extractor.release() }
+            Pair(bitrate, sampleRate)
         }
-        return Pair(bitrate, sampleRate)
-    }
 
     fun playQueue(queue: Queue) {
         service.playQueue(queue)
