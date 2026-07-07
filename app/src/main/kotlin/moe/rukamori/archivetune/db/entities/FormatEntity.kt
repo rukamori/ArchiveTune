@@ -79,3 +79,26 @@ fun FormatEntity.formattedFileSize(): String =
             String.format(java.util.Locale.US, "%.1f %s", rounded, units[unitIndex])
         }
     } ?: ""
+
+enum class RatePriority {
+    BITRATE_FIRST,
+    SAMPLE_RATE_FIRST
+}
+
+/**
+ * Returns either the formatted bitrate or formatted sample rate based on the chosen priority.
+ * Defaults to BITRATE_FIRST, falling back to sample rate if the bitrate is "Unknown".
+ */
+fun FormatEntity.autoRateDisplay(priority: RatePriority = RatePriority.BITRATE_FIRST): String {
+    val bitrateText = formattedBitrate()
+    val sampleRateText = formattedSampleRate()
+
+    return when (priority) {
+        RatePriority.BITRATE_FIRST -> {
+            if (bitrateText != "Unknown") bitrateText else (sampleRateText?.takeIf { it.isNotBlank() } ?: "Unknown")
+        }
+        RatePriority.SAMPLE_RATE_FIRST -> {
+            if (!sampleRateText.isNullOrBlank()) sampleRateText else bitrateText
+        }
+    }
+}
