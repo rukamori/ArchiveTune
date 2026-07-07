@@ -447,10 +447,10 @@ private val MimeTypeToExportMimeTypeMap = mapOf(
     "video/webm" to "audio/webm",
 )
 
-private fun exportFileExtension(mimeType: String?): String =
+internal fun exportFileExtension(mimeType: String?): String =
     MimeTypeToExtensionMap[mimeType.normalizedMimeType()] ?: "m4a"
 
-private fun exportMimeType(mimeType: String?): String =
+internal fun exportMimeType(mimeType: String?): String =
     MimeTypeToExportMimeTypeMap[mimeType.normalizedMimeType()]
         ?: mimeType.normalizedMimeType().ifBlank { "audio/mp4" }
 
