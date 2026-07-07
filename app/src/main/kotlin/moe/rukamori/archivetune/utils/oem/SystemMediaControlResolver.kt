@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.ResolveInfo
 import android.media.MediaRouter2
 import android.os.Build
+import android.provider.Settings
 import androidx.annotation.RequiresApi
 
 /**
@@ -16,7 +17,7 @@ import androidx.annotation.RequiresApi
 object SystemMediaControlResolver {
 
     fun openMediaOutputSwitcher(context: Context) {
-        when {
+        val opened = when {
             MiPlayAudioSupport.supportMiPlay(context) -> {
                 val intent = Intent().apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -25,9 +26,7 @@ object SystemMediaControlResolver {
                         "miui.systemui.miplay.MiPlayDetailActivity"
                     )
                 }
-                if (!startIntent(context, intent)) {
-                    startSystemMediaOutputSwitcher(context)
-                }
+                startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
             }
 
             // zh：临时禁用OneUI MediaActivity调用，等待未来确定不会被删除再添加回去
@@ -39,23 +38,23 @@ object SystemMediaControlResolver {
                         "com.samsung.android.mdx.quickboard.view.MediaActivity"
                     )
                 }
-                if (!startIntent(context, intent)) {
-                    startSystemMediaOutputSwitcher(context)
-                }
+                startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
             }
 
-            else -> {
-                startSystemMediaOutputSwitcher(context)
+            else -> startSystemMediaOutputSwitcher(context)
+        }
+        if (!opened) {
+            val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            startIntent(context, intent)
         }
     }
 
-    private fun startSystemMediaOutputSwitcher(context: Context) {
-        if (Build.VERSION.SDK_INT >= 34) {
-            // Android 14 及以上
+    private fun startSystemMediaOutputSwitcher(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= 34) {
             startNativeMediaDialogForAndroid14(context)
         } else if (Build.VERSION.SDK_INT >= 31) {
-            // Android 12 及以上
             val intent = Intent().apply {
                 action = "com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG"
                 setPackage("com.android.systemui")
@@ -63,7 +62,6 @@ object SystemMediaControlResolver {
             }
             startNativeMediaDialog(context, intent)
         } else if (Build.VERSION.SDK_INT == 30) {
-            // Android 11
             startNativeMediaDialogForAndroid11(context)
         } else {
             val intent = Intent().apply {
@@ -82,8 +80,12 @@ object SystemMediaControlResolver {
             val activityInfo = resolveInfo.activityInfo
             val applicationInfo: ApplicationInfo? = activityInfo?.applicationInfo
             if (applicationInfo != null && (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
-                context.startActivity(intent)
-                return true
+                return try {
+                    context.startActivity(intent)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
             }
         }
         return false
@@ -101,8 +103,12 @@ object SystemMediaControlResolver {
             val activityInfo = resolveInfo.activityInfo
             val applicationInfo: ApplicationInfo? = activityInfo?.applicationInfo
             if (applicationInfo != null && (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
-                context.startActivity(intent)
-                return true
+                return try {
+                    context.startActivity(intent)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
             }
         }
         return false
