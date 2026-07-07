@@ -780,11 +780,18 @@ fun QueueCollapsedContentV3(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val sampleRate = currentFormat.formattedSampleRate()
+            val bitrateText = currentFormat.formattedBitrate()
+
+            val displayedBitrate = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                sampleRate
+            } else {
+                bitrateText
+            }
 
             CodecInfoRow(
                 codec = container,
-                bitrate = bitrate,
+                bitrate = displayedBitrate,
                 fileSize = "",
                 textColor = textBackgroundColor.copy(alpha = 0.5f),
             )
@@ -928,12 +935,24 @@ fun QueueCollapsedContentV1(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
-            val fileSize = currentFormat.formattedFileSize()
+            val sampleRate = currentFormat.formattedSampleRate()
+            val bitrateText = currentFormat.formattedBitrate()
+
+            val displayedBitrate = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                sampleRate
+            } else {
+                bitrateText
+            }
+
+            val fileSize = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                currentFormat.formattedFileSize()
+            } else {
+                currentFormat.formattedFileSize()
+            }
 
             CodecInfoRow(
                 codec = container,
-                bitrate = bitrate,
+                bitrate = displayedBitrate,
                 fileSize = fileSize,
                 textColor = textBackgroundColor.copy(alpha = 0.7f),
             )
@@ -1075,12 +1094,24 @@ fun QueueCollapsedContentV4(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
-            val fileSize = currentFormat.formattedFileSize()
+            val sampleRate = currentFormat.formattedSampleRate()
+            val bitrateText = currentFormat.formattedBitrate()
+
+            val displayedBitrate = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                sampleRate
+            } else {
+                bitrateText
+            }
+
+            val fileSize = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                currentFormat.formattedFileSize()
+            } else {
+                currentFormat.formattedFileSize()
+            }
 
             CodecInfoRow(
                 codec = container,
-                bitrate = bitrate,
+                bitrate = displayedBitrate,
                 fileSize = fileSize,
                 textColor = textBackgroundColor.copy(alpha = 0.6f),
             )
@@ -1233,12 +1264,24 @@ fun QueueCollapsedContentV7(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
-            val fileSize = currentFormat.formattedFileSize()
+            val sampleRate = currentFormat.formattedSampleRate()
+            val bitrateText = currentFormat.formattedBitrate()
+
+            val displayedBitrate = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                sampleRate
+            } else {
+                bitrateText
+            }
+
+            val fileSize = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                currentFormat.formattedFileSize()
+            } else {
+                currentFormat.formattedFileSize()
+            }
 
             CodecInfoRow(
                 codec = container,
-                bitrate = bitrate,
+                bitrate = displayedBitrate,
                 fileSize = fileSize,
                 textColor = textBackgroundColor.copy(alpha = 0.6f),
             )
@@ -1422,12 +1465,24 @@ fun QueueCollapsedContentV9(
     ) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
-            val fileSize = currentFormat.formattedFileSize()
+            val sampleRate = currentFormat.formattedSampleRate()
+            val bitrateText = currentFormat.formattedBitrate()
+
+            val displayedBitrate = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                sampleRate
+            } else {
+                bitrateText
+            }
+
+            val fileSize = if (bitrateText == "Unknown" && !sampleRate.isNullOrBlank()) {
+                currentFormat.formattedFileSize()
+            } else {
+                currentFormat.formattedFileSize()
+            }
 
             CodecInfoRow(
                 codec = container,
-                bitrate = bitrate,
+                bitrate = displayedBitrate,
                 fileSize = fileSize,
                 textColor = textBackgroundColor.copy(alpha = 0.6f),
             )
