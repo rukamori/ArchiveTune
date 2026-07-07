@@ -231,7 +231,9 @@ class DownloadUtil
                 }
                 downloads.value = result
                 for (download in result.values) {
-                    if (download.state == Download.STATE_COMPLETED) {
+                    if (download.state == Download.STATE_COMPLETED &&
+                        !downloadedSongExporter.isAlreadyExported(download.request.id)
+                    ) {
                         downloadedSongExporter.export(download)
                     }
                 }

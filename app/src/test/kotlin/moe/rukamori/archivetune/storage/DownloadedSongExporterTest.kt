@@ -7,13 +7,12 @@
 
 package moe.rukamori.archivetune.storage
 
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import java.io.ByteArrayOutputStream
+import java.io.File
 
 class DownloadedSongExporterTest {
 
@@ -161,5 +160,58 @@ class DownloadedSongExporterTest {
         // Verify ID3 version is 4.0 (byte index 3, 4)
         assertEquals(4.toByte(), tagBytes[3])
         assertEquals(0.toByte(), tagBytes[4])
+    }
+
+    @Test
+    fun testBuildExportBaseNameAndFileNameWithIdMarker() {
+        val metadata = ExportedSongMetadata(
+            id = "abcdef123",
+            title = "My Favorite Song",
+            artists = listOf("Awesome Artist"),
+            album = "Cool Album",
+            durationSeconds = 180,
+            thumbnailUrl = null,
+            downloadedAt = null
+        )
+
+        val baseName = buildExportBaseName(metadata, "abcdef123")
+        assertEquals("My Favorite Song - Awesome Artist [abcdef123]", baseName)
+
+        val fileName = buildExportFileName(metadata, "audio/mpeg")
+        assertEquals("My Favorite Song - Awesome Artist [abcdef123].mp3", fileName)
+    }
+
+    @Test
+    fun testReadTopLevelMp4Atoms() {
+        // Build mock MP4 bytes representing two atoms: 'ftyp' (size 12) and 'moov' (size 20)
+        val ftypSize = 12
+        val moovSize = 20
+        val totalSize = ftypSize + moovSize
+        val bytes = ByteArray(totalSize)
+
+        // Atom 1: 'ftyp' at offset 0
+        bytes.writeIntAt(0, ftypSize)
+        System.arraycopy("ftyp".toByteArray(Charsets.ISO_8859_1), 0, bytes, 4, 4)
+
+        // Atom 2: 'moov' at offset 12
+        bytes.writeIntAt(ftypSize, moovSize)
+        System.arraycopy("moov".toByteArray(Charsets.ISO_8859_1), 0, bytes, ftypSize + 4, 4)
+
+        val tempFile = File.createTempFile("mock-mp4-test", ".mp4")
+        try {
+            tempFile.writeBytes(bytes)
+            val parsedAtoms = tempFile.readTopLevelMp4Atoms()
+
+            assertEquals(2, parsedAtoms.size)
+            assertEquals("ftyp", parsedAtoms[0].type)
+            assertEquals(0, parsedAtoms[0].start)
+            assertEquals(ftypSize, parsedAtoms[0].size)
+
+            assertEquals("moov", parsedAtoms[1].type)
+            assertEquals(ftypSize, parsedAtoms[1].start)
+            assertEquals(moovSize, parsedAtoms[1].size)
+        } finally {
+            tempFile.delete()
+        }
     }
 }

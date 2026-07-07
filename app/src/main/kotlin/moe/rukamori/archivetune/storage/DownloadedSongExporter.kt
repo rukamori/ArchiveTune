@@ -157,7 +157,7 @@ class DownloadedSongExporter
                 deleteExistingExports(
                     directory = targetDirectory,
                     songId = songId,
-                    expectedBaseName = metadata?.let(::buildExportBaseName),
+                    expectedBaseName = metadata?.let { buildExportBaseName(it, songId) },
                     except = null,
                 )
             }
@@ -386,6 +386,35 @@ class DownloadedSongExporter
             return deleted
         }
 
+        suspend fun isAlreadyExported(songId: String): Boolean =
+            withContext(Dispatchers.IO) {
+                val marker = exportIdMarker(songId)
+                val internalDir = StorageLocationRepository.exportedDownloadsDirectory(context)
+                val exportedInternally =
+                    internalDir.listFiles()?.any { file ->
+                        file.isFile && file.length() > 0L && file.name.contains(marker)
+                    } == true
+                if (exportedInternally) return@withContext true
+
+                selectedTreeUri()?.let { treeUri ->
+                    val resolver = context.contentResolver
+                    resolver.query(
+                        treeUri.toChildDocumentsUri(),
+                        arrayOf(Document.COLUMN_DISPLAY_NAME),
+                        null,
+                        null,
+                        null,
+                    )?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DISPLAY_NAME)
+                        while (cursor.moveToNext()) {
+                            val displayName = cursor.getString(nameIndex) ?: continue
+                            if (displayName.contains(marker)) return@withContext true
+                        }
+                    }
+                }
+                false
+            }
+
         private companion object {
             const val LogTag = "DownloadedSongExporter"
             const val MetadataLoadRetryCount = 5
@@ -393,21 +422,24 @@ class DownloadedSongExporter
         }
     }
 
-private fun buildExportFileName(
+internal fun buildExportFileName(
     metadata: ExportedSongMetadata,
     mimeType: String?,
 ): String {
-    val baseName = buildExportBaseName(metadata)
+    val baseName = buildExportBaseName(metadata, metadata.id)
     return "$baseName.${exportFileExtension(mimeType)}"
 }
 
-private fun buildExportBaseName(metadata: ExportedSongMetadata): String {
+internal fun buildExportBaseName(
+    metadata: ExportedSongMetadata,
+    id: String,
+): String {
     val title = metadata.title.toFileNamePart(maxLength = 96)
     val artist = metadata.artists.joinToString(", ").toFileNamePart(maxLength = 72)
-    return "$title - $artist"
+    return "$title - $artist ${exportIdMarker(id)}"
 }
 
-private fun exportIdMarker(id: String): String = "[${id.toFileNamePart(maxLength = 48)}]"
+internal fun exportIdMarker(id: String): String = "[${id.toFileNamePart(maxLength = 48)}]"
 
 private fun String.toFileNamePart(maxLength: Int): String {
     val normalized =
@@ -458,34 +490,60 @@ private fun File.writeId3Metadata(
     metadata: ExportedSongMetadata,
     format: FormatEntity?,
     artworkBytes: ByteArray?,
-): Boolean {
-    val original = readBytes()
-    val audioBytes =
-        if (original.size > Id3HeaderSize && original.copyOfRange(0, 3).decodeToString() == "ID3") {
-            val existingSize = original.readId3SyncSafeInt(offset = 6) + Id3HeaderSize
-            original.copyOfRange(existingSize.coerceAtMost(original.size), original.size)
-        } else {
-            original
+): Boolean = runCatching {
+    var existingTagSize = 0L
+    inputStream().use { inputStream ->
+        val header = ByteArray(Id3HeaderSize)
+        val bytesRead = inputStream.read(header)
+        if (bytesRead == Id3HeaderSize && header.copyOfRange(0, 3).decodeToString() == "ID3") {
+            existingTagSize = header.readId3SyncSafeInt(offset = 6).toLong() + Id3HeaderSize
         }
-    val tag = buildId3Tag(metadata, format, artworkBytes)
-    outputStream().use { outputStream ->
-        outputStream.write(tag)
-        outputStream.write(audioBytes)
     }
-    return true
-}
+
+    val tag = buildId3Tag(metadata, format, artworkBytes)
+    val tempFile = File.createTempFile("archivetune-id3-", ".tmp", parentFile)
+    try {
+        tempFile.outputStream().use { outputStream ->
+            outputStream.write(tag)
+            inputStream().use { inputStream ->
+                if (existingTagSize > 0) {
+                    inputStream.skipFully(existingTagSize)
+                }
+                inputStream.copyTo(outputStream)
+            }
+        }
+        if (exists() && !delete()) {
+            tempFile.delete()
+            return@runCatching false
+        }
+        if (!tempFile.renameTo(this)) {
+            tempFile.copyTo(this, overwrite = true)
+            tempFile.delete()
+        }
+        true
+    } catch (throwable: Throwable) {
+        tempFile.delete()
+        throw throwable
+    }
+}.getOrDefault(false)
 
 private fun File.writeMp4Metadata(
     metadata: ExportedSongMetadata,
     artworkBytes: ByteArray?,
-): Boolean {
-    val original = readBytes()
-    val atoms = original.readMp4Atoms(start = 0, end = original.size)
-    val moov = atoms.firstOrNull { atom -> atom.type == "moov" } ?: return true
+): Boolean = runCatching {
+    val atoms = readTopLevelMp4Atoms()
+    val moov = atoms.firstOrNull { atom -> atom.type == "moov" } ?: return@runCatching true
     val mdat = atoms.firstOrNull { atom -> atom.type == "mdat" }
-    if (moov.end > original.size || moov.headerSize >= moov.size) return true
 
-    val oldMoov = original.copyOfRange(moov.start, moov.end)
+    val fileSize = length()
+    if (moov.end > fileSize || moov.headerSize >= moov.size) return@runCatching true
+
+    val oldMoov = ByteArray(moov.size)
+    inputStream().use { inputStream ->
+        inputStream.skipFully(moov.start.toLong())
+        inputStream.readFully(oldMoov, 0, moov.size)
+    }
+
     val oldPayload = oldMoov.copyOfRange(moov.headerSize, oldMoov.size)
     val newPayload =
         ByteArrayOutputStream().use { outputStream ->
@@ -493,7 +551,7 @@ private fun File.writeMp4Metadata(
             outputStream.write(buildMp4UdtaAtom(metadata, artworkBytes))
             outputStream.toByteArray()
         }
-    var newMoov = buildMp4Atom("moov".toByteArray(), newPayload)
+    var newMoov = buildMp4Atom("moov".toIso8859Bytes(), newPayload)
     if (mdat != null && moov.start < mdat.start) {
         val delta = newMoov.size - oldMoov.size
         if (delta > 0) {
@@ -502,12 +560,91 @@ private fun File.writeMp4Metadata(
         }
     }
 
-    outputStream().use { outputStream ->
-        outputStream.write(original, 0, moov.start)
-        outputStream.write(newMoov)
-        outputStream.write(original, moov.end, original.size - moov.end)
+    val tempFile = File.createTempFile("archivetune-mp4-", ".tmp", parentFile)
+    try {
+        tempFile.outputStream().use { outputStream ->
+            if (moov.start > 0) {
+                inputStream().use { inputStream ->
+                    inputStream.copyLimitedTo(outputStream, moov.start.toLong())
+                }
+            }
+            outputStream.write(newMoov)
+            val remainingBytes = fileSize - moov.end
+            if (remainingBytes > 0) {
+                inputStream().use { inputStream ->
+                    inputStream.skipFully(moov.end.toLong())
+                    inputStream.copyTo(outputStream)
+                }
+            }
+        }
+        if (exists() && !delete()) {
+            tempFile.delete()
+            return@runCatching false
+        }
+        if (!tempFile.renameTo(this)) {
+            tempFile.copyTo(this, overwrite = true)
+            tempFile.delete()
+        }
+        true
+    } catch (throwable: Throwable) {
+        tempFile.delete()
+        throw throwable
     }
-    return true
+}.getOrDefault(false)
+
+private fun File.readTopLevelMp4Atoms(): List<Mp4Atom> {
+    val atoms = mutableListOf<Mp4Atom>()
+    var offset = 0
+    val fileSize = length().toInt()
+    inputStream().use { inputStream ->
+        val header = ByteArray(16)
+        while (offset + 8 <= fileSize) {
+            inputStream.readFully(header, 0, 8)
+            val smallSize = ((header[0].toLong() and 0xFF) shl 24) or
+                           ((header[1].toLong() and 0xFF) shl 16) or
+                           ((header[2].toLong() and 0xFF) shl 8) or
+                           (header[3].toLong() and 0xFF)
+            val type = header.copyOfRange(4, 8).decodeToString()
+            val headerSize: Int
+            val size: Long
+            if (smallSize == 1L) {
+                inputStream.readFully(header, 8, 8)
+                headerSize = 16
+                size = ((header[8].toLong() and 0xFF) shl 56) or
+                       ((header[9].toLong() and 0xFF) shl 48) or
+                       ((header[10].toLong() and 0xFF) shl 40) or
+                       ((header[11].toLong() and 0xFF) shl 32) or
+                       ((header[12].toLong() and 0xFF) shl 24) or
+                       ((header[13].toLong() and 0xFF) shl 16) or
+                       ((header[14].toLong() and 0xFF) shl 8) or
+                       (header[15].toLong() and 0xFF)
+            } else {
+                headerSize = 8
+                size = if (smallSize == 0L) (fileSize - offset).toLong() else smallSize
+            }
+            atoms += Mp4Atom(
+                start = offset,
+                headerSize = headerSize,
+                size = size.toInt(),
+                type = type
+            )
+            val payloadToSkip = size - headerSize
+            if (payloadToSkip > 0) {
+                inputStream.skipFully(payloadToSkip)
+            }
+            offset += size.toInt()
+        }
+    }
+    return atoms
+}
+
+private fun InputStream.readFully(buffer: ByteArray, offset: Int, length: Int) {
+    var totalRead = 0
+    while (totalRead < length) {
+        val read = read(buffer, offset + totalRead, length - totalRead)
+        if (read == -1) throw java.io.EOFException("Reached end of stream before reading $length bytes")
+        totalRead += read
+    }
 }
 
 internal fun buildId3Tag(
