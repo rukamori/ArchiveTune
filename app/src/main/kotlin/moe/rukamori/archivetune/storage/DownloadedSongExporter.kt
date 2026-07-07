@@ -422,48 +422,37 @@ private fun String.toFileNamePart(maxLength: Int): String {
         ?: "Unknown"
 }
 
+private val MimeTypeToExtensionMap = mapOf(
+    "audio/aac" to "aac",
+    "audio/aac-adts" to "aac",
+    "audio/x-aac" to "aac",
+    "audio/flac" to "flac",
+    "audio/x-flac" to "flac",
+    "audio/mpeg" to "mp3",
+    "audio/x-mpeg" to "mp3",
+    "audio/ogg" to "ogg",
+    "audio/opus" to "ogg",
+    "application/ogg" to "ogg",
+    "audio/webm" to "webm",
+    "video/webm" to "webm",
+    "audio/wav" to "wav",
+    "audio/wave" to "wav",
+    "audio/x-wav" to "wav",
+)
+
+private val MimeTypeToExportMimeTypeMap = mapOf(
+    "video/mp4" to "audio/mp4",
+    "application/mp4" to "audio/mp4",
+    "audio/x-m4a" to "audio/mp4",
+    "video/webm" to "audio/webm",
+)
+
 private fun exportFileExtension(mimeType: String?): String =
-    when (mimeType.normalizedMimeType()) {
-        "audio/aac",
-        "audio/aac-adts",
-        "audio/x-aac",
-        -> "aac"
-
-        "audio/flac",
-        "audio/x-flac",
-        -> "flac"
-
-        "audio/mpeg",
-        "audio/x-mpeg",
-        -> "mp3"
-
-        "audio/ogg",
-        "audio/opus",
-        "application/ogg",
-        -> "ogg"
-
-        "audio/webm",
-        "video/webm",
-        -> "webm"
-
-        "audio/wav",
-        "audio/wave",
-        "audio/x-wav",
-        -> "wav"
-
-        else -> "m4a"
-    }
+    MimeTypeToExtensionMap[mimeType.normalizedMimeType()] ?: "m4a"
 
 private fun exportMimeType(mimeType: String?): String =
-    when (mimeType.normalizedMimeType()) {
-        "video/mp4",
-        "application/mp4",
-        "audio/x-m4a",
-        -> "audio/mp4"
-
-        "video/webm" -> "audio/webm"
-        else -> mimeType.normalizedMimeType().ifBlank { "audio/mp4" }
-    }
+    MimeTypeToExportMimeTypeMap[mimeType.normalizedMimeType()]
+        ?: mimeType.normalizedMimeType().ifBlank { "audio/mp4" }
 
 private fun File.writeId3Metadata(
     metadata: ExportedSongMetadata,
@@ -521,7 +510,7 @@ private fun File.writeMp4Metadata(
     return true
 }
 
-private fun buildId3Tag(
+internal fun buildId3Tag(
     metadata: ExportedSongMetadata,
     format: FormatEntity?,
     artworkBytes: ByteArray?,
@@ -553,12 +542,12 @@ private fun buildId3Tag(
     }
 }
 
-private fun id3TextFrame(
+internal fun id3TextFrame(
     id: String,
     value: String,
-): ByteArray = id3Frame(id, byteArrayOf(Id3Utf8EncodingByte) + value.toByteArray(Charsets.UTF_8))
+): ByteArray = id3Frame(id, byteArrayOf(Id3Utf8EncodingByte) + value.toUtf8Bytes())
 
-private fun id3UserTextFrame(
+internal fun id3UserTextFrame(
     description: String,
     value: String,
 ): ByteArray =
@@ -566,17 +555,17 @@ private fun id3UserTextFrame(
         id = "TXXX",
         payload =
             byteArrayOf(Id3Utf8EncodingByte) +
-                description.toByteArray(Charsets.UTF_8) +
+                description.toUtf8Bytes() +
                 byteArrayOf(0) +
-                value.toByteArray(Charsets.UTF_8),
+                value.toUtf8Bytes(),
     )
 
-private fun id3Frame(
+internal fun id3Frame(
     id: String,
     payload: ByteArray,
 ): ByteArray =
     ByteArrayOutputStream().use { outputStream ->
-        outputStream.write(id.toByteArray(Charsets.ISO_8859_1))
+        outputStream.write(id.toIso8859Bytes())
         outputStream.write(payload.size.toId3SyncSafeBytes())
         outputStream.write(byteArrayOf(0, 0))
         outputStream.write(payload)
@@ -643,11 +632,11 @@ private fun ByteArrayOutputStream.writeMp4TextItem(
         buildMp4Atom(
             type,
             buildMp4Atom(
-                "data".toByteArray(),
+                "data".toIso8859Bytes(),
                 ByteArrayOutputStream().use { outputStream ->
-                    outputStream.writeInt(1)
-                    outputStream.writeInt(0)
-                    outputStream.write(value.toByteArray(Charsets.UTF_8))
+                    outputStream.writeInt(Mp4TextTypeFlag)
+                    outputStream.writeInt(Mp4DefaultLocale)
+                    outputStream.write(value.toUtf8Bytes())
                     outputStream.toByteArray()
                 },
             ),
@@ -664,10 +653,10 @@ private fun ByteArrayOutputStream.writeMp4ImageItem(
         buildMp4Atom(
             type,
             buildMp4Atom(
-                "data".toByteArray(),
+                "data".toIso8859Bytes(),
                 ByteArrayOutputStream().use { outputStream ->
-                    outputStream.writeInt(13) // Type indicator: JPEG/PNG image is 13
-                    outputStream.writeInt(0)
+                    outputStream.writeInt(Mp4ImageTypeFlag) // Type indicator: JPEG/PNG image is 13
+                    outputStream.writeInt(Mp4DefaultLocale)
                     outputStream.write(imageBytes)
                     outputStream.toByteArray()
                 },
@@ -782,7 +771,7 @@ private fun Int.toId3SyncSafeBytes(): ByteArray =
         (this and 0x7F).toByte(),
     )
 
-private fun ByteArray.readMp4Atoms(
+internal fun ByteArray.readMp4Atoms(
     start: Int,
     end: Int,
 ): List<Mp4Atom> {
@@ -823,7 +812,7 @@ private fun ByteArray.readMp4Atoms(
     return atoms
 }
 
-private fun ByteArray.adjustMp4ChunkOffsets(delta: Long) {
+internal fun ByteArray.adjustMp4ChunkOffsets(delta: Long) {
     adjustMp4ChunkOffsets(
         start = Mp4AtomHeaderSize,
         end = size,
@@ -831,7 +820,7 @@ private fun ByteArray.adjustMp4ChunkOffsets(delta: Long) {
     )
 }
 
-private fun ByteArray.adjustMp4ChunkOffsets(
+internal fun ByteArray.adjustMp4ChunkOffsets(
     start: Int,
     end: Int,
     delta: Long,
@@ -859,7 +848,7 @@ private fun ByteArray.adjustMp4ChunkOffsets(
     }
 }
 
-private fun ByteArray.adjustStcoAtom(
+internal fun ByteArray.adjustStcoAtom(
     atom: Mp4Atom,
     delta: Long,
 ) {
@@ -869,12 +858,14 @@ private fun ByteArray.adjustStcoAtom(
     var offset = entryCountOffset + 4
     repeat(entryCount) {
         if (offset + 4 > atom.end) return
-        writeInt(offset, (readUInt32(offset) + delta).coerceAtMost(UIntMaxValue).toInt())
+        val newOffset = readUInt32(offset) + delta
+        require(newOffset <= MaxUnsignedInt32) { "Chunk offset overflow in M4A file: $newOffset" }
+        writeIntAt(offset, newOffset.toInt())
         offset += 4
     }
 }
 
-private fun ByteArray.adjustCo64Atom(
+internal fun ByteArray.adjustCo64Atom(
     atom: Mp4Atom,
     delta: Long,
 ) {
@@ -884,18 +875,18 @@ private fun ByteArray.adjustCo64Atom(
     var offset = entryCountOffset + 4
     repeat(entryCount) {
         if (offset + 8 > atom.end) return
-        writeLong(offset, readUInt64(offset) + delta)
+        writeLongAt(offset, readUInt64(offset) + delta)
         offset += 8
     }
 }
 
-private fun ByteArray.readUInt32(offset: Int): Long =
+internal fun ByteArray.readUInt32(offset: Int): Long =
     ((this[offset].toLong() and 0xFF) shl 24) or
         ((this[offset + 1].toLong() and 0xFF) shl 16) or
         ((this[offset + 2].toLong() and 0xFF) shl 8) or
         (this[offset + 3].toLong() and 0xFF)
 
-private fun ByteArray.readUInt64(offset: Int): Long =
+internal fun ByteArray.readUInt64(offset: Int): Long =
     ((this[offset].toLong() and 0xFF) shl 56) or
         ((this[offset + 1].toLong() and 0xFF) shl 48) or
         ((this[offset + 2].toLong() and 0xFF) shl 40) or
@@ -905,7 +896,7 @@ private fun ByteArray.readUInt64(offset: Int): Long =
         ((this[offset + 6].toLong() and 0xFF) shl 8) or
         (this[offset + 7].toLong() and 0xFF)
 
-private fun ByteArray.writeInt(
+internal fun ByteArray.writeIntAt(
     offset: Int,
     value: Int,
 ) {
@@ -915,7 +906,7 @@ private fun ByteArray.writeInt(
     this[offset + 3] = (value and 0xFF).toByte()
 }
 
-private fun ByteArray.writeLong(
+internal fun ByteArray.writeLongAt(
     offset: Int,
     value: Long,
 ) {
@@ -950,7 +941,7 @@ private fun String.nameWithoutKnownAudioExtension(): String {
     }
 }
 
-private data class Mp4Atom(
+internal data class Mp4Atom(
     val start: Int,
     val headerSize: Int,
     val size: Int,
@@ -976,16 +967,25 @@ private const val Id3Utf8EncodingByte: Byte = 3
 private const val Mp4AtomHeaderSize = 8
 private const val Mp4ExtendedAtomHeaderSize = 16
 private const val Mp4FullBoxHeaderSize = 4
-private const val UIntMaxValue = 0xFFFF_FFFFL
+private const val MaxUnsignedInt32 = 0xFFFF_FFFFL
 private const val CopyBufferSizeBytes = 256 * 1024
 
+private const val Mp4TextTypeFlag = 1
+private const val Mp4ImageTypeFlag = 13
+private const val Mp4DefaultLocale = 0
+private const val Id3Iso88591EncodingByte: Byte = 0
+private const val Id3PictureTypeFrontCover: Byte = 3
+
+private fun String.toUtf8Bytes(): ByteArray = toByteArray(Charsets.UTF_8)
+private fun String.toIso8859Bytes(): ByteArray = toByteArray(Charsets.ISO_8859_1)
+
 private fun id3PictureFrame(imageBytes: ByteArray): ByteArray {
-    val mimeTypeBytes = "image/jpeg".toByteArray(Charsets.ISO_8859_1)
+    val mimeTypeBytes = "image/jpeg".toIso8859Bytes()
     val payload = ByteArrayOutputStream().use { outputStream ->
-        outputStream.write(0) // Text encoding: ISO-8859-1
+        outputStream.write(Id3Iso88591EncodingByte.toInt()) // Text encoding: ISO-8859-1
         outputStream.write(mimeTypeBytes)
         outputStream.write(0) // Null terminator for MIME type
-        outputStream.write(3) // Picture type: Cover (front)
+        outputStream.write(Id3PictureTypeFrontCover.toInt()) // Picture type: Cover (front)
         outputStream.write(0) // Description null terminator
         outputStream.write(imageBytes)
         outputStream.toByteArray()
@@ -993,7 +993,7 @@ private fun id3PictureFrame(imageBytes: ByteArray): ByteArray {
     return id3Frame("APIC", payload)
 }
 
-private data class ExportedSongMetadata(
+internal data class ExportedSongMetadata(
     val id: String,
     val title: String,
     val artists: List<String>,
