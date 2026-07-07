@@ -592,7 +592,7 @@ private fun File.writeMp4Metadata(
     }
 }.getOrDefault(false)
 
-private fun File.readTopLevelMp4Atoms(): List<Mp4Atom> {
+internal fun File.readTopLevelMp4Atoms(): List<Mp4Atom> {
     val atoms = mutableListOf<Mp4Atom>()
     var offset = 0
     val fileSize = length().toInt()
