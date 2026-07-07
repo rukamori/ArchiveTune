@@ -682,7 +682,6 @@ object YTPlayerUtils {
                     reason = "stale logged-in playback context",
                 )
             canUseLoggedInPlayback = false
-            YouTube.authState = authState
             clearPlaybackAuthCaches()
 
             val newSessionId = authState.visitorData
@@ -1236,7 +1235,9 @@ object YTPlayerUtils {
                 .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
                 .onFailure {
                     if (it.isJavaScriptPlayerExtractorFailure()) {
-                        Timber.tag(logTag).w(it, "Skipping stream candidate because YouTube JavaScript decipher failed")
+                        Timber
+                            .tag(logTag)
+                            .w("Skipping stream candidate because YouTube JavaScript decipher is unavailable: ${it.message}")
                     } else {
                         Timber.tag(logTag).e(it, "Failed to get stream URL")
                         reportException(it)

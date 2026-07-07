@@ -457,6 +457,7 @@ interface DatabaseDao {
             WHERE song_artist_map.songId = song.id
               AND artist.blockedAt IS NOT NULL
         )
+        ORDER BY songCountListened DESC, timeListened DESC, song.id ASC
         LIMIT :limit
         OFFSET :offset
     """,
@@ -497,6 +498,7 @@ interface DatabaseDao {
             WHERE song_artist_map.songId = song.id
               AND artist.blockedAt IS NOT NULL
         )
+        ORDER BY songCountListened DESC, timeListened DESC, song.id ASC
         LIMIT :limit
         OFFSET :offset
     """,

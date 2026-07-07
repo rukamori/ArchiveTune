@@ -23,6 +23,7 @@ import org.w3c.dom.Node
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
+import javax.imageio.ImageIO
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
@@ -114,9 +115,18 @@ abstract class GenerateIconPackTask : DefaultTask() {
                             )
                         }
                     }
+                val drawableName = "icon_pack_$hash"
+                val targetFile = File(resourcesDirectory, "drawable-nodpi/$drawableName.png")
+                targetFile.parentFile.mkdirs()
+                rasterizeSvg(sourceFile, targetFile)
                 val backgroundColor =
                     if (configuredBackgroundColor.isEmpty()) {
-                        analysis.recommendedBackgroundColor
+                        if (hasIntegratedBackground) {
+                            targetFile.readOpaqueCornerColor()
+                                ?: analysis.recommendedBackgroundColor
+                        } else {
+                            analysis.recommendedBackgroundColor
+                        }
                     } else {
                         configuredBackgroundColor.toOpaqueColor()
                             ?: throw GradleException(
@@ -124,11 +134,6 @@ abstract class GenerateIconPackTask : DefaultTask() {
                                     "must be a literal hex color.",
                             )
                     }
-
-                val drawableName = "icon_pack_$hash"
-                val targetFile = File(resourcesDirectory, "drawable-nodpi/$drawableName.png")
-                targetFile.parentFile.mkdirs()
-                rasterizeSvg(sourceFile, targetFile)
 
                 mapOf(
                     "id" to id,
@@ -141,7 +146,6 @@ abstract class GenerateIconPackTask : DefaultTask() {
                     "adaptiveIconResourceName" to drawableName,
                     "roundAdaptiveIconResourceName" to "${drawableName}_round",
                     "backgroundColor" to backgroundColor,
-                    "hasIntegratedBackground" to hasIntegratedBackground.toString(),
                     "aliasClassName" to "${applicationId.get()}.launcher.IconAlias$hash",
                 )
             }
@@ -156,7 +160,6 @@ abstract class GenerateIconPackTask : DefaultTask() {
                             "adaptiveIconResourceName",
                             "roundAdaptiveIconResourceName",
                             "backgroundColor",
-                            "hasIntegratedBackground",
                         )
                 }
             writeText(JsonOutput.prettyPrint(JsonOutput.toJson(runtimeCatalog)) + System.lineSeparator())
@@ -407,32 +410,17 @@ abstract class GenerateIconPackTask : DefaultTask() {
             val drawableName = entry.getValue("drawableResourceName")
             val backgroundName = "${drawableName}_background"
             val foregroundName = "${drawableName}_foreground"
-            val hasIntegratedBackground =
-                entry.getValue("hasIntegratedBackground").toBooleanStrict()
+            val backgroundColor = entry.getValue("backgroundColor")
 
             File(drawableDirectory, "$backgroundName.xml").writeText(
-                if (hasIntegratedBackground) {
-                    """
-<?xml version="1.0" encoding="utf-8"?>
-<inset xmlns:android="$AndroidNamespace"
-    android:drawable="@drawable/$drawableName"
-    android:insetBottom="0dp"
-    android:insetLeft="0dp"
-    android:insetRight="0dp"
-    android:insetTop="0dp" />
-                    """.trimIndent() + System.lineSeparator()
-                } else {
-                    val backgroundColor = entry.getValue("backgroundColor")
-                    """
+                """
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="$AndroidNamespace"
     android:shape="rectangle">
     <solid android:color="$backgroundColor" />
 </shape>
-                    """.trimIndent() + System.lineSeparator()
-                },
+                """.trimIndent() + System.lineSeparator(),
             )
-
             File(drawableDirectory, "$foregroundName.xml").writeText(
                 """
 <?xml version="1.0" encoding="utf-8"?>
@@ -552,6 +540,29 @@ ${aliases.prependIndent("        ")}
             .take(12)
             .joinToString(separator = "") { byte -> "%02x".format(byte) }
 
+    private fun File.readOpaqueCornerColor(): String? {
+        val image =
+            try {
+                ImageIO.read(this)
+            } catch (error: Exception) {
+                throw GradleException("Unable to inspect generated icon raster \"$name\".", error)
+            } ?: throw GradleException("Generated icon raster \"$name\" is not a readable image.")
+        val corners =
+            intArrayOf(
+                image.getRGB(0, 0),
+                image.getRGB(image.width - 1, 0),
+                image.getRGB(0, image.height - 1),
+                image.getRGB(image.width - 1, image.height - 1),
+            )
+        if (corners.any { color -> color ushr AlphaChannelShift != OpaqueAlpha }) {
+            return null
+        }
+        val red = corners.sumOf { color -> color ushr RedChannelShift and ColorChannelMask } / corners.size
+        val green = corners.sumOf { color -> color ushr GreenChannelShift and ColorChannelMask } / corners.size
+        val blue = corners.sumOf { color -> color and ColorChannelMask } / corners.size
+        return "#FF%02X%02X%02X".format(red, green, blue)
+    }
+
     private fun String.toOpaqueColor(): String? {
         val value = trim()
         val argb =
@@ -625,6 +636,11 @@ ${aliases.prependIndent("        ")}
         const val FullCanvasCoordinateCount = 8
         const val FullCanvasToleranceRatio = 0.01
         const val ColorChannelMax = 255.0
+        const val AlphaChannelShift = 24
+        const val RedChannelShift = 16
+        const val GreenChannelShift = 8
+        const val ColorChannelMask = 0xFF
+        const val OpaqueAlpha = 0xFF
         const val RedLuminanceWeight = 0.2126
         const val GreenLuminanceWeight = 0.7152
         const val BlueLuminanceWeight = 0.0722

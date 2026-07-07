@@ -215,6 +215,7 @@
     <string name="lyrics_share_background_blur">Background blur</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">Blur lyrics lines</string>
+    <string name="show_lyrics_player_controls">Show player controls</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>
@@ -481,6 +482,14 @@
     <string name="stats_listening_by_day">Listening by Day</string>
     <string name="stats_listening_by_hour">Listening by Hour</string>
     <string name="stats_peak_hour">Most active: %s</string>
+    <string name="stats_top_songs">Top songs</string>
+    <string name="stats_show_all_songs">Show all %1$d songs</string>
+    <string name="stats_show_top_songs">Show top 5</string>
+    <string name="stats_empty_title">No listening stats yet</string>
+    <string name="stats_empty_message">Songs you play will appear here with listening trends and rankings.</string>
+    <string name="stats_time_range">Time range</string>
+    <string name="stats_listening_patterns">Listening patterns</string>
+    <string name="stats_artist_breakdown">Artist breakdown</string>
     <string name="day_sun">Sun</string>
     <string name="day_mon">Mon</string>
     <string name="day_tue">Tue</string>
@@ -617,7 +626,7 @@
     <string name="about_license_unknown">Unknown license</string>
     <string name="about_position_lead_dev">Eh?</string>
     <string name="about_position_developers">Developer | Team</string>
-    <string name="about_position_yuki">Just for Show 😂 | Admin</string>
+    <string name="about_position_yuki">dummy reze | Admin</string>
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
     <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, ArchiveTune, and other forks</string>
     <string name="about_content_desc_github">GitHub</string>

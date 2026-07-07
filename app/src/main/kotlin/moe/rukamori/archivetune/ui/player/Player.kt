@@ -173,6 +173,7 @@ import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.QueuePeekHeight
+import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
@@ -308,6 +309,10 @@ fun BottomSheetPlayer(
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
         defaultValue = PlayerDesignStyle.V4,
+    )
+    val showPlayerVolumeBar by rememberPreference(
+        key = ShowPlayerVolumeBarKey,
+        defaultValue = true,
     )
 
     val storedPlayerBackground by rememberEnumPreference(
@@ -1281,6 +1286,7 @@ fun BottomSheetPlayer(
                                     position = position,
                                     duration = duration,
                                     volume = deviceMusicVolumeController.volumeFraction,
+                                    showVolumeBar = showPlayerVolumeBar,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1327,6 +1333,7 @@ fun BottomSheetPlayer(
                                 position = position,
                                 duration = duration,
                                 volume = deviceMusicVolumeController.volumeFraction,
+                                showVolumeBar = showPlayerVolumeBar,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,
@@ -1555,6 +1562,7 @@ fun BottomSheetPlayer(
                                     position = position,
                                     duration = duration,
                                     volume = deviceMusicVolumeController.volumeFraction,
+                                    showVolumeBar = showPlayerVolumeBar,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1600,6 +1608,7 @@ fun BottomSheetPlayer(
                                 position = position,
                                 duration = duration,
                                 volume = deviceMusicVolumeController.volumeFraction,
+                                showVolumeBar = showPlayerVolumeBar,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,

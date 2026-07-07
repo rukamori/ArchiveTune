@@ -1940,6 +1940,7 @@ fun V8PlayerControlsContent(
     position: Long,
     duration: Long,
     volume: Float,
+    showVolumeBar: Boolean,
     currentFormat: FormatEntity?,
     playerConnection: PlayerConnection,
     navController: NavController,
@@ -2075,14 +2076,16 @@ fun V8PlayerControlsContent(
                 onNextClick = onNextClick,
             )
 
-            Spacer(Modifier.height(transportToVolumeGap))
+            if (showVolumeBar) {
+                Spacer(Modifier.height(transportToVolumeGap))
 
-            V8VolumeControls(
-                volume = volume,
-                foreground = foreground,
-                secondaryForeground = secondaryForeground,
-                onVolumeChange = onVolumeChange,
-            )
+                V8VolumeControls(
+                    volume = volume,
+                    foreground = foreground,
+                    secondaryForeground = secondaryForeground,
+                    onVolumeChange = onVolumeChange,
+                )
+            }
         }
     }
 }
@@ -2101,6 +2104,7 @@ fun V8PlayerContent(
     position: Long,
     duration: Long,
     volume: Float,
+    showVolumeBar: Boolean,
     playerConnection: PlayerConnection,
     navController: NavController,
     state: BottomSheetState,
@@ -2165,6 +2169,7 @@ fun V8PlayerContent(
             position = position,
             duration = duration,
             volume = volume,
+            showVolumeBar = showVolumeBar,
             currentFormat = currentFormat,
             foreground = foreground,
             secondaryForeground = secondaryForeground,
@@ -2205,6 +2210,7 @@ fun V8PlayerContent(
             position = position,
             duration = duration,
             volume = volume,
+            showVolumeBar = showVolumeBar,
             currentFormat = currentFormat,
             foreground = foreground,
             secondaryForeground = secondaryForeground,
@@ -2248,6 +2254,7 @@ private fun V8PortraitContent(
     position: Long,
     duration: Long,
     volume: Float,
+    showVolumeBar: Boolean,
     currentFormat: FormatEntity?,
     foreground: Color,
     secondaryForeground: Color,
@@ -2284,6 +2291,12 @@ private fun V8PortraitContent(
         val progressToTransportGap = if (compactHeight) 8.dp else 18.dp
         val transportToVolumeGap = if (compactHeight) 8.dp else 18.dp
         val bottomGap = if (compactHeight) 8.dp else 16.dp
+        val volumeControlsHeight =
+            if (showVolumeBar) {
+                transportToVolumeGap + 30.dp
+            } else {
+                0.dp
+            }
         val reservedControlsHeight =
             headerTop +
                 56.dp +
@@ -2294,8 +2307,7 @@ private fun V8PortraitContent(
                 62.dp +
                 progressToTransportGap +
                 72.dp +
-                transportToVolumeGap +
-                30.dp +
+                volumeControlsHeight +
                 bottomGap
         val maxArtworkSize =
             (maxWidth - contentPadding * 2)
@@ -2372,14 +2384,16 @@ private fun V8PortraitContent(
                 onNextClick = onNextClick,
             )
 
-            Spacer(Modifier.height(transportToVolumeGap))
+            if (showVolumeBar) {
+                Spacer(Modifier.height(transportToVolumeGap))
 
-            V8VolumeControls(
-                volume = volume,
-                foreground = foreground,
-                secondaryForeground = secondaryForeground,
-                onVolumeChange = onVolumeChange,
-            )
+                V8VolumeControls(
+                    volume = volume,
+                    foreground = foreground,
+                    secondaryForeground = secondaryForeground,
+                    onVolumeChange = onVolumeChange,
+                )
+            }
 
             Spacer(Modifier.height(bottomGap))
         }
@@ -2404,6 +2418,7 @@ private fun V8LandscapeContent(
     position: Long,
     duration: Long,
     volume: Float,
+    showVolumeBar: Boolean,
     currentFormat: FormatEntity?,
     foreground: Color,
     secondaryForeground: Color,
@@ -2498,14 +2513,16 @@ private fun V8LandscapeContent(
                     onNextClick = onNextClick,
                 )
 
-                Spacer(Modifier.height(18.dp))
+                if (showVolumeBar) {
+                    Spacer(Modifier.height(18.dp))
 
-                V8VolumeControls(
-                    volume = volume,
-                    foreground = foreground,
-                    secondaryForeground = secondaryForeground,
-                    onVolumeChange = onVolumeChange,
-                )
+                    V8VolumeControls(
+                        volume = volume,
+                        foreground = foreground,
+                        secondaryForeground = secondaryForeground,
+                        onVolumeChange = onVolumeChange,
+                    )
+                }
             }
         }
     }

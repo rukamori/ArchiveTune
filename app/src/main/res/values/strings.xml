@@ -232,6 +232,8 @@
     <string name="sample_rate">Sample rate</string>
     <string name="loudness">Loudness</string>
     <string name="volume">Volume</string>
+    <string name="show_player_volume_bar">Show volume bar</string>
+    <string name="player_volume_bar_v7_v8_only">Available only with V7 and V8 player styles</string>
     <string name="file_size">File size</string>
     <string name="unknown">Unknown</string>
     <string name="copied">Copied to clipboard</string>

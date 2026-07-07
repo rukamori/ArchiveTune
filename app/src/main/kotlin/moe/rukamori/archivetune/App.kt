@@ -158,12 +158,6 @@ class App :
         applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = dataStore.data.first()
-                val playbackSessionId = prefs.toPlaybackAuthState().sessionId
-                if (!playbackSessionId.isNullOrBlank()) {
-                    applicationScope.launch(Dispatchers.IO) {
-                        BotGuardTokenGenerator.preWarm(playbackSessionId)
-                    }
-                }
 
                 prefs[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { country ->
                     YouTube.locale = YouTube.locale.copy(gl = country)
@@ -260,9 +254,9 @@ class App :
                     YouTube.authState = authState
                     if (previousFingerprint != authState.fingerprint) {
                         YTPlayerUtils.clearPlaybackAuthCaches()
-                        val newSessionId = authState.sessionId
-                        if (!newSessionId.isNullOrBlank()) {
-                            BotGuardTokenGenerator.preWarm(newSessionId)
+                        val visitorData = authState.visitorData
+                        if (!visitorData.isNullOrBlank()) {
+                            BotGuardTokenGenerator.preWarm(visitorData)
                         }
                     }
                 }

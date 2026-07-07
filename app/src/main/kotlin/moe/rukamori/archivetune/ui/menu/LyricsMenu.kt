@@ -58,10 +58,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +111,7 @@ import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.component.NewMenuItem
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.utils.TranslatorLang
 import moe.rukamori.archivetune.utils.TranslatorLanguages
@@ -133,10 +136,13 @@ fun LyricsMenu(
     mediaMetadataProvider: () -> MediaMetadata,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
+    showPlayerControlsState: State<Boolean>,
+    onShowPlayerControlsChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val showPlayerControls by showPlayerControlsState
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
@@ -765,6 +771,26 @@ fun LyricsMenu(
                             ),
                         ),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                )
+                NewMenuItem(
+                    headlineContent = {
+                        Text(stringResource(R.string.show_lyrics_player_controls))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = showPlayerControls,
+                            onCheckedChange = onShowPlayerControlsChange,
+                        )
+                    },
+                    onClick = {
+                        onShowPlayerControlsChange(!showPlayerControls)
+                    },
+                    modifier =
+                        Modifier.padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 8.dp,
+                        ),
                 )
             }
         }

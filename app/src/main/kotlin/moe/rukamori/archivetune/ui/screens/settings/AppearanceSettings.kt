@@ -100,6 +100,7 @@ import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
+import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
@@ -147,6 +148,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberEnumPreference(
             PlayerDesignStyleKey,
             defaultValue = PlayerDesignStyle.V4,
+        )
+    val (showPlayerVolumeBar, onShowPlayerVolumeBarChange) =
+        rememberPreference(
+            ShowPlayerVolumeBarKey,
+            defaultValue = true,
         )
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(
@@ -309,6 +315,9 @@ fun AppearanceSettings(navController: NavController) {
 
             else -> true
         }
+    val isVolumeBarSupported =
+        playerDesignStyle == PlayerDesignStyle.V7 ||
+            playerDesignStyle == PlayerDesignStyle.V8
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkMode, isSystemInDarkTheme) {
@@ -626,6 +635,22 @@ fun AppearanceSettings(navController: NavController) {
                                 PlayerDesignStyle.V9 -> stringResource(R.string.player_design_v9)
                             }
                         },
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.show_player_volume_bar)) },
+                        description =
+                            if (isVolumeBarSupported) {
+                                null
+                            } else {
+                                stringResource(R.string.player_volume_bar_v7_v8_only)
+                            },
+                        icon = { Icon(painterResource(R.drawable.volume_up), null) },
+                        checked = showPlayerVolumeBar,
+                        onCheckedChange = onShowPlayerVolumeBarChange,
+                        isEnabled = isVolumeBarSupported,
                     )
                 }
 
