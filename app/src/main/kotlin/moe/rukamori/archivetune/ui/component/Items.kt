@@ -131,6 +131,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
+import moe.rukamori.archivetune.ui.utils.preferredThumbnailRatio
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -1424,7 +1425,7 @@ fun YouTubeGridItem(
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
-    thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
+    thumbnailRatio: Float = item.preferredThumbnailRatio,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
