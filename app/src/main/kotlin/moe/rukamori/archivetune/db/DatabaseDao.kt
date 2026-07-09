@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.AlbumWithSongs
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.ArtistEntity
+import moe.rukamori.archivetune.db.entities.BeatInfoEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.EventWithSong
 import moe.rukamori.archivetune.db.entities.FormatEntity
@@ -1903,6 +1904,12 @@ interface DatabaseDao {
 
     @Upsert
     fun upsert(format: FormatEntity)
+
+    @Upsert
+    suspend fun upsert(beatInfo: BeatInfoEntity)
+
+    @Query("SELECT * FROM beat_info WHERE id = :id")
+    suspend fun beatInfo(id: String): BeatInfoEntity?
 
     @Upsert
     fun upsert(artist: ArtistEntity)

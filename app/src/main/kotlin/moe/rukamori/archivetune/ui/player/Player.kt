@@ -384,6 +384,7 @@ fun BottomSheetPlayer(
         }
 
     val playbackState by playerConnection.playbackState.collectAsState()
+    val isAutomixing by playerConnection.isAutomixing.collectAsState()
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
@@ -437,8 +438,10 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
-    // Track loading state: when buffering or when user is seeking
-    val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
+    // Track loading state: when buffering or when user is seeking. Buffering during an
+    // automix blend/handoff is the primary player's internal seek churn, not a real stall
+    // (audio keeps flowing via the crossfade player) — don't surface it as a spinner.
+    val isLoading = (playbackState == STATE_BUFFERING && !isAutomixing) || sliderPosition != null
 
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())

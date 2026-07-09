@@ -145,6 +145,7 @@ fun LyricsScreen(
 
     val playbackState by playerConnection.playbackState.collectAsStateWithLifecycle()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val isAutomixing by playerConnection.isAutomixing.collectAsStateWithLifecycle()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
     val onVolumeChange =
         remember(deviceMusicVolumeController) {
@@ -304,7 +305,9 @@ fun LyricsScreen(
         }
     }
 
-    val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
+    // Buffering during an automix blend/handoff is the primary player's internal seek
+    // churn, not a real stall — audio keeps flowing via the crossfade player.
+    val isLoading = (playbackState == STATE_BUFFERING && !isAutomixing) || sliderPosition != null
     val orientation = LocalConfiguration.current.orientation
 
     BackHandler(enabled = backHandlerEnabled, onBack = onBackClick)

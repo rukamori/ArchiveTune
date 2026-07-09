@@ -12,6 +12,7 @@ package moe.rukamori.archivetune.ui.player
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -130,6 +131,17 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 private const val PlayerBackgroundMaxBlurRadius = 64f
 private const val ExplicitBadgeInlineId = "explicitBadge"
+private const val AutomixFadeInEnd = 0.55f
+private const val AutomixFadeOutStart = 0.45f
+
+private fun automixVisualWindowProgress(
+    progress: Float,
+    windowStart: Float,
+    windowEnd: Float,
+): Float {
+    val t = ((progress - windowStart) / (windowEnd - windowStart)).coerceIn(0f, 1f)
+    return kotlin.math.sin(t.toDouble() * (kotlin.math.PI / 2.0)).toFloat()
+}
 
 @Composable
 internal fun PlayerTitleText(
@@ -1772,6 +1784,37 @@ fun PlayerPlaybackControls(
  * This replaces the large inline controlsContent lambda in BottomSheetPlayer
  * to reduce JIT compilation overhead.
  */
+/** Small pill badge shown in the seekbar's center slot (codec label, Automixing indicator). */
+@Composable
+private fun PlayerCenterBadge(
+    @DrawableRes iconRes: Int,
+    label: String,
+    textBackgroundColor: Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = textBackgroundColor.copy(alpha = 0.12f),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = textBackgroundColor.copy(alpha = 0.8f),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = textBackgroundColor.copy(alpha = 0.8f),
+            )
+        }
+    }
+}
+
 @Composable
 fun PlayerControlsContent(
     mediaMetadata: MediaMetadata,
@@ -1802,6 +1845,7 @@ fun PlayerControlsContent(
 ) {
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val currentSongLiked = currentSong?.song?.liked == true
+    val isAutomixing by playerConnection.isAutomixing.collectAsState()
 
     val playPauseRoundness by animateDpAsState(
         targetValue = if (isPlaying) 24.dp else 36.dp,
@@ -1866,43 +1910,39 @@ fun PlayerControlsContent(
         textBackgroundColor = textBackgroundColor,
         showRemainingTime = playerDesignStyle == PlayerDesignStyle.V7,
         centerContent =
-            if (playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null) {
-                {
-                    val codec = currentFormat.mimeType.substringAfter("/").uppercase()
-                    val label =
-                        when {
-                            codec.contains("FLAC") || codec.contains("ALAC") -> "Lossless"
-                            codec.contains("OPUS") -> codec
-                            codec.contains("AAC") -> codec
-                            codec.contains("MP4A") -> "AAC"
-                            codec.contains("VORBIS") -> "Vorbis"
-                            else -> codec
-                        }
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = textBackgroundColor.copy(alpha = 0.12f),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.graphic_eq),
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = textBackgroundColor.copy(alpha = 0.8f),
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = textBackgroundColor.copy(alpha = 0.8f),
-                            )
-                        }
+            when {
+                // Beat-matched blend running: takes over the center slot in every design.
+                isAutomixing -> {
+                    {
+                        PlayerCenterBadge(
+                            iconRes = R.drawable.graphic_eq,
+                            label = stringResource(R.string.automixing),
+                            textBackgroundColor = textBackgroundColor,
+                        )
                     }
                 }
-            } else {
-                null
+
+                playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null -> {
+                    {
+                        val codec = currentFormat.mimeType.substringAfter("/").uppercase()
+                        val label =
+                            when {
+                                codec.contains("FLAC") || codec.contains("ALAC") -> "Lossless"
+                                codec.contains("OPUS") -> codec
+                                codec.contains("AAC") -> codec
+                                codec.contains("MP4A") -> "AAC"
+                                codec.contains("VORBIS") -> "Vorbis"
+                                else -> codec
+                            }
+                        PlayerCenterBadge(
+                            iconRes = R.drawable.graphic_eq,
+                            label = label,
+                            textBackgroundColor = textBackgroundColor,
+                        )
+                    }
+                }
+
+                else -> null
             },
     )
 
@@ -1955,6 +1995,18 @@ fun V8PlayerControlsContent(
 ) {
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
+    val automixIncomingMetadata by playerConnection.automixIncomingMediaMetadata.collectAsState()
+    val automixProgress by playerConnection.automixProgress.collectAsState()
+    val incomingMetadata =
+        automixIncomingMetadata?.takeIf { it.id != mediaMetadata.id }
+    val incomingAlpha =
+        incomingMetadata?.let { automixVisualWindowProgress(automixProgress, 0f, AutomixFadeInEnd) } ?: 0f
+    val outgoingAlpha =
+        if (incomingMetadata != null) {
+            1f - automixVisualWindowProgress(automixProgress, AutomixFadeOutStart, 1f)
+        } else {
+            1f
+        }
     val onMenuClick =
         remember(mediaMetadata, navController, state, menuState, bottomSheetPageState) {
             {
@@ -2042,6 +2094,11 @@ fun V8PlayerControlsContent(
                 title = mediaMetadata.title,
                 explicit = mediaMetadata.explicit,
                 artists = mediaMetadata.artists,
+                incomingTitle = incomingMetadata?.title,
+                incomingExplicit = incomingMetadata?.explicit ?: false,
+                incomingArtists = incomingMetadata?.artists.orEmpty(),
+                outgoingAlpha = outgoingAlpha,
+                incomingAlpha = incomingAlpha,
                 liked = currentSongLiked,
                 foreground = foreground,
                 onMenuClick = onMenuClick,
@@ -2121,6 +2178,18 @@ fun V8PlayerContent(
 ) {
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
+    val automixIncomingMetadata by playerConnection.automixIncomingMediaMetadata.collectAsState()
+    val automixProgress by playerConnection.automixProgress.collectAsState()
+    val incomingMetadata =
+        automixIncomingMetadata?.takeIf { it.id != mediaMetadata.id }
+    val incomingAlpha =
+        incomingMetadata?.let { automixVisualWindowProgress(automixProgress, 0f, AutomixFadeInEnd) } ?: 0f
+    val outgoingAlpha =
+        if (incomingMetadata != null) {
+            1f - automixVisualWindowProgress(automixProgress, AutomixFadeOutStart, 1f)
+        } else {
+            1f
+        }
     val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
     val thumbnailSwapState =
         rememberThumbnailSwapState(
@@ -2130,6 +2199,15 @@ fun V8PlayerContent(
             isMusicVideo = mediaMetadata.isMusicVideo,
         )
     val artworkUrl = thumbnailSwapState.displayUrl
+    val incomingBaseArtworkUrl = incomingMetadata?.thumbnailUrl?.highRes()
+    val incomingThumbnailSwapState =
+        rememberThumbnailSwapState(
+            videoId = incomingMetadata?.id,
+            ytmUrl = incomingBaseArtworkUrl,
+            lowDataMode = rememberLowDataModeActive(),
+            isMusicVideo = incomingMetadata?.isMusicVideo ?: false,
+        )
+    val incomingArtworkUrl = incomingThumbnailSwapState.displayUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
     val onMenuClick = {
         menuState.show {
@@ -2157,6 +2235,10 @@ fun V8PlayerContent(
             subtitle = subtitle,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
+            incomingMediaMetadata = incomingMetadata,
+            incomingArtworkUrl = incomingArtworkUrl,
+            outgoingAlpha = outgoingAlpha,
+            incomingAlpha = incomingAlpha,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
             playbackState = playbackState,
@@ -2198,6 +2280,10 @@ fun V8PlayerContent(
             subtitle = subtitle,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
+            incomingMediaMetadata = incomingMetadata,
+            incomingArtworkUrl = incomingArtworkUrl,
+            outgoingAlpha = outgoingAlpha,
+            incomingAlpha = incomingAlpha,
             canvasPrimaryUrl = canvasPrimaryUrl,
             canvasFallbackUrl = canvasFallbackUrl,
             playbackState = playbackState,
@@ -2242,6 +2328,10 @@ private fun V8PortraitContent(
     subtitle: String,
     artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
+    incomingMediaMetadata: MediaMetadata?,
+    incomingArtworkUrl: String?,
+    outgoingAlpha: Float,
+    incomingAlpha: Float,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
     playbackState: Int,
@@ -2338,6 +2428,9 @@ private fun V8PortraitContent(
 
             V8Artwork(
                 artworkUrl = artworkUrl,
+                incomingArtworkUrl = incomingArtworkUrl,
+                outgoingAlpha = outgoingAlpha,
+                incomingAlpha = incomingAlpha,
                 canvasPrimaryUrl = canvasPrimaryUrl,
                 canvasFallbackUrl = canvasFallbackUrl,
                 isPlaying = isPlaying,
@@ -2350,6 +2443,11 @@ private fun V8PortraitContent(
                 title = mediaMetadata.title,
                 explicit = mediaMetadata.explicit,
                 artists = artists,
+                incomingTitle = incomingMediaMetadata?.title,
+                incomingExplicit = incomingMediaMetadata?.explicit ?: false,
+                incomingArtists = incomingMediaMetadata?.artists.orEmpty(),
+                outgoingAlpha = outgoingAlpha,
+                incomingAlpha = incomingAlpha,
                 liked = currentSongLiked,
                 foreground = foreground,
                 onMenuClick = onMenuClick,
@@ -2406,6 +2504,10 @@ private fun V8LandscapeContent(
     subtitle: String,
     artists: List<MediaMetadata.Artist>,
     artworkUrl: String?,
+    incomingMediaMetadata: MediaMetadata?,
+    incomingArtworkUrl: String?,
+    outgoingAlpha: Float,
+    incomingAlpha: Float,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
     playbackState: Int,
@@ -2452,6 +2554,9 @@ private fun V8LandscapeContent(
         ) {
             V8Artwork(
                 artworkUrl = artworkUrl,
+                incomingArtworkUrl = incomingArtworkUrl,
+                outgoingAlpha = outgoingAlpha,
+                incomingAlpha = incomingAlpha,
                 canvasPrimaryUrl = canvasPrimaryUrl,
                 canvasFallbackUrl = canvasFallbackUrl,
                 isPlaying = isPlaying,
@@ -2479,6 +2584,11 @@ private fun V8LandscapeContent(
                     title = mediaMetadata.title,
                     explicit = mediaMetadata.explicit,
                     artists = artists,
+                    incomingTitle = incomingMediaMetadata?.title,
+                    incomingExplicit = incomingMediaMetadata?.explicit ?: false,
+                    incomingArtists = incomingMediaMetadata?.artists.orEmpty(),
+                    outgoingAlpha = outgoingAlpha,
+                    incomingAlpha = incomingAlpha,
                     liked = currentSongLiked,
                     foreground = foreground,
                     onMenuClick = onMenuClick,
@@ -2567,12 +2677,16 @@ private fun V8Header(
 @Composable
 private fun V8Artwork(
     artworkUrl: String?,
+    incomingArtworkUrl: String?,
+    outgoingAlpha: Float,
+    incomingAlpha: Float,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
     isPlaying: Boolean,
     size: androidx.compose.ui.unit.Dp,
 ) {
     val artworkRequest = rememberOfflineArtworkImageRequest(artworkUrl)
+    val incomingArtworkRequest = rememberOfflineArtworkImageRequest(incomingArtworkUrl)
     Box(
         modifier =
             Modifier
@@ -2584,8 +2698,22 @@ private fun V8Artwork(
             model = artworkRequest,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .alpha(outgoingAlpha.coerceIn(0f, 1f)),
         )
+        if (!incomingArtworkUrl.isNullOrBlank() && incomingAlpha > 0f) {
+            AsyncImage(
+                model = incomingArtworkRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .alpha(incomingAlpha.coerceIn(0f, 1f)),
+            )
+        }
 
         if (!canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()) {
             CanvasArtworkPlayer(
@@ -2593,7 +2721,10 @@ private fun V8Artwork(
                 fallbackUrl = canvasFallbackUrl,
                 isPlaying = isPlaying,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                modifier = Modifier.fillMaxSize(),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .alpha(outgoingAlpha.coerceIn(0f, 1f)),
             )
         }
     }
@@ -2604,6 +2735,11 @@ private fun V8MetadataActions(
     title: String,
     explicit: Boolean,
     artists: List<MediaMetadata.Artist>,
+    incomingTitle: String? = null,
+    incomingExplicit: Boolean = false,
+    incomingArtists: List<MediaMetadata.Artist> = emptyList(),
+    outgoingAlpha: Float = 1f,
+    incomingAlpha: Float = 0f,
     liked: Boolean,
     foreground: Color,
     onMenuClick: () -> Unit,
@@ -2620,28 +2756,63 @@ private fun V8MetadataActions(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            PlayerTitleText(
-                title = title,
-                explicit = explicit,
-                color = foreground,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier =
-                    Modifier
-                        .basicMarquee()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = onTitleClick,
-                        ),
-            )
-            ClickableArtists(
-                artists = artists,
-                onArtistClick = onArtistClick,
-                style = MaterialTheme.typography.titleMedium,
-                color = foreground,
-                modifier = Modifier.basicMarquee(),
-            )
+            Box(Modifier.fillMaxWidth()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .alpha(outgoingAlpha.coerceIn(0f, 1f)),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    PlayerTitleText(
+                        title = title,
+                        explicit = explicit,
+                        color = foreground,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier =
+                            Modifier
+                                .basicMarquee()
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    onClick = onTitleClick,
+                                ),
+                    )
+                    ClickableArtists(
+                        artists = artists,
+                        onArtistClick = onArtistClick,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = foreground,
+                        modifier = Modifier.basicMarquee(),
+                    )
+                }
+                if (incomingTitle != null && incomingAlpha > 0f) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .alpha(incomingAlpha.coerceIn(0f, 1f)),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        PlayerTitleText(
+                            title = incomingTitle,
+                            explicit = incomingExplicit,
+                            color = foreground,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.basicMarquee(),
+                        )
+                        ClickableArtists(
+                            artists = incomingArtists,
+                            onArtistClick = onArtistClick,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = foreground,
+                            modifier = Modifier.basicMarquee(),
+                        )
+                    }
+                }
+            }
         }
 
         Row(

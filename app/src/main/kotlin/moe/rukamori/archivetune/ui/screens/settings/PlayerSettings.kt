@@ -40,6 +40,7 @@ import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -181,6 +182,11 @@ fun PlayerSettings(navController: NavController) {
         rememberPreference(
             CrossfadeGaplessKey,
             defaultValue = true,
+        )
+    val (automixEnabled, onAutomixEnabledChange) =
+        rememberPreference(
+            AutomixEnabledKey,
+            defaultValue = false,
         )
 
     val (artistSeparators, onArtistSeparatorsChange) =
@@ -448,6 +454,17 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                         checked = crossfadeGapless,
                         onCheckedChange = onCrossfadeGaplessChange,
+                        isEnabled = crossfadeEnabled,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.automix_title)) },
+                        description = stringResource(R.string.automix_description),
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        checked = automixEnabled,
+                        onCheckedChange = onAutomixEnabledChange,
                         isEnabled = crossfadeEnabled,
                     )
                 }

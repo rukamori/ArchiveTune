@@ -56,6 +56,9 @@ class PlayerConnection(
             player.playWhenReady && player.playbackState != STATE_ENDED,
         )
     val mediaMetadata = service.currentMediaMetadata
+    val isAutomixing = service.isAutomixing
+    val automixIncomingMediaMetadata = service.automixIncomingMediaMetadata
+    val automixProgress = service.automixProgress
     val currentSong =
         mediaMetadata.flatMapLatest {
             database.song(it?.id)
