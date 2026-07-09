@@ -21,18 +21,24 @@ private const val LANDSCAPE_RATIO = 16f / 9f
 private const val SNAP_THRESHOLD = 4f / 3f
 
 val YTItem.preferredThumbnailRatio: Float
-    get() {
-        if (this is ArtistItem) return SQUARE_RATIO
+    get() = preferredThumbnailRatio(cropThumbnailToSquare = false)
 
-        val width = thumbnailWidth
-        val height = thumbnailHeight
-        if (width != null && height != null && width > 0 && height > 0) {
-            val rawRatio = width.toFloat() / height.toFloat()
-            return if (rawRatio >= SNAP_THRESHOLD) LANDSCAPE_RATIO else SQUARE_RATIO
-        }
+fun YTItem.preferredThumbnailRatio(cropThumbnailToSquare: Boolean): Float {
+    if (this is ArtistItem) return SQUARE_RATIO
 
-        return fallbackThumbnailRatio
+    if (cropThumbnailToSquare && thumbnail?.contains("ytimg.com", ignoreCase = true) == true) {
+        return SQUARE_RATIO
     }
+
+    val width = thumbnailWidth
+    val height = thumbnailHeight
+    if (width != null && height != null && width > 0 && height > 0) {
+        val rawRatio = width.toFloat() / height.toFloat()
+        return if (rawRatio >= SNAP_THRESHOLD) LANDSCAPE_RATIO else SQUARE_RATIO
+    }
+
+    return fallbackThumbnailRatio
+}
 
 private val YTItem.fallbackThumbnailRatio: Float
     get() = if (this is SongItem) LANDSCAPE_RATIO else SQUARE_RATIO

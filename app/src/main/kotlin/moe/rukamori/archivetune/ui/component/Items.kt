@@ -1425,86 +1425,91 @@ fun YouTubeGridItem(
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
-    thumbnailRatio: Float = item.preferredThumbnailRatio,
+    thumbnailRatio: Float? = null,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-) = GridItem(
-    title = {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.basicMarquee().fillMaxWidth(),
-        )
-    },
-    subtitle = {
-        val subtitle =
-            when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
-                is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
-                is ArtistItem -> null
-                is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
-            }
-        if (subtitle != null) {
+) {
+    val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
+    val resolvedThumbnailRatio = thumbnailRatio ?: item.preferredThumbnailRatio(cropThumbnailToSquare)
+
+    GridItem(
+        title = {
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 2,
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
+                modifier = Modifier.basicMarquee().fillMaxWidth(),
             )
-        }
-    },
-    badges = badges,
-    thumbnailContent = {
-        val database = LocalDatabase.current
-        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-        val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
+        },
+        subtitle = {
+            val subtitle =
+                when (item) {
+                    is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+                    is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+                    is ArtistItem -> null
+                    is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
+                }
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        badges = badges,
+        thumbnailContent = {
+            val database = LocalDatabase.current
+            val playerConnection = LocalPlayerConnection.current ?: return@GridItem
+            val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
 
-        ItemThumbnail(
-            thumbnailUrl = item.thumbnail,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            shape = shape,
-            thumbnailRatio = thumbnailRatio,
-        )
-
-        if (item is SongItem && !isActive) {
-            OverlayPlayButton(
-                visible = true,
+            ItemThumbnail(
+                thumbnailUrl = item.thumbnail,
+                isActive = isActive,
+                isPlaying = isPlaying,
+                shape = shape,
+                thumbnailRatio = resolvedThumbnailRatio,
             )
-        }
 
-        AlbumPlayButton(
-            visible = item is AlbumItem && !isActive,
-            onClick = {
-                coroutineScope?.launch(Dispatchers.IO) {
-                    var albumWithSongs = database.albumWithSongs(item.id).first()
-                    if (albumWithSongs?.songs.isNullOrEmpty()) {
-                        YouTube
-                            .album(item.id)
-                            .onSuccess { albumPage ->
-                                database.transaction { insert(albumPage) }
-                                albumWithSongs = database.albumWithSongs(item.id).first()
-                            }.onFailure { reportException(it) }
-                    }
-                    albumWithSongs?.let {
-                        withContext(Dispatchers.Main) {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
+            if (item is SongItem && !isActive) {
+                OverlayPlayButton(
+                    visible = true,
+                )
+            }
+
+            AlbumPlayButton(
+                visible = item is AlbumItem && !isActive,
+                onClick = {
+                    coroutineScope?.launch(Dispatchers.IO) {
+                        var albumWithSongs = database.albumWithSongs(item.id).first()
+                        if (albumWithSongs?.songs.isNullOrEmpty()) {
+                            YouTube
+                                .album(item.id)
+                                .onSuccess { albumPage ->
+                                    database.transaction { insert(albumPage) }
+                                    albumWithSongs = database.albumWithSongs(item.id).first()
+                                }.onFailure { reportException(it) }
+                        }
+                        albumWithSongs?.let {
+                            withContext(Dispatchers.Main) {
+                                playerConnection.playQueue(LocalAlbumRadio(it))
+                            }
                         }
                     }
-                }
-            },
-        )
-    },
-    thumbnailRatio = thumbnailRatio,
-    fillMaxWidth = fillMaxWidth,
-    modifier = modifier,
-)
+                },
+            )
+        },
+        thumbnailRatio = resolvedThumbnailRatio,
+        fillMaxWidth = fillMaxWidth,
+        modifier = modifier,
+    )
+}
 
 @Composable
 fun LocalSongsGrid(
