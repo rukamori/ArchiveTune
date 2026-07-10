@@ -143,4 +143,57 @@ class BeatAnalyzerTest {
 
         assertNull(BeatAnalyzer.detectMixOut(envelope, durationMs - 16_000L, durationMs))
     }
+
+    @Test
+    fun detectMixInPrefersTheStrongestRiseOverTheFirstThresholdCross() {
+        // Quiet intro, a medium build at block 8, the real drop at block 12.
+        val envelope =
+            FloatArray(32) {
+                when {
+                    it < 8 -> 0.02f
+                    it < 12 -> 0.6f
+                    else -> 1f
+                }
+            }
+
+        val mixIn = BeatAnalyzer.detectMixIn(envelope, firstBeatOffsetMs = 0L, periodMs = 500f)
+
+        assertNotNull(mixIn)
+        // Block 12 = 6000ms is the strongest energy rise, not block 8's first threshold cross.
+        assertEquals(6_000L, mixIn)
+    }
+
+    @Test
+    fun detectsMajorKeyOfSynthesizedTriad() {
+        // C major triad: C4 + E4 + G4 (+ C5), 18s.
+        val frequencies = doubleArrayOf(261.63, 329.63, 392.0, 523.25)
+        val samples =
+            FloatArray(sampleRate * 18) { i ->
+                var v = 0f
+                for (f in frequencies) v += sin(2.0 * Math.PI * f * i / sampleRate).toFloat()
+                v * 0.2f
+            }
+
+        val profile = BeatAnalyzer.analyzeSpectralProfile(samples, sampleRate)
+
+        assertNotNull(profile)
+        assertEquals(0, profile!!.keyIndex) // 0 = C major
+        assertTrue("key confidence should be positive, was ${profile.keyConfidence}", profile.keyConfidence > 0f)
+    }
+
+    @Test
+    fun spectralProfileMeasuresBassAndPresence() {
+        // Pure 100Hz tone: nearly all energy below 250Hz.
+        val bassy = FloatArray(sampleRate * 10) { i -> sin(2.0 * Math.PI * 100.0 * i / sampleRate).toFloat() * 0.5f }
+        val bassProfile = BeatAnalyzer.analyzeSpectralProfile(bassy, sampleRate)
+        assertNotNull(bassProfile)
+        assertTrue("bassFraction should be near 1, was ${bassProfile!!.bassFraction}", bassProfile.bassFraction > 0.9f)
+
+        // Pure 2kHz tone: presence peak lands on it.
+        val mid = FloatArray(sampleRate * 10) { i -> sin(2.0 * Math.PI * 2_000.0 * i / sampleRate).toFloat() * 0.5f }
+        val midProfile = BeatAnalyzer.analyzeSpectralProfile(mid, sampleRate)
+        assertNotNull(midProfile)
+        assertEquals(2_000f, midProfile!!.midPeakHz, 30f)
+        assertTrue("bassFraction should be near 0, was ${midProfile.bassFraction}", midProfile.bassFraction < 0.1f)
+    }
 }

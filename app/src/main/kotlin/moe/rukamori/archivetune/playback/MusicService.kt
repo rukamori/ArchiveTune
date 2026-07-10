@@ -2921,6 +2921,10 @@ class MusicService :
                     }
                     val oldLocalPlayer = outgoingPlayer
                     val oldPrimaryDuck = activePrimaryDuckProcessor
+                    // Per-pair duck EQ from the planner, set before any duck ramp so the
+                    // processors apply the new coefficients while still fully dry.
+                    oldPrimaryDuck.setProfile(plan.duckShelfDb, plan.duckMidHz, plan.duckMidDb)
+                    incomingDuck?.setProfile(plan.duckShelfDb, plan.duckMidHz, plan.duckMidDb)
                     val oldAudioSessionId = oldLocalPlayer.audioSessionId
                     runCatching { oldLocalPlayer.removeListener(audioEffectPlayerListener) }
                     runCatching { oldLocalPlayer.pauseAtEndOfMediaItems = false }
@@ -3303,11 +3307,14 @@ class MusicService :
         val plan = AutomixPlanner.plan(outgoingBeat, incomingBeat, durationMs, player.currentPosition)
         if (plan != null) {
             Timber.tag(TAG).d(
-                "Automix plan: trigger=%dms incomingStart=%dms tempoRatio=%.3f overlap=%dms",
+                "Automix plan: trigger=%dms incomingStart=%dms tempoRatio=%.3f overlap=%dms keysCompatible=%s duck=%.1fdB@%.0fHz",
                 plan.triggerTimeMs,
                 plan.incomingStartMs,
                 plan.tempoRatio,
                 plan.overlapMs,
+                plan.keysCompatible?.toString() ?: "unknown",
+                plan.duckShelfDb,
+                plan.duckMidHz,
             )
         } else {
             Timber.tag(TAG).d(
@@ -3394,7 +3401,11 @@ class MusicService :
         priority: BeatAnalysisPriority,
     ) {
         val existing = withContext(Dispatchers.IO) { database.beatInfo(mediaId) }
-        if (existing != null) return
+        if (existing != null) {
+            // Negative caches are final; a stale-version positive row re-analyzes in the
+            // background while it keeps serving the planner.
+            if (existing.bpm <= 0f || (existing.analysisVersion ?: 1) >= BeatAnalyzer.ANALYSIS_VERSION) return
+        }
 
         val startedAt = android.os.SystemClock.elapsedRealtime()
         val timeoutMs =
@@ -3425,8 +3436,18 @@ class MusicService :
         Timber.tag(TAG).d(
             "Beat analysis done for %s: %s",
             mediaId,
-            result?.let { "bpm=%.1f conf=%.2f mixIn=%s mixOut=%s".format(it.bpm, it.confidence, it.mixInPointMs, it.mixOutPointMs) }
-                ?: "no beat grid (complete=$dataComplete)",
+            result?.let {
+                "bpm=%.1f conf=%.2f mixIn=%s mixOut=%s key=%s keyConf=%.3f bass=%.2f midPeak=%s".format(
+                    it.bpm,
+                    it.confidence,
+                    it.mixInPointMs,
+                    it.mixOutPointMs,
+                    it.keyIndex?.toString() ?: "none",
+                    it.keyConfidence,
+                    it.bassFraction ?: -1f,
+                    it.midPeakHz?.toString() ?: "none",
+                )
+            } ?: "no beat grid (complete=$dataComplete)",
         )
         // Partial data that couldn't be analyzed isn't proof the track is beatless: retry
         // later. Complete data is negative-cached (bpm=0) so it's never re-fetched.
@@ -3441,15 +3462,31 @@ class MusicService :
                     confidence = it.confidence,
                     mixInPointMs = it.mixInPointMs ?: -1L,
                     mixOutPointMs = it.mixOutPointMs ?: -1L,
+                    keyIndex = it.keyIndex,
+                    keyConfidence = it.keyConfidence,
+                    bassFraction = it.bassFraction,
+                    midPeakHz = it.midPeakHz,
+                    analysisVersion = BeatAnalyzer.ANALYSIS_VERSION,
                 )
-            } ?: BeatInfoEntity(id = mediaId, bpm = 0f, firstBeatOffsetMs = 0L, confidence = 0f, mixInPointMs = -1L, mixOutPointMs = -1L)
+            } ?: BeatInfoEntity(
+                id = mediaId,
+                bpm = 0f,
+                firstBeatOffsetMs = 0L,
+                confidence = 0f,
+                mixInPointMs = -1L,
+                mixOutPointMs = -1L,
+                analysisVersion = BeatAnalyzer.ANALYSIS_VERSION,
+            )
         withContext(Dispatchers.IO) {
-            // Last-write-wins would let a losing/failed race overwrite a real result another
-            // concurrent analysis already stored. A negative-cache write only sticks if the
-            // row is still empty by the time this one is ready to commit.
-            if (entity.bpm <= 0f && database.beatInfo(mediaId)?.let { it.bpm > 0f } == true) {
-                Timber.tag(TAG).d("Beat analysis: discarding negative result for %s, a positive one is already cached", mediaId)
-                return@withContext
+            // Don't let a negative result clobber an existing positive grid; just stamp
+            // it current so a failed stale-version refresh doesn't retry forever.
+            if (entity.bpm <= 0f) {
+                val current = database.beatInfo(mediaId)
+                if (current != null && current.bpm > 0f) {
+                    Timber.tag(TAG).d("Beat analysis: keeping existing positive grid for %s", mediaId)
+                    database.upsert(current.copy(analysisVersion = BeatAnalyzer.ANALYSIS_VERSION))
+                    return@withContext
+                }
             }
             database.upsert(entity)
         }

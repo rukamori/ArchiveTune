@@ -22,6 +22,10 @@ class AutomixPlannerTest {
         confidence: Float = 0.8f,
         mixInPointMs: Long? = null,
         mixOutPointMs: Long? = null,
+        keyIndex: Int? = null,
+        keyConfidence: Float? = null,
+        bassFraction: Float? = null,
+        midPeakHz: Float? = null,
     ) = BeatInfoEntity(
         id = "song-$bpm-$firstBeatOffsetMs",
         bpm = bpm,
@@ -29,6 +33,10 @@ class AutomixPlannerTest {
         confidence = confidence,
         mixInPointMs = mixInPointMs,
         mixOutPointMs = mixOutPointMs,
+        keyIndex = keyIndex,
+        keyConfidence = keyConfidence,
+        bassFraction = bassFraction,
+        midPeakHz = midPeakHz,
     )
 
     @Test
@@ -217,5 +225,77 @@ class AutomixPlannerTest {
         for (i in 0..10) {
             assertTrue(abs(AutomixPlanner.tempoRatioAt(plan, i / 10f) - 1f) < 0.0001f)
         }
+    }
+
+    // Key indices: 0-11 major C..B, 12-23 minor C..B.
+    private val cMajor = 0
+    private val gMajor = 7
+    private val fSharpMajor = 6
+    private val aMinor = 21
+
+    @Test
+    fun keysCompatibleForSameRelativeAndFifth() {
+        val c = beatInfo(bpm = 120f, keyIndex = cMajor, keyConfidence = 0.3f)
+        assertEquals(true, AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f, keyIndex = cMajor, keyConfidence = 0.3f)))
+        // Relative minor shares the Camelot number.
+        assertEquals(true, AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f, keyIndex = aMinor, keyConfidence = 0.3f)))
+        // A fifth apart, same mode: one step on the wheel.
+        assertEquals(true, AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f, keyIndex = gMajor, keyConfidence = 0.3f)))
+    }
+
+    @Test
+    fun keysClashAcrossTheWheel() {
+        val c = beatInfo(bpm = 120f, keyIndex = cMajor, keyConfidence = 0.3f)
+        // Tritone apart: opposite side of the wheel.
+        assertEquals(false, AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f, keyIndex = fSharpMajor, keyConfidence = 0.3f)))
+    }
+
+    @Test
+    fun unknownOrWeakKeyIsNotAClash() {
+        val c = beatInfo(bpm = 120f, keyIndex = cMajor, keyConfidence = 0.3f)
+        assertNull(AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f)))
+        assertNull(AutomixPlanner.keysCompatible(c, beatInfo(bpm = 121f, keyIndex = fSharpMajor, keyConfidence = 0.01f)))
+    }
+
+    @Test
+    fun keyClashShortensOverlap() {
+        val compatible =
+            AutomixPlanner.plan(
+                outgoing = beatInfo(bpm = 120f, keyIndex = cMajor, keyConfidence = 0.3f),
+                incoming = beatInfo(bpm = 120f, keyIndex = gMajor, keyConfidence = 0.3f),
+                outgoingDurationMs = 200_000L,
+                currentPositionMs = 0L,
+            )
+        val clashing =
+            AutomixPlanner.plan(
+                outgoing = beatInfo(bpm = 120f, keyIndex = cMajor, keyConfidence = 0.3f),
+                incoming = beatInfo(bpm = 120f, keyIndex = fSharpMajor, keyConfidence = 0.3f),
+                outgoingDurationMs = 200_000L,
+                currentPositionMs = 0L,
+            )
+
+        assertNotNull(compatible)
+        assertNotNull(clashing)
+        assertEquals(true, compatible!!.keysCompatible)
+        assertEquals(false, clashing!!.keysCompatible)
+        // 16 beats at 120 BPM = 8s compatible; clash halves to 8 beats = 4s (minus end shrink).
+        assertTrue("clash overlap ${clashing.overlapMs} should be well under ${compatible.overlapMs}", clashing.overlapMs <= 4_000L)
+        assertTrue(compatible.overlapMs > clashing.overlapMs)
+    }
+
+    @Test
+    fun duckShelfDeepensWithBassEnergy() {
+        assertEquals(AutomixPlanner.DEFAULT_DUCK_SHELF_DB, AutomixPlanner.duckShelfDbFor(null, null), 0.001f)
+        assertEquals(-6f, AutomixPlanner.duckShelfDbFor(0.1f, 0.15f), 0.3f)
+        assertEquals(-14f, AutomixPlanner.duckShelfDbFor(0.5f, 0.6f), 0.001f)
+    }
+
+    @Test
+    fun duckMidCentersOnPresencePeaks() {
+        assertEquals(AutomixPlanner.DEFAULT_DUCK_MID_HZ, AutomixPlanner.duckMidHzFor(null, null), 0.001f)
+        // Geometric mean of the pair.
+        assertEquals(1_200f, AutomixPlanner.duckMidHzFor(800f, 1_800f), 1f)
+        // Clamped into the presence band.
+        assertEquals(4_000f, AutomixPlanner.duckMidHzFor(6_000f, 6_000f), 0.001f)
     }
 }

@@ -38,6 +38,9 @@ import kotlin.math.sqrt
  * Beat times of the track are: firstBeatOffsetMs + k * (60000 / bpm).
  */
 object BeatAnalyzer {
+    /** Bump when analysis output gains fields; stale rows re-analyze lazily in the background. */
+    const val ANALYSIS_VERSION = 2
+
     data class Result(
         val bpm: Float,
         val firstBeatOffsetMs: Long,
@@ -46,6 +49,13 @@ object BeatAnalyzer {
         val mixInPointMs: Long? = null,
         /** Where the body of the song ends (outro starts); null when it stays loud to the end. */
         val mixOutPointMs: Long? = null,
+        /** Musical key: 0-11 major C..B, 12-23 minor C..B; null when tonality is too weak. */
+        val keyIndex: Int? = null,
+        val keyConfidence: Float = 0f,
+        /** Fraction of spectral energy below 250Hz; null when the profile pass failed. */
+        val bassFraction: Float? = null,
+        /** Dominant frequency of the 500-4000Hz presence band; null when unavailable. */
+        val midPeakHz: Float? = null,
     )
 
     /**
@@ -190,6 +200,9 @@ object BeatAnalyzer {
             if (shouldCancel()) return null
             val grid = analyzeBeatGrid(pcm.samples, pcm.sampleRate, actualStartUs / 1000) ?: return null
 
+            // Key + spectral profile from the same mid-window PCM (no extra decode).
+            val profile = analyzeSpectralProfile(pcm.samples, pcm.sampleRate)
+
             // Head pass: find where the low-energy intro ends so the incoming track can
             // start on its first sustained-energy downbeat instead.
             var mixInPointMs: Long? = null
@@ -223,7 +236,17 @@ object BeatAnalyzer {
                 }
             }
 
-            return Result(grid.bpm, grid.firstBeatOffsetMs, grid.confidence, mixInPointMs, mixOutPointMs)
+            return Result(
+                bpm = grid.bpm,
+                firstBeatOffsetMs = grid.firstBeatOffsetMs,
+                confidence = grid.confidence,
+                mixInPointMs = mixInPointMs,
+                mixOutPointMs = mixOutPointMs,
+                keyIndex = profile?.keyIndex,
+                keyConfidence = profile?.keyConfidence ?: 0f,
+                bassFraction = profile?.bassFraction,
+                midPeakHz = profile?.midPeakHz,
+            )
         } catch (error: Exception) {
             Timber.tag(TAG).w(error, "Beat analysis failed")
             return null
@@ -387,8 +410,8 @@ object BeatAnalyzer {
     }
 
     /**
-     * First block where energy reaches and sustains near body level, snapped forward
-     * onto the beat grid. Null when the track starts hot (no intro worth skipping).
+     * Strongest sustained energy rise past the intro (the "drop"), snapped onto the beat grid.
+     * Null when the track starts hot.
      */
     internal fun detectMixIn(
         envelope: FloatArray,
@@ -399,30 +422,37 @@ object BeatAnalyzer {
         val reference = percentile(envelope, 0.75f)
         if (reference <= 0f) return null
 
-        var candidateBlock = -1
+        var bestBlock = -1
+        var bestScore = 0f
+        var prefixSum = 0f
         for (i in 0 until envelope.size - 4) {
-            if (envelope[i] >= 0.55f * reference &&
-                envelope[i + 1] >= 0.4f * reference &&
-                envelope[i + 2] >= 0.4f * reference &&
-                envelope[i + 3] >= 0.4f * reference
-            ) {
-                candidateBlock = i
-                break
+            val sustained =
+                envelope[i] >= 0.55f * reference &&
+                    envelope[i + 1] >= 0.4f * reference &&
+                    envelope[i + 2] >= 0.4f * reference &&
+                    envelope[i + 3] >= 0.4f * reference
+            if (sustained && i > 0 && i.toLong() * ENERGY_BLOCK_MS <= MAX_INTRO_SKIP_MS) {
+                val after = (envelope[i] + envelope[i + 1] + envelope[i + 2] + envelope[i + 3]) / 4f
+                val before = prefixSum / i
+                val score = after - before
+                if (score > bestScore) {
+                    bestScore = score
+                    bestBlock = i
+                }
             }
+            prefixSum += envelope[i]
         }
-        if (candidateBlock <= 0) return null // Starts hot; keep the default first-downbeat start.
+        if (bestBlock <= 0) return null // Starts hot; keep the default first-downbeat start.
 
-        val candidateMs = candidateBlock.toLong() * ENERGY_BLOCK_MS
-        if (candidateMs > MAX_INTRO_SKIP_MS) return null
-
+        val candidateMs = bestBlock.toLong() * ENERGY_BLOCK_MS
         // Snap forward to the next downbeat.
         val k = ceil((candidateMs - firstBeatOffsetMs) / periodMs.toDouble()).toLong()
         return (firstBeatOffsetMs + max(0L, k) * periodMs.toDouble()).roundToLong()
     }
 
     /**
-     * Last moment the tail window is still at body loudness; everything after is outro.
-     * Null when the track stays loud to the end (no early mix-out warranted).
+     * Body/outro boundary: last loud->quiet energy cliff, else last block at body loudness.
+     * Null when the track stays loud to the end.
      */
     internal fun detectMixOut(
         envelope: FloatArray,
@@ -433,20 +463,156 @@ object BeatAnalyzer {
         val reference = percentile(envelope, 0.75f)
         if (reference <= 0f) return null
 
-        var lastLoudBlock = -1
-        for (i in envelope.indices.reversed()) {
-            if (envelope[i] >= 0.5f * reference) {
-                lastLoudBlock = i
+        var boundaryBlock = -1
+        for (i in envelope.size - 1 downTo 1) {
+            if (envelope[i - 1] >= 0.7f * reference && envelope[i] < 0.45f * reference) {
+                boundaryBlock = i - 1
                 break
             }
         }
-        if (lastLoudBlock < 0) return null
+        if (boundaryBlock < 0) {
+            for (i in envelope.indices.reversed()) {
+                if (envelope[i] >= 0.5f * reference) {
+                    boundaryBlock = i
+                    break
+                }
+            }
+        }
+        if (boundaryBlock < 0) return null
 
-        val mixOutMs = windowStartMs + (lastLoudBlock + 1).toLong() * ENERGY_BLOCK_MS
+        val mixOutMs = windowStartMs + (boundaryBlock + 1).toLong() * ENERGY_BLOCK_MS
         // Loud almost to the end: nothing to cut.
         if (durationMs - mixOutMs < 3_000) return null
         // Never cut more than MAX_OUTRO_CUT_MS.
         return max(mixOutMs, durationMs - MAX_OUTRO_CUT_MS)
+    }
+
+    internal class SpectralProfile(
+        val keyIndex: Int?,
+        val keyConfidence: Float,
+        val bassFraction: Float,
+        val midPeakHz: Float,
+    )
+
+    private const val PROFILE_FFT_SIZE = 4096
+    private const val PROFILE_HOP_SIZE = 2048
+    private const val BASS_MAX_HZ = 250f
+    private const val MID_MIN_HZ = 500f
+    private const val MID_MAX_HZ = 4_000f
+    private const val CHROMA_MIN_HZ = 55f
+    private const val CHROMA_MAX_HZ = 5_000f
+
+    /** Krumhansl-Kessler probe-tone key profiles, index 0 = tonic. */
+    private val MAJOR_KEY_PROFILE =
+        floatArrayOf(6.35f, 2.23f, 3.48f, 2.33f, 4.38f, 4.09f, 2.52f, 5.19f, 2.39f, 3.66f, 2.29f, 2.88f)
+    private val MINOR_KEY_PROFILE =
+        floatArrayOf(6.33f, 2.68f, 3.52f, 5.38f, 2.60f, 3.53f, 2.54f, 4.75f, 3.98f, 2.69f, 3.34f, 3.17f)
+
+    /**
+     * Power spectrum -> chroma -> key (best of 24 Krumhansl profiles), plus bass fraction and
+     * presence-band peak for the adaptive duck EQ.
+     */
+    internal fun analyzeSpectralProfile(
+        samples: FloatArray,
+        sampleRate: Int,
+    ): SpectralProfile? {
+        val numFrames = (samples.size - PROFILE_FFT_SIZE) / PROFILE_HOP_SIZE
+        if (numFrames < 4 || sampleRate <= 0) return null
+        val bins = PROFILE_FFT_SIZE / 2
+        val window = FloatArray(PROFILE_FFT_SIZE) { 0.5f - 0.5f * cos(2.0 * Math.PI * it / PROFILE_FFT_SIZE).toFloat() }
+        val avgPower = FloatArray(bins)
+        val re = FloatArray(PROFILE_FFT_SIZE)
+        val im = FloatArray(PROFILE_FFT_SIZE)
+        for (frame in 0 until numFrames) {
+            val offset = frame * PROFILE_HOP_SIZE
+            for (i in 0 until PROFILE_FFT_SIZE) {
+                re[i] = samples[offset + i] * window[i]
+                im[i] = 0f
+            }
+            fft(re, im)
+            for (bin in 0 until bins) avgPower[bin] += re[bin] * re[bin] + im[bin] * im[bin]
+        }
+
+        val binHz = sampleRate.toFloat() / PROFILE_FFT_SIZE
+        val chroma = FloatArray(12)
+        var bass = 0f
+        var total = 0f
+        var midPeakBin = -1
+        var midPeakPower = 0f
+        for (bin in 1 until bins - 1) {
+            val frequency = bin * binHz
+            if (frequency < 20f) continue
+            val power = avgPower[bin]
+            total += power
+            if (frequency <= BASS_MAX_HZ) bass += power
+            if (frequency in CHROMA_MIN_HZ..CHROMA_MAX_HZ) {
+                val semitonesFromA4 = (12.0 * ln(frequency / 440.0) / ln(2.0)).roundToInt()
+                chroma[(9 + semitonesFromA4).mod(12)] += power
+            }
+            if (frequency in MID_MIN_HZ..MID_MAX_HZ) {
+                val smoothed = avgPower[bin - 1] + power + avgPower[bin + 1]
+                if (smoothed > midPeakPower) {
+                    midPeakPower = smoothed
+                    midPeakBin = bin
+                }
+            }
+        }
+        if (total <= 0f) return null
+
+        var bestKey = -1
+        var bestScore = Float.NEGATIVE_INFINITY
+        var secondScore = Float.NEGATIVE_INFINITY
+        var worstScore = Float.POSITIVE_INFINITY
+        for (mode in 0..1) {
+            val profile = if (mode == 0) MAJOR_KEY_PROFILE else MINOR_KEY_PROFILE
+            for (tonic in 0..11) {
+                val score = chromaKeyCorrelation(chroma, profile, tonic)
+                if (score > bestScore) {
+                    secondScore = bestScore
+                    bestScore = score
+                    bestKey = tonic + mode * 12
+                } else if (score > secondScore) {
+                    secondScore = score
+                }
+                if (score < worstScore) worstScore = score
+            }
+        }
+        val keyConfidence =
+            if (bestScore > worstScore) ((bestScore - secondScore) / (bestScore - worstScore)).coerceIn(0f, 1f) else 0f
+        return SpectralProfile(
+            keyIndex = if (bestKey >= 0 && bestScore > 0f) bestKey else null,
+            keyConfidence = keyConfidence,
+            bassFraction = bass / total,
+            midPeakHz = if (midPeakBin > 0) midPeakBin * binHz else MID_MIN_HZ * 2.4f,
+        )
+    }
+
+    /** Pearson correlation of the chroma vector against a key profile rotated to [tonic]. */
+    private fun chromaKeyCorrelation(
+        chroma: FloatArray,
+        profile: FloatArray,
+        tonic: Int,
+    ): Float {
+        var chromaMean = 0f
+        var profileMean = 0f
+        for (i in 0 until 12) {
+            chromaMean += chroma[i]
+            profileMean += profile[i]
+        }
+        chromaMean /= 12f
+        profileMean /= 12f
+        var numerator = 0f
+        var chromaVariance = 0f
+        var profileVariance = 0f
+        for (pitchClass in 0 until 12) {
+            val c = chroma[pitchClass] - chromaMean
+            val p = profile[(pitchClass - tonic).mod(12)] - profileMean
+            numerator += c * p
+            chromaVariance += c * c
+            profileVariance += p * p
+        }
+        val denominator = sqrt(chromaVariance * profileVariance)
+        return if (denominator > 0f) numerator / denominator else 0f
     }
 
     /** Half-wave-rectified spectral flux per hop, log-compressed magnitudes. */

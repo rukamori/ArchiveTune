@@ -53,6 +53,17 @@ class AutomixDuckAudioProcessor(
     /** Currently applied blend; eases toward targetMix a little every sample, never jumps. */
     private var currentMix: Float = 0f
 
+    private class DuckProfile(
+        val shelfDb: Double,
+        val midHz: Double,
+        val midDb: Double,
+    )
+
+    /** Per-pair profile from the planner; applied on the audio thread only while dry. */
+    @Volatile
+    private var pendingProfile: DuckProfile? = null
+    private var activeProfile = DuckProfile(shelfDuckDb, midFrequencyHz, midDuckDb)
+
     /** Biquad coefficients + per-channel state: [0]=low shelf, [1]=mid peaking cut. */
     private val stages = Array(2) { Biquad() }
 
@@ -106,15 +117,41 @@ class AutomixDuckAudioProcessor(
         targetMix = fraction.coerceIn(0f, 1f)
     }
 
+    /** Adapt the cut to the track pair; applied on the audio thread at the next dry buffer. */
+    fun setProfile(
+        shelfDb: Float,
+        midHz: Float,
+        midDb: Float,
+    ) {
+        pendingProfile =
+            DuckProfile(
+                shelfDb = shelfDb.toDouble().coerceIn(-24.0, 0.0),
+                midHz = midHz.toDouble().coerceIn(200.0, 8_000.0),
+                midDb = midDb.toDouble().coerceIn(-24.0, 0.0),
+            )
+    }
+
     fun resetGain() {
         targetMix = 0f
+    }
+
+    /** Apply a pending profile; only call while the duck output is effectively dry. */
+    private fun applyPendingProfileIfDry() {
+        val pending = pendingProfile ?: return
+        if (currentMix >= SETTLED_MIX_EPSILON) return
+        activeProfile = pending
+        pendingProfile = null
+        if (sampleRate > 0) {
+            computeCoefficients()
+            stages.forEach { it.clearState() }
+        }
     }
 
     private fun computeCoefficients() {
         // RBJ low shelf.
         run {
             val stage = stages[0]
-            val a = sqrt(10.0.pow(shelfDuckDb / 20.0))
+            val a = sqrt(10.0.pow(activeProfile.shelfDb / 20.0))
             val omega = 2.0 * PI * shelfFrequencyHz / sampleRate
             val sinOmega = sin(omega)
             val cosOmega = cos(omega)
@@ -145,8 +182,8 @@ class AutomixDuckAudioProcessor(
         // RBJ peaking cut for the vocal presence band.
         run {
             val stage = stages[1]
-            val a = 10.0.pow(midDuckDb / 40.0)
-            val omega = 2.0 * PI * midFrequencyHz / sampleRate
+            val a = 10.0.pow(activeProfile.midDb / 40.0)
+            val omega = 2.0 * PI * activeProfile.midHz / sampleRate
             val sinOmega = sin(omega)
             val cosOmega = cos(omega)
             val alpha = sinOmega / (2.0 * midQ)
@@ -180,6 +217,10 @@ class AutomixDuckAudioProcessor(
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
 
+        pendingProfile?.let {
+            activeProfile = it
+            pendingProfile = null
+        }
         computeCoefficients()
         isActive = true
         return inputAudioFormat
@@ -190,6 +231,8 @@ class AutomixDuckAudioProcessor(
     override fun queueInput(inputBuffer: ByteBuffer) {
         val inputSize = inputBuffer.remaining()
         if (inputSize == 0) return
+
+        applyPendingProfileIfDry()
 
         if (outputBuffer.capacity() < inputSize) {
             outputBuffer = ByteBuffer.allocateDirect(inputSize).order(ByteOrder.nativeOrder())

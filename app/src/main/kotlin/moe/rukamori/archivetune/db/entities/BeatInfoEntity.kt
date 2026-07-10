@@ -28,4 +28,13 @@ data class BeatInfoEntity(
     val mixInPointMs: Long? = null,
     /** Where the track's body ends (outro starts); -1 when scanned and none found. */
     val mixOutPointMs: Long? = null,
+    /** Musical key: 0-11 major C..B, 12-23 minor C..B; null when unknown/too weak. */
+    val keyIndex: Int? = null,
+    val keyConfidence: Float? = null,
+    /** Fraction of spectral energy below 250Hz; null when not analyzed. */
+    val bassFraction: Float? = null,
+    /** Dominant 500-4000Hz presence-band frequency; null when not analyzed. */
+    val midPeakHz: Float? = null,
+    /** Analyzer version that produced this row; null = legacy pre-key/spectral analysis. */
+    val analysisVersion: Int? = null,
 )
