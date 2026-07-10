@@ -127,6 +127,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
+import moe.rukamori.archivetune.cast.CastScreenState
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioOffload
 import moe.rukamori.archivetune.constants.AudioQuality
@@ -339,6 +340,7 @@ class MusicService :
     private var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     private var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
     private val binder = MusicBinder()
+    val activePlayer = MutableStateFlow<Player?>(null)
     private var hasBoundClients = false
     private var idleStopJob: Job? = null
 
@@ -506,6 +508,7 @@ class MusicService :
     private var crossfadeJob: Job? = null
     private var secondaryCrossfadePlayer: ExoPlayer? = null
     private var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    private var fadingAutomixPlayer: ExoPlayer? = null
     private var isCrossfading = false
     private var crossfadeHandoffInProgress = false
     private var crossfadeBaseVolume = 1f
@@ -513,36 +516,25 @@ class MusicService :
     private var crossfadeProgress = 0f
     private var crossfadePlaybackRequested = false
     private var automixEnabled = false
-
-    /** True while a takeover-model beat-matched blend runs (roles inverted: secondary=outgoing, primary=incoming). */
-    private var automixTakeoverActive = false
-
-    /** One-shot: the next seek discontinuity is the takeover's own jump to the incoming track, not a user seek. */
-    private var automixTakeoverSeekPending = false
+    private var automixTriggerJob: Job? = null
 
     /** True while a beat-matched blend is audibly running; drives the player-UI badge. */
     val isAutomixing = MutableStateFlow(false)
     val automixIncomingMediaMetadata = MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
     val automixProgress = MutableStateFlow(0f)
 
-    /**
-     * Beat-matched plan for the ongoing/upcoming crossfade. Only consulted for the gain-curve
-     * window shape; the blend loop itself captures the plan locally so a mid-blend settings
-     * toggle can never strand the incoming player at a matched tempo.
-     */
+    /** Non-null while AutoMix should use its staggered gain windows. */
     private var activeAutomixPlan: AutomixPlanner.Plan? = null
     private val beatAnalysisJobs = HashMap<String, BeatAnalysisHandle>()
     private val immediateBeatAnalysisMutex = Mutex()
     private val lookaheadBeatAnalysisMutex = Mutex()
     private val beatAnalysisDataSourceFactory by lazy { createDataSourceFactory() }
 
-    /**
-     * Two-band EQ ducks for the Automix blend: the primary's duck pulls the outgoing track's
-     * bass + vocal mids down as the blend progresses; the secondary's duck holds the incoming
-     * track's low end / vocals back until it takes over. Neutral (mix 0) outside blends.
-     */
+    /** Per-player duck processors used only during AutoMix blends. */
     private val primaryDuckProcessor = AutomixDuckAudioProcessor()
+    private var activePrimaryDuckProcessor: AutomixDuckAudioProcessor = primaryDuckProcessor
     private var secondaryDuckProcessor: AutomixDuckAudioProcessor? = null
+    private var fadingAutomixDuckProcessor: AutomixDuckAudioProcessor? = null
 
     private var lyricsPreloadManager: LyricsPreloadManager? = null
 
@@ -552,6 +544,7 @@ class MusicService :
                 Timber.tag(TAG).w(error, "Secondary crossfade player failed")
                 scope.launch {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    cancelAutomix(resetVolume = true)
                     scheduleCrossfade()
                 }
             }
@@ -1130,6 +1123,7 @@ class MusicService :
                     addListener(sleepTimer)
                 }
         playerInitialized.value = true
+        activePlayer.value = player
         widgetUpdater =
             MusicServiceWidgetUpdater(
                 service = this,
@@ -1189,10 +1183,11 @@ class MusicService :
             val volume = (prefs[PlayerVolumeKey] ?: 1f).coerceIn(0f, 1f)
             val offload = prefs[AudioOffload] ?: false
             val crossfadePrefEnabled = prefs[CrossfadeEnabledKey] ?: false
+            val automixPrefEnabled = prefs[AutomixEnabledKey] ?: false
             withContext(Dispatchers.Main) {
                 player.repeatMode = repeatMode
                 playerVolume.value = volume
-                updateAudioOffload(offload && !crossfadePrefEnabled)
+                updateAudioOffload(offload && !crossfadePrefEnabled && !automixPrefEnabled)
             }
         }
 
@@ -1304,11 +1299,12 @@ class MusicService :
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
             dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
-        ) { offloadEnabled, crossfadeEnabled ->
-            offloadEnabled to crossfadeEnabled
+            dataStore.data.map { it[AutomixEnabledKey] ?: false },
+        ) { offloadEnabled, crossfadeEnabled, automixEnabled ->
+            Triple(offloadEnabled, crossfadeEnabled, automixEnabled)
         }.distinctUntilChanged()
-            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled) ->
-                val effectiveOffload = offloadEnabled && !crossfadeEnabled
+            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled, automixEnabled) ->
+                val effectiveOffload = offloadEnabled && !crossfadeEnabled && !automixEnabled
                 updateAudioOffload(effectiveOffload)
                 if (effectiveOffload) {
                     val skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
@@ -1336,7 +1332,10 @@ class MusicService :
                         .roundToLong()
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
-                if (crossfadeEnabled && crossfadeDurationMs > 0L) {
+                if (automixEnabled) {
+                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    scheduleAutomix()
+                } else if (crossfadeEnabled && crossfadeDurationMs > 0L) {
                     scheduleCrossfade()
                 } else {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -1349,11 +1348,24 @@ class MusicService :
             .collectLatest(scope) { enabled ->
                 automixEnabled = enabled
                 if (!enabled) {
-                    activeAutomixPlan = null
+                    automixTriggerJob?.cancel()
+                    automixTriggerJob = null
+                    if (isAudibleAutomixBlendActive()) {
+                        releaseSecondaryCrossfadePlayer()
+                    } else {
+                        cancelAutomix(resetVolume = true)
+                        activeAutomixPlan = null
+                    }
+                    if (crossfadeEnabled && crossfadeDurationMs > 0L && !isCrossfading) {
+                        scheduleCrossfade()
+                    }
+                    return@collectLatest
                 }
-                if (crossfadeEnabled && crossfadeDurationMs > 0L && !isCrossfading) {
-                    scheduleCrossfade()
+                if (isAudibleAutomixBlendActive()) {
+                    return@collectLatest
                 }
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                scheduleAutomix()
             }
 
         dataStore.data
@@ -1532,6 +1544,58 @@ class MusicService :
                     saveQueueToDisk()
                 }
             }
+        }
+    }
+
+    private fun bindLocalPlaybackPlayer(newLocalPlayer: ExoPlayer) {
+        val oldPlayer = if (::player.isInitialized) player else null
+        val oldSleepTimer = if (::sleepTimer.isInitialized) sleepTimer else null
+        runCatching { oldPlayer?.removeListener(this@MusicService) }
+        runCatching { oldSleepTimer?.let { oldPlayer?.removeListener(it) } }
+
+        localPlayer = newLocalPlayer
+        player =
+            castPlaybackRepository
+                .createPlayer(
+                    context = this,
+                    localPlayer = localPlayer,
+                    mediaItemResolver = CastMediaItemResolver(::resolveMediaItemForCast),
+                ).apply {
+                    addListener(this@MusicService)
+                    sleepTimer = SleepTimer(scope, this)
+                    addListener(sleepTimer)
+                }
+        activePlayer.value = player
+        if (::mediaSession.isInitialized) {
+            mediaSession.player = player
+        }
+        if (::widgetUpdater.isInitialized) {
+            widgetUpdater =
+                MusicServiceWidgetUpdater(
+                    service = this,
+                    player = player,
+                    scope = scope,
+                    loadWidgetInsights = loadWidgetInsightsUseCase,
+                )
+        }
+        reconcileAudioEffectSession()
+    }
+
+    private fun restorePromotedAutomixQueue(
+        promotedPlayer: ExoPlayer,
+        queueSnapshot: List<MediaItem>,
+        targetIndex: Int,
+    ) {
+        if (targetIndex !in queueSnapshot.indices) return
+        if (promotedPlayer.currentMediaItem?.mediaId != queueSnapshot[targetIndex].mediaId) return
+
+        val previousItems = queueSnapshot.take(targetIndex)
+        val nextItems = queueSnapshot.drop(targetIndex + 1)
+        if (previousItems.isNotEmpty()) {
+            runCatching { promotedPlayer.addMediaItems(0, previousItems) }
+        }
+        if (nextItems.isNotEmpty()) {
+            runCatching { promotedPlayer.addMediaItems(targetIndex + 1, nextItems) }
         }
     }
 
@@ -2191,6 +2255,7 @@ class MusicService :
         lastAudioOutputDeviceSignature = outputSignature
         audioOutputResolver.refresh()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelAutomix(resetVolume = true)
         player.setAudioAttributes(playbackAudioAttributes(), false)
         audioRouteRecoveryJob?.cancel()
         audioRouteRecoveryJob =
@@ -2358,14 +2423,6 @@ class MusicService :
 
     private fun applyEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
         val secondaryPlayer = secondaryCrossfadePlayer
-        if (isCrossfading && secondaryPlayer != null && automixTakeoverActive) {
-            // Takeover blend: roles inverted — secondary carries the outgoing tail,
-            // primary fades in as the incoming, so finalVolume (the primary's effective
-            // volume, tracking the incoming item) is the INCOMING base here.
-            crossfadeIncomingBaseVolume = finalVolume
-            applyCrossfadeVolumes(crossfadeProgress, crossfadeBaseVolume, finalVolume, secondaryPlayer, localPlayer)
-            return
-        }
         crossfadeBaseVolume = finalVolume
         if (isCrossfading && secondaryPlayer != null) {
             val incomingBaseVolume =
@@ -2428,6 +2485,12 @@ class MusicService :
         return sin(t.toDouble() * (PI / 2.0)).toFloat()
     }
 
+    private fun automixTailPolishGain(progress: Float): Float {
+        val t = ((progress - AUTOMIX_TAIL_POLISH_START) / (1f - AUTOMIX_TAIL_POLISH_START)).coerceIn(0f, 1f)
+        return cos(t.toDouble() * (PI / 2.0)).toFloat()
+            .coerceAtLeast(AUTOMIX_TAIL_POLISH_MIN_GAIN)
+    }
+
     private fun applyCrossfadeVolumes(
         progress: Float,
         outgoingBaseVolume: Float,
@@ -2436,16 +2499,15 @@ class MusicService :
         incomingPlayer: ExoPlayer,
     ) {
         val clampedProgress = progress.coerceIn(0f, 1f)
-        // Equal-power curve (cos/sin) keeps summed signal energy ~constant through the
-        // blend. Beat-matched blends stagger the windows DJ-style — incoming at full by
-        // 55%, outgoing holding until 45% — so both tracks run near full mid-blend.
+        // AutoMix staggers the equal-power windows so the beat overlap stays full-bodied.
         val isBeatMatched = activeAutomixPlan != null
         val outgoingProgress =
             if (isBeatMatched) ((clampedProgress - AUTOMIX_FADE_OUT_START) / (1f - AUTOMIX_FADE_OUT_START)).coerceIn(0f, 1f) else clampedProgress
         val incomingProgress =
             if (isBeatMatched) (clampedProgress / AUTOMIX_FADE_IN_END).coerceIn(0f, 1f) else clampedProgress
+        val outgoingTailGain = if (isBeatMatched) automixTailPolishGain(clampedProgress) else 1f
         outgoingPlayer.volume =
-            (outgoingBaseVolume * cos(outgoingProgress.toDouble() * (PI / 2.0)).toFloat()).coerceIn(0f, maxSafeGainFactor)
+            (outgoingBaseVolume * outgoingTailGain * cos(outgoingProgress.toDouble() * (PI / 2.0)).toFloat()).coerceIn(0f, maxSafeGainFactor)
         incomingPlayer.volume =
             (incomingBaseVolume * sin(incomingProgress.toDouble() * (PI / 2.0)).toFloat()).coerceIn(0f, maxSafeGainFactor)
     }
@@ -2455,6 +2517,10 @@ class MusicService :
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
 
+        if (automixEnabled) {
+            scheduleAutomix()
+            return
+        }
         if (isCrossfading) return
         if (!player.playWhenReady) {
             localPlayer.pauseAtEndOfMediaItems = false
@@ -2476,16 +2542,8 @@ class MusicService :
 
         crossfadeTriggerJob =
             scope.launch {
-                // Beat-matched plan when Automix is on and both tracks are analyzed; null
-                // falls back to the plain fixed-window crossfade below.
-                val plan = computeAutomixPlan(target, duration)
-                val effectiveTarget = if (plan != null) target.copy(startPositionMs = plan.incomingStartMs) else target
-                val fadeDurationMs = plan?.overlapMs ?: effectiveDuration
-                val triggerAt = plan?.triggerTimeMs ?: (duration - effectiveDuration - CROSSFADE_END_GUARD_MS)
-
                 var hasPreparedSecondaryPlayer = false
-                var takeoverAttempted = false
-                var takeoverPlayer: ExoPlayer? = null
+                val triggerAt = duration - effectiveDuration - CROSSFADE_END_GUARD_MS
                 while (isActive) {
                     if (!crossfadeEnabled || isCrossfading) return@launch
                     if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
@@ -2497,33 +2555,74 @@ class MusicService :
 
                     val remainingToTrigger = triggerAt - player.currentPosition
                     if (!hasPreparedSecondaryPlayer && remainingToTrigger <= CROSSFADE_PREPARE_AHEAD_MS) {
-                        // For a beat-matched blend this prepare exists to warm the shared
-                        // stream cache with the incoming track; the secondary itself is
-                        // re-pointed at the outgoing tail for the takeover below.
-                        prepareSecondaryCrossfadePlayer(effectiveTarget)
+                        prepareSecondaryCrossfadePlayer(target)
                         hasPreparedSecondaryPlayer = true
-                    }
-                    if (plan != null && !takeoverAttempted && remainingToTrigger in 1..AUTOMIX_TAKEOVER_ALIGN_AHEAD_MS) {
-                        takeoverAttempted = true
-                        takeoverPlayer = prepareAndAlignAutomixTakeover(currentMediaId, currentIndex, triggerAt)
-                        if (takeoverPlayer == null) {
-                            // Alignment didn't converge in time — put the incoming back on
-                            // the secondary and fall through to a plain crossfade instead.
-                            prepareSecondaryCrossfadePlayer(effectiveTarget)
-                        }
-                        continue
                     }
                     if (remainingToTrigger <= 0L) {
                         val adjustedDuration =
                             (duration - player.currentPosition - CROSSFADE_END_GUARD_MS)
-                                .coerceAtMost(fadeDurationMs)
+                                .coerceAtMost(effectiveDuration)
                         if (adjustedDuration >= MIN_CROSSFADE_DURATION_MS) {
-                            val alignedTakeover = takeoverPlayer?.takeIf { it === secondaryCrossfadePlayer }
-                            if (plan != null && alignedTakeover != null) {
-                                startAutomixTakeover(effectiveTarget, adjustedDuration, plan, alignedTakeover)
-                            } else {
-                                startCrossfade(effectiveTarget, adjustedDuration)
-                            }
+                            startCrossfade(target, adjustedDuration)
+                        }
+                        return@launch
+                    }
+
+                    val sleepMs =
+                        when {
+                            remainingToTrigger > 5_000L -> 1_000L
+                            remainingToTrigger > 1_000L -> 250L
+                            else -> 50L
+                        }.coerceAtMost(remainingToTrigger).coerceAtLeast(1L)
+                    delay(sleepMs)
+                }
+            }
+    }
+
+    private fun scheduleAutomix() {
+        if (!::player.isInitialized) return
+        automixTriggerJob?.cancel()
+        automixTriggerJob = null
+
+        if (!automixEnabled || isCrossfading) return
+        if (!player.playWhenReady) {
+            releaseSecondaryCrossfadePlayer()
+            return
+        }
+
+        val target = resolveAutomixTarget() ?: return
+        val duration = player.duration
+        if (duration == C.TIME_UNSET || duration <= 0L) return
+
+        val currentMediaId = player.currentMediaItem?.mediaId ?: return
+        val currentIndex = player.currentMediaItemIndex
+
+        automixTriggerJob =
+            scope.launch {
+                val plan = computeAutomixPlan(target, duration) ?: return@launch
+                val effectiveTarget = target.copy(startPositionMs = plan.incomingStartMs)
+                var hasPreparedSecondaryPlayer = false
+
+                while (isActive) {
+                    if (!automixEnabled || isCrossfading) return@launch
+                    if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
+                        return@launch
+                    }
+                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                        return@launch
+                    }
+
+                    val remainingToTrigger = plan.triggerTimeMs - player.currentPosition
+                    if (!hasPreparedSecondaryPlayer && remainingToTrigger <= CROSSFADE_PREPARE_AHEAD_MS) {
+                        prepareSecondaryCrossfadePlayer(effectiveTarget)
+                        hasPreparedSecondaryPlayer = true
+                    }
+                    if (remainingToTrigger <= 0L) {
+                        val adjustedDuration =
+                            (duration - player.currentPosition - CROSSFADE_END_GUARD_MS)
+                                .coerceAtMost(plan.overlapMs)
+                        if (adjustedDuration >= MIN_CROSSFADE_DURATION_MS) {
+                            startAutomixBlend(effectiveTarget, adjustedDuration, plan)
                         }
                         return@launch
                     }
@@ -2541,6 +2640,29 @@ class MusicService :
 
     private fun resolveCrossfadeTarget(): CrossfadeTarget? {
         if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
+        if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex !in 0 until player.mediaItemCount) return null
+
+        val repeatCurrent = player.repeatMode == REPEAT_MODE_ONE
+        val targetIndex = if (repeatCurrent) currentIndex else player.nextMediaItemIndex
+        if (targetIndex == C.INDEX_UNSET || targetIndex !in 0 until player.mediaItemCount) return null
+        if (!repeatCurrent && targetIndex == currentIndex) return null
+
+        val currentItem = player.getMediaItemAt(currentIndex)
+        val targetItem = player.getMediaItemAt(targetIndex)
+        if (!repeatCurrent && crossfadeGapless && isGaplessAlbumTransition(currentItem, targetItem)) return null
+
+        return CrossfadeTarget(
+            index = targetIndex,
+            mediaId = targetItem.mediaId,
+        )
+    }
+
+    private fun resolveAutomixTarget(): CrossfadeTarget? {
+        if (!automixEnabled) return null
         if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
         if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
 
@@ -2718,16 +2840,6 @@ class MusicService :
                         delay(CROSSFADE_FRAME_MS)
                     }
 
-                    Timber.tag(TAG).d(
-                        "Crossfade blend finished: elapsed=%d/%dms outgoingPos=%d/%dms incomingPos=%dms incomingState=%s",
-                        elapsedMs,
-                        durationMs,
-                        player.currentPosition,
-                        player.duration,
-                        incomingPlayer.currentPosition,
-                        playbackStateName(incomingPlayer.playbackState),
-                    )
-
                     finishCrossfade(target, incomingPlayer)
                 } catch (error: CancellationException) {
                     throw error
@@ -2738,165 +2850,33 @@ class MusicService :
             }
     }
 
-    /**
-     * Prepares the secondary player on the OUTGOING track and converges it, muted, onto the
-     * primary's live position before the blend trigger. This inverts the old handoff model:
-     * the timing-critical player-to-player alignment happens here — on a muted player, with
-     * seconds of slack and as many corrective seeks as it needs (the outgoing tail is
-     * already in the primary's cache, so these seeks settle fast) — instead of at the end
-     * of the blend, where every alignment strategy (predicted lead, corrective seek, speed
-     * nudge) proved audible on real devices.
-     *
-     * Convergence: start the takeover at the primary's position plus a lead, measure the
-     * real offset once its position is genuinely advancing, then fold that error back into
-     * the lead and re-seek. Each iteration's drift IS the previous lead's error, so this
-     * converges in one or two corrections.
-     *
-     * Returns the aligned player, or null if alignment didn't converge before the deadline
-     * (caller falls back to a plain crossfade).
-     */
-    private suspend fun prepareAndAlignAutomixTakeover(
-        outgoingMediaId: String,
-        outgoingIndex: Int,
-        triggerAtMs: Long,
-    ): ExoPlayer? {
-        val outgoingTarget = CrossfadeTarget(index = outgoingIndex, mediaId = outgoingMediaId)
-        val takeover = prepareSecondaryCrossfadePlayer(outgoingTarget) ?: return null
-        takeover.volume = 0f
-        takeover.playbackParameters = player.playbackParameters
-
-        // Rendezvous scheme, not live chasing: seeks on a PAUSED player are exact and
-        // free (no decoder flush, no moving target), so all positioning happens paused.
-        // The only unknown left is this player's play()→audio-flowing latency — measured
-        // below with a dry run of the very same player instead of guessed with a
-        // constant, which is what made every previous alignment strategy unreliable.
-        val rendezvousMs =
-            (triggerAtMs - AUTOMIX_TAKEOVER_RENDEZVOUS_LEAD_MS)
-                .coerceAtLeast(player.currentPosition + AUTOMIX_TAKEOVER_RETRY_LEAD_MS)
-        takeover.seekTo(rendezvousMs)
-        takeover.playWhenReady = false
-        if (!awaitCrossfadePlayerReady(takeover, CROSSFADE_READY_TIMEOUT_MS, 0L)) return null
-
-        // Dry run: play muted from the parked position, time how long until the position
-        // genuinely advances, then pause. This warms the decoder over the exact region
-        // the real launch replays, and the measured latency belongs to the same
-        // player/track/moment the real launch happens in.
-        val dryRunStartMs = android.os.SystemClock.elapsedRealtime()
-        takeover.playWhenReady = true
-        takeover.play()
-        if (!awaitTakeoverGenuinelyAdvancing(takeover)) {
-            takeover.pause()
-            return null
-        }
-        val startupLatencyMs =
-            (android.os.SystemClock.elapsedRealtime() - dryRunStartMs - AUTOMIX_TAKEOVER_ADVANCE_PROOF_MS)
-                .coerceIn(AUTOMIX_TAKEOVER_MIN_LATENCY_MS, AUTOMIX_TAKEOVER_MAX_LATENCY_MS)
-        takeover.pause()
-        Timber.tag(TAG).d(
-            "Automix takeover dry run: startupLatency=%dms rendezvous=%dms primaryPos=%dms",
-            startupLatencyMs,
-            rendezvousMs,
-            player.currentPosition,
-        )
-
-        var attemptRendezvousMs = rendezvousMs
-        while (kotlinx.coroutines.currentCoroutineContext().isActive) {
-            if (!player.isPlaying || secondaryCrossfadePlayer !== takeover) return null
-            if (attemptRendezvousMs > triggerAtMs - AUTOMIX_TAKEOVER_ALIGN_GUARD_MS) return null
-            if (player.currentPosition >= attemptRendezvousMs - startupLatencyMs) {
-                // Primary already too close for this rendezvous — move it ahead and retry.
-                attemptRendezvousMs = player.currentPosition + AUTOMIX_TAKEOVER_RETRY_LEAD_MS
-                continue
-            }
-
-            // Exact park (paused seek), then launch when the primary is exactly the
-            // measured latency away from the rendezvous point.
-            takeover.seekTo(attemptRendezvousMs)
-            while (kotlinx.coroutines.currentCoroutineContext().isActive &&
-                player.isPlaying &&
-                player.currentPosition < attemptRendezvousMs - startupLatencyMs
-            ) {
-                delay(5L)
-            }
-            if (!player.isPlaying || secondaryCrossfadePlayer !== takeover) return null
-            takeover.playWhenReady = true
-            takeover.play()
-
-            // Verify with an honest measurement: position provably advancing, then drift.
-            if (awaitTakeoverGenuinelyAdvancing(takeover)) {
-                val driftMs = takeover.currentPosition - player.currentPosition
-                Timber.tag(TAG).d(
-                    "Automix takeover align: drift=%dms rendezvous=%dms startupLatency=%dms primaryPos=%dms",
-                    driftMs,
-                    attemptRendezvousMs,
-                    startupLatencyMs,
-                    player.currentPosition,
-                )
-                if (kotlin.math.abs(driftMs) <= AUTOMIX_TAKEOVER_ALIGN_TOLERANCE_MS) return takeover
-            }
-
-            // Missed — still inaudible (takeover muted, primary untouched), so retrying
-            // and giving up are both free. Re-park ahead and go again while time allows;
-            // the caller's fallback on null is a plain crossfade, never a broken blend.
-            takeover.pause()
-            attemptRendezvousMs = player.currentPosition + AUTOMIX_TAKEOVER_RETRY_LEAD_MS
-        }
-        return null
-    }
-
-    /**
-     * True once the takeover's position has genuinely advanced across three consecutive
-     * spaced reads while READY — the only reliable proof its audio pipeline is flowing.
-     * Masked post-seek positions and interpolated stale-READY windows both fail this.
-     */
-    private suspend fun awaitTakeoverGenuinelyAdvancing(takeover: ExoPlayer): Boolean {
-        val deadlineMs = android.os.SystemClock.elapsedRealtime() + AUTOMIX_TAKEOVER_SETTLE_TIMEOUT_MS
-        var lastPositionMs = takeover.currentPosition
-        var consecutiveAdvances = 0
-        while (kotlinx.coroutines.currentCoroutineContext().isActive &&
-            android.os.SystemClock.elapsedRealtime() < deadlineMs
-        ) {
-            delay(AUTOMIX_TAKEOVER_ADVANCE_READ_MS)
-            val positionMs = takeover.currentPosition
-            consecutiveAdvances =
-                if (takeover.playbackState == Player.STATE_READY && positionMs > lastPositionMs) {
-                    consecutiveAdvances + 1
-                } else {
-                    0
-                }
-            lastPositionMs = positionMs
-            if (consecutiveAdvances >= AUTOMIX_TAKEOVER_ADVANCE_PROOF_READS) return true
-        }
-        return false
-    }
-
-    /**
-     * Beat-matched blend, takeover model. At the trigger the audible outgoing hops onto the
-     * pre-aligned muted secondary (a volume flip on two players already within a few tens
-     * of ms of each other), which frees the primary to jump straight to the incoming
-     * track's beat-aligned start and fade in from silence — its seek/rebuffer latency is
-     * invisible at volume zero, under the still-audible outgoing. The blend ends by simply
-     * releasing the now-silent secondary: there is no end-of-blend player handoff, which is
-     * where every previous version of this feature glitched.
-     */
-    private fun startAutomixTakeover(
+    private fun startAutomixBlend(
         target: CrossfadeTarget,
         durationMs: Long,
         plan: AutomixPlanner.Plan,
-        outgoingPlayer: ExoPlayer,
     ) {
-        if (isCrossfading || !crossfadeEnabled) return
+        if (isCrossfading || !automixEnabled) return
+        val castState = castPlaybackRepository.screenState.value
+        if ((castState as? CastScreenState.Success)?.uiState?.isConnected == true) {
+            Timber.tag(TAG).d("AutoMix skipped while Cast playback is connected")
+            return
+        }
+
+        val outgoingPlayer = localPlayer
+        val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
         val targetIndex = resolveCrossfadeTargetIndex(target)
         if (targetIndex == C.INDEX_UNSET) return
-        val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
+        val queueSnapshot =
+            (0 until player.mediaItemCount)
+                .mapNotNull { index -> runCatching { player.getMediaItemAt(index) }.getOrNull() }
+        val incomingPlayer = prepareSecondaryCrossfadePlayer(target) ?: return
 
-        crossfadeTriggerJob?.cancel()
-        crossfadeTriggerJob = null
+        automixTriggerJob?.cancel()
+        automixTriggerJob = null
         crossfadeJob?.cancel()
         crossfadeJob =
             scope.launch {
                 isCrossfading = true
-                automixTakeoverActive = true
                 activeAutomixPlan = plan
                 crossfadeProgress = 0f
                 crossfadeBaseVolume = currentEffectivePlayerVolumeForMediaId(outgoingMediaId)
@@ -2906,48 +2886,77 @@ class MusicService :
                     runCatching { player.getMediaItemAt(targetIndex).metadata }.getOrNull()
                 automixProgress.value = 0f
                 isAutomixing.value = true
+                localPlayer.pauseAtEndOfMediaItems = false
+
+                val incomingDuck = secondaryDuckProcessor
 
                 try {
-                    val baseParameters = player.playbackParameters
-                    var lastAppliedTempoRatio = 1f
+                    val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
+                    if (!awaitCrossfadePlayerReady(incomingPlayer, CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
+                        cancelAutomix(resetVolume = true)
+                        scheduleAutomix()
+                        return@launch
+                    }
 
-                    // EQ roles are inverted vs the old model: the secondary now carries the
-                    // outgoing tail, the primary fades in as the incoming.
-                    val outgoingDuck = secondaryDuckProcessor
-                    val incomingDuck = primaryDuckProcessor
-                    incomingDuck.setMix(1f)
-
-                    val takeoverDriftMs = outgoingPlayer.currentPosition - player.currentPosition
-                    // Audible swap: outgoing continues seamlessly on the aligned secondary…
-                    outgoingPlayer.volume = crossfadeBaseVolume.coerceIn(0f, maxSafeGainFactor)
-                    player.volume = 0f
-                    // …which frees the primary to jump to the incoming track. This seek fires
-                    // onPositionDiscontinuity, which treats seeks during a crossfade as user
-                    // action and cancels — the one-shot pending flag tells it this one is ours.
-                    automixTakeoverSeekPending = true
-                    player.seekTo(targetIndex, target.startPositionMs)
-                    currentMediaMetadata.value = runCatching { player.getMediaItemAt(targetIndex).metadata }.getOrNull()
-
+                    incomingPlayer.playbackParameters = player.playbackParameters
+                    incomingPlayer.volume = 0f
+                    incomingPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        incomingPlayer.play()
+                    }
+                    val oldLocalPlayer = outgoingPlayer
+                    val oldPrimaryDuck = activePrimaryDuckProcessor
+                    val oldAudioSessionId = oldLocalPlayer.audioSessionId
+                    runCatching { oldLocalPlayer.removeListener(audioEffectPlayerListener) }
+                    runCatching { oldLocalPlayer.pauseAtEndOfMediaItems = false }
+                    runCatching {
+                        val idx = oldLocalPlayer.currentMediaItemIndex
+                        if (idx != C.INDEX_UNSET && idx + 1 < oldLocalPlayer.mediaItemCount) {
+                            oldLocalPlayer.removeMediaItems(idx + 1, oldLocalPlayer.mediaItemCount)
+                        }
+                        oldLocalPlayer.repeatMode = REPEAT_MODE_OFF
+                    }
+                    fadingAutomixPlayer = oldLocalPlayer
+                    fadingAutomixDuckProcessor = oldPrimaryDuck
+                    secondaryCrossfadePlayer = null
+                    secondaryCrossfadeTarget = null
+                    secondaryDuckProcessor = null
+                    incomingPlayer.removeListener(secondaryCrossfadeListener)
+                    incomingPlayer.addListener(audioEffectPlayerListener)
+                    incomingDuck?.let { activePrimaryDuckProcessor = it }
+                    restorePromotedAutomixQueue(incomingPlayer, queueSnapshot, targetIndex)
+                    bindLocalPlaybackPlayer(incomingPlayer)
+                    runCatching {
+                        if (oldAudioSessionId != C.AUDIO_SESSION_ID_UNSET && oldAudioSessionId > 0 && isAudioEffectSessionOpened) {
+                            sendBroadcast(
+                                Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, oldAudioSessionId)
+                                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                                },
+                            )
+                            isAudioEffectSessionOpened = false
+                        }
+                    }
+                    currentMediaMetadata.value = player.currentMetadata
                     Timber.tag(TAG).d(
-                        "Automix takeover start: drift=%dms targetIndex=%d incomingStart=%dms overlap=%dms tempoRatio=%.3f",
-                        takeoverDriftMs,
+                        "Automix player-swap blend start: targetIndex=%d incomingStart=%dms overlap=%dms",
                         targetIndex,
                         target.startPositionMs,
                         durationMs,
-                        plan.tempoRatio,
                     )
 
                     var elapsedMs = 0L
                     var lastTickMs = android.os.SystemClock.elapsedRealtime()
                     while (isActive && elapsedMs < durationMs) {
                         if (player.currentMediaItem?.mediaId != target.mediaId) {
-                            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                            cancelAutomix(resetVolume = true)
                             return@launch
                         }
 
                         val nowMs = android.os.SystemClock.elapsedRealtime()
                         if (crossfadePlaybackRequested) {
-                            outgoingPlayer.playWhenReady = true
+                            player.playWhenReady = true
+                            oldLocalPlayer.playWhenReady = true
                             elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
                             crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                             automixProgress.value = crossfadeProgress
@@ -2955,54 +2964,24 @@ class MusicService :
                                 crossfadeProgress,
                                 crossfadeBaseVolume,
                                 crossfadeIncomingBaseVolume,
-                                outgoingPlayer,
+                                oldLocalPlayer,
                                 localPlayer,
                             )
-                            if (plan.tempoRatio != 1f) {
-                                // Tempo ramp on the OUTGOING tail, as the inverse of the
-                                // plan's incoming ratio — same beat-rate match mid-blend, but
-                                // the track the listener keeps runs at its natural tempo the
-                                // whole time and the primary's parameters are never touched.
-                                val tempoRatio = AutomixPlanner.tempoRatioAt(plan, crossfadeProgress)
-                                if (tempoRatio != lastAppliedTempoRatio) {
-                                    lastAppliedTempoRatio = tempoRatio
-                                    runCatching {
-                                        outgoingPlayer.playbackParameters =
-                                            PlaybackParameters(baseParameters.speed / tempoRatio, baseParameters.pitch)
-                                    }
-                                }
-                            }
-                            outgoingDuck?.setMix(automixWindowProgress(crossfadeProgress, AUTOMIX_FADE_OUT_START, 1f))
-                            incomingDuck.setMix(1f - automixWindowProgress(crossfadeProgress, 0f, AUTOMIX_FADE_IN_END))
+                            oldPrimaryDuck.setMix(automixWindowProgress(crossfadeProgress, AUTOMIX_FADE_OUT_START, 1f))
+                            incomingDuck?.setMix(1f - automixWindowProgress(crossfadeProgress, 0f, AUTOMIX_FADE_IN_END))
                         } else {
-                            outgoingPlayer.pause()
+                            oldLocalPlayer.pause()
+                            player.pause()
                         }
                         lastTickMs = nowMs
                         delay(CROSSFADE_FRAME_MS)
                     }
 
-                    outgoingDuck?.resetGain()
-                    incomingDuck.resetGain()
-
-                    Timber.tag(TAG).d(
-                        "Automix takeover finished: elapsed=%d/%dms primaryPos=%dms primaryState=%s isPlaying=%s outgoingPos=%dms",
-                        elapsedMs,
-                        durationMs,
-                        player.currentPosition,
-                        playbackStateName(player.playbackState),
-                        player.isPlaying,
-                        outgoingPlayer.currentPosition,
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    Timber.tag(TAG).w(error, "Automix takeover failed")
-                } finally {
-                    // No handoff: the primary is already the incoming track at full volume by
-                    // the end of the fade-in window; just drop the silent outgoing tail.
+                    oldPrimaryDuck.resetGain()
+                    incomingDuck?.resetGain()
+                    releaseFadingAutomixPlayer()
                     isCrossfading = false
-                    automixTakeoverActive = false
-                    automixTakeoverSeekPending = false
+                    crossfadeHandoffInProgress = false
                     crossfadeProgress = 0f
                     automixProgress.value = 0f
                     crossfadeIncomingBaseVolume = 1f
@@ -3011,9 +2990,20 @@ class MusicService :
                     isAutomixing.value = false
                     automixIncomingMediaMetadata.value = null
                     releaseSecondaryCrossfadePlayer()
+                    currentMediaMetadata.value = player.currentMetadata
+                    beginHistorySession(player.currentMediaItem?.mediaId, forceNew = true)
+                    widgetUpdater.update()
+                    requestDiscordSync(reason = "automix_blend_complete", force = true)
+                    scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
                     applyEffectiveVolumeImmediately()
                     updateAudiblePlaybackRecovery()
                     scheduleCrossfade()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.tag(TAG).w(error, "Automix blend failed")
+                    crossfadeHandoffInProgress = false
+                    cancelAutomix(resetVolume = true)
                 }
             }
     }
@@ -3058,129 +3048,19 @@ class MusicService :
 
         val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
         val shouldContinuePlayback = crossfadePlaybackRequested
-        val handoffStartedAtMs = android.os.SystemClock.elapsedRealtime()
-        Timber.tag(TAG).d(
-            "Crossfade handoff start: automix=%s targetIndex=%d incomingPos=%dms incomingState=%s incomingBuffered=%dms primaryState=%s primaryBufferedPos=%dms",
-            activeAutomixPlan != null,
-            targetIndex,
-            incomingPosition,
-            playbackStateName(incomingPlayer.playbackState),
-            incomingPlayer.totalBufferedDuration,
-            playbackStateName(player.playbackState),
-            localPlayer.bufferedPosition,
-        )
 
         var handoffCompleted = false
         try {
             localPlayer.pauseAtEndOfMediaItems = false
             player.volume = 0f
             crossfadeHandoffInProgress = true
-            if (!shouldContinuePlayback) {
-                player.seekTo(targetIndex, incomingPosition)
-                player.playWhenReady = false
-            } else {
-                // Bridge handoff, two phases:
-                //
-                // Phase 1 (slow, network-bound): seek far enough ahead of the incoming that
-                // by the time the primary buffers up to it, the incoming hasn't caught up yet.
-                // This wait is variable (network-dependent) so precision here doesn't matter —
-                // only that we land ahead, not behind.
-                //
-                // Phase 2 (fast, local): once ready, the primary already has a wide buffered
-                // window around the rough target (it required 5s+ buffered to report ready),
-                // so a second seek to a *precise* point just ahead of the incoming's now-current
-                // position resolves in milliseconds — no network fetch, just a decoder-local
-                // resync. This is safe where the original single-seek design wasn't: the first
-                // seek's failure mode (data not buffered yet) can't happen here, because phase 1
-                // already proved a wide window around this position is buffered.
-                val roughBridgePositionMs =
-                    incomingPlayer.currentPosition.coerceAtLeast(0L) + CROSSFADE_HANDOFF_BRIDGE_LEAD_MS
-                player.seekTo(targetIndex, roughBridgePositionMs)
-                player.playWhenReady = false
-
-                val primaryReady = awaitPrimaryCrossfadeHandoffReady(incomingPlayer)
-                Timber.tag(TAG).d(
-                    "Crossfade handoff wait: ready=%s waited=%dms roughBridgePos=%dms primaryState=%s primaryBufferedPos=%dms incomingPos=%dms",
-                    primaryReady,
-                    android.os.SystemClock.elapsedRealtime() - handoffStartedAtMs,
-                    roughBridgePositionMs,
-                    playbackStateName(player.playbackState),
-                    localPlayer.bufferedPosition,
-                    incomingPlayer.currentPosition,
-                )
-
-                if (primaryReady) {
-                    // Start now, still muted (volume already 0 from above) — any glitch
-                    // during this warm-up is silent. Deliberately NOT trying to predict how
-                    // long it takes to go from READY+paused to genuinely producing audio:
-                    // that latency is real, device-specific, and every attempt to guess it
-                    // in advance (fixed lead, learned/adapted lead) has landed wrong by
-                    // hundreds of ms in practice. Detect it directly instead, below.
-                    player.playWhenReady = true
-                    player.play()
-
-                    // "isPlaying" and STATE_READY can both be true before the AudioTrack is
-                    // actually producing samples. The only proof position is REALLY
-                    // advancing is watching it move between two reads.
-                    val warmStartedAtMs = android.os.SystemClock.elapsedRealtime()
-                    val warmDeadlineMs = warmStartedAtMs + CROSSFADE_HANDOFF_WARM_CONFIRM_TIMEOUT_MS
-                    val positionAtWarmStart = player.currentPosition
-                    var confirmedAdvancing = false
-                    while (kotlinx.coroutines.currentCoroutineContext().isActive &&
-                        android.os.SystemClock.elapsedRealtime() < warmDeadlineMs
-                    ) {
-                        delay(10L)
-                        if (player.currentPosition > positionAtWarmStart) {
-                            confirmedAdvancing = true
-                            break
-                        }
-                    }
-                    Timber.tag(TAG).d(
-                        "Crossfade handoff warm-confirm: advancing=%s warmedFrom=%dms nowAt=%dms waited=%dms",
-                        confirmedAdvancing,
-                        positionAtWarmStart,
-                        player.currentPosition,
-                        android.os.SystemClock.elapsedRealtime() - warmStartedAtMs,
-                    )
-
-                    if (confirmedAdvancing) {
-                        // Primary is now warm and genuinely playing — a further seek on an
-                        // already-flowing player resolves far faster than the original cold
-                        // seek-from-paused did. Align it precisely to the incoming's actual
-                        // current position; the small fixed lead covers only this final
-                        // seek's own (now much smaller) resolve latency.
-                        val finalPositionMs = incomingPlayer.currentPosition.coerceAtLeast(0L) + CROSSFADE_HANDOFF_START_LEAD_MS
-                        player.seekTo(targetIndex, finalPositionMs)
-                        Timber.tag(TAG).d(
-                            "Crossfade handoff final-align: to=%dms incomingPos=%dms",
-                            finalPositionMs,
-                            incomingPlayer.currentPosition,
-                        )
-                        val alignDeadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_REFINE_TIMEOUT_MS
-                        while (kotlinx.coroutines.currentCoroutineContext().isActive &&
-                            android.os.SystemClock.elapsedRealtime() < alignDeadlineMs &&
-                            player.playbackState != Player.STATE_READY
-                        ) {
-                            delay(5L)
-                        }
-                    }
-                } else {
-                    Timber.tag(TAG).w(
-                        "Crossfade handoff: primary not ready after %dms — starting anyway, gap likely (state=%s bufferedPos=%dms)",
-                        android.os.SystemClock.elapsedRealtime() - handoffStartedAtMs,
-                        playbackStateName(player.playbackState),
-                        localPlayer.bufferedPosition,
-                    )
-                    player.playWhenReady = true
+            player.seekTo(targetIndex, incomingPosition)
+            player.playWhenReady = shouldContinuePlayback
+            if (shouldContinuePlayback) {
+                if (awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
+                    val syncedIncomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                    player.seekTo(targetIndex, syncedIncomingPosition)
                 }
-
-                Timber.tag(TAG).d(
-                    "Crossfade handoff bridge: primaryPos=%dms incomingPos=%dms residualDrift=%dms primaryPlaying=%s",
-                    player.currentPosition,
-                    incomingPlayer.currentPosition,
-                    incomingPlayer.currentPosition - player.currentPosition,
-                    player.isPlaying,
-                )
             }
             currentMediaMetadata.value = player.getMediaItemAt(targetIndex).metadata
             handoffCompleted = true
@@ -3189,9 +3069,7 @@ class MusicService :
                 crossfadeHandoffInProgress = false
                 isCrossfading = false
                 crossfadeProgress = 0f
-                automixProgress.value = 0f
                 crossfadePlaybackRequested = false
-                automixIncomingMediaMetadata.value = null
                 releaseSecondaryCrossfadePlayer()
                 applyEffectiveVolumeImmediately()
             }
@@ -3200,35 +3078,15 @@ class MusicService :
         isCrossfading = false
         crossfadeHandoffInProgress = false
         crossfadeProgress = 0f
-        automixProgress.value = 0f
         crossfadeIncomingBaseVolume = 1f
         crossfadePlaybackRequested = false
-        activeAutomixPlan = null
-        isAutomixing.value = false
-        automixIncomingMediaMetadata.value = null
         releaseSecondaryCrossfadePlayer()
         applyEffectiveVolumeImmediately()
         updateAudiblePlaybackRecovery()
-        Timber.tag(TAG).d(
-            "Crossfade handoff done in %dms: primaryState=%s isPlaying=%s pos=%dms volume=%.2f playbackSpeed=%.3f",
-            android.os.SystemClock.elapsedRealtime() - handoffStartedAtMs,
-            playbackStateName(player.playbackState),
-            player.isPlaying,
-            player.currentPosition,
-            player.volume,
-            player.playbackParameters.speed,
-        )
         scheduleCrossfade()
     }
 
-    private fun playbackStateName(state: Int): String =
-        when (state) {
-            Player.STATE_IDLE -> "IDLE"
-            Player.STATE_BUFFERING -> "BUFFERING"
-            Player.STATE_READY -> "READY"
-            Player.STATE_ENDED -> "ENDED"
-            else -> "UNKNOWN($state)"
-        }
+    private fun isAutomixInternalTransitionActive(): Boolean = isAutomixing.value && activeAutomixPlan != null
 
     private suspend fun awaitPrimaryCrossfadeHandoffReady(incomingPlayer: ExoPlayer): Boolean {
         val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_READY_TIMEOUT_MS
@@ -3321,8 +3179,6 @@ class MusicService :
         crossfadeJob?.cancel()
         crossfadeJob = null
         isCrossfading = false
-        automixTakeoverActive = false
-        automixTakeoverSeekPending = false
         crossfadeHandoffInProgress = false
         crossfadeProgress = 0f
         automixProgress.value = 0f
@@ -3332,7 +3188,9 @@ class MusicService :
         isAutomixing.value = false
         automixIncomingMediaMetadata.value = null
         primaryDuckProcessor.resetGain()
+        activePrimaryDuckProcessor.resetGain()
         secondaryDuckProcessor?.resetGain()
+        releaseFadingAutomixPlayer()
         if (::player.isInitialized && resetPauseAtEnd) {
             localPlayer.pauseAtEndOfMediaItems = false
         }
@@ -3342,12 +3200,60 @@ class MusicService :
         }
     }
 
+    private fun cancelAutomix(resetVolume: Boolean) {
+        automixTriggerJob?.cancel()
+        automixTriggerJob = null
+        val hadPreparedPlayer = secondaryCrossfadePlayer != null
+        if (activeAutomixPlan != null || isAutomixing.value) {
+            crossfadeJob?.cancel()
+            crossfadeJob = null
+            isCrossfading = false
+            crossfadeHandoffInProgress = false
+            crossfadeProgress = 0f
+            automixProgress.value = 0f
+            crossfadeIncomingBaseVolume = 1f
+            crossfadePlaybackRequested = false
+            activeAutomixPlan = null
+            isAutomixing.value = false
+            automixIncomingMediaMetadata.value = null
+            activePrimaryDuckProcessor.resetGain()
+            secondaryDuckProcessor?.resetGain()
+            releaseFadingAutomixPlayer()
+            if (::player.isInitialized) {
+                localPlayer.pauseAtEndOfMediaItems = false
+            }
+            if (resetVolume && ::player.isInitialized) {
+                applyEffectiveVolumeImmediately()
+            }
+        }
+        if (hadPreparedPlayer) {
+            releaseSecondaryCrossfadePlayer()
+        }
+    }
+
+    private fun isAudibleAutomixBlendActive(): Boolean =
+        isCrossfading &&
+            isAutomixing.value &&
+            activeAutomixPlan != null &&
+            fadingAutomixPlayer != null
+
     private fun releaseSecondaryCrossfadePlayer() {
         val playerToRelease = secondaryCrossfadePlayer ?: return
         secondaryCrossfadePlayer = null
         secondaryCrossfadeTarget = null
         secondaryDuckProcessor = null
         runCatching { playerToRelease.removeListener(secondaryCrossfadeListener) }
+        runCatching { playerToRelease.stop() }
+        runCatching { playerToRelease.clearMediaItems() }
+        runCatching { playerToRelease.release() }
+    }
+
+    private fun releaseFadingAutomixPlayer() {
+        val playerToRelease = fadingAutomixPlayer ?: return
+        fadingAutomixPlayer = null
+        fadingAutomixDuckProcessor?.resetGain()
+        fadingAutomixDuckProcessor = null
+        runCatching { playerToRelease.removeListener(audioEffectPlayerListener) }
         runCatching { playerToRelease.stop() }
         runCatching { playerToRelease.clearMediaItems() }
         runCatching { playerToRelease.release() }
@@ -3540,7 +3446,7 @@ class MusicService :
             val nextIndex = player.nextMediaItemIndex
             val nextId = if (nextIndex != C.INDEX_UNSET) player.getMediaItemAt(nextIndex).mediaId else null
             if (mediaId == currentId || mediaId == nextId) {
-                scheduleCrossfade()
+                scheduleAutomix()
             }
         }
     }
@@ -4271,6 +4177,7 @@ class MusicService :
         cancelRestoredQueueHydration()
         ensureScopesActive()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelAutomix(resetVolume = true)
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
         currentQueue = queue
@@ -4574,6 +4481,7 @@ class MusicService :
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = true
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelAutomix(resetVolume = true)
         clearAutomix()
         currentQueue = EmptyQueue
         queueTitle = null
@@ -6827,6 +6735,15 @@ class MusicService :
     ) {
         super.onMediaItemTransition(mediaItem, reason)
 
+        if (isAutomixInternalTransitionActive()) {
+            Timber.tag(TAG).d(
+                "AutoMix internal media transition suppressed: mediaId=%s reason=%d",
+                mediaItem?.mediaId,
+                reason,
+            )
+            return
+        }
+
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
         // Pre-load lyrics for upcoming songs in queue
@@ -7069,7 +6986,9 @@ class MusicService :
             updateAudiblePlaybackRecovery()
         }
         if (events.contains(Player.EVENT_MEDIA_METADATA_CHANGED)) {
-            currentMediaMetadata.value = player.currentMetadata
+            if (!isAutomixInternalTransitionActive()) {
+                currentMediaMetadata.value = player.currentMetadata
+            }
         }
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
@@ -7143,7 +7062,7 @@ class MusicService :
             }
         }
 
-        if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
+        if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY) && !isAutomixInternalTransitionActive()) {
             currentMediaMetadata.value = player.currentMetadata
             requestDiscordSync(
                 reason = "timeline_or_position_discontinuity",
@@ -7197,57 +7116,63 @@ class MusicService :
                 Player.EVENT_MEDIA_ITEM_TRANSITION,
             )
         ) {
+            val suppressAutomixTransition = isAutomixInternalTransitionActive()
             if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
-                currentMediaMetadata.value = player.currentMetadata
+                if (!suppressAutomixTransition) {
+                    currentMediaMetadata.value = player.currentMetadata
+                }
             }
-            requestDiscordSync(
-                reason = "is_playing_or_media_item_transition",
-                force = true,
-            )
+            if (!suppressAutomixTransition) {
+                requestDiscordSync(
+                    reason = "is_playing_or_media_item_transition",
+                    force = true,
+                )
+            }
             // Capture player state on Main thread
             val currentMediaId = player.currentMediaItem?.mediaId
             val currentMetadata = player.currentMetadata
             val currentPosition = player.currentPosition
             val currentDuration = player.duration
-            val isPlaying = player.isPlaying
 
-            scope.launch {
-                try {
-                    val song =
-                        if (currentMediaId !=
-                            null
-                        ) {
-                            withContext(Dispatchers.IO) { database.song(currentMediaId).first() }
-                        } else {
-                            null
-                        }
-                    val finalSong =
-                        resolvePresenceSong(
-                            dbSong = song,
-                            mediaMetadata = currentMetadata,
-                            durationMs = currentDuration,
-                        ) ?: return@launch
+            if (!suppressAutomixTransition) {
+                scope.launch {
                     try {
-                        val lbEnabled = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzEnabledKey, false) }
-                        val lbToken = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzTokenKey, "") }
-                        if (lbEnabled && !lbToken.isNullOrBlank()) {
-                            scope.launch(Dispatchers.IO) {
-                                try {
-                                    ListenBrainzManager.submitPlayingNow(this@MusicService, lbToken, finalSong, currentPosition)
-                                } catch (ie: Exception) {
-                                    Timber
-                                        .tag(
-                                            "MusicService",
-                                        ).v(ie, "ListenBrainz playing_now submit failed for isPlaying/mediaTransition")
+                        val song =
+                            if (currentMediaId !=
+                                null
+                            ) {
+                                withContext(Dispatchers.IO) { database.song(currentMediaId).first() }
+                            } else {
+                                null
+                            }
+                        val finalSong =
+                            resolvePresenceSong(
+                                dbSong = song,
+                                mediaMetadata = currentMetadata,
+                                durationMs = currentDuration,
+                            ) ?: return@launch
+                        try {
+                            val lbEnabled = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzEnabledKey, false) }
+                            val lbToken = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzTokenKey, "") }
+                            if (lbEnabled && !lbToken.isNullOrBlank()) {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        ListenBrainzManager.submitPlayingNow(this@MusicService, lbToken, finalSong, currentPosition)
+                                    } catch (ie: Exception) {
+                                        Timber
+                                            .tag(
+                                                "MusicService",
+                                            ).v(ie, "ListenBrainz playing_now submit failed for isPlaying/mediaTransition")
+                                    }
                                 }
                             }
-                        }
 
-                        // Last.fm now playing - handled by ScrobbleManager
-                    } catch (_: Exception) {
+                            // Last.fm now playing - handled by ScrobbleManager
+                        } catch (_: Exception) {
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("MusicService").v(e, "isPlaying/mediaTransition follow-up work failed")
                     }
-                } catch (e: Exception) {
-                    Timber.tag("MusicService").v(e, "isPlaying/mediaTransition follow-up work failed")
                 }
             }
         }
@@ -7276,11 +7201,9 @@ class MusicService :
         val isSeekDiscontinuity =
             reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
         if (isSeekDiscontinuity) {
-            if (automixTakeoverSeekPending) {
-                // The takeover blend's own jump onto the incoming track — not a user seek.
-                automixTakeoverSeekPending = false
-            } else if (!crossfadeHandoffInProgress) {
+            if (!crossfadeHandoffInProgress) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                cancelAutomix(resetVolume = true)
             }
         }
         if (!isCrossfading && !crossfadeHandoffInProgress) {
@@ -8190,7 +8113,7 @@ class MusicService :
     }
 
     private fun updateAudioOffload(enabled: Boolean) {
-        val effectiveEnabled = enabled && !crossfadeEnabled
+        val effectiveEnabled = enabled && !crossfadeEnabled && !automixEnabled
         runCatching {
             val builder = localPlayer.trackSelectionParameters.buildUpon()
             val audioOffloadPrefsClass = Class.forName("androidx.media3.common.AudioOffloadPreferences")
@@ -8663,6 +8586,7 @@ class MusicService :
         effectiveVolumeRampJob?.cancel()
         effectiveVolumeRampJob = null
         cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
+        cancelAutomix(resetVolume = false)
         audioRouteRecoveryJob?.cancel()
         if (audioDeviceCallbackRegistered) {
             audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
@@ -8938,24 +8862,6 @@ class MusicService :
         const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
         const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
         const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
-
-        /** How far ahead of the incoming player the primary parks during the bridge handoff. */
-        const val CROSSFADE_HANDOFF_BRIDGE_LEAD_MS = 400L
-
-        /**
-         * Fixed lead for the final alignment seek — covers that seek's own resolve latency
-         * once the primary is already warm/playing (fast), nothing more. Not adapted at
-         * runtime: the align always re-anchors to the incoming's actual current position,
-         * so there's nothing left to converge on.
-         */
-        const val CROSSFADE_HANDOFF_START_LEAD_MS = 150L
-
-        /** Bound on watching for the primary's position to genuinely start advancing. */
-        const val CROSSFADE_HANDOFF_WARM_CONFIRM_TIMEOUT_MS = 800L
-
-
-        /** Bound on the phase-2 refine-seek, which should resolve fast (already-buffered). */
-        const val CROSSFADE_HANDOFF_REFINE_TIMEOUT_MS = 200L
         const val CROSSFADE_HANDOFF_BUFFER_MS = 5_000L
         const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
         const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
@@ -8968,44 +8874,11 @@ class MusicService :
         const val CROSSFADE_MAX_BUFFER_MS = 45_000
         const val CROSSFADE_FRAME_MS = 32L
 
-        /** DJ-style staggered equal-power windows for beat-matched blends. */
+        /** Staggered equal-power windows for beat-matched blends. */
         const val AUTOMIX_FADE_IN_END = 0.55f
         const val AUTOMIX_FADE_OUT_START = 0.45f
-
-        /**
-         * How far before the trigger the takeover alignment starts. Needs enough slack for
-         * the prepare + dry-run latency measurement plus a rendezvous retry or two.
-         */
-        const val AUTOMIX_TAKEOVER_ALIGN_AHEAD_MS = 4_000L
-
-        /** Alignment gives up this close to the trigger rather than start a blend late. */
-        const val AUTOMIX_TAKEOVER_ALIGN_GUARD_MS = 500L
-
-        /** Positional offset between the two players below which the swap is inaudible. */
-        const val AUTOMIX_TAKEOVER_ALIGN_TOLERANCE_MS = 20L
-
-        /** First rendezvous point sits this far before the trigger. */
-        const val AUTOMIX_TAKEOVER_RENDEZVOUS_LEAD_MS = 1_500L
-
-        /** A retry re-parks this far ahead of the primary's live position. */
-        const val AUTOMIX_TAKEOVER_RETRY_LEAD_MS = 800L
-
-        /** Bound on waiting for the takeover's position to genuinely advance. */
-        const val AUTOMIX_TAKEOVER_SETTLE_TIMEOUT_MS = 1_200L
-
-        /** Spacing of the advancing-proof position reads. */
-        const val AUTOMIX_TAKEOVER_ADVANCE_READ_MS = 50L
-
-        /** Consecutive rising reads required as proof audio is genuinely flowing. */
-        const val AUTOMIX_TAKEOVER_ADVANCE_PROOF_READS = 3
-
-        /** Wall-clock cost of the advancing proof itself, subtracted from the latency measure. */
-        const val AUTOMIX_TAKEOVER_ADVANCE_PROOF_MS =
-            AUTOMIX_TAKEOVER_ADVANCE_READ_MS * AUTOMIX_TAKEOVER_ADVANCE_PROOF_READS
-
-        /** Sanity clamps on the dry-run startup-latency measurement. */
-        const val AUTOMIX_TAKEOVER_MIN_LATENCY_MS = 20L
-        const val AUTOMIX_TAKEOVER_MAX_LATENCY_MS = 1_000L
+        const val AUTOMIX_TAIL_POLISH_START = 0.42f
+        const val AUTOMIX_TAIL_POLISH_MIN_GAIN = 0.08f
 
         const val AUTOMIX_LOOKAHEAD_TRACKS = 2
         const val BEAT_ANALYSIS_IMMEDIATE_TIMEOUT_MS = 90_000L

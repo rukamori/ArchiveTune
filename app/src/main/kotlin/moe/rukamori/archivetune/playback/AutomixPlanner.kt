@@ -108,14 +108,8 @@ object AutomixPlanner {
     }
 
     /**
-     * Incoming-player speed multiplier at a given blend progress. Eases from 1x up to the
-     * matched tempo over the first 35% (like a DJ nudging the tempo fader), holds through
-     * the middle, then eases back to 1x by the end — so the handoff back to the primary
-     * player (which never leaves the user's own speed) has no tempo discontinuity.
-     *
-     * Quantized into discrete steps: every PlaybackParameters reassignment makes ExoPlayer's
-     * Sonic resampler reconfigure, so fewer, coarser steps blend more smoothly than a new
-     * value on every ~50ms volume tick.
+     * Optional tempo envelope for the incoming player. Quantized steps avoid constant Sonic
+     * resampler reconfiguration during the fade.
      */
     fun tempoRatioAt(
         plan: Plan,

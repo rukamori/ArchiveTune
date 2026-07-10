@@ -420,7 +420,7 @@
     <string name="crossfade_gapless_title">Skip gapless albums</string>
     <string name="crossfade_gapless_description">Do not crossfade consecutive songs from the same album.</string>
     <string name="automix_title">Automix</string>
-    <string name="automix_description">Beat-matched transitions: align crossfades to the beat and tempo of both songs, like a DJ mix.</string>
+    <string name="automix_description">Beat-matched transitions with a separate mixing engine that aligns songs by tempo and downbeat.</string>
     <string name="automixing">Automixing</string>
     <string name="player_stream_client">Playback client</string>
     <string name="player_stream_client_desc">Controls which playback source is used to fetch streams</string>

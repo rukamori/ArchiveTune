@@ -464,8 +464,12 @@ fun PlayerSettings(navController: NavController) {
                         description = stringResource(R.string.automix_description),
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = automixEnabled,
-                        onCheckedChange = onAutomixEnabledChange,
-                        isEnabled = crossfadeEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                onAudioOffloadChange(false)
+                            }
+                            onAutomixEnabledChange(enabled)
+                        },
                     )
                 }
 

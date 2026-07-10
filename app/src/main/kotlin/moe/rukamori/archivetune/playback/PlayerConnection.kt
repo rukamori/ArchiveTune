@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.getCurrentQueueIndex
@@ -39,10 +40,13 @@ class PlayerConnection(
     binder: MusicBinder,
     val database: MusicDatabase,
     scope: CoroutineScope,
-) : Player.Listener {
+    ) : Player.Listener {
     val service = binder.service
-    val player = service.player
-    val localPlayer = service.localPlayer
+    val player: Player
+        get() = service.player
+    val localPlayer: androidx.media3.exoplayer.ExoPlayer
+        get() = service.localPlayer
+    private var attachedPlayer: Player? = null
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -90,19 +94,13 @@ class PlayerConnection(
     val queueRestoreCompleted = service.queueRestoreCompleted
 
     init {
-        player.addListener(this)
-
-        playbackState.value = player.playbackState
-        playWhenReady.value = player.playWhenReady
-        playbackParameters.value = player.playbackParameters
-        queueTitle.value = service.queueTitle
-        queueWindows.value = player.getQueueWindows()
-        currentWindowIndex.value = player.getCurrentQueueIndex()
-        currentMediaItemIndex.value = player.currentMediaItemIndex
-        shuffleModeEnabled.value = player.shuffleModeEnabled
-        repeatMode.value = player.repeatMode
-        if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
-            service.currentMediaMetadata.value = player.currentMetadata
+        attachPlayer(player)
+        scope.launch {
+            service.activePlayer.collect { active ->
+                if (active != null) {
+                    attachPlayer(active)
+                }
+            }
         }
     }
 
@@ -227,7 +225,28 @@ class PlayerConnection(
         }
     }
 
+    private fun attachPlayer(newPlayer: Player) {
+        if (attachedPlayer === newPlayer) return
+        attachedPlayer?.removeListener(this)
+        attachedPlayer = newPlayer
+        newPlayer.addListener(this)
+        playbackState.value = newPlayer.playbackState
+        playWhenReady.value = newPlayer.playWhenReady
+        playbackParameters.value = newPlayer.playbackParameters
+        queueTitle.value = service.queueTitle
+        queueWindows.value = newPlayer.getQueueWindows()
+        currentWindowIndex.value = newPlayer.getCurrentQueueIndex()
+        currentMediaItemIndex.value = newPlayer.currentMediaItemIndex
+        shuffleModeEnabled.value = newPlayer.shuffleModeEnabled
+        repeatMode.value = newPlayer.repeatMode
+        updateCanSkipPreviousAndNext()
+        if (newPlayer.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
+            service.currentMediaMetadata.value = newPlayer.currentMetadata
+        }
+    }
+
     fun dispose() {
-        player.removeListener(this)
+        attachedPlayer?.removeListener(this)
+        attachedPlayer = null
     }
 }
