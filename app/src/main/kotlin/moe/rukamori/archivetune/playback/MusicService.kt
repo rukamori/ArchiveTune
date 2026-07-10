@@ -2954,8 +2954,8 @@ class MusicService :
                         }
 
                         val nowMs = android.os.SystemClock.elapsedRealtime()
-                        crossfadePlaybackRequested = player.playWhenReady
                         if (crossfadePlaybackRequested) {
+                            player.playWhenReady = true
                             oldLocalPlayer.playWhenReady = true
                             elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
                             crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
@@ -2970,7 +2970,8 @@ class MusicService :
                             oldPrimaryDuck.setMix(automixWindowProgress(crossfadeProgress, AUTOMIX_FADE_OUT_START, 1f))
                             incomingDuck?.setMix(1f - automixWindowProgress(crossfadeProgress, 0f, AUTOMIX_FADE_IN_END))
                         } else {
-                            oldLocalPlayer.playWhenReady = false
+                            oldLocalPlayer.pause()
+                            player.pause()
                         }
                         lastTickMs = nowMs
                         delay(CROSSFADE_FRAME_MS)
