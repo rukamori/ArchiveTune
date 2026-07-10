@@ -199,9 +199,9 @@ class AutomixPlannerTest {
             last = ratio
         }
 
-        // Quantization: only a handful of distinct values across the whole blend.
+        // Fine-grained by design: a coarse staircase clicks on-device.
         val distinct = (0..100).map { AutomixPlanner.tempoRatioAt(plan, it / 100f) }.distinct()
-        assertTrue("expected few quantized steps, got ${distinct.size}", distinct.size <= 8)
+        assertTrue("expected fine-grained ramp, got only ${distinct.size} distinct values", distinct.size >= 25)
     }
 
     @Test

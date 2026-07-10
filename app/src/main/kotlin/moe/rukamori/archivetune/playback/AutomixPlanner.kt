@@ -9,6 +9,8 @@ package moe.rukamori.archivetune.playback
 
 import moe.rukamori.archivetune.db.entities.BeatInfoEntity
 import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.PI
 
 /**
  * Computes a beat-aligned crossfade from the cached beat grids of the outgoing and
@@ -107,26 +109,26 @@ object AutomixPlanner {
         )
     }
 
-    /**
-     * Optional tempo envelope for the incoming player. Quantized steps avoid constant Sonic
-     * resampler reconfiguration during the fade.
-     */
+    /** Tempo envelope for the incoming player: cosine-eased ramp knees, fine-grained steps. */
     fun tempoRatioAt(
         plan: Plan,
         progress: Float,
-        steps: Int = 6,
+        steps: Int = 240,
     ): Float {
         if (plan.tempoRatio == 1f) return 1f
         val clamped = progress.coerceIn(0f, 1f)
         val t =
             when {
-                clamped < RAMP_IN_END -> clamped / RAMP_IN_END
+                clamped < RAMP_IN_END -> raisedCosineEase(clamped / RAMP_IN_END)
                 clamped <= RAMP_OUT_START -> 1f
-                else -> 1f - (clamped - RAMP_OUT_START) / (1f - RAMP_OUT_START)
+                else -> raisedCosineEase(1f - (clamped - RAMP_OUT_START) / (1f - RAMP_OUT_START))
             }
         val quantized = (t * steps).toInt().coerceIn(0, steps) / steps.toFloat()
         return 1f + (plan.tempoRatio - 1f) * quantized
     }
+
+    /** S-curve with zero slope at 0 and 1: no corner where the ramp meets the flat hold. */
+    private fun raisedCosineEase(x: Float): Float = 0.5f - 0.5f * cos((x.coerceIn(0f, 1f) * PI).toFloat())
 
     private const val RAMP_IN_END = 0.35f
     private const val RAMP_OUT_START = 0.65f

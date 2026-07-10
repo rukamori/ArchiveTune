@@ -2514,13 +2514,18 @@ class MusicService :
 
     private fun scheduleCrossfade() {
         if (!::player.isInitialized) return
-        crossfadeTriggerJob?.cancel()
-        crossfadeTriggerJob = null
-
         if (automixEnabled) {
             scheduleAutomix()
             return
         }
+        scheduleFallbackCrossfade()
+    }
+
+    /** Plain crossfade trigger loop; also automix's fallback when no beat-aligned plan exists. */
+    private fun scheduleFallbackCrossfade() {
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+
         if (isCrossfading) return
         if (!player.playWhenReady) {
             localPlayer.pauseAtEndOfMediaItems = false
@@ -2599,7 +2604,11 @@ class MusicService :
 
         automixTriggerJob =
             scope.launch {
-                val plan = computeAutomixPlan(target, duration) ?: return@launch
+                val plan = computeAutomixPlan(target, duration)
+                if (plan == null) {
+                    scheduleFallbackCrossfade()
+                    return@launch
+                }
                 val effectiveTarget = target.copy(startPositionMs = plan.incomingStartMs)
                 var hasPreparedSecondaryPlayer = false
 
@@ -2898,7 +2907,13 @@ class MusicService :
                         return@launch
                     }
 
-                    incomingPlayer.playbackParameters = player.playbackParameters
+                    // Always native 1x/1x baseline, not the outgoing player's live params, so a
+                    // prior automix's leftover speed can't compound into this blend.
+                    val automixBaseParameters = PlaybackParameters.DEFAULT
+                    // Set once, while silent (volume=0f below) — each PlaybackParameters change
+                    // is an audible click on this device, so no per-tick ramp mid-blend.
+                    incomingPlayer.playbackParameters =
+                        PlaybackParameters(automixBaseParameters.speed * plan.tempoRatio, automixBaseParameters.pitch)
                     incomingPlayer.volume = 0f
                     incomingPlayer.playWhenReady = crossfadePlaybackRequested
                     if (crossfadePlaybackRequested) {
@@ -2977,6 +2992,7 @@ class MusicService :
                         delay(CROSSFADE_FRAME_MS)
                     }
 
+                    incomingPlayer.playbackParameters = automixBaseParameters
                     oldPrimaryDuck.resetGain()
                     incomingDuck?.resetGain()
                     releaseFadingAutomixPlayer()
@@ -3280,9 +3296,9 @@ class MusicService :
         if (incomingBeat == null && target.mediaId != currentMediaId) {
             maybeAnalyzeBeat(target.mediaId, BeatAnalysisPriority.IMMEDIATE)
         }
-        if (outgoingBeat != null && incomingBeat != null) {
-            analyzeUpcomingTracks()
-        }
+        // Unconditional: gating this behind an already-analyzed pair let one cold/negative
+        // track starve the further-ahead prefetch for the rest of the session.
+        analyzeUpcomingTracks()
 
         val plan = AutomixPlanner.plan(outgoingBeat, incomingBeat, durationMs, player.currentPosition)
         if (plan != null) {
@@ -3339,11 +3355,11 @@ class MusicService :
             val existing = beatAnalysisJobs[mediaId]
             if (existing != null) {
                 if (priority == BeatAnalysisPriority.IMMEDIATE && existing.priority == BeatAnalysisPriority.LOOKAHEAD) {
-                    existing.job.cancel()
-                    beatAnalysisJobs.remove(mediaId)
-                } else {
-                    return
+                    // Promoted lookahead->immediate: let the in-flight fetch finish instead of
+                    // cancelling and restarting from byte zero, just relabel it.
+                    beatAnalysisJobs[mediaId] = BeatAnalysisHandle(BeatAnalysisPriority.IMMEDIATE, existing.job)
                 }
+                return
             }
 
             val job =
