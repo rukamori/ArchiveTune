@@ -1774,7 +1774,7 @@ interface DatabaseDao {
         update(
             artist.copy(
                 name = artistPage.artist.title,
-                thumbnailUrl = artistPage.artist.thumbnail?.resize(1080, 1080),
+                thumbnailUrl = artistPage.artist.thumbnail?.resize(1080, 1080, maxresAllowed = true),
                 lastUpdateTime = LocalDateTime.now(),
             ),
         )
@@ -2095,4 +2095,10 @@ interface DatabaseDao {
             addTagToPlaylist(playlistId, tagId)
         }
     }
+
+    @Query("SELECT * FROM mood_genre_artwork WHERE browseId = :browseId AND params = :params")
+    suspend fun getMoodAndGenreArtworkEntity(browseId: String, params: String): moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMoodAndGenreArtwork(entity: moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity)
 }

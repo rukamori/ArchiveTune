@@ -133,6 +133,9 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.preferredThumbnailRatio
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.YTThumbQuality
+import moe.rukamori.archivetune.ui.utils.resolveMaxresFallback
+import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -386,7 +389,7 @@ fun SongListItem(
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
-                    thumbnailUrl = song.song.thumbnailUrl?.resize(200, 200),
+                    thumbnailUrl = song.song.thumbnailUrl,
                     albumIndex = albumIndex,
                     isSelected = isSelected,
                     isActive = isActive,
@@ -503,14 +506,12 @@ fun ArtistListItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(200, 200),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .size(ListThumbnailSize)
-                    .clip(CircleShape),
+        ItemThumbnail(
+            thumbnailUrl = artist.artist.thumbnailUrl,
+            isActive = false,
+            isPlaying = false,
+            shape = CircleShape,
+            modifier = Modifier.size(ListThumbnailSize),
         )
     },
     trailingContent = trailingContent,
@@ -532,14 +533,12 @@ fun ArtistGridItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(544, 544),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape),
+        ItemThumbnail(
+            thumbnailUrl = artist.artist.thumbnailUrl,
+            isActive = false,
+            isPlaying = false,
+            shape = CircleShape,
+            modifier = Modifier.fillMaxSize(),
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1392,7 +1391,7 @@ fun YouTubeListItem(
 
     if (item is SongItem && isSwipeable && swipeEnabled) {
         SwipeToSongBox(
-            mediaItem = item.copy(thumbnail = item.thumbnail.resize(1080, 1080)).toMediaItem(),
+            mediaItem = item.copy(thumbnail = item.thumbnail.resize(1080, 1080, maxresAllowed = true)).toMediaItem(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             content()
@@ -1628,6 +1627,10 @@ fun ItemThumbnail(
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
 
+        var currentUrl by remember(thumbnailUrl, widthPx, heightPx) {
+            mutableStateOf(thumbnailUrl?.resize(widthPx, heightPx, maxresAllowed = false))
+        }
+
         if (albumIndex == null) {
             if (placeholderIconRes != null) {
                 Box(
@@ -1646,12 +1649,12 @@ fun ItemThumbnail(
                 }
             }
 
-            if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
+            if (shouldLoadImage && !currentUrl.isNullOrBlank()) {
                 val request =
-                    remember(thumbnailUrl, widthPx, heightPx) {
+                    remember(currentUrl, widthPx, heightPx) {
                         ImageRequest
                             .Builder(context)
-                            .data(thumbnailUrl?.resize(544, 544))
+                            .data(currentUrl)
                             .allowHardware(true)
                             .apply {
                                 if (widthPx != null && heightPx != null) {
@@ -1667,6 +1670,11 @@ fun ItemThumbnail(
                         Modifier
                             .fillMaxSize()
                             .let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it },
+                    onState = { state ->
+                        if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                            getNextFallbackUrl(currentUrl)?.let { currentUrl = it }
+                        }
+                    }
                 )
             } else if (placeholderIconRes == null) {
                 Box(

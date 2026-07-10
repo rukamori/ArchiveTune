@@ -13,6 +13,7 @@ enum class YTThumbQuality(
     val value: String,
 ) {
     MAXRES("maxresdefault"),
+    HQ720("hq720"),
     HQ("hqdefault"),
     MQ("mqdefault"),
     DEFAULT("default"),
@@ -27,10 +28,12 @@ private val wHPathRegex = Regex("w\\d+-h\\d+")
 private val wHParamRegex = Regex("=w(\\d+)-h(\\d+)")
 private val sParamRegex = Regex("=s(\\d+)")
 private val brokenSAppendRegex = Regex("-s\\d+")
+private val videoIdRegex = Regex("/vi/([a-zA-Z0-9_-]{11})")
 
 fun String.resize(
     width: Int? = null,
     height: Int? = null,
+    maxresAllowed: Boolean = false,
 ): String {
     if (width == null && height == null) return this
 
@@ -59,13 +62,22 @@ fun String.resize(
     }
 
     if (isYtimg) {
-        return this
+        val videoId = videoIdRegex.find(this)?.groupValues?.get(1) ?: return this
+        val size = maxOf(width ?: 0, height ?: 0)
+        val quality = when {
+            size <= 120 -> YTThumbQuality.DEFAULT
+            size <= 320 -> YTThumbQuality.MQ
+            size <= 480 -> YTThumbQuality.HQ
+            size <= 720 || !maxresAllowed -> YTThumbQuality.HQ720
+            else -> YTThumbQuality.MAXRES
+        }
+        return buildYTThumbnailUrl(videoId, quality)
     }
 
     return this
 }
 
-fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx)
+fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx, maxresAllowed = true)
 
 fun getMusicVideoYTThumbnail(
     videoId: String?,
@@ -73,3 +85,18 @@ fun getMusicVideoYTThumbnail(
     isMusicVideo: Boolean,
     quality: YTThumbQuality = YTThumbQuality.HQ,
 ): String? = if (videoId != null && isMusicVideo) buildYTThumbnailUrl(videoId, quality) else ytmUrl
+
+fun resolveMaxresFallback(url: String?, targetQuality: YTThumbQuality = YTThumbQuality.HQ720): String? {
+    if (url == null) return null
+    val videoId = videoIdRegex.find(url)?.groupValues?.get(1) ?: return null
+    return buildYTThumbnailUrl(videoId, targetQuality)
+}
+
+fun getNextFallbackUrl(url: String?): String? {
+    if (url == null) return null
+    return when {
+        url.contains("maxresdefault") -> resolveMaxresFallback(url, YTThumbQuality.HQ720)
+        url.contains("hq720") -> resolveMaxresFallback(url, YTThumbQuality.HQ)
+        else -> null
+    }
+}

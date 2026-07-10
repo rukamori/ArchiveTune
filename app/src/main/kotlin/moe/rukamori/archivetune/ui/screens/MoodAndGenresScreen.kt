@@ -56,6 +56,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.ui.component.NavigationTitle
@@ -256,11 +258,28 @@ fun MoodAndGenresButton(
 @Composable
 private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? {
     endpoint ?: return null
+    val database = LocalDatabase.current
 
     val cacheKey = buildMoodAndGenresArtworkCacheKey(endpoint)
     val cachedArtwork = moodAndGenresArtworkCache[cacheKey]
     val artworkUrl by produceState(initialValue = cachedArtwork, key1 = cacheKey) {
         if (!value.isNullOrBlank()) return@produceState
+
+        val dbArtwork = withContext(Dispatchers.IO) {
+            val cachedEntity = database.getMoodAndGenreArtworkEntity(endpoint.browseId, endpoint.params ?: "")
+            val oneWeekInMs = 7 * 24 * 60 * 60 * 1000L
+            if (cachedEntity != null && System.currentTimeMillis() - cachedEntity.cachedAt <= oneWeekInMs) {
+                cachedEntity.thumbnailUrl
+            } else {
+                null
+            }
+        }
+
+        if (!dbArtwork.isNullOrBlank()) {
+            moodAndGenresArtworkCache[cacheKey] = dbArtwork
+            value = dbArtwork
+            return@produceState
+        }
 
         val resolvedArtwork =
             withContext(Dispatchers.IO) {
@@ -268,6 +287,16 @@ private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? 
             }
 
         if (!resolvedArtwork.isNullOrBlank()) {
+            withContext(Dispatchers.IO) {
+                database.insertMoodAndGenreArtwork(
+                    MoodAndGenreArtworkEntity(
+                        browseId = endpoint.browseId,
+                        params = endpoint.params ?: "",
+                        thumbnailUrl = resolvedArtwork,
+                        cachedAt = System.currentTimeMillis()
+                    )
+                )
+            }
             moodAndGenresArtworkCache[cacheKey] = resolvedArtwork
             value = resolvedArtwork
         }
