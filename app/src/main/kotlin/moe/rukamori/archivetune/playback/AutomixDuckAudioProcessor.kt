@@ -191,19 +191,19 @@ class AutomixDuckAudioProcessor(
         val inputSize = inputBuffer.remaining()
         if (inputSize == 0) return
 
-        if (outputBuffer.capacity() < inputSize) {
-            outputBuffer = ByteBuffer.allocateDirect(inputSize).order(ByteOrder.nativeOrder())
-        } else {
-            outputBuffer.clear()
-        }
-
         // Fast path: fully dry and settled — outside a blend this processor must cost ~nothing.
         if (targetMix == 0f && currentMix < SETTLED_MIX_EPSILON) {
             currentMix = 0f
             stages.forEach { it.clearState() }
-            outputBuffer.put(inputBuffer)
-            outputBuffer.flip()
+            outputBuffer = inputBuffer.slice().order(inputBuffer.order())
+            inputBuffer.position(inputBuffer.limit())
             return
+        }
+
+        if (outputBuffer.capacity() < inputSize) {
+            outputBuffer = ByteBuffer.allocateDirect(inputSize).order(ByteOrder.nativeOrder())
+        } else {
+            outputBuffer.clear()
         }
 
         // Per-sample ease toward targetMix: at 44.1-48kHz this settles in a few ms, fast

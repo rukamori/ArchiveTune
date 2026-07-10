@@ -20,6 +20,7 @@ import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -47,6 +48,7 @@ class PlayerConnection(
     val localPlayer: androidx.media3.exoplayer.ExoPlayer
         get() = service.localPlayer
     private var attachedPlayer: Player? = null
+    private var activePlayerJob: Job? = null
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -95,13 +97,14 @@ class PlayerConnection(
 
     init {
         attachPlayer(player)
-        scope.launch {
-            service.activePlayer.collect { active ->
-                if (active != null) {
-                    attachPlayer(active)
+        activePlayerJob =
+            scope.launch {
+                service.activePlayer.collect { active ->
+                    if (active != null) {
+                        attachPlayer(active)
+                    }
                 }
             }
-        }
     }
 
     fun playQueue(queue: Queue) {
@@ -246,6 +249,8 @@ class PlayerConnection(
     }
 
     fun dispose() {
+        activePlayerJob?.cancel()
+        activePlayerJob = null
         attachedPlayer?.removeListener(this)
         attachedPlayer = null
     }
