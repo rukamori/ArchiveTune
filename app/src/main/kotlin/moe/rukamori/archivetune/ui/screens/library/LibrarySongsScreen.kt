@@ -479,8 +479,7 @@ fun LibrarySongsScreen(
                             shape = RoundedCornerShape(thumbCorner),
                             modifier =
                                 Modifier
-                                    .size(52.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    .size(52.dp),
                         )
 
                         Spacer(modifier = Modifier.width(14.dp))

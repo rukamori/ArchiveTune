@@ -748,8 +748,7 @@ fun PlaylistListCard(
             shape = RoundedCornerShape(24.dp),
             modifier =
                 Modifier
-                    .size(72.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .size(72.dp),
         )
 
         Spacer(modifier = Modifier.width(16.dp))
