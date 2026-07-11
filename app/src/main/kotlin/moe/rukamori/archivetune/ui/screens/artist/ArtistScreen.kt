@@ -146,6 +146,7 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.AlbumGridItem
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -561,14 +562,14 @@ fun ArtistScreen(
                                     .padding(top = 8.dp, bottom = 16.dp),
                         ) {
                             if (thumbnail != null) {
-                                AsyncImage(
-                                    model = thumbnail.resize(600, 600),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                                ItemThumbnail(
+                                    thumbnailUrl = thumbnail,
+                                    isActive = false,
+                                    isPlaying = false,
+                                    shape = CircleShape,
                                     modifier =
                                         Modifier
-                                            .size(210.dp)
-                                            .clip(CircleShape),
+                                            .size(210.dp),
                                 )
                             } else {
                                 // Placeholder when no image
