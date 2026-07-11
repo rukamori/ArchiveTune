@@ -88,6 +88,7 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -388,14 +389,14 @@ fun LibraryAlbumsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        AsyncImage(
-                                            model = album.album.thumbnailUrl,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
+                                        ItemThumbnail(
+                                            thumbnailUrl = album.album.thumbnailUrl,
+                                            isActive = false,
+                                            isPlaying = false,
+                                            shape = RoundedCornerShape(24.dp),
                                             modifier =
                                                 Modifier
-                                                    .size(80.dp)
-                                                    .clip(RoundedCornerShape(24.dp)),
+                                                    .size(80.dp),
                                         )
 
                                         Spacer(modifier = Modifier.width(16.dp))
@@ -513,10 +514,11 @@ fun LibraryAlbumsScreen(
                                         .aspectRatio(1f)
                                         .clip(RoundedCornerShape(22.dp)),
                             ) {
-                                AsyncImage(
-                                    model = album.album.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                                ItemThumbnail(
+                                    thumbnailUrl = album.album.thumbnailUrl,
+                                    isActive = false,
+                                    isPlaying = false,
+                                    shape = RoundedCornerShape(22.dp),
                                     modifier = Modifier.fillMaxSize(),
                                 )
                                 // Play Overlay button on cover
@@ -592,14 +594,14 @@ fun LibraryAlbumsScreen(
                                     ).padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            AsyncImage(
-                                model = album.album.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            ItemThumbnail(
+                                thumbnailUrl = album.album.thumbnailUrl,
+                                isActive = false,
+                                isPlaying = false,
+                                shape = RoundedCornerShape(20.dp),
                                 modifier =
                                     Modifier
-                                        .size(60.dp)
-                                        .clip(RoundedCornerShape(20.dp)),
+                                        .size(60.dp),
                             )
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {

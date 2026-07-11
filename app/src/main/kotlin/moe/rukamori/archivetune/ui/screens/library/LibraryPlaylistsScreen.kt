@@ -103,6 +103,7 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -740,14 +741,14 @@ fun PlaylistListCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Thumbnail
-        AsyncImage(
-            model = playlist.thumbnails.getOrNull(0),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        ItemThumbnail(
+            thumbnailUrl = playlist.thumbnails.getOrNull(0),
+            isActive = false,
+            isPlaying = false,
+            shape = RoundedCornerShape(24.dp),
             modifier =
                 Modifier
                     .size(72.dp)
-                    .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         )
 
@@ -902,10 +903,11 @@ fun PlaylistGridCard(
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(26.dp)),
         ) {
-            AsyncImage(
-                model = playlist.thumbnails.getOrNull(0),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+            ItemThumbnail(
+                thumbnailUrl = playlist.thumbnails.getOrNull(0),
+                isActive = false,
+                isPlaying = false,
+                shape = RoundedCornerShape(26.dp),
                 modifier = Modifier.fillMaxSize(),
             )
             // Play overlay on bottom right of grid cover

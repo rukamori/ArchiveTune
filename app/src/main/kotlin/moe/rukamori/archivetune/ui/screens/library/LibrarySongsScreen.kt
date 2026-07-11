@@ -82,6 +82,7 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.screens.library.rememberArtworkGradient
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
@@ -471,14 +472,14 @@ fun LibrarySongsScreen(
                     ) {
                         // Thumbnail — fully circular when active
                         val thumbCorner = if (isActive) 26.dp else 10.dp
-                        AsyncImage(
-                            model = song.song.thumbnailUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
+                        ItemThumbnail(
+                            thumbnailUrl = song.song.thumbnailUrl,
+                            isActive = isActive,
+                            isPlaying = isPlaying,
+                            shape = RoundedCornerShape(thumbCorner),
                             modifier =
                                 Modifier
                                     .size(52.dp)
-                                    .clip(RoundedCornerShape(thumbCorner))
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
 

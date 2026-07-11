@@ -86,6 +86,7 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -511,14 +512,14 @@ fun LibraryArtistsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Avatar image circle
-                    AsyncImage(
-                        model = artist.thumbnailUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                    ItemThumbnail(
+                        thumbnailUrl = artist.thumbnailUrl,
+                        isActive = false,
+                        isPlaying = false,
+                        shape = CircleShape,
                         modifier =
                             Modifier
                                 .size(52.dp)
-                                .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
 
@@ -606,14 +607,14 @@ fun LibraryArtistsScreen(
                                         },
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                AsyncImage(
-                                    model = artist.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                                ItemThumbnail(
+                                    thumbnailUrl = artist.thumbnailUrl,
+                                    isActive = false,
+                                    isPlaying = false,
+                                    shape = CircleShape,
                                     modifier =
                                         Modifier
-                                            .size(60.dp)
-                                            .clip(CircleShape),
+                                            .size(60.dp),
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
