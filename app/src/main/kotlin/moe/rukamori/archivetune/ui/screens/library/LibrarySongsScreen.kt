@@ -477,6 +477,7 @@ fun LibrarySongsScreen(
                             isActive = isActive,
                             isPlaying = isPlaying,
                             shape = RoundedCornerShape(thumbCorner),
+                            showPlaceholder = true,
                             modifier =
                                 Modifier
                                     .size(52.dp),

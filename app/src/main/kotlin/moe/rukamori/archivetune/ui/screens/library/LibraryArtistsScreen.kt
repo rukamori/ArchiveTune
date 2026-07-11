@@ -517,6 +517,7 @@ fun LibraryArtistsScreen(
                         isActive = false,
                         isPlaying = false,
                         shape = CircleShape,
+                        showPlaceholder = true,
                         modifier =
                             Modifier
                                 .size(52.dp),

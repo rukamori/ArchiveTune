@@ -1609,6 +1609,7 @@ fun ItemThumbnail(
     shouldLoadImage: Boolean = true,
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
+    showPlaceholder: Boolean = false,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1620,7 +1621,13 @@ fun ItemThumbnail(
                 .fillMaxSize()
                 .aspectRatio(thumbnailRatio)
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .let {
+                    if (showPlaceholder) {
+                        it.background(MaterialTheme.colorScheme.surfaceVariant)
+                    } else {
+                        it
+                    }
+                },
     ) {
         val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
         val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true

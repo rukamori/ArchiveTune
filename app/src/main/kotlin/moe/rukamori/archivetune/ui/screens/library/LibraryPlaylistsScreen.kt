@@ -746,6 +746,7 @@ fun PlaylistListCard(
             isActive = false,
             isPlaying = false,
             shape = RoundedCornerShape(24.dp),
+            showPlaceholder = true,
             modifier =
                 Modifier
                     .size(72.dp),
