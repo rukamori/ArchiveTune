@@ -26,7 +26,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     withContext(Dispatchers.IO) {
         CanvasArtworkPlaybackCache.get(
             mediaId = mediaId,
-            preferCachedOnly = !allowNetwork,
+            preferCachedOnly = true,
         )
     }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
         ?.let { return it }
