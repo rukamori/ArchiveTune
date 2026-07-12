@@ -557,26 +557,16 @@ class MainActivity : ComponentActivity() {
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
                 ) {
                     val channelString = withContext(Dispatchers.IO) { dataStore.data.first()[UpdateChannelKey] }
-                    val actualChannel =
-                        channelString?.let {
-                            try {
-                                UpdateChannel.valueOf(it)
-                            } catch (_: IllegalArgumentException) {
-                                null
-                            }
-                        } ?: defaultUpdateChannel
-
-                    if (actualChannel != UpdateChannel.NIGHTLY) {
-                        val versionResult =
-                            when (actualChannel) {
-                                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyVersionName()
-                                else -> Updater.getLatestVersionName()
-                            }
-                        versionResult.onSuccess {
-                            if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                                latestUpdateChannel = actualChannel
-                                latestVersionName = it
-                            }
+                    val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
+                    val versionResult =
+                        when (actualChannel) {
+                            UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
+                            UpdateChannel.STABLE -> Updater.getLatestVersionName()
+                        }
+                    versionResult.onSuccess {
+                        if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
+                            latestUpdateChannel = actualChannel
+                            latestVersionName = it
                         }
                     }
                 }
@@ -674,8 +664,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val releaseNotesResult =
                         when (latestUpdateChannel) {
-                            UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyReleaseNotes()
-                            else -> Updater.getLatestReleaseNotes()
+                            UpdateChannel.CANARY -> Updater.getLatestCanaryReleaseNotes()
+                            UpdateChannel.STABLE -> Updater.getLatestReleaseNotes()
                         }
                     releaseNotesResult
                         .onSuccess {
@@ -1636,7 +1626,7 @@ class MainActivity : ComponentActivity() {
                                             // so the TopAppBar fully hides), but a counter-offset
                                             // clamps the gradient's net translation to [-appBarHeight, 0]
                                             // so it parks with its top band over the status bar instead
-                                            // of sliding fully off — a legibility scrim once the header
+                                            // of sliding fully off â€” a legibility scrim once the header
                                             // is hidden.
                                             if (shouldShowBlurBackground) {
                                                 val appBarHeightPx = with(LocalDensity.current) { AppBarHeight.toPx() }
@@ -1649,7 +1639,7 @@ class MainActivity : ComponentActivity() {
                                                                     // stays static (mirrors the header Box above and
                                                                     // matches upstream, which ships a static Library
                                                                     // gradient). Keeping it rendered avoids the
-                                                                    // Library→Home predictive-back scrim pop.
+                                                                    // Libraryâ†’Home predictive-back scrim pop.
                                                                     IntOffset(x = 0, y = 0)
                                                                 } else {
                                                                     val raw = currentScrollBehavior.state.heightOffset
@@ -1786,7 +1776,7 @@ class MainActivity : ComponentActivity() {
                                                     ) {
                                                         // Library is fixed, and floating routes
                                                         // (Home/Search) now slide rigidly via the
-                                                        // outer Box.offset — passing a behavior here
+                                                        // outer Box.offset â€” passing a behavior here
                                                         // would make M3 collapse/co-render and
                                                         // double-move the header. Only non-floating
                                                         // sub-screens use M3's collapse behavior.

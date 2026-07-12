@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Головна</string>
     <string name="songs">Пісні</string>
@@ -499,9 +499,7 @@
     <string name="enable_discord_debug_lines">Увімкнути рядки налаштувань налагодження</string>
     <string name="presence_manager_running">Менеджер присутності: запущено</string>
     <string name="presence_manager_stopped">Менеджер присутності: зупинено</string>
-    <string name="filter_levels">Рівні фільтрації</string>
     <string name="experimental_features">Експериментальні функції</string>
-    <string name="reset_to_default_levels">Відновити стандартне налаштування</string>
     <string name="no_logs">Без логів</string>
     <string name="show_nerd_stats">Показати статистику для фанатів</string>
     <string name="description_show_nerd_stats">Відображати статистику відтворення в режимі реального часу (кодек, швидкість передачі даних, буфер)</string>
@@ -535,7 +533,6 @@
     <string name="log_level_info">Інфо</string>
     <string name="log_level_warning">Попередження</string>
     <string name="log_level_error">Помилка</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Усе</string>
     <string name="clear">Очистити</string>
     <string name="logs_empty_message">Журнали з\'являться тут, коли стануть доступними</string>
@@ -554,10 +551,8 @@
     <string name="current_version">Поточна версія</string>
     <string name="latest_version_format">Остання: %s</string>
     <string name="enable_update_notification">Увімкнути сповіщення про оновлення</string>
-    <string name="enable_update_notification_desc">Отримуйте сповіщення про вихід нової стабільної версії</string>
     <string name="update_channel">Канал оновлень</string>
     <string name="channel_stable">Стабільний</string>
-    <string name="channel_nightly">Нічний</string>
     <string name="recent_commits">Останні зміни</string>
     <string name="changelog">Історія змін</string>
     <string name="view_changelog">Переглянути історію змін</string>
@@ -636,20 +631,13 @@
     <string name="web_client_po_token">Токен PO веб-клієнта</string>
     <string name="po_token_gvs">Токен PO (GVS)</string>
     <string name="visitor_data">Дані про відвідувачів</string>
-    <string name="supported_clients">Клієнти, що підтримуються</string>
     <string name="generated_tokens">Створені токени</string>
-    <string name="token_settings">Налаштування токенів</string>
-    <string name="use_visitor_data">Використовувати дані про відвідувачів</string>
-    <string name="use_visitor_data_desc">Використовувати дані відвідувачів для генерації токенів. Для цього необхідно вимкнути файли cookie.</string>
-    <string name="cookies_must_be_disabled">Щоб використовувати дані про відвідувачів, необхідно вимкнути файли cookie</string>
     <string name="regenerate">Згенерувати наново</string>
     <string name="regenerate_token">Згенерувати токен наново</string>
     <string name="source_url">URL-адреса джерела</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Створення токенів…</string>
     <string name="tokens_generated">Токени успішно згенеровано</string>
     <string name="token_generation_failed">Помилка під час генерації токена</string>
-    <string name="open_account_before_extract">Перед розпакуванням відкрийте сторінку youtube.com/account і увійдіть у свій обліковий запис</string>
     <string name="token_copied">Токен скопійовано до буфера обміну</string>
     <string name="extracting_from_url">Витягування токенів з URL-адреси…</string>
     <string name="po_token_account_notice_title">Використовуйте той самий обліковий запис</string>
@@ -689,13 +677,9 @@
     <string name="success_rate">Відсоток успішності</string>
     <string name="providers">Провайдери</string>
     <string name="updates_subtitle_stable">Стабільні версії та інформація про версії</string>
-    <string name="updates_subtitle_nightly">Нічні збірки та останні коміти з розробки</string>
     <string name="updates_status_checking">Перевірка наявності останньої версії</string>
     <string name="updates_status_current">Ви використовуєте останню доступну версію</string>
     <string name="update_channel_desc">Виберіть між перевіреними версіями та знімками з розробки.</string>
-    <string name="updates_nightly_title">Нічна доставка</string>
-    <string name="updates_nightly_description">Нічні збірки відстежують найновіші коміти з розробки та можуть містити незавершені зміни.</string>
-    <string name="updates_latest_commit">Останній коміт: %s</string>
     <string name="updates_loading_commits">Завантаження останніх комітів</string>
     <string name="updates_recent_commits_count">%1$d останніх комітів</string>
     <string name="updates_no_commits">Не знайдено останніх комітів</string>

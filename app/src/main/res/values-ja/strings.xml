@@ -768,9 +768,7 @@
     <string name="enable_discord_debug_lines">デバッグ設定行を有効化</string>
     <string name="presence_manager_running">プレゼンス管理: 実行中</string>
     <string name="presence_manager_stopped">プレゼンス管理: 停止中</string>
-    <string name="filter_levels">フィルターレベル</string>
     <string name="experimental_features">実験的な機能</string>
-    <string name="reset_to_default_levels">デフォルトに戻す</string>
     <string name="no_logs">ログなし</string>
     <string name="show_nerd_stats">詳細統計を表示</string>
     <string name="description_show_nerd_stats">リアルタイム再生統計（コーデック、ビットレート、バッファ）を表示</string>
@@ -802,7 +800,6 @@
     <string name="log_level_info">情報</string>
     <string name="log_level_warning">警告</string>
     <string name="log_level_error">エラー</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">すべて</string>
     <string name="clear">クリア</string>
     <string name="export">エクスポート</string>
@@ -820,37 +817,19 @@
     <string name="new_version_available">新しいバージョンあり</string>
     <string name="updates">更新</string>
     <string name="updates_subtitle_stable">安定版リリースとリリースノート</string>
-    <string name="updates_subtitle_nightly">Nightlyビルドと最近の開発コミット</string>
     <string name="current_version">現在のバージョン</string>
     <string name="latest_version_format">最新: %s</string>
     <string name="updates_status_checking">最新リリースを確認中</string>
     <string name="updates_status_current">利用可能な最新リリースを使用中</string>
     <string name="enable_update_notification">更新通知を有効化</string>
-    <string name="enable_update_notification_desc">新しい安定版がリリースされたら通知</string>
     <string name="update_channel">更新チャンネル</string>
     <string name="update_channel_desc">テスト済みリリースと開発スナップショットを選ぶ。</string>
     <string name="channel_stable">安定版</string>
-    <string name="channel_nightly">Nightly</string>
-    <string name="channel_daily_nightly">Daily</string>
     <string name="recent_commits">最近のコミット</string>
-    <string name="updates_nightly_title">Nightly配信</string>
-    <string name="updates_nightly_description">Nightlyビルドは最新の開発コミットを追跡し、未完成の変更を含む場合がある。</string>
-    <string name="updates_nightly_hosting_description">自動生成された開発ビルドは、成功したGitHub Actions実行から利用できる。</string>
     <string name="updates_channel_warning_intro">ArchiveTuneはビルド用に2つのダウンロードチャンネルを提供:</string>
     <string name="updates_channel_warning_stable_title">安定版ビルド</string>
     <string name="updates_channel_warning_stable_source">公式GitHub Releases経由で配布。</string>
     <string name="updates_channel_warning_stable_desc">これらのバージョンはテスト済みで、ほとんどのユーザーにおすすめ。</string>
-    <string name="updates_channel_warning_nightly_title">Nightlyビルド</string>
-    <string name="updates_channel_warning_nightly_risk">Nightlyビルドには実験的機能、未完成の変更、一時的な不具合が含まれる場合がある。</string>
-    <string name="updates_channel_warning_nightly_unstable">Nightlyビルドはテストと早期アクセス専用。
-安定性、互換性、機能性は保証されない。</string>
-    <string name="updates_channel_warning_acknowledgement">注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。
-続行すると、Nightlyビルドが不安定な場合があり、自己責任で使用することに同意したものとみなされる。</string>
-    <string name="updates_daily_channel_confirmation">Dailyチャンネルに切り替えると、daily-nightlyリポジトリから更新を受け取る。
-
-Dailyビルドは最新の開発ブランチから毎日自動公開される。
-注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。</string>
-    <string name="updates_latest_commit">最新コミット: %s</string>
     <string name="updates_loading_commits">最近のコミットを読み込み中</string>
     <string name="updates_recent_commits_count">最近のコミット%1$d件</string>
     <string name="updates_no_commits">最近のコミットが見つからない</string>
@@ -999,20 +978,13 @@ Dailyビルドは最新の開発ブランチから毎日自動公開される。
     <string name="po_token_gvs">POトークン（GVS）</string>
     <string name="po_token_player">POトークン（Player）</string>
     <string name="visitor_data">訪問者データ</string>
-    <string name="supported_clients">対応クライアント</string>
     <string name="generated_tokens">生成済みトークン</string>
-    <string name="token_settings">トークン設定</string>
-    <string name="use_visitor_data">訪問者データを使用</string>
-    <string name="use_visitor_data_desc">トークン生成に訪問者データを使用。Cookieを無効にする必要がある。</string>
-    <string name="cookies_must_be_disabled">訪問者データを使うにはCookieを無効にする必要がある</string>
     <string name="regenerate">再生成</string>
     <string name="regenerate_token">トークンを再生成</string>
     <string name="source_url">ソースURL</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">トークンを生成中</string>
     <string name="tokens_generated">トークンを生成した</string>
     <string name="token_generation_failed">トークン生成に失敗</string>
-    <string name="open_account_before_extract">抽出する前にyoutube.com/accountを開いてログインしてね</string>
     <string name="token_copied">トークンをクリップボードにコピーした</string>
     <string name="extracting_from_url">URLからトークンを抽出中</string>
     <string name="po_token_account_notice_title">同じアカウントを使う</string>

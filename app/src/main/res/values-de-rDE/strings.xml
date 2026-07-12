@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Home</string>
     <string name="songs">Lieder</string>
@@ -388,9 +388,7 @@
     <string name="enable_discord_debug_lines">Debug-Einstellungszeilen aktivieren</string>
     <string name="presence_manager_running">Präsenzmanager: läuft</string>
     <string name="presence_manager_stopped">Präsenzmanager: gestoppt</string>
-    <string name="filter_levels">Filterstufen</string>
     <string name="experimental_features">Experimentelle Funktionen</string>
-    <string name="reset_to_default_levels">Auf Standard zurücksetzen</string>
     <string name="no_logs">Keine Protokolle</string>
     <string name="show_nerd_stats">Nerd-Statistiken anzeigen</string>
     <string name="description_show_nerd_stats">Echtzeit-Wiedergabestatistiken anzeigen (Codec, Bitrate, Puffer)</string>
@@ -650,7 +648,6 @@
     <string name="log_level_info">Infos</string>
     <string name="log_level_warning">Warnung</string>
     <string name="log_level_error">Fehler</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Alle</string>
     <string name="clear">Leeren</string>
     <string name="logs_empty_message">Protokolle erscheinen hier, wenn verfügbar</string>
@@ -667,12 +664,9 @@
     <string name="updates_status_checking">Überprüfe auf die aktuellste Version</string>
     <string name="updates_status_current">Du bist auf der aktuellsten verfügbaren Version</string>
     <string name="enable_update_notification">Aktiviere Upadatebenachrichtigung</string>
-    <string name="enable_update_notification_desc">Werde benachrichtigt, wenn eine neue Stabile Version veröffentlicht wird</string>
     <string name="update_channel">Updatekanal</string>
     <string name="channel_stable">Stabil</string>
-    <string name="channel_nightly">Nightly</string>
     <string name="recent_commits">Neueste Beiträge</string>
-    <string name="updates_latest_commit">Neuster Beitrag: %s</string>
     <string name="updates_loading_commits">Lade neueste Beiträge</string>
     <string name="changelog">Änderungsverlauf</string>
     <string name="view_changelog">Änderungsverlauf anzeigen</string>
@@ -742,13 +736,10 @@
     <string name="together_dont_show_again">Nicht noch einmal anzeigen</string>
     <string name="together_welcome_join_title">Trete von einem anderen Gerät bei</string>
     <string name="together_welcome_permissions_title">Berechtigungen und Sicherheit</string>
-    <string name="supported_clients">Unterstützte Endgeräte</string>
     <string name="generated_tokens">Generierte Token</string>
-    <string name="token_settings">Tokeneinstellung</string>
     <string name="regenerate">Neu generieren</string>
     <string name="regenerate_token">Token neugenerieren</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Generiere Token</string>
     <string name="tokens_generated">Token erfolgreich generiert</string>
     <string name="token_generation_failed">Tokengenerierung fehlgeschlagen</string>
     <string name="token_copied">Token in Zwischenablage kopiert</string>

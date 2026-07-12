@@ -3291,10 +3291,10 @@ class MusicService :
 
     private fun retryPlaybackAfterStreamFailure(
         mediaId: String,
-        isFullyCachedMedia: Boolean,
+        isFullyDownloadedMedia: Boolean,
         responseException: androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException,
     ): Boolean {
-        if (isFullyCachedMedia) return false
+        if (isFullyDownloadedMedia) return false
 
         val failedUrl = responseException.dataSpec.uri.toString()
         val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
@@ -6629,17 +6629,17 @@ class MusicService :
         val currentMediaId = player.currentMediaItem?.mediaId ?: return
         val isLocalMedia = currentMediaId.isLocalMediaId()
 
-        val isFullyCachedMedia =
+        val isFullyDownloadedMedia =
             runCatching {
-                val cachedInDownload =
-                    downloadCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L ||
-                        downloadCache.getCachedSpans(currentMediaId).isNotEmpty()
-                val cachedInPlayer = playerCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
-                cachedInDownload || cachedInPlayer
+                val contentLength =
+                    downloadCache
+                        .getContentMetadata(currentMediaId)
+                        .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                contentLength > 0L && downloadCache.isCached(currentMediaId, 0L, contentLength)
             }.getOrDefault(false)
 
         val hasAnyCachedData =
-            isFullyCachedMedia ||
+            isFullyDownloadedMedia ||
                 runCatching {
                     downloadCache.getCachedSpans(currentMediaId).isNotEmpty() ||
                         playerCache.getCachedSpans(currentMediaId).isNotEmpty()
@@ -6649,7 +6649,7 @@ class MusicService :
             (error.cause?.cause is PlaybackException) &&
                 (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
 
-        if (!isLocalMedia && !isFullyCachedMedia && (!isNetworkConnected.value || isConnectionError)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && (!isNetworkConnected.value || isConnectionError)) {
             waitOnNetworkError()
             return
         }
@@ -6663,7 +6663,7 @@ class MusicService :
 
         val retryableStreamFailure = findRetryableStreamFailure(error)
         if (retryableStreamFailure != null) {
-            if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyCachedMedia, retryableStreamFailure)) {
+            if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyDownloadedMedia, retryableStreamFailure)) {
                 return
             }
         }
@@ -6676,11 +6676,12 @@ class MusicService :
             Timber.tag("MusicService").w(
                 "Cache corruption / truncated stream for %s (fullyCached=%b); purging caches then retrying",
                 currentMediaId,
-                isFullyCachedMedia,
+                isFullyDownloadedMedia,
             )
 
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
 
             scope.launch(Dispatchers.IO) {
@@ -6688,7 +6689,7 @@ class MusicService :
                 runCatching { playerCache.removeResource(currentMediaId) }
                 // Keep a complete offline download in place; deleting a user's saved download
                 // to recover from a read error is surprising. Only purge partial entries.
-                if (!isFullyCachedMedia) {
+                if (!isFullyDownloadedMedia) {
                     runCatching { downloadCache.removeResource(currentMediaId) }
                 } else {
                     Timber.tag("MusicService").w(
@@ -6712,7 +6713,7 @@ class MusicService :
             return
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBotDetectionException(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBotDetectionException(error)) {
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
@@ -6724,7 +6725,7 @@ class MusicService :
             }
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
@@ -6754,10 +6755,25 @@ class MusicService :
             }
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && isRetryableRemoteParserFailure(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && isRetryableRemoteParserFailure(error)) {
+            val failedUrl =
+                playbackUrlCache[currentMediaId]?.url
+                    ?: extractorPlaybackUrlCache[currentMediaId]?.url
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            failedUrl
+                ?.let(StreamClientUtils::resolveRequestProfile)
+                ?.clientKey
+                ?.takeIf(String::isNotEmpty)
+                ?.let { clientKey ->
+                    YTPlayerUtils.markStreamClientFailed(
+                        videoId = currentMediaId,
+                        clientKey = clientKey,
+                        httpStatusCode = null,
+                    )
+                }
             if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
                 Timber.tag("MusicService").i(
                     "Retrying playback for %s after parser source error %d",
@@ -6932,11 +6948,6 @@ class MusicService :
                 playerCache
                     .getContentMetadata(mediaId)
                     .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-            }.getOrNull()?.takeIf { it > 0L } ?: runCatching {
-                // Fallback: derive content length from cached download spans so that
-                // fully-downloaded songs can short-circuit even when cache metadata
-                // did not record KEY_CONTENT_LENGTH (e.g. chunked YouTube responses).
-                downloadCache.getCachedSpans(mediaId).takeIf { it.isNotEmpty() }?.sumOf { it.length }
             }.getOrNull()?.takeIf { it > 0L }
 
         knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
@@ -7098,7 +7109,7 @@ class MusicService :
         val format = nonNullPlayback.format
         val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
         val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
-        val resolvedContentLength = format.contentLength ?: knownContentLength ?: 0L
+        val resolvedContentLength = format.contentLength ?: 0L
         val resolvedCodecs =
             format.mimeType
                 .substringAfter("codecs=", "")
@@ -7161,7 +7172,7 @@ class MusicService :
             resolveStreamChunkLength(
                 requestedLength = dataSpec.length,
                 position = dataSpec.position,
-                knownContentLength = knownContentLength ?: format.contentLength,
+                knownContentLength = format.contentLength,
                 chunkLength = CHUNK_LENGTH,
                 mimeType = format.mimeType,
             )

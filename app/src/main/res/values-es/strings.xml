@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Inicio</string>
     <string name="songs">Canciones</string>
@@ -459,9 +459,7 @@
     <string name="enable_discord_debug_lines">Activar líneas de configuración de depuración</string>
     <string name="presence_manager_running">Gestor de presencia: en ejecución</string>
     <string name="presence_manager_stopped">Gestor de presencia: detenido</string>
-    <string name="filter_levels">Niveles de filtro</string>
     <string name="experimental_features">Funciones experimentales</string>
-    <string name="reset_to_default_levels">Restablecer valores predeterminados</string>
     <string name="no_logs">Sin registros</string>
     <string name="show_nerd_stats">Mostrar estadísticas para nerds</string>
     <string name="description_show_nerd_stats">Mostrar estadísticas en tiempo real (codec, bitrate, buffer)</string>
@@ -493,7 +491,6 @@
     <string name="log_level_info">Información general</string>
     <string name="log_level_warning">Advertencia</string>
     <string name="log_level_error">Error</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Todo</string>
     <string name="clear">Limpiar</string>
     <string name="logs_empty_message">Los registros aparecerán aquí cuando estén disponibles</string>
@@ -511,10 +508,8 @@
     <string name="current_version">Versión Actual</string>
     <string name="latest_version_format">Ultima: %s</string>
     <string name="enable_update_notification">Activar la Notificación de Actualización</string>
-    <string name="enable_update_notification_desc">Recibe una notificación cuando se publique una nueva versión estable</string>
     <string name="update_channel">Canal de actualización</string>
     <string name="channel_stable">Estable</string>
-    <string name="channel_nightly">Experimental</string>
     <string name="recent_commits">Cambios recientes</string>
     <string name="changelog">Registro de cambios</string>
     <string name="view_changelog">Ver registro de cambios</string>
@@ -627,20 +622,13 @@
     <string name="po_token_gvs">Token de validación GVS</string>
     <string name="po_token_player">Token de verificación del reproductor</string>
     <string name="visitor_data">Datos de los visitantes</string>
-    <string name="supported_clients">Clientes admitidos</string>
     <string name="generated_tokens">Tokens generados</string>
-    <string name="token_settings">Ajustes de los tokens</string>
-    <string name="use_visitor_data">Utilizar datos de visitantes</string>
-    <string name="use_visitor_data_desc">Utiliza los datos de los visitantes para generar tokens. Es necesario desactivar las cookies.</string>
-    <string name="cookies_must_be_disabled">Para utilizar los datos de los visitantes, es necesario desactivar las cookies</string>
     <string name="regenerate">Regenerar</string>
     <string name="regenerate_token">Renovar el token</string>
     <string name="source_url">Url de origen</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Generando tokens</string>
     <string name="tokens_generated">Tokens generados correctamente</string>
     <string name="token_generation_failed">Error al generar los tokens</string>
-    <string name="open_account_before_extract">Abre la página youtube.com/account e inicia sesión antes de extraer el archivo</string>
     <string name="token_copied">Token copiado en el portapapeles</string>
     <string name="extracting_from_url">Extrayendo tokens de la URL…</string>
     <string name="po_token_account_notice_title">Utiliza la misma cuenta</string>
@@ -653,11 +641,9 @@
     <string name="disable_animations_desc">Desactiva la mayoría de las animaciones de las aplicaciones. Recomendado para dispositivos de gama baja</string>
     <string name="tap_to_activate_equalizer">Toca para activar el ecualizador</string>
     <string name="updates_subtitle_stable">Versiones estables y notas de la versión</string>
-    <string name="updates_subtitle_nightly">Compilaciones Nightly y últimas modificaciones de desarrollo</string>
     <string name="updates_status_checking">Comprobar si hay una nueva versión</string>
     <string name="updates_status_current">Tienes la última versión disponible</string>
     <string name="update_channel_desc">Elige entre versiones probadas o en desarrollo.</string>
-    <string name="updates_latest_commit">Último commit: %s</string>
     <string name="updates_loading_commits">Cargando las últimas modificaciones</string>
     <string name="updates_recent_commits_count">%1$d commits recientes</string>
     <string name="updates_no_commits">Sin cambios recientes</string>
@@ -665,8 +651,6 @@
     <string name="playlist_suggestion_source_title">Título de la lista de reproducción</string>
     <string name="playlist_suggestion_source_content">Contenido de la lista de reproducción</string>
     <string name="playlist_suggestion_source_both">Título y contenido de la lista de reproducción</string>
-    <string name="updates_nightly_title">Entrega Nightly</string>
-    <string name="updates_nightly_description">Las compilaciones Nightly rastrean los commits de desarrollo más recientes y pueden incluir cambios incompletos.</string>
     <string name="removed_song_from_queue">Se ha eliminado «%s» de la cola</string>
     <string name="removed_n_songs_from_queue">Se han eliminado %d canciones de la cola</string>
     <string name="internet">Internet</string>
@@ -845,8 +829,6 @@
     <string name="discord_activity_type_competing_label">Compitiendo</string>
     <string name="discord_image_album_artwork">Portada del álbum</string>
     <string name="discord_image_artist_artwork">Foto del artista</string>
-    <string name="channel_daily_nightly">A diario</string>
-    <string name="updates_nightly_hosting_description">Las compilaciones de desarrollo generadas automáticamente están disponibles tras las ejecuciones exitosas de GitHub Actions.</string>
     <string name="check_for_update">Buscar actualizaciones</string>
     <string name="saved_accounts">Cuentas guardadas</string>
     <string name="save_current_account">Guardar la cuenta actual</string>

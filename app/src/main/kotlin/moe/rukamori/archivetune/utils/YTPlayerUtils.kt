@@ -46,6 +46,7 @@ object YTPlayerUtils {
     private const val FAILED_CLIENT_BACKOFF_MS = 10 * 60 * 1000L
     private const val DEFAULT_STREAM_EXPIRE_SECONDS = 300
     const val STREAM_URL_EXPIRY_SAFETY_MS = 60_000L
+    private val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)
 
     private fun extractExpireTimestampMsFromUrl(url: String): Long? {
         val expireTimestamp =
@@ -314,7 +315,7 @@ object YTPlayerUtils {
         httpStatusCode: Int?,
         authFingerprint: String = YouTube.currentPlaybackAuthState().fingerprint,
     ) {
-        if (httpStatusCode !in setOf(403, 404, 410, 416)) return
+        if (httpStatusCode != null && httpStatusCode !in RETRYABLE_STREAM_RESPONSE_CODES) return
         val normalizedClientKey = normalizeStreamClientKey(clientKey)
         if (normalizedClientKey.isEmpty()) return
         failedStreamClientsUntil[buildFailedClientKey(videoId, normalizedClientKey, authFingerprint)] =

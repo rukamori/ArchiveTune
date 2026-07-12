@@ -453,10 +453,7 @@ fun NavGraphBuilder.navigationBuilder(
             ),
     ) { backStackEntry ->
         val channelName = backStackEntry.arguments?.getString("channel")
-        val channel =
-            channelName?.let {
-                runCatching { UpdateChannel.valueOf(it) }.getOrNull()
-            } ?: defaultUpdateChannel
+        val channel = UpdateChannel.fromStoredName(channelName, defaultUpdateChannel)
         ChangelogScreen(navController, channel = channel)
     }
     composable("settings/about") {
