@@ -474,7 +474,7 @@ fun HistoryScreen(
                                         R.plurals.n_song,
                                         currentVisibleCount,
                                         currentVisibleCount,
-                                    ) + " · " + currentSourceSummary,
+                                    ) + " · " + currentSourceSummary
                                 } else {
                                     currentSourceSummary
                                 },
@@ -1060,7 +1060,7 @@ private fun HistoryStateCard(
             if (loading) {
                 ContainedLoadingIndicator()
             } else if (icon != null) {
-                val stateShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+                val stateShape = MaterialShapes.Cookie9Sided.toShape()
                 Surface(
                     modifier = Modifier.size(88.dp),
                     shape = stateShape,
