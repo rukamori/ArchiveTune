@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">الرئيسية</string>
     <string name="songs">الأغاني</string>
@@ -460,9 +460,7 @@
     <string name="enable_discord_debug_lines">تفعيل أسطر إعدادات التصحيح</string>
     <string name="presence_manager_running">إدارة الحالة : تعمل</string>
     <string name="presence_manager_stopped">إدارة الحالة : مغلقة</string>
-    <string name="filter_levels">مستويات التصفية</string>
     <string name="experimental_features">خيارات تجريبية</string>
-    <string name="reset_to_default_levels">إعادة التعيين إلى الإعدادات الافتراضية</string>
     <string name="no_logs">لا توجد سجلات</string>
     <string name="show_nerd_stats">عرض الإحصائيات المتقدمة</string>
     <string name="description_show_nerd_stats">عرض إحصائيات التشغيل المباشرة (الترميز، معدل البت، التخزين المؤقت)</string>
@@ -487,20 +485,13 @@
     <string name="po_token_gvs">توكن PO (GVS)</string>
     <string name="po_token_player">توكن PO (Player)</string>
     <string name="visitor_data">بيانات الزائر</string>
-    <string name="supported_clients">المشغلات المدعومة</string>
     <string name="generated_tokens">التوكنات المنشأة</string>
-    <string name="token_settings">اعدادات التوكن</string>
-    <string name="use_visitor_data">استخدام بيانات الزائر</string>
-    <string name="use_visitor_data_desc">استخدام بيانات الزائر لإنشاء توكن PO. يتطلب تعطيل ملفات تعريف الارتباط (Cookies)</string>
-    <string name="cookies_must_be_disabled">يجب تعطيل ملفات تعريف الارتباط لإستخدام بيانات الزائر</string>
     <string name="regenerate">إعادة الانشاء</string>
     <string name="regenerate_token">إعادة إنشاء التوكن</string>
     <string name="source_url">مصدر URL</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">انشاء التوكنات</string>
     <string name="tokens_generated">تم انشاء التوكنات بنجاح</string>
     <string name="token_generation_failed">فشلت عملية إنشاء التوكنات</string>
-    <string name="open_account_before_extract">افتح youtube.com/account وسجّل الدخول إلى حسابك قبل بدء الاستخراج</string>
     <string name="token_copied">تم نسخ التوكن إلى الحافظة</string>
     <string name="extracting_from_url">استخراج التوكنات من عنوان URL</string>
     <string name="speed_dial">الوصول السريع</string>

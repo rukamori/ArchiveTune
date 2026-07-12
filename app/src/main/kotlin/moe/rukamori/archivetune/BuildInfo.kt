@@ -9,13 +9,13 @@ package moe.rukamori.archivetune
 
 import moe.rukamori.archivetune.constants.UpdateChannel
 
-private val DailyNightlyVersionRegex = Regex("""^N\d{8}$""")
+private val CanaryVersionRegex = Regex("""^N\d{8}$""")
 
-internal val isDailyNightlyBuild: Boolean
-    get() = DailyNightlyVersionRegex.matches(BuildConfig.VERSION_NAME)
+internal val isCanaryBuild: Boolean
+    get() = CanaryVersionRegex.matches(BuildConfig.VERSION_NAME)
 
 internal val defaultUpdateChannel: UpdateChannel
-    get() = if (isDailyNightlyBuild) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
+    get() = if (isCanaryBuild) UpdateChannel.CANARY else UpdateChannel.STABLE
 
 internal val currentBuildHash: String?
     get() = BuildConfig.NIGHTLY_BUILD_HASH.takeIf { it.isNotBlank() }

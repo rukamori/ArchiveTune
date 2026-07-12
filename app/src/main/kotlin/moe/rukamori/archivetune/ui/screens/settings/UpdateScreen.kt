@@ -136,8 +136,6 @@ fun UpdateScreen(
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = appBarScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
-    val nightlyInstallUrl = remember { Updater.getLatestNightlyDownloadUrl() }
-
     val (enableUpdateNotification, onEnableUpdateNotificationChange) =
         rememberPreference(
             EnableUpdateNotificationKey,
@@ -153,8 +151,7 @@ fun UpdateScreen(
     var isLoadingCommits by remember { mutableStateOf(true) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
     var isExpanded by rememberSaveable { mutableStateOf(true) }
-    var showNightlyChannelConfirmDialog by rememberSaveable { mutableStateOf(false) }
-    var showDailyNightlyChannelConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var showCanaryChannelConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var showEnableUpdateNotificationConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var hasNotificationPermission by remember {
         mutableStateOf(
@@ -168,17 +165,12 @@ fun UpdateScreen(
             },
         )
     }
-    val isNightlyChannel = updateChannel == UpdateChannel.NIGHTLY
     val isUpdateAvailable by remember(latestVersion) {
         derivedStateOf {
             BuildConfig.UPDATER_AVAILABLE &&
                 (latestVersion?.let { Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME) } ?: false)
         }
     }
-    val latestCommit by remember(commits) {
-        derivedStateOf { commits.firstOrNull() }
-    }
-
     val updateSheetState = remember { BottomSheetPageState() }
     var updateSheetLoading by remember { mutableStateOf(false) }
     var updateSheetVersion by remember { mutableStateOf<String?>(null) }
@@ -279,9 +271,8 @@ fun UpdateScreen(
 
         val downloadUrl =
             when (updateChannel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyDownloadUrl()
-                UpdateChannel.NIGHTLY -> Updater.getLatestNightlyDownloadUrl()
-                else -> Updater.getLatestDownloadUrl()
+                UpdateChannel.CANARY -> Updater.getLatestCanaryDownloadUrl()
+                UpdateChannel.STABLE -> Updater.getLatestDownloadUrl()
             }
 
         Button(
@@ -307,11 +298,11 @@ fun UpdateScreen(
         coroutineScope.launch {
             val versionResult =
                 when (updateChannel) {
-                    UpdateChannel.DAILY_NIGHTLY -> {
-                        Updater.getLatestDailyNightlyReleaseNotes().onSuccess { notes ->
+                    UpdateChannel.CANARY -> {
+                        Updater.getLatestCanaryReleaseNotes().onSuccess { notes ->
                             updateSheetNotes = notes
                         }
-                        Updater.getLatestDailyNightlyVersionName()
+                        Updater.getLatestCanaryVersionName()
                     }
 
                     else -> {
@@ -385,26 +376,26 @@ fun UpdateScreen(
 
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = stringResource(R.string.updates_channel_warning_nightly_title),
+                            text = stringResource(R.string.updates_channel_warning_canary_title),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = stringResource(R.string.updates_nightly_hosting_description),
+                            text = stringResource(R.string.updates_canary_hosting_description),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Text(
-                            text = stringResource(R.string.updates_channel_warning_nightly_risk),
+                            text = stringResource(R.string.updates_channel_warning_canary_risk),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
 
                     Text(
-                        text = stringResource(R.string.updates_channel_warning_nightly_unstable),
+                        text = stringResource(R.string.updates_channel_warning_canary_unstable),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
-                        text = stringResource(R.string.updates_channel_warning_acknowledgement),
+                        text = stringResource(R.string.updates_channel_warning_canary_acknowledgement),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -432,102 +423,28 @@ fun UpdateScreen(
         )
     }
 
-    if (showNightlyChannelConfirmDialog) {
+    if (showCanaryChannelConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showNightlyChannelConfirmDialog = false },
-            title = { Text(stringResource(R.string.channel_nightly)) },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.updates_channel_warning_intro),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(R.string.updates_channel_warning_stable_title),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = stringResource(R.string.updates_channel_warning_stable_source),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            text = stringResource(R.string.updates_channel_warning_stable_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(R.string.updates_channel_warning_nightly_title),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = stringResource(R.string.updates_nightly_hosting_description),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            text = stringResource(R.string.updates_channel_warning_nightly_risk),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(R.string.updates_channel_warning_nightly_unstable),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        text = stringResource(R.string.updates_channel_warning_acknowledgement),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showNightlyChannelConfirmDialog = false
-                        onUpdateChannelChange(UpdateChannel.NIGHTLY)
-                    },
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNightlyChannelConfirmDialog = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        )
-    }
-
-    if (showDailyNightlyChannelConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDailyNightlyChannelConfirmDialog = false },
-            title = { Text(stringResource(R.string.channel_daily_nightly)) },
+            onDismissRequest = { showCanaryChannelConfirmDialog = false },
+            title = { Text(stringResource(R.string.channel_canary)) },
             text = {
                 Text(
-                    text = stringResource(R.string.updates_daily_channel_confirmation),
+                    text = stringResource(R.string.updates_canary_channel_confirmation),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showDailyNightlyChannelConfirmDialog = false
-                        onUpdateChannelChange(UpdateChannel.DAILY_NIGHTLY)
+                        showCanaryChannelConfirmDialog = false
+                        onUpdateChannelChange(UpdateChannel.CANARY)
                     },
                 ) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDailyNightlyChannelConfirmDialog = false }) {
+                TextButton(onClick = { showCanaryChannelConfirmDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -542,7 +459,7 @@ fun UpdateScreen(
 
         val versionResult =
             when (updateChannel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyVersionName()
+                UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
                 else -> Updater.getLatestVersionName()
             }
         versionResult.onSuccess {
@@ -568,8 +485,8 @@ fun UpdateScreen(
     )
     val topBarSubtitle =
         when (updateChannel) {
-            UpdateChannel.NIGHTLY -> stringResource(R.string.updates_subtitle_nightly)
-            else -> stringResource(R.string.updates_subtitle_stable)
+            UpdateChannel.CANARY -> stringResource(R.string.updates_subtitle_canary)
+            UpdateChannel.STABLE -> stringResource(R.string.updates_subtitle_stable)
         }
 
     Scaffold(
@@ -661,26 +578,12 @@ fun UpdateScreen(
                     },
                     updateChannel = updateChannel,
                     onStableSelected = { onUpdateChannelChange(UpdateChannel.STABLE) },
-                    onNightlySelected = {
-                        if (updateChannel != UpdateChannel.NIGHTLY) {
-                            showNightlyChannelConfirmDialog = true
-                        }
-                    },
-                    onDailyNightlySelected = {
-                        if (updateChannel != UpdateChannel.DAILY_NIGHTLY) {
-                            showDailyNightlyChannelConfirmDialog = true
+                    onCanarySelected = {
+                        if (updateChannel != UpdateChannel.CANARY) {
+                            showCanaryChannelConfirmDialog = true
                         }
                     },
                 )
-            }
-
-            item {
-                AnimatedVisibility(visible = isNightlyChannel) {
-                    NightlyInstallPanel(
-                        latestCommit = latestCommit,
-                        onInstallNightly = { installUpdate(nightlyInstallUrl) },
-                    )
-                }
             }
 
             item {
@@ -741,15 +644,15 @@ fun UpdateScreen(
         val downloadTitle =
             buildString {
                 when (updateChannel) {
-                    UpdateChannel.DAILY_NIGHTLY -> append("${context.getString(R.string.app_name)} Nightly")
-                    else -> append(context.getString(R.string.app_name))
+                    UpdateChannel.CANARY -> {
+                        append(context.getString(R.string.app_name))
+                        append(' ')
+                        append(context.getString(R.string.channel_canary))
+                    }
+                    UpdateChannel.STABLE -> append(context.getString(R.string.app_name))
                 }
                 append(' ')
-                if (updateChannel == UpdateChannel.NIGHTLY) {
-                    append(latestCommit?.sha?.take(7) ?: updateSheetVersion ?: "?")
-                } else {
-                    append(updateSheetVersion ?: "?")
-                }
+                append(updateSheetVersion ?: "?")
             }
 
         AlertDialog(
@@ -902,8 +805,7 @@ private fun UpdateSummaryCard(
     val channelLabel =
         when (updateChannel) {
             UpdateChannel.STABLE -> stringResource(R.string.channel_stable)
-            UpdateChannel.NIGHTLY -> stringResource(R.string.channel_nightly)
-            UpdateChannel.DAILY_NIGHTLY -> stringResource(R.string.channel_daily_nightly)
+            UpdateChannel.CANARY -> stringResource(R.string.channel_canary)
         }
     val supportingText =
         when {
@@ -924,13 +826,13 @@ private fun UpdateSummaryCard(
             MaterialTheme.colorScheme.onSecondaryContainer
         }
     val channelContainerColor =
-        if (updateChannel == UpdateChannel.NIGHTLY) {
+        if (updateChannel == UpdateChannel.CANARY) {
             MaterialTheme.colorScheme.tertiaryContainer
         } else {
             MaterialTheme.colorScheme.secondaryContainer
         }
     val channelContentColor =
-        if (updateChannel == UpdateChannel.NIGHTLY) {
+        if (updateChannel == UpdateChannel.CANARY) {
             MaterialTheme.colorScheme.onTertiaryContainer
         } else {
             MaterialTheme.colorScheme.onSecondaryContainer
@@ -1070,8 +972,7 @@ private fun UpdateControlsPanel(
     onUpdateNotificationChange: (Boolean) -> Unit,
     updateChannel: UpdateChannel,
     onStableSelected: () -> Unit,
-    onNightlySelected: () -> Unit,
-    onDailyNightlySelected: () -> Unit,
+    onCanarySelected: () -> Unit,
 ) {
     Card(
         modifier =
@@ -1090,7 +991,7 @@ private fun UpdateControlsPanel(
                     Text(text = stringResource(R.string.enable_update_notification))
                 },
                 supportingContent = {
-                    Text(text = stringResource(R.string.enable_update_notification_desc))
+                    Text(text = stringResource(R.string.enable_update_notification_channel_desc))
                 },
                 leadingContent = {
                     FeatureIcon(
@@ -1132,8 +1033,7 @@ private fun UpdateControlsPanel(
                         text =
                             when (updateChannel) {
                                 UpdateChannel.STABLE -> stringResource(R.string.channel_stable)
-                                UpdateChannel.NIGHTLY -> stringResource(R.string.channel_nightly)
-                                UpdateChannel.DAILY_NIGHTLY -> stringResource(R.string.channel_daily_nightly)
+                                UpdateChannel.CANARY -> stringResource(R.string.channel_canary)
                             },
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
@@ -1151,101 +1051,19 @@ private fun UpdateControlsPanel(
                 SegmentedButton(
                     selected = updateChannel == UpdateChannel.STABLE,
                     onClick = onStableSelected,
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                     icon = {},
                 ) {
                     Text(text = stringResource(R.string.channel_stable))
                 }
                 SegmentedButton(
-                    selected = updateChannel == UpdateChannel.NIGHTLY,
-                    onClick = onNightlySelected,
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                    selected = updateChannel == UpdateChannel.CANARY,
+                    onClick = onCanarySelected,
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                     icon = {},
                 ) {
-                    Text(text = stringResource(R.string.channel_nightly))
+                    Text(text = stringResource(R.string.channel_canary))
                 }
-                SegmentedButton(
-                    selected = updateChannel == UpdateChannel.DAILY_NIGHTLY,
-                    onClick = onDailyNightlySelected,
-                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.channel_daily_nightly))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NightlyInstallPanel(
-    latestCommit: GitCommit?,
-    onInstallNightly: () -> Unit,
-) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 840.dp),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            ListItem(
-                overlineContent = {
-                    Text(text = stringResource(R.string.channel_nightly))
-                },
-                headlineContent = {
-                    Text(
-                        text = stringResource(R.string.updates_nightly_title),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                supportingContent = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(text = stringResource(R.string.updates_nightly_description))
-                        Text(
-                            text =
-                                stringResource(
-                                    R.string.updates_latest_commit,
-                                    latestCommit?.sha ?: "-",
-                                ),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                leadingContent = {
-                    FeatureIcon(
-                        iconRes = R.drawable.download,
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-
-            OutlinedButton(
-                onClick = onInstallNightly,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.download),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.download))
             }
         }
     }

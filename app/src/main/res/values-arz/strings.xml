@@ -113,13 +113,11 @@
     <string name="new_version_available">إصدار جديد متاح</string>
     <string name="updates">تحديثات</string>
     <string name="updates_subtitle_stable">النسخ المستقرة وملاحظات التحديث</string>
-    <string name="updates_subtitle_nightly">نسخ لسة بتتحضر وتعديلات التطوير الأخيرة</string>
     <string name="current_version">الإصدار الحالي</string>
     <string name="latest_version_format">اخر اصدار: %s</string>
     <string name="updates_status_checking">بنشوفلك اخر اصدار</string>
     <string name="updates_status_current">انت على اخر اصدار متاح حالياً</string>
     <string name="enable_update_notification">فعل إشعارات التحديث</string>
-    <string name="enable_update_notification_desc">هيجي لك إشعار لما ينزل إصدار مستقر جديد</string>
     <string name="unknown">مش معروف</string>
     <string name="copied">اتنسخ للحافظة</string>
     <string name="add_to_queue">ضيفه للدور</string>

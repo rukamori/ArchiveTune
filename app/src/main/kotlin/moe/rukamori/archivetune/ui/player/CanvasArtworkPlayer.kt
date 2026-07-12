@@ -32,6 +32,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -47,9 +48,6 @@ import java.util.Locale
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
 private const val CanvasPlaybackStallTimeoutMs = 5_000L
-private const val CanvasMaxVideoWidth = 1_920
-private const val CanvasMaxVideoHeight = 1_920
-
 @Composable
 internal fun CanvasArtworkPlayer(
     primaryUrl: String?,
@@ -110,18 +108,22 @@ internal fun CanvasArtworkPlayer(
                 ),
             )
         }
+    val renderersFactory =
+        remember(context) {
+            DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+        }
     val exoPlayer =
-        remember(initial, mediaSourceFactory) {
+        remember(initial, mediaSourceFactory, renderersFactory) {
             ExoPlayer
                 .Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
+                .setRenderersFactory(renderersFactory)
                 .build()
                 .apply {
                     trackSelectionParameters =
                         trackSelectionParameters
                             .buildUpon()
                             .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-                            .setMaxVideoSize(CanvasMaxVideoWidth, CanvasMaxVideoHeight)
                             .build()
                     volume = 0f
                     repeatMode = Player.REPEAT_MODE_ONE

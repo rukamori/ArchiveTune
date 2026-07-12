@@ -294,21 +294,26 @@ class DownloadUtil
 
                         val now = LocalDateTime.now()
                         val existing = getSongByIdBlocking(mediaId)?.song
+                        val resolvedThumbnailUrl =
+                            playbackData.videoDetails
+                                ?.thumbnail
+                                ?.thumbnails
+                                ?.lastOrNull()
+                                ?.url
+                                ?.takeIf { it.isNotBlank() }
 
                         val updatedSong =
                             if (existing != null) {
-                                if (existing.dateDownload == null) existing.copy(dateDownload = now) else existing
+                                existing.copy(
+                                    thumbnailUrl = existing.thumbnailUrl?.takeIf { it.isNotBlank() } ?: resolvedThumbnailUrl,
+                                    dateDownload = existing.dateDownload ?: now,
+                                )
                             } else {
                                 SongEntity(
                                     id = mediaId,
                                     title = playbackData.videoDetails?.title ?: "Unknown",
                                     duration = playbackData.videoDetails?.lengthSeconds?.toIntOrNull() ?: 0,
-                                    thumbnailUrl =
-                                        playbackData.videoDetails
-                                            ?.thumbnail
-                                            ?.thumbnails
-                                            ?.lastOrNull()
-                                            ?.url,
+                                    thumbnailUrl = resolvedThumbnailUrl,
                                     dateDownload = now,
                                 )
                             }

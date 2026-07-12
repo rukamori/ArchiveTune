@@ -1,15 +1,15 @@
 [submodule "core"]
 	path = core
-	url = https://github.com/ArchiveTuneApp/core.git
+	url = https://github.com/rukamori/core.git
 [submodule "lyrics"]
 	path = lyrics
-	url = https://github.com/ArchiveTuneApp/lyrics.git
+	url = https://github.com/rukamori/lyrics.git
 [submodule "moriextractor"]
 	path = moriextractor
-	url = https://github.com/ArchiveTuneApp/moriextractor
+	url = https://github.com/rukamori/moriextractor
 [submodule "IconPack"]
 	path = IconPack
-	url = https://github.com/ArchiveTuneApp/IconPack
+	url = https://github.com/rukamori/IconPack
 [submodule "morideobfuscator"]
 	path = morideobfuscator
-	url = https://github.com/ArchiveTuneApp/morideobfuscator.git
+	url = https://github.com/rukamori/morideobfuscator.git
