@@ -27,8 +27,8 @@ import moe.rukamori.archivetune.musicrecognition.FilterRecognitionHistoryUseCase
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionAutoStartRequestKey
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionException
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionFailure
-import moe.rukamori.archivetune.musicrecognition.ObserveRecognitionHistoryUseCase
 import moe.rukamori.archivetune.musicrecognition.ObserveBackgroundRecognitionSettingUseCase
+import moe.rukamori.archivetune.musicrecognition.ObserveRecognitionHistoryUseCase
 import moe.rukamori.archivetune.musicrecognition.RecognitionHistoryEntry
 import moe.rukamori.archivetune.musicrecognition.RecognitionPhase
 import moe.rukamori.archivetune.musicrecognition.RecognizeMusicUseCase
@@ -295,7 +295,7 @@ class MusicRecognitionViewModel
                         _settingsState.value =
                             _settingsState.value.copy(
                                 backgroundRecognitionEnabled =
-                                    persistedBackgroundRecognitionEnabled,
+                                persistedBackgroundRecognitionEnabled,
                             )
                     }
                 }

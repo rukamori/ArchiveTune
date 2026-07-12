@@ -998,7 +998,8 @@ private fun rememberSupportedHighestFps(): Float {
 
     return remember(view) {
         val display = view.display
-        display?.supportedModes
+        display
+            ?.supportedModes
             ?.maxOfOrNull { mode -> mode.refreshRate }
             ?: display?.refreshRate
             ?: DEFAULT_STANDARD_REFRESH_RATE_FPS

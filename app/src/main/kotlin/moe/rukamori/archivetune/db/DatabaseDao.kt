@@ -702,6 +702,20 @@ interface DatabaseDao {
     fun allSongs(): Flow<List<Song>>
 
     @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query("SELECT * FROM album ORDER BY rowId")
+    fun allAlbumsForDownloads(): Flow<List<Album>>
+
+    @Transaction
+    @Query(
+        "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist ORDER BY rowId",
+    )
+    fun allPlaylistsForDownloads(): Flow<List<Playlist>>
+
+    @Query("SELECT * FROM playlist_song_map ORDER BY playlistId, position")
+    fun allPlaylistSongMapsForDownloads(): Flow<List<PlaylistSongMap>>
+
+    @Transaction
     @Query("SELECT * FROM song WHERE isLocal = 1 ORDER BY title COLLATE NOCASE, id")
     fun localSongs(): Flow<List<Song>>
 
@@ -1903,6 +1917,12 @@ interface DatabaseDao {
 
     @Upsert
     fun upsert(format: FormatEntity)
+
+    @Query("UPDATE format SET bitrate = :bitrate, sampleRate = :sampleRate WHERE id = :id")
+    suspend fun updateLocalAudioMetadata(id: String, bitrate: Int, sampleRate: Int?)
+
+    @Query("SELECT * FROM format WHERE id IN (:ids)")
+    suspend fun getFormatsByIds(ids: List<String>): List<FormatEntity>
 
     @Upsert
     fun upsert(artist: ArtistEntity)

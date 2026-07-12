@@ -10,7 +10,6 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -639,9 +638,10 @@ fun Queue(
 
                     val view = LocalView.current
                     DisposableEffect(view) {
-                        val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
-                            if (hasFocus) playerConnection.service.refreshActiveDevice()
-                        }
+                        val listener =
+                            ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+                                if (hasFocus) playerConnection.service.refreshActiveDevice()
+                            }
                         view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
                         onDispose { view.viewTreeObserver.removeOnWindowFocusChangeListener(listener) }
                     }

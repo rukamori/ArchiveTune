@@ -4868,15 +4868,23 @@ class MusicService :
                 if (togetherParticipantNames.isEmpty()) {
                     val sessionId =
                         when (val state = togetherSessionState.value) {
-                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> state.sessionId
-                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                                state.sessionId
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                                state.sessionId
+                            }
+
                             is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
                                 state.sessionId.takeIf {
                                     state.role is moe.rukamori.archivetune.together.TogetherRole.Host
                                 }
                             }
 
-                            else -> null
+                            else -> {
+                                null
+                            }
                         }
                     if (sessionId != null) {
                         scheduleTogetherHostInactivityTimeout(sessionId)
@@ -7247,8 +7255,7 @@ class MusicService :
         return dataSpec.withUri(streamUrl.toUri())
     }
 
-    private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
-        poTokenPlayer.normalizeExtractorRequestValue()
+    private fun PlaybackAuthState.resolveExtractorPoToken(): String? = poTokenPlayer.normalizeExtractorRequestValue()
 
     private fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
         resolveGvsPoToken().normalizeExtractorRequestValue()

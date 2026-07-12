@@ -804,11 +804,9 @@ object YTPlayerUtils {
         val botDetectedClients = mutableSetOf<String>()
         var gateFailure: PlaybackGateFailure? = null
 
-        fun shouldUseCookieAuthentication(client: YouTubeClient): Boolean =
-            canUseLoggedInPlayback && client.supportsCookieAuthentication
+        fun shouldUseCookieAuthentication(client: YouTubeClient): Boolean = canUseLoggedInPlayback && client.supportsCookieAuthentication
 
-        fun authMode(usesCookieAuthentication: Boolean): String =
-            if (usesCookieAuthentication) "logged-in" else "visitor"
+        fun authMode(usesCookieAuthentication: Boolean): String = if (usesCookieAuthentication) "logged-in" else "visitor"
 
         for ((index, candidateClient) in streamClients.withIndex()) {
             var client = candidateClient

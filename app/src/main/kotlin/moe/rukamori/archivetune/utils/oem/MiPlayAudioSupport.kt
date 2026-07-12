@@ -42,7 +42,7 @@ object MiPlayAudioSupport {
             // 未找到抛出 PackageManager.NameNotFoundException
             context.packageManager.getServiceInfo(
                 ComponentName(PACKAGE_NAME, SERVICE_NAME),
-                PackageManager.MATCH_ALL
+                PackageManager.MATCH_ALL,
             )
             // 未找到抛出 ClassNotFoundException
             context.classLoader.loadClass(AUDIO_RECORD_CLASS)
@@ -94,7 +94,7 @@ object MiPlayAudioSupport {
             val systemUiAppInfo =
                 context.packageManager.getApplicationInfo(
                     "com.android.systemui",
-                    0
+                    0,
                 )
             val resources = context.packageManager.getResourcesForApplication(systemUiAppInfo)
             val identifier =
@@ -102,7 +102,7 @@ object MiPlayAudioSupport {
                 resources.getIdentifier(
                     "system_foreground_notification_whitelist",
                     "array",
-                    "com.android.systemui"
+                    "com.android.systemui",
                 )
 
             if (identifier > 0) {
