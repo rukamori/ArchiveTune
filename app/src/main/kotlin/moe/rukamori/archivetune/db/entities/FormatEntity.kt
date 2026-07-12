@@ -63,11 +63,12 @@ fun FormatEntity.formattedFileSize(): String =
             unitIndex++
         }
 
-        var rounded = if (size >= 99.95) {
-            size.roundToInt().toDouble()
-        } else {
-            (size * 10.0).roundToInt() / 10.0
-        }
+        var rounded =
+            if (size >= 99.95) {
+                size.roundToInt().toDouble()
+            } else {
+                (size * 10.0).roundToInt() / 10.0
+            }
 
         if (rounded >= 1023.95 && unitIndex < units.lastIndex) {
             rounded = 1.0

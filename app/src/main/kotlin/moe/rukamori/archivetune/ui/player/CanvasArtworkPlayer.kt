@@ -48,6 +48,7 @@ import java.util.Locale
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
 private const val CanvasPlaybackStallTimeoutMs = 5_000L
+
 @Composable
 internal fun CanvasArtworkPlayer(
     primaryUrl: String?,

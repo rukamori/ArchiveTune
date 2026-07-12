@@ -89,7 +89,7 @@ fun PlayerSettings(navController: NavController) {
     val (playerStreamClient, onPlayerStreamClientChange) =
         rememberEnumPreference(
             PlayerStreamClientKey,
-            defaultValue = PlayerStreamClient.ANDROID_VR,
+            defaultValue = PlayerStreamClient.WEB_REMIX,
         )
     val (lowDataMode, onLowDataModeChange) =
         rememberPreference(
@@ -216,7 +216,6 @@ fun PlayerSettings(navController: NavController) {
     val playerStreamClients =
         remember {
             listOf(
-                PlayerStreamClient.ANDROID_VR,
                 PlayerStreamClient.WEB_REMIX,
                 PlayerStreamClient.ARCHIVETUNE_EXTRACTOR,
             )
@@ -225,7 +224,7 @@ fun PlayerSettings(navController: NavController) {
         if (playerStreamClient in playerStreamClients) {
             playerStreamClient
         } else {
-            PlayerStreamClient.ANDROID_VR
+            PlayerStreamClient.WEB_REMIX
         }
     val audioQualityEnabled = selectedPlayerStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
     val isPlayerStreamClientEnabled =
@@ -248,7 +247,7 @@ fun PlayerSettings(navController: NavController) {
                     !isArchiveTuneExtractorEnabled
             )
         ) {
-            onPlayerStreamClientChange(PlayerStreamClient.ANDROID_VR)
+            onPlayerStreamClientChange(PlayerStreamClient.WEB_REMIX)
         }
     }
 
@@ -341,10 +340,6 @@ fun PlayerSettings(navController: NavController) {
                         isValueEnabled = isPlayerStreamClientEnabled,
                         valueText = {
                             when (it) {
-                                PlayerStreamClient.ANDROID_VR -> {
-                                    stringResource(R.string.player_stream_client_android_vr)
-                                }
-
                                 PlayerStreamClient.WEB_REMIX -> {
                                     stringResource(R.string.player_stream_client_web_remix)
                                 }
@@ -362,10 +357,6 @@ fun PlayerSettings(navController: NavController) {
                         },
                         valueDescription = {
                             when (it) {
-                                PlayerStreamClient.ANDROID_VR -> {
-                                    stringResource(R.string.player_stream_client_android_vr_desc)
-                                }
-
                                 PlayerStreamClient.WEB_REMIX -> {
                                     stringResource(R.string.player_stream_client_web_remix_desc)
                                 }

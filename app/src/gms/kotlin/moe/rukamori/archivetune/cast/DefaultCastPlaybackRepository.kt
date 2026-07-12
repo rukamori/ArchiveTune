@@ -272,8 +272,7 @@ private class SafeCastTransferCallback(
             .setToPlayer(targetPlayer)
     }
 
-    private fun Player.mediaItems(): List<MediaItem> =
-        List(mediaItemCount) { index -> getMediaItemAt(index) }
+    private fun Player.mediaItems(): List<MediaItem> = List(mediaItemCount) { index -> getMediaItemAt(index) }
 }
 
 private class GmsCastMediaItemConverter(

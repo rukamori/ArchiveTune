@@ -285,10 +285,10 @@ class StatsViewModel
                         emit(StatsScreenState.Error(R.string.error_unknown))
                     }
                 }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = StatsScreenState.Loading,
-            )
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = StatsScreenState.Loading,
+                )
 
         init {
             viewModelScope.launch {
