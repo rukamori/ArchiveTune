@@ -356,6 +356,18 @@ private fun SearchDiscoveryTabs(
             Tab(
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
+                icon = {
+                    Icon(
+                        painter =
+                            painterResource(
+                                when (tab) {
+                                    SearchDiscoveryTab.EXPLORE -> R.drawable.explore_outlined
+                                    SearchDiscoveryTab.SUGGESTIONS -> R.drawable.auto_awesome
+                                },
+                            ),
+                        contentDescription = null,
+                    )
+                },
                 text = {
                     Text(
                         text =

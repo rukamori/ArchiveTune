@@ -363,6 +363,19 @@ private fun DownloadTabs(
             Tab(
                 selected = pagerState.currentPage == index,
                 onClick = { onSelect(index) },
+                icon = {
+                    Icon(
+                        painter =
+                            painterResource(
+                                if (tab == DownloadLibraryTab.DOWNLOADED) {
+                                    R.drawable.offline
+                                } else {
+                                    R.drawable.download
+                                },
+                            ),
+                        contentDescription = null,
+                    )
+                },
                 text = {
                     Text(
                         text =
