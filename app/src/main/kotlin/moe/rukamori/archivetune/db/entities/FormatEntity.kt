@@ -44,7 +44,8 @@ fun FormatEntity.codecLabel(): String {
     }
 }
 
-fun FormatEntity.formattedBitrate(): String = if (bitrate > 0) "${bitrate / 1000} kbps" else "Unknown"
+fun FormatEntity.formattedBitrate(): String? =
+    bitrate.takeIf { it > 0 }?.let { "${it / 1000} kbps" }
 
 fun FormatEntity.formattedSampleRate(): String? =
     sampleRate?.takeIf { it > 0 }?.let {
@@ -87,18 +88,23 @@ enum class RatePriority {
 
 /**
  * Returns either the formatted bitrate or formatted sample rate based on the chosen priority.
- * Defaults to BITRATE_FIRST, falling back to sample rate if the bitrate is "Unknown".
+ * Decides using raw data fields (bitrate > 0, sampleRate != null), never by comparing
+ * formatted display text — so the logic stays correct even if formatting changes.
  */
 fun FormatEntity.autoRateDisplay(priority: RatePriority = RatePriority.BITRATE_FIRST): String {
-    val bitrateText = formattedBitrate()
-    val sampleRateText = formattedSampleRate()
+    val hasBitrate = bitrate > 0
+    val hasSampleRate = sampleRate != null && sampleRate > 0
 
     return when (priority) {
-        RatePriority.BITRATE_FIRST -> {
-            if (bitrateText != "Unknown") bitrateText else (sampleRateText?.takeIf { it.isNotBlank() } ?: "Unknown")
+        RatePriority.BITRATE_FIRST -> when {
+            hasBitrate -> formattedBitrate() ?: ""
+            hasSampleRate -> formattedSampleRate() ?: ""
+            else -> "Unknown"
         }
-        RatePriority.SAMPLE_RATE_FIRST -> {
-            if (!sampleRateText.isNullOrBlank()) sampleRateText else bitrateText
+        RatePriority.SAMPLE_RATE_FIRST -> when {
+            hasSampleRate -> formattedSampleRate() ?: ""
+            hasBitrate -> formattedBitrate() ?: ""
+            else -> "Unknown"
         }
     }
 }

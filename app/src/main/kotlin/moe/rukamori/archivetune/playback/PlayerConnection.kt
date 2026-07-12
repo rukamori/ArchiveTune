@@ -18,9 +18,11 @@ import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +32,6 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -95,6 +96,8 @@ class PlayerConnection(
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
+    private var metadataExtractionJob: Job? = null
+
     init {
         player.addListener(this)
 
@@ -112,7 +115,7 @@ class PlayerConnection(
         }
 
         // Lazy load bitrate and sample rate for local audio files dynamically
-        scope.launch(Dispatchers.IO) {
+        metadataExtractionJob = scope.launch(Dispatchers.IO) {
             mediaMetadata
                 .distinctUntilChangedBy { it?.id }
                 .collectLatest { metadata ->
@@ -121,33 +124,55 @@ class PlayerConnection(
                         val storedFormat = database.format(mediaId).first()
                         // Extract only if the format exists in DB, and both bitrate and sampleRate are unevaluated (bitrate == 0 and sampleRate == null)
                         if (storedFormat != null && storedFormat.bitrate == 0 && storedFormat.sampleRate == null) {
-                            val (extractedBitrate, extractedSampleRate) = extractLocalAudioProperties(context, mediaId)
+                            val result = extractLocalAudioProperties(context, mediaId)
+                                ?: return@collectLatest // temporary failure — leave 0/null, retry on next play
                             ensureActive()
-                            val finalBitrate = if (extractedBitrate <= 0 && extractedSampleRate == null) {
-                                -1 // Sentinel -1 to mark failed files so we don't loop I/O repeatedly
+                            // Null result above means temporary failure (permission, I/O, etc.) — field stays
+                            // 0/null so next playback retries. Non-null means either success or confirmed malformed.
+                            val finalBitrate = if (result.first <= 0 && result.second == null) {
+                                -1 // permanent sentinel — confirmed malformed/unsupported file
                             } else {
-                                extractedBitrate
+                                result.first
                             }
-                            database.updateLocalAudioMetadata(mediaId, finalBitrate, extractedSampleRate)
+                            database.updateLocalAudioMetadata(mediaId, finalBitrate, result.second)
                         }
                     }
                 }
         }
     }
 
-    private suspend fun extractLocalAudioProperties(context: Context, uriString: String): Pair<Int, Int?> =
+    /**
+     * Extracts bitrate and sample rate from a local audio file using [android.media.MediaExtractor].
+     *
+     * Returns:
+     * - `Pair(bitrate, sampleRate)` on success, or `Pair(-1, null)` for confirmed malformed/unsupported files
+     *   (permanent — caller writes sentinel `-1` so extraction is never retried).
+     * - `null` for temporary failures (permission denied, file not found, transient I/O errors, etc.)
+     *   — caller leaves the DB fields at `0`/`null` so extraction is retried on next playback.
+     */
+    private suspend fun extractLocalAudioProperties(context: Context, uriString: String): Pair<Int, Int?>? =
         withContext(Dispatchers.IO) {
             val extractor = android.media.MediaExtractor()
             var bitrate = 0
             var sampleRate: Int? = null
             try {
                 val uri = android.net.Uri.parse(uriString)
-                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    extractor.setDataSource(pfd.fileDescriptor)
+                val pfd = context.contentResolver.openFileDescriptor(uri, "r")
+                if (pfd == null) {
+                    timber.log.Timber.tag("LocalMetadataExtractor").w("Could not open file descriptor for %s", uriString)
+                    return@withContext null // temporary — descriptor unavailable
+                }
+                pfd.use { descriptor ->
+                    extractor.setDataSource(descriptor.fileDescriptor)
+                    if (extractor.trackCount == 0) {
+                        return@withContext Pair(-1, null) // confirmed malformed — no tracks at all
+                    }
+                    var foundAudioTrack = false
                     for (i in 0 until extractor.trackCount) {
                         val format = extractor.getTrackFormat(i)
                         val mime = format.getString(android.media.MediaFormat.KEY_MIME) ?: ""
                         if (mime.startsWith("audio/")) {
+                            foundAudioTrack = true
                             if (format.containsKey(android.media.MediaFormat.KEY_BIT_RATE)) {
                                 bitrate = format.getInteger(android.media.MediaFormat.KEY_BIT_RATE)
                             }
@@ -157,14 +182,34 @@ class PlayerConnection(
                             break
                         }
                     }
+                    if (!foundAudioTrack) {
+                        return@withContext Pair(-1, null) // confirmed malformed — no audio tracks found
+                    }
+                }
+                Pair(bitrate, sampleRate)
+            } catch (e: CancellationException) {
+                throw e // always propagate coroutine cancellation
+            } catch (e: SecurityException) {
+                timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Permission denied extracting metadata for %s", uriString)
+                null // temporary — permission issue, retry later
+            } catch (e: java.io.FileNotFoundException) {
+                timber.log.Timber.tag("LocalMetadataExtractor").w(e, "File not found for %s", uriString)
+                null // temporary — file may become available later (e.g. SD card remount)
+            } catch (e: java.io.IOException) {
+                val message = e.message?.lowercase() ?: ""
+                if ("unsupported" in message || "malformed" in message || "invalid" in message || "failed to instantiate" in message) {
+                    timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Confirmed unsupported file %s", uriString)
+                    Pair(-1, null) // permanent — codec/format is genuinely unsupported
+                } else {
+                    timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Transient I/O error extracting metadata for %s", uriString)
+                    null // temporary — transient I/O failure
                 }
             } catch (e: Exception) {
-                ensureActive()
-                timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Failed to extract local metadata for %s", uriString)
+                timber.log.Timber.tag("LocalMetadataExtractor").w(e, "Unexpected error extracting metadata for %s", uriString)
+                null // temporary — unknown error, retry later
             } finally {
                 runCatching { extractor.release() }
             }
-            Pair(bitrate, sampleRate)
         }
 
     fun playQueue(queue: Queue) {
@@ -290,5 +335,7 @@ class PlayerConnection(
 
     fun dispose() {
         player.removeListener(this)
+        metadataExtractionJob?.cancel()
+        metadataExtractionJob = null
     }
 }

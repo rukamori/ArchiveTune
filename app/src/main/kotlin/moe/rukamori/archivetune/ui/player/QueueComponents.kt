@@ -485,7 +485,7 @@ fun SleepTimerDialog(
 @Composable
 fun CodecInfoRow(
     codec: String,
-    bitrate: String,
+    bitrate: String?,
     fileSize: String,
     textColor: Color,
     modifier: Modifier = Modifier,
@@ -502,7 +502,7 @@ fun CodecInfoRow(
             text =
                 buildString {
                     append(codec)
-                    if (bitrate != "Unknown") {
+                    if (!bitrate.isNullOrBlank()) {
                         append(" • ")
                         append(bitrate)
                     }

@@ -192,19 +192,24 @@ class LocalSongScanner
                                 isLocal = true,
                             ),
                         )
-                        // Reset bitrate and sampleRate cached metadata only if the file size has changed
-                        val isSizeUnchanged = existingFormat != null && existingFormat.contentLength == track.sizeBytes
+                        // Reset all file-derived cached metadata when the file has changed (size or dateModified mismatch).
+                        // This ensures codecs, bitrate, sampleRate, loudnessDb, and perceptualLoudnessDb do not
+                        // carry stale values from a replaced or re-encoded file.
+                        // We check both size and modification time because a file can be re-encoded with the same size.
+                        val isFileUnchanged = existingFormat != null &&
+                            existingFormat.contentLength == track.sizeBytes &&
+                            (track.dateModified == null || existingSong?.dateModified == track.dateModified)
                         upsert(
                             FormatEntity(
                                 id = track.id,
                                 itag = -1,
                                 mimeType = track.mimeType,
-                                codecs = existingFormat?.codecs ?: "",
-                                bitrate = if (isSizeUnchanged && existingFormat != null && existingFormat.bitrate != 0) existingFormat.bitrate else 0,
-                                sampleRate = if (isSizeUnchanged) existingFormat?.sampleRate else null,
+                                codecs = if (isFileUnchanged) existingFormat!!.codecs else "",
+                                bitrate = if (isFileUnchanged && existingFormat!!.bitrate != 0) existingFormat.bitrate else 0,
+                                sampleRate = if (isFileUnchanged) existingFormat!!.sampleRate else null,
                                 contentLength = track.sizeBytes,
-                                loudnessDb = existingFormat?.loudnessDb,
-                                perceptualLoudnessDb = existingFormat?.perceptualLoudnessDb,
+                                loudnessDb = if (isFileUnchanged) existingFormat!!.loudnessDb else null,
+                                perceptualLoudnessDb = if (isFileUnchanged) existingFormat!!.perceptualLoudnessDb else null,
                                 playbackUrl = null,
                             ),
                         )
