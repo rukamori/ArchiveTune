@@ -25,7 +25,7 @@ def main():
     commit_author, commit_message, commit_hash, commit_hash_short = get_git_commit_info()
 
     message = (
-        f"A new [commit](https://github.com/ArchiveTuneApp/ArchiveTune/commit/{commit_hash}) has been merged to the repository by *{commit_author}*.\n\n"
+        f"A new [commit](https://github.com/rukamori/ArchiveTune/commit/{commit_hash}) has been merged to the repository by *{commit_author}*.\n\n"
         f"*What has changed:*\n>{escape_parentheses(commit_message)}\n\n"
         f"I'm currently building it and will send you the APKs here within ~9 mins if the build is successful.\n\n#{commit_hash_short}"
     )

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Trang chủ</string>
     <string name="songs">Bài hát</string>
@@ -518,9 +518,7 @@
     <string name="enable_discord_debug_lines">Bật các dòng cài đặt debug</string>
     <string name="presence_manager_running">Quản lý presence: đang chạy</string>
     <string name="presence_manager_stopped">Quản lý presence: đã dừng</string>
-    <string name="filter_levels">Mức độ lọc</string>
     <string name="experimental_features">Tính năng Thử nghiệm</string>
-    <string name="reset_to_default_levels">Đặt lại về mặc định</string>
     <string name="no_logs">Không có Log</string>
     <string name="show_nerd_stats">Hiển thị Nerd Stats</string>
     <string name="description_show_nerd_stats">Hiển thị thông số phát nhạc thời gian thực (codec, bitrate, buffer)</string>
@@ -548,10 +546,8 @@
     <string name="current_version">Phiên bản hiện tại</string>
     <string name="latest_version_format">Mới nhất: %s</string>
     <string name="enable_update_notification">Bật Thông báo Cập nhật</string>
-    <string name="enable_update_notification_desc">Nhận thông báo khi phiên bản ổn định mới được phát hành</string>
     <string name="update_channel">Kênh Cập nhật</string>
     <string name="channel_stable">Ổn định</string>
-    <string name="channel_nightly">Hàng đêm</string>
     <string name="recent_commits">Commit gần đây</string>
     <string name="changelog">Nhật ký thay đổi</string>
     <string name="view_changelog">Xem nhật ký thay đổi</string>
@@ -588,7 +584,6 @@
     <string name="log_level_info">Info</string>
     <string name="log_level_warning">CẢNH BÁO</string>
     <string name="log_level_error">Error</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Tất cả</string>
     <string name="clear">Xóa</string>
     <string name="logs_empty_message">Nhật ký sẽ xuất hiện ở đây khi có sẵn</string>
@@ -698,20 +693,13 @@
     <string name="po_token_gvs">PO Token (GVS)</string>
     <string name="po_token_player">PO Token (Phát)</string>
     <string name="visitor_data">Dữ liệu khách truy cập</string>
-    <string name="supported_clients">Client được hỗ trợ</string>
     <string name="generated_tokens">Mã token được tạo</string>
-    <string name="token_settings">Cài đặt token</string>
-    <string name="use_visitor_data">Sử dụng dữ liệu khách</string>
-    <string name="use_visitor_data_desc">Sử dụng dữ liệu khách truy cập để tạo mã token. Yêu cầu tắt cookie.</string>
-    <string name="cookies_must_be_disabled">Bạn phải tắt cookie để sử dụng dữ liệu khách truy cập</string>
     <string name="regenerate">Tái tạo</string>
     <string name="regenerate_token">Tái tạo mã token</string>
     <string name="source_url">URL nguồn</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Đang tạo mã token</string>
     <string name="tokens_generated">Mã token đã được tạo thành công</string>
     <string name="token_generation_failed">Quá trình tạo token thất bại</string>
-    <string name="open_account_before_extract">Mở và đăng nhập vào youtube.com/account trước khi giải nén</string>
     <string name="token_copied">Mã token đã được sao chép vào clipboard</string>
     <string name="extracting_from_url">Trích xuất token từ URL</string>
     <string name="po_token_account_notice_title">Sử dụng cùng tài khoản</string>
@@ -724,13 +712,9 @@
     <string name="disable_animations_desc">Vô hiệu hóa hầu hết các hoạt ảnh ứng dụng. Được đề xuất cho các thiết bị cấu hình thấp</string>
     <string name="tap_to_activate_equalizer">Nhấn để kích hoạt bộ cân bằng</string>
     <string name="updates_subtitle_stable">Phát hành ổn định và ghi chú phát hành</string>
-    <string name="updates_subtitle_nightly">Bản build nightly và commit phát triển gần đây</string>
     <string name="updates_status_checking">Kiểm tra bản phát hành mới nhất</string>
     <string name="updates_status_current">Bạn đang ở trên phiên bản mới nhất có sẵn</string>
     <string name="update_channel_desc">Chọn giữa các bản phát hành đã thử nghiệm và các snapshot phát triển.</string>
-    <string name="updates_nightly_title">Giao hàng nightly</string>
-    <string name="updates_nightly_description">Bản dựng nightly theo dõi các cam kết phát triển mới nhất và có thể bao gồm những thay đổi chưa hoàn thành.</string>
-    <string name="updates_latest_commit">Commit mới nhất: %s</string>
     <string name="updates_loading_commits">Đang tải các commit gần nhất</string>
     <string name="updates_recent_commits_count">%1$d commit mới nhất</string>
     <string name="updates_no_commits">Không có commit mới gần đây</string>
@@ -837,8 +821,6 @@
     <string name="device_mute_recovery_volume">Tăng âm lượng từ 0</string>
     <string name="device_mute_recovery_volume_disabled">Đã tắt</string>
     <string name="device_volume_zero_playback_paused">Phát nhạc đã tạm dừng vì âm lượng thiết bị là 0. Tăng âm lượng để tiếp tục.</string>
-    <string name="updates_nightly_hosting_description">Các bản dựng phát triển được tạo tự động có sẵn từ các lần chạy GitHub Actions thành công.</string>
-    <string name="channel_daily_nightly">Hàng ngày</string>
     <string name="download_progress_percent">%1$d%%</string>
     <string name="lyrics_synced_badge">Đã đồng bộ</string>
     <string name="proxy_connection_invalid_configuration">Máy chủ proxy hoặc cổng không hợp lệ</string>
@@ -942,11 +924,6 @@
     <string name="updates_channel_warning_stable_title">Bản dựng ổn định</string>
     <string name="updates_channel_warning_stable_source">Được phân phối qua GitHub Releases chính thức.</string>
     <string name="updates_channel_warning_stable_desc">Các phiên bản này đã được kiểm tra và khuyên dùng cho hầu hết người dùng.</string>
-    <string name="updates_channel_warning_nightly_title">Bản dựng Nightly</string>
-    <string name="updates_channel_warning_nightly_risk">Bản dựng Nightly có thể bao gồm các tính năng thử nghiệm, thay đổi chưa hoàn thành hoặc lỗi tạm thời.</string>
-    <string name="updates_channel_warning_nightly_unstable">Bản dựng Nightly chỉ được cung cấp cho mục đích thử nghiệm và truy cập sớm. Tính ổn định, tương thích và chức năng không được đảm bảo.</string>
-    <string name="updates_channel_warning_acknowledgement">Bằng cách tiếp tục, bạn xác nhận rằng bản dựng nightly có thể không ổn định và tự chịu rủi ro khi sử dụng.</string>
-    <string name="updates_daily_channel_confirmation">Chuyển sang kênh Hàng ngày để nhận bản cập nhật từ kho lưu trữ nightly hàng ngày.\n\nBản dựng hàng ngày được xuất bản tự động mỗi ngày từ nhánh phát triển mới nhất.</string>
     <string name="cast">Truyền</string>
     <string name="cast_devices">Thiết bị Cast</string>
     <string name="cast_sheet_subtitle">Chọn nơi ArchiveTune phát</string>

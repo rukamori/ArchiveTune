@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">홈</string>
     <string name="songs">노래</string>
@@ -534,9 +534,7 @@
     <string name="enable_discord_debug_lines">디버그 정보 라인 활성화</string>
     <string name="presence_manager_running">상태 관리자: 실행 중</string>
     <string name="presence_manager_stopped">상태 관리자: 중지됨</string>
-    <string name="filter_levels">필터 수준</string>
     <string name="experimental_features">실험적 기능 설정</string>
-    <string name="reset_to_default_levels">기본값으로 재설정</string>
     <string name="no_logs">로그 없음</string>
     <string name="show_nerd_stats">전문가용 재생 통계 표시</string>
     <string name="description_show_nerd_stats">오디오 재생에 사용된 코덱, 비트레이트, 버퍼 상태 등을 실시간으로 표시합니다.</string>
@@ -568,7 +566,6 @@
     <string name="log_level_info">Info</string>
     <string name="log_level_warning">주의</string>
     <string name="log_level_error">Error</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">모두</string>
     <string name="clear">지우기</string>
     <string name="logs_empty_message">기록된 개발자 분석 로그가 없습니다.</string>
@@ -585,21 +582,15 @@
     <string name="new_version_available">새 버전 사용 가능</string>
     <string name="updates">업데이트</string>
     <string name="updates_subtitle_stable">정식 릴리즈 및 안정화 버전 업데이트 노트</string>
-    <string name="updates_subtitle_nightly">개발 도중 수집된 Nightly 빌드 및 실시간 최신 커밋 이력</string>
     <string name="current_version">현재 설치된 버전</string>
     <string name="latest_version_format">최신 버전: %s</string>
     <string name="updates_status_checking">최신 정식 릴리즈가 배포되었는지 확인 중</string>
     <string name="updates_status_current">사용 가능한 가장 최신의 릴리즈 버전을 사용하고 있습니다.</string>
     <string name="enable_update_notification">신규 업데이트 푸시 알림 받기</string>
-    <string name="enable_update_notification_desc">성공적으로 빌드된 새로운 안정화 패치가 나왔을 때 즉각 기기 알림을 받습니다.</string>
     <string name="update_channel">업데이트 채널</string>
     <string name="update_channel_desc">철저하게 테스트를 마친 정식 릴리즈와, 실시간 스냅샷 채널 중에서 수집 형태를 선택하세요.</string>
     <string name="channel_stable">정식 릴리즈 (Stable)</string>
-    <string name="channel_nightly">Nightly</string>
     <string name="recent_commits">최근 수집된 커밋 이력</string>
-    <string name="updates_nightly_title">Nightly 개발 버전</string>
-    <string name="updates_nightly_description">Nightly 빌드는 매 순간 커밋된 가장 원초적인 개발 진행 코드를 즉각 수집해 반영하므로 다소 불안정할 수 있습니다.</string>
-    <string name="updates_latest_commit">가장 최근 반영된 개발 커밋: %s</string>
     <string name="updates_loading_commits">최근 실시간 커밋 데이터를 로드하는 중</string>
     <string name="updates_recent_commits_count">최근 수집된 기여 내용 %1$d개</string>
     <string name="updates_no_commits">감지된 최근 커밋 기록이 없습니다.</string>
@@ -686,20 +677,13 @@
     <string name="po_token_gvs">보안 시스템 검증 코드 (GVS)</string>
     <string name="po_token_player">재생 검증 코드 (Player)</string>
     <string name="visitor_data">방문자 가상 데이터 (Visitor Data)</string>
-    <string name="supported_clients">가동 지원되는 디바이스 클라이언트</string>
     <string name="generated_tokens">성공적으로 연동 확보된 토큰 리스트</string>
-    <string name="token_settings">PO Token 환경설정</string>
-    <string name="use_visitor_data">가상 방문자 식별 데이터 수집</string>
-    <string name="use_visitor_data_desc">토큰 생성을 우회 보장하기 위해 가상의 익명 방문자 식별 정보를 구성합니다. 단 반드시 쿠키 저장 기능이 사전에 꺼져있어야 작동합니다.</string>
-    <string name="cookies_must_be_disabled">방문자 데이터를 구성하려면 쿠키를 비활성화해야 합니다.</string>
     <string name="regenerate">새로 추출</string>
     <string name="regenerate_token">우회 토큰 일괄 재설정</string>
     <string name="source_url">토큰 획득용 URL 경로</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">원격 구글 서버로부터 토큰을 받아오는 중</string>
     <string name="tokens_generated">우회 토큰이 성공적으로 수집되었습니다.</string>
     <string name="token_generation_failed">토큰 데이터 가져오기 실패</string>
-    <string name="open_account_before_extract">우회 토큰을 기기로 수집 및 추출하기에 앞서, 아래 웹뷰를 통해 youtube.com/account 페이지로 먼저 이동하여 로그인을 마쳐주세요.</string>
     <string name="token_copied">해당 검증 토큰을 안전하게 클립보드에 복사했습니다.</string>
     <string name="extracting_from_url">지정된 구글 계정 주소로부터 토큰 구조 파싱 중</string>
     <string name="po_token_account_notice_title">반드시 동일한 계정을 사용하십시오!</string>
@@ -791,7 +775,6 @@
     <string name="top_artist_badge">인기 아티스트</string>
     <string name="your_playlists">내 재생목록</string>
     <string name="youtube_channels">YouTube 공식 아티스트 채널</string>
-    <string name="channel_daily_nightly">일일 일괄 빌드 (Daily)</string>
     <string name="no_artist_yet">등록된 아티스트가 없습니다.</string>
     <string name="discord_url_source_custom">사용자 정의 URL</string>
     <string name="library_songs_subtitle">모든 보관함 수록 곡</string>
@@ -833,7 +816,6 @@
     <string name="custom_font_desc">기기 내부의 .ttf 글꼴 파일을 선택하세요.</string>
     <string name="play_all">전체 재생</string>
     <string name="font_preference_system">시스템 글꼴</string>
-    <string name="updates_nightly_hosting_description">GitHub Actions의 테스트 빌드 성공을 통해 자동으로 검출된 스냅샷 전용 패키지들이 여기에 나열됩니다.</string>
     <string name="duration_sort">재생 시간</string>
     <string name="library_top_mixes_loading">보관함 추천 믹스를 불러오는 중…</string>
     <string name="library_top_mixes_refresh">추천 믹스 새로고침</string>
@@ -922,11 +904,6 @@
     <string name="updates_channel_warning_stable_title">안정(Stable) 채널로 변경</string>
     <string name="updates_channel_warning_stable_source">공식 배포 버전을 통해 가장 안정적인 기능만을 제공합니다.</string>
     <string name="updates_channel_warning_stable_desc">새로운 기능 적용은 다소 늦어질 수 있으나, 버그나 비정상 종료 우려 없이 편안하게 이용 가능합니다.</string>
-    <string name="updates_channel_warning_nightly_title">나이틀리(Nightly) 채널로 변경</string>
-    <string name="updates_channel_warning_nightly_risk">매일 개발 중인 최신 소스코드가 반영되어 즉시 배포되는 실험적인 채널입니다.</string>
-    <string name="updates_channel_warning_nightly_unstable">가장 빠르게 최신 기능을 체험해 볼 수 있으나, 예기치 않은 치명적인 버그나 강제 종료가 발생할 수 있습니다.</string>
-    <string name="updates_channel_warning_acknowledgement">발생할 수 있는 위험을 인지하였으며, 진행에 동의합니다.</string>
-    <string name="updates_daily_channel_confirmation">업데이트 채널을 정말로 변경하시겠습니까?</string>
     <string name="download_complete">오프라인 저장 완료</string>
     <string name="onboarding_welcome_title">ArchiveTune에 오신 것을 환영합니다</string>
     <string name="onboarding_welcome_subtitle">당신만의 특별한 음악 보관함을 함께 완성해 보세요.</string>

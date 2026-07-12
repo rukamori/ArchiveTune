@@ -11,7 +11,9 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -38,6 +40,7 @@ class MoriCipherUpdateWorker(
 
 object MoriCipherUpdateScheduler {
     private const val WorkName = "mori_cipher_player_refresh"
+    private const val InitialWorkName = "mori_cipher_player_initial_refresh"
 
     fun schedule(context: Context) {
         val constraints =
@@ -54,12 +57,18 @@ object MoriCipherUpdateScheduler {
                 TimeUnit.MINUTES,
             ).setConstraints(constraints)
                 .build()
-        WorkManager
-            .getInstance(context)
-            .enqueueUniquePeriodicWork(
-                WorkName,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request,
-            )
+        val workManager = WorkManager.getInstance(context)
+        workManager.enqueueUniqueWork(
+            InitialWorkName,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<MoriCipherUpdateWorker>()
+                .setConstraints(constraints)
+                .build(),
+        )
+        workManager.enqueueUniquePeriodicWork(
+            WorkName,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 }

@@ -113,8 +113,8 @@ This file should be reviewed whenever ArchiveTune changes its permissions, stora
 
 For questions or corrections, use the project repository and issue tracker.
 
-- Repository: [https://github.com/ArchiveTuneApp/ArchiveTune](https://github.com/ArchiveTuneApp/ArchiveTune)
-- Issues: [https://github.com/ArchiveTuneApp/ArchiveTune/issues](https://github.com/ArchiveTuneApp/ArchiveTune/issues)
+- Repository: [https://github.com/rukamori/ArchiveTune](https://github.com/rukamori/ArchiveTune)
+- Issues: [https://github.com/rukamori/ArchiveTune/issues](https://github.com/rukamori/ArchiveTune/issues)
 
 ## Technical Appendix
 

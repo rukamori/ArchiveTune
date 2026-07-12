@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Ana sayfa</string>
     <string name="songs">Şarkılar</string>
@@ -422,9 +422,7 @@
     <string name="enable_discord_debug_lines">Hata ayıklama ayarları satırlarını etkinleştir</string>
     <string name="presence_manager_running">Durum yöneticisi: koşuyor</string>
     <string name="presence_manager_stopped">Durum yöneticisi: durduruldu</string>
-    <string name="filter_levels">Filtre seviyeleri</string>
     <string name="experimental_features">Deneysel Özellikler</string>
-    <string name="reset_to_default_levels">Varsayılana sıfırla</string>
     <string name="no_logs">Günlük Yok</string>
     <string name="show_nerd_stats">Meraklısı için istatistikleri göster</string>
     <string name="description_show_nerd_stats">Gerçek zamanlı oynatma istatistiklerini görüntüleyin (codec, bit hızı, arabellek)</string>
@@ -452,10 +450,8 @@
     <string name="current_version">Güncel Sürüm</string>
     <string name="latest_version_format">En son: %s</string>
     <string name="enable_update_notification">Güncelleme Bildirimini Etkinleştir</string>
-    <string name="enable_update_notification_desc">Yeni bir kararlı sürüm yayınlandığında bildirim alın</string>
     <string name="update_channel">Kanalı Güncelle</string>
     <string name="channel_stable">Kararlı</string>
-    <string name="channel_nightly">Gecelik</string>
     <string name="recent_commits">Son Taahhütler</string>
     <string name="update_notification_channel_name">Uygulama Güncellemeleri</string>
     <string name="update_notification_channel_desc">Yeni uygulama güncellemeleri için bildirimler</string>
@@ -507,9 +503,6 @@
     <string name="together_welcome_permissions_title">İzinler ve güvenlik</string>
     <string name="together_welcome_permissions_body">Ana cihazlar misafirlerin şarkı eklemesine, playback\'i kontrol etmesine veya katılmak için izin isteyip istemeyeceğine karar verebilirler.</string>
     <string name="visitor_data">Ziyaretçi Verisi</string>
-    <string name="supported_clients">Desteklenen İstemciler</string>
-    <string name="use_visitor_data">Ziyaretçi Verisini Kullan</string>
-    <string name="cookies_must_be_disabled">Ziyaretçi verisinin kullanılması için çerezler kapalı olmalı</string>
     <string name="regenerate">Yeniden oluştur</string>
     <string name="source_url">Kaynak URL\'si</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>

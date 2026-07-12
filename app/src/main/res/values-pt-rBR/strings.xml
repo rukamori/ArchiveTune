@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Início</string>
     <string name="songs">Músicas</string>
@@ -758,9 +758,7 @@
     <string name="enable_discord_debug_lines">Ativar linhas de configurações de depuração</string>
     <string name="presence_manager_running">Gerenciador de presença: em execução</string>
     <string name="presence_manager_stopped">Gerenciador de presença: parado</string>
-    <string name="filter_levels">Níveis de filtro</string>
     <string name="experimental_features">Recursos experimentais</string>
-    <string name="reset_to_default_levels">Redefinir para padrão</string>
     <string name="no_logs">Sem logs</string>
     <string name="show_nerd_stats">Mostrar estatísticas técnicas</string>
     <string name="description_show_nerd_stats">Exibir estatísticas de reprodução em tempo real (codec, taxa de bits, buffer)</string>
@@ -792,7 +790,6 @@
     <string name="log_level_info">Informação</string>
     <string name="log_level_warning">Aviso</string>
     <string name="log_level_error">Erro</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Todos</string>
     <string name="clear">Limpar</string>
     <string name="logs_empty_message">Os logs aparecerão aqui quando disponíveis</string>
@@ -809,32 +806,19 @@
     <string name="new_version_available">Nova versão disponível</string>
     <string name="updates">Atualizações</string>
     <string name="updates_subtitle_stable">Versões estáveis e notas de versão</string>
-    <string name="updates_subtitle_nightly">Builds nightly e commits recentes de desenvolvimento</string>
     <string name="current_version">Versão atual</string>
     <string name="latest_version_format">Mais recente: %s</string>
     <string name="updates_status_checking">Verificando a versão mais recente</string>
     <string name="updates_status_current">Você está na versão mais recente disponível</string>
     <string name="enable_update_notification">Ativar notificação de atualização</string>
-    <string name="enable_update_notification_desc">Receber notificação quando uma nova versão estável for lançada</string>
     <string name="update_channel">Canal de atualização</string>
     <string name="update_channel_desc">Escolha entre versões testadas e snapshots de desenvolvimento.</string>
     <string name="channel_stable">Estável</string>
-    <string name="channel_nightly">Nightly</string>
-    <string name="channel_daily_nightly">Diário</string>
     <string name="recent_commits">Commits recentes</string>
-    <string name="updates_nightly_title">Entrega nightly</string>
-    <string name="updates_nightly_description">Builds nightly acompanham os commits de desenvolvimento mais recentes e podem incluir alterações inacabadas.</string>
-    <string name="updates_nightly_hosting_description">Builds de desenvolvimento gerados automaticamente estão disponíveis a partir de execuções bem-sucedidas do GitHub Actions.</string>
     <string name="updates_channel_warning_intro">O ArchiveTune oferece dois canais de download para builds:</string>
     <string name="updates_channel_warning_stable_title">Builds estáveis</string>
     <string name="updates_channel_warning_stable_source">Distribuídas pelas GitHub Releases oficiais.</string>
     <string name="updates_channel_warning_stable_desc">Essas versões são testadas e recomendadas para a maioria dos usuários.</string>
-    <string name="updates_channel_warning_nightly_title">Builds nightly</string>
-    <string name="updates_channel_warning_nightly_risk">Builds nightly podem incluir recursos experimentais, alterações inacabadas ou regressões temporárias.</string>
-    <string name="updates_channel_warning_nightly_unstable">Builds nightly são fornecidas apenas para testes e acesso antecipado.\nEstabilidade, compatibilidade e funcionalidade não são garantidas.</string>
-    <string name="updates_channel_warning_acknowledgement">Observação: baixar diretamente do GitHub ignora qualquer verificação adicional feita pela loja de onde você pode ter instalado o app originalmente.\nAo continuar, você reconhece que builds nightly podem ser instáveis e as usa por sua conta e risco.</string>
-    <string name="updates_daily_channel_confirmation">Mude para o canal Diário para receber atualizações do repositório daily-nightly.\n\nBuilds diárias são publicadas automaticamente todos os dias a partir do branch de desenvolvimento mais recente.\nObservação: baixar diretamente do GitHub ignora qualquer verificação adicional feita pela loja de onde você pode ter instalado o app originalmente.</string>
-    <string name="updates_latest_commit">Commit mais recente: %s</string>
     <string name="updates_loading_commits">Carregando commits recentes</string>
     <string name="updates_recent_commits_count">%1$d commits recentes</string>
     <string name="updates_no_commits">Nenhum commit recente encontrado</string>
@@ -983,20 +967,13 @@
     <string name="po_token_gvs">Token PO (GVS)</string>
     <string name="po_token_player">Token PO (Player)</string>
     <string name="visitor_data">Dados do visitante</string>
-    <string name="supported_clients">Clientes compatíveis</string>
     <string name="generated_tokens">Tokens gerados</string>
-    <string name="token_settings">Configurações de token</string>
-    <string name="use_visitor_data">Usar dados do visitante</string>
-    <string name="use_visitor_data_desc">Usar dados do visitante para geração de token. Requer cookies desativados.</string>
-    <string name="cookies_must_be_disabled">Cookies devem estar desativados para usar dados do visitante</string>
     <string name="regenerate">Gerar novamente</string>
     <string name="regenerate_token">Gerar token novamente</string>
     <string name="source_url">URL de origem</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Gerando tokens</string>
     <string name="tokens_generated">Tokens gerados com sucesso</string>
     <string name="token_generation_failed">Falha ao gerar token</string>
-    <string name="open_account_before_extract">Abra e entre em youtube.com/account antes de extrair</string>
     <string name="token_copied">Token copiado para a área de transferência</string>
     <string name="extracting_from_url">Extraindo tokens da URL</string>
     <string name="po_token_account_notice_title">Use a mesma conta</string>

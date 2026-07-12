@@ -35,23 +35,12 @@ class UpdateCheckWorker(
 
             val updateChannel =
                 dataStore.data
-                    .map {
-                        it[UpdateChannelKey]?.let { value ->
-                            try {
-                                UpdateChannel.valueOf(value)
-                            } catch (_: IllegalArgumentException) {
-                                defaultUpdateChannel
-                            }
-                        } ?: defaultUpdateChannel
-                    }.first()
+                    .map { UpdateChannel.fromStoredName(it[UpdateChannelKey], defaultUpdateChannel) }
+                    .first()
 
             when (updateChannel) {
-                UpdateChannel.NIGHTLY -> {
-                    return Result.success()
-                }
-
-                UpdateChannel.DAILY_NIGHTLY -> {
-                    Updater.getLatestDailyNightlyVersionName().onSuccess { latestVersion ->
+                UpdateChannel.CANARY -> {
+                    Updater.getLatestCanaryVersionName().onSuccess { latestVersion ->
                         if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
                             UpdateNotificationManager.notifyIfNewVersion(
                                 applicationContext,
@@ -62,7 +51,7 @@ class UpdateCheckWorker(
                     }
                 }
 
-                else -> {
+                UpdateChannel.STABLE -> {
                     Updater.getLatestVersionName().onSuccess { latestVersion ->
                         if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
                             UpdateNotificationManager.notifyIfNewVersion(applicationContext, latestVersion)

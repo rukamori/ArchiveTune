@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Главная</string>
     <string name="songs">Песни</string>
@@ -464,9 +464,7 @@
     <string name="enable_discord_debug_lines">Включить строки настроек отладки</string>
     <string name="presence_manager_running">Менеджер статуса: работает</string>
     <string name="presence_manager_stopped">Менеджер статуса: остановлен</string>
-    <string name="filter_levels">Уровни фильтрации</string>
     <string name="experimental_features">Экспериментальные функции</string>
-    <string name="reset_to_default_levels">Сбросить</string>
     <string name="no_logs">Без логов</string>
     <string name="show_nerd_stats">Показывать статистику для гиков</string>
     <string name="description_show_nerd_stats">Отображать статистику воспроизведения в реальном времени (кодек, битрейт, буферизация)</string>
@@ -498,7 +496,6 @@
     <string name="log_level_info">Информационные</string>
     <string name="log_level_warning">Предупреждения</string>
     <string name="log_level_error">Ошибки</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Все</string>
     <string name="clear">Очистить</string>
     <string name="logs_empty_message">Логи будут появляться здесь, когда доступны</string>
@@ -516,10 +513,8 @@
     <string name="current_version">Текущая версия</string>
     <string name="latest_version_format">Последняя: %s</string>
     <string name="enable_update_notification">Включить уведомление об обновлении</string>
-    <string name="enable_update_notification_desc">Будьте в курсе, когда выйдет новая версия</string>
     <string name="update_channel">Канал обновлений</string>
     <string name="channel_stable">Стабильный</string>
-    <string name="channel_nightly">Ночные сборки</string>
     <string name="recent_commits">Последние коммиты</string>
     <string name="changelog">Список изменений</string>
     <string name="view_changelog">Посмотреть список изменений</string>
@@ -614,20 +609,13 @@
     <string name="po_token_gvs">PO токен (GVS)</string>
     <string name="po_token_player">PO токен (плеер)</string>
     <string name="visitor_data">Данные посетителя</string>
-    <string name="supported_clients">Поддерживаемые клиенты</string>
     <string name="generated_tokens">Сгенерированные токены</string>
-    <string name="token_settings">Настройки токена</string>
-    <string name="use_visitor_data">Использовать данные посетителя</string>
-    <string name="use_visitor_data_desc">Использовать данные посетителя для генерации токена. Требует отключения cookies.</string>
-    <string name="cookies_must_be_disabled">Cookies должны быть выключены для использования данных посетителя</string>
     <string name="regenerate">Повторить генерацию</string>
     <string name="regenerate_token">Повторить генерацию токена</string>
     <string name="source_url">URL источника</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Генерация токенов…</string>
     <string name="tokens_generated">Токены сгенерированы успешно</string>
     <string name="token_generation_failed">Генерация токена провалилась</string>
-    <string name="open_account_before_extract">Откройте и войдите в аккаунт на youtube.com/account перед извлечением</string>
     <string name="token_copied">Токен скопирован в буфер обмена</string>
     <string name="extracting_from_url">Извлечение токенов по ссылке…</string>
     <string name="speed_dial">Быстрый набор</string>
@@ -677,13 +665,9 @@
     <string name="tap_to_activate_equalizer">Нажмите для активации эквалайзера</string>
     <string name="open_youtube_music">Открыть YouTube Music</string>
     <string name="updates_subtitle_stable">Стабильные релизы и заметки релиза</string>
-    <string name="updates_subtitle_nightly">Ночные сборки и последние коммиты разработки</string>
     <string name="updates_status_checking">Проверка последнего релиза</string>
     <string name="updates_status_current">Вы на последней версии релиза</string>
     <string name="update_channel_desc">Выбирайте между тестированными релизами и снапшотами разработки.</string>
-    <string name="updates_nightly_title">Доставка ночных сборок</string>
-    <string name="updates_nightly_description">Ночные сборки отслеживают последние изменения в процессе разработки и могут включать в себя незавершенные изменения.</string>
-    <string name="updates_latest_commit">Последний коммит: %s</string>
     <string name="updates_loading_commits">Загрузка последних коммитов</string>
     <string name="updates_recent_commits_count">%1$d последних коммитов</string>
     <string name="updates_no_commits">Не найдено последних коммитов</string>

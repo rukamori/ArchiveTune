@@ -471,9 +471,9 @@ class AboutAttributionRepository
         )
 
         private companion object {
-            const val GitHubCommitsUrl = "https://api.github.com/repos/ArchiveTuneApp/ArchiveTune/commits"
+            const val GitHubCommitsUrl = "https://api.github.com/repos/rukamori/ArchiveTune/commits"
             const val GitHubTranslationResourceUrl =
-                "https://api.github.com/repos/ArchiveTuneApp/ArchiveTune/contents/app/src/main/res"
+                "https://api.github.com/repos/rukamori/ArchiveTune/contents/app/src/main/res"
             const val TranslationResourceRoot = "app/src/main/res"
             const val TranslationResourcePrefix = "values-"
             const val TranslationCommitMessagePrefix = "Translated using Weblate"

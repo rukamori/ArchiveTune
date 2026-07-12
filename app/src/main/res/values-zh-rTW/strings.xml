@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">首頁</string>
     <string name="songs">歌曲</string>
@@ -740,9 +740,7 @@
     <string name="enable_discord_debug_lines">啟用調試設定行</string>
     <string name="presence_manager_running">狀態管理器：正在執行</string>
     <string name="presence_manager_stopped">狀態管理器：已停止</string>
-    <string name="filter_levels">過濾等級</string>
     <string name="experimental_features">實驗性功能</string>
-    <string name="reset_to_default_levels">重設為預設值</string>
     <string name="no_logs">暫無日誌</string>
     <string name="show_nerd_stats">顯示詳細技術數據</string>
     <string name="description_show_nerd_stats">顯示即時播放統計資料（編解碼器、碼率、緩衝）</string>
@@ -774,7 +772,6 @@
     <string name="log_level_info">信息</string>
     <string name="log_level_warning">警告</string>
     <string name="log_level_error">錯誤</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">全部</string>
     <string name="clear">清除</string>
     <string name="logs_empty_message">日誌在可用時將顯示在此</string>
@@ -791,32 +788,19 @@
     <string name="new_version_available">新版本可用</string>
     <string name="updates">更新</string>
     <string name="updates_subtitle_stable">穩定版本與發行說明</string>
-    <string name="updates_subtitle_nightly">每日建置與近期開發提交</string>
     <string name="current_version">目前版本</string>
     <string name="latest_version_format">最新： %s</string>
     <string name="updates_status_checking">正在檢查最新版本</string>
     <string name="updates_status_current">您目前使用的是最新版本</string>
     <string name="enable_update_notification">啟用更新通知</string>
-    <string name="enable_update_notification_desc">在新穩定版本發佈時接收通知</string>
     <string name="update_channel">更新頻道</string>
     <string name="update_channel_desc">在穩定版本和開發版本之間進行選擇。</string>
     <string name="channel_stable">穩定版本</string>
-    <string name="channel_nightly">開發版本</string>
-    <string name="channel_daily_nightly">每日快照</string>
     <string name="recent_commits">近期提交</string>
-    <string name="updates_nightly_title">每夜更新推送</string>
-    <string name="updates_nightly_description">每日建置版本追蹤最新的開發提交，可能包含尚未完成的變更。</string>
-    <string name="updates_nightly_hosting_description">可從成功的 GitHub Actions 運行中取得自動產生的開發建置版本。</string>
     <string name="updates_channel_warning_intro">ArchiveTune 為建置版本提供了兩個下載管道：</string>
     <string name="updates_channel_warning_stable_title">穩定版本</string>
     <string name="updates_channel_warning_stable_source">透過官方 GitHub Releases 分發。</string>
     <string name="updates_channel_warning_stable_desc">這些版本已通過測試，並推薦給大多數用戶使用。</string>
-    <string name="updates_channel_warning_nightly_title">開發版本</string>
-    <string name="updates_channel_warning_nightly_risk">開發版本可能包含實驗性功能、未完成的變更或暫時性的功能退化。</string>
-    <string name="updates_channel_warning_nightly_unstable">每日建置版本僅供測試及搶先體驗使用。\n不保證其穩定性、相容性及功能性。</string>
-    <string name="updates_channel_warning_acknowledgement">注意：直接從 GitHub 下載會繞過您最初安裝應用程式的商店可能進行的任何額外審核。\n繼續操作即表示您已知曉每日建置版本可能不穩定，並自行承擔使用風險。</string>
-    <string name="updates_daily_channel_confirmation">切換到 Daily 頻道，即可接收 daily-nightly 倉庫的更新。\n\nDaily 建置版本（每日建置版）會根據最新的開發分支每天自動發布。\n請注意：直接從 GitHub 下載會繞過您最初安裝應用程式時所使用的應用程式商店可能進行的額外審查。</string>
-    <string name="updates_latest_commit">最新提交：%s</string>
     <string name="updates_loading_commits">正在加載最近的提交</string>
     <string name="updates_recent_commits_count">%1$d 次最近的提交</string>
     <string name="updates_no_commits">未找到最近的提交</string>
@@ -965,20 +949,13 @@
     <string name="po_token_gvs">PO 憑證 (GVS)</string>
     <string name="po_token_player">PO 憑證 (Player)</string>
     <string name="visitor_data">訪客數據</string>
-    <string name="supported_clients">支援的客戶端</string>
     <string name="generated_tokens">生成的憑證</string>
-    <string name="token_settings">憑證設定</string>
-    <string name="use_visitor_data">使用訪客數據</string>
-    <string name="use_visitor_data_desc">使用訪客資料產生憑證，並要求禁用 Cookie。</string>
-    <string name="cookies_must_be_disabled">必須停用 Cookie 才能使用訪客資料</string>
     <string name="regenerate">重新生成</string>
     <string name="regenerate_token">重新生成憑證</string>
     <string name="source_url">來源網址</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">產生憑證</string>
     <string name="tokens_generated">憑證生成成功</string>
     <string name="token_generation_failed">憑證生成失敗</string>
-    <string name="open_account_before_extract">在提取之前，請訪問\"https://youtube.com/account\"並登入</string>
     <string name="token_copied">憑證已複製到剪貼簿</string>
     <string name="extracting_from_url">從 URL 提取憑證</string>
     <string name="po_token_account_notice_title">使用相同帳戶</string>

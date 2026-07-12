@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Accueil</string>
     <string name="songs">Titres</string>
@@ -397,9 +397,7 @@
     <string name="enable_discord_debug_lines">Activer les lignes de paramètres de débogage</string>
     <string name="presence_manager_running">Gestionnaire de présence : en cours d\'exécution</string>
     <string name="presence_manager_stopped">Gestionnaire de présence : arrêté</string>
-    <string name="filter_levels">Niveaux de filtre</string>
     <string name="experimental_features">Fonctionnalités expérimentales</string>
-    <string name="reset_to_default_levels">Réinitialiser par défaut</string>
     <string name="no_logs">Aucun journal</string>
     <string name="show_nerd_stats">Afficher les statistiques des geeks</string>
     <string name="description_show_nerd_stats">Afficher les statistiques de lecture en temps réel (codec, débit binaire, mémoire tampon)</string>
@@ -430,10 +428,8 @@
     <string name="current_version">Version actuelle</string>
     <string name="latest_version_format">Dernière mise à jour : %s</string>
     <string name="enable_update_notification">Activer les notifications de mise à jour</string>
-    <string name="enable_update_notification_desc">Soyez averti(e) lorsqu\'une nouvelle version stable est publiée</string>
     <string name="update_channel">Chaîne de mise à jour</string>
     <string name="channel_stable">Stable</string>
-    <string name="channel_nightly">Nocturne</string>
     <string name="recent_commits">Engagements récents</string>
     <string name="update_notification_channel_name">Mises à jour de l\'application</string>
     <string name="update_notification_channel_desc">Notifications pour les nouvelles mises à jour de l\'application</string>
@@ -487,7 +483,6 @@
     <string name="log_level_info">Informations</string>
     <string name="log_level_warning">Avertissement</string>
     <string name="log_level_error">Erreur</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Tout</string>
     <string name="clear">Effacer</string>
     <string name="logs_empty_message">Les journaux apparaîtront ici lorsqu\'ils seront disponibles</string>
@@ -604,20 +599,13 @@
     <string name="po_token_gvs">Jeton PO (GVS)</string>
     <string name="po_token_player">Jeton PO (lecteur)</string>
     <string name="visitor_data">Données relatives aux visiteurs</string>
-    <string name="supported_clients">Clients pris en charge</string>
     <string name="generated_tokens">Jetons générés</string>
-    <string name="token_settings">Paramètres des jetons</string>
-    <string name="use_visitor_data">Utiliser les données des visiteurs</string>
-    <string name="use_visitor_data_desc">Utiliser les données des visiteurs pour générer des jetons. Cela nécessite la désactivation des cookies.</string>
-    <string name="cookies_must_be_disabled">Les cookies doivent être désactivés pour pouvoir utiliser les données des visiteurs</string>
     <string name="regenerate">Régénérer</string>
     <string name="regenerate_token">Réinitialiser le jeton</string>
     <string name="source_url">URL source</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Génération de jetons</string>
     <string name="tokens_generated">Les jetons ont été générés avec succès</string>
     <string name="token_generation_failed">Échec de la génération de jetons</string>
-    <string name="open_account_before_extract">Ouvrez la page youtube.com/account et connectez-vous avant de procéder à l\'extraction</string>
     <string name="token_copied">Le jeton a été copié dans le presse-papiers</string>
     <string name="extracting_from_url">Extraction des éléments de l\'URL</string>
     <string name="speed_dial">Accès Rapide</string>
@@ -652,13 +640,9 @@
     <string name="disable_animations_desc">Désactivez la plupart des animations de l\'application. Recommandé pour les appareils bas de gamme</string>
     <string name="tap_to_activate_equalizer">Appuyez pour activer l\'égaliseur</string>
     <string name="updates_subtitle_stable">Versions stables et notes de mise à jour</string>
-    <string name="updates_subtitle_nightly">Versions quotidiennes et derniers commits de développement</string>
     <string name="updates_status_checking">Vérification de la dernière version</string>
     <string name="updates_status_current">Vous utilisez la dernière version disponible</string>
     <string name="update_channel_desc">Choisissez entre les versions testées et les versions de développement.</string>
-    <string name="updates_nightly_title">Livraison nocturne</string>
-    <string name="updates_nightly_description">Les versions quotidiennes intègrent les dernières modifications apportées au code et peuvent contenir des changements non finalisés.</string>
-    <string name="updates_latest_commit">Dernière modification : %s</string>
     <string name="updates_loading_commits">Chargement des modifications récentes</string>
     <string name="updates_recent_commits_count">%1$d modifications récentes</string>
     <string name="updates_no_commits">Aucune modification récente n\'a été trouvée</string>
@@ -811,7 +795,6 @@
     <string name="discord_refresh_failed">Échec de l\'actualisation de la présence sur Discord</string>
     <string name="top_artist_badge">MEILLEUR ARTISTE</string>
     <string name="youtube_channels">Chaînes YouTube</string>
-    <string name="channel_daily_nightly">Quotidienne</string>
     <string name="no_artist_yet">Aucun artiste pour l\'instant</string>
     <string name="discord_url_source_custom">URL personnalisée</string>
     <string name="total_label">total</string>
@@ -850,7 +833,6 @@
     <string name="custom_font_desc">Choisissez une police au format .ttf</string>
     <string name="paxsenix_stats_failed">Échec du chargement des statistiques de l\'API</string>
     <string name="font_preference_system">Système</string>
-    <string name="updates_nightly_hosting_description">Les versions de développement générées automatiquement sont disponibles à l\'issue d\'exécutions réussies de GitHub Actions.</string>
     <string name="lyrics_word_sync">Synchronisation des mots</string>
     <string name="duration_sort">Durée</string>
     <string name="library_top_mixes_loading">Préparation de vos mixages IA…</string>
@@ -973,11 +955,6 @@
     <string name="together_activity_join_requested">%1$s a demandé à rejoindre le groupe</string>
     <string name="together_activity_host_transferred">L\'hôte a été transféré vers %1$s</string>
     <string name="unhide">Afficher</string>
-    <string name="updates_channel_warning_nightly_title">Versions nightly</string>
-    <string name="updates_channel_warning_nightly_risk">Les versions « nightly » peuvent contenir des fonctionnalités expérimentales, des modifications non finalisées ou des régressions temporaires.</string>
-    <string name="updates_channel_warning_nightly_unstable">Les versions « nightly » sont fournies uniquement à des fins de test et d\'accès anticipé.\nLa stabilité, la compatibilité et le bon fonctionnement ne sont pas garantis.</string>
-    <string name="updates_channel_warning_acknowledgement">Remarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.\nEn poursuivant, vous reconnaissez que les versions « nightly » peuvent être instables et que vous les utilisez à vos propres risques.</string>
-    <string name="updates_daily_channel_confirmation">Passez sur la chaîne « daily » pour recevoir les mises à jour provenant du dépôt « daily-nightly ».\n\nLes versions « daily » sont publiées automatiquement chaque jour à partir de la dernière branche de développement.\nRemarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique depuis laquelle vous avez initialement installé l\'application.</string>
     <string name="download_complete">Téléchargement complet</string>
     <string name="onboarding_welcome_title">Bienvenue sur ArchiveTune</string>
     <string name="onboarding_welcome_subtitle">Configurez la lecture, la musique locale et les autorisations de mise à jour avant de commencer à écouter.</string>
