@@ -109,7 +109,6 @@ class LocalSongScanner
                     val existingArtists = loadArtists(snapshot.artists.map(LocalArtistRecord::id))
                     val existingAlbums = loadAlbums(snapshot.albums.map(LocalAlbumRecord::id))
 
-                    // Batch load formats in chunks to prevent SQLiteException (too many SQL variables)
                     val existingFormats = scannedIds
                         .chunked(SqlBatchSize)
                         .flatMap { chunk -> database.getFormatsByIds(chunk) }
@@ -192,10 +191,7 @@ class LocalSongScanner
                                 isLocal = true,
                             ),
                         )
-                        // Reset all file-derived cached metadata when the file has changed (size or dateModified mismatch).
-                        // This ensures codecs, bitrate, sampleRate, loudnessDb, and perceptualLoudnessDb do not
-                        // carry stale values from a replaced or re-encoded file.
-                        // We check both size and modification time because a file can be re-encoded with the same size.
+
                         val isFileUnchanged = existingFormat != null &&
                             existingFormat.contentLength == track.sizeBytes &&
                             (track.dateModified == null || existingSong?.dateModified == track.dateModified)

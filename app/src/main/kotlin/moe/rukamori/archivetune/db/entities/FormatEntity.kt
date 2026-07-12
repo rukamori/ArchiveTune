@@ -86,11 +86,6 @@ enum class RatePriority {
     SAMPLE_RATE_FIRST
 }
 
-/**
- * Returns either the formatted bitrate or formatted sample rate based on the chosen priority.
- * Decides using raw data fields (bitrate > 0, sampleRate != null), never by comparing
- * formatted display text — so the logic stays correct even if formatting changes.
- */
 fun FormatEntity.autoRateDisplay(priority: RatePriority = RatePriority.BITRATE_FIRST): String {
     val hasBitrate = bitrate > 0
     val hasSampleRate = sampleRate != null && sampleRate > 0
