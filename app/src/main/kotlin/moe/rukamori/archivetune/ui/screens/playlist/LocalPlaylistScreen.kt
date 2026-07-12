@@ -203,7 +203,7 @@ fun LocalPlaylistScreen(
     val onSortTypeChange: (PlaylistSongSortType) -> Unit = { viewModel.updateSortPreference(it, sortDescending) }
     val onSortDescendingChange: (Boolean) -> Unit = { viewModel.updateSortPreference(sortType, it) }
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
-    val swipeToSongEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
+    val swipeToSongEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
     var showAssignTagsDialog by remember { mutableStateOf(false) }
 
