@@ -183,7 +183,7 @@ fun OnlinePlaylistScreen(
     val downloadUtil = LocalDownloadUtil.current
     var downloads by remember { mutableStateOf<Map<String, Download>>(emptyMap()) }
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
-    var downloadProgressToolbarDismissed by remember { mutableStateOf(true) }
+    var downloadProgressToolbarDismissed by remember { mutableStateOf(false) }
 
     var selection by remember { mutableStateOf(false) }
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
@@ -1415,8 +1415,9 @@ fun OnlinePlaylistScreen(
                             sendPauseDownloads(context, songIds)
                         }
                     },
-                    onDismiss = {
+                    onCancel = {
                         downloadProgressToolbarDismissed = true
+                        sendRemoveDownloads(context, songIds)
                     },
                 )
             }

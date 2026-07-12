@@ -235,7 +235,7 @@ fun AlbumScreen(
     val downloadUtil = LocalDownloadUtil.current
     var downloads by remember { mutableStateOf<Map<String, Download>>(emptyMap()) }
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
-    var downloadProgressToolbarDismissed by remember { mutableStateOf(true) }
+    var downloadProgressToolbarDismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(albumWithSongs) {
         val songIds = albumWithSongs?.songs?.map { it.id }.orEmpty()
@@ -1158,8 +1158,9 @@ fun AlbumScreen(
                             sendPauseDownloads(context, songIds)
                         }
                     },
-                    onDismiss = {
+                    onCancel = {
                         downloadProgressToolbarDismissed = true
+                        sendRemoveDownloads(context, songIds)
                     },
                 )
             }

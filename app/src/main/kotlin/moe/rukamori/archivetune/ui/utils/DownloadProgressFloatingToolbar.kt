@@ -47,7 +47,7 @@ data class DownloadProgressToolbarState(
 fun DownloadProgressFloatingToolbar(
     state: DownloadProgressToolbarState,
     onPauseResume: () -> Unit,
-    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val progress =
@@ -65,13 +65,13 @@ fun DownloadProgressFloatingToolbar(
         modifier = modifier.widthIn(max = 320.dp),
         floatingActionButton = {
             FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = onDismiss,
+                onClick = onCancel,
                 containerColor = colorScheme.errorContainer,
                 contentColor = colorScheme.onErrorContainer,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.close),
+                    contentDescription = stringResource(R.string.cancel),
                     modifier = Modifier.size(22.dp),
                 )
             }
