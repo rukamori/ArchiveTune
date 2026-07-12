@@ -39,7 +39,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -48,21 +51,23 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -86,6 +91,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -111,7 +117,6 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
@@ -252,14 +257,6 @@ fun HistoryScreen(
             }
         }
 
-    val currentSourceLabel =
-        stringResource(
-            if (historySource == HistorySource.LOCAL) {
-                R.string.local_history
-            } else {
-                R.string.remote_history
-            },
-        )
     val currentSourceSummary =
         stringResource(
             if (historySource == HistorySource.LOCAL) {
@@ -275,37 +272,29 @@ fun HistoryScreen(
             localVisibleEvents.size
         }
 
-    val historyOverviewCard: @Composable () -> Unit = {
-        HistoryOverviewCard(
-            title = currentSourceLabel,
-            subtitle = currentSourceSummary,
+    val historySourceDock: @Composable () -> Unit = {
+        HistorySourceDock(
             visibleSongCount = currentVisibleCount,
             availableSources = availableSources,
             currentSource = historySource,
             onSourceChange = { newSource ->
-                if (newSource == historySource) return@HistoryOverviewCard
+                if (newSource == historySource) return@HistorySourceDock
 
                 viewModel.historySource.value = newSource
                 if (newSource == HistorySource.REMOTE) {
                     when (remoteHistoryState) {
                         is RemoteHistoryUiState.Error -> {
-                            viewModel.fetchRemoteHistory() // error: fetch with loading (user expects feedback)
+                            viewModel.fetchRemoteHistory()
                         }
 
                         is RemoteHistoryUiState.Empty -> {
-                            viewModel.enqueueSilentFetch() // empty: try silent fetch
+                            viewModel.enqueueSilentFetch()
                         }
 
-                        else -> {
-                            // Already has data: no fetch needed
-                        }
+                        else -> Unit
                     }
                 }
             },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
         )
     }
 
@@ -320,7 +309,7 @@ fun HistoryScreen(
                     RemoteHistoryFeed(
                         listState = remoteListState,
                         topPadding = topPadding,
-                        headerContent = historyOverviewCard,
+                        headerContent = historySourceDock,
                         remoteHistoryState = remoteHistoryState,
                         filteredSections = filteredRemoteSections,
                         isPlaying = isPlaying,
@@ -352,7 +341,7 @@ fun HistoryScreen(
                     LocalHistoryFeed(
                         listState = localListState,
                         topPadding = topPadding,
-                        headerContent = historyOverviewCard,
+                        headerContent = historySourceDock,
                         filteredEvents = filteredEvents,
                         visibleEvents = localVisibleEvents,
                         isSearchActive = searchQuery.isNotBlank(),
@@ -465,7 +454,7 @@ fun HistoryScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (!showSearchBar) {
-                LargeFlexibleTopAppBar(
+                MediumFlexibleTopAppBar(
                     title = {
                         Text(
                             text =
@@ -475,6 +464,22 @@ fun HistoryScreen(
                                     stringResource(R.string.history)
                                 },
                             fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    subtitle = {
+                        Text(
+                            text =
+                                if (selectionCount == 0) {
+                                    pluralStringResource(
+                                        R.plurals.n_song,
+                                        currentVisibleCount,
+                                        currentVisibleCount,
+                                    ) + " · " + currentSourceSummary,
+                                } else {
+                                    currentSourceSummary
+                                },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     },
                     navigationIcon = {
@@ -516,7 +521,7 @@ fun HistoryScreen(
                     },
                     scrollBehavior = scrollBehavior,
                     colors =
-                        TopAppBarDefaults.largeTopAppBarColors(
+                        TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                         ),
@@ -665,6 +670,8 @@ private fun LocalHistoryFeed(
         modifier =
             Modifier
                 .fillMaxSize()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = 840.dp)
                 .padding(top = topPadding)
                 .windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(
@@ -673,9 +680,6 @@ private fun LocalHistoryFeed(
                 ),
         contentPadding = PaddingValues(bottom = 112.dp),
     ) {
-        item("history_header_spacer") {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
         item("history_overview") {
             headerContent()
         }
@@ -692,17 +696,15 @@ private fun LocalHistoryFeed(
                             if (isSearchActive) R.string.history_no_results_desc else R.string.history_local_empty_desc,
                         ),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = if (isSearchActive) R.drawable.search else R.drawable.history,
                 )
             }
         } else {
             filteredEvents.forEach { (dateAgo, songsForDate) ->
                 stickyHeader(key = "header_$dateAgo") {
-                    NavigationTitle(
+                    HistorySectionHeader(
                         title = dateAgoToString(dateAgo),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface),
+                        songCount = songsForDate.size,
                     )
                 }
 
@@ -773,6 +775,8 @@ private fun RemoteHistoryFeed(
         modifier =
             Modifier
                 .fillMaxSize()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = 840.dp)
                 .padding(top = topPadding)
                 .windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(
@@ -781,9 +785,6 @@ private fun RemoteHistoryFeed(
                 ),
         contentPadding = PaddingValues(bottom = 112.dp),
     ) {
-        item("history_header_spacer") {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
         item("history_overview") {
             headerContent()
         }
@@ -806,6 +807,7 @@ private fun RemoteHistoryFeed(
                         title = stringResource(R.string.history_remote_empty_title),
                         description = stringResource(R.string.history_remote_empty_desc),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        icon = R.drawable.history,
                     )
                 }
             }
@@ -818,6 +820,7 @@ private fun RemoteHistoryFeed(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         actionLabel = stringResource(R.string.retry),
                         onActionClick = onRetry,
+                        icon = R.drawable.history,
                     )
                 }
             }
@@ -829,17 +832,15 @@ private fun RemoteHistoryFeed(
                             title = stringResource(R.string.history_no_results_title),
                             description = stringResource(R.string.history_no_results_desc),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            icon = R.drawable.search,
                         )
                     }
                 } else {
                     filteredSections.forEach { section ->
                         stickyHeader(key = "header_${section.title}") {
-                            NavigationTitle(
+                            HistorySectionHeader(
                                 title = section.title,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.surface),
+                                songCount = section.songs.size,
                             )
                         }
 
@@ -880,47 +881,84 @@ private fun RemoteHistoryFeed(
 }
 
 @Composable
-private fun HistoryOverviewCard(
-    title: String,
-    subtitle: String,
+private fun HistorySourceDock(
     visibleSongCount: Int,
     availableSources: List<HistorySource>,
     currentSource: HistorySource,
     onSourceChange: (HistorySource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 2.dp,
+    Box(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
+        Surface(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.history),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = pluralStringResource(R.plurals.n_song, visibleSongCount, visibleSongCount),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                HistorySourceSelector(
+                    currentSource = currentSource,
+                    availableSources = availableSources,
+                    onSourceChange = onSourceChange,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistorySectionHeader(
+    title: String,
+    songCount: Int,
+) {
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                text = pluralStringResource(R.plurals.n_song, songCount, songCount),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = pluralStringResource(R.plurals.n_song, visibleSongCount, visibleSongCount),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            HistorySourceSelector(
-                currentSource = currentSource,
-                availableSources = availableSources,
-                onSourceChange = onSourceChange,
+                modifier = Modifier.padding(start = 16.dp),
             )
         }
     }
@@ -1003,6 +1041,7 @@ private fun HistoryStateCard(
     actionLabel: String? = null,
     onActionClick: (() -> Unit)? = null,
     loading: Boolean = false,
+    icon: Int? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -1012,27 +1051,45 @@ private fun HistoryStateCard(
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
         ) {
             if (loading) {
-                CircularWavyProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                ContainedLoadingIndicator()
+            } else if (icon != null) {
+                val stateShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+                Surface(
+                    modifier = Modifier.size(88.dp),
+                    shape = stateShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+                }
             }
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 420.dp),
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 420.dp),
             )
 
             if (actionLabel != null && onActionClick != null) {
