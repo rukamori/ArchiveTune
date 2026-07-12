@@ -54,10 +54,9 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.content.Context
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.ui.component.NavigationTitle
@@ -258,7 +257,7 @@ fun MoodAndGenresButton(
 @Composable
 private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? {
     endpoint ?: return null
-    val database = LocalDatabase.current
+    val context = LocalContext.current
 
     val cacheKey = buildMoodAndGenresArtworkCacheKey(endpoint)
     val cachedArtwork = moodAndGenresArtworkCache[cacheKey]
@@ -266,10 +265,18 @@ private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? 
         if (!value.isNullOrBlank()) return@produceState
 
         val dbArtwork = withContext(Dispatchers.IO) {
-            val cachedEntity = database.getMoodAndGenreArtworkEntity(endpoint.browseId, endpoint.params ?: "")
-            val oneWeekInMs = 7 * 24 * 60 * 60 * 1000L
-            if (cachedEntity != null && System.currentTimeMillis() - cachedEntity.cachedAt <= oneWeekInMs) {
-                cachedEntity.thumbnailUrl
+            val sharedPrefs = context.getSharedPreferences("mood_genre_artwork_cache", Context.MODE_PRIVATE)
+            val cachedValue = sharedPrefs.getString(cacheKey, null)
+            if (cachedValue != null) {
+                val parts = cachedValue.split("|")
+                val url = parts.getOrNull(0)
+                val cachedAt = parts.getOrNull(1)?.toLongOrNull() ?: 0L
+                val oneWeekInMs = 7 * 24 * 60 * 60 * 1000L
+                if (!url.isNullOrBlank() && System.currentTimeMillis() - cachedAt <= oneWeekInMs) {
+                    url
+                } else {
+                    null
+                }
             } else {
                 null
             }
@@ -288,14 +295,10 @@ private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? 
 
         if (!resolvedArtwork.isNullOrBlank()) {
             withContext(Dispatchers.IO) {
-                database.insertMoodAndGenreArtwork(
-                    MoodAndGenreArtworkEntity(
-                        browseId = endpoint.browseId,
-                        params = endpoint.params ?: "",
-                        thumbnailUrl = resolvedArtwork,
-                        cachedAt = System.currentTimeMillis()
-                    )
-                )
+                val sharedPrefs = context.getSharedPreferences("mood_genre_artwork_cache", Context.MODE_PRIVATE)
+                sharedPrefs.edit()
+                    .putString(cacheKey, "$resolvedArtwork|${System.currentTimeMillis()}")
+                    .apply()
             }
             moodAndGenresArtworkCache[cacheKey] = resolvedArtwork
             value = resolvedArtwork

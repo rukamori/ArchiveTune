@@ -2096,9 +2096,4 @@ interface DatabaseDao {
         }
     }
 
-    @Query("SELECT * FROM mood_genre_artwork WHERE browseId = :browseId AND params = :params")
-    suspend fun getMoodAndGenreArtworkEntity(browseId: String, params: String): moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMoodAndGenreArtwork(entity: moe.rukamori.archivetune.db.entities.MoodAndGenreArtworkEntity)
 }
