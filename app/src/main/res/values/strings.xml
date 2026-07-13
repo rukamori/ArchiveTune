@@ -638,6 +638,26 @@
     <string name="backup_create_failed">Couldn\'t create backup</string>
     <string name="restore_success">Backup restored successfully</string>
     <string name="restore_failed">Failed to restore backup</string>
+    <!-- Tidal music source integration -->
+    <string name="music_sources">Music Sources</string>
+    <string name="tidal_integration">Tidal</string>
+    <string name="tidal_integration_description">Stream lossless audio from Tidal</string>
+    <string name="tidal_enable">Enable Tidal source</string>
+    <string name="tidal_enable_description">Route playback through Tidal\'s lossless resolver when a matching track is found</string>
+    <string name="tidal_audio_quality">Audio quality</string>
+    <string name="tidal_quality_aac_320">AAC 320 kbps</string>
+    <string name="tidal_quality_flac">FLAC (Lossless)</string>
+    <string name="tidal_quality_hires">Hi-Res Lossless</string>
+    <string name="tidal_artwork">Artwork</string>
+    <string name="tidal_artwork_fallback">Use Tidal artwork</string>
+    <string name="tidal_artwork_fallback_description">Fall back to Tidal cover art when none is available</string>
+    <string name="tidal_animated_covers">Animated covers</string>
+    <string name="tidal_animated_covers_description">Show Tidal video/canvas covers when available</string>
+    <string name="tidal_account">Account (optional)</string>
+    <string name="tidal_account_description">Playback works without signing in. Optionally paste your Tidal session cookie to improve matching and access your library.</string>
+    <string name="tidal_set_cookie">Set Tidal cookie</string>
+    <string name="tidal_account_connected">Connected: %1$s</string>
+    <string name="tidal_disconnect">Disconnect Tidal account</string>
     <string name="discord_integration">Discord Integration</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
     <string name="discord_login_description">Connect your Discord account with OAuth so ArchiveTune can publish Rich Presence.</string>

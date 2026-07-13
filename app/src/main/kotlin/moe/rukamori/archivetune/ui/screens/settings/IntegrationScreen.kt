@@ -86,6 +86,19 @@ fun IntegrationScreen(navController: NavController) {
                 }
             }
 
+            PreferenceGroup(title = stringResource(R.string.music_sources)) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.tidal_integration)) },
+                        description = stringResource(R.string.tidal_integration_description),
+                        icon = { Icon(painterResource(R.drawable.provider_tidal), null) },
+                        onClick = {
+                            navController.navigate("settings/tidal")
+                        },
+                    )
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.scrobbling)) {
                 item {
                     PreferenceEntry(

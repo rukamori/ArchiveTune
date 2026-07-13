@@ -732,6 +732,27 @@ val SpotifyAccountAvatarUrlKey = stringPreferencesKey("spotify_account_avatar_ur
 val ShowSpotifyPlaylistsKey = booleanPreferencesKey("show_spotify_playlists")
 val SpotifyLibraryPlaylistsCacheKey = stringPreferencesKey("spotify_library_playlists_cache")
 
+// Tidal music source integration (ported from MetroFuse)
+val TidalCookieKey = stringPreferencesKey("tidalCookie")
+val TidalEnabledKey = booleanPreferencesKey("tidalEnabled")
+val TidalAudioQualityKey = stringPreferencesKey("tidalAudioQuality")
+val TidalArtworkFallbackEnabledKey = booleanPreferencesKey("tidalArtworkFallbackEnabled")
+val TidalAnimatedCoversEnabledKey = booleanPreferencesKey("tidalAnimatedCoversEnabled")
+val TidalAccountNameKey = stringPreferencesKey("tidal_account_name")
+
+enum class TidalAudioQuality {
+    AAC_320,
+    FLAC,
+    HI_RES_LOSSLESS,
+}
+
+val TidalAudioQualityOptions =
+    listOf(
+        TidalAudioQuality.AAC_320,
+        TidalAudioQuality.FLAC,
+        TidalAudioQuality.HI_RES_LOSSLESS,
+    )
+
 val WebClientPoTokenEnabledKey = booleanPreferencesKey("webClientPoTokenEnabled")
 val PoTokenGvsKey = stringPreferencesKey("poTokenGvs")
 val PoTokenPlayerKey = stringPreferencesKey("poTokenPlayer")

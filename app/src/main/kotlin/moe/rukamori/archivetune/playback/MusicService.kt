@@ -172,6 +172,10 @@ import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
+import moe.rukamori.archivetune.constants.TidalAudioQuality
+import moe.rukamori.archivetune.constants.TidalAudioQualityKey
+import moe.rukamori.archivetune.constants.TidalEnabledKey
+import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
 import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
@@ -6909,6 +6913,78 @@ class MusicService :
         }
     }
 
+    private fun parseTidalAudioQuality(): TidalAudioQuality {
+        val stored = dataStore.get(TidalAudioQualityKey, TidalAudioQuality.FLAC.name)
+        return runCatching { TidalAudioQuality.valueOf(stored) }.getOrDefault(TidalAudioQuality.FLAC)
+    }
+
+    /**
+     * Attempts to resolve the current media item as a Tidal stream. Returns a [DataSpec]
+     * pointing at a Tidal (FLAC/Hi-Res) stream when the Tidal source is enabled and a match
+     * is found; otherwise returns null so playback falls through to the YouTube resolver.
+     *
+     * Ported from MetroFuse's multi-provider audio pipeline, adapted to ArchiveTune's
+     * single-seam [resolvePlaybackDataSpec] resolver.
+     */
+    private fun resolveTidalDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec? {
+        if (!dataStore.get(TidalEnabledKey, false)) return null
+        if (mediaId.isLocalMediaId()) return null
+
+        val song =
+            runCatching {
+                runBlocking(Dispatchers.IO) { database.song(mediaId).first() }
+            }.getOrNull()
+
+        val queuedMetadata = currentMediaMetadata.value?.takeIf { it.id == mediaId }
+        val title =
+            song?.song?.title
+                ?: queuedMetadata?.title
+                ?: return null
+        val artists =
+            song?.artists?.map { it.name }?.takeIf { it.isNotEmpty() }
+                ?: queuedMetadata?.artists?.map { it.name }.orEmpty()
+        val album =
+            song?.song?.albumName
+                ?: song?.album?.title
+                ?: queuedMetadata?.album?.title
+        val durationMs =
+            song?.song?.duration
+                ?.takeIf { it > 0 }
+                ?.toLong()
+                ?.times(1000L)
+                ?: queuedMetadata?.duration?.takeIf { it > 0 }?.toLong()?.times(1000L)
+
+        val query =
+            TidalAudioProvider.Query(
+                mediaId = mediaId,
+                title = title,
+                artists = artists,
+                album = album,
+                isrc = null,
+                durationMs = durationMs,
+            )
+
+        val resolved =
+            runCatching {
+                TidalAudioProvider.resolve(
+                    query = query,
+                    cacheDir = cacheDir,
+                    preferAtmos = false,
+                    preferLiveDash = false,
+                    audioQuality = parseTidalAudioQuality(),
+                )
+            }.onFailure { error ->
+                Timber.tag("MusicService").w(error, "TIDAL stream resolution failed for %s", mediaId)
+            }.getOrNull() ?: return null
+
+        Timber.tag("MusicService").i("Using TIDAL stream for %s: %s", mediaId, resolved.label)
+        resolved.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+        return dataSpec.withUri(resolved.mediaUri.toUri())
+    }
+
     private fun resolvePlaybackDataSpec(
         dataSpec: DataSpec,
         allowCacheShortCircuit: Boolean,
@@ -6965,6 +7041,12 @@ class MusicService :
                 scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                 return dataSpec
             }
+        }
+
+        // Tidal music source: attempt to resolve a lossless Tidal stream before YouTube.
+        resolveTidalDataSpec(dataSpec, mediaId)?.let { tidalDataSpec ->
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+            return tidalDataSpec
         }
 
         val lowDataModeActive = isLowDataModeActive()
