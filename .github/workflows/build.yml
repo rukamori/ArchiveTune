@@ -221,7 +221,21 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
+      - name: Check signing secret
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No signing keystore secret (KEYSTORE) configured. This is expected on forks; the release APK will be built unsigned."
+          fi
+
       - name: Sign APK
+        if: steps.signing.outputs.enabled == 'true'
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -231,13 +245,23 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
       
-      - name: Move signed APK
+      - name: Move APK
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
+          if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+            SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
+          else
+            # Fork build with no keystore: fall back to the unsigned APK.
+            SIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          fi
+          if [ -z "${SIGNED_APK:-}" ]; then
+            echo "No APK found to move in $RELEASE_DIR"
+            find "$RELEASE_DIR" -type f -name "*.apk" || true
+            exit 1
+          fi
           mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
       - name: Upload Signed APK
