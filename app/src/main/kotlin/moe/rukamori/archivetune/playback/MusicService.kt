@@ -7037,21 +7037,35 @@ class MusicService :
         dataSpec: DataSpec,
         mediaId: String,
     ): DataSpec? {
-        if (mediaId.isLocalMediaId()) return null
+        if (mediaId.isLocalMediaId()) {
+            Timber.tag("MusicService").d("Multi-source skip: %s is a local media id", mediaId)
+            return null
+        }
         val chain = sourceResolutionChain()
-        if (chain.isEmpty()) return null
-
-        // Lossless sources conflict with the low-data-mode playback setting; defer to YouTube.
-        if (isLowDataModeActive()) {
-            tidalActiveMediaIds.remove(mediaId)
+        Timber.tag("MusicService").d("Multi-source resolve for %s | chain=%s", mediaId, chain.joinToString(",") { it.name })
+        if (chain.isEmpty()) {
+            Timber.tag("MusicService").d("Multi-source skip: no sources enabled (chain empty)")
             return null
         }
 
-        val query = buildSourceQuery(mediaId) ?: return null
+        // Low-data mode used to hard-disable lossless sources. Since Tidal/Deezer/Amazon are now
+        // explicitly opt-in per the source chain, we honor the user's choice and only log when a
+        // metered/low-data connection is detected instead of silently falling back to YouTube.
+        if (isLowDataModeActive()) {
+            Timber.tag("MusicService").d("Low-data mode active (metered network) but attempting lossless sources anyway")
+        }
+
+        val query = buildSourceQuery(mediaId)
+        if (query == null) {
+            Timber.tag("MusicService").w("Multi-source skip: could not build source query (missing metadata) for %s", mediaId)
+            return null
+        }
+        Timber.tag("MusicService").d("Source query built: title=\"%s\" artists=%s durationMs=%s", query.title, query.artists.joinToString("/"), query.durationMs?.toString() ?: "?")
 
         var isrc: String? = null
         var isrcAttempted = false
         for (source in chain) {
+            Timber.tag("MusicService").d("Trying source: %s for \"%s\"", source.name, query.title)
             val stream: DirectStream? =
                 when (source) {
                     AudioSourceType.TIDAL -> resolveTidalStream(query)
@@ -7098,11 +7112,16 @@ class MusicService :
                         }.getOrNull()
                     AudioSourceType.YOUTUBE -> null
                 }
-            if (stream != null) return applyDirectStream(dataSpec, mediaId, stream)
+            if (stream != null) {
+                Timber.tag("MusicService").i("Source WIN: %s resolved \"%s\" [%s] (%s)", source.name, query.title, stream.label, stream.uri.take(80))
+                return applyDirectStream(dataSpec, mediaId, stream)
+            }
+            Timber.tag("MusicService").d("Source %s did not resolve \"%s\"", source.name, query.title)
         }
 
         // A non-YouTube source was requested but none could resolve this track; fall back to
         // YouTube and surface a one-off notice so the user knows why.
+        Timber.tag("MusicService").w("All lossless sources failed for \"%s\"; falling back to YouTube", query.title)
         tidalActiveMediaIds.remove(mediaId)
         showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "source_fallback")
         return null
@@ -7111,12 +7130,15 @@ class MusicService :
     /** Resolves a Tidal stream, trying the signed-in account (official API) before public instances. */
     private fun resolveTidalStream(query: SourceQuery): DirectStream? {
         val quality = parseTidalAudioQuality()
+        Timber.tag("MusicService").d("Tidal resolve start | quality=%s accountFirst=%s", quality.name, dataStore.get(TidalAccountFirstKey, true))
 
         // Account-first: use the user's own Tidal token via the official API when available.
         if (dataStore.get(TidalAccountFirstKey, true)) {
             val token = dataStore.get(TidalAccessTokenKey, "")
             val expiry = dataStore.get(TidalTokenExpiryKey, 0L)
-            if (token.isNotBlank() && expiry > System.currentTimeMillis()) {
+            val hasValidToken = token.isNotBlank() && expiry > System.currentTimeMillis()
+            Timber.tag("MusicService").d("Tidal account token present=%s valid=%s", token.isNotBlank(), hasValidToken)
+            if (hasValidToken) {
                 val apiQuality =
                     when (quality) {
                         TidalAudioQuality.HI_RES_LOSSLESS -> "HI_RES_LOSSLESS"
@@ -7142,7 +7164,9 @@ class MusicService :
         }
 
         // Fallback: public HiFi/QQDL instances (empty list falls back to built-in defaults).
-        TidalAudioProvider.setInstances(parseTidalInstances())
+        val configuredInstances = parseTidalInstances()
+        Timber.tag("MusicService").d("Tidal public-instance fallback | configured=%d instances", configuredInstances.size)
+        TidalAudioProvider.setInstances(configuredInstances)
         val resolved =
             runCatching {
                 TidalAudioProvider.resolve(
