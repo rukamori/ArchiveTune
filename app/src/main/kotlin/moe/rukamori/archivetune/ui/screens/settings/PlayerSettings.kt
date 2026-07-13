@@ -391,6 +391,15 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.streaming_sources)) },
+                        description = stringResource(R.string.streaming_sources_description),
+                        icon = { Icon(painterResource(R.drawable.provider_tidal), null) },
+                        onClick = { navController.navigate("settings/player/sources") },
+                    )
+                }
+
+                item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.low_data_mode_title)) },
                         description = stringResource(R.string.low_data_mode_description),

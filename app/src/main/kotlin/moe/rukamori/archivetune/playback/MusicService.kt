@@ -6980,9 +6980,11 @@ class MusicService :
     private fun sourceResolutionChain(): List<AudioSourceType> {
         val enabledDefaults =
             mapOf(
+                // Defaults MUST match the toggle defaults in StreamingSourcesSettings so the
+                // UI and the resolver agree on which sources are active out of the box.
                 AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, true),
                 AudioSourceType.DEEZER to dataStore.get(DeezerEnabledKey, true),
-                AudioSourceType.AMAZON to dataStore.get(AmazonEnabledKey, true),
+                AudioSourceType.AMAZON to dataStore.get(AmazonEnabledKey, false),
                 AudioSourceType.YOUTUBE to true,
             )
         val search =
@@ -7211,8 +7213,9 @@ class MusicService :
      */
     private fun tidalSourceApplies(mediaId: String): Boolean {
         if (mediaId.isLocalMediaId()) return false
-        return dataStore.get(TidalEnabledKey, false) ||
-            dataStore.get(DeezerEnabledKey, false) ||
+        // Defaults MUST match StreamingSourcesSettings + sourceResolutionChain().
+        return dataStore.get(TidalEnabledKey, true) ||
+            dataStore.get(DeezerEnabledKey, true) ||
             dataStore.get(AmazonEnabledKey, false)
     }
 

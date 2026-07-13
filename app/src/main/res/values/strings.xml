@@ -662,8 +662,11 @@
 
     <!-- Tidal music source integration -->
     <string name="music_sources">Music Sources</string>
+    <string name="streaming_sources">Streaming sources</string>
+    <string name="streaming_sources_description">Configure Tidal, Deezer and Amazon lossless sources and priority</string>
+    <string name="tidal_source_settings_moved">Source quality, instances and priority settings have moved to Player and audio → Streaming sources.</string>
     <string name="tidal_integration">Tidal</string>
-    <string name="tidal_integration_description">Stream lossless audio from Tidal</string>
+    <string name="tidal_integration_description">Log in to your Tidal account</string>
     <string name="tidal_enable">Enable Tidal source</string>
     <string name="tidal_enable_description">Route playback through Tidal\'s lossless resolver when a matching track is found</string>
     <string name="tidal_audio_quality">Audio quality</string>
