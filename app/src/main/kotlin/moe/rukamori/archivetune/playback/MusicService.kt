@@ -7122,6 +7122,7 @@ class MusicService :
                                 artists = query.artists,
                                 durationMs = query.durationMs,
                                 audioQuality = apiQuality,
+                                cacheDir = cacheDir,
                             )
                         }
                     }.onFailure { Timber.tag("MusicService").w(it, "Tidal account resolve failed for %s", query.mediaId) }

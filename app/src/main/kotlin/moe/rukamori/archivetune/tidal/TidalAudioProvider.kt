@@ -6,6 +6,8 @@
 package moe.rukamori.archivetune.tidal
 
 import android.net.Uri
+import moe.rukamori.archivetune.audiosource.DirectStream
+import moe.rukamori.archivetune.constants.AudioSourceType
 import android.util.Base64
 import moe.rukamori.archivetune.constants.TidalAudioQuality
 import okhttp3.HttpUrl
@@ -1118,9 +1120,9 @@ object TidalAudioProvider {
             }
 
             val localFile = if (manifest.isDash && manifestLooksFlac && cacheDir != null) {
-                downloadDashFlacToTempFile(track, quality, manifest, cacheDir)
+                downloadDashFlacToTempFile(track.trackId, quality, manifest, cacheDir)
             } else if (!preferLiveDash && manifest.isDash && cacheDir != null) {
-                downloadManifestToTempFile(track, quality, manifest, cacheDir)
+                downloadManifestToTempFile(track.trackId, quality, manifest, cacheDir)
             } else {
                 null
             }
@@ -1259,6 +1261,60 @@ object TidalAudioProvider {
     private fun String.isLossyQuality(): Boolean =
         equals("HIGH", ignoreCase = true) ||
             equals("LOW", ignoreCase = true)
+
+    /**
+     * Resolves a directly-playable [DirectStream] from an official-API `playbackinfopostpaywall`
+     * manifest, reusing the same BTS/DASH handling as the public-instance path. This is what makes
+     * the signed-in account path work for lossless/HiRes: Tidal returns a segmented DASH manifest
+     * there (not a BTS direct URL), so the segments are stitched into a temp FLAC in [cacheDir].
+     *
+     * Returns null if the manifest can't be turned into a playable stream, so the caller can fall
+     * back to the public instances and then YouTube.
+     */
+    fun resolveAccountManifest(
+        manifestB64: String,
+        declaredMimeType: String?,
+        trackId: String,
+        quality: String,
+        durationMs: Long?,
+        cacheDir: File,
+    ): DirectStream? =
+        runCatching {
+            val manifest = parseManifest(manifestB64, declaredMimeType, durationMs)
+            if (!manifest.isDash) {
+                // BTS manifest: a single directly-playable URL (AAC, or a single-file FLAC).
+                return@runCatching DirectStream(
+                    uri = manifest.url,
+                    mimeType = manifest.mimeType,
+                    codecs = manifest.codecs,
+                    contentLength = null,
+                    label = "account $quality",
+                    source = AudioSourceType.TIDAL,
+                )
+            }
+            // Segmented DASH (typical for lossless/HiRes): stitch to a local temp file so ExoPlayer
+            // can play it as a single progressive stream (the DataSpec path can't do multi-segment).
+            val looksFlac =
+                manifest.mimeType.contains("flac", ignoreCase = true) ||
+                    manifest.codecs.contains("flac", ignoreCase = true)
+            val localFile =
+                if (looksFlac && manifest.segmentUrls.size >= 2) {
+                    downloadDashFlacToTempFile(trackId, quality, manifest, cacheDir)
+                } else {
+                    downloadManifestToTempFile(trackId, quality, manifest, cacheDir)
+                }
+            val isFlacOut = localFile.extension.equals("flac", ignoreCase = true)
+            DirectStream(
+                uri = Uri.fromFile(localFile).toString(),
+                mimeType = if (isFlacOut) AUDIO_FLAC_MIME_TYPE else manifest.mimeType,
+                codecs = if (isFlacOut) "flac" else manifest.codecs,
+                contentLength = localFile.length().takeIf { it > 0L },
+                label = "account $quality",
+                source = AudioSourceType.TIDAL,
+            )
+        }.onFailure {
+            Timber.tag("TidalAudioProvider").w(it, "account manifest resolve failed")
+        }.getOrNull()
 
     private fun parseManifest(
         manifestB64: String,
@@ -1426,7 +1482,7 @@ object TidalAudioProvider {
     }
 
     private fun downloadDashFlacToTempFile(
-        track: MatchedTrack,
+        trackId: String,
         quality: String,
         manifest: ParsedManifest,
         cacheDir: File,
@@ -1439,7 +1495,7 @@ object TidalAudioProvider {
         val tidalDir = File(cacheDir, "tidal-temp").apply { mkdirs() }
         val outputFile = File(
             tidalDir,
-            "${track.trackId}-${quality.lowercase(Locale.US)}-${System.currentTimeMillis()}.flac",
+            "$trackId-${quality.lowercase(Locale.US)}-${System.currentTimeMillis()}.flac",
         )
 
         try {
@@ -1595,7 +1651,7 @@ object TidalAudioProvider {
     }
 
     private fun downloadManifestToTempFile(
-        track: MatchedTrack,
+        trackId: String,
         quality: String,
         manifest: ParsedManifest,
         cacheDir: File,
@@ -1603,7 +1659,7 @@ object TidalAudioProvider {
         val tidalDir = File(cacheDir, "tidal-temp").apply { mkdirs() }
         val outputFile = File(
             tidalDir,
-            "${track.trackId}-${quality.lowercase(Locale.US)}-${System.currentTimeMillis()}${manifest.outputExtension}",
+            "$trackId-${quality.lowercase(Locale.US)}-${System.currentTimeMillis()}${manifest.outputExtension}",
         )
         val urls = if (manifest.isDash) manifest.segmentUrls else listOf(manifest.url)
         if (urls.any { it.isBlank() }) {

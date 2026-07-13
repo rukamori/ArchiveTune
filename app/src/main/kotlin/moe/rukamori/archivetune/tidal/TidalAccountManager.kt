@@ -11,15 +11,14 @@
 
 package moe.rukamori.archivetune.tidal
 
-import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.audiosource.DirectStream
-import moe.rukamori.archivetune.constants.AudioSourceType
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.io.IOException
 import org.json.JSONObject
 import timber.log.Timber
@@ -280,10 +279,11 @@ object TidalAccountManager {
         artists: List<String>,
         durationMs: Long?,
         audioQuality: String,
+        cacheDir: File,
     ): DirectStream? =
         withContext(Dispatchers.IO) {
             val trackId = searchTrackId(accessToken, title, artists, durationMs) ?: return@withContext null
-            resolvePlaybackInfo(accessToken, trackId, audioQuality)
+            resolvePlaybackInfo(accessToken, trackId, audioQuality, durationMs, cacheDir)
         }
 
     /** Searches the official API for the best-matching track id. */
@@ -351,11 +351,19 @@ object TidalAccountManager {
         }
     }
 
-    /** Fetches playback info for a track and extracts a direct stream URL from the BTS manifest. */
+    /**
+     * Fetches playback info for a track from the official API, then delegates manifest handling to
+     * [TidalAudioProvider.resolveAccountManifest] so both BTS (direct URL) and DASH (segmented
+     * lossless/HiRes) manifests produce a playable stream. Previously this only accepted the BTS
+     * manifest, so lossless/HiRes — which Tidal returns as DASH — always fell through, which is why
+     * the signed-in account path never actually played.
+     */
     private fun resolvePlaybackInfo(
         accessToken: String,
         trackId: String,
         audioQuality: String,
+        durationMs: Long?,
+        cacheDir: File,
     ): DirectStream? {
         val url =
             "$API_BASE/tracks/$trackId/playbackinfopostpaywall" +
@@ -375,28 +383,20 @@ object TidalAccountManager {
                     return@use null
                 }
                 val json = JSONObject(payload)
-                val manifestMime = json.optString("manifestMimeType")
-                val manifestB64 = json.optString("manifest").takeIf { it.isNotBlank() } ?: return@use null
-                // Only the BTS manifest is a simple base64 JSON with direct URLs. DASH/MPD manifests
-                // require a full parser (handled by the public-instance path), so we skip them here.
-                if (!manifestMime.contains("vnd.tidal.bts", ignoreCase = true)) {
-                    Timber.tag("TidalAccount").d("Unsupported account manifest type: %s", manifestMime)
+                // Never serve a preview clip from the account path (we requested FULL, but be safe).
+                if (json.optString("assetPresentation").equals("PREVIEW", ignoreCase = true)) {
+                    Timber.tag("TidalAccount").w("playbackinfo returned PREVIEW; skipping account stream")
                     return@use null
                 }
-                val decoded = String(Base64.decode(manifestB64, Base64.DEFAULT))
-                val manifest = JSONObject(decoded)
-                val streamUrl =
-                    manifest.optJSONArray("urls")?.optString(0)?.takeIf { it.isNotBlank() }
-                        ?: return@use null
-                val mimeType = manifest.optString("mimeType").ifBlank { "audio/flac" }
-                val codecs = manifest.optString("codecs").ifBlank { "flac" }
-                DirectStream(
-                    uri = streamUrl,
-                    mimeType = mimeType,
-                    codecs = codecs,
-                    contentLength = null,
-                    label = "Tidal account $audioQuality",
-                    source = AudioSourceType.TIDAL,
+                val manifestB64 = json.optString("manifest").takeIf { it.isNotBlank() } ?: return@use null
+                val manifestMime = json.optString("manifestMimeType").ifBlank { null }
+                TidalAudioProvider.resolveAccountManifest(
+                    manifestB64 = manifestB64,
+                    declaredMimeType = manifestMime,
+                    trackId = trackId,
+                    quality = audioQuality,
+                    durationMs = durationMs,
+                    cacheDir = cacheDir,
                 )
             }
         }.getOrElse {
