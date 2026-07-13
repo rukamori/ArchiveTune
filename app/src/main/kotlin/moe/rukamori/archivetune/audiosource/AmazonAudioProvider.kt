@@ -20,8 +20,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AudioSourceType
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -37,6 +39,17 @@ object AmazonAudioProvider {
     // Music song entity whose id IS the streaming ASIN. Free + public (rate limited).
     private const val ODESLI_LINKS = "https://api.song.link/v1-alpha.1/links"
 
+    // Cloudflare Turnstile config used by the official monochrome.tf web player. The sitekey is
+    // domain-locked to monochrome.tf, so the challenge must be solved from that origin (see
+    // AmazonTurnstileActivity, which renders the widget via loadDataWithBaseURL on that host).
+    const val TURNSTILE_SITEKEY = "0x4AAAAAADgxqF6QVMm0GLHH"
+    const val TURNSTILE_ORIGIN = "https://monochrome.tf/"
+
+    // Turnstile JWTs mint with a ~1h lifetime; we treat them as valid for a little less to leave a
+    // safety margin for clock skew and in-flight requests.
+    const val TURNSTILE_JWT_TTL_MS = 60L * 60L * 1000L
+    const val TURNSTILE_JWT_SAFETY_MS = 5L * 60L * 1000L
+
     private val client =
         OkHttpClient
             .Builder()
@@ -44,6 +57,47 @@ object AmazonAudioProvider {
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(25, TimeUnit.SECONDS)
             .build()
+
+    /**
+     * Exchanges a solved Cloudflare Turnstile response token for the instance's access JWT, exactly
+     * as the web player does: `POST {instance}/api/auth/turnstile` with `{cf_turnstile_response}`,
+     * returning the `access_token` field. The returned JWT is sent as the `X-Turnstile-JWT` header
+     * on subsequent track/stream requests. Returns null on failure.
+     */
+    suspend fun exchangeTurnstileToken(
+        cfTurnstileResponse: String,
+        instanceBaseUrl: String = DEFAULT_INSTANCE,
+    ): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val url =
+                    instanceBaseUrl.trimEnd('/').toHttpUrl()
+                        .newBuilder()
+                        .addPathSegment("api")
+                        .addPathSegment("auth")
+                        .addPathSegment("turnstile")
+                        .build()
+                val bodyJson = JSONObject().put("cf_turnstile_response", cfTurnstileResponse).toString()
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
+                        .post(bodyJson.toRequestBody("application/json".toMediaType()))
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (!response.isSuccessful || body.isBlank()) {
+                        Timber.tag("AmazonAudio").w("Turnstile exchange failed: HTTP %d", response.code)
+                        return@use null
+                    }
+                    JSONObject(body).optString("access_token").ifBlank { null }
+                }
+            }.getOrElse {
+                Timber.tag("AmazonAudio").w(it, "Turnstile exchange error")
+                null
+            }
+        }
 
     // Small in-memory cache of "title|artist" -> ASIN (or "" for a known miss) to avoid hammering
     // the public iTunes/Odesli endpoints for repeat plays within a session.

@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,9 +45,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import androidx.datastore.preferences.core.edit
 import moe.rukamori.archivetune.constants.AmazonBypassTokenKey
 import moe.rukamori.archivetune.constants.AmazonEnabledKey
 import moe.rukamori.archivetune.constants.AmazonInstanceKey
+import moe.rukamori.archivetune.constants.AmazonTurnstileJwtKey
+import moe.rukamori.archivetune.constants.AmazonTurnstileJwtExpiryKey
 import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.AudioSourceOrderKey
 import moe.rukamori.archivetune.constants.AudioSourceType
@@ -71,6 +77,7 @@ import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -100,6 +107,33 @@ fun StreamingSourcesSettings(navController: NavController) {
     val (amazonInstance, onAmazonInstanceChange) =
         rememberPreference(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE)
     val (amazonBypassToken, onAmazonBypassTokenChange) = rememberPreference(AmazonBypassTokenKey, "")
+    val (amazonJwtExpiry, _) = rememberPreference(AmazonTurnstileJwtExpiryKey, 0L)
+
+    // Status of the last Amazon Turnstile authorization attempt (transient, UI-only).
+    var amazonAuthStatus by remember { mutableStateOf<String?>(null) }
+    val amazonAuthorizeLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            val jwt = data?.getStringExtra(AmazonTurnstileActivity.EXTRA_JWT)
+            val expiry = data?.getLongExtra(AmazonTurnstileActivity.EXTRA_EXPIRY, 0L) ?: 0L
+            if (!jwt.isNullOrBlank() && expiry > 0L) {
+                coroutineScope.launch {
+                    context.dataStore.edit { prefs ->
+                        prefs[AmazonTurnstileJwtKey] = jwt
+                        prefs[AmazonTurnstileJwtExpiryKey] = expiry
+                    }
+                    amazonAuthStatus = "Authorized. Amazon Music playback is enabled."
+                }
+            } else {
+                val err = data?.getStringExtra(AmazonTurnstileActivity.EXTRA_ERROR)
+                amazonAuthStatus =
+                    if (err == "cancelled") {
+                        "Authorization cancelled."
+                    } else {
+                        "Verification failed${if (!err.isNullOrBlank()) " ($err)" else ""}. Try again."
+                    }
+            }
+        }
 
     // Reorderable, non-YouTube sources in priority order (YouTube is the fixed final fallback).
     val orderedSources =
@@ -534,6 +568,30 @@ fun StreamingSourcesSettings(navController: NavController) {
                         onValueChange = onAmazonBypassTokenChange,
                         isInputValid = { true },
                         isEnabled = amazonEnabled,
+                    )
+                }
+                item {
+                    val authorized = amazonJwtExpiry > System.currentTimeMillis()
+                    val description =
+                        amazonAuthStatus
+                            ?: if (authorized) {
+                                "Authorized. Re-authorize if Amazon playback stops working (expires ~hourly)."
+                            } else {
+                                "Solve the Cloudflare check once to unlock full-quality Amazon playback."
+                            }
+                    PreferenceEntry(
+                        title = { Text("Authorize Amazon Music") },
+                        description = description,
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        isEnabled = amazonEnabled,
+                        onClick = {
+                            amazonAuthStatus = null
+                            val intent =
+                                Intent(context, AmazonTurnstileActivity::class.java).apply {
+                                    putExtra(AmazonTurnstileActivity.EXTRA_INSTANCE_URL, amazonInstance)
+                                }
+                            amazonAuthorizeLauncher.launch(intent)
+                        },
                     )
                 }
             }

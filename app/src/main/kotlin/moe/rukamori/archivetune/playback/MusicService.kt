@@ -189,6 +189,8 @@ import moe.rukamori.archivetune.constants.DeezerInstanceKey
 import moe.rukamori.archivetune.constants.AmazonEnabledKey
 import moe.rukamori.archivetune.constants.AmazonInstanceKey
 import moe.rukamori.archivetune.constants.AmazonBypassTokenKey
+import moe.rukamori.archivetune.constants.AmazonTurnstileJwtKey
+import moe.rukamori.archivetune.constants.AmazonTurnstileJwtExpiryKey
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
 import moe.rukamori.archivetune.audiosource.DirectStream
 import moe.rukamori.archivetune.audiosource.DeezerAudioProvider
@@ -7103,12 +7105,20 @@ class MusicService :
                     AudioSourceType.AMAZON ->
                         runCatching {
                             runBlocking(Dispatchers.IO) {
+                                // Prefer a valid (unexpired) Turnstile JWT obtained via
+                                // AmazonTurnstileActivity; fall back to an operator bypass token.
+                                val jwt =
+                                    dataStore.get(AmazonTurnstileJwtKey, "").ifBlank { null }
+                                        ?.takeIf {
+                                            dataStore.get(AmazonTurnstileJwtExpiryKey, 0L) > System.currentTimeMillis()
+                                        }
                                 AmazonAudioProvider.resolveByMetadata(
                                     title = query.title,
                                     artists = query.artists,
                                     durationMs = query.durationMs,
                                     instanceBaseUrl = dataStore.get(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE),
                                     bypassToken = dataStore.get(AmazonBypassTokenKey, "").ifBlank { null },
+                                    turnstileJwt = jwt,
                                 )
                             }
                         }.getOrNull()

@@ -810,6 +810,12 @@ val AmazonEnabledKey = booleanPreferencesKey("amazonEnabled")
 val AmazonInstanceKey = stringPreferencesKey("amazonInstance")
 val AmazonBypassTokenKey = stringPreferencesKey("amazonBypassToken")
 
+// Cloudflare Turnstile JWT obtained by solving the invisible challenge in a WebView (see
+// AmazonTurnstileActivity). The instance's track/stream endpoints require this as an
+// X-Turnstile-JWT header; it is valid for ~1 hour, tracked by the expiry timestamp (epoch ms).
+val AmazonTurnstileJwtKey = stringPreferencesKey("amazonTurnstileJwt")
+val AmazonTurnstileJwtExpiryKey = androidx.datastore.preferences.core.longPreferencesKey("amazonTurnstileJwtExpiry")
+
 val WebClientPoTokenEnabledKey = booleanPreferencesKey("webClientPoTokenEnabled")
 val PoTokenGvsKey = stringPreferencesKey("poTokenGvs")
 val PoTokenPlayerKey = stringPreferencesKey("poTokenPlayer")
