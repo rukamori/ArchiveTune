@@ -181,6 +181,7 @@ import moe.rukamori.archivetune.constants.AudioSourceOrderKey
 import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
+import moe.rukamori.archivetune.constants.TidalRefreshTokenKey
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.DeezerEnabledKey
 import moe.rukamori.archivetune.constants.DeezerInstanceKey
@@ -7128,17 +7129,55 @@ class MusicService :
     }
 
     /** Resolves a Tidal stream, trying the signed-in account (official API) before public instances. */
+    /**
+     * Returns a currently-valid Tidal access token, transparently refreshing it via the stored
+     * refresh token when it is missing or within 60s of expiry, and persisting the refreshed
+     * token. Returns null when there is no usable token (never logged in, or the refresh token is
+     * expired/revoked), so the caller falls back to public instances.
+     */
+    private fun ensureValidTidalToken(): String? {
+        val token = dataStore.get(TidalAccessTokenKey, "")
+        val expiry = dataStore.get(TidalTokenExpiryKey, 0L)
+        // 60s skew so we never hand out a token that expires mid-request.
+        if (token.isNotBlank() && expiry > System.currentTimeMillis() + 60_000L) return token
+
+        val refresh = dataStore.get(TidalRefreshTokenKey, "")
+        if (refresh.isBlank()) {
+            Timber.tag("MusicService").d("Tidal token expired/absent and no refresh token; account path unavailable")
+            return token.ifBlank { null }
+        }
+        Timber.tag("MusicService").d("Tidal access token expired; refreshing via stored refresh token")
+        val refreshed =
+            runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh) } }
+                .onFailure { Timber.tag("MusicService").w(it, "Tidal token refresh threw") }
+                .getOrNull()
+        if (refreshed == null) {
+            Timber.tag("MusicService").w("Tidal token refresh failed; falling back to public instances")
+            return null
+        }
+        runBlocking {
+            dataStore.edit { prefs ->
+                prefs[TidalAccessTokenKey] = refreshed.accessToken
+                prefs[TidalTokenExpiryKey] = refreshed.expiresAtMillis
+                refreshed.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
+            }
+        }
+        Timber.tag("MusicService").i(
+            "Tidal token refreshed; valid for ~%ds",
+            (refreshed.expiresAtMillis - System.currentTimeMillis()) / 1000,
+        )
+        return refreshed.accessToken
+    }
+
     private fun resolveTidalStream(query: SourceQuery): DirectStream? {
         val quality = parseTidalAudioQuality()
         Timber.tag("MusicService").d("Tidal resolve start | quality=%s accountFirst=%s", quality.name, dataStore.get(TidalAccountFirstKey, true))
 
         // Account-first: use the user's own Tidal token via the official API when available.
         if (dataStore.get(TidalAccountFirstKey, true)) {
-            val token = dataStore.get(TidalAccessTokenKey, "")
-            val expiry = dataStore.get(TidalTokenExpiryKey, 0L)
-            val hasValidToken = token.isNotBlank() && expiry > System.currentTimeMillis()
-            Timber.tag("MusicService").d("Tidal account token present=%s valid=%s", token.isNotBlank(), hasValidToken)
-            if (hasValidToken) {
+            val token = ensureValidTidalToken()
+            Timber.tag("MusicService").d("Tidal account token available=%s", token != null)
+            if (token != null) {
                 val apiQuality =
                     when (quality) {
                         TidalAudioQuality.HI_RES_LOSSLESS -> "HI_RES_LOSSLESS"

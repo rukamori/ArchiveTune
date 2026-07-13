@@ -193,6 +193,53 @@ object TidalAccountManager {
         }
 
     /**
+     * Exchanges a stored refresh token for a fresh access token via the OAuth `refresh_token`
+     * grant. Tidal typically does not return a new refresh_token here, so callers should keep the
+     * existing one when [TokenResult.refreshToken] is null. Returns null on failure (expired /
+     * revoked / offline), signalling the caller to fall back to the public instances.
+     */
+    suspend fun refreshAccessToken(refreshToken: String): TokenResult? =
+        withContext(Dispatchers.IO) {
+            val body =
+                FormBody
+                    .Builder()
+                    .add("client_id", CLIENT_ID)
+                    .add("client_secret", CLIENT_SECRET)
+                    .add("refresh_token", refreshToken)
+                    .add("grant_type", "refresh_token")
+                    .add("scope", SCOPE)
+                    .build()
+            val request =
+                Request
+                    .Builder()
+                    .url(TOKEN_ENDPOINT)
+                    .post(body)
+                    .build()
+            runCatching {
+                client.newCall(request).execute().use { response ->
+                    val payload = response.body?.string().orEmpty()
+                    if (!response.isSuccessful || payload.isBlank()) {
+                        Timber.tag("TidalAccount").w("token refresh failed: %d", response.code)
+                        return@use null
+                    }
+                    val json = JSONObject(payload)
+                    val user = json.optJSONObject("user")
+                    TokenResult(
+                        accessToken = json.getString("access_token"),
+                        refreshToken = json.optString("refresh_token").ifBlank { null },
+                        expiresAtMillis =
+                            System.currentTimeMillis() + (json.optLong("expires_in", 3600L) * 1000L),
+                        userId = user?.optLong("userId")?.takeIf { it > 0 },
+                        username = user?.optString("username")?.ifBlank { null },
+                    )
+                }
+            }.getOrElse {
+                Timber.tag("TidalAccount").w(it, "token refresh error")
+                null
+            }
+        }
+
+    /**
      * Convenience: run the full device flow, polling until success/failure or [onCode]-provided
      * authorization expires. [onCode] is invoked once with the authorization so the UI can show
      * the code and link. Returns the token or null on failure.
