@@ -6980,9 +6980,9 @@ class MusicService :
     private fun sourceResolutionChain(): List<AudioSourceType> {
         val enabledDefaults =
             mapOf(
-                AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, false),
-                AudioSourceType.DEEZER to dataStore.get(DeezerEnabledKey, false),
-                AudioSourceType.AMAZON to dataStore.get(AmazonEnabledKey, false),
+                AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, true),
+                AudioSourceType.DEEZER to dataStore.get(DeezerEnabledKey, true),
+                AudioSourceType.AMAZON to dataStore.get(AmazonEnabledKey, true),
                 AudioSourceType.YOUTUBE to true,
             )
         val search =
