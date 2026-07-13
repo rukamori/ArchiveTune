@@ -4,7 +4,7 @@
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  *
- * Streaming source settings (Tidal / Deezer / Amazon) surfaced under Player & Audio.
+ * Streaming source settings (Tidal) surfaced under Player & Audio.
  * Account login/logout for Tidal lives separately in the Integration section.
  */
 
@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,17 +42,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import androidx.datastore.preferences.core.edit
-import moe.rukamori.archivetune.constants.AmazonBypassTokenKey
-import moe.rukamori.archivetune.constants.AmazonEnabledKey
-import moe.rukamori.archivetune.constants.AmazonInstanceKey
-import moe.rukamori.archivetune.constants.AmazonTurnstileJwtKey
-import moe.rukamori.archivetune.constants.AmazonTurnstileJwtExpiryKey
 import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.AudioSourceOrderKey
 import moe.rukamori.archivetune.constants.AudioSourceType
-import moe.rukamori.archivetune.constants.DeezerEnabledKey
-import moe.rukamori.archivetune.constants.DeezerInstanceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.TidalAnimatedCoversEnabledKey
 import moe.rukamori.archivetune.constants.TidalArtworkFallbackEnabledKey
@@ -63,12 +52,9 @@ import moe.rukamori.archivetune.constants.TidalAudioQuality
 import moe.rukamori.archivetune.constants.TidalAudioQualityKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
 import moe.rukamori.archivetune.constants.TidalInstancesKey
-import moe.rukamori.archivetune.audiosource.AmazonAudioProvider
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
-import moe.rukamori.archivetune.audiosource.DeezerAudioProvider
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
-import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -77,7 +63,6 @@ import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -100,40 +85,6 @@ fun StreamingSourcesSettings(navController: NavController) {
         rememberEnumPreference(AudioSearchSourceKey, AudioSourceType.TIDAL)
     val (sourceOrderRaw, onSourceOrderChange) = rememberPreference(AudioSourceOrderKey, "")
     val (tidalAccountFirst, onTidalAccountFirstChange) = rememberPreference(TidalAccountFirstKey, true)
-    val (deezerEnabled, onDeezerEnabledChange) = rememberPreference(DeezerEnabledKey, true)
-    val (deezerInstance, onDeezerInstanceChange) =
-        rememberPreference(DeezerInstanceKey, DeezerAudioProvider.DEFAULT_INSTANCE)
-    val (amazonEnabled, onAmazonEnabledChange) = rememberPreference(AmazonEnabledKey, false)
-    val (amazonInstance, onAmazonInstanceChange) =
-        rememberPreference(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE)
-    val (amazonBypassToken, onAmazonBypassTokenChange) = rememberPreference(AmazonBypassTokenKey, "")
-    val (amazonJwtExpiry, _) = rememberPreference(AmazonTurnstileJwtExpiryKey, 0L)
-
-    // Status of the last Amazon Turnstile authorization attempt (transient, UI-only).
-    var amazonAuthStatus by remember { mutableStateOf<String?>(null) }
-    val amazonAuthorizeLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            val jwt = data?.getStringExtra(AmazonTurnstileActivity.EXTRA_JWT)
-            val expiry = data?.getLongExtra(AmazonTurnstileActivity.EXTRA_EXPIRY, 0L) ?: 0L
-            if (!jwt.isNullOrBlank() && expiry > 0L) {
-                coroutineScope.launch {
-                    context.dataStore.edit { prefs ->
-                        prefs[AmazonTurnstileJwtKey] = jwt
-                        prefs[AmazonTurnstileJwtExpiryKey] = expiry
-                    }
-                    amazonAuthStatus = "Authorized. Amazon Music playback is enabled."
-                }
-            } else {
-                val err = data?.getStringExtra(AmazonTurnstileActivity.EXTRA_ERROR)
-                amazonAuthStatus =
-                    if (err == "cancelled") {
-                        "Authorization cancelled."
-                    } else {
-                        "Verification failed${if (!err.isNullOrBlank()) " ($err)" else ""}. Try again."
-                    }
-            }
-        }
 
     // Reorderable, non-YouTube sources in priority order (YouTube is the fixed final fallback).
     val orderedSources =
@@ -156,8 +107,6 @@ fun StreamingSourcesSettings(navController: NavController) {
     fun sourceLabel(source: AudioSourceType): String =
         when (source) {
             AudioSourceType.TIDAL -> context.getString(R.string.source_tidal)
-            AudioSourceType.DEEZER -> context.getString(R.string.source_deezer)
-            AudioSourceType.AMAZON -> context.getString(R.string.source_amazon)
             AudioSourceType.YOUTUBE -> context.getString(R.string.source_youtube)
         }
 
@@ -302,8 +251,6 @@ fun StreamingSourcesSettings(navController: NavController) {
                         val enabled =
                             when (source) {
                                 AudioSourceType.TIDAL -> tidalEnabled
-                                AudioSourceType.DEEZER -> deezerEnabled
-                                AudioSourceType.AMAZON -> amazonEnabled
                                 AudioSourceType.YOUTUBE -> true
                             }
                         PreferenceEntry(
@@ -513,85 +460,6 @@ fun StreamingSourcesSettings(navController: NavController) {
                         checked = animatedCovers,
                         onCheckedChange = onAnimatedCoversChange,
                         isEnabled = tidalEnabled,
-                    )
-                }
-            }
-
-            PreferenceGroup(title = stringResource(R.string.source_deezer)) {
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.deezer_enable)) },
-                        description = stringResource(R.string.deezer_enable_description),
-                        icon = { Icon(painterResource(R.drawable.play), null) },
-                        checked = deezerEnabled,
-                        onCheckedChange = onDeezerEnabledChange,
-                    )
-                }
-                item {
-                    EditTextPreference(
-                        title = { Text(stringResource(R.string.deezer_instance)) },
-                        icon = { Icon(painterResource(R.drawable.link), null) },
-                        value = deezerInstance,
-                        onValueChange = onDeezerInstanceChange,
-                        isEnabled = deezerEnabled,
-                    )
-                }
-            }
-
-            PreferenceGroup(title = stringResource(R.string.source_amazon)) {
-                item {
-                    InfoLabel(text = stringResource(R.string.amazon_experimental_note))
-                }
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.amazon_enable)) },
-                        description = stringResource(R.string.amazon_enable_description),
-                        icon = { Icon(painterResource(R.drawable.play), null) },
-                        checked = amazonEnabled,
-                        onCheckedChange = onAmazonEnabledChange,
-                    )
-                }
-                item {
-                    EditTextPreference(
-                        title = { Text(stringResource(R.string.amazon_instance)) },
-                        icon = { Icon(painterResource(R.drawable.link), null) },
-                        value = amazonInstance,
-                        onValueChange = onAmazonInstanceChange,
-                        isEnabled = amazonEnabled,
-                    )
-                }
-                item {
-                    EditTextPreference(
-                        title = { Text(stringResource(R.string.amazon_bypass_token)) },
-                        icon = { Icon(painterResource(R.drawable.token), null) },
-                        value = amazonBypassToken,
-                        onValueChange = onAmazonBypassTokenChange,
-                        isInputValid = { true },
-                        isEnabled = amazonEnabled,
-                    )
-                }
-                item {
-                    val authorized = amazonJwtExpiry > System.currentTimeMillis()
-                    val description =
-                        amazonAuthStatus
-                            ?: if (authorized) {
-                                "Authorized. Re-authorize if Amazon playback stops working (expires ~hourly)."
-                            } else {
-                                "Solve the Cloudflare check once to unlock full-quality Amazon playback."
-                            }
-                    PreferenceEntry(
-                        title = { Text("Authorize Amazon Music") },
-                        description = description,
-                        icon = { Icon(painterResource(R.drawable.token), null) },
-                        isEnabled = amazonEnabled,
-                        onClick = {
-                            amazonAuthStatus = null
-                            val intent =
-                                Intent(context, AmazonTurnstileActivity::class.java).apply {
-                                    putExtra(AmazonTurnstileActivity.EXTRA_INSTANCE_URL, amazonInstance)
-                                }
-                            amazonAuthorizeLauncher.launch(intent)
-                        },
                     )
                 }
             }

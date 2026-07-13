@@ -9,15 +9,15 @@ package moe.rukamori.archivetune.audiosource
 import moe.rukamori.archivetune.constants.AudioSourceType
 
 /**
- * A resolved direct-playable stream from any audio source. All providers (Tidal, Deezer, Amazon)
- * normalize their result into this shape so the playback layer can treat them uniformly.
+ * A resolved direct-playable stream from any audio source. All providers normalize their result
+ * into this shape so the playback layer can treat them uniformly.
  */
 data class DirectStream(
     val uri: String,
     val mimeType: String,
     val codecs: String,
     val contentLength: Long?,
-    /** Human-readable label for logging/UI, e.g. "Deezer FLAC" or "Tidal (account) HI_RES". */
+    /** Human-readable label for logging/UI, e.g. "Tidal (account) HI_RES". */
     val label: String,
     val source: AudioSourceType,
 )
@@ -31,8 +31,6 @@ object AudioSourceConfig {
     val DEFAULT_ORDER: List<AudioSourceType> =
         listOf(
             AudioSourceType.TIDAL,
-            AudioSourceType.DEEZER,
-            AudioSourceType.AMAZON,
             AudioSourceType.YOUTUBE,
         )
 

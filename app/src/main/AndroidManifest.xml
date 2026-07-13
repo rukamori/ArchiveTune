@@ -370,11 +370,6 @@
             android:theme="@style/Theme.ArchiveTune" />
 
         <activity
-            android:name=".ui.screens.settings.AmazonTurnstileActivity"
-            android:exported="false"
-            android:theme="@style/Theme.ArchiveTune" />
-
-        <activity
             android:name=".discord.DiscordOAuthCallbackActivity"
             android:exported="true"
             android:noHistory="true"

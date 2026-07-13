@@ -181,7 +181,8 @@ fun ShowMediaInfo(videoId: String) {
 
     val technicalDetails =
         buildList {
-            currentFormat?.itag?.toString()?.let { add(MediaInfoDetail(label = "Itag", value = it)) }
+            // itag = 0 is a sentinel for non-YouTube streams (e.g. Tidal); only show real itags.
+            currentFormat?.itag?.takeIf { it > 0 }?.toString()?.let { add(MediaInfoDetail(label = "Itag", value = it)) }
             currentFormat
                 ?.mimeType
                 ?.takeIf { it.isNotBlank() }

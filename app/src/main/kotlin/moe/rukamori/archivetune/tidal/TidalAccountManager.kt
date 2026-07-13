@@ -3,24 +3,22 @@
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  *
- * Tidal account login via the OAuth 2.0 Device Authorization Grant, plus subscription
- * (HiFi/Premium) detection. Signing in is optional: playback itself is served by the public
- * HiFi instances configured in [TidalAudioProvider]. Logging in only lets the app tell the user
- * whether their own Tidal account is a paid tier, and warn when it is not.
+ * Tidal account login via the OAuth 2.0 Authorization Code + PKCE flow (with a Bearer-capture
+ * fallback), plus subscription (HiFi/Premium) detection and account-based stream resolution.
+ * Signing in unlocks the account playback path; the legacy device-code grant has been removed in
+ * favour of the in-app WebView login (see [buildPkceChallenge]/[exchangePkceCode]).
  */
 
 package moe.rukamori.archivetune.tidal
 
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.audiosource.DirectStream
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-import java.io.IOException
 import org.json.JSONObject
 import timber.log.Timber
 import java.net.URLEncoder
@@ -47,12 +45,10 @@ object TidalAccountManager {
     const val FLOW_PKCE = "pkce"
     const val FLOW_WEBCAPTURE = "webcapture"
 
-    private const val DEVICE_AUTH_ENDPOINT = "https://auth.tidal.com/v1/oauth2/device_authorization"
     private const val TOKEN_ENDPOINT = "https://auth.tidal.com/v1/oauth2/token"
     private const val API_BASE = "https://api.tidal.com/v1"
     private const val SCOPE = "r_usr+w_usr+w_sub"
     private const val COUNTRY_CODE = "US"
-    private const val DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
     private val client =
         OkHttpClient
@@ -62,16 +58,6 @@ object TidalAccountManager {
             .readTimeout(15, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
             .build()
-
-    /** Details returned when a device login is initiated; shown to the user to authorize. */
-    data class DeviceAuthorization(
-        val deviceCode: String,
-        val userCode: String,
-        val verificationUri: String,
-        val verificationUriComplete: String,
-        val expiresInSeconds: Int,
-        val intervalSeconds: Int,
-    )
 
     /** Result of a successful token exchange. [expiresAtMillis] is an absolute epoch time. */
     data class TokenResult(
@@ -89,125 +75,6 @@ object TidalAccountManager {
         PREMIUM,
         FREE,
     }
-
-    sealed interface PollResult {
-        data class Success(val token: TokenResult) : PollResult
-
-        /** Authorization still pending; keep polling. */
-        data object Pending : PollResult
-
-        /** Slow down polling (server returned slow_down). */
-        data object SlowDown : PollResult
-
-        /** Transient connectivity failure (e.g. offline / DNS); retryable with backoff. */
-        data object NetworkError : PollResult
-
-        /** Terminal failure (expired, denied, or network). */
-        data class Failure(val reason: String) : PollResult
-    }
-
-    /**
-     * Step 1: request a device + user code. Returns null on failure (e.g. no network).
-     * Runs on IO.
-     */
-    suspend fun requestDeviceAuthorization(): DeviceAuthorization? =
-        withContext(Dispatchers.IO) {
-            val body =
-                FormBody
-                    .Builder()
-                    .add("client_id", CLIENT_ID)
-                    .add("scope", SCOPE)
-                    .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(DEVICE_AUTH_ENDPOINT)
-                    .post(body)
-                    .build()
-            runCatching {
-                client.newCall(request).execute().use { response ->
-                    val payload = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) {
-                        Timber.tag("TidalAccount").w("device_authorization failed: %d %s", response.code, payload)
-                        return@use null
-                    }
-                    val json = JSONObject(payload)
-                    DeviceAuthorization(
-                        deviceCode = json.getString("deviceCode"),
-                        userCode = json.getString("userCode"),
-                        verificationUri = json.optString("verificationUri", "link.tidal.com"),
-                        verificationUriComplete =
-                            json.optString(
-                                "verificationUriComplete",
-                                "https://${json.optString("verificationUri", "link.tidal.com")}/${json.optString("userCode")}",
-                            ),
-                        expiresInSeconds = json.optInt("expiresIn", 300),
-                        intervalSeconds = json.optInt("interval", 2),
-                    )
-                }
-            }.getOrElse {
-                Timber.tag("TidalAccount").w(it, "device_authorization error")
-                null
-            }
-        }
-
-    /** Step 2 (single attempt): exchange the device code for tokens. Runs on IO. */
-    suspend fun pollForToken(deviceCode: String): PollResult =
-        withContext(Dispatchers.IO) {
-            val body =
-                FormBody
-                    .Builder()
-                    .add("client_id", CLIENT_ID)
-                    .add("client_secret", CLIENT_SECRET)
-                    .add("device_code", deviceCode)
-                    .add("grant_type", DEVICE_GRANT)
-                    .add("scope", SCOPE)
-                    .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(TOKEN_ENDPOINT)
-                    .post(body)
-                    .build()
-            runCatching {
-                client.newCall(request).execute().use { response ->
-                    val payload = response.body?.string().orEmpty()
-                    val json = runCatching { JSONObject(payload) }.getOrNull()
-                    if (response.isSuccessful && json != null) {
-                        val user = json.optJSONObject("user")
-                        return@use PollResult.Success(
-                            TokenResult(
-                                accessToken = json.getString("access_token"),
-                                refreshToken = json.optString("refresh_token").ifBlank { null },
-                                expiresAtMillis =
-                                    System.currentTimeMillis() +
-                                        (json.optLong("expires_in", 3600L) * 1000L),
-                                userId = user?.optLong("userId")?.takeIf { it > 0 },
-                                username = user?.optString("username")?.ifBlank { null },
-                                countryCode = user?.optString("countryCode")?.ifBlank { null },
-                            ),
-                        )
-                    }
-                    when (json?.optString("error")) {
-                        "authorization_pending" -> PollResult.Pending
-                        "slow_down" -> PollResult.SlowDown
-                        "expired_token" -> PollResult.Failure("expired")
-                        "access_denied" -> PollResult.Failure("denied")
-                        else -> PollResult.Failure(json?.optString("error").orEmpty().ifBlank { "http_${response.code}" })
-                    }
-                }
-            }.getOrElse {
-                if (it is IOException) {
-                    // Offline / DNS / socket errors are transient and expected while polling; log a
-                    // concise one-liner (no stack trace) to avoid flooding logcat, then back off.
-                    Timber.tag("TidalAccount").w("token poll network error: %s", it.message ?: it.javaClass.simpleName)
-                    PollResult.NetworkError
-                } else {
-                    Timber.tag("TidalAccount").w(it, "token poll error")
-                    PollResult.Pending
-                }
-            }
-        }
 
     /**
      * Exchanges a stored refresh token for a fresh access token via the OAuth `refresh_token`
@@ -270,36 +137,6 @@ object TidalAccountManager {
                 null
             }
         }
-
-    /**
-     * Convenience: run the full device flow, polling until success/failure or [onCode]-provided
-     * authorization expires. [onCode] is invoked once with the authorization so the UI can show
-     * the code and link. Returns the token or null on failure.
-     */
-    suspend fun login(onCode: suspend (DeviceAuthorization) -> Unit): TokenResult? {
-        val auth = requestDeviceAuthorization() ?: return null
-        onCode(auth)
-        val baseIntervalMs = auth.intervalSeconds.coerceAtLeast(1) * 1000L
-        var intervalMs = baseIntervalMs
-        var networkBackoffMs = 0L
-        val deadline = System.currentTimeMillis() + auth.expiresInSeconds * 1000L
-        while (System.currentTimeMillis() < deadline) {
-            delay(intervalMs + networkBackoffMs)
-            when (val result = pollForToken(auth.deviceCode)) {
-                is PollResult.Success -> return result.token
-                is PollResult.Pending -> networkBackoffMs = 0L // reachable again, reset backoff
-                is PollResult.SlowDown -> intervalMs += 2000L
-                is PollResult.NetworkError ->
-                    // Exponential backoff (capped at 30s) so we don't spam while offline.
-                    networkBackoffMs = (if (networkBackoffMs == 0L) 2000L else networkBackoffMs * 2).coerceAtMost(30_000L)
-                is PollResult.Failure -> {
-                    Timber.tag("TidalAccount").w("login failed: %s", result.reason)
-                    return null
-                }
-            }
-        }
-        return null
-    }
 
     // ---------------------------------------------------------------------------------------------
     // PKCE web login (primary WebView flow) + Bearer capture (fallback).

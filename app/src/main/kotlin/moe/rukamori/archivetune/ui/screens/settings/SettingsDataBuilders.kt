@@ -40,6 +40,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.account),
                             subtitle = stringResource(R.string.settings_account_subtitle),
                             accentColor = MaterialTheme.colorScheme.primary,
+                            keywords = listOf("login", "sign in", "profile", "user", "youtube", "google"),
                             onClick = { navController.navigate("settings/account") },
                         ),
                         SettingsItem(
@@ -48,6 +49,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.settings_stats_title),
                             subtitle = stringResource(R.string.settings_stats_subtitle),
                             accentColor = MaterialTheme.colorScheme.primary,
+                            keywords = listOf("statistics", "listening", "history", "wrapped"),
                             onClick = { navController.navigate("stats") },
                         ),
                         SettingsItem(
@@ -56,6 +58,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.appearance),
                             subtitle = stringResource(R.string.settings_appearance_subtitle),
                             accentColor = MaterialTheme.colorScheme.secondary,
+                            keywords = listOf("theme", "dark mode", "color", "font", "language", "display"),
                             onClick = { navController.navigate("settings/appearance") },
                         ),
                         SettingsItem(
@@ -64,6 +67,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.settings_playback_title),
                             subtitle = stringResource(R.string.settings_playback_subtitle),
                             accentColor = MaterialTheme.colorScheme.tertiary,
+                            keywords = listOf("audio", "quality", "equalizer", "crossfade", "normalization", "sound"),
                             onClick = { navController.navigate("settings/player") },
                         ),
                         SettingsItem(
@@ -72,6 +76,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.settings_behavior_title),
                             subtitle = stringResource(R.string.settings_behavior_subtitle),
                             accentColor = MaterialTheme.colorScheme.primary,
+                            keywords = listOf("gestures", "swipe", "privacy", "history"),
                             onClick = { navController.navigate("settings/privacy") },
                         ),
                         SettingsItem(
@@ -80,6 +85,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.lyrics),
                             subtitle = stringResource(R.string.settings_lyrics_subtitle),
                             accentColor = MaterialTheme.colorScheme.secondary,
+                            keywords = listOf("synced", "karaoke", "lrclib", "kugou", "lyricsplus", "paxsenix"),
                             onClick = { navController.navigate("settings/lyrics") },
                         ),
                         SettingsItem(
@@ -88,6 +94,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.integration),
                             subtitle = stringResource(R.string.settings_integration_subtitle),
                             accentColor = MaterialTheme.colorScheme.secondary,
+                            keywords = listOf("discord", "last.fm", "lastfm", "scrobble", "rich presence"),
                             onClick = { navController.navigate("settings/integration") },
                         ),
                         SettingsItem(
@@ -96,6 +103,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.ai_integration),
                             subtitle = stringResource(R.string.ai_integration_desc),
                             accentColor = MaterialTheme.colorScheme.secondary,
+                            keywords = listOf("gemini", "llm", "chatgpt", "openai", "recommendations"),
                             onClick = { navController.navigate("settings/ai_integration") },
                         ),
                         SettingsItem(
@@ -104,6 +112,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.backup_restore),
                             subtitle = stringResource(R.string.settings_backup_restore_subtitle),
                             accentColor = MaterialTheme.colorScheme.primary,
+                            keywords = listOf("export", "import", "backup", "restore", "database"),
                             onClick = { navController.navigate("settings/backup_restore") },
                         ),
                     ),
@@ -122,6 +131,7 @@ fun buildSettingsGroups(
                                 title = stringResource(R.string.content),
                                 subtitle = stringResource(R.string.settings_content_subtitle),
                                 accentColor = MaterialTheme.colorScheme.primary,
+                                keywords = listOf("region", "language", "restrictions", "quick picks"),
                                 onClick = { navController.navigate("settings/content") },
                             ),
                         )
@@ -132,6 +142,7 @@ fun buildSettingsGroups(
                                 title = stringResource(R.string.internet),
                                 subtitle = stringResource(R.string.settings_internet_subtitle),
                                 accentColor = MaterialTheme.colorScheme.tertiary,
+                                keywords = listOf("proxy", "network", "connection", "data saver"),
                                 onClick = { navController.navigate("settings/internet") },
                             ),
                         )
@@ -142,6 +153,7 @@ fun buildSettingsGroups(
                                 title = stringResource(R.string.po_token_generation),
                                 subtitle = stringResource(R.string.settings_po_token_subtitle),
                                 accentColor = MaterialTheme.colorScheme.secondary,
+                                keywords = listOf("potoken", "visitor data", "youtube", "playback fix"),
                                 onClick = { navController.navigate("settings/po_token") },
                             ),
                         )
@@ -152,17 +164,8 @@ fun buildSettingsGroups(
                                 title = stringResource(R.string.storage),
                                 subtitle = stringResource(R.string.settings_storage_subtitle),
                                 accentColor = MaterialTheme.colorScheme.primary,
+                                keywords = listOf("cache", "downloads", "clear", "disk space"),
                                 onClick = { navController.navigate("settings/storage") },
-                            ),
-                        )
-                        add(
-                            SettingsItem(
-                                key = "developer_options",
-                                icon = painterResource(R.drawable.experiment),
-                                title = stringResource(R.string.settings_developer_options_title),
-                                subtitle = stringResource(R.string.settings_developer_options_subtitle),
-                                accentColor = MaterialTheme.colorScheme.tertiary,
-                                onClick = { navController.navigate("settings/misc") },
                             ),
                         )
                         if (isAndroid12OrLater) {
@@ -173,6 +176,7 @@ fun buildSettingsGroups(
                                     title = stringResource(R.string.default_links),
                                     subtitle = stringResource(R.string.open_supported_links),
                                     accentColor = MaterialTheme.colorScheme.secondary,
+                                    keywords = listOf("open by default", "url", "links", "browser"),
                                     onClick = {
                                         try {
                                             val intent =
@@ -229,10 +233,22 @@ fun buildSettingsGroups(
                                             MaterialTheme.colorScheme.primary
                                         },
                                     badge = if (hasUpdate) "v${BuildConfig.VERSION_NAME}" else BuildConfig.VERSION_NAME,
+                                    keywords = listOf("update", "version", "upgrade", "changelog"),
                                     onClick = { navController.navigate("settings/update") },
                                 ),
                             )
                         }
+                        add(
+                            SettingsItem(
+                                key = "developer_options",
+                                icon = painterResource(R.drawable.experiment),
+                                title = stringResource(R.string.settings_developer_options_title),
+                                subtitle = stringResource(R.string.settings_developer_options_subtitle),
+                                accentColor = MaterialTheme.colorScheme.tertiary,
+                                keywords = listOf("debug", "experimental", "logs", "advanced", "misc", "flags"),
+                                onClick = { navController.navigate("settings/misc") },
+                            ),
+                        )
                         add(
                             SettingsItem(
                                 key = "about",
@@ -240,6 +256,7 @@ fun buildSettingsGroups(
                                 title = stringResource(R.string.about),
                                 subtitle = stringResource(R.string.settings_about_subtitle),
                                 accentColor = MaterialTheme.colorScheme.secondary,
+                                keywords = listOf("version", "license", "credits", "github", "source"),
                                 onClick = { navController.navigate("settings/about") },
                             ),
                         )

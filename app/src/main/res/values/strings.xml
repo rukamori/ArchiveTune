@@ -26,6 +26,9 @@
     <string name="last_week">Last week</string>
     <string name="most_played_songs">Most played songs</string>
     <string name="search">Search</string>
+    <string name="search_settings">Search settings</string>
+    <string name="search_settings_empty">No settings match \u201c%1$s\u201d</string>
+    <string name="clear_search">Clear search</string>
     <string name="search_yt_music">Search YouTube Music</string>
     <string name="search_library">Search library</string>
     <string name="filter_library">Library</string>
@@ -522,6 +525,8 @@
     <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
+    <string name="enable_lyrics_plus">Enable LyricsPlus</string>
+    <string name="enable_lyrics_plus_description">Word-by-word synced lyrics with multi-voice support from the community LyricsPlus servers.</string>
     <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
     <string name="player_and_audio">Player and audio</string>
     <string name="audio_quality">Audio quality</string>
@@ -646,24 +651,14 @@
     <string name="audio_source_disabled">Disabled — enable it in its section below</string>
     <string name="audio_source_youtube_fallback">YouTube is always tried last if no other source can resolve a track.</string>
     <string name="source_tidal">Tidal</string>
-    <string name="source_deezer">Deezer</string>
-    <string name="source_amazon">Amazon Music</string>
     <string name="source_youtube">YouTube</string>
     <string name="tidal_account_first">Use my account first</string>
     <string name="tidal_account_first_description">When signed in, fetch streams from your own Tidal account before falling back to public instances.</string>
-    <string name="deezer_enable">Enable Deezer source</string>
-    <string name="deezer_enable_description">Fetch lossless FLAC from a public Deezer downloader instance (matched by ISRC).</string>
-    <string name="deezer_instance">Deezer instance URL</string>
-    <string name="amazon_experimental_note">Experimental: Amazon Music has no public search and is protected by Cloudflare Turnstile, so it may not resolve most tracks without a working bypass token.</string>
-    <string name="amazon_enable">Enable Amazon Music source</string>
-    <string name="amazon_enable_description">Best-effort streaming from an Amazon Music proxy instance.</string>
-    <string name="amazon_instance">Amazon instance URL</string>
-    <string name="amazon_bypass_token">Turnstile bypass token (optional)</string>
 
     <!-- Tidal music source integration -->
     <string name="music_sources">Music Sources</string>
     <string name="streaming_sources">Streaming sources</string>
-    <string name="streaming_sources_description">Configure Tidal, Deezer and Amazon lossless sources and priority</string>
+    <string name="streaming_sources_description">Configure Tidal lossless sources and priority</string>
     <string name="tidal_source_settings_moved">Source quality, instances and priority settings have moved to Player and audio → Streaming sources.</string>
     <string name="tidal_integration">Tidal</string>
     <string name="tidal_integration_description">Log in to your Tidal account</string>
