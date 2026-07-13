@@ -54,6 +54,10 @@ object TidalAudioProvider {
     private const val MAX_STREAM_CANDIDATES = 2
     private const val MAX_DIRECT_STREAM_CANDIDATES = 3
     private const val MIN_MATCH_SCORE = 90
+
+    // How long a failing instance is skipped before it is retried again.
+    private const val INSTANCE_SOFT_COOLDOWN_MS = 60_000L // transient errors (HTTP 5xx, timeouts)
+    private const val INSTANCE_HARD_COOLDOWN_MS = 600_000L // unreachable host / DNS failure
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
@@ -372,6 +376,38 @@ object TidalAudioProvider {
     @Volatile
     private var resolverRateLimitedUntilMs = 0L
 
+    // Runtime health of each instance (keyed by base URL). When an instance fails during
+    // resolution it is put on a cooldown and skipped while healthy instances remain, so dead
+    // mirrors like a vanished domain do not slow every playback attempt.
+    private val instanceCooldownUntilMs = ConcurrentHashMap<String, Long>()
+
+    private fun markInstanceHealthy(baseUrl: String) {
+        instanceCooldownUntilMs.remove(baseUrl)
+    }
+
+    private fun markInstanceFailed(
+        baseUrl: String,
+        hardFailure: Boolean,
+    ) {
+        // Unreachable hosts get a longer cooldown than transient 5xx errors.
+        val cooldownMs = if (hardFailure) INSTANCE_HARD_COOLDOWN_MS else INSTANCE_SOFT_COOLDOWN_MS
+        instanceCooldownUntilMs[baseUrl] = System.currentTimeMillis() + cooldownMs
+    }
+
+    private fun isInstanceCoolingDown(
+        baseUrl: String,
+        now: Long,
+    ): Boolean = (instanceCooldownUntilMs[baseUrl] ?: 0L) > now
+
+    /**
+     * Orders endpoints so healthy ones are tried first and instances on cooldown are tried last
+     * (only reached if every instance is currently cooling down).
+     */
+    private fun orderedEndpoints(): List<TidalDownloadEndpoint> {
+        val now = System.currentTimeMillis()
+        return activeEndpoints.sortedBy { if (isInstanceCoolingDown(it.baseUrl, now)) 1 else 0 }
+    }
+
     fun resolve(
         query: Query,
         cacheDir: File? = null,
@@ -635,7 +671,7 @@ object TidalAudioProvider {
         val now = System.currentTimeMillis()
         searchCache[cacheKey]?.takeIf { it.expiresAtMs > now }?.let { return it.results }
         val parameter = if (exactIsrc) "i" else "s"
-        for (endpoint in activeEndpoints) {
+        for (endpoint in orderedEndpoints()) {
             val url =
                 endpoint.baseUrl
                     .toHttpUrl()
@@ -856,7 +892,8 @@ object TidalAudioProvider {
         val errors = mutableListOf<String>()
         var rateLimitCount = 0
         var longestRetryAfterMs = 0L
-        val endpoints = activeEndpoints
+        // Healthy instances first; instances on cooldown are only reached if all are down.
+        val endpoints = orderedEndpoints()
         for (endpoint in endpoints) {
             val result =
                 runCatching {
@@ -873,11 +910,21 @@ object TidalAudioProvider {
                         audioQuality = audioQuality,
                     )
                 }
-            result.getOrNull()?.let { return it }
+            result.getOrNull()?.let {
+                markInstanceHealthy(endpoint.baseUrl)
+                return it
+            }
             val error = result.exceptionOrNull() ?: continue
             if (error is TidalRateLimitedException) {
                 rateLimitCount += 1
                 longestRetryAfterMs = maxOf(longestRetryAfterMs, error.retryAfterMs)
+            } else {
+                // A vanished domain / refused connection means the instance is effectively gone,
+                // so it gets a long cooldown. Transient errors (5xx, timeouts, missing track)
+                // get a short cooldown so the instance is retried soon.
+                val hardFailure =
+                    error is java.net.UnknownHostException || error is java.net.ConnectException
+                markInstanceFailed(endpoint.baseUrl, hardFailure = hardFailure)
             }
             errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
             Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")

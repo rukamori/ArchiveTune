@@ -497,6 +497,10 @@ class MusicService :
 
     private val normalizeFactor = MutableStateFlow(1f)
     private val audioNormalizationFactorCache = ConcurrentHashMap<String, Float>()
+
+    // Media ids currently served by a resolved Tidal stream. Audio normalization is skipped for
+    // these because the loudness metadata we have describes the YouTube stream, not the Tidal one.
+    private val tidalActiveMediaIds = ConcurrentHashMap.newKeySet<String>()
     private var audioNormalizationEnabled = true
     var playerVolume = MutableStateFlow(1f)
     private val audioFocusVolumeFactor = MutableStateFlow(1f)
@@ -2848,6 +2852,13 @@ class MusicService :
     ): Float {
         val currentMediaId = mediaId?.takeIf { it.isNotBlank() } ?: return 1f
         if (!normalizeAudio) {
+            return 1f
+        }
+
+        // A Tidal-served track has no matching loudness metadata (the stored format describes the
+        // YouTube stream), so applying it would set the wrong volume. Skip normalization for it.
+        if (currentMediaId in tidalActiveMediaIds) {
+            audioNormalizationFactorCache[currentMediaId] = 1f
             return 1f
         }
 
@@ -6943,6 +6954,13 @@ class MusicService :
         if (!dataStore.get(TidalEnabledKey, false)) return null
         if (mediaId.isLocalMediaId()) return null
 
+        // Tidal streams lossless FLAC, which conflicts with the low-data-mode playback setting.
+        // Defer to the lighter YouTube stream while low data mode is active.
+        if (isLowDataModeActive()) {
+            tidalActiveMediaIds.remove(mediaId)
+            return null
+        }
+
         // Apply the user-configured HiFi instance list (empty falls back to built-in defaults).
         TidalAudioProvider.setInstances(parseTidalInstances())
 
@@ -6997,6 +7015,7 @@ class MusicService :
             // Tidal is the intended source but no instance could resolve this track
             // (all instances down, rate-limited, or no confident match). Let the caller
             // fall through to YouTube and surface a one-off notice so the user knows why.
+            tidalActiveMediaIds.remove(mediaId)
             showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "tidal_fallback")
             return null
         }
@@ -7006,8 +7025,9 @@ class MusicService :
         // stream for the same media id (different codec, bitrate and content length).
         val tidalCacheKey = tidalCacheKey(mediaId)
         resolved.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[tidalCacheKey] = it }
-        // The stored YouTube loudness data does not describe the Tidal FLAC stream, so use a
-        // neutral normalization factor rather than mis-applying the YouTube value.
+        // Mark this song as Tidal-served so audio normalization (which is derived from the
+        // YouTube loudness metadata) is skipped for it instead of being mis-applied.
+        tidalActiveMediaIds.add(mediaId)
         audioNormalizationFactorCache[mediaId] = 1f
         return dataSpec
             .buildUpon()

@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
@@ -124,6 +126,36 @@ fun TidalSettings(navController: NavController) {
 
     fun toast(message: String) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    // Pings every configured instance in parallel and records its health label.
+    fun runHealthCheck() {
+        if (checkingInstances) return
+        checkingInstances = true
+        coroutineScope.launch {
+            val instances = effectiveInstances
+            instances
+                .map { instance ->
+                    async(Dispatchers.IO) { instance to TidalAudioProvider.checkInstance(instance) }
+                }.forEach { deferred ->
+                    val (instance, latency) = deferred.await()
+                    healthStatus[instance] =
+                        if (latency != null) {
+                            context.getString(R.string.tidal_instance_healthy, latency.toInt())
+                        } else {
+                            context.getString(R.string.tidal_instance_unreachable)
+                        }
+                }
+            checkingInstances = false
+        }
+    }
+
+    // Auto-check instance health once when the screen opens so dead mirrors are visible
+    // without the user having to trigger a manual check.
+    LaunchedEffect(Unit) {
+        if (tidalEnabled && healthStatus.isEmpty()) {
+            runHealthCheck()
+        }
     }
 
     if (showAddDialog) {
@@ -255,24 +287,7 @@ fun TidalSettings(navController: NavController) {
                         },
                         icon = { Icon(painterResource(R.drawable.sync), null) },
                         isEnabled = !checkingInstances,
-                        onClick = {
-                            checkingInstances = true
-                            coroutineScope.launch {
-                                effectiveInstances.forEach { instance ->
-                                    val latency =
-                                        withContext(Dispatchers.IO) {
-                                            TidalAudioProvider.checkInstance(instance)
-                                        }
-                                    healthStatus[instance] =
-                                        if (latency != null) {
-                                            context.getString(R.string.tidal_instance_healthy, latency.toInt())
-                                        } else {
-                                            context.getString(R.string.tidal_instance_unreachable)
-                                        }
-                                }
-                                checkingInstances = false
-                            }
-                        },
+                        onClick = { runHealthCheck() },
                     )
                 }
 
