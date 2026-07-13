@@ -184,6 +184,10 @@ import moe.rukamori.archivetune.constants.TidalAccessTokenKey
 import moe.rukamori.archivetune.constants.TidalLastProbeTrackKey
 import moe.rukamori.archivetune.constants.TidalRefreshTokenKey
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
+import moe.rukamori.archivetune.constants.TidalAuthFlowKey
+import moe.rukamori.archivetune.constants.TidalCountryCodeKey
+import moe.rukamori.archivetune.constants.TidalUserIdKey
+import moe.rukamori.archivetune.constants.TidalNeedsReloginKey
 import moe.rukamori.archivetune.constants.DeezerEnabledKey
 import moe.rukamori.archivetune.constants.DeezerInstanceKey
 import moe.rukamori.archivetune.constants.AmazonEnabledKey
@@ -7162,12 +7166,16 @@ class MusicService :
         if (token.isNotBlank() && expiry > System.currentTimeMillis() + 60_000L) return token
 
         val refresh = dataStore.get(TidalRefreshTokenKey, "")
+        val flow = dataStore.get(TidalAuthFlowKey, TidalAccountManager.FLOW_OAUTH)
         if (refresh.isBlank()) {
+            // No refresh token: either never had one (web-capture session) or it was cleared. If we
+            // still hold an unexpired-ish access token, keep using it; otherwise flag re-login.
+            if (token.isBlank()) markTidalNeedsRelogin()
             Timber.tag("MusicService").d("Tidal token expired/absent and no refresh token; account path unavailable")
             return token.ifBlank { null }
         }
-        // Serialize with the 401 refresh path (rotating refresh tokens) and double-check under the
-        // lock in case another thread already refreshed while we waited.
+        // Serialize with the 401 refresh path and double-check under the lock in case another thread
+        // already refreshed while we waited.
         return synchronized(tidalTokenRefreshLock) {
             val currentToken = dataStore.get(TidalAccessTokenKey, "")
             val currentExpiry = dataStore.get(TidalTokenExpiryKey, 0L)
@@ -7175,28 +7183,42 @@ class MusicService :
                 Timber.tag("MusicService").d("Tidal token already refreshed by another thread; reusing")
                 return@synchronized currentToken
             }
-            Timber.tag("MusicService").d("Tidal access token expired; refreshing via stored refresh token")
+            Timber.tag("MusicService").d("Tidal access token expired; refreshing via stored refresh token (flow=%s)", flow)
             val refreshed =
-                runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh) } }
+                runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh, flow) } }
                     .onFailure { Timber.tag("MusicService").w(it, "Tidal token refresh threw") }
                     .getOrNull()
             if (refreshed == null) {
-                Timber.tag("MusicService").w("Tidal token refresh failed; falling back to public instances")
+                Timber.tag("MusicService").w("Tidal token refresh failed; flagging re-login and falling back to public instances")
+                markTidalNeedsRelogin()
                 return@synchronized null
             }
-            runBlocking {
-                dataStore.edit { prefs ->
-                    prefs[TidalAccessTokenKey] = refreshed.accessToken
-                    prefs[TidalTokenExpiryKey] = refreshed.expiresAtMillis
-                    refreshed.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
-                }
-            }
+            persistRefreshedTidalToken(refreshed)
             Timber.tag("MusicService").i(
                 "Tidal token refreshed; valid for ~%ds",
                 (refreshed.expiresAtMillis - System.currentTimeMillis()) / 1000,
             )
             refreshed.accessToken
         }
+    }
+
+    /** Persists a refreshed/renewed Tidal token bundle and clears the re-login flag. */
+    private fun persistRefreshedTidalToken(refreshed: TidalAccountManager.TokenResult) {
+        runBlocking {
+            dataStore.edit { prefs ->
+                prefs[TidalAccessTokenKey] = refreshed.accessToken
+                prefs[TidalTokenExpiryKey] = refreshed.expiresAtMillis
+                refreshed.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
+                refreshed.userId?.let { prefs[TidalUserIdKey] = it }
+                refreshed.countryCode?.let { prefs[TidalCountryCodeKey] = it }
+                prefs[TidalNeedsReloginKey] = false
+            }
+        }
+    }
+
+    /** Flags that the stored Tidal session can no longer be refreshed and needs an interactive re-login. */
+    private fun markTidalNeedsRelogin() {
+        runBlocking { dataStore.edit { prefs -> prefs[TidalNeedsReloginKey] = true } }
     }
 
     /**
@@ -7225,13 +7247,10 @@ class MusicService :
     }
 
     /**
-     * Serializes all Tidal token refreshes. Tidal's OAuth uses ROTATING refresh tokens: every
-     * successful refresh invalidates the previous refresh token and returns a new one. Because
-     * tracks resolve on parallel ExoPlayer loader threads, multiple 401s can fire at once; without
-     * this lock they would all refresh concurrently, the first would rotate the token, and the rest
-     * would refresh with the now-dead token and fail — leaving the account permanently 401'd until
-     * a manual re-login. The lock + double-check below guarantees exactly one network refresh per
-     * rotation; later waiters observe the already-refreshed token and reuse it.
+     * Serializes all Tidal token refreshes. Tracks resolve on parallel ExoPlayer loader threads, so
+     * multiple 401s can fire at once; this lock + the double-check below guarantee exactly one
+     * network refresh per expiry, and later waiters observe the already-refreshed token and reuse
+     * it (avoids redundant token calls and races on the persisted session).
      */
     private val tidalTokenRefreshLock = Any()
 
@@ -7239,38 +7258,36 @@ class MusicService :
      * Refreshes the Tidal access token after a 401. [rejectedToken] is the token the API just
      * rejected. Under the lock we re-read the stored token: if it already differs from
      * [rejectedToken], another thread refreshed while we waited, so we return that fresh token
-     * WITHOUT consuming (and rotating) the refresh token again. Returns null only if there is no
-     * refresh token or the network refresh genuinely fails (account needs re-login).
+     * WITHOUT another network call. Returns null when there is no usable refresh token or the
+     * refresh genuinely fails — in which case we flag the account for interactive re-login. The
+     * refresh runs against the client that issued the session (see [TidalAuthFlowKey]).
      */
     private fun refreshTidalToken(rejectedToken: String?): String? =
         synchronized(tidalTokenRefreshLock) {
             val current = dataStore.get(TidalAccessTokenKey, "")
-            // Double-check: another thread already rotated the token while we waited on the lock.
+            // Double-check: another thread already refreshed the token while we waited on the lock.
             if (current.isNotBlank() && current != rejectedToken) {
                 Timber.tag("MusicService").d("Tidal token already refreshed by another thread; reusing")
                 return@synchronized current
             }
             val refresh = dataStore.get(TidalRefreshTokenKey, "")
+            val flow = dataStore.get(TidalAuthFlowKey, TidalAccountManager.FLOW_OAUTH)
             if (refresh.isBlank()) {
                 Timber.tag("MusicService").w("401 from Tidal but no refresh token; account needs re-login")
+                markTidalNeedsRelogin()
                 return@synchronized null
             }
-            Timber.tag("MusicService").d("Force-refreshing Tidal token after 401")
+            Timber.tag("MusicService").d("Force-refreshing Tidal token after 401 (flow=%s)", flow)
             val refreshed =
-                runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh) } }
+                runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh, flow) } }
                     .onFailure { Timber.tag("MusicService").w(it, "Force refresh threw") }
                     .getOrNull()
             if (refreshed == null) {
                 Timber.tag("MusicService").w("Force refresh failed; account needs re-login")
+                markTidalNeedsRelogin()
                 return@synchronized null
             }
-            runBlocking {
-                dataStore.edit { prefs ->
-                    prefs[TidalAccessTokenKey] = refreshed.accessToken
-                    prefs[TidalTokenExpiryKey] = refreshed.expiresAtMillis
-                    refreshed.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
-                }
-            }
+            persistRefreshedTidalToken(refreshed)
             Timber.tag("MusicService").i("Tidal token force-refreshed after 401")
             refreshed.accessToken
         }
@@ -7293,6 +7310,7 @@ class MusicService :
                 // Resolve, transparently refreshing and retrying once if the API rejects the token
                 // (401) — the stored token may have been invalidated server-side even though it has
                 // not expired by our clock.
+                val accountCountry = dataStore.get(TidalCountryCodeKey, "").ifBlank { "US" }
                 fun attempt(accessToken: String): DirectStream? =
                     runBlocking(Dispatchers.IO) {
                         TidalAccountManager.resolveDirectStream(
@@ -7302,6 +7320,7 @@ class MusicService :
                             durationMs = query.durationMs,
                             audioQuality = apiQuality,
                             cacheDir = cacheDir,
+                            countryCode = accountCountry,
                         )
                     }
                 val accountStream =

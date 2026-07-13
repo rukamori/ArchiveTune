@@ -722,6 +722,12 @@
     <string name="tidal_account_premium">HiFi / Premium subscription active</string>
     <string name="tidal_account_free">Free account — lossless playback may not work</string>
     <string name="tidal_account_free_warning">This Tidal account is not HiFi/Premium. Lossless playback through Tidal may fail; the app will fall back to YouTube.</string>
+    <string name="tidal_login_web">Sign in with Tidal (web)</string>
+    <string name="tidal_login_web_description">Opens the Tidal login page in a secure web view and connects your account directly.</string>
+    <string name="tidal_login_webplayer_fallback">Couldn\'t complete the standard sign-in; opening the Tidal web player instead. Just log in and playback will connect automatically.</string>
+    <string name="tidal_login_code">Sign in with a device code</string>
+    <string name="tidal_reconnect">Reconnect Tidal account</string>
+    <string name="tidal_reconnect_description">Your Tidal session expired and couldn\'t be refreshed. Sign in again to keep using your account.</string>
     <string name="discord_integration">Discord Integration</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
     <string name="discord_login_description">Connect your Discord account with OAuth so ArchiveTune can publish Rich Presence.</string>

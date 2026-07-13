@@ -758,6 +758,20 @@ val TidalRefreshTokenKey = stringPreferencesKey("tidalRefreshToken")
 val TidalTokenExpiryKey = longPreferencesKey("tidalTokenExpiry")
 val TidalSubscriptionKey = stringPreferencesKey("tidalSubscription")
 
+// Which auth flow produced the stored session: "oauth" (device code), "pkce" (web login with a
+// durable refresh token), or "webcapture" (live Bearer token grabbed from the web player, no
+// refresh token). The refresh path uses this to pick the right OAuth client_id/secret.
+val TidalAuthFlowKey = stringPreferencesKey("tidalAuthFlow")
+
+// Real account country + user id captured at login, used by the account playback path instead of a
+// hardcoded country. userId is also needed for the subscription-tier lookup.
+val TidalCountryCodeKey = stringPreferencesKey("tidalCountryCode")
+val TidalUserIdKey = longPreferencesKey("tidalUserId")
+
+// Set when a silent token refresh fails so the UI can surface a "reconnect" prompt. Cleared on any
+// successful login/refresh.
+val TidalNeedsReloginKey = booleanPreferencesKey("tidalNeedsRelogin")
+
 enum class TidalSubscriptionStatus {
     UNKNOWN,
     PREMIUM,

@@ -46,10 +46,14 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
 import moe.rukamori.archivetune.constants.TidalAccountNameKey
+import moe.rukamori.archivetune.constants.TidalAuthFlowKey
+import moe.rukamori.archivetune.constants.TidalCountryCodeKey
+import moe.rukamori.archivetune.constants.TidalNeedsReloginKey
 import moe.rukamori.archivetune.constants.TidalRefreshTokenKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionStatus
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
+import moe.rukamori.archivetune.constants.TidalUserIdKey
 import moe.rukamori.archivetune.tidal.TidalAccountManager
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -68,6 +72,7 @@ fun TidalSettings(navController: NavController) {
     val accessToken by rememberPreference(TidalAccessTokenKey, "")
     val accountName by rememberPreference(TidalAccountNameKey, "")
     val subscriptionRaw by rememberPreference(TidalSubscriptionKey, TidalSubscriptionStatus.UNKNOWN.name)
+    val needsRelogin by rememberPreference(TidalNeedsReloginKey, false)
 
     // Account login state.
     var loginUserCode by remember { mutableStateOf<String?>(null) }
@@ -182,6 +187,19 @@ fun TidalSettings(navController: NavController) {
                         }
                     }
 
+                    if (needsRelogin) {
+                        item {
+                            InfoLabel(text = stringResource(R.string.tidal_reconnect_description))
+                        }
+                        item {
+                            PreferenceEntry(
+                                title = { Text(stringResource(R.string.tidal_reconnect)) },
+                                icon = { Icon(painterResource(R.drawable.error), null) },
+                                onClick = { navController.navigate(TIDAL_LOGIN_ROUTE) },
+                            )
+                        }
+                    }
+
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.tidal_disconnect)) },
@@ -193,6 +211,10 @@ fun TidalSettings(navController: NavController) {
                                         prefs.remove(TidalRefreshTokenKey)
                                         prefs.remove(TidalTokenExpiryKey)
                                         prefs.remove(TidalAccountNameKey)
+                                        prefs.remove(TidalAuthFlowKey)
+                                        prefs.remove(TidalCountryCodeKey)
+                                        prefs.remove(TidalUserIdKey)
+                                        prefs.remove(TidalNeedsReloginKey)
                                         prefs[TidalSubscriptionKey] = TidalSubscriptionStatus.UNKNOWN.name
                                     }
                                 }
@@ -201,8 +223,18 @@ fun TidalSettings(navController: NavController) {
                     }
                 } else {
                     item {
+                        InfoLabel(text = stringResource(R.string.tidal_login_web_description))
+                    }
+                    item {
                         PreferenceEntry(
-                            title = { Text(stringResource(R.string.tidal_login)) },
+                            title = { Text(stringResource(R.string.tidal_login_web)) },
+                            icon = { Icon(painterResource(R.drawable.token), null) },
+                            onClick = { navController.navigate(TIDAL_LOGIN_ROUTE) },
+                        )
+                    }
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.tidal_login_code)) },
                             icon = { Icon(painterResource(R.drawable.token), null) },
                             onClick = {
                                 loginInProgress = true
@@ -233,6 +265,10 @@ fun TidalSettings(navController: NavController) {
                                             token.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
                                             prefs[TidalTokenExpiryKey] = token.expiresAtMillis
                                             prefs[TidalAccountNameKey] = token.username ?: "Tidal"
+                                            token.userId?.let { prefs[TidalUserIdKey] = it }
+                                            token.countryCode?.let { prefs[TidalCountryCodeKey] = it }
+                                            prefs[TidalAuthFlowKey] = TidalAccountManager.FLOW_OAUTH
+                                            prefs[TidalNeedsReloginKey] = false
                                             prefs[TidalSubscriptionKey] = status.name
                                         }
                                         withContext(Dispatchers.Main) {

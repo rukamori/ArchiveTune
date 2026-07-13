@@ -11,6 +11,7 @@
 
 package moe.rukamori.archivetune.tidal
 
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -23,6 +24,8 @@ import java.io.IOException
 import org.json.JSONObject
 import timber.log.Timber
 import java.net.URLEncoder
+import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
@@ -31,6 +34,18 @@ object TidalAccountManager {
     // device authorization grant. These are not secret user credentials.
     private const val CLIENT_ID = "zU4XHVVkc2tDPo4t"
     private const val CLIENT_SECRET = "VJKhDFqJPqvsPVNBV6ukXTJmwlvbttP7wlMlrc72se4="
+
+    // PKCE web-login client (used by open-source Tidal tooling for the authorization-code + PKCE
+    // flow). Unlike the device client, this yields a durable refresh token and can unlock HiRes.
+    private const val PKCE_CLIENT_ID = "6BDSRdpK9hqEBTgU"
+    private const val PKCE_CLIENT_SECRET = "xeuPmY7nbpZ9IIbLAcQ93shka1VNheUAqN6IcszjTG8="
+    private const val PKCE_AUTHORIZE_ENDPOINT = "https://login.tidal.com/authorize"
+    const val PKCE_REDIRECT_URI = "https://tidal.com/android/login/auth"
+
+    // Values for [TidalAuthFlowKey], telling the refresh path which client/behaviour applies.
+    const val FLOW_OAUTH = "oauth"
+    const val FLOW_PKCE = "pkce"
+    const val FLOW_WEBCAPTURE = "webcapture"
 
     private const val DEVICE_AUTH_ENDPOINT = "https://auth.tidal.com/v1/oauth2/device_authorization"
     private const val TOKEN_ENDPOINT = "https://auth.tidal.com/v1/oauth2/token"
@@ -65,6 +80,7 @@ object TidalAccountManager {
         val expiresAtMillis: Long,
         val userId: Long?,
         val username: String?,
+        val countryCode: String? = null,
     )
 
     /** Subscription tier resolved from the Tidal API. */
@@ -168,6 +184,7 @@ object TidalAccountManager {
                                         (json.optLong("expires_in", 3600L) * 1000L),
                                 userId = user?.optLong("userId")?.takeIf { it > 0 },
                                 username = user?.optString("username")?.ifBlank { null },
+                                countryCode = user?.optString("countryCode")?.ifBlank { null },
                             ),
                         )
                     }
@@ -197,14 +214,28 @@ object TidalAccountManager {
      * grant. Tidal typically does not return a new refresh_token here, so callers should keep the
      * existing one when [TokenResult.refreshToken] is null. Returns null on failure (expired /
      * revoked / offline), signalling the caller to fall back to the public instances.
+     *
+     * [flow] selects which OAuth client the refresh runs against: a PKCE session must refresh with
+     * the PKCE client, a device session with the device client. A [FLOW_WEBCAPTURE] session has no
+     * refresh token at all, so refresh is impossible and returns null immediately (the caller then
+     * prompts a re-login).
      */
-    suspend fun refreshAccessToken(refreshToken: String): TokenResult? =
+    suspend fun refreshAccessToken(
+        refreshToken: String,
+        flow: String = FLOW_OAUTH,
+    ): TokenResult? =
         withContext(Dispatchers.IO) {
+            if (flow == FLOW_WEBCAPTURE) {
+                Timber.tag("TidalAccount").w("web-capture session has no refresh token; re-login required")
+                return@withContext null
+            }
+            val clientId = if (flow == FLOW_PKCE) PKCE_CLIENT_ID else CLIENT_ID
+            val clientSecret = if (flow == FLOW_PKCE) PKCE_CLIENT_SECRET else CLIENT_SECRET
             val body =
                 FormBody
                     .Builder()
-                    .add("client_id", CLIENT_ID)
-                    .add("client_secret", CLIENT_SECRET)
+                    .add("client_id", clientId)
+                    .add("client_secret", clientSecret)
                     .add("refresh_token", refreshToken)
                     .add("grant_type", "refresh_token")
                     .add("scope", SCOPE)
@@ -231,6 +262,7 @@ object TidalAccountManager {
                             System.currentTimeMillis() + (json.optLong("expires_in", 3600L) * 1000L),
                         userId = user?.optLong("userId")?.takeIf { it > 0 },
                         username = user?.optString("username")?.ifBlank { null },
+                        countryCode = user?.optString("countryCode")?.ifBlank { null },
                     )
                 }
             }.getOrElse {
@@ -268,6 +300,149 @@ object TidalAccountManager {
         }
         return null
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // PKCE web login (primary WebView flow) + Bearer capture (fallback).
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * A generated PKCE challenge. [authUrl] is the URL to load in the login WebView; [verifier] and
+     * [uniqueKey] must be kept and passed to [exchangePkceCode] once the redirect returns a code.
+     */
+    data class PkceChallenge(
+        val verifier: String,
+        val challenge: String,
+        val uniqueKey: String,
+        val authUrl: String,
+    )
+
+    /** URL-safe, unpadded base64 (RFC 7636) of [bytes]. */
+    private fun base64UrlNoPad(bytes: ByteArray): String =
+        Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+
+    /**
+     * Builds a fresh PKCE challenge (S256) and the corresponding Tidal authorize URL. The verifier
+     * is a high-entropy URL-safe random string; the challenge is its SHA-256, base64url-encoded.
+     */
+    fun buildPkceChallenge(): PkceChallenge {
+        val random = SecureRandom()
+        val verifierBytes = ByteArray(64).also { random.nextBytes(it) }
+        val verifier = base64UrlNoPad(verifierBytes)
+        val challenge =
+            base64UrlNoPad(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
+        val uniqueKeyBytes = ByteArray(8).also { random.nextBytes(it) }
+        val uniqueKey = uniqueKeyBytes.joinToString("") { "%02x".format(it) }
+
+        fun enc(v: String) = URLEncoder.encode(v, "UTF-8")
+        val authUrl =
+            buildString {
+                append(PKCE_AUTHORIZE_ENDPOINT)
+                append("?response_type=code")
+                append("&redirect_uri=").append(enc(PKCE_REDIRECT_URI))
+                append("&client_id=").append(PKCE_CLIENT_ID)
+                append("&lang=EN")
+                append("&appMode=android")
+                append("&client_unique_key=").append(uniqueKey)
+                append("&code_challenge=").append(challenge)
+                append("&code_challenge_method=S256")
+                append("&restrict_signup=true")
+            }
+        return PkceChallenge(verifier, challenge, uniqueKey, authUrl)
+    }
+
+    /**
+     * Exchanges a PKCE authorization [code] (extracted from the redirect) for access + refresh
+     * tokens. Returns null on failure. The resulting [TokenResult] carries the durable refresh
+     * token, so the session survives long-term via [refreshAccessToken] with [FLOW_PKCE].
+     */
+    suspend fun exchangePkceCode(
+        code: String,
+        verifier: String,
+        uniqueKey: String,
+    ): TokenResult? =
+        withContext(Dispatchers.IO) {
+            val body =
+                FormBody
+                    .Builder()
+                    .add("code", code)
+                    .add("client_id", PKCE_CLIENT_ID)
+                    .add("client_secret", PKCE_CLIENT_SECRET)
+                    .add("grant_type", "authorization_code")
+                    .add("redirect_uri", PKCE_REDIRECT_URI)
+                    .add("scope", SCOPE)
+                    .add("code_verifier", verifier)
+                    .add("client_unique_key", uniqueKey)
+                    .build()
+            val request =
+                Request
+                    .Builder()
+                    .url(TOKEN_ENDPOINT)
+                    .post(body)
+                    .build()
+            runCatching {
+                client.newCall(request).execute().use { response ->
+                    val payload = response.body?.string().orEmpty()
+                    if (!response.isSuccessful || payload.isBlank()) {
+                        Timber.tag("TidalAccount").w("PKCE code exchange failed: %d %s", response.code, payload.take(200))
+                        return@use null
+                    }
+                    val json = JSONObject(payload)
+                    val user = json.optJSONObject("user")
+                    TokenResult(
+                        accessToken = json.getString("access_token"),
+                        refreshToken = json.optString("refresh_token").ifBlank { null },
+                        expiresAtMillis =
+                            System.currentTimeMillis() + (json.optLong("expires_in", 3600L) * 1000L),
+                        userId = user?.optLong("userId")?.takeIf { it > 0 },
+                        username = user?.optString("username")?.ifBlank { null },
+                        countryCode = user?.optString("countryCode")?.ifBlank { null },
+                    )
+                }
+            }.getOrElse {
+                Timber.tag("TidalAccount").w(it, "PKCE code exchange error")
+                null
+            }
+        }
+
+    /**
+     * Validates a Bearer access token captured from the Tidal web player and resolves the account
+     * identity (userId + countryCode) via the `/sessions` endpoint. Used by the WebView fallback
+     * path when PKCE is unavailable. The returned [TokenResult] has no refresh token (web-player
+     * tokens are short-lived); the session expiry is set conservatively so the app re-validates
+     * before it goes stale. Returns null if the token is invalid.
+     */
+    suspend fun buildSessionFromBearer(accessToken: String): TokenResult? =
+        withContext(Dispatchers.IO) {
+            val request =
+                Request
+                    .Builder()
+                    .url("$API_BASE/sessions")
+                    .header("Authorization", "Bearer $accessToken")
+                    .get()
+                    .build()
+            runCatching {
+                client.newCall(request).execute().use { response ->
+                    val payload = response.body?.string().orEmpty()
+                    if (!response.isSuccessful || payload.isBlank()) {
+                        Timber.tag("TidalAccount").w("bearer session validation failed: %d", response.code)
+                        return@use null
+                    }
+                    val json = JSONObject(payload)
+                    TokenResult(
+                        accessToken = accessToken,
+                        refreshToken = null,
+                        // Web-player tokens are short-lived; assume ~1h and let the app re-validate.
+                        expiresAtMillis = System.currentTimeMillis() + 3600L * 1000L,
+                        userId = json.optLong("userId").takeIf { it > 0 },
+                        username = json.optString("username").ifBlank { null },
+                        countryCode = json.optString("countryCode").ifBlank { null },
+                    )
+                }
+            }.getOrElse {
+                Timber.tag("TidalAccount").w(it, "bearer session validation error")
+                null
+            }
+        }
 
     /**
      * Resolves the subscription tier for the signed-in account. Any paid tier (HIFI, PREMIUM,
@@ -335,9 +510,11 @@ object TidalAccountManager {
         durationMs: Long?,
         audioQuality: String,
         cacheDir: File,
+        countryCode: String = COUNTRY_CODE,
     ): DirectStream? =
         withContext(Dispatchers.IO) {
-            val trackId = searchTrackId(accessToken, title, artists, durationMs) ?: return@withContext null
+            val country = countryCode.ifBlank { COUNTRY_CODE }
+            val trackId = searchTrackId(accessToken, title, artists, durationMs, country) ?: return@withContext null
             resolvePlaybackInfo(accessToken, trackId, audioQuality, durationMs, cacheDir)
         }
 
@@ -347,13 +524,14 @@ object TidalAccountManager {
         title: String,
         artists: List<String>,
         durationMs: Long?,
+        countryCode: String = COUNTRY_CODE,
     ): String? {
         val primaryArtist = artists.firstOrNull().orEmpty()
         val query = URLEncoder.encode("$title $primaryArtist".trim(), "UTF-8")
         val request =
             Request
                 .Builder()
-                .url("$API_BASE/search/tracks?query=$query&limit=15&countryCode=$COUNTRY_CODE")
+                .url("$API_BASE/search/tracks?query=$query&limit=15&countryCode=$countryCode")
                 .header("Authorization", "Bearer $accessToken")
                 .get()
                 .build()

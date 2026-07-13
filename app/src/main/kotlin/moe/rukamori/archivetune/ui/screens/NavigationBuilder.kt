@@ -64,6 +64,8 @@ import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
 import moe.rukamori.archivetune.ui.screens.settings.StreamingSourcesSettings
 import moe.rukamori.archivetune.ui.screens.settings.TidalSettings
+import moe.rukamori.archivetune.ui.screens.settings.TidalLoginScreen
+import moe.rukamori.archivetune.ui.screens.settings.TIDAL_LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.settings.LastFMSettings
 import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
@@ -428,6 +430,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/tidal") {
         TidalSettings(navController)
+    }
+    composable(TIDAL_LOGIN_ROUTE) {
+        TidalLoginScreen(navController)
     }
     composable("settings/ai_integration") {
         AiIntegrationSettings(navController)
