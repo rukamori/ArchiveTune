@@ -57,7 +57,7 @@ object TidalAudioProvider {
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
-    private val DOWNLOAD_API_ENDPOINTS =
+    private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
         listOf(
             TidalDownloadEndpoint("HiFi is Back v2.7", "https://hifi-isback.peridotclient.com"),
             TidalDownloadEndpoint("Maus QQDL v2.6", "https://maus.qqdl.site"),
@@ -66,6 +66,139 @@ object TidalAudioProvider {
             TidalDownloadEndpoint("Hund QQDL v2.6", "https://hund.qqdl.site"),
             TidalDownloadEndpoint("Wolf QQDL v2.6", "https://wolf.qqdl.site"),
         )
+
+    // Community sources that publish public HiFi/QQDL instance lists. Best-effort only: these
+    // rotate and may disappear, so discovery is allowed to fail and callers keep the manual list.
+    private val INSTANCE_DISCOVERY_SOURCES =
+        listOf(
+            "https://raw.githubusercontent.com/hifi-instances/list/main/instances.json",
+            "https://raw.githubusercontent.com/hifi-instances/list/main/instances.txt",
+        )
+
+    /**
+     * User-configured instance list (base URLs), applied via [setInstances]. When null or empty
+     * the built-in [DEFAULT_DOWNLOAD_API_ENDPOINTS] are used so the source keeps working out of
+     * the box.
+     */
+    @Volatile
+    private var customEndpoints: List<TidalDownloadEndpoint>? = null
+
+    private val activeEndpoints: List<TidalDownloadEndpoint>
+        get() = customEndpoints?.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_API_ENDPOINTS
+
+    /** Base URLs of the built-in default instances, for the settings UI "reset" action. */
+    val defaultInstanceUrls: List<String>
+        get() = DEFAULT_DOWNLOAD_API_ENDPOINTS.map { it.baseUrl }
+
+    /** Base URLs currently in effect (custom list if set, otherwise defaults). */
+    val activeInstanceUrls: List<String>
+        get() = activeEndpoints.map { it.baseUrl }
+
+    /**
+     * Replaces the active instance list. Invalid or duplicate URLs are dropped; if nothing valid
+     * remains the provider reverts to the built-in defaults.
+     */
+    fun setInstances(baseUrls: List<String>) {
+        val seen = LinkedHashSet<String>()
+        val parsed =
+            baseUrls.mapNotNull { raw ->
+                val normalized = normalizeInstanceUrl(raw) ?: return@mapNotNull null
+                if (!seen.add(normalized)) return@mapNotNull null
+                TidalDownloadEndpoint(instanceLabel(normalized), normalized)
+            }
+        customEndpoints = parsed.ifEmpty { null }
+    }
+
+    /** Normalizes an instance URL to `scheme://host[:port]` form, or null if it is not valid. */
+    fun normalizeInstanceUrl(raw: String): String? {
+        val trimmed = raw.trim().trimEnd('/')
+        if (trimmed.isEmpty()) return null
+        val withScheme = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "https://$trimmed"
+        val url = withScheme.toHttpUrlOrNull() ?: return null
+        if (url.host.isBlank() || !url.host.contains('.')) return null
+        return withScheme
+    }
+
+    private fun instanceLabel(baseUrl: String): String =
+        baseUrl.toHttpUrlOrNull()?.host ?: baseUrl
+
+    /**
+     * Lightweight reachability probe for a single instance. Returns the round-trip latency in
+     * milliseconds when the instance responds, or null when it is unreachable. Runs a blocking
+     * network call, so callers must invoke it off the main thread.
+     */
+    fun checkInstance(baseUrl: String): Long? {
+        val normalized = normalizeInstanceUrl(baseUrl) ?: return null
+        val request =
+            Request
+                .Builder()
+                .url("$normalized/")
+                .header("User-Agent", DOWNLOAD_USER_AGENT)
+                .get()
+                .build()
+        return runCatching {
+            val start = System.currentTimeMillis()
+            healthClient.newCall(request).execute().use { response ->
+                if (response.code in 200..499) System.currentTimeMillis() - start else null
+            }
+        }.getOrNull()
+    }
+
+    /**
+     * Best-effort auto-discovery of additional public instances from community sources. Returns
+     * the list of newly discovered, valid base URLs (may be empty). Never throws; on failure it
+     * simply returns an empty list so the caller can keep the manual list. Runs blocking network
+     * calls, so invoke it off the main thread.
+     */
+    fun discoverInstances(): List<String> {
+        val discovered = LinkedHashSet<String>()
+        for (source in INSTANCE_DISCOVERY_SOURCES) {
+            runCatching {
+                val request =
+                    Request
+                        .Builder()
+                        .url(source)
+                        .header("User-Agent", DOWNLOAD_USER_AGENT)
+                        .get()
+                        .build()
+                healthClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use
+                    val body = response.body?.string().orEmpty()
+                    parseDiscoveredInstances(body).forEach { url ->
+                        normalizeInstanceUrl(url)?.let(discovered::add)
+                    }
+                }
+            }
+        }
+        return discovered.toList()
+    }
+
+    /** Parses a discovery payload that is either a JSON array or newline-separated URLs. */
+    private fun parseDiscoveredInstances(body: String): List<String> {
+        val trimmed = body.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        // Try JSON array of strings or objects with a "url"/"host" field.
+        runCatching {
+            val arr = JSONArray(trimmed)
+            return buildList {
+                for (i in 0 until arr.length()) {
+                    when (val item = arr.opt(i)) {
+                        is String -> add(item)
+                        is JSONObject -> {
+                            (item.optString("url").takeIf { it.isNotBlank() }
+                                ?: item.optString("host").takeIf { it.isNotBlank() })
+                                ?.let(::add)
+                        }
+                    }
+                }
+            }
+        }
+        // Fall back to newline / whitespace separated URLs.
+        return trimmed
+            .split('\n', '\r', ' ', ',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") }
+    }
 
     data class Query(
         val mediaId: String,
@@ -219,6 +352,16 @@ object TidalAudioProvider {
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(25, TimeUnit.SECONDS)
+            .build()
+
+    // Short-timeout client used for instance health checks and discovery so a dead instance
+    // fails fast instead of blocking on the long streaming timeouts above.
+    private val healthClient =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .callTimeout(6, TimeUnit.SECONDS)
             .build()
 
     private val trackCache = ConcurrentHashMap<String, CachedTrack>()
@@ -492,7 +635,7 @@ object TidalAudioProvider {
         val now = System.currentTimeMillis()
         searchCache[cacheKey]?.takeIf { it.expiresAtMs > now }?.let { return it.results }
         val parameter = if (exactIsrc) "i" else "s"
-        for (endpoint in DOWNLOAD_API_ENDPOINTS) {
+        for (endpoint in activeEndpoints) {
             val url =
                 endpoint.baseUrl
                     .toHttpUrl()
@@ -713,7 +856,8 @@ object TidalAudioProvider {
         val errors = mutableListOf<String>()
         var rateLimitCount = 0
         var longestRetryAfterMs = 0L
-        for (endpoint in DOWNLOAD_API_ENDPOINTS) {
+        val endpoints = activeEndpoints
+        for (endpoint in endpoints) {
             val result =
                 runCatching {
                     requestDirectFlacFromEndpoint(
@@ -738,7 +882,7 @@ object TidalAudioProvider {
             errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
             Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")
         }
-        if (rateLimitCount == DOWNLOAD_API_ENDPOINTS.size && longestRetryAfterMs > 0L) {
+        if (rateLimitCount == endpoints.size && longestRetryAfterMs > 0L) {
             resolverRateLimitedUntilMs = System.currentTimeMillis() + longestRetryAfterMs
             throw TidalRateLimitedException(longestRetryAfterMs)
         }

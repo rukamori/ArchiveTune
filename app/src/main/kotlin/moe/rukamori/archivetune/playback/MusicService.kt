@@ -175,6 +175,7 @@ import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.TidalAudioQuality
 import moe.rukamori.archivetune.constants.TidalAudioQualityKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
+import moe.rukamori.archivetune.constants.TidalInstancesKey
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
@@ -744,6 +745,8 @@ class MusicService :
     private val togetherParticipantNames = ConcurrentHashMap<String, String>()
     private var lastTogetherNoticeAtElapsedMs: Long = 0L
     private var lastTogetherNoticeKey: String? = null
+    private var lastTidalNoticeAtElapsedMs: Long = 0L
+    private var lastTidalNoticeKey: String? = null
 
     private data class TogetherPendingGuestControl(
         val desiredIsPlaying: Boolean? = null,
@@ -6918,6 +6921,13 @@ class MusicService :
         return runCatching { TidalAudioQuality.valueOf(stored) }.getOrDefault(TidalAudioQuality.FLAC)
     }
 
+    private fun parseTidalInstances(): List<String> =
+        dataStore
+            .get(TidalInstancesKey, "")
+            .split('\n')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
     /**
      * Attempts to resolve the current media item as a Tidal stream. Returns a [DataSpec]
      * pointing at a Tidal (FLAC/Hi-Res) stream when the Tidal source is enabled and a match
@@ -6932,6 +6942,9 @@ class MusicService :
     ): DataSpec? {
         if (!dataStore.get(TidalEnabledKey, false)) return null
         if (mediaId.isLocalMediaId()) return null
+
+        // Apply the user-configured HiFi instance list (empty falls back to built-in defaults).
+        TidalAudioProvider.setInstances(parseTidalInstances())
 
         val song =
             runCatching {
@@ -6978,11 +6991,53 @@ class MusicService :
                 )
             }.onFailure { error ->
                 Timber.tag("MusicService").w(error, "TIDAL stream resolution failed for %s", mediaId)
-            }.getOrNull() ?: return null
+            }.getOrNull()
+
+        if (resolved == null) {
+            // Tidal is the intended source but no instance could resolve this track
+            // (all instances down, rate-limited, or no confident match). Let the caller
+            // fall through to YouTube and surface a one-off notice so the user knows why.
+            showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "tidal_fallback")
+            return null
+        }
 
         Timber.tag("MusicService").i("Using TIDAL stream for %s: %s", mediaId, resolved.label)
-        resolved.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
-        return dataSpec.withUri(resolved.mediaUri.toUri())
+        // Cache Tidal bytes under a dedicated key so they never collide with the YouTube
+        // stream for the same media id (different codec, bitrate and content length).
+        val tidalCacheKey = tidalCacheKey(mediaId)
+        resolved.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[tidalCacheKey] = it }
+        // The stored YouTube loudness data does not describe the Tidal FLAC stream, so use a
+        // neutral normalization factor rather than mis-applying the YouTube value.
+        audioNormalizationFactorCache[mediaId] = 1f
+        return dataSpec
+            .buildUpon()
+            .setUri(resolved.mediaUri.toUri())
+            .setKey(tidalCacheKey)
+            .build()
+    }
+
+    private fun tidalCacheKey(mediaId: String): String = "$TIDAL_CACHE_KEY_PREFIX$mediaId"
+
+    /**
+     * Cheap check (no network) for whether the Tidal source should be preferred for [mediaId].
+     * Used to gate the ephemeral YouTube player-cache short-circuit so toggling Tidal on takes
+     * effect immediately instead of replaying previously cached YouTube bytes.
+     */
+    private fun tidalSourceApplies(mediaId: String): Boolean =
+        dataStore.get(TidalEnabledKey, false) && !mediaId.isLocalMediaId()
+
+    private fun showTidalNotice(
+        message: String,
+        key: String? = null,
+    ) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val normalizedKey = key ?: message
+        if (normalizedKey == lastTidalNoticeKey && now - lastTidalNoticeAtElapsedMs < 4000L) return
+        lastTidalNoticeKey = normalizedKey
+        lastTidalNoticeAtElapsedMs = now
+        scope.launch(SilentHandler) {
+            Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun resolvePlaybackDataSpec(
@@ -7013,11 +7068,19 @@ class MusicService :
 
         knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
 
+        // When the Tidal source is enabled for this track, the ephemeral YouTube player cache
+        // must not short-circuit playback (otherwise toggling Tidal on would keep replaying the
+        // previously cached YouTube bytes). Persistent downloads still win so offline playback
+        // and explicit downloads are unaffected.
+        val tidalApplies = tidalSourceApplies(mediaId)
+        val allowPlayerCacheShortCircuit = !tidalApplies
+
         if (allowCacheShortCircuit) {
             resolveCachedDataSpec(
                 dataSpec = dataSpec,
                 mediaId = mediaId,
                 knownContentLength = knownContentLength,
+                includePlayerCache = allowPlayerCacheShortCircuit,
             )?.let { cachedDataSpec ->
                 scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                 return cachedDataSpec
@@ -7036,7 +7099,10 @@ class MusicService :
         if (allowCacheShortCircuit && requiredCachedLength != null) {
             val isFullyCached =
                 downloadCache.isCached(mediaId, dataSpec.position, requiredCachedLength) ||
-                    playerCache.isCached(mediaId, dataSpec.position, requiredCachedLength)
+                    (
+                        allowPlayerCacheShortCircuit &&
+                            playerCache.isCached(mediaId, dataSpec.position, requiredCachedLength)
+                    )
             if (isFullyCached) {
                 scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                 return dataSpec
@@ -7356,6 +7422,7 @@ class MusicService :
         dataSpec: DataSpec,
         mediaId: String,
         knownContentLength: Long?,
+        includePlayerCache: Boolean = true,
     ): DataSpec? {
         val requestedLength =
             when {
@@ -7377,6 +7444,7 @@ class MusicService :
                 mediaId = mediaId,
                 position = dataSpec.position,
                 requestedLength = requestedLength,
+                includePlayerCache = includePlayerCache,
             )
 
         if (cachedLength < requestedLength) return null
@@ -7388,13 +7456,20 @@ class MusicService :
         mediaId: String,
         position: Long,
         requestedLength: Long,
+        includePlayerCache: Boolean = true,
     ): Long {
         val targetEnd = position.saturatingAdd(requestedLength)
         var cursor = position
+        val playerCacheSpans =
+            if (includePlayerCache) {
+                runCatching { playerCache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty()
+            } else {
+                emptyList()
+            }
         val spans =
             (
                 runCatching { downloadCache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty() +
-                    runCatching { playerCache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty()
+                    playerCacheSpans
             ).asSequence()
                 .filter { span -> span.position.saturatingAdd(span.length) > position }
                 .sortedBy { span -> span.position }
@@ -8228,6 +8303,10 @@ class MusicService :
         const val ROOT = "root"
         const val HOME = "home"
         const val HOME_QUICK_PICKS = "home_quick_picks"
+
+        // Prefix for the dedicated player-cache key used by Tidal streams so their bytes never
+        // collide with the YouTube stream cached under the bare media id.
+        private const val TIDAL_CACHE_KEY_PREFIX = "tidal:"
         const val HOME_FORGOTTEN_FAVORITES = "home_forgotten_favorites"
         const val HOME_KEEP_LISTENING = "home_keep_listening"
         const val HOME_SUGGESTED_SONGS = "home_suggested_songs"
