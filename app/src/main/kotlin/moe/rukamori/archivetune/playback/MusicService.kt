@@ -7186,15 +7186,18 @@ class MusicService :
             else -> "${source.name.lowercase()}:$mediaId"
         }
 
-    private fun tidalCacheKey(mediaId: String): String = "$TIDAL_CACHE_KEY_PREFIX$mediaId"
-
     /**
-     * Cheap check (no network) for whether the Tidal source should be preferred for [mediaId].
-     * Used to gate the ephemeral YouTube player-cache short-circuit so toggling Tidal on takes
-     * effect immediately instead of replaying previously cached YouTube bytes.
+     * Cheap check (no network) for whether any external lossless source (Tidal/Deezer/Amazon)
+     * should be preferred for [mediaId]. Used to gate the ephemeral YouTube player-cache
+     * short-circuit so enabling a source takes effect immediately instead of replaying previously
+     * cached YouTube bytes.
      */
-    private fun tidalSourceApplies(mediaId: String): Boolean =
-        dataStore.get(TidalEnabledKey, false) && !mediaId.isLocalMediaId()
+    private fun tidalSourceApplies(mediaId: String): Boolean {
+        if (mediaId.isLocalMediaId()) return false
+        return dataStore.get(TidalEnabledKey, false) ||
+            dataStore.get(DeezerEnabledKey, false) ||
+            dataStore.get(AmazonEnabledKey, false)
+    }
 
     private fun showTidalNotice(
         message: String,
