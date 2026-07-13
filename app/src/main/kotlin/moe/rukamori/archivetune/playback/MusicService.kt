@@ -7178,13 +7178,44 @@ class MusicService :
         return refreshed.accessToken
     }
 
+    /**
+     * Forces a Tidal token refresh via the stored refresh token, ignoring the cached expiry. Used
+     * when the API rejects a token we believed was valid (401), e.g. after a server-side
+     * invalidation. Persists and returns the new access token, or null if refresh is impossible.
+     */
+    private fun forceRefreshTidalToken(): String? {
+        val refresh = dataStore.get(TidalRefreshTokenKey, "")
+        if (refresh.isBlank()) {
+            Timber.tag("MusicService").w("401 from Tidal but no refresh token; account needs re-login")
+            return null
+        }
+        Timber.tag("MusicService").d("Force-refreshing Tidal token after 401")
+        val refreshed =
+            runCatching { runBlocking(Dispatchers.IO) { TidalAccountManager.refreshAccessToken(refresh) } }
+                .onFailure { Timber.tag("MusicService").w(it, "Force refresh threw") }
+                .getOrNull()
+        if (refreshed == null) {
+            Timber.tag("MusicService").w("Force refresh failed; account needs re-login")
+            return null
+        }
+        runBlocking {
+            dataStore.edit { prefs ->
+                prefs[TidalAccessTokenKey] = refreshed.accessToken
+                prefs[TidalTokenExpiryKey] = refreshed.expiresAtMillis
+                refreshed.refreshToken?.let { prefs[TidalRefreshTokenKey] = it }
+            }
+        }
+        Timber.tag("MusicService").i("Tidal token force-refreshed after 401")
+        return refreshed.accessToken
+    }
+
     private fun resolveTidalStream(query: SourceQuery): DirectStream? {
         val quality = parseTidalAudioQuality()
         Timber.tag("MusicService").d("Tidal resolve start | quality=%s accountFirst=%s", quality.name, dataStore.get(TidalAccountFirstKey, true))
 
         // Account-first: use the user's own Tidal token via the official API when available.
         if (dataStore.get(TidalAccountFirstKey, true)) {
-            val token = ensureValidTidalToken()
+            var token = ensureValidTidalToken()
             Timber.tag("MusicService").d("Tidal account token available=%s", token != null)
             if (token != null) {
                 val apiQuality =
@@ -7193,20 +7224,38 @@ class MusicService :
                         TidalAudioQuality.FLAC -> "LOSSLESS"
                         TidalAudioQuality.AAC_320 -> "HIGH"
                     }
+                // Resolve, transparently refreshing and retrying once if the API rejects the token
+                // (401) — the stored token may have been invalidated server-side even though it has
+                // not expired by our clock.
+                fun attempt(accessToken: String): DirectStream? =
+                    runBlocking(Dispatchers.IO) {
+                        TidalAccountManager.resolveDirectStream(
+                            accessToken = accessToken,
+                            title = query.title,
+                            artists = query.artists,
+                            durationMs = query.durationMs,
+                            audioQuality = apiQuality,
+                            cacheDir = cacheDir,
+                        )
+                    }
                 val accountStream =
-                    runCatching {
-                        runBlocking(Dispatchers.IO) {
-                            TidalAccountManager.resolveDirectStream(
-                                accessToken = token,
-                                title = query.title,
-                                artists = query.artists,
-                                durationMs = query.durationMs,
-                                audioQuality = apiQuality,
-                                cacheDir = cacheDir,
-                            )
+                    try {
+                        attempt(token)
+                    } catch (e: TidalAccountManager.TidalUnauthorizedException) {
+                        Timber.tag("MusicService").w("Tidal account 401; attempting token refresh + retry")
+                        val refreshed = forceRefreshTidalToken()
+                        if (refreshed != null) {
+                            token = refreshed
+                            runCatching { attempt(refreshed) }
+                                .onFailure { Timber.tag("MusicService").w(it, "Tidal account retry failed for %s", query.mediaId) }
+                                .getOrNull()
+                        } else {
+                            null
                         }
-                    }.onFailure { Timber.tag("MusicService").w(it, "Tidal account resolve failed for %s", query.mediaId) }
-                        .getOrNull()
+                    } catch (e: Exception) {
+                        Timber.tag("MusicService").w(e, "Tidal account resolve failed for %s", query.mediaId)
+                        null
+                    }
                 if (accountStream != null) return accountStream
             }
         }

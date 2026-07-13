@@ -321,6 +321,13 @@ object TidalAccountManager {
      *
      * [audioQuality] is a Tidal API quality string: "LOW", "HIGH", "LOSSLESS" or "HI_RES_LOSSLESS".
      */
+    /**
+     * Thrown when the official API rejects the access token (HTTP 401). Signals the caller to
+     * refresh the token via the stored refresh token and retry once, instead of silently falling
+     * back to the (preview-only) public instances.
+     */
+    class TidalUnauthorizedException : Exception("TIDAL access token rejected (401)")
+
     suspend fun resolveDirectStream(
         accessToken: String,
         title: String,
@@ -352,6 +359,7 @@ object TidalAccountManager {
                 .build()
         return runCatching {
             client.newCall(request).execute().use { response ->
+                if (response.code == 401) throw TidalUnauthorizedException()
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful || payload.isBlank()) return@use null
                 val items = JSONObject(payload).optJSONArray("items") ?: return@use null
@@ -394,6 +402,7 @@ object TidalAccountManager {
                 if (bestScore >= 40) bestId else null
             }
         }.getOrElse {
+            if (it is TidalUnauthorizedException) throw it
             Timber.tag("TidalAccount").w(it, "account track search error")
             null
         }
@@ -425,6 +434,7 @@ object TidalAccountManager {
                 .build()
         return runCatching {
             client.newCall(request).execute().use { response ->
+                if (response.code == 401) throw TidalUnauthorizedException()
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful || payload.isBlank()) {
                     Timber.tag("TidalAccount").w("playbackinfo failed: %d", response.code)
@@ -448,6 +458,7 @@ object TidalAccountManager {
                 )
             }
         }.getOrElse {
+            if (it is TidalUnauthorizedException) throw it
             Timber.tag("TidalAccount").w(it, "playbackinfo error")
             null
         }

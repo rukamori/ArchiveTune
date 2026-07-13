@@ -98,10 +98,16 @@ object TidalInstanceHealthManager {
                     val probeTrackId =
                         TidalAudioProvider.lastResolvedTrackId
                             ?: context.dataStore.get(TidalLastProbeTrackKey)
+                    // Without a probe track we can only test reachability, which cannot tell a
+                    // fully-working instance from a preview-only (unsubscribed) one. In that case we
+                    // must NOT promote "reachable" instances as healthy in the resolver, or dead-end
+                    // preview mirrors get tried first. We still demote confirmed-unreachable ones.
+                    val verified = !probeTrackId.isNullOrBlank()
                     Timber.tag("TidalHealth").d(
-                        "Scanning %d instance(s) | probeTrack=%s staggered=%s",
+                        "Scanning %d instance(s) | probeTrack=%s verified=%s staggered=%s",
                         candidates.size,
                         probeTrackId ?: "<none, reachability-only>",
+                        verified,
                         staggered,
                     )
 
@@ -111,8 +117,15 @@ object TidalInstanceHealthManager {
                         val start = System.currentTimeMillis()
                         val status = TidalAudioProvider.verifyInstance(url, probeTrackId)
                         val latency = System.currentTimeMillis() - start
-                        val healthy = status == TidalAudioProvider.InstanceHealth.HEALTHY
-                        TidalAudioProvider.applyHealthResult(url, healthy)
+                        // Apply to the resolver's health map: always demote unreachable/preview-only;
+                        // only promote to healthy when we actually verified a FULL stream.
+                        when (status) {
+                            TidalAudioProvider.InstanceHealth.UNREACHABLE,
+                            TidalAudioProvider.InstanceHealth.PREVIEW_ONLY,
+                            -> TidalAudioProvider.applyHealthResult(url, healthy = false)
+                            TidalAudioProvider.InstanceHealth.HEALTHY ->
+                                if (verified) TidalAudioProvider.applyHealthResult(url, healthy = true)
+                        }
                         records +=
                             InstanceRecord(
                                 url = url,
