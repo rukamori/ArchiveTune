@@ -22,11 +22,19 @@ import java.util.concurrent.TimeUnit
  * TLS certificate includes the `1.1.1.1` IP SAN, so hostname verification still passes.
  */
 internal object TidalDns : Dns {
+    // Hostname endpoints first (fast, use the plain system resolver which can reach the DoH
+    // providers even when tidal.com is blocked). The IP-literal endpoints are last-resort for when
+    // system DNS is fully down and can't even resolve the DoH hostnames — they need no DNS of their
+    // own, and Cloudflare's (1.1.1.1 / 1.0.0.1) and Google's (8.8.8.8 / 8.8.4.4) TLS certificates
+    // include those IP SANs, so hostname verification still passes.
     private val DOH_ENDPOINTS =
         listOf(
             "https://cloudflare-dns.com/dns-query",
             "https://dns.google/resolve",
             "https://1.1.1.1/dns-query",
+            "https://1.0.0.1/dns-query",
+            "https://8.8.8.8/resolve",
+            "https://8.8.4.4/resolve",
         )
 
     // Plain client with the default system resolver, used only to reach the DoH endpoints (whose

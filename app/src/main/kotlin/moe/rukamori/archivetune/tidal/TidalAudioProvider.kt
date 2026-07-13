@@ -67,25 +67,31 @@ object TidalAudioProvider {
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
-    // Current public streaming instances (from the Monochrome community list). These rotate over
-    // time, so auto-discovery and the user's manual list can extend/override them at runtime.
+    // Current public streaming instances, mirroring the official monochrome.tf frontend's built-in
+    // fallback list (streaming instances first, then API-only ones). These rotate over time, so
+    // auto-discovery (see [INSTANCE_DISCOVERY_SOURCES]) and the user's manual list can
+    // extend/override them at runtime. Note: `hifi.geeked.wtf` is the primary streaming instance the
+    // official site uses; the previous list was stale (dead squid.wtf/arran hosts, missing hifi).
     private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
         listOf(
+            TidalDownloadEndpoint("HiFi (geeked.wtf)", "https://hifi.geeked.wtf"),
+            TidalDownloadEndpoint("Maus QQDL", "https://maus.qqdl.site"),
+            TidalDownloadEndpoint("Vogel QQDL", "https://vogel.qqdl.site"),
+            TidalDownloadEndpoint("Katze QQDL", "https://katze.qqdl.site"),
+            TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
             TidalDownloadEndpoint("Monochrome EU", "https://eu-central.monochrome.tf"),
             TidalDownloadEndpoint("Monochrome US", "https://us-west.monochrome.tf"),
             TidalDownloadEndpoint("Monochrome API", "https://api.monochrome.tf"),
-            TidalDownloadEndpoint("Arran (Monochrome)", "https://arran.monochrome.tf"),
-            TidalDownloadEndpoint("Triton (squid.wtf)", "https://triton.squid.wtf"),
-            TidalDownloadEndpoint("Wolf QQDL", "https://wolf.qqdl.site"),
-            TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
+            TidalDownloadEndpoint("Samidy (Monochrome)", "https://monochrome-api.samidy.com"),
         )
 
-    // Community source that publishes the public HiFi/QQDL instance list. Best-effort only: it
-    // rotates and may disappear, so discovery is allowed to fail and callers keep the manual list.
-    // The payload is a JSON object of the form { "api": [...], "streaming": [...] }.
+    // Live uptime feed used by the official monochrome.tf frontend to discover currently-healthy
+    // instances. Best-effort only: it rotates and may be unreachable, so discovery is allowed to
+    // fail and callers keep the manual/default list. The payload is a JSON object of the form
+    // { "api": [{ "url", "version" }, ...], "streaming": [...], "qobuz": [...] }.
     private val INSTANCE_DISCOVERY_SOURCES =
         listOf(
-            "https://monochrome.tf/instances.json",
+            "https://tidal-uptime.geeked.wtf",
         )
 
     /**
@@ -214,6 +220,7 @@ object TidalAudioProvider {
                 .toHttpUrl()
                 .newBuilder()
                 .addPathSegment("trackManifests")
+                .addPathSegment("")
                 .addQueryParameter("id", trackId)
                 .apply { manifestFormats.forEach { addQueryParameter("formats", it) } }
                 .addQueryParameter("adaptive", "false")
@@ -304,18 +311,20 @@ object TidalAudioProvider {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) return emptyList()
 
-        // JSON object with array-valued fields (Monochrome format). "streaming" instances serve
-        // audio and are listed first; other array fields (e.g. "api") are appended as fallbacks.
+        // JSON object with array-valued fields (Monochrome/tidal-uptime format). "streaming"
+        // instances serve audio and are listed first, then "api". We deliberately ignore "qobuz"
+        // (a different backend) and, like the official frontend, drop dead ".squid.wtf" hosts.
         runCatching {
             val obj = JSONObject(trimmed)
             val result = LinkedHashSet<String>()
-            val preferredKeys = listOf("streaming", "instances", "api")
-            val keys = preferredKeys + obj.keys().asSequence().filterNot { it in preferredKeys }
+            // Only Tidal-serving categories; qobuz is a separate backend and must not be mixed in.
+            val keys = listOf("streaming", "instances", "api")
             for (key in keys) {
                 val arr = obj.optJSONArray(key) ?: continue
                 collectStringsFromArray(arr, result)
             }
-            if (result.isNotEmpty()) return result.toList()
+            val filtered = result.filterNot { it.contains(".squid.wtf", ignoreCase = true) }
+            if (filtered.isNotEmpty()) return filtered
         }
 
         // JSON array of strings or objects with a "url"/"host" field.
@@ -1111,11 +1120,16 @@ object TidalAudioProvider {
         preferLiveDash: Boolean,
         audioQuality: TidalAudioQuality,
     ): Resolved {
+        // The Monochrome/hifi API is FastAPI with redirect_slashes, so endpoints require a TRAILING
+        // SLASH (`/trackManifests/`, `/track/`). Omitting it yields a 307 that some instances (and
+        // the official api.monochrome.tf) turn into a 404. We append an empty trailing segment to
+        // match the official frontend's request shape exactly.
         val url = if (manifestFormats != null) {
             endpoint.baseUrl
                 .toHttpUrl()
                 .newBuilder()
                 .addPathSegment("trackManifests")
+                .addPathSegment("")
                 .addQueryParameter("id", track.trackId)
                 .apply {
                     manifestFormats.forEach { format ->
@@ -1132,6 +1146,7 @@ object TidalAudioProvider {
                 .toHttpUrl()
                 .newBuilder()
                 .addPathSegment("track")
+                .addPathSegment("")
                 .addQueryParameter("id", track.trackId)
                 .addQueryParameter("quality", quality)
                 .build()
