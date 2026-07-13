@@ -7116,6 +7116,7 @@ class MusicService :
                                     title = query.title,
                                     artists = query.artists,
                                     durationMs = query.durationMs,
+                                    cacheDir = this@MusicService.cacheDir,
                                     instanceBaseUrl = dataStore.get(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE),
                                     bypassToken = dataStore.get(AmazonBypassTokenKey, "").ifBlank { null },
                                     turnstileJwt = jwt,

@@ -5,13 +5,15 @@
  *
  * Amazon Music source via a public instance (e.g. the Monochrome community's `amz.*` host).
  *
- * The instance itself is ASIN-based and exposes NO search endpoint, so title -> ASIN mapping is done
- * externally via two public, no-auth hops (iTunes Search -> Odesli/song.link), see [searchAsin].
+ * This mirrors the monochrome.tf web player exactly: a metadata lookup against the instance's
+ * `/api/track/` endpoint returns a `stream_url` (a CENC-encrypted fragmented MP4) plus a raw
+ * `decryption_key`. The stream is then downloaded and decrypted on-device by [AmazonCencDecryptor]
+ * (the web player offloads decryption to the browser's ClearKey/EME stack, which this app lacks).
  *
- * IMPORTANT — streaming is still gated behind Cloudflare Turnstile. Even with a valid ASIN, the
- * instance requires either a configured `bypass_token` (set by the instance operator) or a
- * Turnstile JWT obtained interactively in a browser. Without one, resolution finds the ASIN but the
- * stream request is rejected (HTTP 428) and the caller falls through to the next configured source.
+ * IMPORTANT — the instance is gated behind Cloudflare Turnstile. Requests require either a
+ * configured `bypass_token` (set by the instance operator) or a Turnstile JWT obtained interactively
+ * via [moe.rukamori.archivetune.ui.screens.settings.AmazonTurnstileActivity]. Without one, the
+ * request is rejected (HTTP 401/428) and the caller falls through to the next configured source.
  */
 
 package moe.rukamori.archivetune.audiosource
@@ -31,13 +33,6 @@ import kotlin.math.abs
 
 object AmazonAudioProvider {
     const val DEFAULT_INSTANCE = "https://amz.geeked.wtf"
-
-    // Public, no-auth catalog used to look up a track (title/artist -> Apple Music track URL).
-    private const val ITUNES_SEARCH = "https://itunes.apple.com/search"
-
-    // Odesli/song.link: given a known track URL it returns cross-platform IDs, including the Amazon
-    // Music song entity whose id IS the streaming ASIN. Free + public (rate limited).
-    private const val ODESLI_LINKS = "https://api.song.link/v1-alpha.1/links"
 
     // Cloudflare Turnstile config used by the official monochrome.tf web player. The sitekey is
     // domain-locked to monochrome.tf, so the challenge must be solved from that origin (see
@@ -99,221 +94,201 @@ object AmazonAudioProvider {
             }
         }
 
-    // Small in-memory cache of "title|artist" -> ASIN (or "" for a known miss) to avoid hammering
-    // the public iTunes/Odesli endpoints for repeat plays within a session.
-    private val asinCache = java.util.concurrent.ConcurrentHashMap<String, String>()
-
     /**
-     * Attempts to resolve a stream from track metadata. Since the Amazon instance is ASIN-only, we
-     * first map the title/artist to an Amazon Music ASIN via [searchAsin] (iTunes + Odesli), then
-     * hand the ASIN to [resolveByAsin]. Returns null if no ASIN can be found or the instance
-     * rejects the stream (e.g. Turnstile), so the caller falls through to the next source.
+     * Resolves a fully-playable local stream from track metadata, matching exactly what the
+     * monochrome.tf web player does for Amazon Music:
+     *   1. GET `{instance}/api/track/?track=&artist=&album=&duration=&quality=` (auth via a Turnstile
+     *      JWT header or an operator `bypass_token`), which returns a `stream_url` (a CENC-encrypted
+     *      fragmented MP4) plus a raw `decryption_key`.
+     *   2. Download the encrypted stream and decrypt it on-device via [AmazonCencDecryptor] (the web
+     *      player offloads this to the browser's ClearKey/EME stack; we have no EME so we do it
+     *      ourselves), writing a plain FLAC/Opus-in-MP4 to [cacheDir].
+     *
+     * Returns a [DirectStream] pointing at the decrypted local file, or null if no match is found or
+     * the instance rejects the request (e.g. Turnstile 401/428) so the caller can fall through.
      */
     suspend fun resolveByMetadata(
         title: String,
         artists: List<String>,
         durationMs: Long?,
+        cacheDir: java.io.File,
         instanceBaseUrl: String = DEFAULT_INSTANCE,
         bypassToken: String? = null,
-        quality: String = "HIGH",
-        turnstileJwt: String? = null,
-    ): DirectStream? {
-        val asin = searchAsin(title, artists, durationMs)
-        if (asin == null) {
-            Timber.tag("AmazonAudio").d("No Amazon ASIN found for \"%s\"; skipping.", title)
-            return null
-        }
-        Timber.tag("AmazonAudio").d("Mapped \"%s\" -> ASIN %s; resolving stream.", title, asin)
-        return resolveByAsin(
-            asin = asin,
-            quality = quality,
-            instanceBaseUrl = instanceBaseUrl,
-            bypassToken = bypassToken,
-            turnstileJwt = turnstileJwt,
-        )
-    }
-
-    /**
-     * Maps a track title/artist to an Amazon Music streaming ASIN using two public, no-auth hops:
-     *   1. iTunes Search API -> best-matching Apple Music track URL (disambiguated by title/artist
-     *      and, when available, duration).
-     *   2. Odesli (song.link) -> the `AMAZON_SONG::<ASIN>` entity for that track.
-     * Results (including misses) are cached in-memory for the session. Returns null on no match.
-     */
-    suspend fun searchAsin(
-        title: String,
-        artists: List<String>,
-        durationMs: Long?,
-    ): String? =
-        withContext(Dispatchers.IO) {
-            val primaryArtist = artists.firstOrNull().orEmpty()
-            val cacheKey = "${title.trim().lowercase()}|${primaryArtist.trim().lowercase()}"
-            asinCache[cacheKey]?.let { return@withContext it.ifBlank { null } }
-
-            val result =
-                runCatching {
-                    val trackUrl = itunesLookupTrackUrl(title, primaryArtist, durationMs)
-                    if (trackUrl == null) {
-                        Timber.tag("AmazonAudio").d("iTunes had no match for \"%s\" - %s", title, primaryArtist)
-                        return@runCatching null
-                    }
-                    odesliAmazonAsin(trackUrl)
-                }.getOrElse {
-                    Timber.tag("AmazonAudio").w(it, "ASIN search error for \"%s\"", title)
-                    null
-                }
-            // Cache both hits and misses ("" == known miss) to protect the public endpoints.
-            asinCache[cacheKey] = result.orEmpty()
-            result
-        }
-
-    /** iTunes Search: returns the best-matching Apple Music track URL, or null. */
-    private fun itunesLookupTrackUrl(
-        title: String,
-        artist: String,
-        durationMs: Long?,
-    ): String? {
-        val term = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
-        val url =
-            ITUNES_SEARCH
-                .toHttpUrl()
-                .newBuilder()
-                .addQueryParameter("term", term)
-                .addQueryParameter("entity", "song")
-                .addQueryParameter("limit", "10")
-                .build()
-        val request =
-            Request
-                .Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
-                .get()
-                .build()
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful || body.isBlank()) return null
-            val results = JSONObject(body).optJSONArray("results") ?: return null
-            if (results.length() == 0) return null
-
-            val normTitle = normalize(title)
-            val normArtist = normalize(artist)
-            var bestUrl: String? = null
-            var bestScore = Int.MIN_VALUE
-            for (i in 0 until results.length()) {
-                val item = results.optJSONObject(i) ?: continue
-                val trackName = item.optString("trackName")
-                val artistName = item.optString("artistName")
-                val viewUrl = item.optString("trackViewUrl").ifBlank { null } ?: continue
-                var score = 0
-                val nt = normalize(trackName)
-                if (nt == normTitle) score += 100 else if (nt.contains(normTitle) || normTitle.contains(nt)) score += 50
-                if (normArtist.isNotEmpty() && normalize(artistName).contains(normArtist)) score += 60
-                // Prefer close duration matches when we know the expected duration.
-                if (durationMs != null && durationMs > 0) {
-                    val itMs = item.optLong("trackTimeMillis", 0L)
-                    if (itMs > 0 && abs(itMs - durationMs) <= 3000) score += 40
-                }
-                if (score > bestScore) {
-                    bestScore = score
-                    bestUrl = viewUrl
-                }
-            }
-            // Require at least a title hit to avoid returning an unrelated track.
-            return if (bestScore >= 50) bestUrl else null
-        }
-    }
-
-    /** Odesli: extracts the Amazon Music ASIN for a known track URL, or null. */
-    private fun odesliAmazonAsin(trackUrl: String): String? {
-        val url =
-            ODESLI_LINKS
-                .toHttpUrl()
-                .newBuilder()
-                .addQueryParameter("url", trackUrl)
-                .addQueryParameter("userCountry", "US")
-                .build()
-        val request =
-            Request
-                .Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
-                .get()
-                .build()
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful || body.isBlank()) return null
-            val entities = JSONObject(body).optJSONObject("entitiesByUniqueId") ?: return null
-            val keys = entities.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                if (key.startsWith("AMAZON_SONG::", ignoreCase = true)) {
-                    // Key format is AMAZON_SONG::<ASIN>; also fall back to the entity's id field.
-                    val fromKey = key.substringAfter("::").trim()
-                    if (fromKey.isNotBlank()) return fromKey
-                    return entities.optJSONObject(key)?.optString("id")?.ifBlank { null }
-                }
-            }
-            return null
-        }
-    }
-
-    /** Lowercases and strips punctuation/parenthetical noise for fuzzy title/artist comparison. */
-    private fun normalize(value: String): String =
-        value
-            .lowercase()
-            .replace(Regex("\\(.*?\\)"), "")
-            .replace(Regex("\\[.*?]"), "")
-            .replace(Regex("[^a-z0-9]+"), " ")
-            .trim()
-
-    /**
-     * Resolves a decrypted stream for a known Amazon ASIN. The instance's `/decrypt` endpoint
-     * returns already-decrypted audio bytes (server-side Widevine), so the returned URI is directly
-     * playable. Returns null if the instance rejects the request (e.g. Turnstile challenge / 428).
-     */
-    suspend fun resolveByAsin(
-        asin: String,
-        quality: String = "HIGH",
-        instanceBaseUrl: String = DEFAULT_INSTANCE,
-        bypassToken: String? = null,
+        quality: String = "LOSSLESS",
         turnstileJwt: String? = null,
     ): DirectStream? =
         withContext(Dispatchers.IO) {
+            val artist = artists.firstOrNull().orEmpty()
+            if (title.isBlank() || artist.isBlank()) {
+                Timber.tag("AmazonAudio").d("Missing title/artist; skipping Amazon.")
+                return@withContext null
+            }
+            if (bypassToken.isNullOrBlank() && turnstileJwt.isNullOrBlank()) {
+                Timber.tag("AmazonAudio").d("No Turnstile JWT / bypass token; skipping Amazon (authorize in settings).")
+                return@withContext null
+            }
             val base = instanceBaseUrl.trim().trimEnd('/').ifBlank { DEFAULT_INSTANCE }
-            val streamUrl =
-                buildString {
-                    append("$base/api/stream/$asin/decrypt?quality=$quality")
-                    if (!bypassToken.isNullOrBlank()) append("&bypass_token=$bypassToken")
-                }
-            // Probe with a HEAD-like GET to detect a Turnstile/challenge before handing the URL to
-            // the player. If the probe is rejected we skip Amazon for this track.
-            val probe =
-                Request
-                    .Builder()
-                    .url(streamUrl)
-                    .apply { if (!turnstileJwt.isNullOrBlank()) header("X-Turnstile-JWT", turnstileJwt) }
-                    .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
-                    .get()
-                    .build()
-            runCatching {
-                client.newCall(probe).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Timber.tag("AmazonAudio").w("Amazon stream rejected: %d", response.code)
-                        return@use null
-                    }
-                    val contentLength = response.body?.contentLength()?.takeIf { it > 0 }
-                    DirectStream(
-                        uri = streamUrl,
-                        mimeType = "audio/flac",
-                        codecs = "flac",
-                        contentLength = contentLength,
-                        label = "Amazon Music $quality",
-                        source = AudioSourceType.AMAZON,
-                    )
-                }
-            }.getOrElse {
-                Timber.tag("AmazonAudio").w(it, "Amazon resolution error")
-                null
+            val mappedQuality = mapAmazonQuality(quality)
+
+            val payload =
+                runCatching { fetchTrackPayload(base, title, artist, durationMs, mappedQuality, bypassToken, turnstileJwt) }
+                    .getOrElse {
+                        Timber.tag("AmazonAudio").w(it, "Amazon track lookup error for \"%s\"", title)
+                        null
+                    } ?: return@withContext null
+
+            val streamUrl = payload.optString("stream_url").ifBlank { null }
+            if (streamUrl == null) {
+                Timber.tag("AmazonAudio").w("Amazon API returned no stream_url for \"%s\"", title)
+                return@withContext null
+            }
+            val keyHex = extractDecryptionKey(payload)
+            val codecHint = extractCodec(payload)
+            val qualityLabel = payload.optString("quality_selected").ifBlank { mappedQuality }
+
+            downloadAndPrepare(streamUrl, keyHex, codecHint, qualityLabel, cacheDir)
+        }
+
+    /** Fetches and unwraps the `/api/track/` payload; returns the object containing `stream_url`. */
+    private fun fetchTrackPayload(
+        base: String,
+        title: String,
+        artist: String,
+        durationMs: Long?,
+        mappedQuality: String,
+        bypassToken: String?,
+        turnstileJwt: String?,
+    ): JSONObject? {
+        val urlBuilder =
+            "$base/api/track/".toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("track", title)
+                .addQueryParameter("artist", artist)
+                .addQueryParameter("album", "")
+                .addQueryParameter("duration", durationMs?.let { (it / 1000).toString() } ?: "")
+                .addQueryParameter("quality", mappedQuality)
+        if (!bypassToken.isNullOrBlank()) urlBuilder.addQueryParameter("bypass_token", bypassToken)
+        val request =
+            Request
+                .Builder()
+                .url(urlBuilder.build())
+                .apply { if (!turnstileJwt.isNullOrBlank()) header("X-Turnstile-JWT", turnstileJwt) }
+                .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
+                .get()
+                .build()
+        client.newCall(request).execute().use { response ->
+            if (response.code == 401 || response.code == 428) {
+                Timber.tag("AmazonAudio").w("Amazon requires (re)authorization: HTTP %d", response.code)
+                return null
+            }
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful || body.isBlank()) {
+                Timber.tag("AmazonAudio").w("Amazon track lookup failed: HTTP %d", response.code)
+                return null
+            }
+            val root = JSONObject(body)
+            // The payload may be wrapped under data/track/result (see monochrome getAmazonTrackApiPayload).
+            return when {
+                root.has("stream_url") -> root
+                root.optJSONObject("data")?.has("stream_url") == true -> root.getJSONObject("data")
+                root.optJSONObject("track")?.has("stream_url") == true -> root.getJSONObject("track")
+                root.optJSONObject("result")?.has("stream_url") == true -> root.getJSONObject("result")
+                else -> root
             }
         }
+    }
+
+    /** Downloads the (possibly encrypted) stream and, if a key is present, decrypts it to a local file. */
+    private fun downloadAndPrepare(
+        streamUrl: String,
+        keyHex: String?,
+        codecHint: String?,
+        qualityLabel: String,
+        cacheDir: java.io.File,
+    ): DirectStream? {
+        val bytes =
+            runCatching {
+                val request =
+                    Request
+                        .Builder()
+                        .url(streamUrl)
+                        .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Timber.tag("AmazonAudio").w("Amazon stream download failed: HTTP %d", response.code)
+                        return null
+                    }
+                    response.body?.bytes()
+                }
+            }.getOrElse {
+                Timber.tag("AmazonAudio").w(it, "Amazon stream download error")
+                null
+            } ?: return null
+
+            val outCodec: String
+            if (keyHex.isNullOrBlank()) {
+                // Unencrypted (rare): play as-is.
+                outCodec = codecHint ?: "flac"
+            } else {
+                val decoded = AmazonCencDecryptor.decryptInPlace(bytes, keyHex)
+                if (decoded == null) {
+                    Timber.tag("AmazonAudio").w("Amazon CENC decryption failed; skipping.")
+                    return null
+                }
+                outCodec = decoded
+            }
+
+            val cacheRoot = java.io.File(cacheDir, "amazon").apply { mkdirs() }
+            val file = java.io.File(cacheRoot, "amz_${abs(streamUrl.hashCode())}_$qualityLabel.mp4")
+            runCatching { file.writeBytes(bytes) }.getOrElse {
+                Timber.tag("AmazonAudio").w(it, "Failed writing decrypted Amazon file")
+                return null
+            }
+            Timber.tag("AmazonAudio").d("Amazon stream ready (%s, %d bytes) -> %s", outCodec, file.length(), file.name)
+            return DirectStream(
+                uri = android.net.Uri.fromFile(file).toString(),
+                mimeType = "audio/mp4",
+                codecs = outCodec,
+                contentLength = file.length(),
+                label = "Amazon Music $qualityLabel",
+                source = AudioSourceType.AMAZON,
+            )
+    }
+
+    /** Maps a generic quality tier to Amazon's instance quality codes (see monochrome getAmazonMusicQuality). */
+    private fun mapAmazonQuality(quality: String): String =
+        when (quality.trim().uppercase()) {
+            "HI_RES_LOSSLESS", "AUTO", "ADAPTIVE", "DOLBY_ATMOS" -> "UHD"
+            "LOSSLESS" -> "HD"
+            "HIGH" -> "SD_HIGH"
+            "LOW" -> "SD_LOW"
+            "NORMAL" -> "SD_MEDIUM"
+            else -> "HD"
+        }
+
+    /** Extracts the raw CENC content key from the payload, checking all known field names. */
+    private fun extractDecryptionKey(payload: JSONObject): String? =
+        payload.optString("decryption_key").ifBlank { null }
+            ?: payload.optString("decryptionKey").ifBlank { null }
+            ?: payload.optJSONObject("decryption")?.optString("key")?.ifBlank { null }
+            ?: payload.optJSONObject("drm")?.optString("decryption_key")?.ifBlank { null }
+            ?: payload.optJSONObject("drm")?.optString("decryptionKey")?.ifBlank { null }
+
+    /** Reads the codec (flac/opus) for the selected quality, falling back to the top-level codec. */
+    private fun extractCodec(payload: JSONObject): String? {
+        val selected = payload.optString("quality_selected")
+        val available = payload.optJSONArray("available_qualities")
+        if (available != null && selected.isNotBlank()) {
+            for (i in 0 until available.length()) {
+                val q = available.optJSONObject(i) ?: continue
+                if (q.optString("quality") == selected) {
+                    q.optString("codec").ifBlank { null }?.let { return it.lowercase() }
+                }
+            }
+        }
+        return payload.optString("codec").ifBlank { null }?.lowercase()
+    }
+
 }
