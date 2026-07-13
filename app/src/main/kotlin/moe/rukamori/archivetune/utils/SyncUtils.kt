@@ -288,7 +288,7 @@ class SyncUtils
                             return@onSuccess
                         }
                         val remoteIds = remoteSongs.map { it.id }.toSet()
-                        if (authoritative) {
+                        if (remoteSongs.isNotEmpty() || authoritative) {
                             val localLikedSongs = database.likedSongsByNameAsc().first()
                             if (!isSyncStillEnabled(gen)) return@onSuccess
                             val staleLikedSongs =
@@ -318,7 +318,7 @@ class SyncUtils
                                         if (!isSyncStillEnabled(gen)) return@withTransaction
                                         if (dbSong == null) {
                                             insert(song.toMediaMetadata()) { it.copy(liked = true, likedDate = timestamp) }
-                                        } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp) {
+                                        } else if (!dbSong.song.liked) {
                                             update(dbSong.song.copy(liked = true, likedDate = timestamp))
                                         }
                                     }
