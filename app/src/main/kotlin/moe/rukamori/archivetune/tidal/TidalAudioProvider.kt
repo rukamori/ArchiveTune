@@ -61,22 +61,26 @@ object TidalAudioProvider {
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
+    // Current public streaming instances (from the Monochrome community list). These rotate over
+    // time, so auto-discovery and the user's manual list can extend/override them at runtime.
     private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
         listOf(
-            TidalDownloadEndpoint("HiFi is Back v2.7", "https://hifi-isback.peridotclient.com"),
-            TidalDownloadEndpoint("Maus QQDL v2.6", "https://maus.qqdl.site"),
-            TidalDownloadEndpoint("Vogel QQDL v2.6", "https://vogel.qqdl.site"),
-            TidalDownloadEndpoint("Katze QQDL v2.6", "https://katze.qqdl.site"),
-            TidalDownloadEndpoint("Hund QQDL v2.6", "https://hund.qqdl.site"),
-            TidalDownloadEndpoint("Wolf QQDL v2.6", "https://wolf.qqdl.site"),
+            TidalDownloadEndpoint("Arran (Monochrome)", "https://arran.monochrome.tf"),
+            TidalDownloadEndpoint("Triton (squid.wtf)", "https://triton.squid.wtf"),
+            TidalDownloadEndpoint("Wolf QQDL", "https://wolf.qqdl.site"),
+            TidalDownloadEndpoint("Maus QQDL", "https://maus.qqdl.site"),
+            TidalDownloadEndpoint("Vogel QQDL", "https://vogel.qqdl.site"),
+            TidalDownloadEndpoint("Katze QQDL", "https://katze.qqdl.site"),
+            TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
+            TidalDownloadEndpoint("p1nkhamster HiFi", "https://hifi.p1nkhamster.xyz"),
         )
 
-    // Community sources that publish public HiFi/QQDL instance lists. Best-effort only: these
-    // rotate and may disappear, so discovery is allowed to fail and callers keep the manual list.
+    // Community source that publishes the public HiFi/QQDL instance list. Best-effort only: it
+    // rotates and may disappear, so discovery is allowed to fail and callers keep the manual list.
+    // The payload is a JSON object of the form { "api": [...], "streaming": [...] }.
     private val INSTANCE_DISCOVERY_SOURCES =
         listOf(
-            "https://raw.githubusercontent.com/hifi-instances/list/main/instances.json",
-            "https://raw.githubusercontent.com/hifi-instances/list/main/instances.txt",
+            "https://monochrome.tf/instances.json",
         )
 
     /**
@@ -177,31 +181,59 @@ object TidalAudioProvider {
         return discovered.toList()
     }
 
-    /** Parses a discovery payload that is either a JSON array or newline-separated URLs. */
+    /**
+     * Parses a discovery payload. Supports:
+     *  - a JSON object whose values are arrays of URLs, e.g. Monochrome's
+     *    `{ "api": [...], "streaming": [...] }` (streaming instances are preferred);
+     *  - a JSON array of URL strings or objects with a "url"/"host" field;
+     *  - plain newline / whitespace separated URLs.
+     */
     private fun parseDiscoveredInstances(body: String): List<String> {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) return emptyList()
-        // Try JSON array of strings or objects with a "url"/"host" field.
+
+        // JSON object with array-valued fields (Monochrome format). "streaming" instances serve
+        // audio and are listed first; other array fields (e.g. "api") are appended as fallbacks.
         runCatching {
-            val arr = JSONArray(trimmed)
-            return buildList {
-                for (i in 0 until arr.length()) {
-                    when (val item = arr.opt(i)) {
-                        is String -> add(item)
-                        is JSONObject -> {
-                            (item.optString("url").takeIf { it.isNotBlank() }
-                                ?: item.optString("host").takeIf { it.isNotBlank() })
-                                ?.let(::add)
-                        }
-                    }
-                }
+            val obj = JSONObject(trimmed)
+            val result = LinkedHashSet<String>()
+            val preferredKeys = listOf("streaming", "instances", "api")
+            val keys = preferredKeys + obj.keys().asSequence().filterNot { it in preferredKeys }
+            for (key in keys) {
+                val arr = obj.optJSONArray(key) ?: continue
+                collectStringsFromArray(arr, result)
             }
+            if (result.isNotEmpty()) return result.toList()
         }
-        // Fall back to newline / whitespace separated URLs.
+
+        // JSON array of strings or objects with a "url"/"host" field.
+        runCatching {
+            val result = LinkedHashSet<String>()
+            collectStringsFromArray(JSONArray(trimmed), result)
+            if (result.isNotEmpty()) return result.toList()
+        }
+
+        // Plain newline / whitespace separated URLs.
         return trimmed
             .split('\n', '\r', ' ', ',')
             .map { it.trim() }
             .filter { it.isNotEmpty() && !it.startsWith("#") }
+    }
+
+    private fun collectStringsFromArray(
+        arr: JSONArray,
+        into: MutableCollection<String>,
+    ) {
+        for (i in 0 until arr.length()) {
+            when (val item = arr.opt(i)) {
+                is String -> item.takeIf { it.isNotBlank() }?.let(into::add)
+                is JSONObject -> {
+                    (item.optString("url").takeIf { it.isNotBlank() }
+                        ?: item.optString("host").takeIf { it.isNotBlank() })
+                        ?.let(into::add)
+                }
+            }
+        }
     }
 
     data class Query(

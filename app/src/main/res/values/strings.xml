@@ -677,7 +677,7 @@
     <string name="tidal_instance_unknown">Not checked</string>
     <!-- Tidal instance auto-discovery -->
     <string name="tidal_discover">Auto-discover instances</string>
-    <string name="tidal_discover_description">Fetch additional public instances from a community list and merge them with your own.</string>
+    <string name="tidal_discover_description">Fetch additional public instances from the Monochrome community list and merge them with your own.</string>
     <string name="tidal_discovering">Discovering instances…</string>
     <string name="tidal_discover_result">Added %1$d new instance(s)</string>
     <string name="tidal_discover_none">No new instances found</string>
