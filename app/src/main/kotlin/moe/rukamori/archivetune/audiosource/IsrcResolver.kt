@@ -60,10 +60,16 @@ object IsrcResolver {
         withContext(Dispatchers.IO) {
             val primaryArtist = artists.firstOrNull()?.trim().orEmpty()
             val cacheKey = "${title.trim().lowercase()}|${primaryArtist.lowercase()}"
-            cache[cacheKey]?.let { return@withContext it.ifBlank { null } }
+            cache[cacheKey]?.let { 
+                Timber.tag("IsrcResolver").d("ISRC cache hit for %s: %s", title, it.ifBlank { "<null>" })
+                return@withContext it.ifBlank { null } 
+            }
 
+            Timber.tag("IsrcResolver").d("Resolving ISRC for \"%s\" by %s...", title, primaryArtist)
             val mbid = searchRecordingMbid(title, primaryArtist, durationMs)
+            Timber.tag("IsrcResolver").d("MusicBrainz MBID: %s", mbid ?: "<not found>")
             val isrc = mbid?.let { lookupIsrc(it) }
+            Timber.tag("IsrcResolver").d("ISRC resolved: %s", isrc ?: "<not found>")
             cache[cacheKey] = isrc.orEmpty()
             isrc
         }
@@ -128,16 +134,18 @@ object IsrcResolver {
                 .get()
                 .build()
         return runCatching {
+            Timber.tag("IsrcResolver").d("Querying MusicBrainz: %s", url)
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful || body.isBlank()) {
-                    Timber.tag("IsrcResolver").w("MusicBrainz request failed: %d", response.code)
+                    Timber.tag("IsrcResolver").w("MusicBrainz request failed: HTTP %d", response.code)
                     return@use null
                 }
+                Timber.tag("IsrcResolver").d("MusicBrainz response OK (%d bytes)", body.length)
                 JSONObject(body)
             }
         }.getOrElse {
-            Timber.tag("IsrcResolver").w(it, "MusicBrainz request error")
+            Timber.tag("IsrcResolver").w(it, "MusicBrainz network error")
             null
         }
     }

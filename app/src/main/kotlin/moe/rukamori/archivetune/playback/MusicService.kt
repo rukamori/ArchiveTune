@@ -7055,23 +7055,31 @@ class MusicService :
                     AudioSourceType.TIDAL -> resolveTidalStream(query)
                     AudioSourceType.DEEZER -> {
                         if (!isrcAttempted) {
+                            Timber.tag("MusicService").d("Attempting ISRC resolution for Deezer...")
                             isrc =
                                 runCatching {
                                     runBlocking(Dispatchers.IO) {
                                         IsrcResolver.resolve(query.title, query.artists, query.durationMs)
                                     }
-                                }.getOrNull()
+                                }.onFailure { Timber.tag("MusicService").w(it, "ISRC resolution failed") }
+                                    .getOrNull()
                             isrcAttempted = true
+                            Timber.tag("MusicService").d("ISRC resolved: %s", isrc ?: "<null>")
                         }
-                        isrc?.let { code ->
+                        if (isrc != null) {
+                            Timber.tag("MusicService").d("Attempting Deezer with ISRC: %s", isrc)
                             runCatching {
                                 runBlocking(Dispatchers.IO) {
                                     DeezerAudioProvider.resolve(
-                                        isrc = code,
+                                        isrc = isrc,
                                         instanceBaseUrl = dataStore.get(DeezerInstanceKey, DeezerAudioProvider.DEFAULT_INSTANCE),
                                     )
                                 }
-                            }.getOrNull()
+                            }.onFailure { Timber.tag("MusicService").w(it, "Deezer resolution failed") }
+                                .getOrNull()
+                        } else {
+                            Timber.tag("MusicService").d("Skipping Deezer: ISRC not available")
+                            null
                         }
                     }
                     AudioSourceType.AMAZON ->
