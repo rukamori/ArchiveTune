@@ -658,6 +658,44 @@
     <string name="tidal_set_cookie">Set Tidal cookie</string>
     <string name="tidal_account_connected">Connected: %1$s</string>
     <string name="tidal_disconnect">Disconnect Tidal account</string>
+    <!-- Tidal playback notices -->
+    <string name="tidal_playback_fell_back">Tidal couldn\'t resolve this track — playing from YouTube</string>
+    <!-- Tidal HiFi instances -->
+    <string name="tidal_instances">HiFi instances</string>
+    <string name="tidal_instances_description">Tidal streams are resolved through public HiFi/QQDL instances. Add, remove or reorder them; the app tries each in order until one responds.</string>
+    <string name="tidal_add_instance">Add instance</string>
+    <string name="tidal_instance_url_hint">https://instance.example.com</string>
+    <string name="tidal_instance_invalid_url">Enter a valid http(s) URL</string>
+    <string name="tidal_instance_duplicate">That instance is already in the list</string>
+    <string name="tidal_remove_instance">Remove instance</string>
+    <string name="tidal_reset_instances">Reset to default instances</string>
+    <string name="tidal_no_instances">No instances configured. Add one or reset to defaults.</string>
+    <string name="tidal_check_instances">Check instance health</string>
+    <string name="tidal_checking_instances">Checking instances…</string>
+    <string name="tidal_instance_healthy">Online (%1$d ms)</string>
+    <string name="tidal_instance_unreachable">Unreachable</string>
+    <string name="tidal_instance_unknown">Not checked</string>
+    <!-- Tidal instance auto-discovery -->
+    <string name="tidal_discover">Auto-discover instances</string>
+    <string name="tidal_discover_description">Fetch additional public instances from a community list and merge them with your own.</string>
+    <string name="tidal_discovering">Discovering instances…</string>
+    <string name="tidal_discover_result">Added %1$d new instance(s)</string>
+    <string name="tidal_discover_none">No new instances found</string>
+    <string name="tidal_discover_failed">Discovery failed — check your connection or add instances manually</string>
+    <!-- Tidal account login / premium -->
+    <string name="tidal_login">Sign in to Tidal</string>
+    <string name="tidal_login_description">Sign in with your Tidal account to verify your subscription. Playback still uses the public instances above.</string>
+    <string name="tidal_login_start">Start sign-in</string>
+    <string name="tidal_login_instructions">Open %1$s and enter code %2$s, then return here.</string>
+    <string name="tidal_login_open">Open activation page</string>
+    <string name="tidal_login_waiting">Waiting for authorization…</string>
+    <string name="tidal_login_cancel">Cancel sign-in</string>
+    <string name="tidal_login_success">Signed in to Tidal</string>
+    <string name="tidal_login_failed">Tidal sign-in failed or timed out</string>
+    <string name="tidal_account_checking">Checking subscription…</string>
+    <string name="tidal_account_premium">HiFi / Premium subscription active</string>
+    <string name="tidal_account_free">Free account — lossless playback may not work</string>
+    <string name="tidal_account_free_warning">This Tidal account is not HiFi/Premium. Lossless playback through Tidal may fail; the app will fall back to YouTube.</string>
     <string name="discord_integration">Discord Integration</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
     <string name="discord_login_description">Connect your Discord account with OAuth so ArchiveTune can publish Rich Presence.</string>

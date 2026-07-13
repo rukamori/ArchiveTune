@@ -740,6 +740,21 @@ val TidalArtworkFallbackEnabledKey = booleanPreferencesKey("tidalArtworkFallback
 val TidalAnimatedCoversEnabledKey = booleanPreferencesKey("tidalAnimatedCoversEnabled")
 val TidalAccountNameKey = stringPreferencesKey("tidal_account_name")
 
+// Newline-separated list of user-configured HiFi/QQDL instance base URLs. Empty = use defaults.
+val TidalInstancesKey = stringPreferencesKey("tidalInstances")
+
+// Tidal account login (device/OAuth) + subscription state.
+val TidalAccessTokenKey = stringPreferencesKey("tidalAccessToken")
+val TidalRefreshTokenKey = stringPreferencesKey("tidalRefreshToken")
+val TidalTokenExpiryKey = longPreferencesKey("tidalTokenExpiry")
+val TidalSubscriptionKey = stringPreferencesKey("tidalSubscription")
+
+enum class TidalSubscriptionStatus {
+    UNKNOWN,
+    PREMIUM,
+    FREE,
+}
+
 enum class TidalAudioQuality {
     AAC_320,
     FLAC,
