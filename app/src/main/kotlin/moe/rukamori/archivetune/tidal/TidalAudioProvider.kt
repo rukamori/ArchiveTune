@@ -9,6 +9,7 @@ import android.net.Uri
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.audiosource.DirectStream
 import moe.rukamori.archivetune.constants.AudioSourceType
 import android.util.Base64
@@ -446,7 +447,7 @@ object TidalAudioProvider {
         return activeEndpoints.sortedBy { if (isInstanceCoolingDown(it.baseUrl, now)) 1 else 0 }
     }
 
-    suspend fun resolve(
+    fun resolve(
         query: Query,
         cacheDir: File? = null,
         preferAtmos: Boolean = false,
@@ -513,15 +514,17 @@ object TidalAudioProvider {
                 }
 
                 val streamAttempt = runCatching {
-                    requestDirectFlac(
-                        track = track,
-                        quality = quality,
-                        durationMs = query.durationMs ?: track.durationMs,
-                        now = now,
-                        cacheDir = cacheDir,
-                        preferLiveDash = preferLiveDash,
-                        audioQuality = audioQuality,
-                    )
+                    runBlocking(Dispatchers.IO) {
+                        requestDirectFlac(
+                            track = track,
+                            quality = quality,
+                            durationMs = query.durationMs ?: track.durationMs,
+                            now = now,
+                            cacheDir = cacheDir,
+                            preferLiveDash = preferLiveDash,
+                            audioQuality = audioQuality,
+                        )
+                    }
                 }.onFailure { error ->
                     Timber.tag("TidalAudio").w(error, "TIDAL $quality stream failed for ${track.trackId}")
                     errors += "${track.trackId}/$quality: ${error.message ?: error.javaClass.simpleName}"
