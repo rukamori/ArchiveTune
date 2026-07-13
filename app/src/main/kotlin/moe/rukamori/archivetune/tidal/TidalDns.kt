@@ -7,57 +7,93 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.net.InetAddress
 import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * DNS resolver that falls back to DNS-over-HTTPS (Cloudflare) when the system resolver can't resolve
- * a host. This is what lets TIDAL work on networks/ISPs that DNS-block `tidal.com` / `auth.tidal.com`
- * (e.g. regions where TIDAL isn't officially available): the system lookup fails with EAI_NODATA, so
- * we resolve the host over HTTPS instead, which the ISP can't block at the DNS layer.
+ * DNS resolver that falls back to DNS-over-HTTPS (Cloudflare / Google) when the system resolver
+ * can't resolve a host. This is what lets TIDAL work on networks/ISPs that DNS-block `tidal.com` /
+ * `auth.tidal.com` (e.g. regions where TIDAL isn't officially available): the system lookup fails
+ * with EAI_NODATA, so we resolve the host over HTTPS instead, which the ISP can't block at the DNS
+ * layer.
  *
- * Endpoints are tried in order. The hostname endpoints (cloudflare-dns.com, dns.google) resolve via
- * the system DNS of a plain client, which works because ISPs that block `tidal.com` do not block the
- * DoH providers themselves. The IP-literal endpoint (`https://1.1.1.1/dns-query`) is kept as a last
- * resort for networks that block the DoH hostnames too — it needs no DNS of its own and Cloudflare's
- * TLS certificate includes the `1.1.1.1` IP SAN, so hostname verification still passes.
+ * Robustness details (why this differs from a naive DoH resolver):
+ *  - The DoH client is **bootstrapped with hardcoded IPs** for the DoH provider hostnames
+ *    (cloudflare-dns.com, dns.google). A naive resolver still needs the *system* DNS to resolve the
+ *    DoH provider's own hostname first — so on a network where system DNS is fully broken (not just
+ *    tidal-blocked), even the fallback fails with "Unable to resolve host". Pinning the provider IPs
+ *    removes that dependency entirely; TLS still uses the hostname for SNI + certificate validation,
+ *    so it stays secure. (Note: querying the JSON DoH API by raw IP literal, e.g.
+ *    `https://1.1.1.1/dns-query`, does not reliably return JSON, which is why we pin the hostname
+ *    instead of using IP-literal URLs.)
+ *  - Successful resolutions are **cached** (with a TTL) so repeated lookups during playback don't
+ *    hammer the DoH endpoints and survive brief connectivity blips.
  */
 internal object TidalDns : Dns {
-    // Hostname endpoints first (fast, use the plain system resolver which can reach the DoH
-    // providers even when tidal.com is blocked). The IP-literal endpoints are last-resort for when
-    // system DNS is fully down and can't even resolve the DoH hostnames — they need no DNS of their
-    // own, and Cloudflare's (1.1.1.1 / 1.0.0.1) and Google's (8.8.8.8 / 8.8.4.4) TLS certificates
-    // include those IP SANs, so hostname verification still passes.
-    private val DOH_ENDPOINTS =
-        listOf(
-            "https://cloudflare-dns.com/dns-query",
-            "https://dns.google/resolve",
-            "https://1.1.1.1/dns-query",
-            "https://1.0.0.1/dns-query",
-            "https://8.8.8.8/resolve",
-            "https://8.8.4.4/resolve",
+    // DoH providers that support the JSON API (application/dns-json). Both are reached via the
+    // bootstrap resolver below, so they never depend on the system DNS.
+    private const val CLOUDFLARE_DOH = "https://cloudflare-dns.com/dns-query"
+    private const val GOOGLE_DOH = "https://dns.google/resolve"
+
+    // Hardcoded provider IPs so we can reach the DoH endpoints without any working system DNS.
+    // These are stable anycast addresses for the respective providers.
+    private val BOOTSTRAP: Map<String, List<String>> =
+        mapOf(
+            "cloudflare-dns.com" to listOf("104.16.248.249", "104.16.249.249"),
+            "dns.google" to listOf("8.8.8.8", "8.8.4.4"),
         )
 
-    // Plain client with the default system resolver, used only to reach the DoH endpoints (whose
-    // hostnames are not blocked). Never routed through TidalDns to avoid infinite recursion.
+    private const val CACHE_TTL_MS = 5 * 60 * 1000L
+
+    private class CacheEntry(val addresses: List<InetAddress>, val expiresAt: Long)
+
+    private val cache = ConcurrentHashMap<String, CacheEntry>()
+
+    /** Static bootstrap resolver used ONLY to reach the DoH provider hostnames. */
+    private val bootstrapDns =
+        Dns { hostname ->
+            BOOTSTRAP[hostname]?.mapNotNull { ip -> runCatching { InetAddress.getByName(ip) }.getOrNull() }
+                ?: Dns.SYSTEM.lookup(hostname)
+        }
+
+    // Plain client for the DoH endpoints. Uses the bootstrap resolver (never TidalDns) to avoid
+    // both infinite recursion and any dependency on the system DNS.
     private val dohClient =
         OkHttpClient
             .Builder()
+            .dns(bootstrapDns)
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.SECONDS)
             .callTimeout(8, TimeUnit.SECONDS)
             .build()
 
     override fun lookup(hostname: String): List<InetAddress> {
+        // Serve from cache first (covers brief network drops during playback).
+        cache[hostname]?.let { entry ->
+            if (entry.expiresAt > System.currentTimeMillis() && entry.addresses.isNotEmpty()) {
+                return entry.addresses
+            }
+        }
+
         // Prefer the system resolver; it's faster and respects local/VPN DNS when it works.
-        val system =
-            runCatching { Dns.SYSTEM.lookup(hostname) }.getOrDefault(emptyList())
-        if (system.isNotEmpty()) return system
+        val system = runCatching { Dns.SYSTEM.lookup(hostname) }.getOrDefault(emptyList())
+        if (system.isNotEmpty()) {
+            cache[hostname] = CacheEntry(system, System.currentTimeMillis() + CACHE_TTL_MS)
+            return system
+        }
 
         // System DNS returned nothing (blocked / EAI_NODATA). Fall back to DoH.
         val viaDoh = resolveOverHttps(hostname)
         if (viaDoh.isNotEmpty()) {
             Timber.tag("TidalDns").d("resolved %s via DoH (%d address(es))", hostname, viaDoh.size)
+            cache[hostname] = CacheEntry(viaDoh, System.currentTimeMillis() + CACHE_TTL_MS)
             return viaDoh
+        }
+
+        // Last resort: if DoH also failed but we have a stale cache entry, use it rather than crash.
+        cache[hostname]?.addresses?.takeIf { it.isNotEmpty() }?.let {
+            Timber.tag("TidalDns").w("using stale cached DNS for %s (DoH failed)", hostname)
+            return it
         }
         throw UnknownHostException("Unable to resolve host \"$hostname\" via system DNS or DoH")
     }
@@ -66,15 +102,14 @@ internal object TidalDns : Dns {
         // Query A (IPv4) first, then AAAA (IPv6) only if needed.
         val a = queryDoh(hostname, type = 1)
         val aaaa = if (a.isEmpty()) queryDoh(hostname, type = 28) else emptyList()
-        val ips = a + aaaa
-        return ips.mapNotNull { ip ->
+        return (a + aaaa).mapNotNull { ip ->
             // getByName on an IP literal does not perform a DNS lookup, so this is safe/offline.
             runCatching { InetAddress.getByName(ip) }.getOrNull()
         }
     }
 
     private fun queryDoh(hostname: String, type: Int): List<String> {
-        for (endpoint in DOH_ENDPOINTS) {
+        for (endpoint in listOf(CLOUDFLARE_DOH, GOOGLE_DOH)) {
             val result =
                 runCatching {
                     val request =
@@ -97,7 +132,7 @@ internal object TidalDns : Dns {
                             }
                         }
                     }
-                }.getOrDefault(emptyList())
+                }.getOrElse { emptyList() }
             if (result.isNotEmpty()) return result
         }
         return emptyList()
