@@ -109,7 +109,7 @@ class ScheduledBackupRepository
                     null,
                     null,
                     null,
-                )?.use(Cursor::readDisplayName)
+                )?.use { cursor -> cursor.readDisplayName() }
                 ?.takeIf(String::isNotBlank)
                 ?: documentId.substringAfterLast(':').ifBlank { documentId }
         }
