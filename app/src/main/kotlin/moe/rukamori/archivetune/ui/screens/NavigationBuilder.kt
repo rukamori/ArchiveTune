@@ -62,6 +62,7 @@ import moe.rukamori.archivetune.ui.screens.settings.HiddenPlaylistsScreen
 import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
+import moe.rukamori.archivetune.ui.screens.settings.TidalSettings
 import moe.rukamori.archivetune.ui.screens.settings.LastFMSettings
 import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
@@ -416,6 +417,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/integration") {
         IntegrationScreen(navController)
+    }
+    composable("settings/tidal") {
+        TidalSettings(navController)
     }
     composable("settings/ai_integration") {
         AiIntegrationSettings(navController)
