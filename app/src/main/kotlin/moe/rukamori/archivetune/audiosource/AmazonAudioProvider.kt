@@ -5,14 +5,13 @@
  *
  * Amazon Music source via a public instance (e.g. the Monochrome community's `amz.*` host).
  *
- * IMPORTANT — best-effort only. The Amazon instance is ASIN-based and exposes NO search endpoint,
- * and it is gated behind Cloudflare Turnstile. That means:
- *   - A YouTube-sourced track cannot be mapped to an Amazon ASIN automatically (there is no public
- *     song -> ASIN lookup), so [resolveByMetadata] returns null in normal use.
- *   - Requests require either a configured `bypass_token` (set by the instance operator) or a
- *     Turnstile JWT obtained interactively in a browser.
- * The provider is wired into the framework so it is ready if/when an ASIN source or working bypass
- * token is available, but it will typically fall through to the next configured source.
+ * The instance itself is ASIN-based and exposes NO search endpoint, so title -> ASIN mapping is done
+ * externally via two public, no-auth hops (iTunes Search -> Odesli/song.link), see [searchAsin].
+ *
+ * IMPORTANT — streaming is still gated behind Cloudflare Turnstile. Even with a valid ASIN, the
+ * instance requires either a configured `bypass_token` (set by the instance operator) or a
+ * Turnstile JWT obtained interactively in a browser. Without one, resolution finds the ASIN but the
+ * stream request is rejected (HTTP 428) and the caller falls through to the next configured source.
  */
 
 package moe.rukamori.archivetune.audiosource
@@ -20,13 +19,23 @@ package moe.rukamori.archivetune.audiosource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AudioSourceType
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 object AmazonAudioProvider {
     const val DEFAULT_INSTANCE = "https://amz.geeked.wtf"
+
+    // Public, no-auth catalog used to look up a track (title/artist -> Apple Music track URL).
+    private const val ITUNES_SEARCH = "https://itunes.apple.com/search"
+
+    // Odesli/song.link: given a known track URL it returns cross-platform IDs, including the Amazon
+    // Music song entity whose id IS the streaming ASIN. Free + public (rate limited).
+    private const val ODESLI_LINKS = "https://api.song.link/v1-alpha.1/links"
 
     private val client =
         OkHttpClient
@@ -36,23 +45,172 @@ object AmazonAudioProvider {
             .callTimeout(25, TimeUnit.SECONDS)
             .build()
 
+    // Small in-memory cache of "title|artist" -> ASIN (or "" for a known miss) to avoid hammering
+    // the public iTunes/Odesli endpoints for repeat plays within a session.
+    private val asinCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /**
-     * Attempts to resolve a stream from track metadata. Amazon has no search endpoint, so unless a
-     * song -> ASIN mapping exists this returns null and the caller falls through to the next source.
+     * Attempts to resolve a stream from track metadata. Since the Amazon instance is ASIN-only, we
+     * first map the title/artist to an Amazon Music ASIN via [searchAsin] (iTunes + Odesli), then
+     * hand the ASIN to [resolveByAsin]. Returns null if no ASIN can be found or the instance
+     * rejects the stream (e.g. Turnstile), so the caller falls through to the next source.
      */
-    @Suppress("UNUSED_PARAMETER")
     suspend fun resolveByMetadata(
         title: String,
         artists: List<String>,
         durationMs: Long?,
         instanceBaseUrl: String = DEFAULT_INSTANCE,
         bypassToken: String? = null,
+        quality: String = "HIGH",
+        turnstileJwt: String? = null,
     ): DirectStream? {
-        Timber
-            .tag("AmazonAudio")
-            .d("Amazon has no search endpoint; cannot map \"%s\" to an ASIN. Skipping.", title)
-        return null
+        val asin = searchAsin(title, artists, durationMs)
+        if (asin == null) {
+            Timber.tag("AmazonAudio").d("No Amazon ASIN found for \"%s\"; skipping.", title)
+            return null
+        }
+        Timber.tag("AmazonAudio").d("Mapped \"%s\" -> ASIN %s; resolving stream.", title, asin)
+        return resolveByAsin(
+            asin = asin,
+            quality = quality,
+            instanceBaseUrl = instanceBaseUrl,
+            bypassToken = bypassToken,
+            turnstileJwt = turnstileJwt,
+        )
     }
+
+    /**
+     * Maps a track title/artist to an Amazon Music streaming ASIN using two public, no-auth hops:
+     *   1. iTunes Search API -> best-matching Apple Music track URL (disambiguated by title/artist
+     *      and, when available, duration).
+     *   2. Odesli (song.link) -> the `AMAZON_SONG::<ASIN>` entity for that track.
+     * Results (including misses) are cached in-memory for the session. Returns null on no match.
+     */
+    suspend fun searchAsin(
+        title: String,
+        artists: List<String>,
+        durationMs: Long?,
+    ): String? =
+        withContext(Dispatchers.IO) {
+            val primaryArtist = artists.firstOrNull().orEmpty()
+            val cacheKey = "${title.trim().lowercase()}|${primaryArtist.trim().lowercase()}"
+            asinCache[cacheKey]?.let { return@withContext it.ifBlank { null } }
+
+            val result =
+                runCatching {
+                    val trackUrl = itunesLookupTrackUrl(title, primaryArtist, durationMs)
+                    if (trackUrl == null) {
+                        Timber.tag("AmazonAudio").d("iTunes had no match for \"%s\" - %s", title, primaryArtist)
+                        return@runCatching null
+                    }
+                    odesliAmazonAsin(trackUrl)
+                }.getOrElse {
+                    Timber.tag("AmazonAudio").w(it, "ASIN search error for \"%s\"", title)
+                    null
+                }
+            // Cache both hits and misses ("" == known miss) to protect the public endpoints.
+            asinCache[cacheKey] = result.orEmpty()
+            result
+        }
+
+    /** iTunes Search: returns the best-matching Apple Music track URL, or null. */
+    private fun itunesLookupTrackUrl(
+        title: String,
+        artist: String,
+        durationMs: Long?,
+    ): String? {
+        val term = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
+        val url =
+            ITUNES_SEARCH
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("term", term)
+                .addQueryParameter("entity", "song")
+                .addQueryParameter("limit", "10")
+                .build()
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
+                .get()
+                .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful || body.isBlank()) return null
+            val results = JSONObject(body).optJSONArray("results") ?: return null
+            if (results.length() == 0) return null
+
+            val normTitle = normalize(title)
+            val normArtist = normalize(artist)
+            var bestUrl: String? = null
+            var bestScore = Int.MIN_VALUE
+            for (i in 0 until results.length()) {
+                val item = results.optJSONObject(i) ?: continue
+                val trackName = item.optString("trackName")
+                val artistName = item.optString("artistName")
+                val viewUrl = item.optString("trackViewUrl").ifBlank { null } ?: continue
+                var score = 0
+                val nt = normalize(trackName)
+                if (nt == normTitle) score += 100 else if (nt.contains(normTitle) || normTitle.contains(nt)) score += 50
+                if (normArtist.isNotEmpty() && normalize(artistName).contains(normArtist)) score += 60
+                // Prefer close duration matches when we know the expected duration.
+                if (durationMs != null && durationMs > 0) {
+                    val itMs = item.optLong("trackTimeMillis", 0L)
+                    if (itMs > 0 && abs(itMs - durationMs) <= 3000) score += 40
+                }
+                if (score > bestScore) {
+                    bestScore = score
+                    bestUrl = viewUrl
+                }
+            }
+            // Require at least a title hit to avoid returning an unrelated track.
+            return if (bestScore >= 50) bestUrl else null
+        }
+    }
+
+    /** Odesli: extracts the Amazon Music ASIN for a known track URL, or null. */
+    private fun odesliAmazonAsin(trackUrl: String): String? {
+        val url =
+            ODESLI_LINKS
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("url", trackUrl)
+                .addQueryParameter("userCountry", "US")
+                .build()
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (ArchiveTune)")
+                .get()
+                .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful || body.isBlank()) return null
+            val entities = JSONObject(body).optJSONObject("entitiesByUniqueId") ?: return null
+            val keys = entities.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (key.startsWith("AMAZON_SONG::", ignoreCase = true)) {
+                    // Key format is AMAZON_SONG::<ASIN>; also fall back to the entity's id field.
+                    val fromKey = key.substringAfter("::").trim()
+                    if (fromKey.isNotBlank()) return fromKey
+                    return entities.optJSONObject(key)?.optString("id")?.ifBlank { null }
+                }
+            }
+            return null
+        }
+    }
+
+    /** Lowercases and strips punctuation/parenthetical noise for fuzzy title/artist comparison. */
+    private fun normalize(value: String): String =
+        value
+            .lowercase()
+            .replace(Regex("\\(.*?\\)"), "")
+            .replace(Regex("\\[.*?]"), "")
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .trim()
 
     /**
      * Resolves a decrypted stream for a known Amazon ASIN. The instance's `/decrypt` endpoint
