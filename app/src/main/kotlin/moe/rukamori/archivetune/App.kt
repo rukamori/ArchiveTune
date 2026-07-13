@@ -44,6 +44,8 @@ import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
+import moe.rukamori.archivetune.tidal.TidalAudioProvider
+import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
@@ -210,6 +212,26 @@ class App :
             } catch (e: Exception) {
                 Timber.e(e, "Error during deferred initialization")
                 reportException(e)
+            }
+        }
+
+        // Subtly verify the public Tidal instances on startup so dead / preview-only (unsubscribed)
+        // mirrors are pruned before the user plays anything. The scan is staggered (one instance at
+        // a time with a small delay) so it never competes with critical startup work, and its
+        // results are cached for the settings screen and future launches.
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                if (dataStore.get(TidalEnabledKey, true)) {
+                    // Restore the last probe track so the very first scan can classify preview vs full.
+                    dataStore.get(TidalLastProbeTrackKey)?.takeIf { it.isNotBlank() }?.let {
+                        if (TidalAudioProvider.lastResolvedTrackId.isNullOrBlank()) {
+                            TidalAudioProvider.seedProbeTrack(it)
+                        }
+                    }
+                    TidalInstanceHealthManager.refresh(this@App, includeDiscovery = false, staggered = true)
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Tidal instance startup health scan failed")
             }
         }
 

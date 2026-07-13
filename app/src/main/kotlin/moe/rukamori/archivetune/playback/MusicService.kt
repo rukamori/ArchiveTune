@@ -181,6 +181,7 @@ import moe.rukamori.archivetune.constants.AudioSourceOrderKey
 import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
+import moe.rukamori.archivetune.constants.TidalLastProbeTrackKey
 import moe.rukamori.archivetune.constants.TidalRefreshTokenKey
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.DeezerEnabledKey
@@ -7115,6 +7116,14 @@ class MusicService :
                 }
             if (stream != null) {
                 Timber.tag("MusicService").i("Source WIN: %s resolved \"%s\" [%s] (%s)", source.name, query.title, stream.label, stream.uri.take(80))
+                // Persist the winning Tidal track id as a future health-probe track.
+                if (source == AudioSourceType.TIDAL) {
+                    TidalAudioProvider.lastResolvedTrackId?.takeIf { it.isNotBlank() }?.let { probe ->
+                        runCatching {
+                            runBlocking { dataStore.edit { prefs -> prefs[TidalLastProbeTrackKey] = probe } }
+                        }
+                    }
+                }
                 return applyDirectStream(dataSpec, mediaId, stream)
             }
             Timber.tag("MusicService").d("Source %s did not resolve \"%s\"", source.name, query.title)

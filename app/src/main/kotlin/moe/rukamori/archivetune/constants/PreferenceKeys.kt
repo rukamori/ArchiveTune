@@ -744,6 +744,14 @@ val TidalAccountNameKey = stringPreferencesKey("tidal_account_name")
 // Newline-separated list of user-configured HiFi/QQDL instance base URLs. Empty = use defaults.
 val TidalInstancesKey = stringPreferencesKey("tidalInstances")
 
+// JSON cache of the last instance health scan: [{"url","status","latencyMs","checkedAt"}, ...].
+// Persisted so working instances are remembered across launches instead of re-probed every time.
+val TidalVerifiedInstancesKey = stringPreferencesKey("tidalVerifiedInstances")
+
+// The last Tidal track id that resolved successfully. Used as a "probe" track for health checks so
+// we can tell a fully-working instance apart from a reachable-but-preview-only (unsubscribed) one.
+val TidalLastProbeTrackKey = stringPreferencesKey("tidalLastProbeTrack")
+
 // Tidal account login (device/OAuth) + subscription state.
 val TidalAccessTokenKey = stringPreferencesKey("tidalAccessToken")
 val TidalRefreshTokenKey = stringPreferencesKey("tidalRefreshToken")
@@ -818,7 +826,7 @@ val LanguageCodeToName =
         "vi" to "Tiếng Việt",
         "zh" to "中文",
         "zh-CN" to "简体中文",
-        "zh-TW" to "繁體中文",
+        "zh-TW" to "繁���中文",
         "fr" to "Français",
         "de" to "Deutsch",
         "es" to "Español",

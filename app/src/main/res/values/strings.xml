@@ -699,6 +699,7 @@
     <string name="tidal_checking_instances">Checking instances…</string>
     <string name="tidal_instance_healthy">Online (%1$d ms)</string>
     <string name="tidal_instance_unreachable">Unreachable</string>
+    <string name="tidal_instance_preview_only">Preview only (unsubscribed)</string>
     <string name="tidal_instance_unknown">Not checked</string>
     <!-- Tidal instance auto-discovery -->
     <string name="tidal_discover">Auto-discover instances</string>

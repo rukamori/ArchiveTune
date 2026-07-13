@@ -157,6 +157,113 @@ object TidalAudioProvider {
         }.getOrNull()
     }
 
+    /** Result of a deep instance health probe (see [verifyInstance]). */
+    enum class InstanceHealth {
+        /** Reachable and served a FULL (non-preview) lossless manifest for the probe track. */
+        HEALTHY,
+
+        /** Reachable, but its backing account is unsubscribed so it only serves 30s previews. */
+        PREVIEW_ONLY,
+
+        /** Unreachable (DNS/timeout/5xx) or did not return a usable response. */
+        UNREACHABLE,
+    }
+
+    /** The last Tidal track id that resolved successfully, usable as a health-probe track. */
+    @Volatile
+    var lastResolvedTrackId: String? = null
+        private set
+
+    /**
+     * Seeds the health-probe track from persisted storage on startup, without overwriting a track
+     * that has already resolved this session.
+     */
+    fun seedProbeTrack(trackId: String) {
+        if (lastResolvedTrackId.isNullOrBlank() && trackId.isNotBlank()) {
+            lastResolvedTrackId = trackId
+        }
+    }
+
+    /**
+     * Deep health probe for a single instance. Unlike [checkInstance] (reachability only), this
+     * resolves an actual [probeTrackId] manifest and inspects whether the instance serves a FULL
+     * track or only a PREVIEW (unsubscribed backing account). When [probeTrackId] is blank it
+     * degrades to a reachability check (HEALTHY/UNREACHABLE). Runs blocking network I/O, so callers
+     * must invoke it off the main thread.
+     */
+    fun verifyInstance(
+        baseUrl: String,
+        probeTrackId: String?,
+        quality: TidalAudioQuality = TidalAudioQuality.FLAC,
+    ): InstanceHealth {
+        val normalized = normalizeInstanceUrl(baseUrl) ?: return InstanceHealth.UNREACHABLE
+        val trackId = probeTrackId?.trim().orEmpty()
+        if (trackId.isEmpty()) {
+            return if (checkInstance(normalized) != null) InstanceHealth.HEALTHY else InstanceHealth.UNREACHABLE
+        }
+        val qualityString =
+            when (quality) {
+                TidalAudioQuality.HI_RES_LOSSLESS -> "HI_RES_LOSSLESS"
+                TidalAudioQuality.FLAC -> "LOSSLESS"
+                TidalAudioQuality.AAC_320 -> "HIGH"
+            }
+        val manifestFormats = qualityString.tidalManifestFormats()
+            ?: return if (checkInstance(normalized) != null) InstanceHealth.HEALTHY else InstanceHealth.UNREACHABLE
+        val url =
+            normalized
+                .toHttpUrl()
+                .newBuilder()
+                .addPathSegment("trackManifests")
+                .addQueryParameter("id", trackId)
+                .apply { manifestFormats.forEach { addQueryParameter("formats", it) } }
+                .addQueryParameter("adaptive", "false")
+                .addQueryParameter("manifestType", "MPEG_DASH")
+                .addQueryParameter("uriScheme", "HTTPS")
+                .addQueryParameter("usage", "PLAYBACK")
+                .build()
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .get()
+                .header("Accept", "application/json")
+                .header("User-Agent", DOWNLOAD_USER_AGENT)
+                .build()
+        return runCatching {
+            healthClient.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful || body.isBlank()) return@use InstanceHealth.UNREACHABLE
+                val attributes =
+                    JSONObject(body)
+                        .optJSONObject("data")
+                        ?.optJSONObject("data")
+                        ?.optJSONObject("attributes")
+                        ?: return@use InstanceHealth.UNREACHABLE
+                val presentation =
+                    attributes.stringOrNull("trackPresentation")
+                        ?: attributes.stringOrNull("assetPresentation")
+                if (presentation.equals("PREVIEW", ignoreCase = true)) {
+                    InstanceHealth.PREVIEW_ONLY
+                } else {
+                    InstanceHealth.HEALTHY
+                }
+            }
+        }.getOrElse { InstanceHealth.UNREACHABLE }
+    }
+
+    /**
+     * Feeds an externally-obtained health result (e.g. from the startup scan) into the same runtime
+     * cooldown map the resolver uses, so verified-healthy instances are tried first and
+     * dead/preview-only ones are skipped without re-probing them on the next play.
+     */
+    fun applyHealthResult(
+        baseUrl: String,
+        healthy: Boolean,
+    ) {
+        val normalized = normalizeInstanceUrl(baseUrl) ?: return
+        if (healthy) markInstanceHealthy(normalized) else markInstanceFailed(normalized, hardFailure = true)
+    }
+
     /**
      * Best-effort auto-discovery of additional public instances from community sources. Returns
      * the list of newly discovered, valid base URLs (may be empty). Never throws; on failure it
@@ -956,6 +1063,8 @@ object TidalAudioProvider {
                     }.also { result ->
                         result.getOrNull()?.let {
                             markInstanceHealthy(endpoint.baseUrl)
+                            // Remember this track as a health-probe for future instance scans.
+                            lastResolvedTrackId = track.trackId
                         }
                         result.exceptionOrNull()?.let { error ->
                             if (error is TidalRateLimitedException) {

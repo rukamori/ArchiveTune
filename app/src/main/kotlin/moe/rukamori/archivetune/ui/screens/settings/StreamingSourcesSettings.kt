@@ -38,7 +38,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -62,6 +61,7 @@ import moe.rukamori.archivetune.audiosource.AmazonAudioProvider
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
 import moe.rukamori.archivetune.audiosource.DeezerAudioProvider
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
+import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -155,31 +155,44 @@ fun StreamingSourcesSettings(navController: NavController) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
-    // Pings every configured instance in parallel and records its health label.
+    // Turns a scan record into a user-facing status label (healthy latency / preview-only / dead).
+    fun labelFor(record: TidalInstanceHealthManager.InstanceRecord): String =
+        when (record.status) {
+            TidalAudioProvider.InstanceHealth.HEALTHY ->
+                context.getString(R.string.tidal_instance_healthy, (record.latencyMs ?: 0L).toInt())
+            TidalAudioProvider.InstanceHealth.PREVIEW_ONLY ->
+                context.getString(R.string.tidal_instance_preview_only)
+            TidalAudioProvider.InstanceHealth.UNREACHABLE ->
+                context.getString(R.string.tidal_instance_unreachable)
+        }
+
+    fun applyRecords(records: List<TidalInstanceHealthManager.InstanceRecord>) {
+        records.forEach { record -> healthStatus[record.url] = labelFor(record) }
+    }
+
+    // Deep-verifies every configured instance (reachability AND full-vs-preview) and saves the
+    // result so working instances are remembered for next time.
     fun runHealthCheck() {
         if (checkingInstances) return
         checkingInstances = true
         coroutineScope.launch {
-            val instances = effectiveInstances
-            instances
-                .map { instance ->
-                    async(Dispatchers.IO) { instance to TidalAudioProvider.checkInstance(instance) }
-                }.forEach { deferred ->
-                    val (instance, latency) = deferred.await()
-                    healthStatus[instance] =
-                        if (latency != null) {
-                            context.getString(R.string.tidal_instance_healthy, latency.toInt())
-                        } else {
-                            context.getString(R.string.tidal_instance_unreachable)
-                        }
+            val records =
+                withContext(Dispatchers.IO) {
+                    TidalInstanceHealthManager.refresh(context, includeDiscovery = false, staggered = false)
                 }
+            applyRecords(records)
             checkingInstances = false
         }
     }
 
-    // Auto-check instance health once when the screen opens so dead mirrors are visible.
+    // Show the last saved scan instantly when the screen opens; only run a fresh scan if we have
+    // nothing cached yet, so we don't hammer the instances on every visit.
     LaunchedEffect(Unit) {
-        if (tidalEnabled && healthStatus.isEmpty()) {
+        if (!tidalEnabled) return@LaunchedEffect
+        val cached = withContext(Dispatchers.IO) { TidalInstanceHealthManager.cachedRecords(context) }
+        if (cached.isNotEmpty()) {
+            applyRecords(cached)
+        } else if (healthStatus.isEmpty()) {
             runHealthCheck()
         }
     }
@@ -406,18 +419,29 @@ fun StreamingSourcesSettings(navController: NavController) {
                         onClick = {
                             discovering = true
                             coroutineScope.launch {
-                                val discovered =
+                                // Fetch public instances, verify each (reachability + full-vs-preview),
+                                // then save the results. Newly discovered working instances are added
+                                // to the list so they persist for next launch.
+                                val records =
                                     withContext(Dispatchers.IO) {
-                                        TidalAudioProvider.discoverInstances()
+                                        TidalInstanceHealthManager.refresh(
+                                            context,
+                                            includeDiscovery = true,
+                                            staggered = false,
+                                        )
                                     }
-                                val newOnes = discovered.filter { it !in effectiveInstances }
-                                if (newOnes.isNotEmpty()) {
-                                    persistInstances(effectiveInstances + newOnes)
-                                    toast(context.getString(R.string.tidal_discover_result, newOnes.size))
-                                } else if (discovered.isEmpty()) {
-                                    toast(context.getString(R.string.tidal_discover_failed))
-                                } else {
-                                    toast(context.getString(R.string.tidal_discover_none))
+                                applyRecords(records)
+                                val newHealthy =
+                                    records
+                                        .filter { it.isHealthy && it.url !in effectiveInstances }
+                                        .map { it.url }
+                                when {
+                                    newHealthy.isNotEmpty() -> {
+                                        persistInstances(effectiveInstances + newHealthy)
+                                        toast(context.getString(R.string.tidal_discover_result, newHealthy.size))
+                                    }
+                                    records.isEmpty() -> toast(context.getString(R.string.tidal_discover_failed))
+                                    else -> toast(context.getString(R.string.tidal_discover_none))
                                 }
                                 discovering = false
                             }
