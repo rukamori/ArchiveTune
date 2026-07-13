@@ -221,21 +221,41 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Check signing secret
+      - name: Prepare signing key
         id: signing
         shell: bash
         env:
           KEYSTORE: ${{ secrets.KEYSTORE }}
         run: |
+          set -euo pipefail
           if [ -n "$KEYSTORE" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            # Real release keystore is configured (e.g. upstream); use it as-is.
+            echo "mode=secret" >> "$GITHUB_OUTPUT"
           else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No signing keystore secret (KEYSTORE) configured. This is expected on forks; the release APK will be built unsigned."
+            # No KEYSTORE secret (expected on forks): generate an ephemeral test
+            # keystore so the release APK is still signed and installable.
+            echo "::warning::No KEYSTORE secret configured. Generating an ephemeral test keystore. The resulting APK is signed with a throwaway debug-grade key and is NOT suitable for production / Play Store use."
+            TEST_ALIAS="archivetune-test"
+            TEST_STORE_PASS="archivetune"
+            TEST_KEY_PASS="archivetune"
+            keytool -genkeypair -v \
+              -keystore "$RUNNER_TEMP/test.keystore" \
+              -alias "$TEST_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$TEST_STORE_PASS" \
+              -keypass "$TEST_KEY_PASS" \
+              -dname "CN=ArchiveTune Test, OU=CI, O=ArchiveTune, C=US"
+            {
+              echo "mode=test"
+              echo "signing_key=$(base64 -w0 "$RUNNER_TEMP/test.keystore")"
+              echo "alias=$TEST_ALIAS"
+              echo "store_pass=$TEST_STORE_PASS"
+              echo "key_pass=$TEST_KEY_PASS"
+            } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Sign APK
-        if: steps.signing.outputs.enabled == 'true'
+      - name: Sign APK (release keystore)
+        if: steps.signing.outputs.mode == 'secret'
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -244,21 +264,27 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
-      
+
+      - name: Sign APK (test keystore)
+        if: steps.signing.outputs.mode == 'test'
+        uses: ilharp/sign-android-release@v2.0.0
+        with:
+          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
+          signingKey: ${{ steps.signing.outputs.signing_key }}
+          keyAlias: ${{ steps.signing.outputs.alias }}
+          keyStorePassword: ${{ steps.signing.outputs.store_pass }}
+          keyPassword: ${{ steps.signing.outputs.key_pass }}
+          buildToolsVersion: 35.0.0
+
       - name: Move APK
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
-            SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
-          else
-            # Fork build with no keystore: fall back to the unsigned APK.
-            SIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" | head -n 1)
-          fi
+          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
           if [ -z "${SIGNED_APK:-}" ]; then
-            echo "No APK found to move in $RELEASE_DIR"
+            echo "No signed APK found in $RELEASE_DIR"
             find "$RELEASE_DIR" -type f -name "*.apk" || true
             exit 1
           fi
