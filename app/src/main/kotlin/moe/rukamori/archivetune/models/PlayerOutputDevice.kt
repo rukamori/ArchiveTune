@@ -27,33 +27,40 @@ enum class PlayerOutputDevice(
     Headset(Icons.Rounded.Headphones, isProduct = false, defaultName = "Headset"),
     Hdmi(Icons.Rounded.Cable, isProduct = false, defaultName = "HDMI"),
     BuiltinSpeaker(Icons.Rounded.Speaker, isProduct = false, defaultName = "Speaker"),
-    Unknown(Icons.Rounded.Speaker, isProduct = false, defaultName = "Speaker");
+    Unknown(Icons.Rounded.Speaker, isProduct = false, defaultName = "Speaker"),
+    ;
 
     companion object {
-        fun from(info: AudioDeviceInfo?): PlayerOutputDevice = when (info?.type) {
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-            AudioDeviceInfo.TYPE_BLE_HEADSET,
-            AudioDeviceInfo.TYPE_BLE_SPEAKER,
-            AudioDeviceInfo.TYPE_HEARING_AID -> Bluetooth
+        fun from(info: AudioDeviceInfo?): PlayerOutputDevice =
+            when (info?.type) {
+                AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                AudioDeviceInfo.TYPE_BLE_HEADSET,
+                AudioDeviceInfo.TYPE_BLE_SPEAKER,
+                AudioDeviceInfo.TYPE_HEARING_AID,
+                -> Bluetooth
 
-            AudioDeviceInfo.TYPE_USB_HEADSET,
-            AudioDeviceInfo.TYPE_USB_DEVICE,
-            AudioDeviceInfo.TYPE_USB_ACCESSORY -> Usb
+                AudioDeviceInfo.TYPE_USB_HEADSET,
+                AudioDeviceInfo.TYPE_USB_DEVICE,
+                AudioDeviceInfo.TYPE_USB_ACCESSORY,
+                -> Usb
 
-            AudioDeviceInfo.TYPE_WIRED_HEADSET,
-            AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> Headset
+                AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                -> Headset
 
-            AudioDeviceInfo.TYPE_HDMI,
-            AudioDeviceInfo.TYPE_HDMI_ARC,
-            AudioDeviceInfo.TYPE_HDMI_EARC -> Hdmi
+                AudioDeviceInfo.TYPE_HDMI,
+                AudioDeviceInfo.TYPE_HDMI_ARC,
+                AudioDeviceInfo.TYPE_HDMI_EARC,
+                -> Hdmi
 
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE,
-            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> BuiltinSpeaker
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE,
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE,
+                -> BuiltinSpeaker
 
-            else -> Unknown
-        }
+                else -> Unknown
+            }
     }
 }
 

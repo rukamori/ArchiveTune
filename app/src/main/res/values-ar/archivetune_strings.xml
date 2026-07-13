@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">تصفح</string>
     <string name="local_history">على الجهاز</string>
@@ -166,8 +166,6 @@
     </plurals>
     <string name="player_stream_client">عميل التشغيل</string>
     <string name="player_stream_client_desc">يتحكم في تطبيق YouTube المستخدم لجلب البث المباشر</string>
-    <string name="player_stream_client_android_vr">أندرويد VR</string>
-    <string name="player_stream_client_android_vr_desc">يبث المحتوى مباشرةً دون الحاجة إلى فك تشفير التوقيع، مما يوفر أقصى سرعة. مناسب لمعظم المستخدمين.</string>
     <string name="player_stream_client_web_remix">ويب ريميكس</string>
     <string name="player_stream_client_web_remix_desc">دعم صيغ إضافية على حساب السرعة. يتسبب فك تشفير توقيع JavaScript في تأخير بدء التشغيل بنحو 5 إلى 10 ثوانٍ.</string>
     <string name="settings_section_player_content">المشغل والمحتوى</string>

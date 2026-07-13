@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Immutable
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -21,18 +23,28 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.backup.BackupArchiveCategory
+import moe.rukamori.archivetune.backup.BackupArchiveRepository
+import moe.rukamori.archivetune.backup.BackupArchiveStep
+import moe.rukamori.archivetune.backup.CreateBackupUseCase
+import moe.rukamori.archivetune.backup.ObserveScheduledBackupSettingsUseCase
+import moe.rukamori.archivetune.backup.ScheduledBackupFrequency
+import moe.rukamori.archivetune.backup.ScheduledBackupSettings
+import moe.rukamori.archivetune.backup.UpdateScheduledBackupUseCase
 import moe.rukamori.archivetune.db.InternalDatabase
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.ArtistEntity
@@ -40,19 +52,19 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.extensions.div
 import moe.rukamori.archivetune.extensions.zipInputStream
-import moe.rukamori.archivetune.extensions.zipOutputStream
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
 import org.xmlpull.v1.XmlPullParser
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.io.PushbackReader
 import java.io.Reader
 import java.io.StringReader
-import java.util.zip.ZipEntry
+import java.time.LocalDate
+import java.time.format.FormatStyle
+import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.roundToInt
 import kotlin.system.exitProcess
@@ -74,6 +86,32 @@ data class BackupValidationResult(
     val isValid: Boolean,
     val availableCategories: Set<BackupCategory>,
     val errorMessage: String?,
+)
+
+sealed interface ScheduledBackupScreenState {
+    data object Loading : ScheduledBackupScreenState
+
+    @Immutable
+    data class Success(
+        val data: ScheduledBackupUiData,
+    ) : ScheduledBackupScreenState
+
+    data object Empty : ScheduledBackupScreenState
+
+    data class Error(
+        @StringRes val messageRes: Int,
+    ) : ScheduledBackupScreenState
+}
+
+@Immutable
+data class ScheduledBackupUiData(
+    val enabled: Boolean,
+    val frequency: ScheduledBackupFrequency,
+    val customDateEpochDay: Long?,
+    val customDateLabel: String?,
+    val directoryName: String?,
+    val overwriteExisting: Boolean,
+    val showCustomDatePicker: Boolean,
 )
 
 internal fun readCsvRecords(reader: Reader): Sequence<List<String>> =
@@ -164,12 +202,39 @@ class BackupRestoreViewModel
     @Inject
     constructor(
         val database: MusicDatabase,
+        private val createBackupUseCase: CreateBackupUseCase,
+        observeScheduledBackupSettings: ObserveScheduledBackupSettingsUseCase,
+        private val updateScheduledBackup: UpdateScheduledBackupUseCase,
     ) : ViewModel() {
         private val _backupRestoreProgress = MutableStateFlow<BackupRestoreProgressUi?>(null)
         val backupRestoreProgress: StateFlow<BackupRestoreProgressUi?> = _backupRestoreProgress.asStateFlow()
 
         private val _backupEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
         val backupEvent: SharedFlow<String> = _backupEvent.asSharedFlow()
+
+        private val _scheduledBackupState = MutableStateFlow<ScheduledBackupScreenState>(ScheduledBackupScreenState.Loading)
+        val scheduledBackupState: StateFlow<ScheduledBackupScreenState> = _scheduledBackupState.asStateFlow()
+
+        private val _scheduledBackupEvent = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+        val scheduledBackupEvent: SharedFlow<Int> = _scheduledBackupEvent.asSharedFlow()
+
+        private var scheduledBackupSettings: ScheduledBackupSettings? = null
+        private var showCustomDatePicker = false
+        private var scheduledBackupUpdateJob: Job? = null
+        private var manualBackupJob: Job? = null
+
+        init {
+            viewModelScope.launch {
+                observeScheduledBackupSettings()
+                    .catch {
+                        _scheduledBackupState.value =
+                            ScheduledBackupScreenState.Error(R.string.scheduled_backup_load_failed)
+                    }.collect { settings ->
+                        scheduledBackupSettings = settings
+                        publishScheduledBackupState()
+                    }
+            }
+        }
 
         private fun emitProgress(
             title: String,
@@ -191,115 +256,133 @@ class BackupRestoreViewModel
             uri: Uri,
             categories: Set<BackupCategory>,
         ) {
-            viewModelScope.launch(Dispatchers.IO) {
-                val title = context.getString(R.string.backup_in_progress)
-                try {
-                    val includeSettings = BackupCategory.SETTINGS in categories
-                    val includeAccount = BackupCategory.ACCOUNT in categories
-                    val includeLibrary = BackupCategory.LIBRARY in categories
-                    val settingsExcludedKeys = if (includeAccount) emptySet() else ACCOUNT_PREF_KEYS
-                    val dbFile = context.getDatabasePath(InternalDatabase.DB_NAME)
-                    val dbFiles =
-                        if (includeLibrary) {
-                            listOf(
-                                dbFile,
-                                dbFile.resolveSibling("${InternalDatabase.DB_NAME}-wal"),
-                                dbFile.resolveSibling("${InternalDatabase.DB_NAME}-shm"),
-                                dbFile.resolveSibling("${InternalDatabase.DB_NAME}-journal"),
-                            ).filter { it.exists() }
-                        } else {
-                            emptyList()
-                        }
-
-                    val totalUnits = (if (includeSettings) 1 else 0) + (if (includeLibrary) 1 else 0) + dbFiles.size
-                    val unitSpan = 100f / totalUnits.coerceAtLeast(1)
-                    var completedUnits = 0
-                    var lastPercent = -1
-                    var lastStep = ""
-
-                    fun emit(
-                        step: String,
-                        unitFraction: Float = 0f,
-                        indeterminate: Boolean = false,
-                    ) {
-                        val p =
-                            ((completedUnits + unitFraction.coerceIn(0f, 1f)) * unitSpan)
-                                .roundToInt()
-                                .coerceIn(0, 100)
-                        if (p != lastPercent || step != lastStep) {
-                            lastPercent = p
-                            lastStep = step
-                            emitProgress(
-                                title = title,
-                                step = step,
-                                percent = p,
-                                indeterminate = indeterminate,
-                            )
-                        }
-                    }
-
-                    context.applicationContext.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                        outputStream.buffered().zipOutputStream().use { zipStream ->
-                            if (includeSettings) {
-                                emit(context.getString(R.string.backup_step_export_settings), indeterminate = true)
-                                zipStream.putNextEntry(ZipEntry(SETTINGS_XML_FILENAME))
-                                writeSettingsToXml(context, zipStream, settingsExcludedKeys)
-                                zipStream.closeEntry()
-                                completedUnits++
-                            }
-
-                            if (includeLibrary) {
-                                emit(context.getString(R.string.backup_step_checkpoint_database), indeterminate = true)
-                                database.awaitIdle()
-                                database.checkpoint()
-                                completedUnits++
-
-                                val buffer = ByteArray(BUFFER_SIZE)
-                                dbFiles.forEach { file ->
-                                    val fileSize = file.length().coerceAtLeast(1L)
-                                    var bytesCopied = 0L
-                                    emit(
-                                        context.getString(R.string.backup_step_copying_file, file.name),
-                                        unitFraction = 0f,
-                                        indeterminate = false,
-                                    )
-                                    zipStream.putNextEntry(ZipEntry(file.name))
-                                    FileInputStream(file).use { input ->
-                                        while (true) {
-                                            val read = input.read(buffer)
-                                            if (read <= 0) break
-                                            zipStream.write(buffer, 0, read)
-                                            bytesCopied += read
-                                            emit(
-                                                context.getString(R.string.backup_step_copying_file, file.name),
-                                                unitFraction = bytesCopied.toFloat() / fileSize.toFloat(),
-                                                indeterminate = false,
-                                            )
-                                        }
+            if (manualBackupJob?.isActive == true) return
+            manualBackupJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    val title = context.getString(R.string.backup_in_progress)
+                    try {
+                        createBackupUseCase(
+                            uri = uri,
+                            categories = categories.mapTo(linkedSetOf()) { BackupArchiveCategory.valueOf(it.name) },
+                        ) { progress ->
+                            val step =
+                                when (progress.step) {
+                                    BackupArchiveStep.EXPORT_SETTINGS -> {
+                                        context.getString(R.string.backup_step_export_settings)
                                     }
-                                    zipStream.closeEntry()
-                                    completedUnits++
-                                }
-                            }
-                        }
-                    } ?: throw IllegalStateException("Failed to open output stream")
 
-                    val msg = context.getString(R.string.backup_create_success)
-                    _backupEvent.tryEmit(msg)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    BackupArchiveStep.CHECKPOINT_DATABASE -> {
+                                        context.getString(R.string.backup_step_checkpoint_database)
+                                    }
+
+                                    BackupArchiveStep.COPY_DATABASE_FILE -> {
+                                        context.getString(R.string.backup_step_copying_file, progress.fileName.orEmpty())
+                                    }
+                                }
+                            emitProgress(title, step, progress.percent, progress.indeterminate)
+                        }
+
+                        val msg = context.getString(R.string.backup_create_success)
+                        _backupEvent.tryEmit(msg)
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (exception: Exception) {
+                        reportException(exception)
+                        val msg = exception.message ?: context.getString(R.string.backup_create_failed)
+                        _backupEvent.tryEmit(msg)
+                    } finally {
+                        _backupRestoreProgress.value = null
                     }
-                } catch (exception: Exception) {
-                    reportException(exception)
-                    val msg = exception.message ?: context.getString(R.string.backup_create_failed)
-                    _backupEvent.tryEmit(msg)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                    }
-                } finally {
-                    _backupRestoreProgress.value = null
                 }
+        }
+
+        fun onScheduledBackupEnabledChanged(enabled: Boolean) {
+            updateScheduledBackup { updateScheduledBackup.setEnabled(enabled) }
+        }
+
+        fun onScheduledBackupFrequencySelected(frequency: ScheduledBackupFrequency) {
+            if (frequency == ScheduledBackupFrequency.CUSTOM) {
+                showCustomDatePicker = true
+                publishScheduledBackupState(
+                    scheduledBackupSettings?.copy(frequency = frequency)
+                        ?: ScheduledBackupSettings(frequency = frequency),
+                )
+                return
             }
+            updateScheduledBackup { updateScheduledBackup.setFrequency(frequency) }
+        }
+
+        fun onScheduledBackupCustomDateSelected(epochDay: Long) {
+            showCustomDatePicker = false
+            updateScheduledBackup { updateScheduledBackup.setCustomDate(epochDay) }
+        }
+
+        fun onScheduledBackupCustomDateDismissed() {
+            showCustomDatePicker = false
+            publishScheduledBackupState()
+        }
+
+        fun onScheduledBackupDirectorySelected(uri: Uri) {
+            updateScheduledBackup(
+                successMessageRes = R.string.scheduled_backup_directory_saved,
+            ) { updateScheduledBackup.setDirectory(uri) }
+        }
+
+        fun onScheduledBackupOverwriteChanged(overwriteExisting: Boolean) {
+            updateScheduledBackup { updateScheduledBackup.setOverwrite(overwriteExisting) }
+        }
+
+        private fun updateScheduledBackup(
+            @StringRes successMessageRes: Int? = null,
+            update: suspend () -> ScheduledBackupSettings,
+        ) {
+            scheduledBackupUpdateJob?.cancel()
+            scheduledBackupUpdateJob =
+                viewModelScope.launch {
+                    try {
+                        val settings = withContext(Dispatchers.IO) { update() }
+                        scheduledBackupSettings = settings
+                        publishScheduledBackupState(settings)
+                        successMessageRes?.let { _scheduledBackupEvent.emit(it) }
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (exception: Exception) {
+                        reportException(exception)
+                        _scheduledBackupState.value =
+                            ScheduledBackupScreenState.Error(R.string.scheduled_backup_update_failed)
+                        _scheduledBackupEvent.emit(R.string.scheduled_backup_update_failed)
+                    }
+                }
+        }
+
+        private fun publishScheduledBackupState(settings: ScheduledBackupSettings? = scheduledBackupSettings) {
+            if (settings == null && !showCustomDatePicker) {
+                _scheduledBackupState.value = ScheduledBackupScreenState.Empty
+                return
+            }
+            val resolved = settings ?: ScheduledBackupSettings(frequency = ScheduledBackupFrequency.CUSTOM)
+            val formattedCustomDate =
+                resolved.customDateEpochDay?.let { epochDay ->
+                    LocalDate
+                        .ofEpochDay(epochDay)
+                        .format(
+                            java.time.format.DateTimeFormatter
+                                .ofLocalizedDate(FormatStyle.MEDIUM)
+                                .withLocale(Locale.getDefault()),
+                        )
+                }
+            _scheduledBackupState.value =
+                ScheduledBackupScreenState.Success(
+                    ScheduledBackupUiData(
+                        enabled = resolved.enabled,
+                        frequency = resolved.frequency,
+                        customDateEpochDay = resolved.customDateEpochDay,
+                        customDateLabel = formattedCustomDate,
+                        directoryName = resolved.directoryName,
+                        overwriteExisting = resolved.overwriteExisting,
+                        showCustomDatePicker = showCustomDatePicker,
+                    ),
+                )
         }
 
         fun restore(
@@ -443,55 +526,6 @@ class BackupRestoreViewModel
                     _backupRestoreProgress.value = null
                 }
             }
-        }
-
-        private suspend fun writeSettingsToXml(
-            context: Context,
-            outputStream: java.io.OutputStream,
-            excludedKeyNames: Set<String> = emptySet(),
-        ) {
-            val prefs =
-                context.dataStore.data
-                    .first()
-                    .asMap()
-            val serializer = android.util.Xml.newSerializer()
-            serializer.setOutput(outputStream, "UTF-8")
-            serializer.startDocument("UTF-8", true)
-            serializer.startTag(null, "ArchiveTuneBackup")
-            serializer.startTag(null, "Settings")
-
-            for ((key, value) in prefs) {
-                if (key.name in excludedKeyNames) continue
-                val tagName =
-                    when (value) {
-                        is Boolean -> "boolean"
-                        is Int -> "int"
-                        is Long -> "long"
-                        is Float -> "float"
-                        is String -> "string"
-                        is Set<*> -> "string-set"
-                        else -> null
-                    }
-                if (tagName != null) {
-                    serializer.startTag(null, tagName)
-                    serializer.attribute(null, "name", key.name)
-                    if (value is Set<*>) {
-                        value.forEach { item ->
-                            serializer.startTag(null, "item")
-                            serializer.text(item.toString())
-                            serializer.endTag(null, "item")
-                        }
-                    } else {
-                        serializer.attribute(null, "value", value.toString())
-                    }
-                    serializer.endTag(null, tagName)
-                }
-            }
-
-            serializer.endTag(null, "Settings")
-            serializer.endTag(null, "ArchiveTuneBackup")
-            serializer.endDocument()
-            serializer.flush()
         }
 
         private suspend fun restoreSettingsFromXml(
@@ -805,41 +839,8 @@ class BackupRestoreViewModel
 
         companion object {
             const val SETTINGS_FILENAME = "settings.preferences_pb"
-            const val SETTINGS_XML_FILENAME = "settings.xml"
-            private const val BUFFER_SIZE = 64 * 1024
+            const val SETTINGS_XML_FILENAME = BackupArchiveRepository.SETTINGS_XML_FILENAME
 
-            val ACCOUNT_PREF_KEYS: Set<String> =
-                setOf(
-                    "innerTubeCookie",
-                    "visitorData",
-                    "dataSyncId",
-                    "poToken",
-                    "poTokenGvs",
-                    "poTokenPlayer",
-                    "poTokenSourceUrl",
-                    "webClientPoTokenEnabled",
-                    "accountName",
-                    "accountEmail",
-                    "accountChannelHandle",
-                    "useLoginForBrowse",
-                    "lastfmSession",
-                    "lastfmUsername",
-                    "lastfmProvider",
-                    "lastfmCustomEndpoint",
-                    "lastfmApiKeyOverride",
-                    "lastfmSecretOverride",
-                    "listenbrainz_token",
-                    "discordToken",
-                    "discordUsername",
-                    "discordName",
-                    "proxyUsername",
-                    "proxyPassword",
-                    "spotify_sp_dc",
-                    "spotify_sp_key",
-                    "spotify_access_token",
-                    "spotify_access_token_expires_at",
-                    "spotify_account_name",
-                    "spotify_account_avatar_url",
-                )
+            val ACCOUNT_PREF_KEYS: Set<String> = BackupArchiveRepository.ACCOUNT_PREFERENCE_KEYS
         }
     }

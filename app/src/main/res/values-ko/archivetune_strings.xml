@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">둘러보기</string>
     <string name="music_recognition_tap_to_listen">탭하여 듣기</string>
@@ -265,8 +265,6 @@
     <string name="crossfade_gapless_description">동일한 앨범에 있는 연속된 곡들은 크로스페이드 없이 매끄럽게 연결해 재생합니다.</string>
     <string name="player_stream_client">재생 클라이언트</string>
     <string name="player_stream_client_desc">스트림을 가져오는 데 사용할 재생 클라이언트를 제어합니다.</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">서명 복호화 과정 없이 직접 스트리밍하여 최대 속도를 제공합니다. 대부분의 사용자에게 적합합니다.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">속도를 희생하는 대신 확장된 형식을 지원합니다. JavaScript 서명 복호화로 인해 약 5~10초의 초기 지연이 발생합니다.</string>
     <string name="settings_section_player_content">플레이어 및 재생 콘텐츠</string>

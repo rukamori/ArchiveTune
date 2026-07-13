@@ -264,6 +264,18 @@ object CanvasArtworkPlaybackCache {
     }
 
     @Synchronized
+    fun remove(mediaId: String) {
+        cacheJobs.remove(mediaId)?.cancel()
+        val entry = map.remove(mediaId) ?: return
+        val directory = cacheDirectory
+        if (directory != null) {
+            runCatching { entry.regularFileName?.let { fileName -> directory.resolve(fileName).delete() } }
+            runCatching { entry.verticalFileName?.let { fileName -> directory.resolve(fileName).delete() } }
+        }
+        schedulePersist()
+    }
+
+    @Synchronized
     fun setMaxSize(value: Int) {
         maxSizeBytes = value.toCanvasCacheLimitBytes()
         val directory = cacheDirectory

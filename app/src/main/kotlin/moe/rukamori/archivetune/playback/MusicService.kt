@@ -4903,15 +4903,23 @@ class MusicService :
                 if (togetherParticipantNames.isEmpty()) {
                     val sessionId =
                         when (val state = togetherSessionState.value) {
-                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> state.sessionId
-                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                                state.sessionId
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                                state.sessionId
+                            }
+
                             is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
                                 state.sessionId.takeIf {
                                     state.role is moe.rukamori.archivetune.together.TogetherRole.Host
                                 }
                             }
 
-                            else -> null
+                            else -> {
+                                null
+                            }
                         }
                     if (sessionId != null) {
                         scheduleTogetherHostInactivityTimeout(sessionId)
@@ -7568,8 +7576,7 @@ class MusicService :
         return dataSpec.withUri(streamUrl.toUri())
     }
 
-    private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
-        poTokenPlayer.normalizeExtractorRequestValue()
+    private fun PlaybackAuthState.resolveExtractorPoToken(): String? = poTokenPlayer.normalizeExtractorRequestValue()
 
     private fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
         resolveGvsPoToken().normalizeExtractorRequestValue()
@@ -8449,9 +8456,15 @@ class MusicService :
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
-        val keepInForeground = startInForegroundRequired || hasResumablePlaybackNotification()
-        if (keepInForeground) ensureStartedAsForeground()
-        runCatching { super.onUpdateNotification(session, keepInForeground) }
+        val shouldShowNotification =
+            shouldShowPlaybackNotification(
+                startInForegroundRequired = startInForegroundRequired,
+                hasResumablePlayback = hasResumablePlaybackNotification(),
+            )
+        if (!shouldShowNotification) return
+
+        ensureStartedAsForeground()
+        runCatching { super.onUpdateNotification(session, true) }
             .onFailure { reportException(it) }
     }
 
@@ -8459,6 +8472,7 @@ class MusicService :
 
     fun updateWidget() {
         widgetUpdater.update()
+        widgetUpdater.updateProgressTracking()
     }
 
     inner class MusicBinder : Binder() {
@@ -8472,6 +8486,11 @@ class MusicService :
             isHostSessionActive: Boolean,
             isPlaybackInactive: Boolean,
         ): Boolean = (isHostSessionActive && isPlaybackInactive) || stopMusicOnTaskClearEnabled
+
+        internal fun shouldShowPlaybackNotification(
+            startInForegroundRequired: Boolean,
+            hasResumablePlayback: Boolean,
+        ): Boolean = startInForegroundRequired || hasResumablePlayback
 
         const val ROOT = "root"
         const val HOME = "home"

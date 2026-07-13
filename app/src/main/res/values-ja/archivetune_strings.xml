@@ -395,8 +395,6 @@
     <string name="crossfade_gapless_description">同じアルバムの連続曲はクロスフェードしない。</string>
     <string name="player_stream_client">再生クライアント</string>
     <string name="player_stream_client_desc">ストリーム取得に使う再生ソースを制御</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">署名復号なしで直接ストリーミングし、最高速度を提供。ほとんどのユーザーに適している。</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">速度と引き換えに拡張フォーマットをサポート。JavaScript署名復号により起動に約5〜10秒の遅延が発生。</string>
     <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>

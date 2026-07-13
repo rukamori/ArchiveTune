@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Explorar</string>
     <string name="local_history">Local</string>
@@ -161,8 +161,6 @@
     <string name="audio_crossfade_dialog_title">Duración del fundido cruzado</string>
     <string name="player_stream_client">Cliente de reproducción</string>
     <string name="player_stream_client_desc">Controla qué fuente de reproducción se utiliza para obtener las transmisiones</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Transmite directamente sin descifrado de firma, lo que proporciona la máxima velocidad. Adecuado para la mayoría de los usuarios.</string>
     <string name="remote_history">Remoto</string>
     <string name="show_tags_in_library_desc">Mostrar el filtro de etiquetas en la pestaña de la biblioteca</string>
     <string name="canvas_cache">Cache del Canvas</string>

@@ -649,7 +649,10 @@ fun UpdateScreen(
                         append(' ')
                         append(context.getString(R.string.channel_canary))
                     }
-                    UpdateChannel.STABLE -> append(context.getString(R.string.app_name))
+
+                    UpdateChannel.STABLE -> {
+                        append(context.getString(R.string.app_name))
+                    }
                 }
                 append(' ')
                 append(updateSheetVersion ?: "?")

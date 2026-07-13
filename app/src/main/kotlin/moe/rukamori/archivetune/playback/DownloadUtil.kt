@@ -44,7 +44,6 @@ import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
-import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import okhttp3.ConnectionPool
@@ -196,6 +195,13 @@ class DownloadUtil
                                     set(download.request.id, download)
                                 }
                             }
+                        }
+
+                        override fun onDownloadRemoved(
+                            downloadManager: DownloadManager,
+                            download: Download,
+                        ) {
+                            downloads.update { map -> map - download.request.id }
                         }
                     },
                 )

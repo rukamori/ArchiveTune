@@ -116,6 +116,7 @@ import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
@@ -124,9 +125,7 @@ import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
-import moe.rukamori.archivetune.ui.utils.sendPauseDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
-import moe.rukamori.archivetune.ui.utils.sendResumeDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -139,6 +138,11 @@ fun AutoPlaylistScreen(
     scrollBehavior: TopAppBarScrollBehavior,
     viewModel: AutoPlaylistViewModel = hiltViewModel(),
 ) {
+    if (viewModel.playlist == "downloaded") {
+        DownloadLibraryScreen(navController = navController)
+        return
+    }
+
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
@@ -615,12 +619,7 @@ fun AutoPlaylistScreen(
                                             }
 
                                             is HeaderDownloadState.Partial -> {
-                                                val songIds = songs.map { it.song.id }
-                                                if (currentDownloadState.paused) {
-                                                    sendResumeDownloads(context, songIds)
-                                                } else {
-                                                    sendPauseDownloads(context, songIds)
-                                                }
+                                                navController.navigate("auto_playlist/downloaded?tab=progress")
                                             }
 
                                             HeaderDownloadState.None -> {
@@ -635,6 +634,7 @@ fun AutoPlaylistScreen(
                                                         },
                                                     downloads = downloads,
                                                 )
+                                                navController.navigate("auto_playlist/downloaded?tab=progress")
                                             }
                                         }
                                     },

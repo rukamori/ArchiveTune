@@ -898,7 +898,6 @@ fun AppearanceSettings(navController: NavController) {
                             when (it) {
                                 NavigationTab.HOME -> stringResource(R.string.home)
                                 NavigationTab.SEARCH -> stringResource(R.string.search)
-                                NavigationTab.MOODANDGENRES -> stringResource(R.string.mood_and_genres)
                                 NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
                             }
                         },
@@ -998,7 +997,8 @@ private fun rememberSupportedHighestFps(): Float {
 
     return remember(view) {
         val display = view.display
-        display?.supportedModes
+        display
+            ?.supportedModes
             ?.maxOfOrNull { mode -> mode.refreshRate }
             ?: display?.refreshRate
             ?: DEFAULT_STANDARD_REFRESH_RATE_FPS
@@ -1100,7 +1100,6 @@ enum class DarkMode {
 enum class NavigationTab {
     HOME,
     SEARCH,
-    MOODANDGENRES,
     LIBRARY,
 }
 

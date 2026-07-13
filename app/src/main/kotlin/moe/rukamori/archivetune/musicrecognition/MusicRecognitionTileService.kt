@@ -65,12 +65,17 @@ class MusicRecognitionTileService : TileService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle =
                     when (recognitionState) {
-                        BackgroundRecognitionState.Idle ->
+                        BackgroundRecognitionState.Idle -> {
                             getString(R.string.music_recognition_tap_to_listen)
-                        BackgroundRecognitionState.Listening ->
+                        }
+
+                        BackgroundRecognitionState.Listening -> {
                             getString(R.string.music_recognition_listening)
-                        BackgroundRecognitionState.Processing ->
+                        }
+
+                        BackgroundRecognitionState.Processing -> {
                             getString(R.string.music_recognition_processing)
+                        }
                     }
             }
             icon = Icon.createWithResource(this@MusicRecognitionTileService, R.drawable.mic)

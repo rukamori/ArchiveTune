@@ -154,8 +154,6 @@
     </plurals>
     <string name="player_stream_client">Oynatma istemcisi</string>
     <string name="player_stream_client_desc">Akışları getirmek için hangi YouTube istemcisinin kullanılacağını kontrol eder</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">İmza şifresi çözülmeden doğrudan akış yaparak maksimum hız sağlar. Kullanıcıların çoğunluğu için uygundur.</string>
     <string name="player_stream_client_web_remix">Web Remiksi</string>
     <string name="player_stream_client_web_remix_desc">Hız pahasına genişletilmiş format desteği. JavaScript imza şifre çözme işlemi ~5-10 saniyelik bir başlatma gecikmesine neden olur.</string>
     <string name="settings_section_player_content">Oyuncu &amp; İçeriği</string>

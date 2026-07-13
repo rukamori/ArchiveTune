@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Esplora</string>
     <string name="local_history">Locale</string>
@@ -157,8 +157,6 @@
     </plurals>
     <string name="player_stream_client">Client di riproduzione</string>
     <string name="player_stream_client_desc">Controlla quale client YouTube viene utilizzato per recuperare gli stream</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Trasmette direttamente senza decrittare la firma, fornendo la massima velocità. Adatto alla maggior parte degli utenti.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Supporto di formati esteso a scapito della velocità. La decrittografia della firma JavaScript introduce un ritardo di avvio di circa 5-10 secondi.</string>
     <string name="settings_section_player_content">Player e contenuto</string>
