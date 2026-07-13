@@ -65,14 +65,13 @@ object TidalAudioProvider {
     // time, so auto-discovery and the user's manual list can extend/override them at runtime.
     private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
         listOf(
+            TidalDownloadEndpoint("Monochrome EU", "https://eu-central.monochrome.tf"),
+            TidalDownloadEndpoint("Monochrome US", "https://us-west.monochrome.tf"),
+            TidalDownloadEndpoint("Monochrome API", "https://api.monochrome.tf"),
             TidalDownloadEndpoint("Arran (Monochrome)", "https://arran.monochrome.tf"),
             TidalDownloadEndpoint("Triton (squid.wtf)", "https://triton.squid.wtf"),
             TidalDownloadEndpoint("Wolf QQDL", "https://wolf.qqdl.site"),
-            TidalDownloadEndpoint("Maus QQDL", "https://maus.qqdl.site"),
-            TidalDownloadEndpoint("Vogel QQDL", "https://vogel.qqdl.site"),
-            TidalDownloadEndpoint("Katze QQDL", "https://katze.qqdl.site"),
             TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
-            TidalDownloadEndpoint("p1nkhamster HiFi", "https://hifi.p1nkhamster.xyz"),
         )
 
     // Community source that publishes the public HiFi/QQDL instance list. Best-effort only: it
@@ -1052,6 +1051,17 @@ object TidalAudioProvider {
                     .optJSONObject("data")
                     ?.optJSONObject("attributes")
                     ?: throw TidalAudioResolutionException("TIDAL manifest payload missing attributes")
+                // Unsubscribed/expired instance accounts return a 30s PREVIEW instead of the full
+                // track (trackPresentation=PREVIEW, previewReason=FULL_REQUIRES_SUBSCRIPTION). Reject
+                // it so playback falls through to the next instance/source instead of serving a clip.
+                val presentation = attributes.stringOrNull("trackPresentation")
+                    ?: attributes.stringOrNull("assetPresentation")
+                if (presentation.equals("PREVIEW", ignoreCase = true)) {
+                    val reason = attributes.stringOrNull("previewReason").orEmpty()
+                    throw TidalAudioResolutionException(
+                        "TIDAL instance returned a PREVIEW (unsubscribed account)${if (reason.isNotBlank()) ": $reason" else ""}",
+                    )
+                }
                 val formats = attributes.optJSONArray("formats")
                 val returnedFormats =
                     formats
