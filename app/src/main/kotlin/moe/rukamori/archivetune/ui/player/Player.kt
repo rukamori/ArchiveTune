@@ -298,6 +298,7 @@ fun BottomSheetPlayer(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isMiniPlayerPairedWithNavigation: Boolean = false,
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -948,6 +949,7 @@ fun BottomSheetPlayer(
                 position = position,
                 duration = duration,
                 pureBlack = pureBlack,
+                isPairedWithNavigation = isMiniPlayerPairedWithNavigation,
             )
         },
     ) {

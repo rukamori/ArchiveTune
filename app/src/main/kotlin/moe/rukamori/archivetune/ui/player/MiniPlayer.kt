@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -59,12 +60,14 @@ fun MiniPlayer(
     duration: Long,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isPairedWithNavigation: Boolean = false,
 ) {
     NewMiniPlayer(
         position = position,
         duration = duration,
         modifier = modifier,
         pureBlack = pureBlack,
+        isPairedWithNavigation = isPairedWithNavigation,
     )
 }
 
@@ -74,6 +77,7 @@ private fun NewMiniPlayer(
     duration: Long,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isPairedWithNavigation: Boolean,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -173,7 +177,19 @@ private fun NewMiniPlayer(
         rememberMiniPlayerContentColors(
             useArtworkBackground = effectiveBackgroundStyle != MiniPlayerBackgroundStyle.THEME,
         )
-    val miniPlayerShape = MaterialTheme.shapes.extraLarge
+    val miniPlayerShape =
+        remember(isPairedWithNavigation) {
+            if (isPairedWithNavigation) {
+                RoundedCornerShape(
+                    topStart = 28.dp,
+                    topEnd = 28.dp,
+                    bottomStart = 12.dp,
+                    bottomEnd = 12.dp,
+                )
+            } else {
+                null
+            }
+        } ?: MaterialTheme.shapes.extraLarge
 
     SwipeableMiniPlayerBox(
         modifier = modifier,
@@ -214,10 +230,12 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
     return remember(
         useArtworkBackground,
         colorScheme.primary,
+        colorScheme.onPrimary,
         colorScheme.outline,
         colorScheme.onSurface,
         colorScheme.onSurfaceVariant,
         colorScheme.surface,
+        colorScheme.surfaceContainerHighest,
         colorScheme.surfaceVariant,
         colorScheme.primaryContainer,
         colorScheme.onPrimaryContainer,
@@ -230,7 +248,9 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
                 progressTrack = Color.White.copy(alpha = 0.24f),
                 artworkContainer = Color.White.copy(alpha = 0.14f),
                 artworkBorder = Color.White.copy(alpha = 0.22f),
-                primaryButtonContainer = Color.White.copy(alpha = 0.16f),
+                primaryButtonContainer = Color.White.copy(alpha = 0.92f),
+                primaryButtonIcon = Color.Black,
+                secondaryButtonContainer = Color.Black.copy(alpha = 0.22f),
                 buttonIcon = Color.White,
                 disabledButtonIcon = Color.White.copy(alpha = 0.38f),
                 togetherContainer = Color.White.copy(alpha = 0.16f),
@@ -244,7 +264,9 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
                 progressTrack = colorScheme.outline.copy(alpha = 0.18f),
                 artworkContainer = colorScheme.surfaceVariant,
                 artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
-                primaryButtonContainer = colorScheme.surface,
+                primaryButtonContainer = colorScheme.primary,
+                primaryButtonIcon = colorScheme.onPrimary,
+                secondaryButtonContainer = colorScheme.surfaceContainerHighest,
                 buttonIcon = colorScheme.onSurface,
                 disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
                 togetherContainer = colorScheme.primaryContainer,
@@ -263,7 +285,7 @@ private fun MiniPlayerBackground(
     when (style) {
         MiniPlayerBackgroundStyle.THEME -> {
             Box(
-                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh),
             )
         }
 

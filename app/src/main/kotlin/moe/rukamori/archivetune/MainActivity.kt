@@ -2005,10 +2005,16 @@ class MainActivity : ComponentActivity() {
                                 },
                                 bottomBar = {
                                     Box {
+                                        val areBottomBarsPaired =
+                                            shouldShowNavigationBar &&
+                                                !useRail &&
+                                                playerBottomSheetState.isCollapsed
+
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,
                                             pureBlack = pureBlack,
+                                            isMiniPlayerPairedWithNavigation = areBottomBarsPaired,
                                         )
 
                                         if (useRail) return@Box
@@ -2051,6 +2057,7 @@ class MainActivity : ComponentActivity() {
                                             FloatingNavigationToolbar(
                                                 items = navigationItems,
                                                 pureBlack = pureBlack,
+                                                isPairedWithMiniPlayer = areBottomBarsPaired,
                                                 modifier =
                                                     Modifier
                                                         .align(Alignment.BottomCenter)

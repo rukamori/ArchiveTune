@@ -44,7 +44,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -93,6 +93,8 @@ data class MiniPlayerContentColors(
     val artworkContainer: Color,
     val artworkBorder: Color,
     val primaryButtonContainer: Color,
+    val primaryButtonIcon: Color,
+    val secondaryButtonContainer: Color,
     val buttonIcon: Color,
     val disabledButtonIcon: Color,
     val togetherContainer: Color,
@@ -301,44 +303,65 @@ fun RowScope.MiniPlayerInfo(
 @Composable
 private fun MiniPlayerArtwork(
     mediaMetadata: MediaMetadata?,
+    progress: () -> Float,
+    isLoading: Boolean,
     colors: MiniPlayerContentColors,
     modifier: Modifier = Modifier,
 ) {
-    val artworkShape = MaterialTheme.shapes.large
     Box(
         contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .size(48.dp)
-                .clip(artworkShape)
-                .background(colors.artworkContainer)
-                .border(
-                    width = 1.dp,
-                    color = colors.artworkBorder,
-                    shape = artworkShape,
-                ),
+        modifier = modifier.size(52.dp),
     ) {
-        val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
-        if (baseThumbnailUrl != null) {
-            val thumbnailSwapState =
-                rememberThumbnailSwapState(
-                    videoId = mediaMetadata.id,
-                    ytmUrl = baseThumbnailUrl,
-                    lowDataMode = rememberLowDataModeActive(),
-                    isMusicVideo = mediaMetadata.isMusicVideo,
-                )
-            AsyncImage(
-                model = thumbnailSwapState.displayUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+        if (isLoading) {
+            CircularWavyProgressIndicator(
                 modifier = Modifier.fillMaxSize(),
+                color = colors.progress,
+                trackColor = colors.progressTrack,
             )
         } else {
-            Image(
-                painter = painterResource(R.drawable.about_splash),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
+            CircularWavyProgressIndicator(
+                progress = progress,
+                modifier = Modifier.fillMaxSize(),
+                color = colors.progress,
+                trackColor = colors.progressTrack,
             )
+        }
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(colors.artworkContainer)
+                    .border(
+                        width = 1.dp,
+                        color = colors.artworkBorder,
+                        shape = CircleShape,
+                    ),
+        ) {
+            val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
+            if (baseThumbnailUrl != null) {
+                val thumbnailSwapState =
+                    rememberThumbnailSwapState(
+                        videoId = mediaMetadata.id,
+                        ytmUrl = baseThumbnailUrl,
+                        lowDataMode = rememberLowDataModeActive(),
+                        isMusicVideo = mediaMetadata.isMusicVideo,
+                    )
+                AsyncImage(
+                    model = thumbnailSwapState.displayUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.about_splash),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
@@ -357,11 +380,11 @@ private fun MiniPlayerTransportButton(
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
 
     val containerColor =
-        if (isPrimary) colors.primaryButtonContainer else Color.Transparent
+        if (isPrimary) colors.primaryButtonContainer else colors.secondaryButtonContainer
     val buttonColors =
         IconButtonDefaults.iconButtonColors(
             containerColor = containerColor,
-            contentColor = colors.buttonIcon,
+            contentColor = if (isPrimary) colors.primaryButtonIcon else colors.buttonIcon,
             disabledContainerColor = Color.Transparent,
             disabledContentColor = colors.disabledButtonIcon,
         )
@@ -490,74 +513,51 @@ fun NewMiniPlayerContent(
             { if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f }
         }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(start = 8.dp, end = 4.dp, bottom = 6.dp),
-        ) {
-            MiniPlayerArtwork(
-                mediaMetadata = mediaMetadata,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+    ) {
+        MiniPlayerArtwork(
+            mediaMetadata = mediaMetadata,
+            progress = progressProvider,
+            isLoading = isLoading,
+            colors = colors,
+        )
+
+        mediaMetadata?.let {
+            MiniPlayerInfo(
+                mediaMetadata = it,
                 colors = colors,
             )
+        } ?: Spacer(Modifier.weight(1f))
 
-            mediaMetadata?.let {
-                MiniPlayerInfo(
-                    mediaMetadata = it,
-                    colors = colors,
+        if (togetherSessionState.isConnectedToSession) {
+            Surface(
+                shape = CircleShape,
+                color = colors.togetherContainer,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.all_inclusive),
+                    contentDescription = stringResource(R.string.music_together),
+                    tint = colors.togetherContent,
+                    modifier =
+                        Modifier
+                            .padding(7.dp)
+                            .size(14.dp),
                 )
-            } ?: Spacer(Modifier.weight(1f))
-
-            if (togetherSessionState.isConnectedToSession) {
-                Surface(
-                    shape = CircleShape,
-                    color = colors.togetherContainer,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.all_inclusive),
-                        contentDescription = stringResource(R.string.music_together),
-                        tint = colors.togetherContent,
-                        modifier =
-                            Modifier
-                                .padding(7.dp)
-                                .size(14.dp),
-                    )
-                }
             }
-
-            MiniPlayerTransportControls(
-                isPlaying = isPlaying,
-                playbackState = playbackState,
-                canSkipPrevious = canSkipPrevious,
-                canSkipNext = canSkipNext,
-                playerConnection = playerConnection,
-                colors = colors,
-            )
         }
 
-        if (isLoading) {
-            LinearWavyProgressIndicator(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(6.dp),
-                color = colors.progress,
-                trackColor = colors.progressTrack,
-            )
-        } else {
-            LinearWavyProgressIndicator(
-                progress = progressProvider,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(6.dp),
-                color = colors.progress,
-                trackColor = colors.progressTrack,
-            )
-        }
+        MiniPlayerTransportControls(
+            isPlaying = isPlaying,
+            playbackState = playbackState,
+            canSkipPrevious = canSkipPrevious,
+            canSkipNext = canSkipNext,
+            playerConnection = playerConnection,
+            colors = colors,
+        )
     }
 }
