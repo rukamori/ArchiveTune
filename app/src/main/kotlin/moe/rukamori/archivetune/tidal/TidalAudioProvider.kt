@@ -6,6 +6,9 @@
 package moe.rukamori.archivetune.tidal
 
 import android.net.Uri
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Dispatchers
 import moe.rukamori.archivetune.audiosource.DirectStream
 import moe.rukamori.archivetune.constants.AudioSourceType
 import android.util.Base64
@@ -443,7 +446,7 @@ object TidalAudioProvider {
         return activeEndpoints.sortedBy { if (isInstanceCoolingDown(it.baseUrl, now)) 1 else 0 }
     }
 
-    fun resolve(
+    suspend fun resolve(
         query: Query,
         cacheDir: File? = null,
         preferAtmos: Boolean = false,
@@ -913,7 +916,7 @@ object TidalAudioProvider {
         return score
     }
 
-    private fun requestDirectFlac(
+    private suspend fun requestDirectFlac(
         track: MatchedTrack,
         quality: String,
         durationMs: Long?,
@@ -929,8 +932,10 @@ object TidalAudioProvider {
         var longestRetryAfterMs = 0L
         // Healthy instances first; instances on cooldown are only reached if all are down.
         val endpoints = orderedEndpoints()
-        for (endpoint in endpoints) {
-            val result =
+        
+        // Race all instances concurrently: first to return successfully wins.
+        val tasks = endpoints.map { endpoint ->
+            async(Dispatchers.IO) {
                 runCatching {
                     requestDirectFlacFromEndpoint(
                         endpoint = endpoint,
@@ -944,26 +949,33 @@ object TidalAudioProvider {
                         preferLiveDash = preferLiveDash,
                         audioQuality = audioQuality,
                     )
+                }.also { result ->
+                    result.getOrNull()?.let {
+                        markInstanceHealthy(endpoint.baseUrl)
+                    }
+                    result.exceptionOrNull()?.let { error ->
+                        if (error is TidalRateLimitedException) {
+                            rateLimitCount += 1
+                            longestRetryAfterMs = maxOf(longestRetryAfterMs, error.retryAfterMs)
+                        } else {
+                            val hardFailure =
+                                error is java.net.UnknownHostException || error is java.net.ConnectException
+                            markInstanceFailed(endpoint.baseUrl, hardFailure = hardFailure)
+                        }
+                        errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
+                        Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")
+                    }
                 }
-            result.getOrNull()?.let {
-                markInstanceHealthy(endpoint.baseUrl)
-                return it
             }
-            val error = result.exceptionOrNull() ?: continue
-            if (error is TidalRateLimitedException) {
-                rateLimitCount += 1
-                longestRetryAfterMs = maxOf(longestRetryAfterMs, error.retryAfterMs)
-            } else {
-                // A vanished domain / refused connection means the instance is effectively gone,
-                // so it gets a long cooldown. Transient errors (5xx, timeouts, missing track)
-                // get a short cooldown so the instance is retried soon.
-                val hardFailure =
-                    error is java.net.UnknownHostException || error is java.net.ConnectException
-                markInstanceFailed(endpoint.baseUrl, hardFailure = hardFailure)
-            }
-            errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
-            Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")
         }
+        
+        // Await all tasks and find the first success.
+        val results = tasks.awaitAll()
+        results.forEach { result ->
+            result.getOrNull()?.let { return it }
+        }
+        
+        // All failed; check if rate-limited.
         if (rateLimitCount == endpoints.size && longestRetryAfterMs > 0L) {
             resolverRateLimitedUntilMs = System.currentTimeMillis() + longestRetryAfterMs
             throw TidalRateLimitedException(longestRetryAfterMs)

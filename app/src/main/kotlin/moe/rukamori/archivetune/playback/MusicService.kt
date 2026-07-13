@@ -7135,21 +7135,23 @@ class MusicService :
         TidalAudioProvider.setInstances(parseTidalInstances())
         val resolved =
             runCatching {
-                TidalAudioProvider.resolve(
-                    query =
-                        TidalAudioProvider.Query(
-                            mediaId = query.mediaId,
-                            title = query.title,
-                            artists = query.artists,
-                            album = query.album,
-                            isrc = null,
-                            durationMs = query.durationMs,
-                        ),
-                    cacheDir = cacheDir,
-                    preferAtmos = false,
-                    preferLiveDash = false,
-                    audioQuality = quality,
-                )
+                runBlocking(Dispatchers.IO) {
+                    TidalAudioProvider.resolve(
+                        query =
+                            TidalAudioProvider.Query(
+                                mediaId = query.mediaId,
+                                title = query.title,
+                                artists = query.artists,
+                                album = query.album,
+                                isrc = null,
+                                durationMs = query.durationMs,
+                            ),
+                        cacheDir = cacheDir,
+                        preferAtmos = false,
+                        preferLiveDash = false,
+                        audioQuality = quality,
+                    )
+                }
             }.onFailure { error ->
                 Timber.tag("MusicService").w(error, "TIDAL stream resolution failed for %s", query.mediaId)
             }.getOrNull() ?: return null
