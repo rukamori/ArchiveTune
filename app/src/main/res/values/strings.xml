@@ -533,6 +533,8 @@
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
+    <string name="prevent_duplicate_tracks_in_queue">Prevent duplicate tracks in queue</string>
+    <string name="prevent_duplicate_tracks_in_queue_desc">When adding a track that\'s already in the queue, it will be moved from its previous position rather than added again</string>
     <string name="permanent_shuffle">Permanent shuffle mode</string>
     <string name="permanent_shuffle_desc">Keep shuffle enabled when you start a new song</string>
     <string name="skip_silence">Skip silence</string>
