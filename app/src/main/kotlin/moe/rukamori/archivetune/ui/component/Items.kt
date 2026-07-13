@@ -1394,16 +1394,22 @@ fun YouTubeListItem(
         )
     }
 
-    if (item is SongItem && isSwipeable && swipeEnabled) {
-        SwipeToSongBox(
-            mediaItem = item.copy(thumbnail = item.thumbnail.resize(1080, 1080, maxresAllowed = true)).toMediaItem(),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            content()
-        }
-    } else {
-        content()
-    }
+   if (item is SongItem && isSwipeable && swipeEnabled) {
+       SwipeToSongBox(
+           mediaItem =
+               item
+                   .copy(
+                       thumbnail = item.thumbnail.resize(1080, 1080, maxresAllowed = true),
+                       thumbnailWidth = null,
+                       thumbnailHeight = null,
+                   ).toMediaItem(),
+           modifier = Modifier.fillMaxWidth(),
+       ) {
+           content()
+       }
+   } else {
+       content()
+   }
 }
 
 @Composable
