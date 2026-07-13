@@ -170,6 +170,7 @@ import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.PreventDuplicateTracksInQueueKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
@@ -3846,7 +3847,26 @@ class MusicService :
             clearPersistedQueueFiles()
         }
     }
+    private fun removeDuplicatesFromQueue(items: List<MediaItem>): List<MediaItem> {
+    
+        val seen = mutableSetOf<String>()
+        val deduplicatedItems = items.filter { seen.add(it.mediaId) }
 
+        if (!dataStore.get(PreventDuplicateTracksInQueueKey, false) || player.mediaItemCount == 0) {
+            return deduplicatedItems
+        }
+
+        val currentMediaId = player.currentMediaItem?.mediaId
+        val incomingIds = deduplicatedItems.map { it.mediaId }.toSet()
+    
+        val indicesToRemove = (0 until player.mediaItemCount).filter { i ->
+            val id = player.getMediaItemAt(i).mediaId
+            id in incomingIds && id != currentMediaId
+        }
+        indicesToRemove.sortedDescending().forEach { index -> player.removeMediaItem(index) }
+
+        return deduplicatedItems.filter { it.mediaId != currentMediaId }
+    }
     fun playNext(items: List<MediaItem>) {
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -3869,20 +3889,22 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
+        val effectiveItems = removeDuplicatesFromQueue(items)
+        if (effectiveItems.isEmpty()) return
         val insertionIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
         val playNextShuffleOrder =
             if (player.shuffleModeEnabled && player.mediaItemCount > 0) {
                 buildPlayNextShuffleOrder(
                     currentIndex = player.currentMediaItemIndex,
                     insertionIndex = insertionIndex,
-                    insertionCount = items.size,
+                    insertionCount = effectiveItems.size,
                 )
             } else {
                 null
             }
 
-        player.addMediaItems(insertionIndex, items)
-        playNextShuffleOrder?.let(localPlayer::setShuffleOrder)
+        player.addMediaItems(insertionIndex, effectiveItems)
+        playNextShuffleOrder?.let(player::setShuffleOrder)
         player.prepare()
     }
 
@@ -3908,7 +3930,9 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
-        player.addMediaItems(items)
+        val effectiveItems = removeDuplicatesFromQueue(items)
+        if (effectiveItems.isEmpty()) return
+        player.addMediaItems(effectiveItems)
         player.prepare()
     }
 
