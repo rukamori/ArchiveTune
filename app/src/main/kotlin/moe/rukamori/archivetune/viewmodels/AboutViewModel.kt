@@ -62,7 +62,6 @@ data class AboutUiModel(
     val respecters: TeamMemberCollection,
     val contributorsState: AboutContributorsUiState,
     val contributorsReadMoreUrl: String,
-    val isOverflowMenuExpanded: Boolean,
     val activeDialog: AboutDialog,
     val translationContributorsState: AboutTranslationContributorsUiState,
     val dependencyLicensesState: AboutDependencyLicensesUiState,
@@ -262,7 +261,6 @@ class AboutViewModel
         private var translationContributorsState: AboutTranslationContributorsUiState =
             AboutTranslationContributorsUiState.Loading
         private var dependencyLicensesState: AboutDependencyLicensesUiState = AboutDependencyLicensesUiState.Loading
-        private var isOverflowMenuExpanded = false
         private var activeDialog = AboutDialog.NONE
 
         init {
@@ -273,25 +271,13 @@ class AboutViewModel
             loadContributors(force = true)
         }
 
-        fun showOverflowMenu() {
-            isOverflowMenuExpanded = true
-            updateState()
-        }
-
-        fun dismissOverflowMenu() {
-            isOverflowMenuExpanded = false
-            updateState()
-        }
-
         fun openTranslationContributors() {
-            isOverflowMenuExpanded = false
             activeDialog = AboutDialog.TRANSLATION_CONTRIBUTORS
             updateState()
             loadTranslationContributors()
         }
 
         fun openDependencyLicenses() {
-            isOverflowMenuExpanded = false
             activeDialog = AboutDialog.DEPENDENCY_LICENSES
             updateState()
             loadDependencyLicenses()
@@ -579,7 +565,6 @@ class AboutViewModel
                     ),
                 contributorsState = contributorsState,
                 contributorsReadMoreUrl = ContributorsReadMoreUrl,
-                isOverflowMenuExpanded = isOverflowMenuExpanded,
                 activeDialog = activeDialog,
                 translationContributorsState = translationContributorsState,
                 dependencyLicensesState = dependencyLicensesState,
