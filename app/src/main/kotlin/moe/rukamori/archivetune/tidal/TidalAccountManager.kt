@@ -42,6 +42,7 @@ object TidalAccountManager {
     private val client =
         OkHttpClient
             .Builder()
+            .dns(TidalDns) // DoH fallback so login works on ISPs that DNS-block tidal.com
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)

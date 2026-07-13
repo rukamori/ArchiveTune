@@ -386,6 +386,7 @@ object TidalAudioProvider {
     private val client =
         OkHttpClient
             .Builder()
+            .dns(TidalDns) // DoH fallback so streaming works on ISPs that DNS-block tidal.com
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(25, TimeUnit.SECONDS)
@@ -396,6 +397,7 @@ object TidalAudioProvider {
     private val healthClient =
         OkHttpClient
             .Builder()
+            .dns(TidalDns)
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.SECONDS)
             .callTimeout(6, TimeUnit.SECONDS)
