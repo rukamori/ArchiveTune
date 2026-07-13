@@ -1034,7 +1034,10 @@ private fun UpdatePreferencesPanel(
             onClick = { onUpdateNotificationChange(!enableUpdateNotification) },
             shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
             modifier = Modifier.fillMaxWidth(),
-            colors = ListItemDefaults.segmentedColors(),
+            colors =
+                ListItemDefaults.segmentedColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
             leadingContent = {
                 FeatureIcon(
                     iconRes = R.drawable.new_release,
@@ -1136,7 +1139,10 @@ private fun CommitHistorySection(
             onClick = onToggleExpanded,
             shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
             modifier = Modifier.fillMaxWidth(),
-            colors = ListItemDefaults.segmentedColors(),
+            colors =
+                ListItemDefaults.segmentedColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
             leadingContent = {
                 FeatureIcon(
                     iconRes = R.drawable.history,
@@ -1282,7 +1288,10 @@ private fun CommitItem(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 64.dp),
-        colors = ListItemDefaults.segmentedColors(),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         leadingContent = {
             CommitAvatar(avatarUrl = commit.authorAvatarUrl)
