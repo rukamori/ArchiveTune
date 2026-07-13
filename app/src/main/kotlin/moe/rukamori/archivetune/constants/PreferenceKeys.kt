@@ -785,11 +785,9 @@ enum class AudioSourceType {
 // CSV of AudioSourceType names, highest priority first. Empty = built-in default order.
 val AudioSourceOrderKey = stringPreferencesKey("audioSourceOrder")
 
-// Set of enabled AudioSourceType names. Absent entry = use per-source default.
-val AudioSourceEnabledKey = stringSetPreferencesKey("audioSourceEnabled")
-
-// The primary source the user prefers to search/resolve first (AudioSourceType name).
-val SearchSourceKey = stringPreferencesKey("searchSource")
+// The primary audio source the user prefers to search/resolve first (AudioSourceType name).
+// Named distinctly from the unrelated SearchSourceKey (LOCAL/ONLINE search scope) above.
+val AudioSearchSourceKey = stringPreferencesKey("audioSearchSource")
 
 // When logged in, try the user's own Tidal account (official API) before the public instances.
 val TidalAccountFirstKey = booleanPreferencesKey("tidalAccountFirst")

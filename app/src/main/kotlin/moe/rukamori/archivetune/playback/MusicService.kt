@@ -178,7 +178,7 @@ import moe.rukamori.archivetune.constants.TidalEnabledKey
 import moe.rukamori.archivetune.constants.TidalInstancesKey
 import moe.rukamori.archivetune.constants.AudioSourceType
 import moe.rukamori.archivetune.constants.AudioSourceOrderKey
-import moe.rukamori.archivetune.constants.SearchSourceKey
+import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
@@ -6986,7 +6986,7 @@ class MusicService :
                 AudioSourceType.YOUTUBE to true,
             )
         val search =
-            runCatching { AudioSourceType.valueOf(dataStore.get(SearchSourceKey, "")) }.getOrNull()
+            runCatching { AudioSourceType.valueOf(dataStore.get(AudioSearchSourceKey, "")) }.getOrNull()
         return AudioSourceConfig
             .resolutionChain(
                 rawOrder = dataStore.get(AudioSourceOrderKey, "").ifBlank { null },

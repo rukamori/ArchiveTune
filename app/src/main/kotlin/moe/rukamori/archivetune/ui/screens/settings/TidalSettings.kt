@@ -60,7 +60,7 @@ import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
 import moe.rukamori.archivetune.constants.AudioSourceType
 import moe.rukamori.archivetune.constants.AudioSourceOrderKey
-import moe.rukamori.archivetune.constants.SearchSourceKey
+import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.DeezerEnabledKey
 import moe.rukamori.archivetune.constants.DeezerInstanceKey
@@ -101,7 +101,7 @@ fun TidalSettings(navController: NavController) {
 
     // ----- Multi-source framework state -----
     val (searchSource, onSearchSourceChange) =
-        rememberEnumPreference(SearchSourceKey, AudioSourceType.TIDAL)
+        rememberEnumPreference(AudioSearchSourceKey, AudioSourceType.TIDAL)
     val (sourceOrderRaw, onSourceOrderChange) = rememberPreference(AudioSourceOrderKey, "")
     val (tidalAccountFirst, onTidalAccountFirstChange) = rememberPreference(TidalAccountFirstKey, true)
     val (deezerEnabled, onDeezerEnabledChange) = rememberPreference(DeezerEnabledKey, false)
