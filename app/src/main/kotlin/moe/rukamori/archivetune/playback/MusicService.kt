@@ -176,6 +176,23 @@ import moe.rukamori.archivetune.constants.TidalAudioQuality
 import moe.rukamori.archivetune.constants.TidalAudioQualityKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
 import moe.rukamori.archivetune.constants.TidalInstancesKey
+import moe.rukamori.archivetune.constants.AudioSourceType
+import moe.rukamori.archivetune.constants.AudioSourceOrderKey
+import moe.rukamori.archivetune.constants.SearchSourceKey
+import moe.rukamori.archivetune.constants.TidalAccountFirstKey
+import moe.rukamori.archivetune.constants.TidalAccessTokenKey
+import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
+import moe.rukamori.archivetune.constants.DeezerEnabledKey
+import moe.rukamori.archivetune.constants.DeezerInstanceKey
+import moe.rukamori.archivetune.constants.AmazonEnabledKey
+import moe.rukamori.archivetune.constants.AmazonInstanceKey
+import moe.rukamori.archivetune.constants.AmazonBypassTokenKey
+import moe.rukamori.archivetune.audiosource.AudioSourceConfig
+import moe.rukamori.archivetune.audiosource.DirectStream
+import moe.rukamori.archivetune.audiosource.DeezerAudioProvider
+import moe.rukamori.archivetune.audiosource.AmazonAudioProvider
+import moe.rukamori.archivetune.audiosource.IsrcResolver
+import moe.rukamori.archivetune.tidal.TidalAccountManager
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
@@ -6939,36 +6956,44 @@ class MusicService :
             .map { it.trim() }
             .filter { it.isNotEmpty() }
 
+    /** Metadata used to look a track up across the configured audio sources. */
+    private data class SourceQuery(
+        val mediaId: String,
+        val title: String,
+        val artists: List<String>,
+        val album: String?,
+        val durationMs: Long?,
+    )
+
     /**
-     * Attempts to resolve the current media item as a Tidal stream. Returns a [DataSpec]
-     * pointing at a Tidal (FLAC/Hi-Res) stream when the Tidal source is enabled and a match
-     * is found; otherwise returns null so playback falls through to the YouTube resolver.
-     *
-     * Ported from MetroFuse's multi-provider audio pipeline, adapted to ArchiveTune's
-     * single-seam [resolvePlaybackDataSpec] resolver.
+     * The ordered list of enabled non-YouTube sources to try for [resolveMultiSourceDataSpec],
+     * with the user's primary/search source pinned first and YouTube (implicit fallback) excluded.
      */
-    private fun resolveTidalDataSpec(
-        dataSpec: DataSpec,
-        mediaId: String,
-    ): DataSpec? {
-        if (!dataStore.get(TidalEnabledKey, false)) return null
-        if (mediaId.isLocalMediaId()) return null
+    private fun sourceResolutionChain(): List<AudioSourceType> {
+        val enabledDefaults =
+            mapOf(
+                AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, false),
+                AudioSourceType.DEEZER to dataStore.get(DeezerEnabledKey, false),
+                AudioSourceType.AMAZON to dataStore.get(AmazonEnabledKey, false),
+                AudioSourceType.YOUTUBE to true,
+            )
+        val search =
+            runCatching { AudioSourceType.valueOf(dataStore.get(SearchSourceKey, "")) }.getOrNull()
+        return AudioSourceConfig
+            .resolutionChain(
+                rawOrder = dataStore.get(AudioSourceOrderKey, "").ifBlank { null },
+                enabledSet = null,
+                searchSource = search,
+                defaults = enabledDefaults,
+            ).filter { it != AudioSourceType.YOUTUBE }
+    }
 
-        // Tidal streams lossless FLAC, which conflicts with the low-data-mode playback setting.
-        // Defer to the lighter YouTube stream while low data mode is active.
-        if (isLowDataModeActive()) {
-            tidalActiveMediaIds.remove(mediaId)
-            return null
-        }
-
-        // Apply the user-configured HiFi instance list (empty falls back to built-in defaults).
-        TidalAudioProvider.setInstances(parseTidalInstances())
-
+    /** Builds the shared lookup metadata for [mediaId] from the database / queue metadata. */
+    private fun buildSourceQuery(mediaId: String): SourceQuery? {
         val song =
             runCatching {
                 runBlocking(Dispatchers.IO) { database.song(mediaId).first() }
             }.getOrNull()
-
         val queuedMetadata = currentMediaMetadata.value?.takeIf { it.id == mediaId }
         val title =
             song?.song?.title
@@ -6987,54 +7012,179 @@ class MusicService :
                 ?.toLong()
                 ?.times(1000L)
                 ?: queuedMetadata?.duration?.takeIf { it > 0 }?.toLong()?.times(1000L)
+        return SourceQuery(mediaId, title, artists, album, durationMs)
+    }
 
-        val query =
-            TidalAudioProvider.Query(
-                mediaId = mediaId,
-                title = title,
-                artists = artists,
-                album = album,
-                isrc = null,
-                durationMs = durationMs,
-            )
+    /**
+     * Attempts to resolve the current media item through the configured audio sources, in the
+     * user's chosen priority order. Returns a [DataSpec] pointing at the first source that
+     * resolves a stream, or null so playback falls through to the YouTube resolver.
+     *
+     * Replaces the original Tidal-only resolver with a general multi-source pipeline (Tidal,
+     * Deezer, Amazon Music), while preserving the Tidal behavior as one source among them.
+     */
+    private fun resolveMultiSourceDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec? {
+        if (mediaId.isLocalMediaId()) return null
+        val chain = sourceResolutionChain()
+        if (chain.isEmpty()) return null
 
-        val resolved =
-            runCatching {
-                TidalAudioProvider.resolve(
-                    query = query,
-                    cacheDir = cacheDir,
-                    preferAtmos = false,
-                    preferLiveDash = false,
-                    audioQuality = parseTidalAudioQuality(),
-                )
-            }.onFailure { error ->
-                Timber.tag("MusicService").w(error, "TIDAL stream resolution failed for %s", mediaId)
-            }.getOrNull()
-
-        if (resolved == null) {
-            // Tidal is the intended source but no instance could resolve this track
-            // (all instances down, rate-limited, or no confident match). Let the caller
-            // fall through to YouTube and surface a one-off notice so the user knows why.
+        // Lossless sources conflict with the low-data-mode playback setting; defer to YouTube.
+        if (isLowDataModeActive()) {
             tidalActiveMediaIds.remove(mediaId)
-            showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "tidal_fallback")
             return null
         }
 
-        Timber.tag("MusicService").i("Using TIDAL stream for %s: %s", mediaId, resolved.label)
-        // Cache Tidal bytes under a dedicated key so they never collide with the YouTube
-        // stream for the same media id (different codec, bitrate and content length).
-        val tidalCacheKey = tidalCacheKey(mediaId)
-        resolved.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[tidalCacheKey] = it }
-        // Mark this song as Tidal-served so audio normalization (which is derived from the
-        // YouTube loudness metadata) is skipped for it instead of being mis-applied.
+        val query = buildSourceQuery(mediaId) ?: return null
+
+        var isrc: String? = null
+        var isrcAttempted = false
+        for (source in chain) {
+            val stream: DirectStream? =
+                when (source) {
+                    AudioSourceType.TIDAL -> resolveTidalStream(query)
+                    AudioSourceType.DEEZER -> {
+                        if (!isrcAttempted) {
+                            isrc =
+                                runCatching {
+                                    runBlocking(Dispatchers.IO) {
+                                        IsrcResolver.resolve(query.title, query.artists, query.durationMs)
+                                    }
+                                }.getOrNull()
+                            isrcAttempted = true
+                        }
+                        isrc?.let { code ->
+                            runCatching {
+                                runBlocking(Dispatchers.IO) {
+                                    DeezerAudioProvider.resolve(
+                                        isrc = code,
+                                        instanceBaseUrl = dataStore.get(DeezerInstanceKey, DeezerAudioProvider.DEFAULT_INSTANCE),
+                                    )
+                                }
+                            }.getOrNull()
+                        }
+                    }
+                    AudioSourceType.AMAZON ->
+                        runCatching {
+                            runBlocking(Dispatchers.IO) {
+                                AmazonAudioProvider.resolveByMetadata(
+                                    title = query.title,
+                                    artists = query.artists,
+                                    durationMs = query.durationMs,
+                                    instanceBaseUrl = dataStore.get(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE),
+                                    bypassToken = dataStore.get(AmazonBypassTokenKey, "").ifBlank { null },
+                                )
+                            }
+                        }.getOrNull()
+                    AudioSourceType.YOUTUBE -> null
+                }
+            if (stream != null) return applyDirectStream(dataSpec, mediaId, stream)
+        }
+
+        // A non-YouTube source was requested but none could resolve this track; fall back to
+        // YouTube and surface a one-off notice so the user knows why.
+        tidalActiveMediaIds.remove(mediaId)
+        showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "source_fallback")
+        return null
+    }
+
+    /** Resolves a Tidal stream, trying the signed-in account (official API) before public instances. */
+    private fun resolveTidalStream(query: SourceQuery): DirectStream? {
+        val quality = parseTidalAudioQuality()
+
+        // Account-first: use the user's own Tidal token via the official API when available.
+        if (dataStore.get(TidalAccountFirstKey, true)) {
+            val token = dataStore.get(TidalAccessTokenKey, "")
+            val expiry = dataStore.get(TidalTokenExpiryKey, 0L)
+            if (token.isNotBlank() && expiry > System.currentTimeMillis()) {
+                val apiQuality =
+                    when (quality) {
+                        TidalAudioQuality.HI_RES_LOSSLESS -> "HI_RES_LOSSLESS"
+                        TidalAudioQuality.FLAC -> "LOSSLESS"
+                        TidalAudioQuality.AAC_320 -> "HIGH"
+                    }
+                val accountStream =
+                    runCatching {
+                        runBlocking(Dispatchers.IO) {
+                            TidalAccountManager.resolveDirectStream(
+                                accessToken = token,
+                                title = query.title,
+                                artists = query.artists,
+                                durationMs = query.durationMs,
+                                audioQuality = apiQuality,
+                            )
+                        }
+                    }.onFailure { Timber.tag("MusicService").w(it, "Tidal account resolve failed for %s", query.mediaId) }
+                        .getOrNull()
+                if (accountStream != null) return accountStream
+            }
+        }
+
+        // Fallback: public HiFi/QQDL instances (empty list falls back to built-in defaults).
+        TidalAudioProvider.setInstances(parseTidalInstances())
+        val resolved =
+            runCatching {
+                TidalAudioProvider.resolve(
+                    query =
+                        TidalAudioProvider.Query(
+                            mediaId = query.mediaId,
+                            title = query.title,
+                            artists = query.artists,
+                            album = query.album,
+                            isrc = null,
+                            durationMs = query.durationMs,
+                        ),
+                    cacheDir = cacheDir,
+                    preferAtmos = false,
+                    preferLiveDash = false,
+                    audioQuality = quality,
+                )
+            }.onFailure { error ->
+                Timber.tag("MusicService").w(error, "TIDAL stream resolution failed for %s", query.mediaId)
+            }.getOrNull() ?: return null
+
+        return DirectStream(
+            uri = resolved.mediaUri,
+            mimeType = resolved.mimeType,
+            codecs = resolved.codecs,
+            contentLength = resolved.contentLength,
+            label = "Tidal ${resolved.label}",
+            source = AudioSourceType.TIDAL,
+        )
+    }
+
+    /**
+     * Applies a resolved [DirectStream] to the [dataSpec]: namespaces the cache key per-source so
+     * bytes never collide with the YouTube stream (or another source) for the same media id, and
+     * marks the track so YouTube-derived audio normalization is skipped for it.
+     */
+    private fun applyDirectStream(
+        dataSpec: DataSpec,
+        mediaId: String,
+        stream: DirectStream,
+    ): DataSpec {
+        Timber.tag("MusicService").i("Using %s stream for %s: %s", stream.source, mediaId, stream.label)
+        val cacheKey = sourceCacheKey(stream.source, mediaId)
+        stream.contentLength?.takeIf { it > 0L }?.let { contentLengthCache[cacheKey] = it }
         tidalActiveMediaIds.add(mediaId)
         audioNormalizationFactorCache[mediaId] = 1f
         return dataSpec
             .buildUpon()
-            .setUri(resolved.mediaUri.toUri())
-            .setKey(tidalCacheKey)
+            .setUri(stream.uri.toUri())
+            .setKey(cacheKey)
             .build()
     }
+
+    private fun sourceCacheKey(
+        source: AudioSourceType,
+        mediaId: String,
+    ): String =
+        when (source) {
+            AudioSourceType.TIDAL -> "$TIDAL_CACHE_KEY_PREFIX$mediaId"
+            else -> "${source.name.lowercase()}:$mediaId"
+        }
 
     private fun tidalCacheKey(mediaId: String): String = "$TIDAL_CACHE_KEY_PREFIX$mediaId"
 
@@ -7129,10 +7279,10 @@ class MusicService :
             }
         }
 
-        // Tidal music source: attempt to resolve a lossless Tidal stream before YouTube.
-        resolveTidalDataSpec(dataSpec, mediaId)?.let { tidalDataSpec ->
+        // Multi-source: attempt to resolve a lossless stream (Tidal/Deezer/Amazon) before YouTube.
+        resolveMultiSourceDataSpec(dataSpec, mediaId)?.let { sourceDataSpec ->
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-            return tidalDataSpec
+            return sourceDataSpec
         }
 
         val lowDataModeActive = isLowDataModeActive()

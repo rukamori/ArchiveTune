@@ -11,15 +11,20 @@
 
 package moe.rukamori.archivetune.tidal
 
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.audiosource.DirectStream
+import moe.rukamori.archivetune.constants.AudioSourceType
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 object TidalAccountManager {
     // Well-known public Tidal "TV/device" OAuth client used by open-source Tidal tooling for the
@@ -244,4 +249,143 @@ object TidalAccountManager {
                 Subscription.UNKNOWN
             }
         }
+
+    /**
+     * Resolves a directly-playable stream for the given metadata using the signed-in user's own
+     * Tidal account (official API), rather than a public instance. Returns null if the account
+     * cannot stream the track (not found, no entitlement, or an unexpected manifest type), so the
+     * caller can fall back to the public instances and then YouTube.
+     *
+     * [audioQuality] is a Tidal API quality string: "LOW", "HIGH", "LOSSLESS" or "HI_RES_LOSSLESS".
+     */
+    suspend fun resolveDirectStream(
+        accessToken: String,
+        title: String,
+        artists: List<String>,
+        durationMs: Long?,
+        audioQuality: String,
+    ): DirectStream? =
+        withContext(Dispatchers.IO) {
+            val trackId = searchTrackId(accessToken, title, artists, durationMs) ?: return@withContext null
+            resolvePlaybackInfo(accessToken, trackId, audioQuality)
+        }
+
+    /** Searches the official API for the best-matching track id. */
+    private fun searchTrackId(
+        accessToken: String,
+        title: String,
+        artists: List<String>,
+        durationMs: Long?,
+    ): String? {
+        val primaryArtist = artists.firstOrNull().orEmpty()
+        val query = URLEncoder.encode("$title $primaryArtist".trim(), "UTF-8")
+        val request =
+            Request
+                .Builder()
+                .url("$API_BASE/search/tracks?query=$query&limit=15&countryCode=$COUNTRY_CODE")
+                .header("Authorization", "Bearer $accessToken")
+                .get()
+                .build()
+        return runCatching {
+            client.newCall(request).execute().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful || payload.isBlank()) return@use null
+                val items = JSONObject(payload).optJSONArray("items") ?: return@use null
+
+                var bestId: String? = null
+                var bestScore = Int.MIN_VALUE
+                for (i in 0 until items.length()) {
+                    val item = items.optJSONObject(i) ?: continue
+                    val id = item.optLong("id").takeIf { it > 0 }?.toString() ?: continue
+                    var score = 0
+                    val candTitle = item.optString("title")
+                    if (candTitle.equals(title, ignoreCase = true)) {
+                        score += 50
+                    } else if (candTitle.contains(title, ignoreCase = true) ||
+                        title.contains(candTitle, ignoreCase = true)
+                    ) {
+                        score += 25
+                    }
+                    val candArtists =
+                        item.optJSONArray("artists")?.let { arr ->
+                            (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name") }
+                        }.orEmpty()
+                    if (primaryArtist.isNotBlank() &&
+                        candArtists.any { it.contains(primaryArtist, ignoreCase = true) }
+                    ) {
+                        score += 30
+                    }
+                    val candDurationMs = item.optLong("duration").takeIf { it > 0 }?.times(1000L)
+                    if (durationMs != null && candDurationMs != null &&
+                        abs(candDurationMs - durationMs) <= 5000L
+                    ) {
+                        score += 20
+                    }
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestId = id
+                    }
+                }
+                // Require at least a title or artist hit to avoid false matches.
+                if (bestScore >= 40) bestId else null
+            }
+        }.getOrElse {
+            Timber.tag("TidalAccount").w(it, "account track search error")
+            null
+        }
+    }
+
+    /** Fetches playback info for a track and extracts a direct stream URL from the BTS manifest. */
+    private fun resolvePlaybackInfo(
+        accessToken: String,
+        trackId: String,
+        audioQuality: String,
+    ): DirectStream? {
+        val url =
+            "$API_BASE/tracks/$trackId/playbackinfopostpaywall" +
+                "?audioquality=$audioQuality&playbackmode=STREAM&assetpresentation=FULL"
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .header("Authorization", "Bearer $accessToken")
+                .get()
+                .build()
+        return runCatching {
+            client.newCall(request).execute().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful || payload.isBlank()) {
+                    Timber.tag("TidalAccount").w("playbackinfo failed: %d", response.code)
+                    return@use null
+                }
+                val json = JSONObject(payload)
+                val manifestMime = json.optString("manifestMimeType")
+                val manifestB64 = json.optString("manifest").takeIf { it.isNotBlank() } ?: return@use null
+                // Only the BTS manifest is a simple base64 JSON with direct URLs. DASH/MPD manifests
+                // require a full parser (handled by the public-instance path), so we skip them here.
+                if (!manifestMime.contains("vnd.tidal.bts", ignoreCase = true)) {
+                    Timber.tag("TidalAccount").d("Unsupported account manifest type: %s", manifestMime)
+                    return@use null
+                }
+                val decoded = String(Base64.decode(manifestB64, Base64.DEFAULT))
+                val manifest = JSONObject(decoded)
+                val streamUrl =
+                    manifest.optJSONArray("urls")?.optString(0)?.takeIf { it.isNotBlank() }
+                        ?: return@use null
+                val mimeType = manifest.optString("mimeType").ifBlank { "audio/flac" }
+                val codecs = manifest.optString("codecs").ifBlank { "flac" }
+                DirectStream(
+                    uri = streamUrl,
+                    mimeType = mimeType,
+                    codecs = codecs,
+                    contentLength = null,
+                    label = "Tidal account $audioQuality",
+                    source = AudioSourceType.TIDAL,
+                )
+            }
+        }.getOrElse {
+            Timber.tag("TidalAccount").w(it, "playbackinfo error")
+            null
+        }
+    }
 }

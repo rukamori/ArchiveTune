@@ -638,6 +638,28 @@
     <string name="backup_create_failed">Couldn\'t create backup</string>
     <string name="restore_success">Backup restored successfully</string>
     <string name="restore_failed">Failed to restore backup</string>
+    <!-- Multi-source audio framework -->
+    <string name="audio_sources">Audio Sources</string>
+    <string name="audio_sources_description">Choose which services to stream from, in what order. YouTube is always used as the final fallback.</string>
+    <string name="audio_search_source">Preferred source</string>
+    <string name="audio_source_enabled">Enabled</string>
+    <string name="audio_source_disabled">Disabled — enable it in its section below</string>
+    <string name="audio_source_youtube_fallback">YouTube is always tried last if no other source can resolve a track.</string>
+    <string name="source_tidal">Tidal</string>
+    <string name="source_deezer">Deezer</string>
+    <string name="source_amazon">Amazon Music</string>
+    <string name="source_youtube">YouTube</string>
+    <string name="tidal_account_first">Use my account first</string>
+    <string name="tidal_account_first_description">When signed in, fetch streams from your own Tidal account before falling back to public instances.</string>
+    <string name="deezer_enable">Enable Deezer source</string>
+    <string name="deezer_enable_description">Fetch lossless FLAC from a public Deezer downloader instance (matched by ISRC).</string>
+    <string name="deezer_instance">Deezer instance URL</string>
+    <string name="amazon_experimental_note">Experimental: Amazon Music has no public search and is protected by Cloudflare Turnstile, so it may not resolve most tracks without a working bypass token.</string>
+    <string name="amazon_enable">Enable Amazon Music source</string>
+    <string name="amazon_enable_description">Best-effort streaming from an Amazon Music proxy instance.</string>
+    <string name="amazon_instance">Amazon instance URL</string>
+    <string name="amazon_bypass_token">Turnstile bypass token (optional)</string>
+
     <!-- Tidal music source integration -->
     <string name="music_sources">Music Sources</string>
     <string name="tidal_integration">Tidal</string>

@@ -768,6 +768,41 @@ val TidalAudioQualityOptions =
         TidalAudioQuality.HI_RES_LOSSLESS,
     )
 
+// ---------------------------------------------------------------------------
+// Multi-source audio framework
+// ---------------------------------------------------------------------------
+// A configurable set of lossless/stream sources. The user can reorder them (priority for playback
+// resolution), toggle each on/off, and pick a primary "search" source. YouTube is always available
+// as the final fallback and cannot be removed.
+
+enum class AudioSourceType {
+    TIDAL,
+    DEEZER,
+    AMAZON,
+    YOUTUBE,
+}
+
+// CSV of AudioSourceType names, highest priority first. Empty = built-in default order.
+val AudioSourceOrderKey = stringPreferencesKey("audioSourceOrder")
+
+// Set of enabled AudioSourceType names. Absent entry = use per-source default.
+val AudioSourceEnabledKey = stringSetPreferencesKey("audioSourceEnabled")
+
+// The primary source the user prefers to search/resolve first (AudioSourceType name).
+val SearchSourceKey = stringPreferencesKey("searchSource")
+
+// When logged in, try the user's own Tidal account (official API) before the public instances.
+val TidalAccountFirstKey = booleanPreferencesKey("tidalAccountFirst")
+
+// Deezer source (ISRC-based public downloader instance).
+val DeezerEnabledKey = booleanPreferencesKey("deezerEnabled")
+val DeezerInstanceKey = stringPreferencesKey("deezerInstance")
+
+// Amazon Music source (best-effort: ASIN-based + Cloudflare Turnstile bypass token).
+val AmazonEnabledKey = booleanPreferencesKey("amazonEnabled")
+val AmazonInstanceKey = stringPreferencesKey("amazonInstance")
+val AmazonBypassTokenKey = stringPreferencesKey("amazonBypassToken")
+
 val WebClientPoTokenEnabledKey = booleanPreferencesKey("webClientPoTokenEnabled")
 val PoTokenGvsKey = stringPreferencesKey("poTokenGvs")
 val PoTokenPlayerKey = stringPreferencesKey("poTokenPlayer")

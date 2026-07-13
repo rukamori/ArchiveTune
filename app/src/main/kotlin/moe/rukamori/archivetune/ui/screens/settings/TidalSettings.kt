@@ -14,6 +14,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -57,8 +58,21 @@ import moe.rukamori.archivetune.constants.TidalSubscriptionKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionStatus
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
+import moe.rukamori.archivetune.constants.AudioSourceType
+import moe.rukamori.archivetune.constants.AudioSourceOrderKey
+import moe.rukamori.archivetune.constants.SearchSourceKey
+import moe.rukamori.archivetune.constants.TidalAccountFirstKey
+import moe.rukamori.archivetune.constants.DeezerEnabledKey
+import moe.rukamori.archivetune.constants.DeezerInstanceKey
+import moe.rukamori.archivetune.constants.AmazonEnabledKey
+import moe.rukamori.archivetune.constants.AmazonInstanceKey
+import moe.rukamori.archivetune.constants.AmazonBypassTokenKey
+import moe.rukamori.archivetune.audiosource.AudioSourceConfig
+import moe.rukamori.archivetune.audiosource.AmazonAudioProvider
+import moe.rukamori.archivetune.audiosource.DeezerAudioProvider
 import moe.rukamori.archivetune.tidal.TidalAccountManager
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
+import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -84,6 +98,45 @@ fun TidalSettings(navController: NavController) {
         rememberPreference(TidalArtworkFallbackEnabledKey, true)
     val (animatedCovers, onAnimatedCoversChange) =
         rememberPreference(TidalAnimatedCoversEnabledKey, false)
+
+    // ----- Multi-source framework state -----
+    val (searchSource, onSearchSourceChange) =
+        rememberEnumPreference(SearchSourceKey, AudioSourceType.TIDAL)
+    val (sourceOrderRaw, onSourceOrderChange) = rememberPreference(AudioSourceOrderKey, "")
+    val (tidalAccountFirst, onTidalAccountFirstChange) = rememberPreference(TidalAccountFirstKey, true)
+    val (deezerEnabled, onDeezerEnabledChange) = rememberPreference(DeezerEnabledKey, false)
+    val (deezerInstance, onDeezerInstanceChange) =
+        rememberPreference(DeezerInstanceKey, DeezerAudioProvider.DEFAULT_INSTANCE)
+    val (amazonEnabled, onAmazonEnabledChange) = rememberPreference(AmazonEnabledKey, false)
+    val (amazonInstance, onAmazonInstanceChange) =
+        rememberPreference(AmazonInstanceKey, AmazonAudioProvider.DEFAULT_INSTANCE)
+    val (amazonBypassToken, onAmazonBypassTokenChange) = rememberPreference(AmazonBypassTokenKey, "")
+
+    // Reorderable, non-YouTube sources in priority order (YouTube is the fixed final fallback).
+    val orderedSources =
+        remember(sourceOrderRaw) {
+            AudioSourceConfig.parseOrder(sourceOrderRaw.ifBlank { null })
+                .filter { it != AudioSourceType.YOUTUBE }
+        }
+
+    fun moveSource(
+        from: Int,
+        to: Int,
+    ) {
+        if (to < 0 || to >= orderedSources.size) return
+        val mutable = orderedSources.toMutableList()
+        val item = mutable.removeAt(from)
+        mutable.add(to, item)
+        onSourceOrderChange((mutable + AudioSourceType.YOUTUBE).joinToString(",") { it.name })
+    }
+
+    fun sourceLabel(source: AudioSourceType): String =
+        when (source) {
+            AudioSourceType.TIDAL -> context.getString(R.string.source_tidal)
+            AudioSourceType.DEEZER -> context.getString(R.string.source_deezer)
+            AudioSourceType.AMAZON -> context.getString(R.string.source_amazon)
+            AudioSourceType.YOUTUBE -> context.getString(R.string.source_youtube)
+        }
 
     // Instances stored as a newline-separated string; blank means "use built-in defaults".
     val (storedInstances, onStoredInstancesChange) = rememberPreference(TidalInstancesKey, "")
@@ -208,6 +261,67 @@ fun TidalSettings(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            PreferenceGroup(title = stringResource(R.string.audio_sources)) {
+                item {
+                    InfoLabel(text = stringResource(R.string.audio_sources_description))
+                }
+
+                item {
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.audio_search_source)) },
+                        icon = { Icon(painterResource(R.drawable.search), null) },
+                        selectedValue = searchSource,
+                        onValueSelected = onSearchSourceChange,
+                        valueText = { sourceLabel(it) },
+                    )
+                }
+
+                // Priority list: each source shows enabled state + up/down reordering controls.
+                orderedSources.forEachIndexed { index, source ->
+                    item {
+                        val enabled =
+                            when (source) {
+                                AudioSourceType.TIDAL -> tidalEnabled
+                                AudioSourceType.DEEZER -> deezerEnabled
+                                AudioSourceType.AMAZON -> amazonEnabled
+                                AudioSourceType.YOUTUBE -> true
+                            }
+                        PreferenceEntry(
+                            title = { Text("${index + 1}. ${sourceLabel(source)}") },
+                            description =
+                                if (enabled) {
+                                    stringResource(R.string.audio_source_enabled)
+                                } else {
+                                    stringResource(R.string.audio_source_disabled)
+                                },
+                            icon = { Icon(painterResource(R.drawable.play), null) },
+                            trailingContent = {
+                                Row {
+                                    IconButton(
+                                        onClick = { moveSource(index, index - 1) },
+                                        onLongClick = {},
+                                        enabled = index > 0,
+                                    ) {
+                                        Icon(painterResource(R.drawable.arrow_upward), null)
+                                    }
+                                    IconButton(
+                                        onClick = { moveSource(index, index + 1) },
+                                        onLongClick = {},
+                                        enabled = index < orderedSources.lastIndex,
+                                    ) {
+                                        Icon(painterResource(R.drawable.arrow_downward), null)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
+                item {
+                    InfoLabel(text = stringResource(R.string.audio_source_youtube_fallback))
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.general)) {
                 item {
                     SwitchPreference(
@@ -216,6 +330,17 @@ fun TidalSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.provider_tidal), null) },
                         checked = tidalEnabled,
                         onCheckedChange = onTidalEnabledChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.tidal_account_first)) },
+                        description = stringResource(R.string.tidal_account_first_description),
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        checked = tidalAccountFirst,
+                        onCheckedChange = onTidalAccountFirstChange,
+                        isEnabled = tidalEnabled,
                     )
                 }
 
@@ -357,6 +482,61 @@ fun TidalSettings(navController: NavController) {
                         checked = animatedCovers,
                         onCheckedChange = onAnimatedCoversChange,
                         isEnabled = tidalEnabled,
+                    )
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.source_deezer)) {
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.deezer_enable)) },
+                        description = stringResource(R.string.deezer_enable_description),
+                        icon = { Icon(painterResource(R.drawable.play), null) },
+                        checked = deezerEnabled,
+                        onCheckedChange = onDeezerEnabledChange,
+                    )
+                }
+                item {
+                    EditTextPreference(
+                        title = { Text(stringResource(R.string.deezer_instance)) },
+                        icon = { Icon(painterResource(R.drawable.link), null) },
+                        value = deezerInstance,
+                        onValueChange = onDeezerInstanceChange,
+                        isEnabled = deezerEnabled,
+                    )
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.source_amazon)) {
+                item {
+                    InfoLabel(text = stringResource(R.string.amazon_experimental_note))
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.amazon_enable)) },
+                        description = stringResource(R.string.amazon_enable_description),
+                        icon = { Icon(painterResource(R.drawable.play), null) },
+                        checked = amazonEnabled,
+                        onCheckedChange = onAmazonEnabledChange,
+                    )
+                }
+                item {
+                    EditTextPreference(
+                        title = { Text(stringResource(R.string.amazon_instance)) },
+                        icon = { Icon(painterResource(R.drawable.link), null) },
+                        value = amazonInstance,
+                        onValueChange = onAmazonInstanceChange,
+                        isEnabled = amazonEnabled,
+                    )
+                }
+                item {
+                    EditTextPreference(
+                        title = { Text(stringResource(R.string.amazon_bypass_token)) },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        value = amazonBypassToken,
+                        onValueChange = onAmazonBypassTokenChange,
+                        isInputValid = { true },
+                        isEnabled = amazonEnabled,
                     )
                 }
             }
