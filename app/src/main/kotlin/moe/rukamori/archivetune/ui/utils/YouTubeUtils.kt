@@ -30,10 +30,21 @@ private val sParamRegex = Regex("=s(\\d+)")
 private val brokenSAppendRegex = Regex("-s\\d+")
 private val videoIdRegex = Regex("/vi/([a-zA-Z0-9_-]{11})")
 
+private val DEFAULT_SIZE_BUCKETS = listOf(48, 72, 96, 120, 200, 320, 480, 544, 720, 1080)
+
+private fun getBucketSize(size: Int, buckets: List<Int>): Int {
+    val sortedBuckets = buckets.sorted()
+    for (bucket in sortedBuckets) {
+        if (size <= bucket) return bucket
+    }
+    return sortedBuckets.lastOrNull() ?: 1080
+}
+
 fun String.resize(
     width: Int? = null,
     height: Int? = null,
     maxresAllowed: Boolean = false,
+    sizeBuckets: List<Int>? = null,
 ): String {
     if (width == null && height == null) return this
 
@@ -41,8 +52,11 @@ fun String.resize(
     val isYtimg = contains("i.ytimg.com")
 
     if (isGoogleCdn) {
-        val w = width ?: height!!
-        val h = height ?: width!!
+        val rawW = width ?: height!!
+        val rawH = height ?: width!!
+        val buckets = sizeBuckets ?: DEFAULT_SIZE_BUCKETS
+        val w = getBucketSize(rawW, buckets)
+        val h = getBucketSize(rawH, buckets)
 
         if (wHPathRegex.containsMatchIn(this)) {
             return replace(wHPathRegex, "w$w-h$h")

@@ -396,6 +396,7 @@ fun SongListItem(
                     isPlaying = isPlaying,
                     shape = RoundedCornerShape(ThumbnailCornerRadius),
                     placeholderIconRes = if (showSongIconPlaceholder) R.drawable.music_note else null,
+                    maxSizePx = 200,
                     modifier = Modifier.size(ListThumbnailSize),
                 )
             },
@@ -511,6 +512,7 @@ fun ArtistListItem(
             isActive = false,
             isPlaying = false,
             shape = CircleShape,
+            maxSizePx = 200,
             modifier = Modifier.size(ListThumbnailSize),
         )
     },
@@ -538,6 +540,7 @@ fun ArtistGridItem(
             isActive = false,
             isPlaying = false,
             shape = CircleShape,
+            maxSizePx = 544,
             modifier = Modifier.fillMaxSize(),
         )
     },
@@ -614,6 +617,7 @@ fun AlbumListItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(ThumbnailCornerRadius),
+            maxSizePx = 200,
             modifier = Modifier.size(ListThumbnailSize),
         )
     },
@@ -699,6 +703,7 @@ fun AlbumGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(GridThumbnailCornerRadius),
+            maxSizePx = 544,
         )
 
         AlbumPlayButton(
@@ -1610,6 +1615,8 @@ fun ItemThumbnail(
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
     showPlaceholder: Boolean = false,
+    maxSizePx: Int? = null,
+    sizeBuckets: List<Int>? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1635,8 +1642,11 @@ fun ItemThumbnail(
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
 
-        var currentUrl by remember(thumbnailUrl, widthPx, heightPx) {
-            mutableStateOf(thumbnailUrl?.resize(widthPx, heightPx, maxresAllowed = false))
+        val guardedWidthPx = if (maxSizePx != null && widthPx != null) minOf(widthPx, maxSizePx) else widthPx
+        val guardedHeightPx = if (maxSizePx != null && heightPx != null) minOf(heightPx, maxSizePx) else heightPx
+
+        var currentUrl by remember(thumbnailUrl, guardedWidthPx, guardedHeightPx, sizeBuckets) {
+            mutableStateOf(thumbnailUrl?.resize(guardedWidthPx, guardedHeightPx, maxresAllowed = false, sizeBuckets = sizeBuckets))
         }
 
         if (albumIndex == null) {
@@ -1659,14 +1669,14 @@ fun ItemThumbnail(
 
             if (shouldLoadImage && !currentUrl.isNullOrBlank()) {
                 val request =
-                    remember(currentUrl, widthPx, heightPx) {
+                    remember(currentUrl, guardedWidthPx, guardedHeightPx) {
                         ImageRequest
                             .Builder(context)
                             .data(currentUrl)
                             .allowHardware(true)
                             .apply {
-                                if (widthPx != null && heightPx != null) {
-                                    size(widthPx, heightPx)
+                                if (guardedWidthPx != null && guardedHeightPx != null) {
+                                    size(guardedWidthPx, guardedHeightPx)
                                 }
                             }.build()
                     }
