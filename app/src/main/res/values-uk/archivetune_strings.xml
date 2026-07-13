@@ -194,8 +194,6 @@
     <string name="audio_crossfade_dialog_title">Тривалість переходу</string>
     <string name="player_stream_client">Клієнт для відтворення</string>
     <string name="player_stream_client_desc">Визначає, який клієнт YouTube використовується для завантаження</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Транслює безпосередньо без розшифрування підпису, забезпечуючи максимальну швидкість. Підходить для більшості користувачів.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Розширена підтримка форматів за рахунок швидкості. Розшифрування підписів JavaScript спричиняє затримку запуску приблизно на ~5-10 секунд.</string>
     <string name="settings_section_player_content">Плеєр і контент</string>
