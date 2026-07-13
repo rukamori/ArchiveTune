@@ -937,55 +937,57 @@ object TidalAudioProvider {
         val endpoints = orderedEndpoints()
         
         // Race all instances concurrently: first to return successfully wins.
-        val tasks = endpoints.map { endpoint ->
-            async(Dispatchers.IO) {
-                runCatching {
-                    requestDirectFlacFromEndpoint(
-                        endpoint = endpoint,
-                        isAtmosRequest = isAtmosRequest,
-                        manifestFormats = manifestFormats,
-                        track = track,
-                        quality = quality,
-                        durationMs = durationMs,
-                        now = now,
-                        cacheDir = cacheDir,
-                        preferLiveDash = preferLiveDash,
-                        audioQuality = audioQuality,
-                    )
-                }.also { result ->
-                    result.getOrNull()?.let {
-                        markInstanceHealthy(endpoint.baseUrl)
-                    }
-                    result.exceptionOrNull()?.let { error ->
-                        if (error is TidalRateLimitedException) {
-                            rateLimitCount += 1
-                            longestRetryAfterMs = maxOf(longestRetryAfterMs, error.retryAfterMs)
-                        } else {
-                            val hardFailure =
-                                error is java.net.UnknownHostException || error is java.net.ConnectException
-                            markInstanceFailed(endpoint.baseUrl, hardFailure = hardFailure)
+        return runBlocking(Dispatchers.IO) {
+            val tasks = endpoints.map { endpoint ->
+                async {
+                    runCatching {
+                        requestDirectFlacFromEndpoint(
+                            endpoint = endpoint,
+                            isAtmosRequest = isAtmosRequest,
+                            manifestFormats = manifestFormats,
+                            track = track,
+                            quality = quality,
+                            durationMs = durationMs,
+                            now = now,
+                            cacheDir = cacheDir,
+                            preferLiveDash = preferLiveDash,
+                            audioQuality = audioQuality,
+                        )
+                    }.also { result ->
+                        result.getOrNull()?.let {
+                            markInstanceHealthy(endpoint.baseUrl)
                         }
-                        errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
-                        Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")
+                        result.exceptionOrNull()?.let { error ->
+                            if (error is TidalRateLimitedException) {
+                                rateLimitCount += 1
+                                longestRetryAfterMs = maxOf(longestRetryAfterMs, error.retryAfterMs)
+                            } else {
+                                val hardFailure =
+                                    error is java.net.UnknownHostException || error is java.net.ConnectException
+                                markInstanceFailed(endpoint.baseUrl, hardFailure = hardFailure)
+                            }
+                            errors += "${endpoint.name}: ${error.message ?: error.javaClass.simpleName}"
+                            Timber.tag("TidalAudio").w(error, "TIDAL resolver ${endpoint.name} failed for ${track.trackId}")
+                        }
                     }
                 }
             }
+            
+            // Await all tasks and find the first success.
+            val results = tasks.awaitAll()
+            results.forEach { result ->
+                result.getOrNull()?.let { return@runBlocking it }
+            }
+            
+            // All failed; check if rate-limited.
+            if (rateLimitCount == endpoints.size && longestRetryAfterMs > 0L) {
+                resolverRateLimitedUntilMs = System.currentTimeMillis() + longestRetryAfterMs
+                throw TidalRateLimitedException(longestRetryAfterMs)
+            }
+            throw TidalAudioResolutionException(
+                "TIDAL resolver failed on all mirrors for ${track.title}: ${errors.joinToString(" | ").take(720)}",
+            )
         }
-        
-        // Await all tasks and find the first success.
-        val results = tasks.awaitAll()
-        results.forEach { result ->
-            result.getOrNull()?.let { return it }
-        }
-        
-        // All failed; check if rate-limited.
-        if (rateLimitCount == endpoints.size && longestRetryAfterMs > 0L) {
-            resolverRateLimitedUntilMs = System.currentTimeMillis() + longestRetryAfterMs
-            throw TidalRateLimitedException(longestRetryAfterMs)
-        }
-        throw TidalAudioResolutionException(
-            "TIDAL resolver failed on all mirrors for ${track.title}: ${errors.joinToString(" | ").take(720)}",
-        )
     }
 
     private fun requestDirectFlacFromEndpoint(
