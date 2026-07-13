@@ -45,12 +45,17 @@ object AmazonAudioProvider {
     const val TURNSTILE_JWT_TTL_MS = 60L * 60L * 1000L
     const val TURNSTILE_JWT_SAFETY_MS = 5L * 60L * 1000L
 
+    // The instance prepares the CENC stream server-side (fetching + packaging from Amazon) before
+    // /api/track/ responds, and the subsequent full-file download can be tens of MB. So we keep a
+    // short connect timeout (to fail fast on dead hosts) but a generous read timeout, and no overall
+    // callTimeout (an overall cap would truncate large, legitimately-slow lossless downloads).
     private val client =
         OkHttpClient
             .Builder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .callTimeout(25, TimeUnit.SECONDS)
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS)
             .build()
 
     /**
