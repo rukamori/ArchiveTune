@@ -67,21 +67,22 @@ object TidalAudioProvider {
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
-    // Current public streaming instances, mirroring the official monochrome.tf frontend's built-in
-    // fallback list (streaming instances first, then API-only ones). These rotate over time, so
-    // auto-discovery (see [INSTANCE_DISCOVERY_SOURCES]) and the user's manual list can
-    // extend/override them at runtime. Note: `hifi.geeked.wtf` is the primary streaming instance the
-    // official site uses; the previous list was stale (dead squid.wtf/arran hosts, missing hifi).
+    // Current public streaming instances, mirroring the official monochrome.tf frontend. These
+    // rotate over time, so auto-discovery (see [INSTANCE_DISCOVERY_SOURCES]) and the user's manual
+    // list can extend/override them at runtime. The `*.geeked.wtf` hosts (hifi.geeked.wtf,
+    // tidal-uptime.geeked.wtf) were removed after they started returning NXDOMAIN — only the apex
+    // geeked.wtf still resolves. The monochrome.tf regional hosts resolve and are ordered first.
     private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
         listOf(
-            TidalDownloadEndpoint("HiFi (geeked.wtf)", "https://hifi.geeked.wtf"),
+            TidalDownloadEndpoint("Monochrome EU", "https://eu-central.monochrome.tf"),
+            TidalDownloadEndpoint("Monochrome US", "https://us-west.monochrome.tf"),
+            TidalDownloadEndpoint("Monochrome API", "https://api.monochrome.tf"),
+            TidalDownloadEndpoint("Monochrome Hot", "https://hot.monochrome.tf"),
+            TidalDownloadEndpoint("Wolf QQDL", "https://wolf.qqdl.site"),
             TidalDownloadEndpoint("Maus QQDL", "https://maus.qqdl.site"),
             TidalDownloadEndpoint("Vogel QQDL", "https://vogel.qqdl.site"),
             TidalDownloadEndpoint("Katze QQDL", "https://katze.qqdl.site"),
             TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
-            TidalDownloadEndpoint("Monochrome EU", "https://eu-central.monochrome.tf"),
-            TidalDownloadEndpoint("Monochrome US", "https://us-west.monochrome.tf"),
-            TidalDownloadEndpoint("Monochrome API", "https://api.monochrome.tf"),
             TidalDownloadEndpoint("Samidy (Monochrome)", "https://monochrome-api.samidy.com"),
         )
 
@@ -89,10 +90,8 @@ object TidalAudioProvider {
     // instances. Best-effort only: it rotates and may be unreachable, so discovery is allowed to
     // fail and callers keep the manual/default list. The payload is a JSON object of the form
     // { "api": [{ "url", "version" }, ...], "streaming": [...], "qobuz": [...] }.
-    private val INSTANCE_DISCOVERY_SOURCES =
-        listOf(
-            "https://tidal-uptime.geeked.wtf",
-        )
+    // (tidal-uptime.geeked.wtf now NXDOMAINs; left empty until a live feed URL is confirmed.)
+    private val INSTANCE_DISCOVERY_SOURCES = emptyList<String>()
 
     /**
      * User-configured instance list (base URLs), applied via [setInstances]. When null or empty

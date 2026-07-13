@@ -7193,6 +7193,26 @@ class MusicService :
      * when the API rejects a token we believed was valid (401), e.g. after a server-side
      * invalidation. Persists and returns the new access token, or null if refresh is impossible.
      */
+    /**
+     * Returns true if a [TidalAccountManager.TidalUnauthorizedException] (401) appears anywhere in
+     * the throwable's cause or suppressed chain. Needed because ExoPlayer can interrupt the loader
+     * thread mid-request, surfacing an [InterruptedException] with the real 401 attached only as a
+     * suppressed exception — in which case a naive `catch (TidalUnauthorizedException)` misses it.
+     */
+    private fun isTidalUnauthorized(root: Throwable?): Boolean {
+        val stack = ArrayDeque<Throwable>()
+        val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Throwable, Boolean>())
+        root?.let { stack.addLast(it) }
+        while (stack.isNotEmpty()) {
+            val t = stack.removeLast()
+            if (!seen.add(t)) continue
+            if (t is TidalAccountManager.TidalUnauthorizedException) return true
+            t.cause?.let { stack.addLast(it) }
+            t.suppressed.forEach { stack.addLast(it) }
+        }
+        return false
+    }
+
     private fun forceRefreshTidalToken(): String? {
         val refresh = dataStore.get(TidalRefreshTokenKey, "")
         if (refresh.isBlank()) {
@@ -7251,20 +7271,28 @@ class MusicService :
                 val accountStream =
                     try {
                         attempt(token)
-                    } catch (e: TidalAccountManager.TidalUnauthorizedException) {
-                        Timber.tag("MusicService").w("Tidal account 401; attempting token refresh + retry")
-                        val refreshed = forceRefreshTidalToken()
-                        if (refreshed != null) {
-                            token = refreshed
-                            runCatching { attempt(refreshed) }
-                                .onFailure { Timber.tag("MusicService").w(it, "Tidal account retry failed for %s", query.mediaId) }
-                                .getOrNull()
+                    } catch (e: Throwable) {
+                        // A 401 may surface directly, or wrapped as a *suppressed*/cause exception
+                        // inside an InterruptedException when ExoPlayer interrupts the loader thread
+                        // mid-request. Detect it anywhere in the chain so the refresh path still runs.
+                        if (isTidalUnauthorized(e)) {
+                            Timber.tag("MusicService").w("Tidal account 401 (possibly wrapped); refreshing token + retrying")
+                            // Clear any pending interrupt on this loader thread; otherwise the
+                            // runBlocking calls in refresh + retry would immediately abort.
+                            Thread.interrupted()
+                            val refreshed = forceRefreshTidalToken()
+                            if (refreshed != null) {
+                                token = refreshed
+                                runCatching { attempt(refreshed) }
+                                    .onFailure { Timber.tag("MusicService").w(it, "Tidal account retry failed for %s", query.mediaId) }
+                                    .getOrNull()
+                            } else {
+                                null
+                            }
                         } else {
+                            Timber.tag("MusicService").w(e, "Tidal account resolve failed for %s", query.mediaId)
                             null
                         }
-                    } catch (e: Exception) {
-                        Timber.tag("MusicService").w(e, "Tidal account resolve failed for %s", query.mediaId)
-                        null
                     }
                 if (accountStream != null) return accountStream
             }
