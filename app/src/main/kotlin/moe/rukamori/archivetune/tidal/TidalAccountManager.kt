@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.constants.AudioSourceType
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import org.json.JSONObject
 import timber.log.Timber
 import java.net.URLEncoder
@@ -81,6 +82,9 @@ object TidalAccountManager {
 
         /** Slow down polling (server returned slow_down). */
         data object SlowDown : PollResult
+
+        /** Transient connectivity failure (e.g. offline / DNS); retryable with backoff. */
+        data object NetworkError : PollResult
 
         /** Terminal failure (expired, denied, or network). */
         data class Failure(val reason: String) : PollResult
@@ -176,8 +180,15 @@ object TidalAccountManager {
                     }
                 }
             }.getOrElse {
-                Timber.tag("TidalAccount").w(it, "token poll error")
-                PollResult.Pending // treat transient network errors as retryable
+                if (it is IOException) {
+                    // Offline / DNS / socket errors are transient and expected while polling; log a
+                    // concise one-liner (no stack trace) to avoid flooding logcat, then back off.
+                    Timber.tag("TidalAccount").w("token poll network error: %s", it.message ?: it.javaClass.simpleName)
+                    PollResult.NetworkError
+                } else {
+                    Timber.tag("TidalAccount").w(it, "token poll error")
+                    PollResult.Pending
+                }
             }
         }
 
@@ -189,14 +200,19 @@ object TidalAccountManager {
     suspend fun login(onCode: suspend (DeviceAuthorization) -> Unit): TokenResult? {
         val auth = requestDeviceAuthorization() ?: return null
         onCode(auth)
-        var intervalMs = auth.intervalSeconds.coerceAtLeast(1) * 1000L
+        val baseIntervalMs = auth.intervalSeconds.coerceAtLeast(1) * 1000L
+        var intervalMs = baseIntervalMs
+        var networkBackoffMs = 0L
         val deadline = System.currentTimeMillis() + auth.expiresInSeconds * 1000L
         while (System.currentTimeMillis() < deadline) {
-            delay(intervalMs)
+            delay(intervalMs + networkBackoffMs)
             when (val result = pollForToken(auth.deviceCode)) {
                 is PollResult.Success -> return result.token
-                is PollResult.Pending -> Unit
+                is PollResult.Pending -> networkBackoffMs = 0L // reachable again, reset backoff
                 is PollResult.SlowDown -> intervalMs += 2000L
+                is PollResult.NetworkError ->
+                    // Exponential backoff (capped at 30s) so we don't spam while offline.
+                    networkBackoffMs = (if (networkBackoffMs == 0L) 2000L else networkBackoffMs * 2).coerceAtMost(30_000L)
                 is PollResult.Failure -> {
                     Timber.tag("TidalAccount").w("login failed: %s", result.reason)
                     return null
