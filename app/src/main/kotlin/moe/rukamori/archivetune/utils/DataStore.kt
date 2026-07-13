@@ -34,6 +34,8 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_LEGACY_FLOAT_KEY
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_MAX
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
 import moe.rukamori.archivetune.constants.HistoryDuration
+import moe.rukamori.archivetune.constants.UpdateChannel
+import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.extensions.toEnum
 import kotlin.properties.ReadOnlyProperty
 
@@ -56,6 +58,20 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
                                     .coerceIn(HISTORY_DURATION_MIN, HISTORY_DURATION_MAX)
                             this.remove(HISTORY_DURATION_LEGACY_FLOAT_KEY)
                         }
+                    }
+
+                override suspend fun cleanUp() {}
+            },
+            object : DataMigration<Preferences> {
+                override suspend fun shouldMigrate(currentData: Preferences): Boolean =
+                    when (currentData[UpdateChannelKey]) {
+                        "NIGHTLY", "DAILY_NIGHTLY" -> true
+                        else -> false
+                    }
+
+                override suspend fun migrate(currentData: Preferences): Preferences =
+                    currentData.toMutablePreferences().apply {
+                        this[UpdateChannelKey] = UpdateChannel.CANARY.name
                     }
 
                 override suspend fun cleanUp() {}

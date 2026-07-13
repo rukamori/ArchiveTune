@@ -41,7 +41,7 @@ ArchiveTune follows a strict **Clean Architecture** approach. This separation of
 
 1. **Clone the Source:**
 ```bash
-git clone https://github.com/ArchiveTuneApp/ArchiveTune.git
+git clone https://github.com/rukamori/ArchiveTune.git
 cd ArchiveTune
 
 ```

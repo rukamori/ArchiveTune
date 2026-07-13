@@ -930,7 +930,9 @@ private fun LyricsSearchResultHeader(
     val isSearchComplete =
         when (state) {
             LyricsSearchScreenState.Loading -> false
+
             is LyricsSearchScreenState.Success -> !state.isSearching
+
             LyricsSearchScreenState.Empty,
             is LyricsSearchScreenState.Error,
             -> true

@@ -144,9 +144,7 @@ class BackgroundMusicRecognitionService : Service() {
         )
     }
 
-    private suspend fun runRecognition(
-        recognize: suspend () -> Result<RecognizedTrack>,
-    ) {
+    private suspend fun runRecognition(recognize: suspend () -> Result<RecognizedTrack>) {
         try {
             recognize().fold(
                 onSuccess = { track ->
@@ -186,6 +184,7 @@ class BackgroundMusicRecognitionService : Service() {
                 MusicRecognitionRuntimeState.update(BackgroundRecognitionState.Listening)
                 notificationManager.notify(notificationManager.listening())
             }
+
             RecognitionPhase.Processing -> {
                 MusicRecognitionRuntimeState.update(BackgroundRecognitionState.Processing)
                 notificationManager.notify(notificationManager.processing())

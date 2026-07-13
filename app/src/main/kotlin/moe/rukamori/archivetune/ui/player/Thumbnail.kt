@@ -462,8 +462,6 @@ fun Thumbnail(
                                             mediaId = item.mediaId,
                                             songTitleRaw = songTitleRaw,
                                             artistNameRaw = artistNameRaw,
-                                            albumId = itemMetadata?.album?.id,
-                                            albumTitleRaw = itemMetadata?.album?.title,
                                             storefront = storefront,
                                             requireVertical = false,
                                             allowNetwork = shouldFetchCanvas,

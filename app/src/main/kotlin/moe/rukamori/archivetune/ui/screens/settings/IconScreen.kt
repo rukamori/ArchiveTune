@@ -49,7 +49,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton as MaterialIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
@@ -100,6 +99,7 @@ import moe.rukamori.archivetune.viewmodels.IconScreenEffect
 import moe.rukamori.archivetune.viewmodels.IconScreenState
 import moe.rukamori.archivetune.viewmodels.IconScreenUiModel
 import moe.rukamori.archivetune.viewmodels.IconViewModel
+import androidx.compose.material3.IconButton as MaterialIconButton
 
 @Composable
 fun IconScreen(
@@ -459,11 +459,13 @@ private fun AppIconSearchBar(
                                                 text =
                                                     stringResource(
                                                         when (order) {
-                                                            AppIconSortOrder.NEW_ADDED ->
+                                                            AppIconSortOrder.NEW_ADDED -> {
                                                                 R.string.recently_added
+                                                            }
 
-                                                            AppIconSortOrder.ALPHABETICAL ->
+                                                            AppIconSortOrder.ALPHABETICAL -> {
                                                                 R.string.sort_a_to_z
+                                                            }
                                                         },
                                                     ),
                                             )

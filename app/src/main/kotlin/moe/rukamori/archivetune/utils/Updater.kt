@@ -16,10 +16,10 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import moe.rukamori.archivetune.App
 import moe.rukamori.archivetune.BuildConfig
-import moe.rukamori.archivetune.constants.DailyNightlyReleasesEtagKey
-import moe.rukamori.archivetune.constants.DailyNightlyReleasesFingerprintKey
-import moe.rukamori.archivetune.constants.DailyNightlyReleasesJsonKey
-import moe.rukamori.archivetune.constants.DailyNightlyReleasesLastCheckedAtKey
+import moe.rukamori.archivetune.constants.CanaryReleasesEtagKey
+import moe.rukamori.archivetune.constants.CanaryReleasesFingerprintKey
+import moe.rukamori.archivetune.constants.CanaryReleasesJsonKey
+import moe.rukamori.archivetune.constants.CanaryReleasesLastCheckedAtKey
 import moe.rukamori.archivetune.constants.GitHubReleasesEtagKey
 import moe.rukamori.archivetune.constants.GitHubReleasesFingerprintKey
 import moe.rukamori.archivetune.constants.GitHubReleasesJsonKey
@@ -52,13 +52,13 @@ private data class ReleasesNetworkResult(
 object Updater {
     private val client = HttpClient()
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
-    private const val StableReleaseBaseUrl = "https://github.com/ArchiveTuneApp/ArchiveTune/releases"
-    private const val DailyNightlyReleaseBaseUrl =
-        "https://github.com/ArchiveTuneApp/daily-nightly/releases"
+    private const val StableReleaseBaseUrl = "https://github.com/rukamori/ArchiveTune/releases"
+    private const val CanaryReleaseBaseUrl =
+        "https://github.com/rukamori/canary/releases"
     var lastCheckTime = -1L
         private set
     private var latestReleaseTag: String? = null
-    private var latestDailyNightlyReleaseTag: String? = null
+    private var latestCanaryReleaseTag: String? = null
 
     private val isUpdaterDistribution: Boolean
         get() =
@@ -79,18 +79,10 @@ object Updater {
                 else -> ""
             }
 
-    private val workflowArtifactPrefix: String
-        get() =
-            when (BuildConfig.DISTRIBUTION) {
-                "gms" -> "gms-"
-                "foss" -> "foss-"
-                else -> ""
-            }
-
     private fun stableReleaseArtifactName(): String =
         "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
 
-    private fun dailyNightlyReleaseArtifactName(): String =
+    private fun canaryReleaseArtifactName(): String =
         "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-nightly.apk"
 
     private data class SemVer(
@@ -228,7 +220,7 @@ object Updater {
         return candidates.maxWithOrNull(compareBy({ it.first }, { it.second.publishedAt }))?.second
     }
 
-    internal fun findLatestDailyNightlyRelease(releases: List<ReleaseInfo>): ReleaseInfo? {
+    internal fun findLatestCanaryRelease(releases: List<ReleaseInfo>): ReleaseInfo? {
         if (releases.isEmpty()) return null
         return releases.maxByOrNull { release ->
             val dateTag = release.tagName.removePrefix("N").takeWhile { it.isDigit() }
@@ -272,7 +264,7 @@ object Updater {
         cachedEtag: String?,
     ): ReleasesNetworkResult {
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/ArchiveTuneApp/ArchiveTune/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/rukamori/ArchiveTune/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "ArchiveTune")
@@ -346,7 +338,7 @@ object Updater {
 
             val response =
                 client
-                    .get("https://api.github.com/repos/ArchiveTuneApp/ArchiveTune/commits?sha=$branch&per_page=$count")
+                    .get("https://api.github.com/repos/rukamori/ArchiveTune/commits?sha=$branch&per_page=$count")
                     .bodyAsText()
             val jsonArray = JSONArray(response)
             val commits = mutableListOf<GitCommit>()
@@ -386,55 +378,41 @@ object Updater {
         return "$StableReleaseBaseUrl/latest/download/$artifactName"
     }
 
-    fun getLatestNightlyDownloadUrl(): String {
-        if (!isUpdaterDistribution) {
-            return ""
-        }
-
-        val artifactName = "app-$workflowArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release"
-        val artifactUrl = "https://nightly.link/ArchiveTuneApp/ArchiveTune/workflows/build/dev/$artifactName"
-        return if (canDownloadUpdatesDirectly) {
-            "$artifactUrl.zip"
-        } else {
-            artifactUrl
-        }
-    }
-
-    suspend fun getLatestDailyNightlyVersionName(): Result<String> =
-        getLatestDailyNightlyReleaseInfo().map { latest ->
+    suspend fun getLatestCanaryVersionName(): Result<String> =
+        getLatestCanaryReleaseInfo().map { latest ->
             latest.tagName.ifBlank { latest.name }
         }
 
-    suspend fun getLatestDailyNightlyReleaseNotes(): Result<String?> = getLatestDailyNightlyReleaseInfo().map { it.body }
+    suspend fun getLatestCanaryReleaseNotes(): Result<String?> = getLatestCanaryReleaseInfo().map { it.body }
 
-    suspend fun getLatestDailyNightlyReleaseInfo(): Result<ReleaseInfo> =
+    suspend fun getLatestCanaryReleaseInfo(): Result<ReleaseInfo> =
         runCatching {
             if (!isUpdaterDistribution) {
                 throw IllegalStateException("Updater is not available for this distribution")
             }
 
-            val releases = getAllDailyNightlyReleases().getOrThrow()
+            val releases = getAllCanaryReleases().getOrThrow()
             val latest =
-                findLatestDailyNightlyRelease(releases)
-                    ?: throw IllegalStateException("No daily-nightly releases found")
+                findLatestCanaryRelease(releases)
+                    ?: throw IllegalStateException("No Canary releases found")
             lastCheckTime = System.currentTimeMillis()
-            latestDailyNightlyReleaseTag = latest.tagName
+            latestCanaryReleaseTag = latest.tagName
             latest
         }
 
-    suspend fun getCachedDailyNightlyReleases(): List<ReleaseInfo> {
+    suspend fun getCachedCanaryReleases(): List<ReleaseInfo> {
         if (!isUpdaterDistribution) {
             return emptyList()
         }
 
-        val cachedJson = App.instance.dataStore.getAsync(DailyNightlyReleasesJsonKey)
+        val cachedJson = App.instance.dataStore.getAsync(CanaryReleasesJsonKey)
         return cachedJson
             ?.takeIf { it.isNotBlank() }
             ?.let { runCatching { parseReleasesJson(it) }.getOrNull() }
             ?: emptyList()
     }
 
-    suspend fun getAllDailyNightlyReleases(
+    suspend fun getAllCanaryReleases(
         perPage: Int = 10,
         forceRefresh: Boolean = false,
     ): Result<List<ReleaseInfo>> {
@@ -444,10 +422,10 @@ object Updater {
 
         return runCatching {
             val now = System.currentTimeMillis()
-            val cachedJson = App.instance.dataStore.getAsync(DailyNightlyReleasesJsonKey)
-            val cachedEtag = App.instance.dataStore.getAsync(DailyNightlyReleasesEtagKey)
-            val lastCheckedAt = App.instance.dataStore.getAsync(DailyNightlyReleasesLastCheckedAtKey, 0L)
-            val cachedFingerprint = App.instance.dataStore.getAsync(DailyNightlyReleasesFingerprintKey)
+            val cachedJson = App.instance.dataStore.getAsync(CanaryReleasesJsonKey)
+            val cachedEtag = App.instance.dataStore.getAsync(CanaryReleasesEtagKey)
+            val lastCheckedAt = App.instance.dataStore.getAsync(CanaryReleasesLastCheckedAtKey, 0L)
+            val cachedFingerprint = App.instance.dataStore.getAsync(CanaryReleasesFingerprintKey)
 
             val cachedReleases =
                 cachedJson
@@ -463,7 +441,7 @@ object Updater {
 
             val networkResult =
                 runCatching {
-                    fetchDailyNightlyReleasesNetwork(
+                    fetchCanaryReleasesNetwork(
                         perPage = perPage,
                         cachedEtag = cachedEtag,
                     )
@@ -474,35 +452,35 @@ object Updater {
                 if (fallback != null) {
                     return@runCatching fallback
                 }
-                throw IllegalStateException("Failed to fetch daily-nightly releases")
+                throw IllegalStateException("Failed to fetch Canary releases")
             }
 
             when {
                 networkResult.status == HttpStatusCode.NotModified -> {
                     App.instance.dataStore.edit { settings ->
-                        settings[DailyNightlyReleasesLastCheckedAtKey] = now
-                        networkResult.etag?.let { settings[DailyNightlyReleasesEtagKey] = it }
+                        settings[CanaryReleasesLastCheckedAtKey] = now
+                        networkResult.etag?.let { settings[CanaryReleasesEtagKey] = it }
                     }
                     val fallback = cachedReleases
                     if (fallback != null) {
                         return@runCatching fallback
                     }
-                    throw IllegalStateException("Daily-nightly release cache is empty")
+                    throw IllegalStateException("Canary release cache is empty")
                 }
 
                 networkResult.status.value in 200..299 && !networkResult.body.isNullOrBlank() -> {
                     val networkBody = networkResult.body
                     val releases = parseReleasesJson(networkBody)
-                    val newFingerprint = getDailyNightlyTopReleaseFingerprint(releases)
+                    val newFingerprint = getCanaryTopReleaseFingerprint(releases)
                     val hasPayloadChanged = cachedJson != networkBody
                     val hasTopReleaseChanged = cachedFingerprint != newFingerprint
 
                     App.instance.dataStore.edit { settings ->
-                        settings[DailyNightlyReleasesLastCheckedAtKey] = now
-                        networkResult.etag?.let { settings[DailyNightlyReleasesEtagKey] = it }
+                        settings[CanaryReleasesLastCheckedAtKey] = now
+                        networkResult.etag?.let { settings[CanaryReleasesEtagKey] = it }
                         if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
-                            settings[DailyNightlyReleasesJsonKey] = networkBody
-                            settings[DailyNightlyReleasesFingerprintKey] = newFingerprint
+                            settings[CanaryReleasesJsonKey] = networkBody
+                            settings[CanaryReleasesFingerprintKey] = newFingerprint
                         }
                     }
                     releases
@@ -513,19 +491,19 @@ object Updater {
                     if (fallback != null) {
                         fallback
                     } else {
-                        throw IllegalStateException("Failed to fetch daily-nightly releases: HTTP ${networkResult.status.value}")
+                        throw IllegalStateException("Failed to fetch Canary releases: HTTP ${networkResult.status.value}")
                     }
                 }
             }
         }
     }
 
-    private suspend fun fetchDailyNightlyReleasesNetwork(
+    private suspend fun fetchCanaryReleasesNetwork(
         perPage: Int,
         cachedEtag: String?,
     ): ReleasesNetworkResult {
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/ArchiveTuneApp/daily-nightly/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/rukamori/canary/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "ArchiveTune")
@@ -554,8 +532,8 @@ object Updater {
         }
     }
 
-    private fun getDailyNightlyTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
-        val latest = findLatestDailyNightlyRelease(releases) ?: return ""
+    private fun getCanaryTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
+        val latest = findLatestCanaryRelease(releases) ?: return ""
         return listOf(
             latest.tagName,
             latest.name,
@@ -565,21 +543,21 @@ object Updater {
         ).joinToString("||")
     }
 
-    fun getLatestDailyNightlyDownloadUrl(): String {
+    fun getLatestCanaryDownloadUrl(): String {
         if (!isUpdaterDistribution) {
             return ""
         }
 
         if (!canDownloadUpdatesDirectly) {
-            return "$DailyNightlyReleaseBaseUrl/latest"
+            return "$CanaryReleaseBaseUrl/latest"
         }
 
-        val artifactName = dailyNightlyReleaseArtifactName()
-        val tag = latestDailyNightlyReleaseTag
+        val artifactName = canaryReleaseArtifactName()
+        val tag = latestCanaryReleaseTag
         if (tag != null) {
-            return "$DailyNightlyReleaseBaseUrl/download/$tag/$artifactName"
+            return "$CanaryReleaseBaseUrl/download/$tag/$artifactName"
         }
-        return "$DailyNightlyReleaseBaseUrl/latest/download/$artifactName"
+        return "$CanaryReleaseBaseUrl/latest/download/$artifactName"
     }
 
     suspend fun getAllReleases(

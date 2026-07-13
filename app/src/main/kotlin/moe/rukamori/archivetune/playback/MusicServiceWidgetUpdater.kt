@@ -12,6 +12,7 @@ import android.net.Uri
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
@@ -54,12 +55,16 @@ internal class MusicServiceWidgetUpdater(
     private val scope: CoroutineScope,
     private val loadWidgetInsights: LoadWidgetInsightsUseCase,
 ) {
+    private val widgetManager = GlanceAppWidgetManager(service)
+    private var stateJob: Job? = null
     private var progressJob: Job? = null
 
     fun update() {
-        scope.launch(SilentHandler) {
-            pushState()
-        }
+        stateJob?.cancel()
+        stateJob =
+            scope.launch(SilentHandler) {
+                pushState()
+            }
     }
 
     fun updateProgressTracking() {
@@ -67,15 +72,23 @@ internal class MusicServiceWidgetUpdater(
         if (player.isPlaying && player.duration > 0) {
             progressJob =
                 scope.launch(SilentHandler) {
+                    val installedTargets = findInstalledTargets(progressWidgets)
+                    if (installedTargets.isEmpty()) return@launch
+
                     while (isActive && player.isPlaying) {
-                        updateProgress(player.playbackProgress())
-                        delay(1_000)
+                        delay(WIDGET_PROGRESS_UPDATE_INTERVAL_MILLIS)
+                        if (player.isPlaying) {
+                            updateProgress(installedTargets, player.playbackProgress())
+                        }
                     }
                 }
         }
     }
 
     private suspend fun pushState() {
+        val installedTargets = findInstalledTargets(playbackWidgets)
+        if (installedTargets.isEmpty()) return
+
         val mediaItem = player.currentMediaItem
         val meta = mediaItem?.mediaMetadata
         val artFile = meta?.artworkUri?.let { cacheAlbumArt(it) }
@@ -92,48 +105,55 @@ internal class MusicServiceWidgetUpdater(
                 insights = WidgetInsightsSnapshot.Empty,
             )
 
-        playbackWidgets.forEach { target ->
+        installedTargets.forEach { target ->
             updateWidget(target, snapshot)
         }
     }
 
-    private suspend fun updateProgress(progress: Float) {
-        progressWidgets.forEach { target ->
-            val ids = GlanceAppWidgetManager(service).getGlanceIds(target.widgetClass)
-            ids.forEach { id ->
+    private suspend fun updateProgress(
+        installedTargets: List<InstalledWidgetTarget>,
+        progress: Float,
+    ) {
+        installedTargets.forEach { installedTarget ->
+            installedTarget.ids.forEach { id ->
                 updateAppWidgetState(service, PreferencesGlanceStateDefinition, id) { prefs ->
                     prefs.toMutableWidgetPreferences().apply {
                         this[MusicWidgetKeys.PLAYBACK_POSITION] = progress
                     }
                 }
-                target.widget.update(service, id)
+                installedTarget.target.widget.update(service, id)
             }
         }
     }
 
     private suspend fun updateWidget(
-        target: WidgetTarget,
+        installedTarget: InstalledWidgetTarget,
         snapshot: WidgetSnapshot,
     ) {
-        val ids = GlanceAppWidgetManager(service).getGlanceIds(target.widgetClass)
-        if (ids.isEmpty()) return
-
         val targetSnapshot =
-            if (target.requiresInsights) {
+            if (installedTarget.target.requiresInsights) {
                 snapshot.copy(insights = loadInsightsSnapshot())
             } else {
                 snapshot
             }
 
-        ids.forEach { id ->
+        installedTarget.ids.forEach { id ->
             updateAppWidgetState(service, PreferencesGlanceStateDefinition, id) { prefs ->
                 prefs.toMutableWidgetPreferences().apply {
                     writeSnapshot(targetSnapshot)
                 }
             }
-            target.widget.update(service, id)
+            installedTarget.target.widget.update(service, id)
         }
     }
+
+    private suspend fun findInstalledTargets(targets: List<WidgetTarget>): List<InstalledWidgetTarget> =
+        targets.mapNotNull { target ->
+            widgetManager
+                .getGlanceIds(target.widgetClass)
+                .takeIf { ids -> ids.isNotEmpty() }
+                ?.let { ids -> InstalledWidgetTarget(target, ids) }
+        }
 
     private fun Preferences.toMutableWidgetPreferences(): MutablePreferences =
         mutablePreferencesOf().also { mutable ->
@@ -223,6 +243,7 @@ internal class MusicServiceWidgetUpdater(
     private suspend fun cacheAlbumArt(uri: Uri): File? =
         withContext(Dispatchers.IO) {
             val dest = File(service.cacheDir, "widget_art_${Integer.toHexString(uri.toString().hashCode())}.jpg")
+            if (dest.isFile && dest.length() > 0L) return@withContext dest
 
             if (uri.scheme == "content" || uri.scheme == "file") {
                 return@withContext try {
@@ -230,6 +251,8 @@ internal class MusicServiceWidgetUpdater(
                         dest.outputStream().use { dst -> src.copyTo(dst) }
                     }
                     if (dest.exists() && dest.length() > 0) dest else null
+                } catch (error: CancellationException) {
+                    throw error
                 } catch (_: Exception) {
                     null
                 }
@@ -255,6 +278,8 @@ internal class MusicServiceWidgetUpdater(
                     } else {
                         null
                     }
+                } catch (error: CancellationException) {
+                    throw error
                 } catch (_: Exception) {
                     null
                 }
@@ -271,6 +296,8 @@ internal class MusicServiceWidgetUpdater(
                 palette.getDarkVibrantColor(
                     palette.getDominantColor(android.graphics.Color.DKGRAY),
                 )
+            } catch (error: CancellationException) {
+                throw error
             } catch (_: Exception) {
                 null
             }
@@ -296,7 +323,14 @@ internal class MusicServiceWidgetUpdater(
         val requiresInsights: Boolean = false,
     )
 
+    private data class InstalledWidgetTarget(
+        val target: WidgetTarget,
+        val ids: List<GlanceId>,
+    )
+
     private companion object {
+        const val WIDGET_PROGRESS_UPDATE_INTERVAL_MILLIS = 30_000L
+
         val playbackWidgets =
             listOf(
                 WidgetTarget(MusicWidget::class.java, MusicWidget()),

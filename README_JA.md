@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="ArchiveTune Logo" style="border-radius: 22%">
+  <img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="ArchiveTune Logo" style="border-radius: 22%">
 
   <h1>ArchiveTune</h1>
 
@@ -25,7 +25,7 @@
     <a href="https://archivetune.koiiverse.cloud/privacy"><b>プライバシー</b></a> •
     <a href="#download-now"><b>ダウンロード</b></a> •
     <a href="#screenshots"><b>スクリーンショット</b></a> •
-    <a href="https://github.com/ArchiveTuneApp/ArchiveTune/issues/new/choose"><b>サポート</b></a>
+    <a href="https://github.com/rukamori/ArchiveTune/issues/new/choose"><b>サポート</b></a>
   </p>
 
   <div align="center">
@@ -64,14 +64,14 @@
 
 <div align="center">
 
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.jpg" alt="ブラウズ" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.jpg" alt="ライブ歌詞" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.jpg" alt="テーマカスタマイズ" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.jpg" alt="統計情報" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.jpg" alt="アーティスト" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.jpg" alt="アルバム" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.jpg" alt="プレイヤー" width="30%" />
-<img src="https://github.com/ArchiveTuneApp/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.jpg" alt="設定" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.jpg" alt="ブラウズ" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.jpg" alt="ライブ歌詞" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.jpg" alt="テーマカスタマイズ" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.jpg" alt="統計情報" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.jpg" alt="アーティスト" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.jpg" alt="アルバム" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.jpg" alt="プレイヤー" width="30%" />
+<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.jpg" alt="設定" width="30%" />
 
 </div>
 

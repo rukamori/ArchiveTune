@@ -301,6 +301,7 @@ fun BottomSheetPlayer(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isMiniPlayerPairedWithNavigation: Boolean = false,
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -951,6 +952,7 @@ fun BottomSheetPlayer(
                 position = position,
                 duration = duration,
                 pureBlack = pureBlack,
+                isPairedWithNavigation = isMiniPlayerPairedWithNavigation,
             )
         },
     ) {
@@ -1063,8 +1065,6 @@ fun BottomSheetPlayer(
                         mediaId = metadata.id,
                         songTitleRaw = metadata.title,
                         artistNameRaw = artistNameRaw,
-                        albumId = metadata.album?.id,
-                        albumTitleRaw = metadata.album?.title,
                         storefront = storefront,
                         requireVertical = true,
                         allowNetwork = shouldFetchV7Canvas,
@@ -1098,8 +1098,6 @@ fun BottomSheetPlayer(
                         mediaId = metadata.id,
                         songTitleRaw = metadata.title,
                         artistNameRaw = artistNameRaw,
-                        albumId = metadata.album?.id,
-                        albumTitleRaw = metadata.album?.title,
                         storefront = storefront,
                         requireVertical = false,
                         allowNetwork = shouldFetchArtworkCanvas,

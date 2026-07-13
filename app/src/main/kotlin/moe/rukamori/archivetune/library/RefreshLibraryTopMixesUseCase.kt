@@ -10,6 +10,8 @@ package moe.rukamori.archivetune.library
 import android.content.Context
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import moe.rukamori.archivetune.ai.AiServiceConfig
 import moe.rukamori.archivetune.ai.AiTextService
@@ -36,7 +38,7 @@ import javax.inject.Inject
 
 private const val TopMixCountLimit = 5
 private const val TopMixCandidateLimit = 100
-private const val TopMixSongsPerMix = 25
+private const val TopMixSongsPerMix = 50
 private const val TopMixPromptCandidateLimit = 80
 
 class RefreshLibraryTopMixesUseCase
@@ -110,6 +112,7 @@ class RefreshLibraryTopMixesUseCase
                                 .put("id", candidate.id)
                                 .put("title", candidate.title)
                                 .put("artists", candidate.artists.joinToString(", "))
+                                .put("album", candidate.albumName.orEmpty())
                                 .put("recentRank", index + 1),
                         )
                     }
@@ -120,12 +123,17 @@ class RefreshLibraryTopMixesUseCase
                     systemPrompt =
                         """
                         You are a music curator for ArchiveTune.
-                        Build up to $TopMixCountLimit personal mixes using only the provided candidate song IDs.
-                        Return JSON only with this schema: {"mixes":[{"title":"short title containing Mix","description":"short genre and mood description","songIds":["id"]}]}.
-                        Every title must contain the word Mix.
-                        Every description must describe the genre, mood, or sound of the selected songs.
-                        Select at most $TopMixSongsPerMix songs per mix, avoid duplicate songs inside a mix, and prioritize coherence.
-                        The mixes must be related to the user's recent listening history represented by the candidate list.
+                        Analyze the provided candidate list of songs (representing the user's recent listening history), focusing on artists, titles, and album names to infer genres, styles, eras, and moods.
+                        Build up to $TopMixCountLimit personal mixes based on this history.
+                        Each mix should have a distinct musical identity, style, mood, or theme.
+                        While some overlap of songs between different mixes is fine and expected for your favorite tracks, the mixes should be substantially different from one another.
+                        Select at most $TopMixSongsPerMix songs per mix, avoid duplicate songs inside a single mix, and prioritize transition flow and genre coherence.
+                        Do not force every candidate song to be used if it doesn't fit any theme. Prioritize quality over quantity.
+                        
+                        For each mix, in addition to selecting relevant songs from the candidates, you MUST recommend 3 to 5 top tracks from similar artists of the same genre for each selected candidate song in this mix (e.g. if a mix contains 3 candidate songs, recommend 9 to 15 similar songs; if it contains only 1 candidate, recommend 3 to 5 similar songs). The total songs (candidates + recommended) in each mix must not exceed $TopMixSongsPerMix. Make sure the recommendations are from similar artists of the same genre that are not in the candidates list.
+                        
+                        Return JSON only matching this schema: {"mixes":[{"title":"Descriptive Mix Title","description":"Vibrant and appealing description of the vibe and genre","songIds":["id"],"recommendations":[{"title":"Song Title","artist":"Artist Name"}]}]}.
+                        Every title must contain the word "Mix" (e.g. "90s Grunge Mix", "Late Night Vibes Mix", "Synthwave Drive Mix").
                         """.trimIndent(),
                     userPrompt =
                         JSONObject()
@@ -143,25 +151,90 @@ class RefreshLibraryTopMixesUseCase
             )
         }
 
-        private fun parseGeneratedMixes(
+        private suspend fun parseGeneratedMixes(
             response: String,
             candidateById: Map<String, ValidatedTopMixSong>,
         ): List<GeneratedLibraryTopMix> {
             val json = JSONObject(response.substringAfter('{').substringBeforeLast('}').let { "{$it}" })
-            val globalSongIds = LinkedHashSet<String>()
             val mixes = json.optJSONArray("mixes") ?: JSONArray()
+
+            val recQueries =
+                buildList {
+                    for (index in 0 until mixes.length()) {
+                        val mixJson = mixes.optJSONObject(index) ?: continue
+                        val recs = mixJson.optJSONArray("recommendations") ?: JSONArray()
+                        for (r in 0 until recs.length()) {
+                            val recJson = recs.optJSONObject(r) ?: continue
+                            val title = recJson.optString("title").trim()
+                            val artist = recJson.optString("artist").trim()
+                            if (title.isNotEmpty() && artist.isNotEmpty()) {
+                                add(title to artist)
+                            }
+                        }
+                    }
+                }.distinct()
+
+            val resolvedRecommendations =
+                kotlinx.coroutines.coroutineScope {
+                    recQueries
+                        .map { (title, artist) ->
+                            async(kotlinx.coroutines.Dispatchers.IO) {
+                                val query = "$artist $title"
+                                val songs =
+                                    YouTube
+                                        .search(query, YouTube.SearchFilter.FILTER_SONG)
+                                        .getOrNull()
+                                        ?.items
+                                        .orEmpty()
+                                        .filterIsInstance<SongItem>()
+
+                                val match =
+                                    songs.firstOrNull { song ->
+                                        song.title.contains(title, ignoreCase = true) &&
+                                            song.artists.any { it.name.contains(artist, ignoreCase = true) }
+                                    } ?: songs.firstOrNull()
+
+                                if (match != null) {
+                                    (title to artist) to ValidatedTopMixSong(match)
+                                } else {
+                                    null
+                                }
+                            }
+                        }.awaitAll()
+                        .filterNotNull()
+                        .toMap()
+                }
+
             return buildList {
                 for (index in 0 until mixes.length()) {
                     if (size >= TopMixCountLimit) break
                     val mixJson = mixes.optJSONObject(index) ?: continue
-                    val selected =
+
+                    val candidatesList =
                         mixJson
                             .optJSONArray("songIds")
                             .toStringList()
                             .mapNotNull(candidateById::get)
-                            .filter { globalSongIds.add(it.id) }
+
+                    val recommendedList =
+                        buildList {
+                            val recs = mixJson.optJSONArray("recommendations") ?: JSONArray()
+                            for (r in 0 until recs.length()) {
+                                val recJson = recs.optJSONObject(r) ?: continue
+                                val title = recJson.optString("title").trim()
+                                val artist = recJson.optString("artist").trim()
+                                val resolved = resolvedRecommendations[title to artist]
+                                if (resolved != null) {
+                                    add(resolved)
+                                }
+                            }
+                        }
+
+                    val selected =
+                        (candidatesList + recommendedList)
                             .distinctBy { it.id }
                             .take(TopMixSongsPerMix)
+
                     if (selected.isEmpty()) continue
 
                     add(
@@ -202,6 +275,8 @@ private data class ValidatedTopMixSong(
         get() = ytmSong.title
     val artists: List<String>
         get() = ytmSong.artists.map { it.name }
+    val albumName: String?
+        get() = ytmSong.album?.name
     val mediaMetadata: MediaMetadata
         get() = ytmSong.toMediaMetadata()
 }

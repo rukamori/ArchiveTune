@@ -45,6 +45,8 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
+import moe.rukamori.archivetune.constants.MiniPlayerHeight
+import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -59,12 +61,14 @@ fun MiniPlayer(
     duration: Long,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isPairedWithNavigation: Boolean = false,
 ) {
     NewMiniPlayer(
         position = position,
         duration = duration,
         modifier = modifier,
         pureBlack = pureBlack,
+        isPairedWithNavigation = isPairedWithNavigation,
     )
 }
 
@@ -74,6 +78,7 @@ private fun NewMiniPlayer(
     duration: Long,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    isPairedWithNavigation: Boolean,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -173,9 +178,23 @@ private fun NewMiniPlayer(
         rememberMiniPlayerContentColors(
             useArtworkBackground = effectiveBackgroundStyle != MiniPlayerBackgroundStyle.THEME,
         )
+    val miniPlayerShape =
+        remember(isPairedWithNavigation) {
+            if (isPairedWithNavigation) {
+                RoundedCornerShape(
+                    topStart = 28.dp,
+                    topEnd = 28.dp,
+                    bottomStart = 12.dp,
+                    bottomEnd = 12.dp,
+                )
+            } else {
+                null
+            }
+        } ?: MaterialTheme.shapes.extraLarge
 
     SwipeableMiniPlayerBox(
         modifier = modifier,
+        contentMaxWidth = if (isPairedWithNavigation) NavigationBarMaxWidth else null,
         swipeSensitivity = swipeSensitivity,
         swipeThumbnail = swipeThumbnail,
         playerConnection = playerConnection,
@@ -188,9 +207,9 @@ private fun NewMiniPlayer(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(MiniPlayerHeight)
                     .offset { IntOffset(offsetX.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp)),
+                    .clip(miniPlayerShape),
         ) {
             MiniPlayerBackground(
                 style = effectiveBackgroundStyle,
@@ -213,10 +232,12 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
     return remember(
         useArtworkBackground,
         colorScheme.primary,
+        colorScheme.onPrimary,
         colorScheme.outline,
         colorScheme.onSurface,
         colorScheme.onSurfaceVariant,
         colorScheme.surface,
+        colorScheme.surfaceContainerHighest,
         colorScheme.surfaceVariant,
         colorScheme.primaryContainer,
         colorScheme.onPrimaryContainer,
@@ -229,8 +250,9 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
                 progressTrack = Color.White.copy(alpha = 0.24f),
                 artworkContainer = Color.White.copy(alpha = 0.14f),
                 artworkBorder = Color.White.copy(alpha = 0.22f),
-                primaryButtonContainer = Color.White.copy(alpha = 0.16f),
-                buttonBorder = Color.White.copy(alpha = 0.24f),
+                primaryButtonContainer = Color.White.copy(alpha = 0.92f),
+                primaryButtonIcon = Color.Black,
+                secondaryButtonContainer = Color.Black.copy(alpha = 0.22f),
                 buttonIcon = Color.White,
                 disabledButtonIcon = Color.White.copy(alpha = 0.38f),
                 togetherContainer = Color.White.copy(alpha = 0.16f),
@@ -244,8 +266,9 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
                 progressTrack = colorScheme.outline.copy(alpha = 0.18f),
                 artworkContainer = colorScheme.surfaceVariant,
                 artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
-                primaryButtonContainer = colorScheme.surface,
-                buttonBorder = colorScheme.outline.copy(alpha = 0.3f),
+                primaryButtonContainer = colorScheme.primary,
+                primaryButtonIcon = colorScheme.onPrimary,
+                secondaryButtonContainer = colorScheme.surfaceContainerHighest,
                 buttonIcon = colorScheme.onSurface,
                 disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
                 togetherContainer = colorScheme.primaryContainer,
@@ -264,7 +287,7 @@ private fun MiniPlayerBackground(
     when (style) {
         MiniPlayerBackgroundStyle.THEME -> {
             Box(
-                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh),
             )
         }
 

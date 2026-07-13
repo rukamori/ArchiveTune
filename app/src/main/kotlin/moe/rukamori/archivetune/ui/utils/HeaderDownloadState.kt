@@ -144,53 +144,6 @@ fun sendRemoveDownloads(
     }
 }
 
-fun sendPauseDownloads(
-    context: Context,
-    songIds: List<String>,
-) {
-    songIds.distinct().forEach { songId ->
-        DownloadService.sendSetStopReason(
-            context,
-            ExoDownloadService::class.java,
-            songId,
-            COLLECTION_PAUSE_STOP_REASON,
-            false,
-        )
-    }
-}
-
-fun sendResumeDownloads(
-    context: Context,
-    songIds: List<String>,
-) {
-    songIds.distinct().forEach { songId ->
-        DownloadService.sendSetStopReason(
-            context,
-            ExoDownloadService::class.java,
-            songId,
-            DOWNLOAD_STOP_REASON_NONE,
-            false,
-        )
-    }
-}
-
-fun hasActiveDownloads(
-    songIds: List<String>,
-    downloads: Map<String, Download>,
-): Boolean =
-    songIds.distinct().any { songId ->
-        when (downloads[songId]?.state) {
-            Download.STATE_QUEUED,
-            Download.STATE_DOWNLOADING,
-            Download.STATE_RESTARTING,
-            -> true
-
-            Download.STATE_STOPPED -> downloads[songId]?.stopReason != DOWNLOAD_STOP_REASON_NONE
-
-            else -> false
-        }
-    }
-
 private fun Int?.shouldRequestDownload(): Boolean =
     when (this) {
         Download.STATE_COMPLETED,

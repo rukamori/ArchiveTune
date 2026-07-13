@@ -13,14 +13,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.HistorySource
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.EventWithSong
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.pages.HistoryPage
 import moe.rukamori.archivetune.utils.reportException
@@ -39,44 +37,37 @@ class HistoryViewModel
         var historySource = MutableStateFlow(HistorySource.LOCAL)
         private val _remoteHistoryState = MutableStateFlow<RemoteHistoryUiState>(RemoteHistoryUiState.Loading)
         val remoteHistoryState: StateFlow<RemoteHistoryUiState> = _remoteHistoryState
+        private val loadedEvents = mutableListOf<EventWithSong>()
+        val events = MutableStateFlow<Map<DateAgo, List<EventWithSong>>>(emptyMap())
+        val isLoadingMoreEvents = MutableStateFlow(false)
+        val canLoadMoreEvents = MutableStateFlow(true)
 
         private val today = LocalDate.now()
         private val thisMonday = today.with(DayOfWeek.MONDAY)
         private val lastMonday = thisMonday.minusDays(7)
 
-        val events =
-            database
-                .events()
-                .map { events ->
-                    events
-                        .groupBy {
-                            val date = it.event.timestamp.toLocalDate()
-                            val daysAgo = ChronoUnit.DAYS.between(date, today).toInt()
-                            when {
-                                daysAgo == 0 -> DateAgo.Today
-                                daysAgo == 1 -> DateAgo.Yesterday
-                                date >= thisMonday -> DateAgo.ThisWeek
-                                date >= lastMonday -> DateAgo.LastWeek
-                                else -> DateAgo.Other(date.withDayOfMonth(1))
-                            }
-                        }.toSortedMap(
-                            compareBy { dateAgo ->
-                                when (dateAgo) {
-                                    DateAgo.Today -> 0L
-                                    DateAgo.Yesterday -> 1L
-                                    DateAgo.ThisWeek -> 2L
-                                    DateAgo.LastWeek -> 3L
-                                    is DateAgo.Other -> ChronoUnit.DAYS.between(dateAgo.date, today)
-                                }
-                            },
-                        ).mapValues { entry ->
-                            entry.value.distinctBy { it.song.id }
-                        }
-                }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
-
         init {
-            viewModelScope.launch {
-                fetchRemoteHistorySilent()
+            loadMoreEvents()
+        }
+
+        fun loadMoreEvents() {
+            if (isLoadingMoreEvents.value || !canLoadMoreEvents.value) return
+
+            isLoadingMoreEvents.value = true
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val page = database.events(limit = HISTORY_PAGE_SIZE, offset = loadedEvents.size)
+                    loadedEvents += page
+                    events.value = loadedEvents.groupEventsByDate()
+                    canLoadMoreEvents.value = page.size == HISTORY_PAGE_SIZE
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Throwable) {
+                    reportException(exception)
+                    canLoadMoreEvents.value = false
+                } finally {
+                    isLoadingMoreEvents.value = false
+                }
             }
         }
 
@@ -159,6 +150,10 @@ class HistoryViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     database.deleteEventsByIds(uniqueEventIds)
+                    loadedEvents.clear()
+                    events.value = emptyMap()
+                    canLoadMoreEvents.value = true
+                    loadMoreEvents()
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Throwable) {
@@ -166,7 +161,34 @@ class HistoryViewModel
                 }
             }
         }
+
+        private fun List<EventWithSong>.groupEventsByDate(): Map<DateAgo, List<EventWithSong>> =
+            groupBy {
+                val date = it.event.timestamp.toLocalDate()
+                val daysAgo = ChronoUnit.DAYS.between(date, today).toInt()
+                when {
+                    daysAgo == 0 -> DateAgo.Today
+                    daysAgo == 1 -> DateAgo.Yesterday
+                    date >= thisMonday -> DateAgo.ThisWeek
+                    date >= lastMonday -> DateAgo.LastWeek
+                    else -> DateAgo.Other(date.withDayOfMonth(1))
+                }
+            }.toSortedMap(
+                compareBy { dateAgo ->
+                    when (dateAgo) {
+                        DateAgo.Today -> 0L
+                        DateAgo.Yesterday -> 1L
+                        DateAgo.ThisWeek -> 2L
+                        DateAgo.LastWeek -> 3L
+                        is DateAgo.Other -> ChronoUnit.DAYS.between(dateAgo.date, today)
+                    }
+                },
+            ).mapValues { entry ->
+                entry.value.distinctBy { it.song.id }
+            }
     }
+
+private const val HISTORY_PAGE_SIZE = 100
 
 sealed interface RemoteHistoryUiState {
     data object Loading : RemoteHistoryUiState

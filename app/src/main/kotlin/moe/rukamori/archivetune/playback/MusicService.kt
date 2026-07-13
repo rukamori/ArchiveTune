@@ -3290,10 +3290,10 @@ class MusicService :
 
     private fun retryPlaybackAfterStreamFailure(
         mediaId: String,
-        isFullyCachedMedia: Boolean,
+        isFullyDownloadedMedia: Boolean,
         responseException: androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException,
     ): Boolean {
-        if (isFullyCachedMedia) return false
+        if (isFullyDownloadedMedia) return false
 
         val failedUrl = responseException.dataSpec.uri.toString()
         val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
@@ -3574,16 +3574,20 @@ class MusicService :
             }
             if (initialStatus.items.isEmpty()) return@launch
             if (queue.preloadItem != null) {
-                player.addMediaItems(
-                    0,
-                    initialStatus.items.subList(0, initialStatus.mediaItemIndex),
-                )
-                player.addMediaItems(
-                    initialStatus.items.subList(
-                        initialStatus.mediaItemIndex + 1,
-                        initialStatus.items.size,
-                    ),
-                )
+                val preloadMediaId = checkNotNull(queue.preloadItem).id.trim()
+                val insertionIndex =
+                    initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
+                val itemsBeforeCurrent =
+                    initialStatus.items
+                        .subList(0, insertionIndex)
+                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                val itemsAfterCurrent =
+                    initialStatus.items
+                        .subList(insertionIndex, initialStatus.items.size)
+                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+
+                player.addMediaItems(0, itemsBeforeCurrent)
+                player.addMediaItems(itemsAfterCurrent)
                 if (player.shuffleModeEnabled) {
                     applyCurrentFirstShuffleOrder()
                 }
@@ -4864,15 +4868,23 @@ class MusicService :
                 if (togetherParticipantNames.isEmpty()) {
                     val sessionId =
                         when (val state = togetherSessionState.value) {
-                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> state.sessionId
-                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> state.sessionId
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                                state.sessionId
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                                state.sessionId
+                            }
+
                             is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
                                 state.sessionId.takeIf {
                                     state.role is moe.rukamori.archivetune.together.TogetherRole.Host
                                 }
                             }
 
-                            else -> null
+                            else -> {
+                                null
+                            }
                         }
                     if (sessionId != null) {
                         scheduleTogetherHostInactivityTimeout(sessionId)
@@ -6610,17 +6622,17 @@ class MusicService :
         val currentMediaId = player.currentMediaItem?.mediaId ?: return
         val isLocalMedia = currentMediaId.isLocalMediaId()
 
-        val isFullyCachedMedia =
+        val isFullyDownloadedMedia =
             runCatching {
-                val cachedInDownload =
-                    downloadCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L ||
-                        downloadCache.getCachedSpans(currentMediaId).isNotEmpty()
-                val cachedInPlayer = playerCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
-                cachedInDownload || cachedInPlayer
+                val contentLength =
+                    downloadCache
+                        .getContentMetadata(currentMediaId)
+                        .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                contentLength > 0L && downloadCache.isCached(currentMediaId, 0L, contentLength)
             }.getOrDefault(false)
 
         val hasAnyCachedData =
-            isFullyCachedMedia ||
+            isFullyDownloadedMedia ||
                 runCatching {
                     downloadCache.getCachedSpans(currentMediaId).isNotEmpty() ||
                         playerCache.getCachedSpans(currentMediaId).isNotEmpty()
@@ -6630,7 +6642,7 @@ class MusicService :
             (error.cause?.cause is PlaybackException) &&
                 (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
 
-        if (!isLocalMedia && !isFullyCachedMedia && (!isNetworkConnected.value || isConnectionError)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && (!isNetworkConnected.value || isConnectionError)) {
             waitOnNetworkError()
             return
         }
@@ -6644,7 +6656,7 @@ class MusicService :
 
         val retryableStreamFailure = findRetryableStreamFailure(error)
         if (retryableStreamFailure != null) {
-            if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyCachedMedia, retryableStreamFailure)) {
+            if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyDownloadedMedia, retryableStreamFailure)) {
                 return
             }
         }
@@ -6657,11 +6669,12 @@ class MusicService :
             Timber.tag("MusicService").w(
                 "Cache corruption / truncated stream for %s (fullyCached=%b); purging caches then retrying",
                 currentMediaId,
-                isFullyCachedMedia,
+                isFullyDownloadedMedia,
             )
 
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
 
             scope.launch(Dispatchers.IO) {
@@ -6669,7 +6682,7 @@ class MusicService :
                 runCatching { playerCache.removeResource(currentMediaId) }
                 // Keep a complete offline download in place; deleting a user's saved download
                 // to recover from a read error is surprising. Only purge partial entries.
-                if (!isFullyCachedMedia) {
+                if (!isFullyDownloadedMedia) {
                     runCatching { downloadCache.removeResource(currentMediaId) }
                 } else {
                     Timber.tag("MusicService").w(
@@ -6693,7 +6706,7 @@ class MusicService :
             return
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBotDetectionException(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBotDetectionException(error)) {
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
@@ -6705,7 +6718,7 @@ class MusicService :
             }
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
@@ -6735,10 +6748,25 @@ class MusicService :
             }
         }
 
-        if (!isLocalMedia && !isFullyCachedMedia && isRetryableRemoteParserFailure(error)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && isRetryableRemoteParserFailure(error)) {
+            val failedUrl =
+                playbackUrlCache[currentMediaId]?.url
+                    ?: extractorPlaybackUrlCache[currentMediaId]?.url
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            failedUrl
+                ?.let(StreamClientUtils::resolveRequestProfile)
+                ?.clientKey
+                ?.takeIf(String::isNotEmpty)
+                ?.let { clientKey ->
+                    YTPlayerUtils.markStreamClientFailed(
+                        videoId = currentMediaId,
+                        clientKey = clientKey,
+                        httpStatusCode = null,
+                    )
+                }
             if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
                 Timber.tag("MusicService").i(
                     "Retrying playback for %s after parser source error %d",
@@ -6913,11 +6941,6 @@ class MusicService :
                 playerCache
                     .getContentMetadata(mediaId)
                     .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-            }.getOrNull()?.takeIf { it > 0L } ?: runCatching {
-                // Fallback: derive content length from cached download spans so that
-                // fully-downloaded songs can short-circuit even when cache metadata
-                // did not record KEY_CONTENT_LENGTH (e.g. chunked YouTube responses).
-                downloadCache.getCachedSpans(mediaId).takeIf { it.isNotEmpty() }?.sumOf { it.length }
             }.getOrNull()?.takeIf { it > 0L }
 
         knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
@@ -7079,7 +7102,7 @@ class MusicService :
         val format = nonNullPlayback.format
         val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
         val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
-        val resolvedContentLength = format.contentLength ?: knownContentLength ?: 0L
+        val resolvedContentLength = format.contentLength ?: 0L
         val resolvedCodecs =
             format.mimeType
                 .substringAfter("codecs=", "")
@@ -7142,7 +7165,7 @@ class MusicService :
             resolveStreamChunkLength(
                 requestedLength = dataSpec.length,
                 position = dataSpec.position,
-                knownContentLength = knownContentLength ?: format.contentLength,
+                knownContentLength = format.contentLength,
                 chunkLength = CHUNK_LENGTH,
                 mimeType = format.mimeType,
             )
@@ -7232,8 +7255,7 @@ class MusicService :
         return dataSpec.withUri(streamUrl.toUri())
     }
 
-    private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
-        poTokenPlayer.normalizeExtractorRequestValue()
+    private fun PlaybackAuthState.resolveExtractorPoToken(): String? = poTokenPlayer.normalizeExtractorRequestValue()
 
     private fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
         resolveGvsPoToken().normalizeExtractorRequestValue()
@@ -8104,9 +8126,15 @@ class MusicService :
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
-        val keepInForeground = startInForegroundRequired || hasResumablePlaybackNotification()
-        if (keepInForeground) ensureStartedAsForeground()
-        runCatching { super.onUpdateNotification(session, keepInForeground) }
+        val shouldShowNotification =
+            shouldShowPlaybackNotification(
+                startInForegroundRequired = startInForegroundRequired,
+                hasResumablePlayback = hasResumablePlaybackNotification(),
+            )
+        if (!shouldShowNotification) return
+
+        ensureStartedAsForeground()
+        runCatching { super.onUpdateNotification(session, true) }
             .onFailure { reportException(it) }
     }
 
@@ -8114,6 +8142,7 @@ class MusicService :
 
     fun updateWidget() {
         widgetUpdater.update()
+        widgetUpdater.updateProgressTracking()
     }
 
     inner class MusicBinder : Binder() {
@@ -8127,6 +8156,11 @@ class MusicService :
             isHostSessionActive: Boolean,
             isPlaybackInactive: Boolean,
         ): Boolean = (isHostSessionActive && isPlaybackInactive) || stopMusicOnTaskClearEnabled
+
+        internal fun shouldShowPlaybackNotification(
+            startInForegroundRequired: Boolean,
+            hasResumablePlayback: Boolean,
+        ): Boolean = startInForegroundRequired || hasResumablePlayback
 
         const val ROOT = "root"
         const val HOME = "home"

@@ -24,8 +24,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
-import moe.rukamori.archivetune.utils.reportException
 import kotlin.math.roundToInt
+
+internal const val NotificationArtworkSizePx = 1080
 
 class CoilBitmapLoader(
     private val context: Context,
@@ -53,8 +54,6 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
-            val density = context.resources.displayMetrics.density
-            val maxIconSizePx = (density * 128f).roundToInt().coerceIn(128, 512)
             val attempts = 3
             for (attempt in 1..attempts) {
                 try {
@@ -63,7 +62,7 @@ class CoilBitmapLoader(
                             .Builder(context)
                             .data(uri)
                             .allowHardware(false)
-                            .size(maxIconSizePx, maxIconSizePx)
+                            .size(NotificationArtworkSizePx, NotificationArtworkSizePx)
                             .build()
 
                     val result = context.imageLoader.execute(request)
@@ -75,13 +74,16 @@ class CoilBitmapLoader(
                                 val scaled =
                                     if (bitmap.width <= 0 || bitmap.height <= 0) {
                                         null
-                                    } else if (bitmap.width <= maxIconSizePx && bitmap.height <= maxIconSizePx) {
+                                    } else if (
+                                        bitmap.width <= NotificationArtworkSizePx &&
+                                        bitmap.height <= NotificationArtworkSizePx
+                                    ) {
                                         bitmap
                                     } else {
                                         val scale =
                                             minOf(
-                                                maxIconSizePx.toFloat() / bitmap.width.toFloat(),
-                                                maxIconSizePx.toFloat() / bitmap.height.toFloat(),
+                                                NotificationArtworkSizePx.toFloat() / bitmap.width.toFloat(),
+                                                NotificationArtworkSizePx.toFloat() / bitmap.height.toFloat(),
                                             )
                                         val targetWidth = (bitmap.width * scale).roundToInt().coerceAtLeast(1)
                                         val targetHeight = (bitmap.height * scale).roundToInt().coerceAtLeast(1)
@@ -92,7 +94,7 @@ class CoilBitmapLoader(
                                     return@future createBitmap(64, 64)
                                 }
 
-                                return@future scaled.copy(Bitmap.Config.ARGB_8888, false)
+                                return@future scaled
                             } catch (e: Exception) {
                                 reportException(e)
                             }

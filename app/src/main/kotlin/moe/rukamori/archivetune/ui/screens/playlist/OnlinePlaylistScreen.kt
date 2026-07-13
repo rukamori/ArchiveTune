@@ -10,7 +10,6 @@
 package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -140,20 +139,15 @@ import moe.rukamori.archivetune.ui.menu.SelectionMediaMetadataMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.ui.utils.DownloadProgressFloatingToolbar
-import moe.rukamori.archivetune.ui.utils.DownloadProgressToolbarState
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
-import moe.rukamori.archivetune.ui.utils.hasActiveDownloads
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
-import moe.rukamori.archivetune.ui.utils.sendPauseDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
-import moe.rukamori.archivetune.ui.utils.sendResumeDownloads
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.OnlinePlaylistViewModel
 
@@ -183,7 +177,6 @@ fun OnlinePlaylistScreen(
     val downloadUtil = LocalDownloadUtil.current
     var downloads by remember { mutableStateOf<Map<String, Download>>(emptyMap()) }
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
-    var downloadProgressToolbarDismissed by remember { mutableStateOf(true) }
 
     var selection by remember { mutableStateOf(false) }
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
@@ -936,16 +929,10 @@ fun OnlinePlaylistScreen(
                                                 }
 
                                                 is HeaderDownloadState.Partial -> {
-                                                    val songIds = songs.map { it.id }
-                                                    if (currentDownloadState.paused) {
-                                                        sendResumeDownloads(context, songIds)
-                                                    } else {
-                                                        sendPauseDownloads(context, songIds)
-                                                    }
+                                                    navController.navigate("auto_playlist/downloaded?tab=progress")
                                                 }
 
                                                 HeaderDownloadState.None -> {
-                                                    downloadProgressToolbarDismissed = false
                                                     sendAddMissingDownloads(
                                                         context = context,
                                                         songs =
@@ -957,6 +944,7 @@ fun OnlinePlaylistScreen(
                                                             },
                                                         downloads = downloads,
                                                     )
+                                                    navController.navigate("auto_playlist/downloaded?tab=progress")
                                                 }
                                             }
                                         },
@@ -1385,42 +1373,6 @@ fun OnlinePlaylistScreen(
                 }
             },
         )
-
-        val currentDownloadState = downloadState
-        val showDownloadProgressToolbar =
-            currentDownloadState is HeaderDownloadState.Partial &&
-                songs.isNotEmpty() &&
-                !downloadProgressToolbarDismissed
-        AnimatedVisibility(
-            visible = showDownloadProgressToolbar,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues())
-                    .padding(bottom = 16.dp),
-        ) {
-            if (currentDownloadState is HeaderDownloadState.Partial && songs.isNotEmpty()) {
-                val songIds = remember(songs) { songs.map { it.id } }
-                DownloadProgressFloatingToolbar(
-                    state =
-                        DownloadProgressToolbarState(
-                            progress = currentDownloadState.progress,
-                            paused = currentDownloadState.paused,
-                            canPause = hasActiveDownloads(songIds, downloads),
-                        ),
-                    onPauseResume = {
-                        if (currentDownloadState.paused) {
-                            sendResumeDownloads(context, songIds)
-                        } else {
-                            sendPauseDownloads(context, songIds)
-                        }
-                    },
-                    onDismiss = {
-                        downloadProgressToolbarDismissed = true
-                    },
-                )
-            }
-        }
 
         SnackbarHost(
             hostState = snackbarHostState,

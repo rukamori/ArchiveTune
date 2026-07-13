@@ -117,17 +117,8 @@ object UpdateNotificationManager {
 
                 val updateChannel =
                     dataStore.data
-                        .map {
-                            it[UpdateChannelKey]?.let { value ->
-                                try {
-                                    UpdateChannel.valueOf(value)
-                                } catch (_: IllegalArgumentException) {
-                                    defaultUpdateChannel
-                                }
-                            } ?: defaultUpdateChannel
-                        }.first()
-
-                if (updateChannel == UpdateChannel.NIGHTLY) return@launch
+                        .map { UpdateChannel.fromStoredName(it[UpdateChannelKey], defaultUpdateChannel) }
+                        .first()
 
                 val lastCheck = dataStore.data.map { it[LastUpdateCheckKey] ?: 0L }.first()
                 val now = System.currentTimeMillis()
@@ -138,8 +129,8 @@ object UpdateNotificationManager {
 
                 val versionResult =
                     when (updateChannel) {
-                        UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyVersionName()
-                        else -> Updater.getLatestVersionName()
+                        UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
+                        UpdateChannel.STABLE -> Updater.getLatestVersionName()
                     }
 
                 versionResult.onSuccess { latestVersion ->
@@ -195,8 +186,8 @@ object UpdateNotificationManager {
 
         val downloadUrl =
             when (updateChannel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestDailyNightlyDownloadUrl()
-                else -> Updater.getLatestDownloadUrl()
+                UpdateChannel.CANARY -> Updater.getLatestCanaryDownloadUrl()
+                UpdateChannel.STABLE -> Updater.getLatestDownloadUrl()
             }
         val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
         val downloadPendingIntent =

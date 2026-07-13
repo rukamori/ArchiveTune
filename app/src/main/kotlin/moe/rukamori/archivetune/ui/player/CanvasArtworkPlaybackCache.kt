@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.Context
-import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -41,8 +40,6 @@ import java.security.MessageDigest
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-
-private const val CanvasMaxCachedVideoDimensionPx = 1_920
 
 object CanvasArtworkPlaybackCache {
     private const val DEFAULT_MAX_SIZE_MEGABYTES = 256
@@ -267,6 +264,18 @@ object CanvasArtworkPlaybackCache {
     }
 
     @Synchronized
+    fun remove(mediaId: String) {
+        cacheJobs.remove(mediaId)?.cancel()
+        val entry = map.remove(mediaId) ?: return
+        val directory = cacheDirectory
+        if (directory != null) {
+            runCatching { entry.regularFileName?.let { fileName -> directory.resolve(fileName).delete() } }
+            runCatching { entry.verticalFileName?.let { fileName -> directory.resolve(fileName).delete() } }
+        }
+        schedulePersist()
+    }
+
+    @Synchronized
     fun setMaxSize(value: Int) {
         maxSizeBytes = value.toCanvasCacheLimitBytes()
         val directory = cacheDirectory
@@ -377,13 +386,13 @@ object CanvasArtworkPlaybackCache {
                 directory
                     .resolve(fileName)
                     .takeIf(File::isUsableFile)
-                    ?.takeIf(File::isPlayableCanvasVideo) != null
+                    ?.takeIf(File::isValidCanvasVideo) != null
             }?.let { return it }
         if (url.isNullOrBlank()) return null
         val fileName = canvasFileName(mediaId, variant, url)
         val target = directory.resolve(fileName)
         if (target.isUsableFile()) {
-            if (target.isPlayableCanvasVideo()) return fileName
+            if (target.isValidCanvasVideo()) return fileName
             runCatching { target.delete() }
         }
 
@@ -391,7 +400,7 @@ object CanvasArtworkPlaybackCache {
         return try {
             downloadToFile(url = url, target = partial)
             if (partial.length() <= 0L) throw IOException("Downloaded empty canvas video")
-            if (!partial.isPlayableCanvasVideo()) throw IOException("Canvas video exceeds device decoder capabilities")
+            if (!partial.isValidCanvasVideo()) throw IOException("Downloaded canvas is not a valid video")
             if (target.exists() && !target.delete()) throw IOException("Failed to replace existing canvas video")
             if (!partial.renameTo(target)) throw IOException("Failed to commit canvas video")
             fileName
@@ -404,7 +413,7 @@ object CanvasArtworkPlaybackCache {
                     directory
                         .resolve(fileName)
                         .takeIf(File::isUsableFile)
-                        ?.takeIf(File::isPlayableCanvasVideo) != null
+                        ?.takeIf(File::isValidCanvasVideo) != null
                 }
         }
     }
@@ -590,12 +599,12 @@ object CanvasArtworkPlaybackCache {
             val regularUri =
                 regularFileName
                     ?.let(directory::resolve)
-                    ?.takeIf { file -> file.isUsableFile() && file.isPlayableCanvasVideo() }
+                    ?.takeIf { file -> file.isUsableFile() && file.isValidCanvasVideo() }
                     ?.let { file -> Uri.fromFile(file).toString() }
             val verticalUri =
                 verticalFileName
                     ?.let(directory::resolve)
-                    ?.takeIf { file -> file.isUsableFile() && file.isPlayableCanvasVideo() }
+                    ?.takeIf { file -> file.isUsableFile() && file.isValidCanvasVideo() }
                     ?.let { file -> Uri.fromFile(file).toString() }
             if (regularUri == null && verticalUri == null) return null
             return artwork.copy(
@@ -631,14 +640,14 @@ private fun okhttp3.HttpUrl.isYouTubeMediaHost(): Boolean {
 
 private fun File.isUsableFile(): Boolean = isFile && length() > 0L
 
-private fun File.isPlayableCanvasVideo(): Boolean {
+private fun File.isValidCanvasVideo(): Boolean {
     val extractor = MediaExtractor()
     return try {
         extractor.setDataSource(absolutePath)
         (0 until extractor.trackCount).any { index ->
             val format = extractor.getTrackFormat(index)
             val mime = format.getString(MediaFormat.KEY_MIME).orEmpty()
-            mime.startsWith("video/") && format.isSupportedCanvasVideoFormat()
+            mime.startsWith("video/")
         }
     } catch (error: Throwable) {
         Timber.tag(CanvasCacheLogTag).w(error, "Failed to inspect cached canvas video")
@@ -647,76 +656,6 @@ private fun File.isPlayableCanvasVideo(): Boolean {
         extractor.release()
     }
 }
-
-private fun MediaFormat.isSupportedCanvasVideoFormat(): Boolean {
-    val mime = getString(MediaFormat.KEY_MIME)?.takeIf { value -> value.startsWith("video/") } ?: return false
-    val width = optionalInteger(MediaFormat.KEY_WIDTH) ?: return false
-    val height = optionalInteger(MediaFormat.KEY_HEIGHT) ?: return false
-    if (width > CanvasMaxCachedVideoDimensionPx ||
-        height > CanvasMaxCachedVideoDimensionPx
-    ) {
-        return false
-    }
-    val frameRate = optionalFrameRate()
-    val profile = optionalInteger(MediaFormat.KEY_PROFILE)?.takeIf { value -> value > 0 }
-
-    return runCatching {
-        MediaCodecList(MediaCodecList.ALL_CODECS)
-            .codecInfos
-            .any { codecInfo ->
-                if (codecInfo.isEncoder) return@any false
-                val supportedType =
-                    codecInfo.supportedTypes.firstOrNull { type -> type.equals(mime, ignoreCase = true) }
-                        ?: return@any false
-                val capabilities = codecInfo.getCapabilitiesForType(supportedType)
-                val profileSupported =
-                    profile == null ||
-                        capabilities.profileLevels.isEmpty() ||
-                        capabilities.profileLevels.any { profileLevel -> profileLevel.profile == profile }
-                if (!profileSupported) return@any false
-
-                val videoCapabilities = capabilities.videoCapabilities ?: return@any true
-                videoCapabilities.supportsCanvasSize(
-                    width = width,
-                    height = height,
-                    frameRate = frameRate,
-                ) ||
-                    videoCapabilities.supportsCanvasSize(
-                        width = height,
-                        height = width,
-                        frameRate = frameRate,
-                    )
-            }
-    }.getOrDefault(false)
-}
-
-private fun android.media.MediaCodecInfo.VideoCapabilities.supportsCanvasSize(
-    width: Int,
-    height: Int,
-    frameRate: Double?,
-): Boolean =
-    runCatching {
-        if (frameRate != null && frameRate > 0.0) {
-            areSizeAndRateSupported(width, height, frameRate)
-        } else {
-            isSizeSupported(width, height)
-        }
-    }.getOrDefault(false)
-
-private fun MediaFormat.optionalInteger(key: String): Int? =
-    if (containsKey(key)) {
-        runCatching { getInteger(key) }.getOrNull()
-    } else {
-        null
-    }
-
-private fun MediaFormat.optionalFrameRate(): Double? =
-    if (containsKey(MediaFormat.KEY_FRAME_RATE)) {
-        runCatching { getInteger(MediaFormat.KEY_FRAME_RATE).toDouble() }
-            .getOrElse { runCatching { getFloat(MediaFormat.KEY_FRAME_RATE).toDouble() }.getOrNull() }
-    } else {
-        null
-    }
 
 private fun String?.takeIfNotBlank(): String? = this?.takeIf { it.isNotBlank() }
 

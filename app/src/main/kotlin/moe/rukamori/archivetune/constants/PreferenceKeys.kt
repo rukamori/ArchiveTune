@@ -846,16 +846,27 @@ val GitHubReleasesJsonKey = stringPreferencesKey("github_releases_json")
 val GitHubReleasesLastCheckedAtKey = longPreferencesKey("github_releases_last_checked_at")
 val GitHubReleasesFingerprintKey = stringPreferencesKey("github_releases_fingerprint")
 
-val DailyNightlyReleasesEtagKey = stringPreferencesKey("daily_nightly_releases_etag")
-val DailyNightlyReleasesJsonKey = stringPreferencesKey("daily_nightly_releases_json")
-val DailyNightlyReleasesLastCheckedAtKey = longPreferencesKey("daily_nightly_releases_last_checked_at")
-val DailyNightlyReleasesFingerprintKey = stringPreferencesKey("daily_nightly_releases_fingerprint")
+val CanaryReleasesEtagKey = stringPreferencesKey("daily_nightly_releases_etag")
+val CanaryReleasesJsonKey = stringPreferencesKey("daily_nightly_releases_json")
+val CanaryReleasesLastCheckedAtKey = longPreferencesKey("daily_nightly_releases_last_checked_at")
+val CanaryReleasesFingerprintKey = stringPreferencesKey("daily_nightly_releases_fingerprint")
 
 val TogetherOnlineEndpointCacheKey = stringPreferencesKey("together_online_endpoint_cache")
 val TogetherOnlineEndpointLastCheckedAtKey = longPreferencesKey("together_online_endpoint_last_checked_at")
 
 enum class UpdateChannel {
     STABLE,
-    NIGHTLY,
-    DAILY_NIGHTLY,
+    CANARY,
+    ;
+
+    companion object {
+        fun fromStoredName(
+            value: String?,
+            defaultValue: UpdateChannel,
+        ): UpdateChannel =
+            when (value) {
+                "NIGHTLY", "DAILY_NIGHTLY" -> CANARY
+                else -> entries.firstOrNull { it.name == value } ?: defaultValue
+            }
+    }
 }

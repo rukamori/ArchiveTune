@@ -163,9 +163,7 @@
     <string name="audio_crossfade_description">Lugude vahetamisek kasutaja sujuvat üleminekut ühelt loolt teisele.</string>
     <string name="audio_crossfade_dialog_title">Ristsulatuse kestus</string>
     <string name="player_stream_client">Taasesituse klient</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_desc">Saad hallata missugune YouTube\'i klient laadib voogedfastust alla</string>
-    <string name="player_stream_client_android_vr_desc">Voogedastus ilma allkirjade dekrüptimiseta, tagades sellega parima kiiruse. Sobib enamusele kasutajatele.</string>
     <string name="player_stream_client_web_remix_desc">Täiendavate vormingute tugi, aga seda kiiruse arvel JavaScripti-põhine allkirjade dekrüptimine lisab algusele umbes 5-10 sekundilise viivituse.</string>
     <string name="year_in_music">Aasta muusikas</string>
     <string name="total_listening_time">Kuulamisaeg kokku</string>

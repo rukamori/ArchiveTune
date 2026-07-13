@@ -76,6 +76,7 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.autoRateDisplay
 import moe.rukamori.archivetune.db.entities.containerLabel
 import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.db.entities.formattedFileSize
@@ -484,7 +485,7 @@ fun SleepTimerDialog(
 @Composable
 fun CodecInfoRow(
     codec: String,
-    bitrate: String,
+    bitrate: String?,
     fileSize: String,
     textColor: Color,
     modifier: Modifier = Modifier,
@@ -501,7 +502,7 @@ fun CodecInfoRow(
             text =
                 buildString {
                     append(codec)
-                    if (bitrate != "Unknown") {
+                    if (!bitrate.isNullOrBlank()) {
                         append(" • ")
                         append(bitrate)
                     }
@@ -780,7 +781,7 @@ fun QueueCollapsedContentV3(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val bitrate = currentFormat.autoRateDisplay()
 
             CodecInfoRow(
                 codec = container,
@@ -928,7 +929,7 @@ fun QueueCollapsedContentV1(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
             CodecInfoRow(
@@ -1075,7 +1076,7 @@ fun QueueCollapsedContentV4(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
             CodecInfoRow(
@@ -1233,7 +1234,7 @@ fun QueueCollapsedContentV7(
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
             CodecInfoRow(
@@ -1422,7 +1423,7 @@ fun QueueCollapsedContentV9(
     ) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.formattedBitrate()
+            val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
             CodecInfoRow(

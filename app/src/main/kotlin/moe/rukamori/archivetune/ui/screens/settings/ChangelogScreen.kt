@@ -48,7 +48,7 @@ fun ChangelogScreen(
     suspend fun loadReleases(forceRefresh: Boolean) {
         val result =
             when (channel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getAllDailyNightlyReleases(forceRefresh = forceRefresh)
+                UpdateChannel.CANARY -> Updater.getAllCanaryReleases(forceRefresh = forceRefresh)
                 else -> Updater.getAllReleases(forceRefresh = forceRefresh)
             }
         result
@@ -66,7 +66,7 @@ fun ChangelogScreen(
     LaunchedEffect(Unit) {
         val cachedReleases =
             when (channel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getCachedDailyNightlyReleases()
+                UpdateChannel.CANARY -> Updater.getCachedCanaryReleases()
                 else -> Updater.getCachedReleases()
             }
         if (cachedReleases.isNotEmpty()) {

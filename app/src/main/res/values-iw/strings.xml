@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">בית</string>
     <string name="songs">שירים</string>
@@ -712,9 +712,7 @@
     <string name="enable_discord_debug_lines">הפעל שורות הגדרות ניפוי שגיאות</string>
     <string name="presence_manager_running">מנהל נוכחות: פועל</string>
     <string name="presence_manager_stopped">מנהל נוכחות: הופסק</string>
-    <string name="filter_levels">רמות סינון</string>
     <string name="experimental_features">תכונות ניסיוניות</string>
-    <string name="reset_to_default_levels">איפוס לברירת מחדל</string>
     <string name="no_logs">אין יומני רישום</string>
     <string name="show_nerd_stats">הצג סטטיסטיקות לגיקים</string>
     <string name="description_show_nerd_stats">הצגת סטטיסטיקות השמעה בזמן אמת (קודק, קצב סיביות, מאגר)</string>
@@ -746,7 +744,6 @@
     <string name="log_level_info">מידע</string>
     <string name="log_level_warning">אזהרה</string>
     <string name="log_level_error">שגיאה</string>
-    <string name="filter_discord_only">דיסקורד</string>
     <string name="filter_all_logs">הכל</string>
     <string name="clear">נקה</string>
     <string name="logs_empty_message">יומנים יופיעו כאן כאשר יהיו זמינים</string>
@@ -763,23 +760,15 @@
     <string name="new_version_available">גרסה חדשה זמינה</string>
     <string name="updates">עדכונים</string>
     <string name="updates_subtitle_stable">מהדורות יציבות והערות שחרור</string>
-    <string name="updates_subtitle_nightly">מהדורות לילה ופעולות פיתוח אחרונות</string>
     <string name="current_version">גרסה נוכחית</string>
     <string name="latest_version_format">אחרון: %s</string>
     <string name="updates_status_checking">בודק את הגרסה האחרונה</string>
     <string name="updates_status_current">אתה נמצא בגרסה הזמינה האחרונה</string>
     <string name="enable_update_notification">הפעל התראות עדכון</string>
-    <string name="enable_update_notification_desc">קבל הודעה כאשר יוצאת גרסה יציבה חדשה</string>
     <string name="update_channel">עדכון ערוץ</string>
     <string name="update_channel_desc">בחרו בין גרסאות שנבדקו לבין תמונות מצב של פיתוח.</string>
     <string name="channel_stable">יציב</string>
-    <string name="channel_nightly">לילי</string>
-    <string name="channel_daily_nightly">יומי</string>
     <string name="recent_commits">שינויים אחרונים</string>
-    <string name="updates_nightly_title">הפצה לילית</string>
-    <string name="updates_nightly_description">גרסאות לילה עוקבת אחר שינויים חדשים לפיתוח ועשויות לכלול שינויים שלא הושלמו.</string>
-    <string name="updates_nightly_hosting_description">גרסאות פיתוח שנוצרו אוטומטית זמינות לאחר ריצות מוצלחות של GitHub Actions.</string>
-    <string name="updates_latest_commit">שינוי אחרון: %s</string>
     <string name="updates_loading_commits">טוען את השינויים האחרונים</string>
     <string name="updates_recent_commits_count">%1$d שינויים אחרונים</string>
     <string name="updates_no_commits">לא נמצאו שינויים אחרונים</string>
@@ -867,20 +856,13 @@
     <string name="po_token_gvs">טוקן PO (GVS)</string>
     <string name="po_token_player">טוקן PO (שחקן)</string>
     <string name="visitor_data">נתוני מבקרים</string>
-    <string name="supported_clients">לקוחות נתמכים</string>
     <string name="generated_tokens">טוקנים שנוצרו</string>
-    <string name="token_settings">הגדרות טוקן</string>
-    <string name="use_visitor_data">שימוש בנתוני מבקרים</string>
-    <string name="use_visitor_data_desc">השתמש בנתוני מבקרים ליצירת טוקנים. דורש השבתת קובצי Cookie.</string>
-    <string name="cookies_must_be_disabled">יש להשבית קובצי Cookie כדי להשתמש בנתוני מבקרים</string>
     <string name="regenerate">יצירה מחדש</string>
     <string name="regenerate_token">צור מחדש טוקן</string>
     <string name="source_url">כתובת URL של המקור</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">יוצר טוקנים</string>
     <string name="tokens_generated">טוקנים נוצרו בהצלחה</string>
     <string name="token_generation_failed">יצירת הטוקנים נכשלה</string>
-    <string name="open_account_before_extract">פתחו והיכנסו ל-youtube.com/account לפני החילוץ</string>
     <string name="token_copied">הטוקן הועתק ללוח</string>
     <string name="extracting_from_url">חילוץ טוקנים מכתובת URL</string>
     <string name="po_token_account_notice_title">השתמש באותו חשבון</string>
@@ -948,11 +930,6 @@
     <string name="updates_channel_warning_stable_title">גרסאות הפצה יציבות</string>
     <string name="updates_channel_warning_stable_source">מופץ דרך גרסאות GitHub רשמיות.</string>
     <string name="updates_channel_warning_stable_desc">גרסאות אלו נבדקו ומומלצות עבור רוב המשתמשים.</string>
-    <string name="updates_channel_warning_nightly_title">גרסאות ליליות</string>
-    <string name="updates_channel_warning_nightly_risk">גרסאות ליליות עשויה לכלול תכונות ניסיוניות, שינויים לא גמורים או רגרסיות זמניות.</string>
-    <string name="updates_channel_warning_nightly_unstable">גרסאות ליליות מסופקות לבדיקה ולגישה מוקדמת בלבד.\nיציבות, תאימות ופונקציונליות אינן מובטחות.</string>
-    <string name="updates_channel_warning_acknowledgement">הערה: הורדה מ-Github עוקפת ישירות כל סינון נוסף שבוצע על ידי החנות שממנה ייתכן שהתקנת את האפליקציה במקור.\nבהמשך השימוש, הנך מאשר כי גרסאות ליליות עשויות להיות לא יציבות וכי השימוש בהן על אחריותך בלבד.</string>
-    <string name="updates_daily_channel_confirmation">עבור לערוץ היומי כדי לקבל עדכונים מהמאגר היומי-לילי.\n\nגרסאות יומיות מתפרסמות אוטומטית בכל יום מענף הפיתוח האחרון.\nהערה: הורדה מ-Github עוקפת ישירות כל סינון נוסף שבוצע על ידי החנות שממנה התקנת את האפליקציה במקור.</string>
     <string name="download_complete">ההורדה הושלמה</string>
     <string name="onboarding_welcome_title">ברוכים הבאים ל- ArchiveTune</string>
     <string name="onboarding_welcome_subtitle">הגדר השמעה, מוזיקה מקומית ועדכון הרשאות לפני שתתחיל להאזין.</string>

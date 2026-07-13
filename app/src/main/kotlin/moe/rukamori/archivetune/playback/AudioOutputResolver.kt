@@ -16,16 +16,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import moe.rukamori.archivetune.models.ActiveOutputDevice
 import moe.rukamori.archivetune.models.PlayerOutputDevice
 
-class AudioOutputResolver(private val audioManager: AudioManager) {
+class AudioOutputResolver(
+    private val audioManager: AudioManager,
+) {
+    private val mediaQueryAttributes =
+        android.media.AudioAttributes
+            .Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
 
-    private val mediaQueryAttributes = android.media.AudioAttributes.Builder()
-        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-        .build()
-
-    private val _activeAudioDevice = MutableStateFlow(
-        ActiveOutputDevice(PlayerOutputDevice.Unknown, PlayerOutputDevice.Unknown.defaultName)
-    )
+    private val _activeAudioDevice =
+        MutableStateFlow(
+            ActiveOutputDevice(PlayerOutputDevice.Unknown, PlayerOutputDevice.Unknown.defaultName),
+        )
 
     val activeAudioDevice = _activeAudioDevice.asStateFlow()
 
@@ -34,32 +38,34 @@ class AudioOutputResolver(private val audioManager: AudioManager) {
     }
 
     private fun resolveActiveDevice(): ActiveOutputDevice {
-        val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            resolveActiveDeviceApi33() ?: resolveActiveDeviceHeuristic()
-        } else {
-            resolveActiveDeviceHeuristic()
-        }
+        val device =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                resolveActiveDeviceApi33() ?: resolveActiveDeviceHeuristic()
+            } else {
+                resolveActiveDeviceHeuristic()
+            }
 
         val type = PlayerOutputDevice.from(device)
-        val name = if (type.isProduct) {
-            device?.productName?.toString()?.takeUnless { it.isBlank() } ?: type.defaultName
-        } else {
-            type.defaultName
-        }
+        val name =
+            if (type.isProduct) {
+                device?.productName?.toString()?.takeUnless { it.isBlank() } ?: type.defaultName
+            } else {
+                type.defaultName
+            }
         return ActiveOutputDevice(type, name)
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun resolveActiveDeviceApi33(): AudioDeviceInfo? {
-        return audioManager
+    private fun resolveActiveDeviceApi33(): AudioDeviceInfo? =
+        audioManager
             .getAudioDevicesForAttributes(mediaQueryAttributes)
             .firstOrNull { it.isSink }
-    }
 
     private fun resolveActiveDeviceHeuristic(): AudioDeviceInfo? {
-        val sinks = audioManager
-            .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            .filter { it.isSink }
+        val sinks =
+            audioManager
+                .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                .filter { it.isSink }
 
         return sinks.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
             ?: sinks.firstOrNull {

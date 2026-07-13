@@ -33,11 +33,11 @@ jobs:
             const nightlyLinks = [
               {
                 label: "GMS",
-                url: "https://nightly.link/ArchiveTuneApp/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release"
+                url: "https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release"
               },
               {
                 label: "FOSS",
-                url: "https://nightly.link/ArchiveTuneApp/ArchiveTune/workflows/build/dev/app-foss-mobile-universal-release"
+                url: "https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-foss-mobile-universal-release"
               }
             ];
             const nightlyUrls = nightlyLinks.map((link) => link.url);

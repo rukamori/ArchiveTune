@@ -21,6 +21,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -115,7 +116,7 @@ object ArchiveTuneCanvas {
             when (response?.status) {
                 HttpStatusCode.OK -> runCatching { response.body<CanvasArtwork>() }.getOrNull()
                 else -> null
-            }
+            }?.takeIf { artwork -> artwork.matchesSongIdentity(song, artist) }
 
         val value =
             primary ?: run {
@@ -130,8 +131,10 @@ object ArchiveTuneCanvas {
                 when (fallbackResponse?.status) {
                     HttpStatusCode.OK -> runCatching { fallbackResponse.body<CanvasArtwork>() }.getOrNull()
                     else -> null
-                }
-            } ?: AppleMusicProvider.getBySongArtist(song, artist, null, storefront)
+                }?.takeIf { artwork -> artwork.matchesSongIdentity(song, artist) }
+            } ?: AppleMusicProvider
+                .getBySongArtist(song, artist, null, storefront)
+                ?.takeIf { artwork -> artwork.matchesSongIdentity(song, artist) }
 
         cache[key] =
             CacheEntry(

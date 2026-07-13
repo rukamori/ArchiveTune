@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Beranda</string>
     <string name="songs">Lagu</string>
@@ -575,9 +575,7 @@
     <string name="enable_discord_debug_lines">Aktifkan baris pengaturan debug</string>
     <string name="presence_manager_running">Manajer Presence: berjalan</string>
     <string name="presence_manager_stopped">Manajer Presence: dihentikan</string>
-    <string name="filter_levels">Tingkat filter</string>
     <string name="experimental_features">Fitur Eksperimental</string>
-    <string name="reset_to_default_levels">Atur ulang ke default</string>
     <string name="no_logs">Tidak Ada Log</string>
     <string name="show_nerd_stats">Tampilkan statistik nerd</string>
     <string name="description_show_nerd_stats">Menampilkan statistik pemutaran waktu nyata (codec, bitrate, buffer)</string>
@@ -609,7 +607,6 @@
     <string name="log_level_info">Informasi</string>
     <string name="log_level_warning">Peringatan</string>
     <string name="log_level_error">Kesalahan</string>
-    <string name="filter_discord_only">Discord</string>
     <string name="filter_all_logs">Semua</string>
     <string name="clear">Bersihkan</string>
     <string name="logs_empty_message">Log akan muncul di sini bila tersedia</string>
@@ -626,21 +623,15 @@
     <string name="new_version_available">Versi baru tersedia</string>
     <string name="updates">Pembaruan</string>
     <string name="updates_subtitle_stable">Rilis stabil dan catatan rilis</string>
-    <string name="updates_subtitle_nightly">Build nightly dan commit pengembangan terkini</string>
     <string name="current_version">Versi Saat Ini</string>
     <string name="latest_version_format">Terbaru: %s</string>
     <string name="updates_status_checking">Memeriksa rilis terbaru</string>
     <string name="updates_status_current">Anda sedang menggunakan rilis terbaru yang tersedia</string>
     <string name="enable_update_notification">Aktifkan Pemberitahuan Pembaruan</string>
-    <string name="enable_update_notification_desc">Dapatkan pemberitahuan ketika versi stabil baru dirilis</string>
     <string name="update_channel">Saluran Pembaruan</string>
     <string name="update_channel_desc">Pilih antara rilis teruji dan cuplikan pengembangan.</string>
     <string name="channel_stable">Stabil</string>
-    <string name="channel_nightly">Nightly</string>
     <string name="recent_commits">Commit Terbaru</string>
-    <string name="updates_nightly_title">Pengiriman Nightly</string>
-    <string name="updates_nightly_description">Build Nightly melacak commit pengembangan terbaru dan mungkin mencakup perubahan yang belum selesai.</string>
-    <string name="updates_latest_commit">Commit terbaru: %s</string>
     <string name="updates_loading_commits">Memuat commit terbaru</string>
     <string name="updates_recent_commits_count">%1$d commit terbaru</string>
     <string name="updates_no_commits">Tidak ada commit terbaru yang ditemukan</string>
@@ -727,20 +718,13 @@
     <string name="po_token_gvs">Token PO (GVS)</string>
     <string name="po_token_player">Token PO (Pemutar)</string>
     <string name="visitor_data">Data Pengunjung</string>
-    <string name="supported_clients">Klien yang Didukung</string>
     <string name="generated_tokens">Token yang Dihasilkan</string>
-    <string name="token_settings">Pengaturan Token</string>
-    <string name="use_visitor_data">Gunakan Data Pengunjung</string>
-    <string name="use_visitor_data_desc">Gunakan data pengunjung untuk pembuatan token. Memerlukan cookie untuk dinonaktifkan.</string>
-    <string name="cookies_must_be_disabled">Cookie harus dinonaktifkan untuk menggunakan data pengunjung</string>
     <string name="regenerate">Generate ulang</string>
     <string name="regenerate_token">Regenerasi Token</string>
     <string name="source_url">URL sumber</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Menghasilkan token…</string>
     <string name="tokens_generated">Token berhasil dibuat</string>
     <string name="token_generation_failed">Pembuatan token gagal</string>
-    <string name="open_account_before_extract">Buka dan masuk di youtube.com/account sebelum mengekstrak</string>
     <string name="token_copied">Token disalin ke papan klip</string>
     <string name="extracting_from_url">Mengekstrak token dari URL…</string>
     <string name="po_token_account_notice_title">Gunakan akun yang sama</string>

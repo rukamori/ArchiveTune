@@ -312,11 +312,15 @@ fun NavGraphBuilder.navigationBuilder(
         SpotifyPlaylistScreen(navController, scrollBehavior)
     }
     composable(
-        route = "auto_playlist/{playlist}",
+        route = "auto_playlist/{playlist}?tab={tab}",
         arguments =
             listOf(
                 navArgument("playlist") {
                     type = NavType.StringType
+                },
+                navArgument("tab") {
+                    type = NavType.StringType
+                    defaultValue = "downloaded"
                 },
             ),
     ) {
@@ -453,10 +457,7 @@ fun NavGraphBuilder.navigationBuilder(
             ),
     ) { backStackEntry ->
         val channelName = backStackEntry.arguments?.getString("channel")
-        val channel =
-            channelName?.let {
-                runCatching { UpdateChannel.valueOf(it) }.getOrNull()
-            } ?: defaultUpdateChannel
+        val channel = UpdateChannel.fromStoredName(channelName, defaultUpdateChannel)
         ChangelogScreen(navController, channel = channel)
     }
     composable("settings/about") {
