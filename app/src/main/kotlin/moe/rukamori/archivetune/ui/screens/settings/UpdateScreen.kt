@@ -1037,7 +1037,10 @@ private fun UpdatePreferencesPanel(
     ) {
         SegmentedListItem(
             onClick = { onUpdateNotificationChange(!enableUpdateNotification) },
-            shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+            shapes =
+                ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                ),
             modifier = Modifier.fillMaxWidth(),
             colors =
                 ListItemDefaults.segmentedColors(
@@ -1142,7 +1145,10 @@ private fun CommitHistorySection(
     ) {
         SegmentedListItem(
             onClick = onToggleExpanded,
-            shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+            shapes =
+                ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                ),
             modifier = Modifier.fillMaxWidth(),
             colors =
                 ListItemDefaults.segmentedColors(
