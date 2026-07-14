@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LastFmProvider
 import moe.rukamori.archivetune.lastfm.LastFM
@@ -96,17 +95,12 @@ data class LastFmServiceEditorUiModel(
     val secretOverride: String = "",
     val isSaving: Boolean = false,
     val errorMessageResId: Int? = null,
-    // False on fork/CI builds that ship without the built-in Last.fm secret. When false, the user
-    // must supply their own Last.fm API key/secret, so the credential fields are shown for the
-    // official Last.fm provider too (not just LibreFM/Custom).
-    val builtInLastFmConfigured: Boolean =
-        BuildConfig.LASTFM_API_KEY.isNotBlank() && BuildConfig.LASTFM_SECRET.isNotBlank(),
 ) {
     val showCustomEndpoint: Boolean
         get() = provider == LastFmProvider.CUSTOM
 
     val showApiCredentials: Boolean
-        get() = provider != LastFmProvider.LASTFM || !builtInLastFmConfigured
+        get() = provider != LastFmProvider.LASTFM
 }
 
 enum class LastFmTimingSetting {

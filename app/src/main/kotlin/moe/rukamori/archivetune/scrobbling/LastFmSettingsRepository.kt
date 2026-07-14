@@ -109,11 +109,7 @@ data class LastFmServiceConfig(
             val endpointValid = provider != LastFmProvider.CUSTOM || normalizedCustomEndpoint != null
             val apiKey =
                 when (provider) {
-                    // Official builds inject a Last.fm key via BuildConfig. Forks/CI builds ship
-                    // without that secret, so fall back to the user's own registered API key. No
-                    // compat placeholder here: real Last.fm validates keys, so a blank built-in
-                    // means the user must supply their own for login to work.
-                    LastFmProvider.LASTFM -> defaultApiKey.ifBlank { apiKeyOverride }
+                    LastFmProvider.LASTFM -> defaultApiKey
 
                     LastFmProvider.LIBREFM,
                     LastFmProvider.CUSTOM,
@@ -121,7 +117,7 @@ data class LastFmServiceConfig(
                 }
             val secret =
                 when (provider) {
-                    LastFmProvider.LASTFM -> defaultSecret.ifBlank { secretOverride }
+                    LastFmProvider.LASTFM -> defaultSecret
 
                     LastFmProvider.LIBREFM,
                     LastFmProvider.CUSTOM,
