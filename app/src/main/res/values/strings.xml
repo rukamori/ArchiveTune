@@ -720,9 +720,36 @@
     <string name="qobuz_check_instances">Test instances</string>
     <string name="qobuz_checking_instances">Testing…</string>
 
+    <!-- Qobuz account tokens (direct API) -->
+    <string name="qobuz_tokens">Qobuz account tokens</string>
+    <string name="qobuz_tokens_description">Sign in with a Qobuz web session, or paste one or more token blocks. Direct tokens stream from Qobuz at full fidelity and are tried before proxy instances.</string>
+    <string name="qobuz_login_web">Sign in with Qobuz (web)</string>
+    <string name="qobuz_login">Sign in to Qobuz</string>
+    <string name="qobuz_login_success">Added Qobuz account</string>
+    <string name="qobuz_add_tokens">Add tokens (paste)</string>
+    <string name="qobuz_add_tokens_hint">Paste one or more token blocks (Token ➠ …, app_id: …, app_secret: …). Multiple accounts at once are fine.</string>
+    <string name="qobuz_tokens_parsed">Added %1$d Qobuz token(s)</string>
+    <string name="qobuz_tokens_none_parsed">No valid tokens found — need a token, app_id and app_secret</string>
+    <string name="qobuz_app_secret_title">Enter Qobuz app secret</string>
+    <string name="qobuz_app_secret_hint">app_secret (from your token source)</string>
+    <string name="qobuz_check_tokens">Test tokens</string>
+    <string name="qobuz_checking_tokens">Testing tokens…</string>
+    <string name="qobuz_reset_tokens">Clear all tokens</string>
+    <string name="qobuz_token_subtitle">%1$s · id %2$s</string>
+
     <!-- Shared source settings -->
     <string name="source_manage_instances">Manage instances</string>
     <string name="tidal_manage_instances">Manage Tidal instances</string>
+    <string name="source_bulk_add">Add many (paste)</string>
+    <string name="source_bulk_hint">Paste one or more URLs separated by new lines, spaces, or commas.</string>
+    <string name="source_bulk_added">Added %1$d</string>
+    <string name="source_bulk_none">No valid entries found</string>
+    <string name="source_remove_dead">Remove dead</string>
+    <string name="source_remove_deprecated">Remove deprecated</string>
+    <string name="source_copy_online">Copy online</string>
+    <string name="source_copied">Copied %1$d online to clipboard</string>
+    <string name="source_removed">Removed %1$d</string>
+    <string name="source_nothing_to_do">Run a test first — nothing matched</string>
 
     <!-- Listening history sync -->
     <string name="listening_history">Listening history</string>
