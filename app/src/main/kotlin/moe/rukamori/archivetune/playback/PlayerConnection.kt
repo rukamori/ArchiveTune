@@ -252,6 +252,7 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipNext)
             return
         }
+        service.prepareForManualSkip()
         player.seekToNext()
         player.prepare()
         player.playWhenReady = true
@@ -263,6 +264,7 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipPrevious)
             return
         }
+        service.prepareForManualSkip()
         player.seekToPrevious()
         player.prepare()
         player.playWhenReady = true

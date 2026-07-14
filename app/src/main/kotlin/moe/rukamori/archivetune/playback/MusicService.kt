@@ -2800,6 +2800,21 @@ class MusicService :
         return C.INDEX_UNSET
     }
 
+    /**
+     * Fully tears down any in-flight crossfade before a user-initiated skip (next/previous).
+     *
+     * Without this, skipping during an active crossfade or handoff leaves the service in a broken
+     * state: [isCrossfading] stays true (so [onMediaItemTransition] stops rescheduling crossfades),
+     * the primary player stays muted (volume 0), [PrimaryPlayer.pauseAtEndOfMediaItems] stays true,
+     * and the orphaned secondary [ExoPlayer] keeps playing — causing double audio, silent playback,
+     * and a leaked player that can crash the next crossfade. Must be called on the main thread.
+     */
+    fun prepareForManualSkip() {
+        if (!::player.isInitialized) return
+        if (!isCrossfading && !crossfadeHandoffInProgress && secondaryCrossfadePlayer == null) return
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+    }
+
     private fun cancelCrossfade(
         resetVolume: Boolean,
         resetPauseAtEnd: Boolean,
@@ -6133,6 +6148,18 @@ class MusicService :
     ) {
         super.onMediaItemTransition(mediaItem, reason)
 
+        // Catch-all for user-initiated skips that bypass PlayerConnection (notification, lock
+        // screen, Bluetooth, Android Auto): a SEEK transition while a crossfade fade loop is still
+        // running — but NOT the crossfade's own handoff seek (crossfadeHandoffInProgress) — means
+        // the user skipped mid-crossfade. Tear the crossfade down so we don't leak the secondary
+        // player or leave the primary muted with pauseAtEndOfMediaItems stuck on.
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK &&
+            isCrossfading &&
+            !crossfadeHandoffInProgress
+        ) {
+            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        }
+
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
         // Pre-load lyrics for upcoming songs in queue
@@ -6455,15 +6482,26 @@ class MusicService :
                 reason = "timeline_or_position_discontinuity",
                 force = true,
             )
+            // Snapshot player state on the Main thread up front. Media3's player must only be
+            // accessed on its application (main) thread; reading player.* inside the IO coroutine
+            // below throws "Player is accessed on the wrong thread" and silently breaks scrobbling.
+            val timelineMediaId = player.currentMediaItem?.mediaId
+            val timelineMetadata = player.currentMetadata
+            val timelineDuration = player.duration
+            val timelinePosition = player.currentPosition
             scope.launch {
                 try {
-                    val mediaId = player.currentMediaItem?.mediaId
-                    val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
+                    val song =
+                        if (timelineMediaId != null) {
+                            withContext(Dispatchers.IO) { database.song(timelineMediaId).first() }
+                        } else {
+                            null
+                        }
                     val finalSong =
                         resolvePresenceSong(
                             dbSong = song,
-                            mediaMetadata = player.currentMetadata,
-                            durationMs = player.duration,
+                            mediaMetadata = timelineMetadata,
+                            durationMs = timelineDuration,
                         ) ?: return@launch
                     try {
                         val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
@@ -6475,7 +6513,7 @@ class MusicService :
                                         this@MusicService,
                                         lbToken,
                                         finalSong,
-                                        player.currentPosition,
+                                        timelinePosition,
                                     )
                                 } catch (ie: Exception) {
                                     Timber.tag("MusicService").v(ie, "ListenBrainz playing_now submit failed on transition")
@@ -8653,6 +8691,7 @@ class MusicService :
 
             "moe.rukamori.archivetune.WIDGET_SKIP_NEXT" -> {
                 if (player.hasNextMediaItem()) {
+                    prepareForManualSkip()
                     player.seekToNext()
                     player.prepare()
                     player.play()
@@ -8661,6 +8700,7 @@ class MusicService :
 
             "moe.rukamori.archivetune.WIDGET_SKIP_PREV" -> {
                 if (player.hasPreviousMediaItem()) {
+                    prepareForManualSkip()
                     player.seekToPrevious()
                     player.prepare()
                     player.play()
