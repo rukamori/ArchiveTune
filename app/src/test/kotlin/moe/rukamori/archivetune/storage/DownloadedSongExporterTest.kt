@@ -17,6 +17,14 @@ import java.io.File
 class DownloadedSongExporterTest {
 
     @Test
+    fun testCompletedExportRequiresExactFinalContentLength() {
+        assertTrue(isCompleteExport(exportedBytes = 1_024L, completedContentLength = 1_024L))
+        assertTrue(!isCompleteExport(exportedBytes = 1_023L, completedContentLength = 1_024L))
+        assertTrue(!isCompleteExport(exportedBytes = 1_025L, completedContentLength = 1_024L))
+        assertTrue(!isCompleteExport(exportedBytes = 0L, completedContentLength = 0L))
+    }
+
+    @Test
     fun testExportFileExtensionMapping() {
         assertEquals("aac", exportFileExtension("audio/aac"))
         assertEquals("aac", exportFileExtension("audio/aac-adts"))

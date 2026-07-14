@@ -28,12 +28,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
@@ -43,6 +45,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.storage.DownloadedSongExporter
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamClientUtils
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
@@ -61,7 +64,7 @@ import javax.inject.Singleton
 class DownloadUtil
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @ApplicationContext private val context: Context,
         val database: MusicDatabase,
         val databaseProvider: DatabaseProvider,
         @DownloadCache val downloadCache: Cache,
@@ -214,9 +217,7 @@ class DownloadUtil
                                     remove(download.request.id)
                                 }
                             }
-                            downloadScope.launch {
-                                downloadedSongExporter.remove(download.request.id)
-                            }
+                            // Exported files belong to the user and are preserved when a download is removed.
                         }
                     },
                 )
@@ -237,6 +238,17 @@ class DownloadUtil
                         downloadedSongExporter.export(download)
                     }
                 }
+            }
+            downloadScope.launch {
+                context.dataStore.data
+                    .map { preferences -> preferences[DownloadedSongsFolderTreeUriKey].orEmpty() }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collect {
+                        downloads.value.values
+                            .filter { download -> download.state == Download.STATE_COMPLETED }
+                            .forEach { download -> downloadedSongExporter.export(download) }
+                    }
             }
             downloadScope.launch {
                 var previousFingerprint: String? = null
