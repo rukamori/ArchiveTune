@@ -152,7 +152,6 @@ val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableYouLyPlusLyricsKey = booleanPreferencesKey("enableYouLyPlusLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
-val EnableLyricsPlusKey = booleanPreferencesKey("enableLyricsPlus")
 val EnablePaxsenixLyricsKey = booleanPreferencesKey("enablePaxsenixLyrics")
 val EnablePaxsenixAppleMusicLyricsKey = booleanPreferencesKey("enablePaxsenixAppleMusicLyrics")
 val EnablePaxsenixNeteaseLyricsKey = booleanPreferencesKey("enablePaxsenixNeteaseLyrics")
@@ -564,7 +563,6 @@ enum class PreferredLyricsProvider {
     LRCLIB,
     KUGOU,
     SIMPMUSIC,
-    LYRICS_PLUS,
     UNISON,
     PAXSENIX_APPLE_MUSIC,
     PAXSENIX_NETEASE,
@@ -580,7 +578,6 @@ val DefaultLyricsProviderOrder =
         PreferredLyricsProvider.LRCLIB,
         PreferredLyricsProvider.KUGOU,
         PreferredLyricsProvider.SIMPMUSIC,
-        PreferredLyricsProvider.LYRICS_PLUS,
         PreferredLyricsProvider.UNISON,
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC,
         PreferredLyricsProvider.PAXSENIX_NETEASE,
