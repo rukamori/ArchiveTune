@@ -35,16 +35,18 @@ object AudioSourceConfig {
             AudioSourceType.YOUTUBE,
         )
 
-    /** YouTube is the guaranteed fallback and is always enabled + always last in the chain. */
+    /** YouTube is the guaranteed fallback and is always enabled, but its position is user-controlled. */
     private val ALWAYS_ENABLED = setOf(AudioSourceType.YOUTUBE)
 
     private fun parseType(name: String): AudioSourceType? =
         runCatching { AudioSourceType.valueOf(name.trim().uppercase()) }.getOrNull()
 
     /**
-     * Resolves the effective ordered list of ALL sources from the stored CSV, appending any missing
-     * sources (e.g. after an app update introduces a new one) in default order, and guaranteeing
-     * YouTube is present and last.
+     * Resolves the effective ordered list of ALL sources from the stored CSV, preserving the user's
+     * chosen order (including where they placed YouTube) and appending any sources missing from the
+     * stored order (e.g. after an app update introduces a new one) in default order. YouTube is
+     * guaranteed to be present, but its position is user-controlled: placing it earlier means the
+     * app prefers YouTube's own stream over the lossless override sources listed after it.
      */
     fun parseOrder(rawOrder: String?): List<AudioSourceType> {
         val parsed =
@@ -54,11 +56,10 @@ object AudioSourceConfig {
                 ?.distinct()
                 .orEmpty()
         val merged = LinkedHashSet(parsed)
-        // Add any sources not present in the stored order (default-order tail).
+        // Append any sources not present in the stored order in their default position. When nothing
+        // is stored this yields DEFAULT_ORDER (Tidal, Qobuz, YouTube), i.e. YouTube stays last.
         DEFAULT_ORDER.forEach { merged.add(it) }
-        // Force YouTube to the very end as the ultimate fallback.
-        merged.remove(AudioSourceType.YOUTUBE)
-        return merged.toList() + AudioSourceType.YOUTUBE
+        return merged.toList()
     }
 
     /**
@@ -77,21 +78,16 @@ object AudioSourceConfig {
 
     /**
      * The ordered list of sources to actually attempt for playback resolution: enabled sources in
-     * priority order, with the user's primary/search source pinned to the front, and YouTube last.
+     * the user's chosen priority order. The single stored order is authoritative — the source at
+     * the top of the list is the preferred source — so there is no separate "primary" control to
+     * reconcile.
      */
     fun resolutionChain(
         rawOrder: String?,
         enabledSet: Set<String>?,
-        searchSource: AudioSourceType?,
         defaults: Map<AudioSourceType, Boolean>,
-    ): List<AudioSourceType> {
-        val ordered =
-            parseOrder(rawOrder).filter { source ->
-                isEnabled(source, enabledSet, defaults[source] ?: false)
-            }
-        if (searchSource == null || searchSource == AudioSourceType.YOUTUBE) return ordered
-        if (searchSource !in ordered) return ordered
-        // Pin the primary source to the front (but never move YouTube off the tail).
-        return listOf(searchSource) + ordered.filter { it != searchSource }
-    }
+    ): List<AudioSourceType> =
+        parseOrder(rawOrder).filter { source ->
+            isEnabled(source, enabledSet, defaults[source] ?: false)
+        }
 }

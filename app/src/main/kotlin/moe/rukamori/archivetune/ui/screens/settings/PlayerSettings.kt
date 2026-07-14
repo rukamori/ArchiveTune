@@ -310,6 +310,10 @@ fun PlayerSettings(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            // Provider choice by preference + common source settings, at the very top, followed by
+            // YouTube / Tidal / Qobuz specific groups. Account/API/login lives in Integration.
+            PlaybackSourceSections(navController = navController)
+
             PreferenceGroup(title = stringResource(R.string.player)) {
                 item {
                     EnumListPreference(
@@ -387,15 +391,6 @@ fun PlayerSettings(navController: NavController) {
                         description = stringResource(R.string.mori_cipher_settings_description),
                         icon = { Icon(painterResource(R.drawable.security), null) },
                         onClick = { navController.navigate("settings/player/chiper") },
-                    )
-                }
-
-                item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.streaming_sources)) },
-                        description = stringResource(R.string.streaming_sources_description),
-                        icon = { Icon(painterResource(R.drawable.provider_tidal), null) },
-                        onClick = { navController.navigate("settings/player/sources") },
                     )
                 }
 

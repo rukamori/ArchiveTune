@@ -658,6 +658,15 @@
     <string name="audio_source_youtube_fallback">YouTube is always tried last if no other source can resolve a track.</string>
     <string name="source_tidal">Tidal</string>
     <string name="source_youtube">YouTube</string>
+    <string name="playback_sources">Sources</string>
+    <string name="preferred_sources">Preferred sources</string>
+    <string name="preferred_sources_summary">Top of the list is tried first</string>
+    <string name="set_source_priority">Drag to set source priority</string>
+    <string name="source_priority_description">The topmost enabled source is used first. Sources listed after YouTube are ignored, since YouTube resolves every track.</string>
+    <string name="youtube_source_note">YouTube always works and needs no setup. Place a lossless source above it to override YouTube playback.</string>
+    <string name="tidal_specific">Tidal</string>
+    <string name="qobuz_specific">Qobuz</string>
+    <string name="manage_in_integration">Log in, tokens &amp; instances — in Integration</string>
     <string name="tidal_account_first">Use my account first</string>
     <string name="tidal_account_first_description">When signed in, fetch streams from your own Tidal account before falling back to public instances.</string>
 

@@ -30,7 +30,6 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
 import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
-import moe.rukamori.archivetune.constants.SyncPlaybackToYouTubeHistoryKey
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
@@ -45,7 +44,6 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun IntegrationScreen(navController: NavController) {
     val (listenBrainzEnabled, onListenBrainzEnabledChange) = rememberPreference(ListenBrainzEnabledKey, false)
     val (listenBrainzToken, onListenBrainzTokenChange) = rememberPreference(ListenBrainzTokenKey, "")
-    val (syncYouTubeHistory, onSyncYouTubeHistoryChange) = rememberPreference(SyncPlaybackToYouTubeHistoryKey, true)
 
     var showListenBrainzTokenEditor = remember { mutableStateOf(false) }
 
@@ -114,18 +112,6 @@ fun IntegrationScreen(navController: NavController) {
                         onClick = {
                             navController.navigate("settings/qobuz")
                         },
-                    )
-                }
-            }
-
-            PreferenceGroup(title = stringResource(R.string.listening_history)) {
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.sync_youtube_history)) },
-                        description = stringResource(R.string.sync_youtube_history_description),
-                        icon = { Icon(painterResource(R.drawable.history), null) },
-                        checked = syncYouTubeHistory,
-                        onCheckedChange = onSyncYouTubeHistoryChange,
                     )
                 }
             }

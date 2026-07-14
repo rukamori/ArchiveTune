@@ -62,7 +62,6 @@ import moe.rukamori.archivetune.ui.screens.settings.HiddenPlaylistsScreen
 import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
-import moe.rukamori.archivetune.ui.screens.settings.StreamingSourcesSettings
 import moe.rukamori.archivetune.ui.screens.settings.TidalSettings
 import moe.rukamori.archivetune.ui.screens.settings.QobuzSettings
 import moe.rukamori.archivetune.ui.screens.settings.TidalLoginScreen
@@ -418,9 +417,6 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/player/chiper") {
         ChiperSettings(navController)
-    }
-    composable("settings/player/sources") {
-        StreamingSourcesSettings(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController)

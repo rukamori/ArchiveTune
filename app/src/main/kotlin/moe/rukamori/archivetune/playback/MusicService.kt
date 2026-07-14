@@ -179,7 +179,6 @@ import moe.rukamori.archivetune.constants.TidalEnabledKey
 import moe.rukamori.archivetune.constants.TidalInstancesKey
 import moe.rukamori.archivetune.constants.AudioSourceType
 import moe.rukamori.archivetune.constants.AudioSourceOrderKey
-import moe.rukamori.archivetune.constants.AudioSearchSourceKey
 import moe.rukamori.archivetune.constants.TidalAccountFirstKey
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
 import moe.rukamori.archivetune.constants.TidalLastProbeTrackKey
@@ -7091,21 +7090,21 @@ class MusicService :
     private fun sourceResolutionChain(): List<AudioSourceType> {
         val enabledDefaults =
             mapOf(
-                // Defaults MUST match the toggle defaults in StreamingSourcesSettings so the
+                // Defaults MUST match the toggle defaults in PlaybackSourceSections so the
                 // UI and the resolver agree on which sources are active out of the box.
                 AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, true),
                 AudioSourceType.QOBUZ to dataStore.get(QobuzEnabledKey, false),
                 AudioSourceType.YOUTUBE to true,
             )
-        val search =
-            runCatching { AudioSourceType.valueOf(dataStore.get(AudioSearchSourceKey, "")) }.getOrNull()
+        // The single stored order is authoritative (top = preferred). Only sources listed BEFORE
+        // YouTube act as lossless overrides; once YouTube is reached the user has chosen to use
+        // YouTube's own stream, so any sources after it are not attempted as overrides.
         return AudioSourceConfig
             .resolutionChain(
                 rawOrder = dataStore.get(AudioSourceOrderKey, "").ifBlank { null },
                 enabledSet = null,
-                searchSource = search,
                 defaults = enabledDefaults,
-            ).filter { it != AudioSourceType.YOUTUBE }
+            ).takeWhile { it != AudioSourceType.YOUTUBE }
     }
 
     /** Builds the shared lookup metadata for [mediaId] from the database / queue metadata. */
@@ -7584,7 +7583,7 @@ class MusicService :
      */
     private fun tidalSourceApplies(mediaId: String): Boolean {
         if (mediaId.isLocalMediaId()) return false
-        // Defaults MUST match StreamingSourcesSettings + sourceResolutionChain(). Any enabled
+        // Defaults MUST match PlaybackSourceSections + sourceResolutionChain(). Any enabled
         // external lossless source (Tidal or Qobuz) must bypass the ephemeral YouTube player cache
         // so toggling a source on takes effect immediately instead of replaying cached YT bytes.
         return dataStore.get(TidalEnabledKey, true) || dataStore.get(QobuzEnabledKey, false)
@@ -8853,7 +8852,7 @@ class MusicService :
             .onFailure { reportException(it) }
     }
 
-    // ���─ Widget Support ────────────────────────────────────────────────────────────
+    // ���─ Widget Support ──────────────────────────────���─────────────────────────────
 
     fun updateWidget() {
         widgetUpdater.update()
