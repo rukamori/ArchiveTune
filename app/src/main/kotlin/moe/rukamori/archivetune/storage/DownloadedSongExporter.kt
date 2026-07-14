@@ -27,6 +27,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
@@ -44,6 +46,7 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,7 +60,7 @@ class DownloadedSongExporter
         private val database: MusicDatabase,
         @DownloadCache private val downloadCache: Cache,
     ) {
-        private val activeExports = HashSet<String>()
+        private val exportCoordinator = SongExportCoordinator()
 
         suspend fun export(download: Download): Boolean =
             export(
@@ -72,72 +75,71 @@ class DownloadedSongExporter
             completedContentLength: Long? = null,
         ): Boolean =
             withContext(Dispatchers.IO) {
-                if (!markExportActive(songId)) return@withContext true
-                try {
-                    val song = loadSongForExport(songId)
-                    val format = song?.format
-                    val expectedContentLength =
-                        completedContentLength
-                            ?: format?.contentLength?.takeIf { it > 0L }
-                            ?: return@withContext false
-                    val cachedSpans = downloadCache.exportableSpans(songId)
-                    if (cachedSpans.isEmpty()) return@withContext false
+                exportCoordinator.run(songId) export@{
+                    try {
+                        val song = loadSongForExport(songId)
+                        val format = song?.format
+                        val expectedContentLength =
+                            completedContentLength
+                                ?: format?.contentLength?.takeIf { it > 0L }
+                                ?: return@export false
+                        val cachedSpans = downloadCache.exportableSpans(songId)
+                        if (cachedSpans.isEmpty()) return@export false
 
-                    val metadata = ExportedSongMetadata.from(songId, song, fallbackTitle, context)
-                    val fileName =
-                        buildExportFileName(
-                            metadata = metadata,
-                            mimeType = format?.mimeType,
-                        )
-                    val artworkBytes = fetchArtworkBytes(metadata.thumbnailUrl)
-                    val selectedTreeUri = selectedTreeUri()
-                    if (selectedTreeUri != null) {
-                        return@withContext exportToSelectedFolder(
-                            treeUri = selectedTreeUri,
+                        val metadata = ExportedSongMetadata.from(songId, song, fallbackTitle, context)
+                        val fileName =
+                            buildExportFileName(
+                                metadata = metadata,
+                                mimeType = format?.mimeType,
+                            )
+                        val artworkBytes = fetchArtworkBytes(metadata.thumbnailUrl)
+                        val selectedTreeUri = selectedTreeUri()
+                        if (selectedTreeUri != null) {
+                            return@export exportToSelectedFolder(
+                                treeUri = selectedTreeUri,
+                                songId = songId,
+                                fileName = fileName,
+                                mimeType = format?.mimeType,
+                                metadata = metadata,
+                                format = format,
+                                spans = cachedSpans,
+                                expectedContentLength = expectedContentLength,
+                                artworkBytes = artworkBytes,
+                            )
+                        }
+
+                        val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
+                        if (!targetDirectory.ensureWritableDirectory()) return@export false
+
+                        val targetFile = targetDirectory.resolve(fileName)
+                        val copied =
+                            copyCachedSpans(
+                                spans = cachedSpans,
+                                targetFile = targetFile,
+                                expectedContentLength = expectedContentLength,
+                                metadata = metadata,
+                                format = format,
+                                artworkBytes = artworkBytes,
+                            )
+                        if (!copied) return@export false
+                        deleteExistingExports(
+                            directory = targetDirectory,
                             songId = songId,
-                            fileName = fileName,
-                            mimeType = format?.mimeType,
-                            metadata = metadata,
-                            format = format,
-                            spans = cachedSpans,
-                            expectedContentLength = expectedContentLength,
-                            artworkBytes = artworkBytes,
+                            expectedBaseName = fileName.substringBeforeLast('.'),
+                            except = targetFile,
                         )
+                        MediaScannerConnection.scanFile(
+                            context,
+                            arrayOf(targetFile.absolutePath),
+                            arrayOf(exportMimeType(format?.mimeType)),
+                            null,
+                        )
+                        true
+                    } catch (throwable: Throwable) {
+                        if (throwable is CancellationException) throw throwable
+                        Timber.tag(LogTag).w(throwable, "Failed to export downloaded song %s", songId)
+                        false
                     }
-
-                    val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
-                    if (!targetDirectory.ensureWritableDirectory()) return@withContext false
-
-                    val targetFile = targetDirectory.resolve(fileName)
-                    val copied =
-                        copyCachedSpans(
-                            spans = cachedSpans,
-                            targetFile = targetFile,
-                            expectedContentLength = expectedContentLength,
-                            metadata = metadata,
-                            format = format,
-                            artworkBytes = artworkBytes,
-                        )
-                    if (!copied) return@withContext false
-                    deleteExistingExports(
-                        directory = targetDirectory,
-                        songId = songId,
-                        expectedBaseName = fileName.substringBeforeLast('.'),
-                        except = targetFile,
-                    )
-                    MediaScannerConnection.scanFile(
-                        context,
-                        arrayOf(targetFile.absolutePath),
-                        arrayOf(exportMimeType(format?.mimeType)),
-                        null,
-                    )
-                    true
-                } catch (throwable: Throwable) {
-                    if (throwable is CancellationException) throw throwable
-                    Timber.tag(LogTag).w(throwable, "Failed to export downloaded song %s", songId)
-                    false
-                } finally {
-                    markExportInactive(songId)
                 }
             }
 
@@ -165,17 +167,6 @@ class DownloadedSongExporter
                     except = null,
                 )
             }
-
-        private fun markExportActive(songId: String): Boolean =
-            synchronized(activeExports) {
-                activeExports.add(songId)
-            }
-
-        private fun markExportInactive(songId: String) {
-            synchronized(activeExports) {
-                activeExports.remove(songId)
-            }
-        }
 
         private fun Cache.exportableSpans(songId: String): List<CacheSpan> =
             runCatching {
@@ -288,18 +279,24 @@ class DownloadedSongExporter
                     return@runCatching false
                 }
                 tempFile.delete()
-                val replacementUri = DocumentsContract.renameDocument(resolver, audioUri, fileName)
-                if (replacementUri == null) {
-                    runCatching { DocumentsContract.deleteDocument(resolver, audioUri) }
-                    return@runCatching false
-                }
-                if (!deleteExistingTreeExports(treeUri, songId, fileName.substringBeforeLast('.'), except = replacementUri)) {
-                    // Keep the verified replacement: deleting it here would turn a cleanup failure into data loss.
-                    return@runCatching false
-                }
-                // Providers may suffix a name while the previous document exists. Normalize it after cleanup when supported.
-                runCatching { DocumentsContract.renameDocument(resolver, replacementUri, fileName) }
-                true
+                commitSafReplacement(
+                    stagingDocument = audioUri,
+                    finalName = fileName,
+                    renameDocument = { documentUri, displayName ->
+                        DocumentsContract.renameDocument(resolver, documentUri, displayName)
+                    },
+                    deleteStagingDocument = { documentUri ->
+                        runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }.getOrDefault(false)
+                    },
+                    deletePreviousDocuments = { replacementUri ->
+                        deleteExistingTreeExports(
+                            treeUri = treeUri,
+                            songId = songId,
+                            expectedBaseName = fileName.substringBeforeLast('.'),
+                            except = replacementUri,
+                        )
+                    },
+                )
             }.getOrDefault(false)
         }
 
@@ -408,8 +405,13 @@ class DownloadedSongExporter
             return deleted
         }
 
-        suspend fun isAlreadyExported(songId: String): Boolean =
+        suspend fun isAlreadyExported(download: Download): Boolean =
             withContext(Dispatchers.IO) {
+                val songId = download.request.id
+                val expectedContentLength =
+                    download.contentLength.takeIf { it > 0L }
+                        ?: database.getSongById(songId)?.format?.contentLength?.takeIf { it > 0L }
+                        ?: return@withContext false
                 val marker = exportIdMarker(songId)
                 val internalDir = StorageLocationRepository.exportedDownloadsDirectory(context)
                 val treeUri = selectedTreeUri()
@@ -426,14 +428,21 @@ class DownloadedSongExporter
                         val sizeIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_SIZE)
                         while (cursor.moveToNext()) {
                             val displayName = cursor.getString(nameIndex) ?: continue
-                            if (displayName.contains(marker) && cursor.getLong(sizeIndex) > 0L) return@withContext true
+                            if (
+                                displayName.contains(marker) &&
+                                isValidExportedLength(cursor.getLong(sizeIndex), expectedContentLength)
+                            ) {
+                                return@withContext true
+                            }
                         }
                     }
                     return@withContext false
                 }
                 val exportedInternally =
                     internalDir.listFiles()?.any { file ->
-                        file.isFile && file.length() > 0L && file.name.contains(marker)
+                        file.isFile &&
+                            file.name.contains(marker) &&
+                            isValidExportedLength(file.length(), expectedContentLength)
                     } == true
                 exportedInternally
             }
@@ -468,6 +477,52 @@ internal fun isCompleteExport(
     exportedBytes: Long,
     completedContentLength: Long,
 ): Boolean = completedContentLength > 0L && exportedBytes == completedContentLength
+
+internal fun isValidExportedLength(
+    exportedFileLength: Long,
+    completedContentLength: Long,
+): Boolean = completedContentLength > 0L && exportedFileLength >= completedContentLength
+
+/**
+ * Serializes exports for the same song without dropping a later destination change.
+ * Different songs can still export concurrently on the caller's coroutine dispatcher.
+ */
+internal class SongExportCoordinator {
+    private val locks = ConcurrentHashMap<String, Mutex>()
+
+    suspend fun <T> run(
+        songId: String,
+        block: suspend () -> T,
+    ): T = locks.computeIfAbsent(songId) { Mutex() }.withLock { block() }
+}
+
+/**
+ * Commits a verified SAF staging document with failure-atomic semantics.
+ *
+ * SAF has no cross-provider atomic-replace primitive. The strongest portable guarantee is
+ * therefore to rename the verified staging document before deleting any previous document.
+ * A failure always leaves either the previous export or the verified replacement available.
+ */
+internal fun <T> commitSafReplacement(
+    stagingDocument: T,
+    finalName: String,
+    renameDocument: (T, String) -> T?,
+    deleteStagingDocument: (T) -> Boolean,
+    deletePreviousDocuments: (replacementDocument: T) -> Boolean,
+): Boolean {
+    val replacementDocument = renameDocument(stagingDocument, finalName)
+    if (replacementDocument == null) {
+        deleteStagingDocument(stagingDocument)
+        return false
+    }
+    if (!deletePreviousDocuments(replacementDocument)) {
+        // Keep the verified replacement: deleting it would turn cleanup failure into data loss.
+        return false
+    }
+    // Providers may suffix the first rename while the old document exists. Normalize if supported.
+    renameDocument(replacementDocument, finalName)
+    return true
+}
 
 private fun replaceAtomically(
     source: File,
@@ -582,16 +637,16 @@ private fun File.writeId3Metadata(
     }
 }.getOrDefault(false)
 
-private fun File.writeMp4Metadata(
+internal fun File.writeMp4Metadata(
     metadata: ExportedSongMetadata,
     artworkBytes: ByteArray?,
 ): Boolean = runCatching {
     val atoms = readTopLevelMp4Atoms()
-    val moov = atoms.firstOrNull { atom -> atom.type == "moov" } ?: return@runCatching true
+    val moov = atoms.firstOrNull { atom -> atom.type == "moov" } ?: return@runCatching false
     val mdat = atoms.firstOrNull { atom -> atom.type == "mdat" }
 
     val fileSize = length()
-    if (moov.end > fileSize || moov.headerSize >= moov.size) return@runCatching true
+    if (moov.end > fileSize || moov.headerSize >= moov.size) return@runCatching false
 
     val oldMoov = ByteArray(moov.size)
     inputStream().use { inputStream ->

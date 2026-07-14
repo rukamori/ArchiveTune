@@ -216,15 +216,16 @@ class DownloadUtil
                                     remove(download.request.id)
                                 }
                             }
-                            // Exported files belong to the user and are preserved when a download is removed.
+                            when (DefaultDownloadRemovalExportPolicy) {
+                                DownloadRemovalExportPolicy.PRESERVE -> Unit
+                                DownloadRemovalExportPolicy.DELETE -> {
+                                    downloadScope.launch {
+                                        downloadedSongExporter.removeExport(download.request.id)
+                                    }
+                                }
+                            }
                         }
 
-                        override fun onDownloadRemoved(
-                            downloadManager: DownloadManager,
-                            download: Download,
-                        ) {
-                            downloads.update { map -> map - download.request.id }
-                        }
                     },
                 )
             }
@@ -239,7 +240,7 @@ class DownloadUtil
                 downloads.value = result
                 for (download in result.values) {
                     if (download.state == Download.STATE_COMPLETED &&
-                        !downloadedSongExporter.isAlreadyExported(download.request.id)
+                        !downloadedSongExporter.isAlreadyExported(download)
                     ) {
                         downloadedSongExporter.export(download)
                     }
@@ -350,3 +351,10 @@ class DownloadUtil
             private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
         }
     }
+
+internal enum class DownloadRemovalExportPolicy {
+    PRESERVE,
+    DELETE,
+}
+
+internal val DefaultDownloadRemovalExportPolicy = DownloadRemovalExportPolicy.PRESERVE

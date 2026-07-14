@@ -8,11 +8,19 @@
 package moe.rukamori.archivetune.storage
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import moe.rukamori.archivetune.playback.DefaultDownloadRemovalExportPolicy
+import moe.rukamori.archivetune.playback.DownloadRemovalExportPolicy
 
 class DownloadedSongExporterTest {
 
@@ -22,6 +30,118 @@ class DownloadedSongExporterTest {
         assertTrue(!isCompleteExport(exportedBytes = 1_023L, completedContentLength = 1_024L))
         assertTrue(!isCompleteExport(exportedBytes = 1_025L, completedContentLength = 1_024L))
         assertTrue(!isCompleteExport(exportedBytes = 0L, completedContentLength = 0L))
+    }
+
+    @Test
+    fun testExistingExportMustContainAtLeastCompletedAudioLength() {
+        assertTrue(isValidExportedLength(exportedFileLength = 1_100L, completedContentLength = 1_024L))
+        assertTrue(isValidExportedLength(exportedFileLength = 1_024L, completedContentLength = 1_024L))
+        assertFalse(isValidExportedLength(exportedFileLength = 1_023L, completedContentLength = 1_024L))
+        assertFalse(isValidExportedLength(exportedFileLength = 1L, completedContentLength = 1_024L))
+    }
+
+    @Test
+    fun testMalformedMp4MetadataWriteFails() {
+        val tempFile = File.createTempFile("malformed-export-", ".m4a")
+        try {
+            tempFile.writeText("not an mp4 file")
+            assertFalse(tempFile.writeMp4Metadata(testMetadata(), artworkBytes = null))
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    @Test
+    fun testSafReplacementDoesNotDeletePreviousDocumentBeforeRename() {
+        val events = mutableListOf<String>()
+        val committed =
+            commitSafReplacement(
+                stagingDocument = "staging",
+                finalName = "song.m4a",
+                renameDocument = { document, _ ->
+                    events += "rename:$document"
+                    if (document == "staging") "replacement" else document
+                },
+                deleteStagingDocument = { document ->
+                    events += "delete-staging:$document"
+                    true
+                },
+                deletePreviousDocuments = { replacement ->
+                    events += "delete-previous:$replacement"
+                    true
+                },
+            )
+
+        assertTrue(committed)
+        assertEquals(
+            listOf("rename:staging", "delete-previous:replacement", "rename:replacement"),
+            events,
+        )
+    }
+
+    @Test
+    fun testSafRenameFailurePreservesPreviousDocument() {
+        val events = mutableListOf<String>()
+        val committed =
+            commitSafReplacement(
+                stagingDocument = "staging",
+                finalName = "song.m4a",
+                renameDocument = { document, _ ->
+                    events += "rename:$document"
+                    null
+                },
+                deleteStagingDocument = { document ->
+                    events += "delete-staging:$document"
+                    true
+                },
+                deletePreviousDocuments = { replacement ->
+                    events += "delete-previous:$replacement"
+                    true
+                },
+            )
+
+        assertFalse(committed)
+        assertEquals(listOf("rename:staging", "delete-staging:staging"), events)
+    }
+
+    @Test
+    fun testConcurrentFolderChangeExportIsQueuedInsteadOfDropped() =
+        runBlocking {
+            val coordinator = SongExportCoordinator()
+            val selectedFolder = AtomicReference("old-folder")
+            val destinations = mutableListOf<String>()
+            val firstStarted = CompletableDeferred<Unit>()
+            val releaseFirst = CompletableDeferred<Unit>()
+            val secondRequested = CompletableDeferred<Unit>()
+
+            val first =
+                async(Dispatchers.Default) {
+                    coordinator.run("song-id") {
+                        destinations += selectedFolder.get()
+                        firstStarted.complete(Unit)
+                        releaseFirst.await()
+                    }
+                }
+            firstStarted.await()
+            selectedFolder.set("new-folder")
+            val second =
+                async(Dispatchers.Default) {
+                    secondRequested.complete(Unit)
+                    coordinator.run("song-id") {
+                        destinations += selectedFolder.get()
+                    }
+                }
+            secondRequested.await()
+            releaseFirst.complete(Unit)
+            first.await()
+            second.await()
+
+            assertEquals(listOf("old-folder", "new-folder"), destinations)
+        }
+
+    @Test
+    fun testDownloadRemovalPreservesExportByDefault() {
+        assertEquals(DownloadRemovalExportPolicy.PRESERVE, DefaultDownloadRemovalExportPolicy)
     }
 
     @Test
@@ -222,4 +342,15 @@ class DownloadedSongExporterTest {
             tempFile.delete()
         }
     }
+
+    private fun testMetadata() =
+        ExportedSongMetadata(
+            id = "test-id",
+            title = "Test Song",
+            artists = listOf("Test Artist"),
+            album = "Test Album",
+            durationSeconds = 180,
+            thumbnailUrl = null,
+            downloadedAt = null,
+        )
 }
