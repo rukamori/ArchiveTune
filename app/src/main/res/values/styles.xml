@@ -6,10 +6,20 @@
         <item name="android:windowMinWidthMinor">100%</item>
         <item name="android:windowMinWidthMajor">100%</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">#ffffff</item>
+        <!-- Adaptive (light/dark) instead of hardcoded white so there's no white flash on open. -->
+        <item name="android:windowBackground">@color/splash_window_background</item>
         <item name="android:enforceNavigationBarContrast" tools:ignore="NewApi">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Launch theme using the AndroidX SplashScreen API: shows the app icon animating in on an
+         adaptive background instead of a blank white window, then hands off to Theme.ArchiveTune
+         once MainActivity's Compose content is ready. -->
+    <style name="Theme.ArchiveTune.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.ArchiveTune</item>
     </style>
 
     <style name="Theme.ArchiveTune.Transparent" parent="android:style/Theme.Material.Light.NoActionBar">

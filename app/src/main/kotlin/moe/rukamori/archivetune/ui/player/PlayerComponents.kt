@@ -14,6 +14,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -903,6 +904,54 @@ fun PlayerTimeLabel(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.CenterEnd),
+        )
+    }
+}
+
+/**
+ * Small animated "Crossfading" label (SimpMusic-style) shown between the time labels while a
+ * track-to-track crossfade is running. Its text color cycles through an RGB rainbow to match the
+ * shimmering seek bar, with a subtle breathing alpha so it reads as "in progress".
+ */
+@Composable
+fun CrossfadingLabel(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "crossfadeLabel")
+    val hue by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        label = "crossfadeLabelHue",
+    )
+    val alpha by transition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(900, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "crossfadeLabelAlpha",
+    )
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.sync),
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = Color.hsv(hue, 0.7f, 1f).copy(alpha = alpha),
+        )
+        Text(
+            text = stringResource(R.string.crossfade_in_progress),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.hsv(hue, 0.7f, 1f).copy(alpha = alpha),
+            maxLines = 1,
         )
     }
 }
@@ -1891,7 +1940,9 @@ fun PlayerControlsContent(
         textBackgroundColor = textBackgroundColor,
         showRemainingTime = playerDesignStyle == PlayerDesignStyle.V7,
         centerContent =
-            if (playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null) {
+            if (isCrossfading) {
+                { CrossfadingLabel() }
+            } else if (playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null) {
                 {
                     val codec = currentFormat.mimeType.substringAfter("/").uppercase()
                     val label =

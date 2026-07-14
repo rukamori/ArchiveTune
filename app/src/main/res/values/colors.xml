@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch / splash window background. Light value here, dark override in values-night.
+         This replaces the hardcoded #ffffff window background that caused a blank white flash
+         (very jarring in dark mode) before Compose finished its first frame. -->
+    <color name="splash_window_background">#FFFFFF</color>
+</resources>

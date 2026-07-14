@@ -36,6 +36,13 @@ val hasReleaseSigningConfig =
         releaseKeyAlias != null &&
         releaseKeyPassword != null
 
+// Fixed, checked-in debug keystore. Without this, Gradle auto-generates a throwaway debug key on
+// every machine/CI run, so each build is signed differently and Android refuses to update in
+// place (forcing an uninstall + reinstall). Signing every debug build with this committed keystore
+// keeps the signature stable across builds so debug APKs install over one another. Uses the
+// standard Android debug credentials.
+val debugKeystoreFile = file("persistent-debug.keystore")
+
 android {
     namespace = "moe.rukamori.archivetune"
     compileSdk = 37
@@ -157,6 +164,14 @@ android {
                 keyPassword = releaseKeyPassword
             }
         }
+        getByName("debug") {
+            if (debugKeystoreFile.isFile) {
+                storeFile = debugKeystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {
@@ -174,6 +189,9 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
+            if (debugKeystoreFile.isFile) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -237,6 +255,7 @@ dependencies {
     implementation(libs.concurrent.futures)
 
     implementation(libs.activity)
+    implementation(libs.core.splashscreen)
     implementation(libs.navigation)
     implementation(libs.hilt.navigation)
     implementation(libs.datastore)

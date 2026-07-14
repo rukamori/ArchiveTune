@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -103,8 +105,10 @@ fun TidalSettings(navController: NavController) {
         onStoredInstancesChange(if (distinct == defaults) "" else distinct.joinToString("\n"))
     }
 
-    // baseUrl -> health label (null while untested). Nothing is probed until the user taps Test.
-    val healthStatus = remember { mutableStateMapOf<String, String>() }
+    // baseUrl -> scan status (null while untested). Nothing is probed until the user taps Test.
+    val healthStatus = remember { mutableStateMapOf<String, TidalAudioProvider.InstanceHealth>() }
+    // baseUrl -> last measured latency (ms), used for the "— <ping> ms" suffix.
+    val healthLatency = remember { mutableStateMapOf<String, Long>() }
     var testingInstances by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -112,22 +116,25 @@ fun TidalSettings(navController: NavController) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
-    // Turns a scan record into a bottom-text ping label:
+    // Turns a scan status into its ping label:
     //  - HEALTHY (full stream, premium account) -> "online — <ping> ms"
     //  - PREVIEW_ONLY (free / non-premium account) -> "deprecated — <ping> ms"
-    //  - UNREACHABLE -> "unreachable"
-    fun labelFor(record: TidalInstanceHealthManager.InstanceRecord): String =
-        when (record.status) {
+    //  - UNREACHABLE -> "connection failed"
+    fun labelFor(status: TidalAudioProvider.InstanceHealth, latencyMs: Long?): String =
+        when (status) {
             TidalAudioProvider.InstanceHealth.HEALTHY ->
-                context.getString(R.string.tidal_instance_healthy, (record.latencyMs ?: 0L).toInt())
+                context.getString(R.string.tidal_instance_healthy, (latencyMs ?: 0L).toInt())
             TidalAudioProvider.InstanceHealth.PREVIEW_ONLY ->
-                context.getString(R.string.tidal_instance_preview_only, (record.latencyMs ?: 0L).toInt())
+                context.getString(R.string.tidal_instance_preview_only, (latencyMs ?: 0L).toInt())
             TidalAudioProvider.InstanceHealth.UNREACHABLE ->
                 context.getString(R.string.tidal_instance_unreachable)
         }
 
     fun applyRecords(records: List<TidalInstanceHealthManager.InstanceRecord>) {
-        records.forEach { record -> healthStatus[record.url] = labelFor(record) }
+        records.forEach { record ->
+            healthStatus[record.url] = record.status
+            record.latencyMs?.let { healthLatency[record.url] = it }
+        }
     }
 
     // Manual, on-demand probe of every configured instance (reachability AND full-vs-preview).
@@ -281,17 +288,41 @@ fun TidalSettings(navController: NavController) {
 
                 effectiveInstances.forEach { instance ->
                     item {
+                        val status = healthStatus[instance]
+                        // Status colors: online = light blue, deprecated/preview-only = purple,
+                        // connection failed = error red. Untested falls back to the muted default.
+                        val statusColor =
+                            when (status) {
+                                TidalAudioProvider.InstanceHealth.HEALTHY -> Color(0xFF4FC3F7)
+                                TidalAudioProvider.InstanceHealth.PREVIEW_ONLY -> Color(0xFFB388FF)
+                                TidalAudioProvider.InstanceHealth.UNREACHABLE ->
+                                    MaterialTheme.colorScheme.error
+                                null -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        val statusLabel =
+                            if (status != null) {
+                                labelFor(status, healthLatency[instance])
+                            } else {
+                                stringResource(R.string.tidal_instance_unknown)
+                            }
                         PreferenceEntry(
-                            title = { Text(instance) },
-                            description =
-                                healthStatus[instance]
-                                    ?: stringResource(R.string.tidal_instance_unknown),
+                            title = {
+                                Column {
+                                    Text(instance)
+                                    Text(
+                                        text = statusLabel,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = statusColor,
+                                    )
+                                }
+                            },
                             icon = { Icon(painterResource(R.drawable.link), null) },
                             trailingContent = {
                                 IconButton(
                                     onClick = {
                                         val remaining = effectiveInstances - instance
                                         healthStatus.remove(instance)
+                                        healthLatency.remove(instance)
                                         persistInstances(remaining)
                                     },
                                     onLongClick = {},
@@ -334,6 +365,7 @@ fun TidalSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.close), null) },
                         onClick = {
                             healthStatus.clear()
+                            healthLatency.clear()
                             onStoredInstancesChange("")
                         },
                     )

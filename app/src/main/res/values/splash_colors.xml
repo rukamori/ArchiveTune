@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch window background. Kept theme-aware (see values-night) so the launch screen no
+         longer flashes hard white before Compose draws, which looked broken in dark mode. -->
+    <color name="splash_window_background">#FFFFFF</color>
+</resources>

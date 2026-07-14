@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark launch background so app open no longer flashes white in dark mode. -->
+    <color name="splash_window_background">#0F0F0F</color>
+</resources>

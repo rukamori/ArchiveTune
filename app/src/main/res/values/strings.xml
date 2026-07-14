@@ -698,7 +698,7 @@
     <string name="tidal_check_instances">Test instances</string>
     <string name="tidal_checking_instances">Testing…</string>
     <string name="tidal_instance_healthy">online — %1$d ms</string>
-    <string name="tidal_instance_unreachable">unreachable</string>
+    <string name="tidal_instance_unreachable">connection failed</string>
     <string name="tidal_instance_preview_only">deprecated — %1$d ms</string>
     <string name="tidal_instance_unknown">Not tested — tap Test instances</string>
     <!-- Tidal account login / premium -->
