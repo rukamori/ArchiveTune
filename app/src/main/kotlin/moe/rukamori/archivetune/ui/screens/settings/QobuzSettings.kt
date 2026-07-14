@@ -350,10 +350,14 @@ fun QobuzSettings(navController: NavController) {
                                 null -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         val statusLabel =
-                            if (status != null) {
-                                labelFor(status, null)
-                            } else {
-                                stringResource(R.string.tidal_instance_unknown)
+                            when (status) {
+                                TidalAudioProvider.InstanceHealth.HEALTHY ->
+                                    stringResource(R.string.qobuz_token_status_ok)
+                                TidalAudioProvider.InstanceHealth.PREVIEW_ONLY ->
+                                    stringResource(R.string.qobuz_token_status_preview)
+                                TidalAudioProvider.InstanceHealth.UNREACHABLE ->
+                                    stringResource(R.string.qobuz_token_status_invalid)
+                                null -> stringResource(R.string.qobuz_token_status_unknown)
                             }
                         val displayName = token.label.ifBlank { token.userId.ifBlank { "Qobuz account" } }
                         PreferenceEntry(
