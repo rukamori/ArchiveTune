@@ -13,8 +13,14 @@ abstract class ValidateStartIoReleaseConfigurationTask : DefaultTask() {
 
     @TaskAction
     fun validate() {
-        require(appId.get().isNotBlank()) {
-            "START_IO_APP_ID is required for GMS release builds."
+        // Official GMS release builds inject START_IO_APP_ID from a secret. Forks and CI that lack
+        // that proprietary secret must still be able to assemble release APKs, so a blank value is a
+        // warning rather than a hard failure. The Start.io identifier is not consumed by the app at
+        // runtime, so building without it is safe (ads are simply not configured).
+        if (appId.get().isBlank()) {
+            logger.warn(
+                "START_IO_APP_ID is not set; building the GMS release without a Start.io identifier.",
+            )
         }
     }
 }
