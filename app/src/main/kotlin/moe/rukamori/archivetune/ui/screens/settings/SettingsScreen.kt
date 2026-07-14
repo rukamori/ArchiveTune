@@ -20,10 +20,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
@@ -161,19 +164,30 @@ fun SettingsScreen(
             LargeFlexibleTopAppBar(
                 title = {
                     if (isSearching) {
+                        // Compact, fully-rounded (pill) search field: shorter than the default
+                        // text-field height and curved on both the left and right ends.
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = 46.dp)
                                     .focusRequester(focusRequester),
-                            placeholder = { Text(stringResource(R.string.search_settings)) },
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                            placeholder = {
+                                Text(
+                                    text = stringResource(R.string.search_settings),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            },
                             singleLine = true,
+                            shape = RoundedCornerShape(percent = 50),
                             leadingIcon = {
                                 Icon(
                                     painter = painterResource(R.drawable.search),
                                     contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
                                 )
                             },
                             trailingIcon = {
@@ -185,13 +199,18 @@ fun SettingsScreen(
                                         Icon(
                                             painter = painterResource(R.drawable.close),
                                             contentDescription = stringResource(R.string.clear_search),
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
                                 }
                             },
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                            colors = OutlinedTextFieldDefaults.colors(),
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                ),
                         )
                     } else {
                         Text(

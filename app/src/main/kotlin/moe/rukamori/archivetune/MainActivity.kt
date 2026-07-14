@@ -143,6 +143,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
@@ -253,6 +254,8 @@ import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
+import moe.rukamori.archivetune.ui.component.AutoResizeText
+import moe.rukamori.archivetune.ui.component.FontSizeRange
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -1705,11 +1708,19 @@ class MainActivity : ComponentActivity() {
                                                                     .size(35.dp)
                                                                     .padding(end = 3.dp),
                                                         )
-                                                        Text(
+                                                        // Auto-resize the wordmark so the full "ArchiveTune"
+                                                        // always fits: on narrow layouts (where the fixed
+                                                        // titleLarge size used to ellipsize to "Archive…")
+                                                        // it shrinks down to as low as 14sp instead of
+                                                        // truncating, so the complete name shows at every dpi.
+                                                        AutoResizeText(
                                                             text = stringResource(R.string.app_name),
                                                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                                            fontSizeRange = FontSizeRange(min = 14.sp, max = 22.sp),
                                                             maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
+                                                            overflow = TextOverflow.Visible,
+                                                            softWrap = true,
+                                                            modifier = Modifier.weight(1f, fill = false),
                                                         )
                                                     }
                                                 },
