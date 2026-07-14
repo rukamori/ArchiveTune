@@ -20,6 +20,13 @@
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
     <string name="integration">Integration</string>
+    <string name="integration_accounts">Accounts</string>
+    <string name="youtube_music_account">YouTube Music</string>
+    <string name="account_connected">Connected</string>
+    <string name="account_not_connected">Not connected</string>
+    <string name="account_signed_in_as">Signed in as %1$s</string>
+    <string name="account_card_pin">Pin to top</string>
+    <string name="account_card_unpin">Unpin</string>
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="this_week">This week</string>

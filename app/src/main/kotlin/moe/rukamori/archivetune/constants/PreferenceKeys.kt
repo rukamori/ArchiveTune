@@ -307,6 +307,11 @@ val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
+// Integration screen: account cards. YouTube is always shown; Last.fm and Discord
+// cards can be pinned to the top of the Integration screen by the user.
+val PinLastFmCardKey = booleanPreferencesKey("pinLastFmCard")
+val PinDiscordCardKey = booleanPreferencesKey("pinDiscordCard")
+
 val DiscordTokenKey = stringPreferencesKey("discordToken")
 val DiscordRefreshTokenKey = stringPreferencesKey("discordRefreshToken")
 val DiscordTokenExpiresAtKey = longPreferencesKey("discordTokenExpiresAt")

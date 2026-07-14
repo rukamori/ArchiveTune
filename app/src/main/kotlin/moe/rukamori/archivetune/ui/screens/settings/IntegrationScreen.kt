@@ -74,6 +74,12 @@ fun IntegrationScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            PreferenceGroup(title = stringResource(R.string.integration_accounts)) {
+                item {
+                    IntegrationAccountCards(navController = navController)
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.general)) {
                 item {
                     PreferenceEntry(
