@@ -2688,44 +2688,93 @@ class MusicService :
             return
         }
 
-        val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+        val incomingBaseVolume = crossfadeIncomingBaseVolume
         val shouldContinuePlayback = crossfadePlaybackRequested
 
-        var handoffCompleted = false
         try {
             localPlayer.pauseAtEndOfMediaItems = false
+            // Keep the main player muted while the already-playing secondary keeps carrying the
+            // incoming track's audio. This is the key to a pause-free handoff: the main player can
+            // buffer/settle on the incoming track silently, and the listener only ever hears the
+            // secondary until we deliberately swap over.
             player.volume = 0f
             crossfadeHandoffInProgress = true
+
+            val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
             player.seekTo(targetIndex, incomingPosition)
             player.playWhenReady = shouldContinuePlayback
-            if (shouldContinuePlayback) {
-                if (awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
-                    val syncedIncomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
-                    player.seekTo(targetIndex, syncedIncomingPosition)
-                }
-            }
             currentMediaMetadata.value = player.getMediaItemAt(targetIndex).metadata
-            handoffCompleted = true
-        } finally {
-            if (!handoffCompleted) {
-                crossfadeHandoffInProgress = false
-                isCrossfading = false
-                crossfadeProgress = 0f
-                crossfadePlaybackRequested = false
-                releaseSecondaryCrossfadePlayer()
-                applyEffectiveVolumeImmediately()
+
+            if (shouldContinuePlayback) {
+                // Let the main player buffer the incoming track at the handoff position without a
+                // rebuffer; the secondary stays audible for the entire wait so there is no silence.
+                awaitPrimaryCrossfadeHandoffReady(incomingPlayer)
+                // Re-seat the main player onto the secondary's live position so the swap is close to
+                // sample-accurate.
+                player.seekTo(targetIndex, incomingPlayer.currentPosition.coerceAtLeast(0L))
+                // Only swap once the main player is genuinely rendering audio. Until then the
+                // secondary bridges any residual buffering, eliminating the audible pause.
+                awaitPrimaryActuallyPlaying()
+                // Short equal-power overlap: fade the main player up and the secondary down over a
+                // few frames so there is never a silent gap or a hard click at the seam.
+                microHandoffToPrimary(incomingPlayer, incomingBaseVolume)
             }
+        } finally {
+            // Always hand full control back to the (unmuted) main player and drop the secondary,
+            // regardless of how far the handoff got, so we can never leak a player or stay muted.
+            crossfadeHandoffInProgress = false
+            isCrossfading = false
+            crossfadeProgress = 0f
+            crossfadeIncomingBaseVolume = 1f
+            crossfadePlaybackRequested = false
+            releaseSecondaryCrossfadePlayer()
+            applyEffectiveVolumeImmediately()
         }
 
-        isCrossfading = false
-        crossfadeHandoffInProgress = false
-        crossfadeProgress = 0f
-        crossfadeIncomingBaseVolume = 1f
-        crossfadePlaybackRequested = false
-        releaseSecondaryCrossfadePlayer()
-        applyEffectiveVolumeImmediately()
         updateAudiblePlaybackRecovery()
         scheduleCrossfade()
+    }
+
+    /**
+     * Waits until the promoted main player is actually rendering the incoming track (READY and
+     * playing), bounded by [CROSSFADE_HANDOFF_PLAYING_TIMEOUT_MS]. The secondary crossfade player is
+     * still audible while we wait, so this closes the silent window that previously caused the
+     * audible pause when the main player was released before it had resumed.
+     */
+    private suspend fun awaitPrimaryActuallyPlaying() {
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_PLAYING_TIMEOUT_MS
+        while (kotlinx.coroutines.currentCoroutineContext().isActive &&
+            android.os.SystemClock.elapsedRealtime() < deadlineMs
+        ) {
+            if (player.playbackState == Player.STATE_READY && player.isPlaying) return
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return
+            delay(25L)
+        }
+    }
+
+    /**
+     * Brief equal-power overlap that fades the (unmuted) main player up to [incomingBaseVolume] while
+     * fading the secondary down to silence, then leaves the main player at its final volume. Both
+     * players play the same incoming track at (near) the same position during this window, so the
+     * short overlap is inaudible aside from smoothing the seam.
+     */
+    private suspend fun microHandoffToPrimary(
+        incomingPlayer: ExoPlayer,
+        incomingBaseVolume: Float,
+    ) {
+        val steps = (CROSSFADE_MICRO_HANDOFF_MS / CROSSFADE_FRAME_MS).toInt().coerceAtLeast(1)
+        for (step in 1..steps) {
+            if (!kotlinx.coroutines.currentCoroutineContext().isActive) break
+            val progress = (step.toFloat() / steps.toFloat()).coerceIn(0f, 1f)
+            val radians = progress.toDouble() * (PI / 2.0)
+            player.volume = (incomingBaseVolume * sin(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
+            runCatching {
+                incomingPlayer.volume = (incomingBaseVolume * cos(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
+            }
+            delay(CROSSFADE_FRAME_MS)
+        }
+        player.volume = incomingBaseVolume.coerceIn(0f, maxSafeGainFactor)
+        runCatching { incomingPlayer.volume = 0f }
     }
 
     private suspend fun awaitPrimaryCrossfadeHandoffReady(incomingPlayer: ExoPlayer): Boolean {
@@ -8889,6 +8938,11 @@ class MusicService :
         const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
         const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
         const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
+        // Max time to wait for the promoted main player to actually start rendering before we drop
+        // the secondary; the secondary stays audible for this whole window so there is no silence.
+        const val CROSSFADE_HANDOFF_PLAYING_TIMEOUT_MS = 4_000L
+        // Length of the equal-power overlap that swaps audio from the secondary to the main player.
+        const val CROSSFADE_MICRO_HANDOFF_MS = 160L
         const val CROSSFADE_HANDOFF_BUFFER_MS = 5_000L
         const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
         const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
