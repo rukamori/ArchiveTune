@@ -34,6 +34,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -126,6 +128,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -815,10 +818,29 @@ class MainActivity : ComponentActivity() {
                     return@ArchiveTuneTheme
                 }
 
+                // App-open animation: the first time the main UI appears it fades in while
+                // gently scaling up from 96%, so launching the app feels like a smooth reveal
+                // rather than an abrupt cut. Runs once per process and honors "disable animations".
+                val appOpenProgress = remember { Animatable(if (disableAnimations) 1f else 0f) }
+                LaunchedEffect(Unit) {
+                    if (!disableAnimations && appOpenProgress.value < 1f) {
+                        appOpenProgress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                        )
+                    }
+                }
+
                 BoxWithConstraints(
                     modifier =
                         Modifier
                             .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = appOpenProgress.value
+                                val scale = 0.96f + 0.04f * appOpenProgress.value
+                                scaleX = scale
+                                scaleY = scale
+                            }
                             .background(
                                 if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface,
                             ),
@@ -2266,7 +2288,15 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            // Material "fade through" for bottom-nav switches: the
+                                            // incoming screen fades in slightly delayed while gently
+                                            // scaling up from 92%, so Home↔Search↔Library feels animated
+                                            // instead of an imperceptible straight crossfade.
+                                            fadeIn(tween(220, delayMillis = 90)) +
+                                                scaleIn(
+                                                    animationSpec = tween(220, delayMillis = 90),
+                                                    initialScale = 0.92f,
+                                                )
                                         } else {
                                             fadeIn(tween(250)) + slideInHorizontally { it / 2 }
                                         }
@@ -2277,7 +2307,7 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(tween(90))
                                         } else {
                                             fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
                                         }
@@ -2291,7 +2321,11 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            fadeIn(tween(220, delayMillis = 90)) +
+                                                scaleIn(
+                                                    animationSpec = tween(220, delayMillis = 90),
+                                                    initialScale = 0.92f,
+                                                )
                                         } else {
                                             fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
                                         }
@@ -2305,7 +2339,7 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(tween(90))
                                         } else {
                                             fadeOut(tween(200)) + slideOutHorizontally { it / 2 }
                                         }

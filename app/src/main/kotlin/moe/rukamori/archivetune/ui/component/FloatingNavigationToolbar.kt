@@ -12,6 +12,9 @@ package moe.rukamori.archivetune.ui.component
 import android.os.SystemClock
 import android.view.ViewConfiguration
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,17 +35,21 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.NavigationBarHeight
 import moe.rukamori.archivetune.ui.screens.Screens
+import moe.rukamori.archivetune.utils.rememberPreference
 
 private val NavigationBarMaxWidth = 420.dp
 private val NavigationItemsMaxWidth = 360.dp
@@ -74,6 +81,7 @@ fun FloatingNavigationToolbar(
     val navigationContainerColor =
         if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     val motionScheme = MaterialTheme.motionScheme
+    val (disableAnimations) = rememberPreference(DisableAnimationsKey, defaultValue = false)
     Box(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
@@ -111,6 +119,27 @@ fun FloatingNavigationToolbar(
                     ) {
                         items.forEach { screen ->
                             val selected = isSelected(screen)
+                            // Tactile "pop": when an item becomes selected, its icon springs
+                            // from 80% up past 100% and settles back, giving the bottom pill a
+                            // lively bounce on every tab switch (skipped when animations are off).
+                            val iconScale = remember(screen) { Animatable(1f) }
+                            LaunchedEffect(selected, disableAnimations) {
+                                if (disableAnimations) {
+                                    iconScale.snapTo(1f)
+                                } else if (selected) {
+                                    iconScale.snapTo(0.8f)
+                                    iconScale.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec =
+                                            spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMediumLow,
+                                            ),
+                                    )
+                                } else {
+                                    iconScale.snapTo(1f)
+                                }
+                            }
                             val onDoubleClick =
                                 remember(screen, onSearchItemDoubleClick) {
                                     if (screen == Screens.Search) onSearchItemDoubleClick else null
@@ -149,6 +178,11 @@ fun FloatingNavigationToolbar(
                                                     if (isSelected) screen.iconIdActive else screen.iconIdInactive,
                                                 ),
                                             contentDescription = null,
+                                            modifier =
+                                                Modifier.graphicsLayer {
+                                                    scaleX = iconScale.value
+                                                    scaleY = iconScale.value
+                                                },
                                         )
                                     }
                                 },
