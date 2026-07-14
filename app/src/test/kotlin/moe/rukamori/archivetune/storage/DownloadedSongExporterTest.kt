@@ -19,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.playback.DefaultDownloadRemovalExportPolicy
 import moe.rukamori.archivetune.playback.DownloadRemovalExportPolicy
 
@@ -30,14 +31,6 @@ class DownloadedSongExporterTest {
         assertTrue(!isCompleteExport(exportedBytes = 1_023L, completedContentLength = 1_024L))
         assertTrue(!isCompleteExport(exportedBytes = 1_025L, completedContentLength = 1_024L))
         assertTrue(!isCompleteExport(exportedBytes = 0L, completedContentLength = 0L))
-    }
-
-    @Test
-    fun testExistingExportMustContainAtLeastCompletedAudioLength() {
-        assertTrue(isValidExportedLength(exportedFileLength = 1_100L, completedContentLength = 1_024L))
-        assertTrue(isValidExportedLength(exportedFileLength = 1_024L, completedContentLength = 1_024L))
-        assertFalse(isValidExportedLength(exportedFileLength = 1_023L, completedContentLength = 1_024L))
-        assertFalse(isValidExportedLength(exportedFileLength = 1L, completedContentLength = 1_024L))
     }
 
     @Test
@@ -146,16 +139,13 @@ class DownloadedSongExporterTest {
 
     @Test
     fun testExportFileExtensionMapping() {
-        assertEquals("aac", exportFileExtension("audio/aac"))
-        assertEquals("aac", exportFileExtension("audio/aac-adts"))
-        assertEquals("aac", exportFileExtension("audio/x-aac"))
-        assertEquals("flac", exportFileExtension("audio/flac"))
-        assertEquals("mp3", exportFileExtension("audio/mpeg"))
-        assertEquals("ogg", exportFileExtension("audio/opus"))
-        assertEquals("ogg", exportFileExtension("application/ogg"))
-        assertEquals("webm", exportFileExtension("audio/webm"))
-        assertEquals("wav", exportFileExtension("audio/wav"))
-        assertEquals("m4a", exportFileExtension("audio/x-m4a")) // fallback/default
+        assertEquals("m4a", exportFileExtension("audio/aac"))
+        assertEquals("m4a", exportFileExtension("audio/flac"))
+        assertEquals("m4a", exportFileExtension("audio/mpeg"))
+        assertEquals("m4a", exportFileExtension("audio/opus"))
+        assertEquals("m4a", exportFileExtension("audio/webm"))
+        assertEquals("m4a", exportFileExtension("audio/wav"))
+        assertEquals("m4a", exportFileExtension("audio/x-m4a"))
         assertEquals("m4a", exportFileExtension(null))
     }
 
@@ -164,8 +154,8 @@ class DownloadedSongExporterTest {
         assertEquals("audio/mp4", exportMimeType("video/mp4"))
         assertEquals("audio/mp4", exportMimeType("application/mp4"))
         assertEquals("audio/mp4", exportMimeType("audio/x-m4a"))
-        assertEquals("audio/webm", exportMimeType("video/webm"))
-        assertEquals("audio/mpeg", exportMimeType("audio/mpeg"))
+        assertEquals("audio/mp4", exportMimeType("video/webm"))
+        assertEquals("audio/mp4", exportMimeType("audio/mpeg"))
         assertEquals("audio/mp4", exportMimeType(""))
         assertEquals("audio/mp4", exportMimeType(null))
     }
@@ -306,7 +296,54 @@ class DownloadedSongExporterTest {
         assertEquals("My Favorite Song - Awesome Artist [abcdef123]", baseName)
 
         val fileName = buildExportFileName(metadata, "audio/mpeg")
-        assertEquals("My Favorite Song - Awesome Artist [abcdef123].mp3", fileName)
+        assertEquals("My Favorite Song - Awesome Artist [abcdef123].m4a", fileName)
+    }
+
+    @Test
+    fun testOnlyMp4AacOrAlacCanUseDirectM4aFastPath() {
+        assertTrue(canCopyDirectlyToM4a(testFormat("audio/mp4", "mp4a.40.2")))
+        assertTrue(canCopyDirectlyToM4a(testFormat("audio/mp4; codecs=\"mp4a.40.2\"", "")))
+        assertTrue(canCopyDirectlyToM4a(testFormat("audio/x-m4a", "alac")))
+        assertFalse(canCopyDirectlyToM4a(testFormat("audio/webm", "opus")))
+        assertFalse(canCopyDirectlyToM4a(testFormat("audio/mpeg", "mp3")))
+        assertFalse(canCopyDirectlyToM4a(null))
+    }
+
+    @Test
+    fun testLyricsAndSourceAreWrittenToM4aMetadata() {
+        val metadata =
+            testMetadata().copy(
+                lyrics = "[00:01.20]First line\n[00:03.40]Second line",
+                lyricsSource = "REMOTE",
+                synchronizedLyrics = true,
+            )
+
+        val bytes = buildMp4IlstAtom(metadata, artworkBytes = null)
+        val text = bytes.toString(Charsets.ISO_8859_1)
+
+        assertTrue(text.contains("First line"))
+        assertTrue(text.contains("Lyrics Source"))
+        assertTrue(text.contains("Synchronized LRC"))
+        assertTrue(metadata.lyrics!!.hasSynchronizedLyrics())
+        assertFalse("Plain lyrics without timestamps".hasSynchronizedLyrics())
+    }
+
+    @Test
+    fun testM4aStructureRejectsTruncatedExport() {
+        val file = File.createTempFile("m4a-structure-", ".m4a")
+        try {
+            file.writeBytes(
+                topLevelAtom("ftyp", byteArrayOf(0, 0, 0, 0)) +
+                    topLevelAtom("moov", byteArrayOf(0, 0, 0, 0)) +
+                    topLevelAtom("mdat", byteArrayOf(1, 2, 3, 4)),
+            )
+            assertTrue(file.isStructurallyValidM4a())
+
+            file.writeBytes(file.readBytes().dropLast(1).toByteArray())
+            assertFalse(file.isStructurallyValidM4a())
+        } finally {
+            file.delete()
+        }
     }
 
     @Test
@@ -353,4 +390,31 @@ class DownloadedSongExporterTest {
             thumbnailUrl = null,
             downloadedAt = null,
         )
+
+    private fun testFormat(
+        mimeType: String,
+        codecs: String,
+    ) =
+        FormatEntity(
+            id = "test-id",
+            itag = 1,
+            mimeType = mimeType,
+            codecs = codecs,
+            bitrate = 128_000,
+            sampleRate = 44_100,
+            contentLength = 1_024L,
+            loudnessDb = null,
+            playbackUrl = null,
+        )
+
+    private fun topLevelAtom(
+        type: String,
+        payload: ByteArray,
+    ): ByteArray {
+        val bytes = ByteArray(payload.size + 8)
+        bytes.writeIntAt(0, bytes.size)
+        System.arraycopy(type.toByteArray(Charsets.ISO_8859_1), 0, bytes, 4, 4)
+        System.arraycopy(payload, 0, bytes, 8, payload.size)
+        return bytes
+    }
 }

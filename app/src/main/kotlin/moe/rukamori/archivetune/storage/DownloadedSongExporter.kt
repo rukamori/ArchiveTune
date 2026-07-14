@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.storage
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.MediaExtractor
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -24,7 +25,10 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -34,14 +38,18 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.di.DownloadCache
+import moe.rukamori.archivetune.lyrics.LyricsHelper
+import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.dataStore
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -59,6 +67,8 @@ class DownloadedSongExporter
         @ApplicationContext private val context: Context,
         private val database: MusicDatabase,
         @DownloadCache private val downloadCache: Cache,
+        private val m4aAudioConverter: M4aAudioConverter,
+        private val lyricsHelper: LyricsHelper,
     ) {
         private val exportCoordinator = SongExportCoordinator()
 
@@ -86,55 +96,65 @@ class DownloadedSongExporter
                         val cachedSpans = downloadCache.exportableSpans(songId)
                         if (cachedSpans.isEmpty()) return@export false
 
-                        val metadata = ExportedSongMetadata.from(songId, song, fallbackTitle, context)
+                        val baseMetadata = ExportedSongMetadata.from(songId, song, fallbackTitle, context)
                         val fileName =
                             buildExportFileName(
-                                metadata = metadata,
+                                metadata = baseMetadata,
                                 mimeType = format?.mimeType,
                             )
-                        val artworkBytes = fetchArtworkBytes(metadata.thumbnailUrl)
-                        val selectedTreeUri = selectedTreeUri()
-                        if (selectedTreeUri != null) {
-                            return@export exportToSelectedFolder(
-                                treeUri = selectedTreeUri,
+                        return@export coroutineScope {
+                            val metadata =
+                                async {
+                                    val lyrics = resolveExportLyrics(songId, song)
+                                    baseMetadata.copy(
+                                        lyrics = lyrics?.lyrics,
+                                        lyricsSource = lyrics?.source,
+                                        synchronizedLyrics = lyrics?.lyrics?.hasSynchronizedLyrics() == true,
+                                    )
+                                }
+                            val artworkBytes = async { fetchArtworkBytes(baseMetadata.thumbnailUrl) }
+                            val selectedTreeUri = selectedTreeUri()
+                            if (selectedTreeUri != null) {
+                                return@coroutineScope exportToSelectedFolder(
+                                    treeUri = selectedTreeUri,
+                                    songId = songId,
+                                    fileName = fileName,
+                                    metadata = metadata,
+                                    format = format,
+                                    spans = cachedSpans,
+                                    expectedContentLength = expectedContentLength,
+                                    artworkBytes = artworkBytes,
+                                )
+                            }
+
+                            val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
+                            if (!targetDirectory.ensureWritableDirectory()) return@coroutineScope false
+
+                            val targetFile = targetDirectory.resolve(fileName)
+                            val copied =
+                                copyCachedSpans(
+                                    spans = cachedSpans,
+                                    targetFile = targetFile,
+                                    expectedContentLength = expectedContentLength,
+                                    metadata = metadata,
+                                    format = format,
+                                    artworkBytes = artworkBytes,
+                                )
+                            if (!copied) return@coroutineScope false
+                            deleteExistingExports(
+                                directory = targetDirectory,
                                 songId = songId,
-                                fileName = fileName,
-                                mimeType = format?.mimeType,
-                                metadata = metadata,
-                                format = format,
-                                spans = cachedSpans,
-                                expectedContentLength = expectedContentLength,
-                                artworkBytes = artworkBytes,
+                                expectedBaseName = fileName.substringBeforeLast('.'),
+                                except = targetFile,
                             )
+                            MediaScannerConnection.scanFile(
+                                context,
+                                arrayOf(targetFile.absolutePath),
+                                arrayOf(M4aMimeType),
+                                null,
+                            )
+                            true
                         }
-
-                        val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
-                        if (!targetDirectory.ensureWritableDirectory()) return@export false
-
-                        val targetFile = targetDirectory.resolve(fileName)
-                        val copied =
-                            copyCachedSpans(
-                                spans = cachedSpans,
-                                targetFile = targetFile,
-                                expectedContentLength = expectedContentLength,
-                                metadata = metadata,
-                                format = format,
-                                artworkBytes = artworkBytes,
-                            )
-                        if (!copied) return@export false
-                        deleteExistingExports(
-                            directory = targetDirectory,
-                            songId = songId,
-                            expectedBaseName = fileName.substringBeforeLast('.'),
-                            except = targetFile,
-                        )
-                        MediaScannerConnection.scanFile(
-                            context,
-                            arrayOf(targetFile.absolutePath),
-                            arrayOf(exportMimeType(format?.mimeType)),
-                            null,
-                        )
-                        true
                     } catch (throwable: Throwable) {
                         if (throwable is CancellationException) throw throwable
                         Timber.tag(LogTag).w(throwable, "Failed to export downloaded song %s", songId)
@@ -184,6 +204,60 @@ class DownloadedSongExporter
             return database.getSongById(songId)
         }
 
+        private suspend fun resolveExportLyrics(
+            songId: String,
+            song: Song?,
+        ): LyricsEntity? {
+            val storedLyrics = database.getLyricsById(songId)
+            if (storedLyrics != null) return storedLyrics.toExportLyrics()
+            if (song == null) return null
+
+            return try {
+                val lyrics = lyricsHelper.getLyrics(song.toLyricsMediaMetadata())
+                if (lyrics.isBlank() || lyrics == LyricsEntity.LYRICS_NOT_FOUND) return null
+                LyricsEntity(
+                    id = songId,
+                    lyrics = lyrics,
+                    source = LyricsEntity.Source.REMOTE.value,
+                ).also { entity ->
+                    database.query { insertLyricsIfAbsent(entity.id, entity.lyrics, entity.source, entity.updatedAt) }
+                }
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                Timber.tag(LogTag).w(throwable, "Failed to resolve lyrics for exported song %s", songId)
+                null
+            }
+        }
+
+        private fun Song.toLyricsMediaMetadata(): MediaMetadata {
+            val albumId = album?.id ?: song.albumId
+            val albumTitle = album?.title ?: song.albumName
+            return MediaMetadata(
+                id = id,
+                title = title,
+                artists =
+                    artists.map { artist ->
+                        MediaMetadata.Artist(
+                            id = artist.id,
+                            name = artist.name,
+                            thumbnailUrl = artist.thumbnailUrl,
+                        )
+                    },
+                duration = song.duration,
+                thumbnailUrl = thumbnailUrl,
+                album =
+                    if (!albumId.isNullOrBlank() && !albumTitle.isNullOrBlank()) {
+                        MediaMetadata.Album(albumId, albumTitle)
+                    } else {
+                        null
+                    },
+                explicit = song.explicit,
+                liked = song.liked,
+                likedDate = song.likedDate,
+                inLibrary = song.inLibrary,
+            )
+        }
+
         private suspend fun selectedTreeUri(): Uri? =
             context
                 .dataStore
@@ -209,19 +283,75 @@ class DownloadedSongExporter
                 } else {
                     null
                 }
-            }.getOrNull()
+            }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                null
+            }
         }
+
+        private fun File.isPlayableM4a(): Boolean =
+            isStructurallyValidM4a() &&
+                runCatching {
+                    MediaExtractor().useAndCheckForAudio { extractor ->
+                        extractor.setDataSource(absolutePath)
+                    }
+                }.getOrDefault(false)
+
+        private fun Uri.isPlayableM4aDocument(): Boolean =
+            runCatching {
+                context.contentResolver.openAssetFileDescriptor(this, "r")?.use { descriptor ->
+                    MediaExtractor().useAndCheckForAudio { extractor ->
+                        if (descriptor.length >= 0L) {
+                            extractor.setDataSource(
+                                descriptor.fileDescriptor,
+                                descriptor.startOffset,
+                                descriptor.length,
+                            )
+                        } else {
+                            extractor.setDataSource(descriptor.fileDescriptor)
+                        }
+                    }
+                } == true
+            }.getOrDefault(false)
+
+        private inline fun MediaExtractor.useAndCheckForAudio(
+            setDataSource: (MediaExtractor) -> Unit,
+        ): Boolean =
+            try {
+                setDataSource(this)
+                (0 until trackCount).any { trackIndex ->
+                    val trackFormat = getTrackFormat(trackIndex)
+                    if (trackFormat.getString(android.media.MediaFormat.KEY_MIME)?.startsWith("audio/") != true) {
+                        return@any false
+                    }
+                    selectTrack(trackIndex)
+                    val durationUs =
+                        if (trackFormat.containsKey(android.media.MediaFormat.KEY_DURATION)) {
+                            trackFormat.getLong(android.media.MediaFormat.KEY_DURATION)
+                        } else {
+                            0L
+                        }
+                    if (durationUs > 0L) seekTo(durationUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+                    val sampleSize = readSampleData(ByteBuffer.allocate(MaxAudioSampleValidationBytes), 0)
+                    val sampleTimestampUs = sampleTime
+                    unselectTrack(trackIndex)
+                    sampleSize > 0 &&
+                        sampleTimestampUs >= 0L &&
+                        (durationUs <= 0L || durationUs - sampleTimestampUs <= MaxAudioTailGapMicros)
+                }
+            } finally {
+                release()
+            }
 
         private suspend fun exportToSelectedFolder(
             treeUri: Uri,
             songId: String,
             fileName: String,
-            mimeType: String?,
-            metadata: ExportedSongMetadata,
+            metadata: Deferred<ExportedSongMetadata>,
             format: FormatEntity?,
             spans: List<CacheSpan>,
             expectedContentLength: Long,
-            artworkBytes: ByteArray?,
+            artworkBytes: Deferred<ByteArray?>,
         ): Boolean {
             return runCatching {
                 val resolver = context.contentResolver
@@ -229,7 +359,7 @@ class DownloadedSongExporter
                 val tempFile =
                     File.createTempFile(
                         "archivetune-export-",
-                        ".${exportFileExtension(mimeType)}",
+                        M4aFileSuffix,
                         context.cacheDir,
                     )
                 val copied =
@@ -254,7 +384,7 @@ class DownloadedSongExporter
                     DocumentsContract.createDocument(
                         resolver,
                         parentUri,
-                        exportMimeType(mimeType),
+                        M4aMimeType,
                         ".archivetune-${System.nanoTime()}-${fileName}",
                     ) ?: run {
                         tempFile.delete()
@@ -297,48 +427,66 @@ class DownloadedSongExporter
                         )
                     },
                 )
-            }.getOrDefault(false)
+            }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                false
+            }
         }
 
-        private fun copyCachedSpans(
+        private suspend fun copyCachedSpans(
             spans: List<CacheSpan>,
             targetFile: File,
             expectedContentLength: Long,
-            metadata: ExportedSongMetadata,
+            metadata: Deferred<ExportedSongMetadata>,
             format: FormatEntity?,
-            artworkBytes: ByteArray?,
+            artworkBytes: Deferred<ByteArray?>,
         ): Boolean =
             runCatching {
                 targetFile.parentFile?.mkdirs()
-                val tempFile = targetFile.resolveSibling("${targetFile.name}.tmp-${System.currentTimeMillis()}")
+                val sourceFile =
+                    targetFile.resolveSibling(
+                        "${targetFile.name}.source-${System.nanoTime()}.${sourceFileExtension(format?.mimeType)}",
+                    )
+                val m4aFile = targetFile.resolveSibling("${targetFile.name}.tmp-${System.nanoTime()}$M4aFileSuffix")
                 try {
-                    val exportedBytes = tempFile.outputStream().use { outputStream -> copyCachedSpansTo(spans, outputStream) }
-                    if (!isCompleteExport(exportedBytes, expectedContentLength) || tempFile.length() != expectedContentLength) {
+                    val exportedBytes = sourceFile.outputStream().use { outputStream -> copyCachedSpansTo(spans, outputStream) }
+                    if (!isCompleteExport(exportedBytes, expectedContentLength) || sourceFile.length() != expectedContentLength) {
                         return@runCatching false
                     }
-                    if (!writeEmbeddedMetadata(tempFile, metadata, format, artworkBytes)) return@runCatching false
-                    replaceAtomically(tempFile, targetFile)
-                    targetFile.isFile && targetFile.length() > 0L
+                    val converted =
+                        if (canCopyDirectlyToM4a(format)) {
+                            replaceAtomically(sourceFile, m4aFile)
+                            true
+                        } else {
+                            m4aAudioConverter.convert(sourceFile, m4aFile)
+                    }
+                    if (!converted || !m4aFile.isStructurallyValidM4a()) return@runCatching false
+                    val resolvedMetadata = metadata.await()
+                    val resolvedArtwork = artworkBytes.await()
+                    if (!resolvedMetadata.thumbnailUrl.isNullOrBlank() && resolvedArtwork == null) {
+                        Timber.tag(LogTag).w("Artwork could not be resolved for exported song %s", resolvedMetadata.id)
+                        return@runCatching false
+                    }
+                    if (!writeEmbeddedMetadata(m4aFile, resolvedMetadata, resolvedArtwork)) return@runCatching false
+                    if (!m4aFile.isPlayableM4a()) return@runCatching false
+                    replaceAtomically(m4aFile, targetFile)
+                    targetFile.isFile && targetFile.isStructurallyValidM4a()
                 } finally {
-                    tempFile.delete()
+                    sourceFile.delete()
+                    m4aFile.delete()
                 }
-            }.getOrDefault(false)
+            }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                false
+            }
 
         private fun writeEmbeddedMetadata(
             audioFile: File,
             metadata: ExportedSongMetadata,
-            format: FormatEntity?,
             artworkBytes: ByteArray?,
         ): Boolean =
             runCatching {
-                when (exportFileExtension(format?.mimeType)) {
-                    "m4a" -> audioFile.writeMp4Metadata(metadata, artworkBytes)
-                    "aac",
-                    "mp3",
-                    -> audioFile.writeId3Metadata(metadata, format, artworkBytes)
-
-                    else -> true
-                }
+                audioFile.writeMp4Metadata(metadata, artworkBytes)
             }.onFailure { throwable ->
                 Timber.tag(LogTag).w(throwable, "Failed to embed metadata in %s", audioFile.name)
             }.getOrDefault(false)
@@ -408,10 +556,6 @@ class DownloadedSongExporter
         suspend fun isAlreadyExported(download: Download): Boolean =
             withContext(Dispatchers.IO) {
                 val songId = download.request.id
-                val expectedContentLength =
-                    download.contentLength.takeIf { it > 0L }
-                        ?: database.getSongById(songId)?.format?.contentLength?.takeIf { it > 0L }
-                        ?: return@withContext false
                 val marker = exportIdMarker(songId)
                 val internalDir = StorageLocationRepository.exportedDownloadsDirectory(context)
                 val treeUri = selectedTreeUri()
@@ -419,20 +563,25 @@ class DownloadedSongExporter
                     val resolver = context.contentResolver
                     resolver.query(
                         treeUri.toChildDocumentsUri(),
-                        arrayOf(Document.COLUMN_DISPLAY_NAME, Document.COLUMN_SIZE),
+                        arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME, Document.COLUMN_SIZE),
                         null,
                         null,
                         null,
                     )?.use { cursor ->
+                        val idIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
                         val nameIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DISPLAY_NAME)
                         val sizeIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_SIZE)
                         while (cursor.moveToNext()) {
                             val displayName = cursor.getString(nameIndex) ?: continue
                             if (
                                 displayName.contains(marker) &&
-                                isValidExportedLength(cursor.getLong(sizeIndex), expectedContentLength)
+                                displayName.endsWith(M4aFileSuffix, ignoreCase = true) &&
+                                cursor.getLong(sizeIndex) > 0L
                             ) {
-                                return@withContext true
+                                val documentUri = treeUri.toChildDocumentUri(cursor.getString(idIndex))
+                                if (documentUri.isPlayableM4aDocument()) {
+                                    return@withContext true
+                                }
                             }
                         }
                     }
@@ -442,7 +591,8 @@ class DownloadedSongExporter
                     internalDir.listFiles()?.any { file ->
                         file.isFile &&
                             file.name.contains(marker) &&
-                            isValidExportedLength(file.length(), expectedContentLength)
+                            file.name.endsWith(M4aFileSuffix, ignoreCase = true) &&
+                            file.isPlayableM4a()
                     } == true
                 exportedInternally
             }
@@ -477,11 +627,6 @@ internal fun isCompleteExport(
     exportedBytes: Long,
     completedContentLength: Long,
 ): Boolean = completedContentLength > 0L && exportedBytes == completedContentLength
-
-internal fun isValidExportedLength(
-    exportedFileLength: Long,
-    completedContentLength: Long,
-): Boolean = completedContentLength > 0L && exportedFileLength >= completedContentLength
 
 /**
  * Serializes exports for the same song without dropping a later destination change.
@@ -564,7 +709,7 @@ private fun String.toFileNamePart(maxLength: Int): String {
         ?: "Unknown"
 }
 
-private val MimeTypeToExtensionMap = mapOf(
+private val MimeTypeToSourceExtensionMap = mapOf(
     "audio/aac" to "aac",
     "audio/aac-adts" to "aac",
     "audio/x-aac" to "aac",
@@ -582,19 +727,20 @@ private val MimeTypeToExtensionMap = mapOf(
     "audio/x-wav" to "wav",
 )
 
-private val MimeTypeToExportMimeTypeMap = mapOf(
-    "video/mp4" to "audio/mp4",
-    "application/mp4" to "audio/mp4",
-    "audio/x-m4a" to "audio/mp4",
-    "video/webm" to "audio/webm",
-)
+private val Mp4SourceMimeTypes = setOf("audio/mp4", "video/mp4", "application/mp4", "audio/x-m4a")
 
-internal fun exportFileExtension(mimeType: String?): String =
-    MimeTypeToExtensionMap[mimeType.normalizedMimeType()] ?: "m4a"
+private fun sourceFileExtension(mimeType: String?): String =
+    MimeTypeToSourceExtensionMap[mimeType.normalizedMimeType()] ?: "bin"
 
-internal fun exportMimeType(mimeType: String?): String =
-    MimeTypeToExportMimeTypeMap[mimeType.normalizedMimeType()]
-        ?: mimeType.normalizedMimeType().ifBlank { "audio/mp4" }
+internal fun exportFileExtension(@Suppress("UNUSED_PARAMETER") mimeType: String?): String = M4aFileExtension
+
+internal fun exportMimeType(@Suppress("UNUSED_PARAMETER") mimeType: String?): String = M4aMimeType
+
+internal fun canCopyDirectlyToM4a(format: FormatEntity?): Boolean {
+    if (format?.mimeType.normalizedMimeType() !in Mp4SourceMimeTypes) return false
+    val codec = "${format?.codecs.orEmpty()} ${format?.mimeType.orEmpty()}".lowercase(Locale.ROOT)
+    return codec.contains("mp4a") || codec.contains("aac") || codec.contains("alac")
+}
 
 private fun File.writeId3Metadata(
     metadata: ExportedSongMetadata,
@@ -748,6 +894,18 @@ internal fun File.readTopLevelMp4Atoms(): List<Mp4Atom> {
     return atoms
 }
 
+internal fun File.isStructurallyValidM4a(): Boolean =
+    runCatching {
+        if (!isFile || length() < Mp4MinimumFileSizeBytes || length() > Int.MAX_VALUE) return@runCatching false
+        val atoms = readTopLevelMp4Atoms()
+        atoms.isNotEmpty() &&
+            atoms.first().type == "ftyp" &&
+            atoms.any { atom -> atom.type == "moov" } &&
+            atoms.any { atom -> atom.type == "mdat" } &&
+            atoms.all { atom -> atom.size >= atom.headerSize && atom.start >= 0 && atom.end.toLong() <= length() } &&
+            atoms.last().end.toLong() == length()
+    }.getOrDefault(false)
+
 private fun InputStream.readFully(buffer: ByteArray, offset: Int, length: Int) {
     var totalRead = 0
     while (totalRead < length) {
@@ -851,7 +1009,7 @@ private fun buildMp4HandlerAtom(): ByteArray =
         },
     )
 
-private fun buildMp4IlstAtom(
+internal fun buildMp4IlstAtom(
     metadata: ExportedSongMetadata,
     artworkBytes: ByteArray?,
 ): ByteArray =
@@ -860,11 +1018,26 @@ private fun buildMp4IlstAtom(
         ByteArrayOutputStream().use { outputStream ->
             outputStream.writeMp4TextItem(Mp4TitleAtom, metadata.title)
             outputStream.writeMp4TextItem(Mp4ArtistAtom, metadata.artistText)
+            outputStream.writeMp4TextItem(Mp4AlbumArtistAtom, metadata.artistText)
             metadata.album?.let { album -> outputStream.writeMp4TextItem(Mp4AlbumAtom, album) }
-            metadata.downloadedAt?.let { downloadedAt -> outputStream.writeMp4TextItem(Mp4DayAtom, downloadedAt) }
+            metadata.releaseDate?.let { releaseDate -> outputStream.writeMp4TextItem(Mp4DayAtom, releaseDate) }
+            metadata.lyrics?.let { lyrics -> outputStream.writeMp4TextItem(Mp4LyricsAtom, lyrics) }
             metadata.thumbnailUrl?.let { thumbnailUrl -> outputStream.writeMp4TextItem(Mp4UrlAtom, thumbnailUrl) }
             outputStream.writeMp4TextItem(Mp4EncoderAtom, "ArchiveTune")
             outputStream.writeMp4TextItem(Mp4CommentAtom, "ArchiveTune ID: ${metadata.id}")
+            outputStream.writeMp4FreeformTextItem("ArchiveTune ID", metadata.id)
+            metadata.downloadedAt?.let { value -> outputStream.writeMp4FreeformTextItem("Downloaded At", value) }
+            metadata.lyricsSource?.let { value -> outputStream.writeMp4FreeformTextItem("Lyrics Source", value) }
+            if (metadata.lyrics != null) {
+                outputStream.writeMp4FreeformTextItem(
+                    "Lyrics Type",
+                    if (metadata.synchronizedLyrics) "Synchronized LRC" else "Unsynchronized",
+                )
+            }
+            outputStream.writeMp4FreeformTextItem("Explicit", metadata.explicit.toString())
+            metadata.originalMimeType?.let { value -> outputStream.writeMp4FreeformTextItem("Original MIME Type", value) }
+            metadata.originalCodec?.let { value -> outputStream.writeMp4FreeformTextItem("Original Codec", value) }
+            metadata.originalBitrate?.let { value -> outputStream.writeMp4FreeformTextItem("Original Bitrate", value.toString()) }
             artworkBytes?.let { bytes -> outputStream.writeMp4ImageItem(Mp4CoverAtom, bytes) }
             outputStream.toByteArray()
         },
@@ -889,6 +1062,41 @@ private fun ByteArrayOutputStream.writeMp4TextItem(
             ),
         ),
     )
+}
+
+private fun ByteArrayOutputStream.writeMp4FreeformTextItem(
+    name: String,
+    value: String,
+) {
+    if (name.isBlank() || value.isBlank()) return
+    val payload =
+        ByteArrayOutputStream().use { outputStream ->
+            outputStream.write(
+                buildMp4Atom(
+                    "mean".toIso8859Bytes(),
+                    byteArrayOf(0, 0, 0, 0) + Mp4FreeformNamespace.toUtf8Bytes(),
+                ),
+            )
+            outputStream.write(
+                buildMp4Atom(
+                    "name".toIso8859Bytes(),
+                    byteArrayOf(0, 0, 0, 0) + name.toUtf8Bytes(),
+                ),
+            )
+            outputStream.write(
+                buildMp4Atom(
+                    "data".toIso8859Bytes(),
+                    ByteArrayOutputStream().use { dataOutput ->
+                        dataOutput.writeInt(Mp4TextTypeFlag)
+                        dataOutput.writeInt(Mp4DefaultLocale)
+                        dataOutput.write(value.toUtf8Bytes())
+                        dataOutput.toByteArray()
+                    },
+                ),
+            )
+            outputStream.toByteArray()
+        }
+    write(buildMp4Atom(Mp4FreeformAtom, payload))
 }
 
 private fun ByteArrayOutputStream.writeMp4ImageItem(
@@ -1200,15 +1408,23 @@ internal data class Mp4Atom(
 private val UnsafeFileNameCharacters = Regex("""[\\/:*?"<>|\u0000-\u001F]""")
 private val WhitespaceRegex = Regex("\\s+")
 private val ExportAudioExtensions = setOf("aac", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm")
+private val SynchronizedLyricsLineRegex = Regex("(?m)^\\[\\d{1,3}:\\d{2}(?:[.:]\\d{1,3})?]")
 private val Mp4ContainerAtoms = setOf("moov", "trak", "mdia", "minf", "stbl", "edts", "udta", "meta")
 private val Mp4TitleAtom = byteArrayOf(0xA9.toByte(), 'n'.code.toByte(), 'a'.code.toByte(), 'm'.code.toByte())
 private val Mp4ArtistAtom = byteArrayOf(0xA9.toByte(), 'A'.code.toByte(), 'R'.code.toByte(), 'T'.code.toByte())
+private val Mp4AlbumArtistAtom = "aART".toByteArray()
 private val Mp4AlbumAtom = byteArrayOf(0xA9.toByte(), 'a'.code.toByte(), 'l'.code.toByte(), 'b'.code.toByte())
 private val Mp4DayAtom = byteArrayOf(0xA9.toByte(), 'd'.code.toByte(), 'a'.code.toByte(), 'y'.code.toByte())
+private val Mp4LyricsAtom = byteArrayOf(0xA9.toByte(), 'l'.code.toByte(), 'y'.code.toByte(), 'r'.code.toByte())
 private val Mp4CommentAtom = byteArrayOf(0xA9.toByte(), 'c'.code.toByte(), 'm'.code.toByte(), 't'.code.toByte())
 private val Mp4EncoderAtom = byteArrayOf(0xA9.toByte(), 't'.code.toByte(), 'o'.code.toByte(), 'o'.code.toByte())
 private val Mp4UrlAtom = "purl".toByteArray()
 private val Mp4CoverAtom = "covr".toByteArray()
+private val Mp4FreeformAtom = "----".toByteArray()
+private const val Mp4FreeformNamespace = "com.apple.iTunes"
+private const val M4aFileExtension = "m4a"
+private const val M4aFileSuffix = ".$M4aFileExtension"
+private const val M4aMimeType = "audio/mp4"
 private const val Id3HeaderSize = 10
 private const val Id3Utf8EncodingByte: Byte = 3
 private const val Mp4AtomHeaderSize = 8
@@ -1220,6 +1436,9 @@ private const val CopyBufferSizeBytes = 256 * 1024
 private const val Mp4TextTypeFlag = 1
 private const val Mp4ImageTypeFlag = 13
 private const val Mp4DefaultLocale = 0
+private const val Mp4MinimumFileSizeBytes = 24L
+private const val MaxAudioSampleValidationBytes = 256 * 1024
+private const val MaxAudioTailGapMicros = 10_000_000L
 private const val Id3Iso88591EncodingByte: Byte = 0
 private const val Id3PictureTypeFrontCover: Byte = 3
 
@@ -1248,6 +1467,14 @@ internal data class ExportedSongMetadata(
     val durationSeconds: Int,
     val thumbnailUrl: String?,
     val downloadedAt: String?,
+    val releaseDate: String? = null,
+    val explicit: Boolean = false,
+    val lyrics: String? = null,
+    val lyricsSource: String? = null,
+    val synchronizedLyrics: Boolean = false,
+    val originalMimeType: String? = null,
+    val originalCodec: String? = null,
+    val originalBitrate: Int? = null,
 ) {
     val artistText: String get() = artists.joinToString(", ")
 
@@ -1283,7 +1510,24 @@ internal data class ExportedSongMetadata(
                         ?.song
                         ?.dateDownload
                         ?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                releaseDate =
+                    song
+                        ?.song
+                        ?.date
+                        ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                        ?: song?.song?.year?.toString(),
+                explicit = song?.song?.explicit == true,
+                originalMimeType = song?.format?.mimeType,
+                originalCodec = song?.format?.codecs,
+                originalBitrate = song?.format?.bitrate?.takeIf { bitrate -> bitrate > 0 },
             )
         }
     }
 }
+
+private fun LyricsEntity?.toExportLyrics(): LyricsEntity? =
+    this?.takeIf { entity ->
+        entity.lyrics.isNotBlank() && entity.lyrics != LyricsEntity.LYRICS_NOT_FOUND
+    }
+
+internal fun String.hasSynchronizedLyrics(): Boolean = SynchronizedLyricsLineRegex.containsMatchIn(this)
