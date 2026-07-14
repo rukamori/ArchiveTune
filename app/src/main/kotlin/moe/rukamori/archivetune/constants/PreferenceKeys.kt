@@ -822,6 +822,14 @@ val QobuzVerifiedInstancesKey = stringPreferencesKey("qobuzVerifiedInstances")
 // a fully-working instance from a reachable-but-preview-only one.
 val QobuzLastProbeTrackKey = stringPreferencesKey("qobuzLastProbeTrack")
 
+// JSON list of direct Qobuz API token entries (user_auth_token + user_id + app_id + app_secret +
+// metadata). These call www.qobuz.com/api.json/0.2 directly with an MD5 request signature, so they
+// need no proxy instance. Tried before proxy URLs during resolution (direct = highest fidelity).
+val QobuzTokensKey = stringPreferencesKey("qobuzTokens")
+
+// JSON health cache for the token list, mirroring QobuzVerifiedInstancesKey.
+val QobuzVerifiedTokensKey = stringPreferencesKey("qobuzVerifiedTokens")
+
 // Qobuz quality maps to the proxy/Qobuz format_id: FLAC=6 (CD 16-bit), HI_RES=7 (≤96kHz),
 // MAX=27 (>96kHz). MP3 (5) is intentionally omitted — this is a lossless source.
 enum class QobuzAudioQuality {

@@ -55,6 +55,8 @@ object QobuzAudioProvider {
     private val VERSION_TOKENS =
         setOf("remix", "acoustic", "live", "instrumental", "demo", "edit", "mix", "version")
 
+    private const val QOBUZ_API_BASE = "https://www.qobuz.com/api.json/0.2"
+
     /** A single configured proxy instance. */
     private data class Instance(
         val label: String,
@@ -64,8 +66,32 @@ object QobuzAudioProvider {
     @Volatile
     private var instances: List<Instance> = emptyList()
 
+    @Volatile
+    private var tokens: List<QobuzToken> = emptyList()
+
     val activeInstanceUrls: List<String>
         get() = instances.map { it.baseUrl }
+
+    val activeTokenIds: List<String>
+        get() = tokens.map { it.id }
+
+    /** Replaces the active direct-API token list. Duplicates (by token string) are dropped. */
+    fun setTokens(newTokens: List<QobuzToken>) {
+        val seen = LinkedHashSet<String>()
+        tokens = newTokens.filter { it.token.isNotBlank() && seen.add(it.token) }
+    }
+
+    /**
+     * A resolution backend: either a direct Qobuz API token or a proxy instance. Both expose the same
+     * search + download surface so the matching/scoring pipeline is shared.
+     */
+    private class Backend(
+        val id: String,
+        val label: String,
+        val isToken: Boolean,
+        val search: (String) -> JSONArray?,
+        val download: (String, Int) -> DownloadResult?,
+    )
 
     /** The last Qobuz track id that resolved successfully, usable as a health-probe track. */
     @Volatile
