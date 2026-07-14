@@ -49,8 +49,11 @@ import moe.rukamori.archivetune.constants.QobuzAudioQualityKey
 import moe.rukamori.archivetune.constants.QobuzEnabledKey
 import moe.rukamori.archivetune.constants.QobuzInstancesKey
 import moe.rukamori.archivetune.constants.QobuzLastProbeTrackKey
+import moe.rukamori.archivetune.constants.QobuzTokensKey
 import moe.rukamori.archivetune.constants.toFormatId
 import moe.rukamori.archivetune.qobuz.QobuzAudioProvider
+import moe.rukamori.archivetune.qobuz.QobuzToken
+import moe.rukamori.archivetune.qobuz.SourceInputParsing
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -93,6 +96,19 @@ fun QobuzSettings(navController: NavController) {
     val healthLatency = remember { mutableStateMapOf<String, Long>() }
     var testingInstances by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showBulkDialog by remember { mutableStateOf(false) }
+
+    // Direct-API tokens, stored as a JSON list. Tried before proxy instances during resolution.
+    val (storedTokens, onStoredTokensChange) = rememberPreference(QobuzTokensKey, "")
+    val tokens = remember(storedTokens) { QobuzToken.listFromJson(storedTokens) }
+    fun persistTokens(list: List<QobuzToken>) {
+        val deduped = list.distinctBy { it.token }
+        onStoredTokensChange(QobuzToken.listToJson(deduped))
+    }
+    // token id -> health status.
+    val tokenHealth = remember { mutableStateMapOf<String, TidalAudioProvider.InstanceHealth>() }
+    var testingTokens by remember { mutableStateOf(false) }
+    var showAddTokensDialog by remember { mutableStateOf(false) }
 
     fun toast(message: String) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -138,6 +154,88 @@ fun QobuzSettings(navController: NavController) {
             }
             testingInstances = false
         }
+    }
+
+    fun runTokenTest() {
+        if (testingTokens) return
+        testingTokens = true
+        val formatId = audioQuality.toFormatId()
+        val probe = probeTrack
+        coroutineScope.launch {
+            withContext(Dispatchers.IO) {
+                tokens.forEach { token ->
+                    val status = QobuzAudioProvider.verifyToken(token, probe, formatId)
+                    withContext(Dispatchers.Main) { tokenHealth[token.id] = status }
+                }
+            }
+            testingTokens = false
+        }
+    }
+
+    // Removes every instance whose last scan matched [statuses], returning the count removed.
+    fun removeInstancesWithStatus(statuses: Set<TidalAudioProvider.InstanceHealth>): Int {
+        val doomed = effectiveInstances.filter { healthStatus[it] in statuses }
+        if (doomed.isEmpty()) {
+            toast(context.getString(R.string.source_nothing_to_do))
+            return 0
+        }
+        doomed.forEach {
+            healthStatus.remove(it)
+            healthLatency.remove(it)
+        }
+        persistInstances(effectiveInstances - doomed.toSet())
+        toast(context.getString(R.string.source_removed, doomed.size))
+        return doomed.size
+    }
+
+    fun copyOnlineInstances() {
+        val online = effectiveInstances.filter { healthStatus[it] == TidalAudioProvider.InstanceHealth.HEALTHY }
+        if (online.isEmpty()) {
+            toast(context.getString(R.string.source_nothing_to_do))
+            return
+        }
+        copyToClipboard(context, "Qobuz instances", online)
+    }
+
+    if (showBulkDialog) {
+        TextFieldDialog(
+            icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+            title = { Text(stringResource(R.string.source_bulk_add)) },
+            placeholder = { Text(stringResource(R.string.source_bulk_hint)) },
+            singleLine = false,
+            isInputValid = { it.isNotBlank() },
+            onDone = { raw ->
+                val parsed = SourceInputParsing.parseUrls(raw).mapNotNull { QobuzAudioProvider.normalizeInstanceUrl(it) }
+                val added = parsed.filterNot { effectiveInstances.contains(it) }
+                if (added.isEmpty()) {
+                    toast(context.getString(R.string.source_bulk_none))
+                } else {
+                    persistInstances(effectiveInstances + added)
+                    toast(context.getString(R.string.source_bulk_added, added.size))
+                }
+            },
+            onDismiss = { showBulkDialog = false },
+        )
+    }
+
+    if (showAddTokensDialog) {
+        TextFieldDialog(
+            icon = { Icon(painterResource(R.drawable.token), null) },
+            title = { Text(stringResource(R.string.qobuz_add_tokens)) },
+            placeholder = { Text(stringResource(R.string.qobuz_add_tokens_hint)) },
+            singleLine = false,
+            isInputValid = { it.isNotBlank() },
+            onDone = { raw ->
+                val parsed = SourceInputParsing.parseQobuzTokens(raw)
+                if (parsed.isEmpty()) {
+                    toast(context.getString(R.string.qobuz_tokens_none_parsed))
+                } else {
+                    persistTokens(tokens + parsed)
+                    toast(context.getString(R.string.qobuz_tokens_parsed, parsed.size))
+                }
+            },
+            onDismiss = { showAddTokensDialog = false },
+        )
     }
 
     if (showAddDialog) {
@@ -219,6 +317,103 @@ fun QobuzSettings(navController: NavController) {
                 }
             }
 
+            PreferenceGroup(title = stringResource(R.string.qobuz_tokens)) {
+                item {
+                    InfoLabel(text = stringResource(R.string.qobuz_tokens_description))
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.qobuz_login_web)) },
+                        icon = { Icon(painterResource(R.drawable.provider_qobuz), null) },
+                        onClick = { navController.navigate(QOBUZ_LOGIN_ROUTE) },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.qobuz_add_tokens)) },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        onClick = { showAddTokensDialog = true },
+                    )
+                }
+
+                tokens.forEach { token ->
+                    item {
+                        val status = tokenHealth[token.id]
+                        val statusColor =
+                            when (status) {
+                                TidalAudioProvider.InstanceHealth.HEALTHY -> Color(0xFF4FC3F7)
+                                TidalAudioProvider.InstanceHealth.PREVIEW_ONLY -> Color(0xFFB388FF)
+                                TidalAudioProvider.InstanceHealth.UNREACHABLE ->
+                                    MaterialTheme.colorScheme.error
+                                null -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        val statusLabel =
+                            if (status != null) {
+                                labelFor(status, null)
+                            } else {
+                                stringResource(R.string.tidal_instance_unknown)
+                            }
+                        val displayName = token.label.ifBlank { token.userId.ifBlank { "Qobuz account" } }
+                        PreferenceEntry(
+                            title = {
+                                Column {
+                                    Text(stringResource(R.string.qobuz_token_subtitle, displayName, token.id))
+                                    Text(
+                                        text = statusLabel,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = statusColor,
+                                    )
+                                }
+                            },
+                            icon = { Icon(painterResource(R.drawable.token), null) },
+                            trailingContent = {
+                                IconButton(
+                                    onClick = {
+                                        tokenHealth.remove(token.id)
+                                        persistTokens(tokens - token)
+                                    },
+                                    onLongClick = {},
+                                ) {
+                                    Icon(painterResource(R.drawable.delete), null)
+                                }
+                            },
+                        )
+                    }
+                }
+
+                if (tokens.isNotEmpty()) {
+                    item {
+                        PreferenceEntry(
+                            title = {
+                                Text(
+                                    if (testingTokens) {
+                                        stringResource(R.string.qobuz_checking_tokens)
+                                    } else {
+                                        stringResource(R.string.qobuz_check_tokens)
+                                    },
+                                )
+                            },
+                            icon = { Icon(painterResource(R.drawable.sync), null) },
+                            isEnabled = !testingTokens,
+                            onClick = { runTokenTest() },
+                        )
+                    }
+
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.qobuz_reset_tokens)) },
+                            icon = { Icon(painterResource(R.drawable.close), null) },
+                            onClick = {
+                                tokenHealth.clear()
+                                onStoredTokensChange("")
+                            },
+                        )
+                    }
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.qobuz_instances)) {
                 item {
                     InfoLabel(text = stringResource(R.string.qobuz_instances_description))
@@ -281,6 +476,15 @@ fun QobuzSettings(navController: NavController) {
 
                 item {
                     PreferenceEntry(
+                        title = { Text(stringResource(R.string.source_bulk_add)) },
+                        description = stringResource(R.string.source_bulk_hint),
+                        icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+                        onClick = { showBulkDialog = true },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
                         title = {
                             Text(
                                 if (testingInstances) {
@@ -294,6 +498,36 @@ fun QobuzSettings(navController: NavController) {
                         isEnabled = !testingInstances && effectiveInstances.isNotEmpty(),
                         onClick = { runInstanceTest() },
                     )
+                }
+
+                if (effectiveInstances.isNotEmpty()) {
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.source_copy_online)) },
+                            icon = { Icon(painterResource(R.drawable.copy), null) },
+                            onClick = { copyOnlineInstances() },
+                        )
+                    }
+
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.source_remove_dead)) },
+                            icon = { Icon(painterResource(R.drawable.delete), null) },
+                            onClick = {
+                                removeInstancesWithStatus(setOf(TidalAudioProvider.InstanceHealth.UNREACHABLE))
+                            },
+                        )
+                    }
+
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.source_remove_deprecated)) },
+                            icon = { Icon(painterResource(R.drawable.delete), null) },
+                            onClick = {
+                                removeInstancesWithStatus(setOf(TidalAudioProvider.InstanceHealth.PREVIEW_ONLY))
+                            },
+                        )
+                    }
                 }
 
                 item {

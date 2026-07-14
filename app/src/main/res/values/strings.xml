@@ -736,6 +736,10 @@
     <string name="qobuz_checking_tokens">Testing tokens…</string>
     <string name="qobuz_reset_tokens">Clear all tokens</string>
     <string name="qobuz_token_subtitle">%1$s · id %2$s</string>
+    <string name="qobuz_token_status_ok">signed in — full quality</string>
+    <string name="qobuz_token_status_preview">no lossless — check subscription</string>
+    <string name="qobuz_token_status_invalid">invalid or expired — sign in again</string>
+    <string name="qobuz_token_status_unknown">not checked</string>
 
     <!-- Shared source settings -->
     <string name="source_manage_instances">Manage instances</string>
