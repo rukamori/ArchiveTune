@@ -253,8 +253,9 @@ object QobuzAudioProvider {
         query: Query,
         formatId: Int,
     ): DirectStream? {
-        if (instances.isEmpty()) {
-            Timber.tag("Qobuz").d("resolve skipped: no instances configured")
+        val backends = orderedBackends()
+        if (backends.isEmpty()) {
+            Timber.tag("Qobuz").d("resolve skipped: no tokens or instances configured")
             return null
         }
         val now = System.currentTimeMillis()
@@ -271,27 +272,27 @@ object QobuzAudioProvider {
             failureCache.remove(cacheKey)
         }
 
-        val orderedInstances = instances.filterNot { isInstanceCoolingDown(it.baseUrl, now) }.ifEmpty { instances }
-        for (instance in orderedInstances) {
+        val available = backends.filterNot { isInstanceCoolingDown(it.id, now) }.ifEmpty { backends }
+        for (backend in available) {
             val trackId =
-                runCatching { resolveTrackId(instance.baseUrl, query) }
-                    .onFailure { markInstanceFailed(instance.baseUrl, hardFailure = it is java.io.IOException) }
+                runCatching { resolveTrackId(backend, query) }
+                    .onFailure { markInstanceFailed(backend.id, hardFailure = it is java.io.IOException) }
                     .getOrNull() ?: continue
             val download =
-                runCatching { fetchDownload(instance.baseUrl, trackId, formatId) }
-                    .onFailure { markInstanceFailed(instance.baseUrl, hardFailure = it is java.io.IOException) }
+                runCatching { backend.download(trackId, formatId) }
+                    .onFailure { markInstanceFailed(backend.id, hardFailure = it is java.io.IOException) }
                     .getOrNull()
             if (download == null) {
-                markInstanceFailed(instance.baseUrl, hardFailure = false)
+                markInstanceFailed(backend.id, hardFailure = false)
                 continue
             }
             if (download.isPreview) {
-                // Unsubscribed backing account: skip this instance for a while, try the next.
-                Timber.tag("Qobuz").w("instance %s returned preview-only; skipping", instance.label)
-                markInstanceFailed(instance.baseUrl, hardFailure = false)
+                // Unsubscribed/expired backing account: skip this backend for a while, try the next.
+                Timber.tag("Qobuz").w("%s returned preview-only; skipping", backend.label)
+                markInstanceFailed(backend.id, hardFailure = false)
                 continue
             }
-            markInstanceHealthy(instance.baseUrl)
+            markInstanceHealthy(backend.id)
             lastResolvedTrackId = trackId
             val stream =
                 DirectStream(
@@ -303,11 +304,36 @@ object QobuzAudioProvider {
                     source = AudioSourceType.QOBUZ,
                 )
             streamCache[cacheKey] = CachedStream(stream, now + STREAM_CACHE_MS)
-            Timber.tag("Qobuz").i("resolved \"%s\" via %s [%s]", query.title, instance.label, stream.label)
+            Timber.tag("Qobuz").i("resolved \"%s\" via %s [%s]", query.title, backend.label, stream.label)
             return stream
         }
         failureCache[cacheKey] = now + FAILURE_CACHE_MS
         return null
+    }
+
+    /** Builds the ordered backend list: direct API tokens first (highest fidelity), then proxies. */
+    private fun orderedBackends(): List<Backend> {
+        val tokenBackends =
+            tokens.map { token ->
+                Backend(
+                    id = "token:${token.id}",
+                    label = "Qobuz token ${token.label.ifBlank { token.userId.ifBlank { "account" } }}",
+                    isToken = true,
+                    search = { q -> searchItemsDirect(token, q) },
+                    download = { id, fmt -> fetchDownloadDirect(token, id, fmt) },
+                )
+            }
+        val proxyBackends =
+            instances.map { instance ->
+                Backend(
+                    id = instance.baseUrl,
+                    label = instance.label,
+                    isToken = false,
+                    search = { q -> searchItems(instance.baseUrl, q) },
+                    download = { id, fmt -> fetchDownload(instance.baseUrl, id, fmt) },
+                )
+            }
+        return tokenBackends + proxyBackends
     }
 
     private fun qualityLabel(formatId: Int): String =
@@ -322,13 +348,13 @@ object QobuzAudioProvider {
     // Search + download
     // -------------------------------------------------------------------------
 
-    /** Resolves the best-matching Qobuz track id for [query] against a single instance. */
+    /** Resolves the best-matching Qobuz track id for [query] against a single backend. */
     private fun resolveTrackId(
-        baseUrl: String,
+        backend: Backend,
         query: Query,
     ): String? {
         val now = System.currentTimeMillis()
-        val key = baseUrl + "|" + query.cacheKey()
+        val key = backend.id + "|" + query.cacheKey()
         searchCache[key]?.let { cached ->
             if (cached.expiresAt > now) return cached.trackId
             searchCache.remove(key)
@@ -338,18 +364,18 @@ object QobuzAudioProvider {
                 .filter { it.isNotBlank() }
                 .joinToString(" ")
                 .ifBlank { query.title }
-        val trackId = bestMatch(baseUrl, searchQuery, query)
+        val trackId = bestMatch(backend, searchQuery, query)
         searchCache[key] = CachedSearch(trackId, now + SEARCH_CACHE_MS)
         return trackId
     }
 
-    /** Runs get-music and scores results against [query], returning the best track id above threshold. */
+    /** Runs search and scores results against [query], returning the best track id above threshold. */
     private fun bestMatch(
-        baseUrl: String,
+        backend: Backend,
         searchQuery: String,
         query: Query,
     ): String? {
-        val items = searchItems(baseUrl, searchQuery) ?: return null
+        val items = backend.search(searchQuery) ?: return null
         val wantedTitle = query.title.titleMatchNormalized()
         val wantedArtists = query.artists.map { it.normalized() }.filter { it.isNotBlank() }
         var bestId: String? = null
@@ -469,6 +495,127 @@ object QobuzAudioProvider {
             val codecs = if (mime == AUDIO_FLAC_MIME_TYPE) "flac" else "mp4a.40.2"
             return DownloadResult(streamUrl, mime, codecs, isPreview)
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Direct Qobuz API (token) — www.qobuz.com/api.json/0.2 with MD5 request signature
+    // -------------------------------------------------------------------------
+
+    private fun searchItemsDirect(
+        token: QobuzToken,
+        searchQuery: String,
+    ): JSONArray? {
+        val url =
+            "$QOBUZ_API_BASE/track/search"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("query", searchQuery)
+                .addQueryParameter("limit", SEARCH_LIMIT.toString())
+                .addQueryParameter("app_id", token.appId)
+                .build()
+        client.newCall(directRequest(url.toString(), token)).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val body = response.body?.string().orEmpty()
+            if (body.isBlank()) return null
+            val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+            return root.findTrackItems()
+        }
+    }
+
+    /**
+     * Calls track/getFileUrl with the Qobuz MD5 request signature. The signed payload is the
+     * concatenation (no separators) of the sorted call params + a unix timestamp + the app secret:
+     *   md5("trackgetFileUrl" + "format_id"+fmt + "intent"+"stream" + "track_id"+id + ts + secret)
+     */
+    private fun fetchDownloadDirect(
+        token: QobuzToken,
+        trackId: String,
+        formatId: Int,
+    ): DownloadResult? {
+        val ts = System.currentTimeMillis() / 1000L
+        val sig = md5("trackgetFileUrlformat_id${formatId}intentstreamtrack_id$trackId$ts${token.appSecret}")
+        val url =
+            "$QOBUZ_API_BASE/track/getFileUrl"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("request_ts", ts.toString())
+                .addQueryParameter("request_sig", sig)
+                .addQueryParameter("track_id", trackId)
+                .addQueryParameter("format_id", formatId.toString())
+                .addQueryParameter("intent", "stream")
+                .addQueryParameter("app_id", token.appId)
+                .build()
+        client.newCall(directRequest(url.toString(), token)).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val body = response.body?.string().orEmpty()
+            if (body.isBlank()) return null
+            val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+            val streamUrl =
+                root.stringOrNull("url")?.takeIf { it.startsWith("http") }
+                    ?: root.findStreamUrl()
+                    ?: return null
+            // Qobuz sets "sample":true for 30s previews (unsubscribed, or track unavailable at quality).
+            val isPreview = root.optBoolean("sample", false) || root.looksLikePreview()
+            val apiMime = root.stringOrNull("mime_type")
+            val mime =
+                when {
+                    apiMime?.contains("flac", true) == true -> AUDIO_FLAC_MIME_TYPE
+                    apiMime?.contains("mpeg", true) == true || apiMime?.contains("mp3", true) == true -> "audio/mpeg"
+                    streamUrl.contains(".flac", true) -> AUDIO_FLAC_MIME_TYPE
+                    streamUrl.contains(".mp3", true) -> "audio/mpeg"
+                    else -> AUDIO_FLAC_MIME_TYPE
+                }
+            val codecs = if (mime == AUDIO_FLAC_MIME_TYPE) "flac" else "mp4a.40.2"
+            return DownloadResult(streamUrl, mime, codecs, isPreview)
+        }
+    }
+
+    private fun directRequest(
+        url: String,
+        token: QobuzToken,
+    ): Request =
+        Request
+            .Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "application/json")
+            .header("X-App-Id", token.appId)
+            .header("X-User-Auth-Token", token.token)
+            .get()
+            .build()
+
+    private fun md5(input: String): String {
+        val digest = java.security.MessageDigest.getInstance("MD5").digest(input.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Deep health probe for a direct-API token: searches + calls getFileUrl for [probeTrackId] and
+     * classifies HEALTHY / PREVIEW_ONLY (auth OK but no lossless entitlement) / UNREACHABLE (expired,
+     * invalid, or network error). Runs blocking network I/O — call off the main thread.
+     */
+    fun verifyToken(
+        token: QobuzToken,
+        probeTrackId: String?,
+        formatId: Int,
+    ): TidalAudioProvider.InstanceHealth {
+        val trackId = probeTrackId?.trim().orEmpty()
+        return runCatching {
+            val resolvedId =
+                trackId.ifBlank {
+                    val items = searchItemsDirect(token, "adele hello") ?: return@runCatching TidalAudioProvider.InstanceHealth.UNREACHABLE
+                    (0 until items.length()).firstNotNullOfOrNull { items.optJSONObject(it)?.trackId() }
+                        ?: return@runCatching TidalAudioProvider.InstanceHealth.UNREACHABLE
+                }
+            when (val result = fetchDownloadDirect(token, resolvedId, formatId)) {
+                null -> TidalAudioProvider.InstanceHealth.UNREACHABLE
+                else -> if (result.isPreview) {
+                    TidalAudioProvider.InstanceHealth.PREVIEW_ONLY
+                } else {
+                    TidalAudioProvider.InstanceHealth.HEALTHY
+                }
+            }
+        }.getOrElse { TidalAudioProvider.InstanceHealth.UNREACHABLE }
     }
 
     // -------------------------------------------------------------------------

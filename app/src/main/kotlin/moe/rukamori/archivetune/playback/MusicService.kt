@@ -194,8 +194,10 @@ import moe.rukamori.archivetune.constants.QobuzInstancesKey
 import moe.rukamori.archivetune.constants.QobuzAudioQuality
 import moe.rukamori.archivetune.constants.QobuzAudioQualityKey
 import moe.rukamori.archivetune.constants.QobuzLastProbeTrackKey
+import moe.rukamori.archivetune.constants.QobuzTokensKey
 import moe.rukamori.archivetune.constants.toFormatId
 import moe.rukamori.archivetune.qobuz.QobuzAudioProvider
+import moe.rukamori.archivetune.qobuz.QobuzToken
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
 import moe.rukamori.archivetune.audiosource.DirectStream
 import moe.rukamori.archivetune.tidal.TidalAccountManager
@@ -7397,12 +7399,19 @@ class MusicService :
     /** Resolves a Qobuz stream through the user-provided proxy instances. */
     private fun resolveQobuzStream(query: SourceQuery): DirectStream? {
         val configuredInstances = parseQobuzInstances()
-        if (configuredInstances.isEmpty()) {
-            Timber.tag("MusicService").d("Qobuz skip: no instances configured")
+        val configuredTokens = QobuzToken.listFromJson(dataStore.get(QobuzTokensKey, ""))
+        if (configuredInstances.isEmpty() && configuredTokens.isEmpty()) {
+            Timber.tag("MusicService").d("Qobuz skip: no tokens or instances configured")
             return null
         }
         val formatId = parseQobuzAudioQuality().toFormatId()
-        Timber.tag("MusicService").d("Qobuz resolve start | formatId=%d instances=%d", formatId, configuredInstances.size)
+        Timber.tag("MusicService").d(
+            "Qobuz resolve start | formatId=%d tokens=%d instances=%d",
+            formatId,
+            configuredTokens.size,
+            configuredInstances.size,
+        )
+        QobuzAudioProvider.setTokens(configuredTokens)
         QobuzAudioProvider.setInstances(configuredInstances)
         return runCatching {
             runBlocking(Dispatchers.IO) {
