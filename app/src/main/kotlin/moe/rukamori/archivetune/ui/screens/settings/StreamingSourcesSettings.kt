@@ -10,7 +10,6 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -25,21 +24,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioSearchSourceKey
@@ -51,17 +42,13 @@ import moe.rukamori.archivetune.constants.TidalArtworkFallbackEnabledKey
 import moe.rukamori.archivetune.constants.TidalAudioQuality
 import moe.rukamori.archivetune.constants.TidalAudioQualityKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
-import moe.rukamori.archivetune.constants.TidalInstancesKey
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
-import moe.rukamori.archivetune.tidal.TidalAudioProvider
-import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
-import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -70,7 +57,6 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun StreamingSourcesSettings(navController: NavController) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
     val (tidalEnabled, onTidalEnabledChange) = rememberPreference(TidalEnabledKey, true)
     val (audioQuality, onAudioQualityChange) =
@@ -109,95 +95,6 @@ fun StreamingSourcesSettings(navController: NavController) {
             AudioSourceType.TIDAL -> context.getString(R.string.source_tidal)
             AudioSourceType.YOUTUBE -> context.getString(R.string.source_youtube)
         }
-
-    // Instances stored as a newline-separated string; blank means "use built-in defaults".
-    val (storedInstances, onStoredInstancesChange) = rememberPreference(TidalInstancesKey, "")
-
-    val defaults = remember { TidalAudioProvider.defaultInstanceUrls }
-    val effectiveInstances =
-        remember(storedInstances) {
-            storedInstances
-                .split('\n')
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .ifEmpty { defaults }
-        }
-
-    fun persistInstances(list: List<String>) {
-        val distinct = list.distinct()
-        onStoredInstancesChange(if (distinct == defaults) "" else distinct.joinToString("\n"))
-    }
-
-    // baseUrl -> health label (null while unchecked)
-    val healthStatus = remember { mutableStateMapOf<String, String>() }
-    var checkingInstances by remember { mutableStateOf(false) }
-    var discovering by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
-
-    fun toast(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-    }
-
-    // Turns a scan record into a user-facing status label (healthy latency / preview-only / dead).
-    fun labelFor(record: TidalInstanceHealthManager.InstanceRecord): String =
-        when (record.status) {
-            TidalAudioProvider.InstanceHealth.HEALTHY ->
-                context.getString(R.string.tidal_instance_healthy, (record.latencyMs ?: 0L).toInt())
-            TidalAudioProvider.InstanceHealth.PREVIEW_ONLY ->
-                context.getString(R.string.tidal_instance_preview_only)
-            TidalAudioProvider.InstanceHealth.UNREACHABLE ->
-                context.getString(R.string.tidal_instance_unreachable)
-        }
-
-    fun applyRecords(records: List<TidalInstanceHealthManager.InstanceRecord>) {
-        records.forEach { record -> healthStatus[record.url] = labelFor(record) }
-    }
-
-    // Deep-verifies every configured instance (reachability AND full-vs-preview) and saves the
-    // result so working instances are remembered for next time.
-    fun runHealthCheck() {
-        if (checkingInstances) return
-        checkingInstances = true
-        coroutineScope.launch {
-            val records =
-                withContext(Dispatchers.IO) {
-                    TidalInstanceHealthManager.refresh(context, includeDiscovery = false, staggered = false)
-                }
-            applyRecords(records)
-            checkingInstances = false
-        }
-    }
-
-    // Show the last saved scan instantly when the screen opens; only run a fresh scan if we have
-    // nothing cached yet, so we don't hammer the instances on every visit.
-    LaunchedEffect(Unit) {
-        if (!tidalEnabled) return@LaunchedEffect
-        val cached = withContext(Dispatchers.IO) { TidalInstanceHealthManager.cachedRecords(context) }
-        if (cached.isNotEmpty()) {
-            applyRecords(cached)
-        } else if (healthStatus.isEmpty()) {
-            runHealthCheck()
-        }
-    }
-
-    if (showAddDialog) {
-        TextFieldDialog(
-            icon = { Icon(painterResource(R.drawable.add), null) },
-            title = { Text(stringResource(R.string.tidal_add_instance)) },
-            placeholder = { Text(stringResource(R.string.tidal_instance_url_hint)) },
-            isInputValid = { TidalAudioProvider.normalizeInstanceUrl(it) != null },
-            onDone = { raw ->
-                val normalized = TidalAudioProvider.normalizeInstanceUrl(raw)
-                when {
-                    normalized == null -> toast(context.getString(R.string.tidal_instance_invalid_url))
-                    effectiveInstances.contains(normalized) ->
-                        toast(context.getString(R.string.tidal_instance_duplicate))
-                    else -> persistInstances(effectiveInstances + normalized)
-                }
-            },
-            onDismiss = { showAddDialog = false },
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -324,119 +221,6 @@ fun StreamingSourcesSettings(navController: NavController) {
                                 TidalAudioQuality.FLAC -> stringResource(R.string.tidal_quality_flac)
                                 TidalAudioQuality.HI_RES_LOSSLESS -> stringResource(R.string.tidal_quality_hires)
                             }
-                        },
-                    )
-                }
-            }
-
-            PreferenceGroup(title = stringResource(R.string.tidal_instances)) {
-                item {
-                    InfoLabel(text = stringResource(R.string.tidal_instances_description))
-                }
-
-                effectiveInstances.forEach { instance ->
-                    item {
-                        PreferenceEntry(
-                            title = { Text(instance) },
-                            description =
-                                healthStatus[instance]
-                                    ?: stringResource(R.string.tidal_instance_unknown),
-                            icon = { Icon(painterResource(R.drawable.link), null) },
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        val remaining = effectiveInstances - instance
-                                        healthStatus.remove(instance)
-                                        persistInstances(remaining)
-                                    },
-                                    onLongClick = {},
-                                ) {
-                                    Icon(painterResource(R.drawable.delete), null)
-                                }
-                            },
-                        )
-                    }
-                }
-
-                item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.tidal_add_instance)) },
-                        icon = { Icon(painterResource(R.drawable.add), null) },
-                        onClick = { showAddDialog = true },
-                    )
-                }
-
-                item {
-                    PreferenceEntry(
-                        title = {
-                            Text(
-                                if (checkingInstances) {
-                                    stringResource(R.string.tidal_checking_instances)
-                                } else {
-                                    stringResource(R.string.tidal_check_instances)
-                                },
-                            )
-                        },
-                        icon = { Icon(painterResource(R.drawable.sync), null) },
-                        isEnabled = !checkingInstances,
-                        onClick = { runHealthCheck() },
-                    )
-                }
-
-                item {
-                    PreferenceEntry(
-                        title = {
-                            Text(
-                                if (discovering) {
-                                    stringResource(R.string.tidal_discovering)
-                                } else {
-                                    stringResource(R.string.tidal_discover)
-                                },
-                            )
-                        },
-                        description = stringResource(R.string.tidal_discover_description),
-                        icon = { Icon(painterResource(R.drawable.search), null) },
-                        isEnabled = !discovering,
-                        onClick = {
-                            discovering = true
-                            coroutineScope.launch {
-                                // Fetch public instances, verify each (reachability + full-vs-preview),
-                                // then save the results. Newly discovered working instances are added
-                                // to the list so they persist for next launch.
-                                val records =
-                                    withContext(Dispatchers.IO) {
-                                        TidalInstanceHealthManager.refresh(
-                                            context,
-                                            includeDiscovery = true,
-                                            staggered = false,
-                                        )
-                                    }
-                                applyRecords(records)
-                                val newHealthy =
-                                    records
-                                        .filter { it.isHealthy && it.url !in effectiveInstances }
-                                        .map { it.url }
-                                when {
-                                    newHealthy.isNotEmpty() -> {
-                                        persistInstances(effectiveInstances + newHealthy)
-                                        toast(context.getString(R.string.tidal_discover_result, newHealthy.size))
-                                    }
-                                    records.isEmpty() -> toast(context.getString(R.string.tidal_discover_failed))
-                                    else -> toast(context.getString(R.string.tidal_discover_none))
-                                }
-                                discovering = false
-                            }
-                        },
-                    )
-                }
-
-                item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.tidal_reset_instances)) },
-                        icon = { Icon(painterResource(R.drawable.close), null) },
-                        onClick = {
-                            healthStatus.clear()
-                            onStoredInstancesChange("")
                         },
                     )
                 }

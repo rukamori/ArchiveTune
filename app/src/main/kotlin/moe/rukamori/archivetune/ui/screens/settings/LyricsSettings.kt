@@ -500,7 +500,6 @@ fun LyricsSettings(
             item {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.enable_lyrics_plus)) },
-                    description = stringResource(R.string.enable_lyrics_plus_description),
                     icon = { Icon(painterResource(R.drawable.lyrics), null) },
                     checked = enableLyricsPlus,
                     onCheckedChange = onEnableLyricsPlusChange,

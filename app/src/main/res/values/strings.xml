@@ -526,7 +526,6 @@
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
     <string name="enable_lyrics_plus">Enable LyricsPlus</string>
-    <string name="enable_lyrics_plus_description">Word-by-word synced lyrics with multi-voice support from the community LyricsPlus servers.</string>
     <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
     <string name="player_and_audio">Player and audio</string>
     <string name="audio_quality">Audio quality</string>
@@ -659,9 +658,8 @@
     <string name="music_sources">Music Sources</string>
     <string name="streaming_sources">Streaming sources</string>
     <string name="streaming_sources_description">Configure Tidal lossless sources and priority</string>
-    <string name="tidal_source_settings_moved">Source quality, instances and priority settings have moved to Player and audio → Streaming sources.</string>
     <string name="tidal_integration">Tidal</string>
-    <string name="tidal_integration_description">Log in to your Tidal account</string>
+    <string name="tidal_integration_description">Log in and manage Tidal HiFi instances</string>
     <string name="tidal_enable">Enable Tidal source</string>
     <string name="tidal_enable_description">Route playback through Tidal\'s lossless resolver when a matching track is found</string>
     <string name="tidal_audio_quality">Audio quality</string>
@@ -682,7 +680,7 @@
     <string name="tidal_playback_fell_back">Tidal couldn\'t resolve this track — playing from YouTube</string>
     <!-- Tidal HiFi instances -->
     <string name="tidal_instances">HiFi instances</string>
-    <string name="tidal_instances_description">Tidal streams are resolved through public HiFi/QQDL instances. Add, remove or reorder them; the app tries each in order until one responds.</string>
+    <string name="tidal_instances_description">Tidal streams are resolved through public HiFi/QQDL instances. Add or remove them, then tap Test instances to check which ones work.</string>
     <string name="tidal_add_instance">Add instance</string>
     <string name="tidal_instance_url_hint">https://instance.example.com</string>
     <string name="tidal_instance_invalid_url">Enter a valid http(s) URL</string>
@@ -690,22 +688,14 @@
     <string name="tidal_remove_instance">Remove instance</string>
     <string name="tidal_reset_instances">Reset to default instances</string>
     <string name="tidal_no_instances">No instances configured. Add one or reset to defaults.</string>
-    <string name="tidal_check_instances">Check instance health</string>
-    <string name="tidal_checking_instances">Checking instances…</string>
-    <string name="tidal_instance_healthy">Online (%1$d ms)</string>
-    <string name="tidal_instance_unreachable">Unreachable</string>
-    <string name="tidal_instance_preview_only">Preview only (unsubscribed)</string>
-    <string name="tidal_instance_unknown">Not checked</string>
-    <!-- Tidal instance auto-discovery -->
-    <string name="tidal_discover">Auto-discover instances</string>
-    <string name="tidal_discover_description">Fetch additional public instances from the Monochrome community list and merge them with your own.</string>
-    <string name="tidal_discovering">Discovering instances…</string>
-    <string name="tidal_discover_result">Added %1$d new instance(s)</string>
-    <string name="tidal_discover_none">No new instances found</string>
-    <string name="tidal_discover_failed">Discovery failed — check your connection or add instances manually</string>
+    <string name="tidal_check_instances">Test instances</string>
+    <string name="tidal_checking_instances">Testing…</string>
+    <string name="tidal_instance_healthy">online — %1$d ms</string>
+    <string name="tidal_instance_unreachable">unreachable</string>
+    <string name="tidal_instance_preview_only">deprecated — %1$d ms</string>
+    <string name="tidal_instance_unknown">Not tested — tap Test instances</string>
     <!-- Tidal account login / premium -->
     <string name="tidal_login">Sign in to Tidal</string>
-    <string name="tidal_login_description">Sign in with your Tidal account to verify your subscription. Playback still uses the public instances above.</string>
     <string name="tidal_login_start">Start sign-in</string>
     <string name="tidal_login_instructions">Open %1$s and enter code %2$s, then return here.</string>
     <string name="tidal_login_open">Open activation page</string>
@@ -718,11 +708,9 @@
     <string name="tidal_account_free">Free account — lossless playback may not work</string>
     <string name="tidal_account_free_warning">This Tidal account is not HiFi/Premium. Lossless playback through Tidal may fail; the app will fall back to YouTube.</string>
     <string name="tidal_login_web">Sign in with Tidal (web)</string>
-    <string name="tidal_login_web_description">Opens the Tidal login page in a secure web view and connects your account directly.</string>
     <string name="tidal_login_webplayer_fallback">Couldn\'t complete the standard sign-in; opening the Tidal web player instead. Just log in and playback will connect automatically.</string>
     <string name="tidal_login_code">Sign in with a device code</string>
     <string name="tidal_reconnect">Reconnect Tidal account</string>
-    <string name="tidal_reconnect_description">Your Tidal session expired and couldn\'t be refreshed. Sign in again to keep using your account.</string>
     <string name="discord_integration">Discord Integration</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
     <string name="discord_login_description">Connect your Discord account with OAuth so ArchiveTune can publish Rich Presence.</string>

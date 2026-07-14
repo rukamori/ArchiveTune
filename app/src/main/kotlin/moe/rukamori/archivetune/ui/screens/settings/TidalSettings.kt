@@ -4,14 +4,16 @@
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  *
- * Tidal account login/logout for the Integration section.
- * Streaming source settings (quality, instances, ordering)
- * live under Player & Audio → Streaming sources.
+ * Tidal account login/logout for the Integration section, plus manual HiFi instance
+ * management. Instances are never auto-fetched: the user taps "Test instances" to probe
+ * them on demand, and each result shows an "online — <ping>" (full/premium) or
+ * "deprecated — <ping>" (preview-only/non-premium) label.
  * Ported from MetroFuse (github.com/956tris/MetroFuse) under GPL-3.0.
  */
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -26,31 +28,40 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.TidalAccessTokenKey
 import moe.rukamori.archivetune.constants.TidalAccountNameKey
 import moe.rukamori.archivetune.constants.TidalAuthFlowKey
 import moe.rukamori.archivetune.constants.TidalCountryCodeKey
+import moe.rukamori.archivetune.constants.TidalInstancesKey
 import moe.rukamori.archivetune.constants.TidalNeedsReloginKey
 import moe.rukamori.archivetune.constants.TidalRefreshTokenKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionStatus
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.TidalUserIdKey
+import moe.rukamori.archivetune.tidal.TidalAudioProvider
+import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
+import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -72,6 +83,86 @@ fun TidalSettings(navController: NavController) {
                 .getOrDefault(TidalSubscriptionStatus.UNKNOWN)
         }
     val accountConfigured = accessToken.isNotBlank()
+
+    // ----- HiFi instance management (moved here from Streaming sources) -----
+    // Instances stored as a newline-separated string; blank means "use built-in defaults".
+    val (storedInstances, onStoredInstancesChange) = rememberPreference(TidalInstancesKey, "")
+
+    val defaults = remember { TidalAudioProvider.defaultInstanceUrls }
+    val effectiveInstances =
+        remember(storedInstances) {
+            storedInstances
+                .split('\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .ifEmpty { defaults }
+        }
+
+    fun persistInstances(list: List<String>) {
+        val distinct = list.distinct()
+        onStoredInstancesChange(if (distinct == defaults) "" else distinct.joinToString("\n"))
+    }
+
+    // baseUrl -> health label (null while untested). Nothing is probed until the user taps Test.
+    val healthStatus = remember { mutableStateMapOf<String, String>() }
+    var testingInstances by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    fun toast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    // Turns a scan record into a bottom-text ping label:
+    //  - HEALTHY (full stream, premium account) -> "online — <ping> ms"
+    //  - PREVIEW_ONLY (free / non-premium account) -> "deprecated — <ping> ms"
+    //  - UNREACHABLE -> "unreachable"
+    fun labelFor(record: TidalInstanceHealthManager.InstanceRecord): String =
+        when (record.status) {
+            TidalAudioProvider.InstanceHealth.HEALTHY ->
+                context.getString(R.string.tidal_instance_healthy, (record.latencyMs ?: 0L).toInt())
+            TidalAudioProvider.InstanceHealth.PREVIEW_ONLY ->
+                context.getString(R.string.tidal_instance_preview_only, (record.latencyMs ?: 0L).toInt())
+            TidalAudioProvider.InstanceHealth.UNREACHABLE ->
+                context.getString(R.string.tidal_instance_unreachable)
+        }
+
+    fun applyRecords(records: List<TidalInstanceHealthManager.InstanceRecord>) {
+        records.forEach { record -> healthStatus[record.url] = labelFor(record) }
+    }
+
+    // Manual, on-demand probe of every configured instance (reachability AND full-vs-preview).
+    // Triggered only by the user tapping "Test instances" — never automatically.
+    fun runInstanceTest() {
+        if (testingInstances) return
+        testingInstances = true
+        coroutineScope.launch {
+            val records =
+                withContext(Dispatchers.IO) {
+                    TidalInstanceHealthManager.refresh(context, includeDiscovery = false, staggered = false)
+                }
+            applyRecords(records)
+            testingInstances = false
+        }
+    }
+
+    if (showAddDialog) {
+        TextFieldDialog(
+            icon = { Icon(painterResource(R.drawable.add), null) },
+            title = { Text(stringResource(R.string.tidal_add_instance)) },
+            placeholder = { Text(stringResource(R.string.tidal_instance_url_hint)) },
+            isInputValid = { TidalAudioProvider.normalizeInstanceUrl(it) != null },
+            onDone = { raw ->
+                val normalized = TidalAudioProvider.normalizeInstanceUrl(raw)
+                when {
+                    normalized == null -> toast(context.getString(R.string.tidal_instance_invalid_url))
+                    effectiveInstances.contains(normalized) ->
+                        toast(context.getString(R.string.tidal_instance_duplicate))
+                    else -> persistInstances(effectiveInstances + normalized)
+                }
+            },
+            onDismiss = { showAddDialog = false },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -105,14 +196,6 @@ fun TidalSettings(navController: NavController) {
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
             PreferenceGroup(title = stringResource(R.string.tidal_account)) {
-                item {
-                    InfoLabel(text = stringResource(R.string.tidal_login_description))
-                }
-
-                item {
-                    InfoLabel(text = stringResource(R.string.tidal_source_settings_moved))
-                }
-
                 if (accountConfigured) {
                     item {
                         PreferenceEntry(
@@ -151,9 +234,6 @@ fun TidalSettings(navController: NavController) {
 
                     if (needsRelogin) {
                         item {
-                            InfoLabel(text = stringResource(R.string.tidal_reconnect_description))
-                        }
-                        item {
                             PreferenceEntry(
                                 title = { Text(stringResource(R.string.tidal_reconnect)) },
                                 icon = { Icon(painterResource(R.drawable.error), null) },
@@ -185,15 +265,78 @@ fun TidalSettings(navController: NavController) {
                     }
                 } else {
                     item {
-                        InfoLabel(text = stringResource(R.string.tidal_login_web_description))
-                    }
-                    item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.tidal_login_web)) },
                             icon = { Icon(painterResource(R.drawable.token), null) },
                             onClick = { navController.navigate(TIDAL_LOGIN_ROUTE) },
                         )
                     }
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.tidal_instances)) {
+                item {
+                    InfoLabel(text = stringResource(R.string.tidal_instances_description))
+                }
+
+                effectiveInstances.forEach { instance ->
+                    item {
+                        PreferenceEntry(
+                            title = { Text(instance) },
+                            description =
+                                healthStatus[instance]
+                                    ?: stringResource(R.string.tidal_instance_unknown),
+                            icon = { Icon(painterResource(R.drawable.link), null) },
+                            trailingContent = {
+                                IconButton(
+                                    onClick = {
+                                        val remaining = effectiveInstances - instance
+                                        healthStatus.remove(instance)
+                                        persistInstances(remaining)
+                                    },
+                                    onLongClick = {},
+                                ) {
+                                    Icon(painterResource(R.drawable.delete), null)
+                                }
+                            },
+                        )
+                    }
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.tidal_add_instance)) },
+                        icon = { Icon(painterResource(R.drawable.add), null) },
+                        onClick = { showAddDialog = true },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = {
+                            Text(
+                                if (testingInstances) {
+                                    stringResource(R.string.tidal_checking_instances)
+                                } else {
+                                    stringResource(R.string.tidal_check_instances)
+                                },
+                            )
+                        },
+                        icon = { Icon(painterResource(R.drawable.sync), null) },
+                        isEnabled = !testingInstances,
+                        onClick = { runInstanceTest() },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.tidal_reset_instances)) },
+                        icon = { Icon(painterResource(R.drawable.close), null) },
+                        onClick = {
+                            healthStatus.clear()
+                            onStoredInstancesChange("")
+                        },
+                    )
                 }
             }
         }
