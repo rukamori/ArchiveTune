@@ -470,7 +470,6 @@
     <string name="playback_requires_youtube_music_confirmation">Confirme a reprodução no YouTube Music e volte ao ArchiveTune.</string>
     <string name="playback_login_refresh_required">Atualizar login do YouTube Music</string>
     <string name="playback_requires_youtube_music_login_refresh">Atualize seu login do YouTube Music e volte ao ArchiveTune.</string>
-    <string name="could_not_open_youtube_music">Não foi possível abrir o YouTube Music</string>
     <string name="playback_error_code">Código</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">Mensagem</string>
@@ -802,7 +801,6 @@
     <string name="playback_state_unknown">DESCONHECIDO</string>
     <string name="share_logs">Compartilhar logs</string>
     <string name="about">Sobre</string>
-    <string name="open_youtube_music">Abrir YouTube Music</string>
     <string name="new_version_available">Nova versão disponível</string>
     <string name="updates">Atualizações</string>
     <string name="updates_subtitle_stable">Versões estáveis e notas de versão</string>

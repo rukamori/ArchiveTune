@@ -545,7 +545,6 @@
     <string name="playback_requires_youtube_music_confirmation">Wiedergabe in YouTube Music bestätigten, dann zu ArchiveTune zurückkehren.</string>
     <string name="playback_login_refresh_required">Erneuere YouTube Music Anmeldung</string>
     <string name="playback_requires_youtube_music_login_refresh">Erneuere YouTube Music Anmeldung, dann zu ArchiveTune zurückkehren.</string>
-    <string name="could_not_open_youtube_music">Konnte YouTube Music nicht öffnen</string>
     <string name="internet">Internet</string>
     <string name="internet_warning_title">Sicherheits- und Nutzungswarnung</string>
     <string name="dns_over_https">DNS über HTTPS</string>
@@ -659,7 +658,6 @@
     <string name="playback_state_ended">BEENDET</string>
     <string name="playback_state_unknown">UNBEKANNT</string>
     <string name="share_logs">Protokolle teilen</string>
-    <string name="open_youtube_music">YouTube Music öffnen</string>
     <string name="updates">Updates</string>
     <string name="updates_status_checking">Überprüfe auf die aktuellste Version</string>
     <string name="updates_status_current">Du bist auf der aktuellsten verfügbaren Version</string>

@@ -115,25 +115,39 @@ class MusicRecognitionNotificationManager
         fun failure(failure: MusicRecognitionFailure): Notification {
             val title =
                 when (failure) {
-                    MusicRecognitionFailure.NoMatch ->
+                    MusicRecognitionFailure.NoMatch -> {
                         R.string.music_recognition_notification_no_match_title
-                    MusicRecognitionFailure.RecordingFailed ->
+                    }
+
+                    MusicRecognitionFailure.RecordingFailed -> {
                         R.string.music_recognition_notification_recording_failed_title
-                    MusicRecognitionFailure.SignatureFailed ->
+                    }
+
+                    MusicRecognitionFailure.SignatureFailed -> {
                         R.string.music_recognition_signature_failed
-                    MusicRecognitionFailure.RecognitionFailed ->
+                    }
+
+                    MusicRecognitionFailure.RecognitionFailed -> {
                         R.string.music_recognition_recognition_failed
+                    }
                 }
             val text =
                 when (failure) {
-                    MusicRecognitionFailure.NoMatch ->
+                    MusicRecognitionFailure.NoMatch -> {
                         R.string.music_recognition_notification_no_match_text
-                    MusicRecognitionFailure.RecordingFailed ->
+                    }
+
+                    MusicRecognitionFailure.RecordingFailed -> {
                         R.string.music_recognition_notification_recording_failed_text
-                    MusicRecognitionFailure.SignatureFailed ->
+                    }
+
+                    MusicRecognitionFailure.SignatureFailed -> {
                         R.string.music_recognition_notification_signature_failed_text
-                    MusicRecognitionFailure.RecognitionFailed ->
+                    }
+
+                    MusicRecognitionFailure.RecognitionFailed -> {
                         R.string.music_recognition_notification_recognition_failed_text
+                    }
                 }
 
             return baseBuilder(

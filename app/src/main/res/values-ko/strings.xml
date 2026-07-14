@@ -578,7 +578,6 @@
     <string name="playback_state_unknown">알 수 없음</string>
     <string name="share_logs">로그 공유</string>
     <string name="about">소개</string>
-    <string name="open_youtube_music">YouTube Music 열기</string>
     <string name="new_version_available">새 버전 사용 가능</string>
     <string name="updates">업데이트</string>
     <string name="updates_subtitle_stable">정식 릴리즈 및 안정화 버전 업데이트 노트</string>
@@ -730,7 +729,6 @@
     <string name="local_files">로컬 파일</string>
     <string name="lyrics_synced_badge">동기화됨</string>
     <string name="widget_pause">일시정지</string>
-    <string name="could_not_open_youtube_music">YouTube Music을 열 수 없습니다</string>
     <string name="discord_activity_type_streaming_label">스트리밍 중</string>
     <string name="discord_url_source_song">곡 URL</string>
     <string name="discord_refresh_success">Discord Rich Presence를 새로고침했습니다.</string>

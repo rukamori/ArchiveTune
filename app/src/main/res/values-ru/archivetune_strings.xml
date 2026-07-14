@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Исследовать</string>
     <string name="local_history">Локальная</string>
@@ -161,8 +161,6 @@
     <string name="empty_playlist_desc">Этот плейлист не содержит никаких песен</string>
     <string name="player_stream_client">Клиент воспроизведения</string>
     <string name="player_stream_client_desc">Определяет, какой клиент YouTube используется для загрузки потоков</string>
-    <string name="player_stream_client_android_vr">Андроид VR</string>
-    <string name="player_stream_client_android_vr_desc">Транслирует напрямую, без расшифровки подписи, обеспечивая максимальную скорость. Подходит для большинства пользователей.</string>
     <string name="player_stream_client_web_remix">Веб-ремикс</string>
     <string name="player_stream_client_web_remix_desc">Расширенная поддержка форматов за счет увеличения скорости. Расшифровка подписи JavaScript приводит к задержке запуска на 5-10 секунд.</string>
     <string name="settings_section_player_content">Плеер и контент</string>

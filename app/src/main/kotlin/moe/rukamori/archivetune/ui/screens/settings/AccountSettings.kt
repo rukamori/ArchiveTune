@@ -9,24 +9,13 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,39 +25,42 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -82,11 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -98,7 +86,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -139,12 +126,9 @@ import moe.rukamori.archivetune.viewmodels.AccountChannelsState
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import java.util.UUID
 
-private val CardShape = RoundedCornerShape(28.dp)
-private val InnerTileShape = RoundedCornerShape(22.dp)
-private val AvatarSize = 88.dp
-private val QuickTileIconSize = 48.dp
-private val RowIconSize = 42.dp
-private const val PressScale = 0.96f
+private val AccountContentMaxWidth = 840.dp
+private val AvatarSize = 72.dp
+private val RowIconSize = 40.dp
 
 @Immutable
 private data class SavedAccountCollection(
@@ -165,7 +149,6 @@ fun AccountSettings(
     val integrationLabel = stringResource(R.string.integration)
     val miscLabel = stringResource(R.string.misc)
     val loginLabel = stringResource(R.string.login)
-    val notLoggedInLabel = stringResource(R.string.not_logged_in)
     val tokenDescription = stringResource(R.string.token_adv_login_description)
 
     val (accountNamePref, onAccountNameChange) = rememberPreference(AccountNameKey, "")
@@ -212,10 +195,17 @@ fun AccountSettings(
             isLoggedIn -> accountLabel
             else -> loginLabel
         }
+    val hasSwitchableChannels =
+        (accountChannelsState as? AccountChannelsState.Success)
+            ?.channels
+            ?.items
+            ?.size
+            .let { (it ?: 0) > 1 }
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showUnsavedAccountDialog by remember { mutableStateOf(false) }
+    var showAccountSwitcher by remember { mutableStateOf(false) }
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
@@ -301,47 +291,6 @@ fun AccountSettings(
                         )
                     }
                 },
-                actions = {
-                    OutlinedIconButton(
-                        onClick = { showTokenEditor = true },
-                        colors =
-                            IconButtonDefaults.outlinedIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        border = null,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.token),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    if (hasUpdate) {
-                        BadgedBox(
-                            badge = {
-                                Badge(containerColor = MaterialTheme.colorScheme.error)
-                            },
-                        ) {
-                            OutlinedIconButton(
-                                onClick = { uriHandler.openUri(Updater.getLatestDownloadUrl()) },
-                                colors =
-                                    IconButtonDefaults.outlinedIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    ),
-                                border = null,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.update),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-                },
                 windowInsets = TopAppBarDefaults.windowInsets,
                 colors =
                     TopAppBarDefaults.largeTopAppBarColors(
@@ -352,7 +301,7 @@ fun AccountSettings(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -361,159 +310,185 @@ fun AccountSettings(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                         ),
                     ),
-            contentPadding =
-                PaddingValues(
-                    start = 16.dp,
-                    top = innerPadding.calculateTopPadding() + 8.dp,
-                    end = 16.dp,
-                    bottom = SettingsDimensions.ScreenBottomPadding,
-                ),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item {
-                ProfileIdentityCard(
-                    isLoggedIn = isLoggedIn,
-                    accountName = displayName,
-                    accountEmail = accountEmail,
-                    accountHandle = accountChannelHandle,
-                    accountImageUrl = accountImageUrl,
-                    savedAccounts = savedAccounts,
-                    activeInnerTubeCookie = innerTubeCookie,
-                    activeDataSyncId = dataSyncId,
-                    accountChannelsState = accountChannelsState,
-                    onPrimaryAction = {
-                        if (isLoggedIn) {
-                            navController.navigate("account")
-                        } else {
-                            navController.navigate(buildLoginRoute())
-                        }
-                    },
-                    onSecondaryAction = {
-                        if (isLoggedIn) {
-                            showToken = false
-                            onInnerTubeCookieChange("")
-                            forgetAccount(context, clearWebAuthSession = true)
-                        } else {
-                            showTokenEditor = true
-                        }
-                    },
-                    onSaveAccount = saveCurrentAccount,
-                    onSwitchAccount = switchToAccount,
-                    onSwitchAccountChannel = switchToAccountChannel,
-                    onRemoveAccount = removeAccount,
-                    onAddAnotherAccount = {
-                        val isSaved = savedAccounts.accounts.any { it.innerTubeCookie == innerTubeCookie }
-                        if (isLoggedIn && !isSaved) {
-                            showUnsavedAccountDialog = true
-                        } else {
-                            navController.navigate(buildLoginRoute())
-                        }
-                    },
-                )
-            }
-
-            if (hasUpdate) {
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = AccountContentMaxWidth)
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        end = 16.dp,
+                        bottom = SettingsDimensions.ScreenBottomPadding,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
                 item {
-                    UpdateBannerStrip(
-                        latestVersion = latestVersionName,
-                        onClick = { uriHandler.openUri(Updater.getLatestDownloadUrl()) },
-                    )
-                }
-            }
-
-            item {
-                AnimatedVisibility(
-                    visible = isLoggedIn,
-                    enter =
-                        fadeIn(spring(stiffness = Spring.StiffnessLow)) +
-                            expandVertically(
-                                spring(stiffness = Spring.StiffnessLow),
-                            ),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    ExpressiveSectionCard(title = generalLabel) {
-                        ExpressiveSwitchRow(
-                            icon = painterResource(R.drawable.add_circle),
-                            title = stringResource(R.string.more_content),
-                            subtitle = stringResource(R.string.use_login_for_browse_desc),
-                            checked = useLoginForBrowse,
-                            onCheckedChange = onUseLoginForBrowseChange,
-                        )
-
-                        ExpressiveDivider()
-
-                        ExpressiveSwitchRow(
-                            icon = painterResource(R.drawable.cached),
-                            title = stringResource(R.string.yt_sync),
-                            checked = ytmSync,
-                            onCheckedChange = onYtmSyncChange,
-                        )
-
-                        ExpressiveDivider()
-
-                        ExpressiveSwitchRow(
-                            icon = painterResource(R.drawable.sync),
-                            title = stringResource(R.string.force_sync_on_switch_account),
-                            subtitle = stringResource(R.string.force_sync_on_switch_account_desc),
-                            checked = forceSyncOnAccountSwitch,
-                            onCheckedChange = onForceSyncOnAccountSwitchChange,
-                        )
-                    }
-                }
-            }
-
-            item {
-                ExpressiveSectionCard(title = integrationLabel) {
-                    ExpressiveActionRow(
-                        icon = painterResource(R.drawable.integration),
-                        title = integrationLabel,
-                        subtitle = stringResource(R.string.account_integrations_summary),
-                        onClick = { navController.navigate("settings/integration") },
-                    )
-
-                    ExpressiveDivider()
-
-                    ExpressiveActionRow(
-                        icon = painterResource(R.drawable.fire),
-                        title = stringResource(R.string.music_together),
-                        onClick = { navController.navigate("settings/music_together") },
-                    )
-                }
-            }
-
-            item {
-                ExpressiveSectionCard(title = miscLabel) {
-                    ExpressiveActionRow(
-                        icon = painterResource(R.drawable.visibility_off),
-                        title = stringResource(R.string.hidden_playlists),
-                        subtitle = stringResource(R.string.hidden_playlists_description),
-                        onClick = { navController.navigate("settings/hidden_playlists") },
-                    )
-
-                    ExpressiveDivider()
-
-                    ExpressiveActionRow(
-                        icon = painterResource(R.drawable.token),
-                        title = tokenActionTitle,
-                        subtitle = tokenDescription,
-                        accent = if (isLoggedIn && showToken) MaterialTheme.colorScheme.tertiary else null,
-                        onClick = {
-                            if (!isLoggedIn) {
-                                showTokenEditor = true
-                            } else if (!showToken) {
-                                showToken = true
+                    AccountSummaryCard(
+                        isLoggedIn = isLoggedIn,
+                        accountName = displayName,
+                        accountEmail = accountEmail,
+                        accountHandle = accountChannelHandle,
+                        accountImageUrl = accountImageUrl,
+                        accountSwitcherEnabled =
+                            isLoggedIn || savedAccounts.accounts.isNotEmpty() || hasSwitchableChannels,
+                        onPrimaryAction = {
+                            if (isLoggedIn) {
+                                navController.navigate("account")
+                            } else {
+                                navController.navigate(buildLoginRoute())
+                            }
+                        },
+                        onSecondaryAction = {
+                            if (isLoggedIn) {
+                                showToken = false
+                                onInnerTubeCookieChange("")
+                                forgetAccount(context, clearWebAuthSession = true)
                             } else {
                                 showTokenEditor = true
                             }
                         },
+                        onOpenAccountSwitcher = { showAccountSwitcher = true },
                     )
                 }
-            }
 
-            item {
-                VersionStamp()
+                if (hasUpdate) {
+                    item {
+                        UpdateBannerStrip(
+                            latestVersion = latestVersionName,
+                            onClick = { uriHandler.openUri(Updater.getLatestDownloadUrl()) },
+                        )
+                    }
+                }
+
+                item {
+                    AnimatedVisibility(
+                        visible = isLoggedIn,
+                        enter =
+                            fadeIn(spring(stiffness = Spring.StiffnessLow)) +
+                                expandVertically(
+                                    spring(stiffness = Spring.StiffnessLow),
+                                ),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        ExpressiveSectionCard(title = generalLabel) {
+                            ExpressiveSwitchRow(
+                                icon = painterResource(R.drawable.add_circle),
+                                title = stringResource(R.string.more_content),
+                                subtitle = stringResource(R.string.use_login_for_browse_desc),
+                                checked = useLoginForBrowse,
+                                onCheckedChange = onUseLoginForBrowseChange,
+                                index = 0,
+                                count = 3,
+                            )
+
+                            ExpressiveSwitchRow(
+                                icon = painterResource(R.drawable.cached),
+                                title = stringResource(R.string.yt_sync),
+                                checked = ytmSync,
+                                onCheckedChange = onYtmSyncChange,
+                                index = 1,
+                                count = 3,
+                            )
+
+                            ExpressiveSwitchRow(
+                                icon = painterResource(R.drawable.sync),
+                                title = stringResource(R.string.force_sync_on_switch_account),
+                                subtitle = stringResource(R.string.force_sync_on_switch_account_desc),
+                                checked = forceSyncOnAccountSwitch,
+                                onCheckedChange = onForceSyncOnAccountSwitchChange,
+                                index = 2,
+                                count = 3,
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    ExpressiveSectionCard(title = integrationLabel) {
+                        ExpressiveActionRow(
+                            icon = painterResource(R.drawable.integration),
+                            title = integrationLabel,
+                            subtitle = stringResource(R.string.account_integrations_summary),
+                            onClick = { navController.navigate("settings/integration") },
+                            index = 0,
+                            count = 2,
+                        )
+
+                        ExpressiveActionRow(
+                            icon = painterResource(R.drawable.fire),
+                            title = stringResource(R.string.music_together),
+                            onClick = { navController.navigate("settings/music_together") },
+                            index = 1,
+                            count = 2,
+                        )
+                    }
+                }
+
+                item {
+                    ExpressiveSectionCard(title = miscLabel) {
+                        ExpressiveActionRow(
+                            icon = painterResource(R.drawable.visibility_off),
+                            title = stringResource(R.string.hidden_playlists),
+                            subtitle = stringResource(R.string.hidden_playlists_description),
+                            onClick = { navController.navigate("settings/hidden_playlists") },
+                            index = 0,
+                            count = 2,
+                        )
+
+                        ExpressiveActionRow(
+                            icon = painterResource(R.drawable.token),
+                            title = tokenActionTitle,
+                            subtitle = tokenDescription,
+                            accent = if (isLoggedIn && showToken) MaterialTheme.colorScheme.tertiary else null,
+                            onClick = {
+                                if (!isLoggedIn) {
+                                    showTokenEditor = true
+                                } else if (!showToken) {
+                                    showToken = true
+                                } else {
+                                    showTokenEditor = true
+                                }
+                            },
+                            index = 1,
+                            count = 2,
+                        )
+                    }
+                }
+
+                item {
+                    VersionStamp()
+                }
             }
         }
+    }
+
+    if (showAccountSwitcher) {
+        AccountSwitcherSheet(
+            isLoggedIn = isLoggedIn,
+            savedAccounts = savedAccounts,
+            activeInnerTubeCookie = innerTubeCookie,
+            activeDataSyncId = dataSyncId,
+            accountChannelsState = accountChannelsState,
+            onSaveAccount = saveCurrentAccount,
+            onSwitchAccount = switchToAccount,
+            onSwitchAccountChannel = switchToAccountChannel,
+            onRemoveAccount = removeAccount,
+            onAddAnotherAccount = {
+                showAccountSwitcher = false
+                val isSaved = savedAccounts.accounts.any { it.innerTubeCookie == innerTubeCookie }
+                if (isLoggedIn && !isSaved) {
+                    showUnsavedAccountDialog = true
+                } else {
+                    navController.navigate(buildLoginRoute())
+                }
+            },
+            onDismiss = { showAccountSwitcher = false },
+        )
     }
 
     if (showTokenEditor) {
@@ -536,62 +511,455 @@ fun AccountSettings(
     }
 
     if (showUnsavedAccountDialog) {
-        Dialog(onDismissRequest = { showUnsavedAccountDialog = false }) {
-            Card(
-                shape = CardShape,
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        AlertDialog(
+            onDismissRequest = { showUnsavedAccountDialog = false },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.bookmark),
+                    contentDescription = null,
+                )
+            },
+            title = {
+                Text(text = stringResource(R.string.unsaved_account_dialog_title))
+            },
+            text = {
+                Text(text = stringResource(R.string.unsaved_account_dialog_text))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUnsavedAccountDialog = false
+                        saveCurrentAccount()
+                        navController.navigate(buildLoginRoute())
+                    },
+                ) {
+                    Text(text = stringResource(R.string.unsaved_account_dialog_save_yes))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { showUnsavedAccountDialog = false }) {
+                        Text(text = stringResource(R.string.unsaved_account_dialog_cancel))
+                    }
+                    TextButton(
+                        onClick = {
+                            showUnsavedAccountDialog = false
+                            navController.navigate(buildLoginRoute())
+                        },
+                    ) {
+                        Text(text = stringResource(R.string.unsaved_account_dialog_no_thanks))
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AccountSummaryCard(
+    isLoggedIn: Boolean,
+    accountName: String,
+    accountEmail: String,
+    accountHandle: String,
+    accountImageUrl: String?,
+    accountSwitcherEnabled: Boolean,
+    onPrimaryAction: () -> Unit,
+    onSecondaryAction: () -> Unit,
+    onOpenAccountSwitcher: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    Surface(
+                        modifier = Modifier.size(AvatarSize),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = accountImageUrl,
+                                contentDescription = null,
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter =
+                                        painterResource(
+                                            if (isLoggedIn) R.drawable.account else R.drawable.login,
+                                        ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
+                    }
+
+                    if (isLoggedIn) {
+                        Surface(
+                            modifier = Modifier.size(24.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.unsaved_account_dialog_title),
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = accountName,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                    if (accountHandle.isNotBlank()) {
+                        Text(
+                            text = accountHandle,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (accountEmail.isNotBlank() || !isLoggedIn) {
+                        Text(
+                            text = accountEmail.ifBlank { stringResource(R.string.not_logged_in) },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SplitButtonLayout(
+                    leadingButton = {
+                        SplitButtonDefaults.ElevatedLeadingButton(
+                            onClick = onPrimaryAction,
+                            colors =
+                                ButtonDefaults.elevatedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                        ) {
+                            Icon(
+                                painter =
+                                    painterResource(
+                                        if (isLoggedIn) R.drawable.account else R.drawable.login,
+                                    ),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isLoggedIn) stringResource(R.string.account) else stringResource(R.string.login),
+                            )
+                        }
+                    },
+                    trailingButton = {
+                        SplitButtonDefaults.ElevatedTrailingButton(
+                            checked = false,
+                            onCheckedChange = { onOpenAccountSwitcher() },
+                            enabled = accountSwitcherEnabled,
+                            colors =
+                                ButtonDefaults.elevatedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.expand_more),
+                                contentDescription = stringResource(R.string.saved_accounts),
+                                modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize),
+                            )
+                        }
+                    },
+                )
+
+                TextButton(
+                    onClick = onSecondaryAction,
+                    colors =
+                        ButtonDefaults.textButtonColors(
+                            contentColor =
+                                if (isLoggedIn) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                        ),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
                     Text(
-                        text = stringResource(R.string.unsaved_account_dialog_text),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = if (isLoggedIn) stringResource(R.string.action_logout) else stringResource(R.string.advanced_login),
                     )
-                    Row(
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountSwitcherSheet(
+    isLoggedIn: Boolean,
+    savedAccounts: SavedAccountCollection,
+    activeInnerTubeCookie: String,
+    activeDataSyncId: String,
+    accountChannelsState: AccountChannelsState,
+    onSaveAccount: () -> Unit,
+    onSwitchAccount: (SavedAccount) -> Unit,
+    onSwitchAccountChannel: (AccountChannelUiModel) -> Unit,
+    onRemoveAccount: (SavedAccount) -> Unit,
+    onAddAnotherAccount: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val accountChannels =
+        (accountChannelsState as? AccountChannelsState.Success)
+            ?.channels
+            ?.items
+            .orEmpty()
+            .takeIf { it.size > 1 }
+            .orEmpty()
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            text = stringResource(R.string.saved_accounts),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 600.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        ) {
+            if (accountChannels.isNotEmpty()) {
+                item(key = "channel_header", contentType = "header") {
+                    AccountSheetSectionLabel(text = stringResource(R.string.youtube_channels))
+                }
+                itemsIndexed(
+                    items = accountChannels,
+                    key = { index, channel -> "${channel.dataSyncId}:${channel.name}:$index" },
+                    contentType = { _, _ -> "channel" },
+                ) { index, channel ->
+                    val isActive = channel.isSelected || channel.dataSyncId == activeDataSyncId
+                    SegmentedListItem(
+                        selected = isActive,
+                        onClick = {
+                            if (!isActive) onSwitchAccountChannel(channel)
+                            onDismiss()
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
+                        shapes = ListItemDefaults.segmentedShapes(index = index, count = accountChannels.size),
+                        colors =
+                            ListItemDefaults.segmentedColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                        leadingContent = {
+                            AccountSheetAvatar(
+                                imageUrl = channel.thumbnailUrl,
+                                fallbackIcon = painterResource(R.drawable.account),
+                            )
+                        },
+                        trailingContent = {
+                            if (isActive) {
+                                Icon(
+                                    painter = painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                        supportingContent = {
+                            val subtitle = channel.channelHandle.ifBlank { channel.byline }
+                            if (subtitle.isNotBlank()) {
+                                Text(
+                                    text = subtitle,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        },
                     ) {
-                        TextButton(
-                            onClick = { showUnsavedAccountDialog = false },
-                        ) {
-                            Text(text = stringResource(R.string.unsaved_account_dialog_cancel))
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        TextButton(
-                            onClick = {
-                                showUnsavedAccountDialog = false
-                                navController.navigate(buildLoginRoute())
-                            },
-                        ) {
-                            Text(
-                                text = stringResource(R.string.unsaved_account_dialog_no_thanks),
+                        Text(
+                            text = channel.name,
+                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            item(key = "saved_account_header", contentType = "header") {
+                AccountSheetSectionLabel(text = stringResource(R.string.saved_accounts))
+            }
+
+            if (savedAccounts.accounts.isEmpty()) {
+                item(key = "empty_accounts", contentType = "empty") {
+                    SegmentedListItem(
+                        onClick = {},
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+                        colors =
+                            ListItemDefaults.segmentedColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                        leadingContent = {
+                            AccountSheetAvatar(
+                                imageUrl = null,
+                                fallbackIcon = painterResource(R.drawable.account),
                             )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        TextButton(
-                            onClick = {
-                                showUnsavedAccountDialog = false
-                                saveCurrentAccount()
-                                navController.navigate(buildLoginRoute())
-                            },
-                        ) {
-                            Text(
-                                text = stringResource(R.string.unsaved_account_dialog_save_yes),
-                                fontWeight = FontWeight.Bold,
+                        },
+                    ) {
+                        Text(text = stringResource(R.string.no_saved_accounts))
+                    }
+                }
+            } else {
+                itemsIndexed(
+                    items = savedAccounts.accounts,
+                    key = { _, account -> account.id },
+                    contentType = { _, _ -> "saved_account" },
+                ) { index, account ->
+                    val isActive = account.innerTubeCookie == activeInnerTubeCookie
+                    SegmentedListItem(
+                        selected = isActive,
+                        onClick = {
+                            if (!isActive) onSwitchAccount(account)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shapes =
+                            ListItemDefaults.segmentedShapes(
+                                index = index,
+                                count = savedAccounts.accounts.size,
+                            ),
+                        colors =
+                            ListItemDefaults.segmentedColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                        leadingContent = {
+                            AccountSheetAvatar(
+                                imageUrl = null,
+                                fallbackIcon = painterResource(R.drawable.account),
                             )
+                        },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (isActive) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.check),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                                OutlinedIconButton(
+                                    onClick = { onRemoveAccount(account) },
+                                    modifier = Modifier.size(48.dp),
+                                    border = null,
+                                    colors =
+                                        IconButtonDefaults.outlinedIconButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.error,
+                                        ),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.delete),
+                                        contentDescription = stringResource(R.string.remove_account),
+                                    )
+                                }
+                            }
+                        },
+                        supportingContent = {
+                            if (account.email.isNotBlank()) {
+                                Text(
+                                    text = account.email,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        },
+                    ) {
+                        Text(
+                            text = account.name.ifBlank { account.email },
+                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            if (isLoggedIn) {
+                item(key = "account_actions", contentType = "actions") {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                onSaveAccount()
+                                onDismiss()
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.bookmark),
+                                contentDescription = null,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(R.string.save_current_account))
+                        }
+                        OutlinedButton(
+                            onClick = onAddAnotherAccount,
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.add_circle),
+                                contentDescription = null,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(R.string.add_another_account))
                         }
                     }
                 }
@@ -601,471 +969,44 @@ fun AccountSettings(
 }
 
 @Composable
-private fun ProfileIdentityCard(
-    isLoggedIn: Boolean,
-    accountName: String,
-    accountEmail: String,
-    accountHandle: String,
-    accountImageUrl: String?,
-    savedAccounts: SavedAccountCollection,
-    activeInnerTubeCookie: String,
-    activeDataSyncId: String,
-    accountChannelsState: AccountChannelsState,
-    onPrimaryAction: () -> Unit,
-    onSecondaryAction: () -> Unit,
-    onSaveAccount: () -> Unit,
-    onSwitchAccount: (SavedAccount) -> Unit,
-    onSwitchAccountChannel: (AccountChannelUiModel) -> Unit,
-    onRemoveAccount: (SavedAccount) -> Unit,
-    onAddAnotherAccount: () -> Unit,
+private fun AccountSheetSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun AccountSheetAvatar(
+    imageUrl: String?,
+    fallbackIcon: Painter,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) PressScale else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "heroScale",
-    )
-    var accountMenuExpanded by remember { mutableStateOf(false) }
-    val menuChevronRotation by animateFloatAsState(
-        targetValue = if (accountMenuExpanded) 180f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "accountMenuChevron",
-    )
-
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
-        shape = CardShape,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        onClick = onPrimaryAction,
-        interactionSource = interactionSource,
+    Surface(
+        modifier = Modifier.size(RowIconSize),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors =
-                                listOf(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                                    MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0f),
-                                ),
-                        ),
-                    ).padding(horizontal = 24.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Box(contentAlignment = Alignment.BottomEnd) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(AvatarSize)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f),
-                                        ),
-                                ),
-                            ).border(
-                                width = 2.dp,
-                                brush =
-                                    Brush.linearGradient(
-                                        colors =
-                                            listOf(
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.40f),
-                                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.30f),
-                                            ),
-                                    ),
-                                shape = CircleShape,
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    } else {
-                        Icon(
-                            painter =
-                                painterResource(
-                                    if (isLoggedIn) R.drawable.account else R.drawable.login,
-                                ),
-                            contentDescription = null,
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isLoggedIn,
-                    enter = scaleIn(spring(stiffness = Spring.StiffnessHigh)),
-                    exit = scaleOut(),
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.check),
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                AnimatedContent(
-                    targetState = accountName,
-                    transitionSpec = {
-                        (
-                            fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
-                                fadeOut(spring(stiffness = Spring.StiffnessHigh))
-                        )
-                    },
-                    label = "nameTransition",
-                ) { name ->
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                if (accountHandle.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f),
-                        modifier = Modifier.padding(top = 6.dp),
-                    ) {
-                        Text(
-                            text = accountHandle,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                if (!isLoggedIn) {
-                    Text(
-                        text = stringResource(R.string.not_logged_in),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
-                    )
-                }
-            }
-
-            accountEmail
-                .takeIf { it.isNotBlank() }
-                ?.let { email ->
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
-                    ) {
-                        Text(
-                            text = email,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.80f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                        )
-                    }
-                }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Box {
-                    SplitButtonLayout(
-                        leadingButton = {
-                            SplitButtonDefaults.ElevatedLeadingButton(
-                                onClick = onPrimaryAction,
-                                colors =
-                                    ButtonDefaults.elevatedButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    ),
-                                elevation =
-                                    ButtonDefaults.elevatedButtonElevation(
-                                        defaultElevation = 1.dp,
-                                        pressedElevation = 0.dp,
-                                    ),
-                            ) {
-                                Icon(
-                                    painter =
-                                        painterResource(
-                                            if (isLoggedIn) R.drawable.account else R.drawable.login,
-                                        ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = if (isLoggedIn) stringResource(R.string.account) else stringResource(R.string.login),
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-                        },
-                        trailingButton = {
-                            SplitButtonDefaults.ElevatedTrailingButton(
-                                checked = accountMenuExpanded,
-                                onCheckedChange = { accountMenuExpanded = it },
-                                enabled = isLoggedIn || savedAccounts.accounts.isNotEmpty(),
-                                colors =
-                                    ButtonDefaults.elevatedButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    ),
-                                elevation =
-                                    ButtonDefaults.elevatedButtonElevation(
-                                        defaultElevation = 1.dp,
-                                        pressedElevation = 0.dp,
-                                    ),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.expand_more),
-                                    contentDescription = null,
-                                    modifier =
-                                        Modifier
-                                            .size(SplitButtonDefaults.TrailingIconSize)
-                                            .rotate(menuChevronRotation),
-                                )
-                            }
-                        },
-                    )
-                    DropdownMenu(
-                        expanded = accountMenuExpanded,
-                        onDismissRequest = { accountMenuExpanded = false },
-                    ) {
-                        val accountChannels = (accountChannelsState as? AccountChannelsState.Success)?.channels
-                        if (accountChannels != null && accountChannels.items.size > 1) {
-                            Text(
-                                text = stringResource(R.string.youtube_channels),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            )
-                            accountChannels.items.forEach { channel ->
-                                val isActive = channel.isSelected || channel.dataSyncId == activeDataSyncId
-                                DropdownMenuItem(
-                                    text = {
-                                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                            Text(
-                                                text = channel.name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            val channelSubtitle = channel.channelHandle.ifBlank { channel.byline }
-                                            if (channelSubtitle.isNotBlank()) {
-                                                Text(
-                                                    text = channelSubtitle,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.account),
-                                            contentDescription = null,
-                                            tint =
-                                                if (isActive) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        if (!isActive) onSwitchAccountChannel(channel)
-                                        accountMenuExpanded = false
-                                    },
-                                )
-                            }
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-
-                        Text(
-                            text = stringResource(R.string.saved_accounts),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        )
-                        if (savedAccounts.accounts.isEmpty()) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(R.string.no_saved_accounts),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                onClick = {},
-                                enabled = false,
-                            )
-                        } else {
-                            savedAccounts.accounts.forEach { account ->
-                                val isActive = account.innerTubeCookie == activeInnerTubeCookie
-                                DropdownMenuItem(
-                                    text = {
-                                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                            Text(
-                                                text = account.name.ifBlank { account.email },
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            if (account.email.isNotBlank()) {
-                                                Text(
-                                                    text = account.email,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.account),
-                                            contentDescription = null,
-                                            tint =
-                                                if (isActive) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    },
-                                    trailingIcon = {
-                                        OutlinedIconButton(
-                                            onClick = { onRemoveAccount(account) },
-                                            modifier = Modifier.size(32.dp),
-                                            border = null,
-                                            colors =
-                                                IconButtonDefaults.outlinedIconButtonColors(
-                                                    contentColor = MaterialTheme.colorScheme.error,
-                                                ),
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.delete),
-                                                contentDescription = stringResource(R.string.remove_account),
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        if (!isActive) onSwitchAccount(account)
-                                        accountMenuExpanded = false
-                                    },
-                                )
-                            }
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-                        if (isLoggedIn) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(R.string.save_current_account),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bookmark),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                },
-                                onClick = {
-                                    onSaveAccount()
-                                    accountMenuExpanded = false
-                                },
-                            )
-
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(R.string.add_another_account),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.add_circle),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                },
-                                onClick = {
-                                    accountMenuExpanded = false
-                                    onAddAnotherAccount()
-                                },
-                            )
-                        }
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = onSecondaryAction,
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(
-                        text = if (isLoggedIn) stringResource(R.string.action_logout) else stringResource(R.string.advanced_login),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = fallbackIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
             }
         }
     }
@@ -1076,26 +1017,13 @@ private fun UpdateBannerStrip(
     latestVersion: String,
     onClick: () -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) PressScale else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "updateScale",
-    )
-
-    Surface(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
-        shape = CardShape,
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        onClick = onClick,
-        interactionSource = interactionSource,
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -1106,9 +1034,9 @@ private fun UpdateBannerStrip(
                 badge = { Badge(containerColor = MaterialTheme.colorScheme.error) },
             ) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.10f),
                     modifier = Modifier.size(44.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -1134,7 +1062,7 @@ private fun UpdateBannerStrip(
                 Text(
                     text = latestVersion,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -1143,7 +1071,7 @@ private fun UpdateBannerStrip(
                 onClick = onClick,
                 colors =
                     ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.14f),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     ),
                 shapes = ButtonDefaults.shapes(),
@@ -1166,25 +1094,14 @@ private fun ExpressiveSectionCard(
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 6.dp),
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp),
         )
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = CardShape,
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(vertical = 4.dp),
-                content = content,
-            )
-        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            content = content,
+        )
     }
 }
 
@@ -1195,68 +1112,46 @@ private fun ExpressiveActionRow(
     subtitle: String? = null,
     accent: Color? = null,
     onClick: () -> Unit,
+    index: Int,
+    count: Int,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "rowScale",
-    )
     val tint = accent ?: MaterialTheme.colorScheme.primary
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clip(InnerTileShape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = androidx.compose.material3.ripple(),
-                    onClick = onClick,
-                ),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+    SegmentedListItem(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        leadingContent = {
             ExpressiveRowIcon(icon = icon, tint = tint)
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                subtitle?.let {
+        },
+        trailingContent = {
+            Icon(
+                painter = painterResource(R.drawable.arrow_forward),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        supportingContent =
+            subtitle?.let { supportingText ->
+                {
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = supportingText,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-            )
-        }
+            },
+    ) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -1267,74 +1162,48 @@ private fun ExpressiveSwitchRow(
     subtitle: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    index: Int,
+    count: Int,
 ) {
-    val containerColor by animateColorAsState(
-        targetValue =
-            if (checked) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            } else {
-                Color.Transparent
-            },
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "switchRowBg",
-    )
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-                .clip(InnerTileShape)
-                .background(containerColor)
-                .clickable { onCheckedChange(!checked) },
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+    SegmentedListItem(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = Modifier.fillMaxWidth(),
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        leadingContent = {
             ExpressiveRowIcon(
                 icon = icon,
                 tint = MaterialTheme.colorScheme.primary,
                 emphasized = checked,
             )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                subtitle?.let {
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+            )
+        },
+        supportingContent =
+            subtitle?.let { supportingText ->
+                {
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = supportingText,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors =
-                    SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.40f),
-                    ),
-            )
-        }
+            },
+    ) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -1344,35 +1213,25 @@ private fun ExpressiveRowIcon(
     tint: Color,
     emphasized: Boolean = false,
 ) {
-    val bgAlpha by animateFloatAsState(
-        targetValue = if (emphasized) 0.20f else 0.10f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "iconBgAlpha",
-    )
-
     Surface(
         modifier = Modifier.size(RowIconSize),
-        shape = RoundedCornerShape(14.dp),
-        color = tint.copy(alpha = bgAlpha),
+        shape = MaterialTheme.shapes.medium,
+        color =
+            if (emphasized) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHighest
+            },
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
                 painter = icon,
                 contentDescription = null,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(20.dp),
                 tint = tint,
             )
         }
     }
-}
-
-@Composable
-private fun ExpressiveDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 78.dp, end = 20.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-    )
 }
 
 @Composable
@@ -1453,13 +1312,6 @@ private fun TokenEditorDialog(
         },
     )
 }
-
-private fun hasVisibleSecureDetails(
-    innerTubeCookie: String,
-    visitorData: String,
-    dataSyncId: String,
-    poToken: String,
-): Boolean = innerTubeCookie.isNotBlank() || visitorData.isNotBlank() || dataSyncId.isNotBlank() || poToken.isNotBlank()
 
 private fun previewSecureValue(value: String): String {
     val normalized = value.replace("\n", " ").replace("\r", " ").trim()

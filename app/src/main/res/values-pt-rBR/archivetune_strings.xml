@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Explorar</string>
     <string name="suggestions">Sugestões</string>
@@ -397,8 +397,6 @@
     <string name="crossfade_gapless_description">Não aplicar crossfade em músicas consecutivas do mesmo álbum.</string>
     <string name="player_stream_client">Cliente de reprodução</string>
     <string name="player_stream_client_desc">Controla qual fonte de reprodução é usada para buscar streams</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Transmite diretamente sem descriptografia de assinatura, oferecendo velocidade máxima. Adequado para a maioria dos usuários.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Suporte estendido a formatos ao custo de velocidade. A descriptografia de assinatura por JavaScript adiciona um atraso inicial de ~5–10 segundos.</string>
     <string name="settings_section_player_content">Player e conteúdo</string>

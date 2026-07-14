@@ -125,8 +125,6 @@
     <string name="empty_playlist_desc">此播放列表暂无歌曲</string>
     <string name="player_stream_client">播放客户端</string>
     <string name="player_stream_client_desc">控制哪个YouTube客户端用于获取流</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">免签名解密直流，速度最快，适合绝大多数用户.</string>
     <string name="player_stream_client_web_remix">网络混音</string>
     <string name="player_stream_client_web_remix_desc">支持更多格式，但会降低启动速度，JavaScript 签名解密会导致约 5–10 秒的加载延迟.</string>
     <string name="settings_section_player_content">播放器与内容</string>

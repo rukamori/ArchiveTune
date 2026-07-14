@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Khám phá</string>
     <string name="local_history">Trên thiết bị</string>
@@ -178,8 +178,6 @@
     <string name="player_design_v5">Little</string>
     <string name="player_stream_client">Client phát nhạc</string>
     <string name="player_stream_client_desc">Tùy chọn điều khiển nguồn phát lại được sử dụng để tải luồng dữ liệu</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Phát trực tiếp mà không cần giải mã chữ ký, cung cấp tốc độ tối đa. Thích hợp cho đại đa số người dùng.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Hỗ trợ định dạng mở rộng với chi phí là tốc độ. Giải mã chữ ký JavaScript gây ra độ trễ khởi động ~5–10 giây.</string>
     <string name="backup_in_progress">Đang tiến hành sao lưu</string>

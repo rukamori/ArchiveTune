@@ -18,7 +18,6 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,15 +49,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -72,6 +68,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.WavyProgressIndicatorDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -84,7 +82,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -100,6 +97,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.BuildConfig
@@ -136,6 +134,12 @@ fun UpdateScreen(
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = appBarScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val useWideLayout =
+        windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND,
+        )
+    val maximumContentWidth = if (useWideLayout) 1_040.dp else 680.dp
     val (enableUpdateNotification, onEnableUpdateNotificationChange) =
         rememberPreference(
             EnableUpdateNotificationKey,
@@ -228,14 +232,15 @@ fun UpdateScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        OutlinedButton(
-            onClick = {},
-            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 5.dp),
-            shapes = ButtonDefaults.shapes(),
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ) {
             Text(
                 text = updateSheetVersion ?: "",
                 style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
 
@@ -498,7 +503,7 @@ fun UpdateScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            LargeFlexibleTopAppBar(
+            MediumFlexibleTopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.updates),
@@ -519,14 +524,14 @@ fun UpdateScreen(
                     ) {
                         Icon(
                             painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.back_button_desc),
                         )
                     }
                 },
                 actions = {},
                 scrollBehavior = scrollBehavior,
                 colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
+                    TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ),
@@ -542,32 +547,29 @@ fun UpdateScreen(
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                         ),
-                    ).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ),
+            contentPadding =
+                PaddingValues(
+                    start = 16.dp,
+                    top = 12.dp,
+                    end = 16.dp,
+                    bottom = SettingsDimensions.ScreenBottomPadding,
+                ),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                UpdateSummaryCard(
+            item(key = "update_dashboard", contentType = "dashboard") {
+                UpdateDashboard(
                     currentVersion = BuildConfig.VERSION_NAME,
                     latestVersion = latestVersion,
                     updateChannel = updateChannel,
                     isUpdateAvailable = isUpdateAvailable,
-                )
-            }
-
-            item {
-                UpdateActionPanel(
+                    enableUpdateNotification = enableUpdateNotification,
+                    useWideLayout = useWideLayout,
+                    onCheckForUpdate = onCheckForUpdate,
                     onOpenChangelog = {
                         navController.navigate("settings/changelog?channel=$updateChannel")
                     },
-                    onCheckForUpdate = onCheckForUpdate,
-                )
-            }
-
-            item {
-                UpdateControlsPanel(
-                    enableUpdateNotification = enableUpdateNotification,
                     onUpdateNotificationChange = { enabled ->
                         if (enabled) {
                             showEnableUpdateNotificationConfirmDialog = true
@@ -576,17 +578,20 @@ fun UpdateScreen(
                             UpdateNotificationManager.cancelPeriodicUpdateCheck(context)
                         }
                     },
-                    updateChannel = updateChannel,
                     onStableSelected = { onUpdateChannelChange(UpdateChannel.STABLE) },
                     onCanarySelected = {
                         if (updateChannel != UpdateChannel.CANARY) {
                             showCanaryChannelConfirmDialog = true
                         }
                     },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = maximumContentWidth),
                 )
             }
 
-            item {
+            item(key = "commit_history", contentType = "commit_history") {
                 CommitHistorySection(
                     commits = commits,
                     isLoading = isLoadingCommits,
@@ -594,11 +599,11 @@ fun UpdateScreen(
                     rotationAngle = rotationAngle,
                     onToggleExpanded = { isExpanded = !isExpanded },
                     onCommitClick = { commit -> uriHandler.openUri(commit.url) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = maximumContentWidth),
                 )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding))
             }
         }
     }
@@ -649,7 +654,10 @@ fun UpdateScreen(
                         append(' ')
                         append(context.getString(R.string.channel_canary))
                     }
-                    UpdateChannel.STABLE -> append(context.getString(R.string.app_name))
+
+                    UpdateChannel.STABLE -> {
+                        append(context.getString(R.string.app_name))
+                    }
                 }
                 append(' ')
                 append(updateSheetVersion ?: "?")
@@ -750,13 +758,8 @@ fun UpdateScreen(
                 )
             },
             confirmButton = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    OutlinedButton(
-                        onClick = { showUpdateUpToDateDialog = false },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(android.R.string.ok))
-                    }
+                TextButton(onClick = { showUpdateUpToDateDialog = false }) {
+                    Text(stringResource(android.R.string.ok))
                 }
             },
         )
@@ -796,11 +799,77 @@ fun UpdateScreen(
 }
 
 @Composable
-private fun UpdateSummaryCard(
+private fun UpdateDashboard(
     currentVersion: String,
     latestVersion: String?,
     updateChannel: UpdateChannel,
     isUpdateAvailable: Boolean,
+    enableUpdateNotification: Boolean,
+    useWideLayout: Boolean,
+    modifier: Modifier = Modifier,
+    onCheckForUpdate: () -> Unit,
+    onOpenChangelog: () -> Unit,
+    onUpdateNotificationChange: (Boolean) -> Unit,
+    onStableSelected: () -> Unit,
+    onCanarySelected: () -> Unit,
+) {
+    if (useWideLayout) {
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            UpdateStatusPanel(
+                currentVersion = currentVersion,
+                latestVersion = latestVersion,
+                updateChannel = updateChannel,
+                isUpdateAvailable = isUpdateAvailable,
+                onCheckForUpdate = onCheckForUpdate,
+                onOpenChangelog = onOpenChangelog,
+                modifier = Modifier.weight(1f),
+            )
+            UpdatePreferencesPanel(
+                enableUpdateNotification = enableUpdateNotification,
+                updateChannel = updateChannel,
+                onUpdateNotificationChange = onUpdateNotificationChange,
+                onStableSelected = onStableSelected,
+                onCanarySelected = onCanarySelected,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    } else {
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            UpdateStatusPanel(
+                currentVersion = currentVersion,
+                latestVersion = latestVersion,
+                updateChannel = updateChannel,
+                isUpdateAvailable = isUpdateAvailable,
+                onCheckForUpdate = onCheckForUpdate,
+                onOpenChangelog = onOpenChangelog,
+            )
+            UpdatePreferencesPanel(
+                enableUpdateNotification = enableUpdateNotification,
+                updateChannel = updateChannel,
+                onUpdateNotificationChange = onUpdateNotificationChange,
+                onStableSelected = onStableSelected,
+                onCanarySelected = onCanarySelected,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpdateStatusPanel(
+    currentVersion: String,
+    latestVersion: String?,
+    updateChannel: UpdateChannel,
+    isUpdateAvailable: Boolean,
+    modifier: Modifier = Modifier,
+    onCheckForUpdate: () -> Unit,
+    onOpenChangelog: () -> Unit,
 ) {
     val channelLabel =
         when (updateChannel) {
@@ -837,13 +906,11 @@ private fun UpdateSummaryCard(
         } else {
             MaterialTheme.colorScheme.onSecondaryContainer
         }
+    val statusShape = MaterialShapes.SoftBurst.toShape()
 
     Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 840.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -851,50 +918,58 @@ private fun UpdateSummaryCard(
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                Box(modifier = Modifier.padding(top = 2.dp)) {
-                    FeatureIcon(
-                        iconRes = R.drawable.update,
-                        containerColor = statusContainerColor,
-                        contentColor = statusContentColor,
-                    )
+                Surface(
+                    modifier = Modifier.size(56.dp),
+                    shape = statusShape,
+                    color = statusContainerColor,
+                    contentColor = statusContentColor,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(R.drawable.update),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = stringResource(R.string.current_version),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
                         )
                         Surface(
                             shape = MaterialTheme.shapes.large,
                             color = channelContainerColor,
+                            contentColor = channelContentColor,
                         ) {
                             Text(
                                 text = channelLabel,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = channelContentColor,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             )
                         }
                     }
-
                     Text(
                         text = currentVersion,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
@@ -904,165 +979,150 @@ private fun UpdateSummaryCard(
                     )
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun UpdateActionPanel(
-    onOpenChangelog: () -> Unit,
-    onCheckForUpdate: () -> Unit,
-) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 840.dp),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilledTonalButton(
-                onClick = onOpenChangelog,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.update),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.view_changelog))
-            }
+                Button(
+                    onClick = onCheckForUpdate,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.sync),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.check_for_update))
+                }
 
-            OutlinedButton(
-                onClick = onCheckForUpdate,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.sync),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.check_for_update))
+                TextButton(
+                    onClick = onOpenChangelog,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.update),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.view_changelog))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun UpdateControlsPanel(
+private fun UpdatePreferencesPanel(
     enableUpdateNotification: Boolean,
-    onUpdateNotificationChange: (Boolean) -> Unit,
     updateChannel: UpdateChannel,
+    modifier: Modifier = Modifier,
+    onUpdateNotificationChange: (Boolean) -> Unit,
     onStableSelected: () -> Unit,
     onCanarySelected: () -> Unit,
 ) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 840.dp),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column {
-            ListItem(
-                headlineContent = {
-                    Text(text = stringResource(R.string.enable_update_notification))
-                },
-                supportingContent = {
-                    Text(text = stringResource(R.string.enable_update_notification_channel_desc))
-                },
-                leadingContent = {
-                    FeatureIcon(
-                        iconRes = R.drawable.new_release,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = enableUpdateNotification,
-                        onCheckedChange = onUpdateNotificationChange,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
+        SegmentedListItem(
+            onClick = { onUpdateNotificationChange(!enableUpdateNotification) },
+            shapes =
+                ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                ),
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                ListItemDefaults.segmentedColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+            leadingContent = {
+                FeatureIcon(
+                    iconRes = R.drawable.new_release,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            },
+            trailingContent = {
+                Switch(
+                    checked = enableUpdateNotification,
+                    onCheckedChange = null,
+                )
+            },
+            supportingContent = {
+                Text(text = stringResource(R.string.enable_update_notification_channel_desc))
+            },
+            content = {
+                Text(text = stringResource(R.string.enable_update_notification))
+            },
+        )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-
-            ListItem(
-                headlineContent = {
-                    Text(text = stringResource(R.string.update_channel))
-                },
-                supportingContent = {
-                    Text(text = stringResource(R.string.update_channel_desc))
-                },
-                leadingContent = {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     FeatureIcon(
                         iconRes = R.drawable.tune,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
-                },
-                trailingContent = {
-                    Text(
-                        text =
-                            when (updateChannel) {
-                                UpdateChannel.STABLE -> stringResource(R.string.channel_stable)
-                                UpdateChannel.CANARY -> stringResource(R.string.channel_canary)
-                            },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-
-            SingleChoiceSegmentedButtonRow(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 16.dp),
-            ) {
-                SegmentedButton(
-                    selected = updateChannel == UpdateChannel.STABLE,
-                    onClick = onStableSelected,
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.channel_stable))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.update_channel),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = stringResource(R.string.update_channel_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                SegmentedButton(
-                    selected = updateChannel == UpdateChannel.CANARY,
-                    onClick = onCanarySelected,
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    icon = {},
-                ) {
-                    Text(text = stringResource(R.string.channel_canary))
+
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = updateChannel == UpdateChannel.STABLE,
+                        onClick = onStableSelected,
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = {},
+                    ) {
+                        Text(text = stringResource(R.string.channel_stable))
+                    }
+                    SegmentedButton(
+                        selected = updateChannel == UpdateChannel.CANARY,
+                        onClick = onCanarySelected,
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = {},
+                    ) {
+                        Text(text = stringResource(R.string.channel_canary))
+                    }
                 }
             }
         }
@@ -1075,94 +1135,89 @@ private fun CommitHistorySection(
     isLoading: Boolean,
     isExpanded: Boolean,
     rotationAngle: Float,
+    modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
     onCommitClick: (GitCommit) -> Unit,
 ) {
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 840.dp)
-                .animateContentSize(),
+        modifier = modifier.animateContentSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Card(
+        SegmentedListItem(
+            onClick = onToggleExpanded,
+            shapes =
+                ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                ),
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
             colors =
-                CardDefaults.cardColors(
+                ListItemDefaults.segmentedColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
-            onClick = onToggleExpanded,
-        ) {
-            ListItem(
-                headlineContent = {
-                    Text(
-                        text = stringResource(R.string.recent_commits),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        text =
-                            when {
-                                isLoading -> {
-                                    stringResource(R.string.updates_loading_commits)
-                                }
+            leadingContent = {
+                FeatureIcon(
+                    iconRes = R.drawable.history,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.expand_more),
+                    contentDescription = null,
+                    modifier = Modifier.rotate(rotationAngle),
+                )
+            },
+            supportingContent = {
+                Text(
+                    text =
+                        when {
+                            isLoading -> {
+                                stringResource(R.string.updates_loading_commits)
+                            }
 
-                                commits.isEmpty() -> {
-                                    stringResource(R.string.updates_no_commits)
-                                }
+                            commits.isEmpty() -> {
+                                stringResource(R.string.updates_no_commits)
+                            }
 
-                                else -> {
-                                    stringResource(
-                                        R.string.updates_recent_commits_count,
-                                        commits.size,
-                                    )
-                                }
-                            },
-                    )
-                },
-                leadingContent = {
-                    FeatureIcon(
-                        iconRes = R.drawable.history,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.expand_more),
-                        contentDescription = null,
-                        modifier = Modifier.rotate(rotationAngle),
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-        }
+                            else -> {
+                                stringResource(
+                                    R.string.updates_recent_commits_count,
+                                    commits.size,
+                                )
+                            }
+                        },
+                )
+            },
+            content = {
+                Text(
+                    text = stringResource(R.string.recent_commits),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+        )
 
         AnimatedVisibility(visible = isExpanded) {
             when {
                 isLoading -> {
-                    Card(
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.extraLarge,
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            ),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
                         Box(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
+                                    .padding(vertical = 32.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
                                 LoadingIndicator(modifier = Modifier.size(32.dp))
-                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = stringResource(R.string.updates_loading_commits),
                                     style = MaterialTheme.typography.bodyMedium,
@@ -1174,19 +1229,20 @@ private fun CommitHistorySection(
                 }
 
                 commits.isEmpty() -> {
-                    Card(
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.extraLarge,
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            ),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
                         Text(
                             text = stringResource(R.string.updates_no_commits),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
+                            textAlign = TextAlign.Center,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 32.dp),
                         )
                     }
                 }
@@ -1194,7 +1250,7 @@ private fun CommitHistorySection(
                 else -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                     ) {
                         commits.forEachIndexed { index, commit ->
                             key(commit.sha) {
@@ -1249,7 +1305,10 @@ private fun CommitItem(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 64.dp),
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         leadingContent = {
             CommitAvatar(avatarUrl = commit.authorAvatarUrl)
@@ -1296,28 +1355,27 @@ private fun CommitItem(
 
 @Composable
 private fun CommitAvatar(avatarUrl: String?) {
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        contentAlignment = Alignment.Center,
+    Surface(
+        modifier = Modifier.size(40.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
-        if (!avatarUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Icon(
-                painter = painterResource(R.drawable.github),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
+        Box(contentAlignment = Alignment.Center) {
+            if (!avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.github),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }

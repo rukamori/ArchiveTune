@@ -1356,12 +1356,22 @@ private enum class MusicRecognitionContentKey {
 
 private fun MusicRecognitionScreenState.contentKey(): MusicRecognitionContentKey =
     when (this) {
-        is MusicRecognitionScreenState.Empty -> MusicRecognitionContentKey.Empty
-        is MusicRecognitionScreenState.Loading ->
+        is MusicRecognitionScreenState.Empty -> {
+            MusicRecognitionContentKey.Empty
+        }
+
+        is MusicRecognitionScreenState.Loading -> {
             when (phase) {
                 RecognitionPhaseUi.Listening -> MusicRecognitionContentKey.Listening
                 RecognitionPhaseUi.Processing -> MusicRecognitionContentKey.Processing
             }
-        is MusicRecognitionScreenState.Success -> MusicRecognitionContentKey.Success
-        is MusicRecognitionScreenState.Error -> MusicRecognitionContentKey.Error
+        }
+
+        is MusicRecognitionScreenState.Success -> {
+            MusicRecognitionContentKey.Success
+        }
+
+        is MusicRecognitionScreenState.Error -> {
+            MusicRecognitionContentKey.Error
+        }
     }

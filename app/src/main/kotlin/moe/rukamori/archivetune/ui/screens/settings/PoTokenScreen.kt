@@ -90,6 +90,8 @@ import moe.rukamori.archivetune.viewmodels.PoTokenEvent
 import moe.rukamori.archivetune.viewmodels.PoTokenState
 import moe.rukamori.archivetune.viewmodels.PoTokenViewModel
 
+const val PO_TOKEN_ROUTE = "settings/po_token"
+
 private const val DEFAULT_EXTRACT_URL = "https://youtube.com/account"
 private val MaxContentWidth = 840.dp
 private val MaxSheetWidth = 640.dp

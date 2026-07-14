@@ -152,7 +152,7 @@ fun PrivacySettings(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.privacy)) },
+                title = { Text(stringResource(R.string.settings_behavior_title)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navController::navigateUp,

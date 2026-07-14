@@ -686,7 +686,6 @@
     <string name="open_with_downloader">Mở bằng Downloader</string>
     <string name="external_downloader_not_installed">Ứng dụng tải xuống bên ngoài chưa được cài đặt</string>
     <string name="external_downloader_not_configured">Chưa cấu hình trình tải xuống bên ngoài. Hãy thiết lập một trình tải xuống trong Cài đặt → Trình phát.</string>
-    <string name="open_youtube_music">Mở Youtube Music</string>
     <string name="po_token_generation">Tạo PO Token</string>
     <string name="web_client_po_token">Web Client PO Token</string>
     <string name="web_client_po_token_desc">Cho phép tạo PO Token cho các ứng dụng khách trình phát dựa trên web</string>
@@ -732,7 +731,6 @@
     <string name="later">Để sau</string>
     <string name="album_name">Tên album</string>
     <string name="app_icon">Biểu tượng ứng dụng</string>
-    <string name="could_not_open_youtube_music">Không thể mở YouTube Music</string>
     <string name="discord_account_ready">ArchiveTune đã sẵn sàng để xuất bản Rich Presence cho phiên nghe nhạc của bạn.</string>
     <string name="discord_activity_content">Nội dung Hoạt động</string>
     <string name="discord_activity_type_competing_label">Đang cạnh tranh</string>

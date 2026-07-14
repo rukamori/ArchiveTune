@@ -15,65 +15,74 @@ import androidx.annotation.RequiresApi
  * and [here](https://github.com/Yos-X/FlamingoSank/blob/master/app/src/main/java/yos/music/player/code/SystemMediaControlResolver.kt)
  */
 object SystemMediaControlResolver {
-
     fun openMediaOutputSwitcher(context: Context) {
-        val opened = when {
-            MiPlayAudioSupport.supportMiPlay(context) -> {
-                val intent = Intent().apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    setClassName(
-                        "miui.systemui.plugin",
-                        "miui.systemui.miplay.MiPlayDetailActivity"
-                    )
+        val opened =
+            when {
+                MiPlayAudioSupport.supportMiPlay(context) -> {
+                    val intent =
+                        Intent().apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            setClassName(
+                                "miui.systemui.plugin",
+                                "miui.systemui.miplay.MiPlayDetailActivity",
+                            )
+                        }
+                    startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
                 }
-                startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
-            }
 
-            // zh：临时禁用OneUI MediaActivity调用，等待未来确定不会被删除再添加回去
-            (getOneUIVersionReadable() != null) -> {
-                val intent = Intent().apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    setClassName(
-                        "com.samsung.android.mdx.quickboard",
-                        "com.samsung.android.mdx.quickboard.view.MediaActivity"
-                    )
+                // zh：临时禁用OneUI MediaActivity调用，等待未来确定不会被删除再添加回去
+                (getOneUIVersionReadable() != null) -> {
+                    val intent =
+                        Intent().apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            setClassName(
+                                "com.samsung.android.mdx.quickboard",
+                                "com.samsung.android.mdx.quickboard.view.MediaActivity",
+                            )
+                        }
+                    startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
                 }
-                startIntent(context, intent) || startSystemMediaOutputSwitcher(context)
-            }
 
-            else -> startSystemMediaOutputSwitcher(context)
-        }
+                else -> {
+                    startSystemMediaOutputSwitcher(context)
+                }
+            }
         if (!opened) {
-            val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
+            val intent =
+                Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             startIntent(context, intent)
         }
     }
 
-    private fun startSystemMediaOutputSwitcher(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= 34) {
+    private fun startSystemMediaOutputSwitcher(context: Context): Boolean =
+        if (Build.VERSION.SDK_INT >= 34) {
             startNativeMediaDialogForAndroid14(context)
         } else if (Build.VERSION.SDK_INT >= 31) {
-            val intent = Intent().apply {
-                action = "com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG"
-                setPackage("com.android.systemui")
-                putExtra("package_name", context.packageName)
-            }
+            val intent =
+                Intent().apply {
+                    action = "com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG"
+                    setPackage("com.android.systemui")
+                    putExtra("package_name", context.packageName)
+                }
             startNativeMediaDialog(context, intent)
         } else if (Build.VERSION.SDK_INT == 30) {
             startNativeMediaDialogForAndroid11(context)
         } else {
-            val intent = Intent().apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                action = "com.android.settings.panel.action.MEDIA_OUTPUT"
-                putExtra("com.android.settings.panel.extra.PACKAGE_NAME", context.packageName)
-            }
+            val intent =
+                Intent().apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    action = "com.android.settings.panel.action.MEDIA_OUTPUT"
+                    putExtra("com.android.settings.panel.extra.PACKAGE_NAME", context.packageName)
+                }
             startNativeMediaDialog(context, intent)
         }
-    }
 
-    private fun startNativeMediaDialog(context: Context, intent: Intent): Boolean {
+    private fun startNativeMediaDialog(
+        context: Context,
+        intent: Intent,
+    ): Boolean {
         val resolveInfoList: List<ResolveInfo> =
             context.packageManager.queryIntentActivities(intent, 0)
         for (resolveInfo in resolveInfoList) {
@@ -92,11 +101,12 @@ object SystemMediaControlResolver {
     }
 
     private fun startNativeMediaDialogForAndroid11(context: Context): Boolean {
-        val intent = Intent().apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            action = "com.android.settings.panel.action.MEDIA_OUTPUT"
-            putExtra("com.android.settings.panel.extra.PACKAGE_NAME", context.packageName)
-        }
+        val intent =
+            Intent().apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                action = "com.android.settings.panel.action.MEDIA_OUTPUT"
+                putExtra("com.android.settings.panel.extra.PACKAGE_NAME", context.packageName)
+            }
         val resolveInfoList: List<ResolveInfo> =
             context.packageManager.queryIntentActivities(intent, 0)
         for (resolveInfo in resolveInfoList) {
@@ -120,14 +130,16 @@ object SystemMediaControlResolver {
         return mediaRouter2.showSystemOutputSwitcher()
     }
 
-    private fun startIntent(context: Context, intent: Intent): Boolean {
-        return try {
+    private fun startIntent(
+        context: Context,
+        intent: Intent,
+    ): Boolean =
+        try {
             context.startActivity(intent)
             true
         } catch (_: Exception) {
             false
         }
-    }
 
     @SuppressLint("PrivateApi")
     private fun getOneUIVersionReadable(): String? {

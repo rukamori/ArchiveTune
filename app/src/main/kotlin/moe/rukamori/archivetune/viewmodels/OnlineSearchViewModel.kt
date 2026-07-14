@@ -58,7 +58,6 @@ class OnlineSearchViewModel
                 savedStateHandle.get<String>(OnlineSearchResultArgument).orEmpty(),
             )
         val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
-        val sort = MutableStateFlow(OnlineSearchSort.DEFAULT)
         var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
         val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 
@@ -159,13 +158,9 @@ class OnlineSearchViewModel
             }
         }
 
-        fun updateSort(sort: OnlineSearchSort) {
-            this.sort.value = sort
-        }
-
         fun sortedItems(
             items: List<YTItem>,
-            sort: OnlineSearchSort = this.sort.value,
+            sort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
         ): List<YTItem> =
             when (sort) {
                 OnlineSearchSort.DEFAULT -> {

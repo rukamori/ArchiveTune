@@ -240,8 +240,11 @@ class IconViewModel
                     .toList()
                     .let { icons ->
                         when (sortOrder) {
-                            AppIconSortOrder.NEW_ADDED -> icons.asReversed()
-                            AppIconSortOrder.ALPHABETICAL ->
+                            AppIconSortOrder.NEW_ADDED -> {
+                                icons.asReversed()
+                            }
+
+                            AppIconSortOrder.ALPHABETICAL -> {
                                 icons.sortedWith(
                                     compareBy<AppIconUiModel, String>(
                                         String.CASE_INSENSITIVE_ORDER,
@@ -249,6 +252,7 @@ class IconViewModel
                                         icon.name.orEmpty()
                                     }.thenBy { icon -> icon.id },
                                 )
+                            }
                         }
                     }
             return buildList(communityIcons.size + 1) {
@@ -262,8 +266,7 @@ class IconViewModel
                 author?.contains(query, ignoreCase = true) == true ||
                 id.contains(query, ignoreCase = true)
 
-        private fun List<AppIconUiModel>.findById(iconId: String): AppIconUiModel? =
-            firstOrNull { icon -> icon.id == iconId }
+        private fun List<AppIconUiModel>.findById(iconId: String): AppIconUiModel? = firstOrNull { icon -> icon.id == iconId }
 
         private companion object {
             const val MaxSearchQueryLength = 100

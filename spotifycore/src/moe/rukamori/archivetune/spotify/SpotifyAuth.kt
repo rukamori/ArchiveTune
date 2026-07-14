@@ -7,13 +7,16 @@
 
 package moe.rukamori.archivetune.spotify
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import moe.rukamori.archivetune.spotify.models.SpotifyInternalToken
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.floor
@@ -32,8 +35,9 @@ import kotlin.math.floor
 object SpotifyAuth {
     private const val TOKEN_URL = "https://open.spotify.com/api/token"
     private const val SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
-    private const val NUANCE_GIST_URL =
-        "https://api.github.com/gists/22ed9c6ba463899e933427f7de1f0eef"
+    private const val NUANCE_URL =
+        "https://gist.githubusercontent.com/sonic-liberation/22ed9c6ba463899e933427f7de1f0eef/raw/nuances.json"
+    private const val NUANCE_CACHE_TTL_NANOS = 5 * 60 * 1_000_000_000L
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
@@ -51,20 +55,18 @@ object SpotifyAuth {
         val v: Int,
     )
 
-    @Serializable
-    private data class GistFile(
-        val content: String,
-    )
-
-    @Serializable
-    private data class GistFiles(
-        val files: Map<String, GistFile>,
+    private data class CachedNuance(
+        val value: Nuance,
+        val fetchedAtNanos: Long,
     )
 
     @Serializable
     private data class ServerTimeResponse(
         val serverTime: Long,
     )
+
+    private val nuanceMutex = Mutex()
+    private var cachedNuance: CachedNuance? = null
 
     /**
      * Fetches an internal web-player access token using session cookies and TOTP.
@@ -78,7 +80,7 @@ object SpotifyAuth {
         spDc: String,
         spKey: String = "",
     ): Result<SpotifyInternalToken> =
-        runCatching {
+        try {
             val nuance = fetchNuance()
             val serverTimeSec = fetchServerTime()
             val totp = generateTotp(nuance.s, serverTimeSec)
@@ -115,40 +117,62 @@ object SpotifyAuth {
                 )
             }
 
-            token
+            Result.success(token)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Result.failure(error)
         }
 
     private suspend fun fetchNuance(): Nuance =
         withContext(Dispatchers.IO) {
-            val body =
+            nuanceMutex.withLock {
+                val nowNanos = System.nanoTime()
+                val cached = cachedNuance
+                if (cached != null && nowNanos - cached.fetchedAtNanos < NUANCE_CACHE_TTL_NANOS) {
+                    return@withLock cached.value
+                }
+
                 try {
-                    httpGet(NUANCE_GIST_URL, emptyMap())
-                } catch (e: Exception) {
-                    throw Spotify.SpotifyException(
-                        503,
-                        "Failed to fetch TOTP secret from gist: ${e.message}",
+                    val nuances = json.decodeFromString<List<Nuance>>(httpGet(NUANCE_URL, emptyMap()))
+                    val latest =
+                        nuances
+                            .asSequence()
+                            .filter { it.v > 0 && it.s.isValidBase32Secret() }
+                            .maxByOrNull(Nuance::v)
+                            ?: throw IllegalStateException("No valid Spotify TOTP configuration was returned")
+                    cachedNuance = CachedNuance(value = latest, fetchedAtNanos = nowNanos)
+                    latest
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    cached?.value ?: throw Spotify.SpotifyException(
+                        statusCode = 503,
+                        message = "Spotify authentication is temporarily unavailable. Please try again.",
+                        cause = error,
                     )
                 }
-            val gist = json.decodeFromString<GistFiles>(body)
-            val nuancesJson =
-                gist.files.values
-                    .firstOrNull()
-                    ?.content
-                    ?: throw Spotify.SpotifyException(500, "Gist has no files")
-            val nuances = json.decodeFromString<List<Nuance>>(nuancesJson)
-            nuances.maxByOrNull { it.v }
-                ?: throw Spotify.SpotifyException(500, "No nuance data found in gist")
+            }
         }
+
+    private fun String.isValidBase32Secret(): Boolean =
+        isNotBlank() &&
+            all { character ->
+                character == '=' || character.uppercaseChar() in "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+            }
 
     private suspend fun fetchServerTime(): Long =
         withContext(Dispatchers.IO) {
             val body =
                 try {
                     httpGet(SERVER_TIME_URL, emptyMap())
-                } catch (e: Exception) {
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
                     throw Spotify.SpotifyException(
-                        503,
-                        "Failed to fetch Spotify server time: ${e.message}",
+                        statusCode = 503,
+                        message = "Spotify authentication is temporarily unavailable. Please try again.",
+                        cause = error,
                     )
                 }
             val response = json.decodeFromString<ServerTimeResponse>(body)
@@ -216,7 +240,7 @@ object SpotifyAuth {
         urlString: String,
         extraHeaders: Map<String, String>,
     ): String {
-        val connection = URL(urlString).openConnection() as HttpURLConnection
+        val connection = URI.create(urlString).toURL().openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "GET"
             connection.instanceFollowRedirects = true
@@ -231,10 +255,10 @@ object SpotifyAuth {
 
             val responseCode = connection.responseCode
             if (responseCode !in 200..299) {
-                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+                connection.errorStream?.close()
                 throw Spotify.SpotifyException(
                     responseCode,
-                    "HTTP $responseCode: $errorBody",
+                    "Request failed with HTTP $responseCode",
                 )
             }
 

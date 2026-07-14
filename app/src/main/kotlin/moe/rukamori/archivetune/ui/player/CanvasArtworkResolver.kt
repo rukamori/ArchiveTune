@@ -11,25 +11,33 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
 import timber.log.Timber
 
 internal suspend fun resolveCanvasArtworkForPlayback(
     mediaId: String,
     songTitleRaw: String,
     artistNameRaw: String,
-    albumId: String? = null,
-    albumTitleRaw: String? = null,
     storefront: String,
     requireVertical: Boolean,
     allowNetwork: Boolean,
 ): CanvasArtwork? {
-    withContext(Dispatchers.IO) {
-        CanvasArtworkPlaybackCache.get(
-            mediaId = mediaId,
-            preferCachedOnly = true,
-        )
-    }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
-        ?.let { return it }
+    val cachedArtwork =
+        withContext(Dispatchers.IO) {
+            CanvasArtworkPlaybackCache.get(
+                mediaId = mediaId,
+                preferCachedOnly = true,
+            )
+        }
+    if (cachedArtwork != null) {
+        val isValid =
+            cachedArtwork.hasRequiredCanvasVariant(requireVertical) &&
+                cachedArtwork.matchesSongIdentity(songTitleRaw, artistNameRaw)
+        if (isValid) return cachedArtwork
+        withContext(Dispatchers.IO) {
+            CanvasArtworkPlaybackCache.remove(mediaId)
+        }
+    }
 
     if (!allowNetwork || mediaId.isBlank()) {
         Timber.tag(CanvasArtworkLogTag).d("Skipping canvas network lookup for %s", mediaId)
@@ -40,12 +48,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
         val fetched =
             fetchCanvasArtworkForPlayback(
                 songTitleRaw = songTitleRaw,
-                artistNameRaw = artistNameRaw,
-                storefront = storefront,
-                requireVertical = requireVertical,
-            ) ?: fetchCanvasArtworkByAlbumFallback(
-                albumId = albumId,
-                albumTitleRaw = albumTitleRaw,
                 artistNameRaw = artistNameRaw,
                 storefront = storefront,
                 requireVertical = requireVertical,
@@ -85,42 +87,10 @@ internal suspend fun fetchCanvasArtworkForPlayback(
                 artist = artist,
                 storefront = storefront,
             )?.takeIf { artwork ->
-                if (requireVertical) {
-                    !artwork.preferredVerticalAnimationUrl.isNullOrBlank()
-                } else {
-                    !artwork.preferredAnimationUrl.isNullOrBlank()
-                }
+                artwork.matchesSongIdentity(songTitleRaw, artistNameRaw) &&
+                    artwork.hasRequiredCanvasVariant(requireVertical)
             }
     }
-}
-
-private suspend fun fetchCanvasArtworkByAlbumFallback(
-    albumId: String?,
-    albumTitleRaw: String?,
-    artistNameRaw: String,
-    storefront: String,
-    requireVertical: Boolean,
-): CanvasArtwork? {
-    albumId
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?.let { nonBlankAlbumId ->
-            ArchiveTuneCanvas
-                .getByAlbumId(nonBlankAlbumId)
-                ?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
-                ?.let { return it }
-        }
-
-    val albumTitle = albumTitleRaw?.trim().orEmpty()
-    val artistName = artistNameRaw.trim()
-    if (albumTitle.isBlank() || artistName.isBlank()) return null
-
-    return ArchiveTuneCanvas
-        .getBySongArtist(
-            song = albumTitle,
-            artist = artistName,
-            storefront = storefront,
-        )?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
 }
 
 private fun CanvasArtwork.hasRequiredCanvasVariant(requireVertical: Boolean): Boolean =

@@ -342,8 +342,6 @@
     <string name="crossfade_gapless_description">Jangan gunakan crossfade untuk lagu berurutan dari album yang sama.</string>
     <string name="player_stream_client">Klien pemutaran</string>
     <string name="player_stream_client_desc">Mengontrol klien YouTube mana yang digunakan untuk mengambil streaming</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Streaming langsung tanpa dekripsi tanda tangan, memberikan kecepatan maksimum. Cocok untuk sebagian besar pengguna.</string>
     <string name="player_stream_client_web_remix">Campuran Web</string>
     <string name="player_stream_client_web_remix_desc">Dukungan format yang diperluas dengan mengorbankan kecepatan. Dekripsi tanda tangan JavaScript menyebabkan penundaan startup ~5–10 detik.</string>
     <string name="settings_section_player_content">Pemutar &amp; Konten</string>

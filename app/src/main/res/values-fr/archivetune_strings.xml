@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="explore">Explorer</string>
     <string name="local_history">Locale</string>
@@ -182,8 +182,6 @@
     <string name="player_design_v5">Petit</string>
     <string name="player_stream_client">Client de lecture</string>
     <string name="player_stream_client_desc">Détermine la source de lecture utilisée pour récupérer les flux</string>
-    <string name="player_stream_client_android_vr">Android VR</string>
-    <string name="player_stream_client_android_vr_desc">Diffusion directe sans décryptage de signature, pour une vitesse maximale. Convient à la majorité des utilisateurs.</string>
     <string name="player_stream_client_web_remix">Remix Web</string>
     <string name="player_stream_client_web_remix_desc">Prise en charge étendue des formats au détriment de la vitesse. Le décryptage des signatures JavaScript entraîne un délai de démarrage d\'environ 5 à 10 secondes.</string>
     <string name="crop_thumbnail_to_square">Recadrer les miniatures au format 1:1</string>

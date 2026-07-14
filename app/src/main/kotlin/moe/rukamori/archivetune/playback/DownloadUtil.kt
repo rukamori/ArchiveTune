@@ -48,7 +48,6 @@ import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
-import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import okhttp3.ConnectionPool
@@ -218,6 +217,13 @@ class DownloadUtil
                                 }
                             }
                             // Exported files belong to the user and are preserved when a download is removed.
+                        }
+
+                        override fun onDownloadRemoved(
+                            downloadManager: DownloadManager,
+                            download: Download,
+                        ) {
+                            downloads.update { map -> map - download.request.id }
                         }
                     },
                 )

@@ -123,9 +123,7 @@ import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
-import moe.rukamori.archivetune.ui.utils.sendPauseDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
-import moe.rukamori.archivetune.ui.utils.sendResumeDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.TopPlaylistViewModel
@@ -585,12 +583,7 @@ fun TopPlaylistScreen(
                                                 }
 
                                                 is HeaderDownloadState.Partial -> {
-                                                    val songIds = songs.orEmpty().map { it.song.id }
-                                                    if (currentDownloadState.paused) {
-                                                        sendResumeDownloads(context, songIds)
-                                                    } else {
-                                                        sendPauseDownloads(context, songIds)
-                                                    }
+                                                    navController.navigate("auto_playlist/downloaded?tab=progress")
                                                 }
 
                                                 HeaderDownloadState.None -> {
@@ -605,6 +598,7 @@ fun TopPlaylistScreen(
                                                             },
                                                         downloads = downloads,
                                                     )
+                                                    navController.navigate("auto_playlist/downloaded?tab=progress")
                                                 }
                                             }
                                         },

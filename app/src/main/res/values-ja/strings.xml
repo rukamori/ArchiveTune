@@ -479,7 +479,6 @@
     <string name="playback_requires_youtube_music_confirmation">YouTube Musicで再生を確認してからArchiveTuneに戻ってね。</string>
     <string name="playback_login_refresh_required">YouTube Musicログインを更新</string>
     <string name="playback_requires_youtube_music_login_refresh">YouTube Musicのログインを更新してからArchiveTuneに戻ってね。</string>
-    <string name="could_not_open_youtube_music">YouTube Musicを開けなかった</string>
     <string name="playback_error_code">コード</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">メッセージ</string>
@@ -813,7 +812,6 @@
     <string name="playback_state_unknown">不明</string>
     <string name="share_logs">ログを共有</string>
     <string name="about">概要</string>
-    <string name="open_youtube_music">YouTube Musicを開く</string>
     <string name="new_version_available">新しいバージョンあり</string>
     <string name="updates">更新</string>
     <string name="updates_subtitle_stable">安定版リリースとリリースノート</string>
