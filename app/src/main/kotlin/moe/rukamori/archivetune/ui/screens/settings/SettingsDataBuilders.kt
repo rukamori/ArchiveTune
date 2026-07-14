@@ -153,7 +153,7 @@ fun buildSettingsGroups(
                                 subtitle = stringResource(R.string.settings_po_token_subtitle),
                                 accentColor = MaterialTheme.colorScheme.secondary,
                                 keywords = listOf("potoken", "visitor data", "youtube", "playback fix"),
-                                onClick = { navController.navigate("settings/po_token") },
+                                onClick = { navController.navigate(PO_TOKEN_ROUTE) },
                             ),
                         )
                         add(

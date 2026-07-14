@@ -507,11 +507,17 @@ private fun SuggestedSongsSection(
                     ),
         ) {
             visibleSongs.forEachIndexed { index, song ->
+                val isActive = song.id == mediaMetadata?.id
                 Card(
                     shape = segmentedSuggestedSongShape(index = index, count = visibleSongs.size),
                     colors =
                         CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            containerColor =
+                                if (isActive) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerLow
+                                },
                         ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier =
@@ -519,7 +525,7 @@ private fun SuggestedSongsSection(
                             .fillMaxWidth()
                             .combinedClickable(
                                 onClick = {
-                                    if (song.id == mediaMetadata?.id) {
+                                    if (isActive) {
                                         playerConnection.player.togglePlayPause()
                                     } else {
                                         playerConnection.playQueue(
@@ -546,9 +552,10 @@ private fun SuggestedSongsSection(
                         item = song,
                         albumIndex = index + 1,
                         viewCountText = song.viewCountText,
-                        isActive = song.id == mediaMetadata?.id,
+                        isActive = isActive,
                         isPlaying = isPlaying,
                         isSwipeable = false,
+                        showActiveContainer = false,
                         trailingContent = {
                             YouTubeSongMenuButton(song = song, navController = navController)
                         },

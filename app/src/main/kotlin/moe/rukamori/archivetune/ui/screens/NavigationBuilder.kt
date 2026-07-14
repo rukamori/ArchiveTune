@@ -74,6 +74,7 @@ import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
 import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
+import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.screens.settings.PalettePickerScreen
 import moe.rukamori.archivetune.ui.screens.settings.PlayerSettings
 import moe.rukamori.archivetune.ui.screens.settings.PoTokenScreen
@@ -82,6 +83,7 @@ import moe.rukamori.archivetune.ui.screens.settings.SettingsScreen
 import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
+import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
@@ -92,6 +94,7 @@ fun NavGraphBuilder.navigationBuilder(
     onClearUpdateBadge: () -> Unit = {},
     homeScrollConnection: NestedScrollConnection? = null,
     searchScrollConnection: NestedScrollConnection? = null,
+    onlineSearchSort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
 ) {
     composable(Screens.Home.route) {
         HomeScreen(navController, headerScrollConnection = homeScrollConnection)
@@ -220,7 +223,10 @@ fun NavGraphBuilder.navigationBuilder(
             }
         },
     ) {
-        OnlineSearchResult(navController)
+        OnlineSearchResult(
+            navController = navController,
+            searchSort = onlineSearchSort,
+        )
     }
     composable(
         route = "album/{albumId}",
@@ -485,7 +491,7 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/about") {
         AboutScreen(navController)
     }
-    composable("settings/po_token") {
+    composable(PO_TOKEN_ROUTE) {
         PoTokenScreen(navController)
     }
     composable("customize_background") {

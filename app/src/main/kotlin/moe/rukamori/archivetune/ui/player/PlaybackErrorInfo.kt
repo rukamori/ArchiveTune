@@ -23,16 +23,10 @@ internal enum class PlaybackErrorKind {
     Unknown,
 }
 
-internal enum class PlaybackRecoveryAction {
-    RefreshLogin,
-    OpenYouTubeMusic,
-}
-
 internal data class PlaybackErrorInfo(
     val kind: PlaybackErrorKind,
     val httpCode: Int?,
     val loginRecoveryUrl: String?,
-    val recoveryAction: PlaybackRecoveryAction?,
 )
 
 internal fun PlaybackException.toPlaybackErrorInfo(): PlaybackErrorInfo {
@@ -40,12 +34,6 @@ internal fun PlaybackException.toPlaybackErrorInfo(): PlaybackErrorInfo {
     val invalidPlaybackLoginContextUrl = invalidPlaybackLoginContextUrl()
     val externalLoginRecoveryUrl = loginRecoveryUrl()
     val loginRecoveryUrl = invalidPlaybackLoginContextUrl ?: externalLoginRecoveryUrl
-    val recoveryAction =
-        when {
-            invalidPlaybackLoginContextUrl != null -> PlaybackRecoveryAction.RefreshLogin
-            externalLoginRecoveryUrl != null -> PlaybackRecoveryAction.OpenYouTubeMusic
-            else -> null
-        }
     val kind =
         when {
             invalidPlaybackLoginContextUrl != null -> PlaybackErrorKind.LoginRefreshRequired
@@ -81,7 +69,6 @@ internal fun PlaybackException.toPlaybackErrorInfo(): PlaybackErrorInfo {
         kind = kind,
         httpCode = httpCode,
         loginRecoveryUrl = loginRecoveryUrl,
-        recoveryAction = recoveryAction,
     )
 }
 

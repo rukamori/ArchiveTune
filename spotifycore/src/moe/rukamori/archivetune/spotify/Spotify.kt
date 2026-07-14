@@ -130,7 +130,8 @@ object Spotify {
         val statusCode: Int,
         override val message: String,
         val retryAfterSec: Long = 0,
-    ) : Exception(message)
+        cause: Throwable? = null,
+    ) : Exception(message, cause)
 
     @Volatile
     var logger: ((level: String, message: String) -> Unit)? = null

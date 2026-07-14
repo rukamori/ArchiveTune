@@ -451,7 +451,6 @@
     <string name="playback_requires_youtube_music_confirmation">請確認 YouTube Music 正在播放，然後返回 ArchiveTune。</string>
     <string name="playback_login_refresh_required">刷新 YouTube Music 登入狀態</string>
     <string name="playback_requires_youtube_music_login_refresh">刷新您的 YouTube Music 登入狀態，然後返回 ArchiveTune。</string>
-    <string name="could_not_open_youtube_music">無法開啟 YouTube Music</string>
     <string name="playback_error_code">程式碼</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">訊息</string>
@@ -784,7 +783,6 @@
     <string name="playback_state_unknown">未知</string>
     <string name="share_logs">分享日誌</string>
     <string name="about">關於</string>
-    <string name="open_youtube_music">打開 YouTube Music</string>
     <string name="new_version_available">新版本可用</string>
     <string name="updates">更新</string>
     <string name="updates_subtitle_stable">穩定版本與發行說明</string>

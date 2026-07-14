@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -65,6 +66,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,6 +77,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
+import moe.rukamori.archivetune.constants.NavigationBarHorizontalPadding
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
@@ -106,6 +109,7 @@ data class MiniPlayerContentColors(
 @Composable
 fun SwipeableMiniPlayerBox(
     modifier: Modifier = Modifier,
+    contentMaxWidth: Dp? = null,
     swipeSensitivity: Float,
     swipeThumbnail: Boolean,
     playerConnection: PlayerConnection,
@@ -131,128 +135,151 @@ fun SwipeableMiniPlayerBox(
     fun calculateAutoSwipeThreshold(swipeSensitivity: Float): Int =
         (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
     val autoSwipeThreshold = calculateAutoSwipeThreshold(swipeSensitivity)
+    val containerMaxWidth =
+        if (useLegacyBackground) {
+            null
+        } else {
+            contentMaxWidth?.let {
+                it + NavigationBarHorizontalPadding + NavigationBarHorizontalPadding
+            }
+        }
 
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
                 .height(MiniPlayerHeight)
-                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                .let { baseModifier ->
-                    if (useLegacyBackground) {
-                        baseModifier.background(
-                            if (pureBlack) {
-                                Color.Black
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainer
-                            },
-                        )
-                    } else {
-                        baseModifier.padding(horizontal = 12.dp)
-                    }
-                }.let { baseModifier ->
-                    if (swipeThumbnail) {
-                        baseModifier.pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    dragStartTime = System.currentTimeMillis()
-                                    totalDragDistance = 0f
-                                },
-                                onDragCancel = {
-                                    coroutineScope.launch {
-                                        offsetXAnimatable.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = animationSpec,
-                                        )
-                                    }
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    val adjustedDragAmount =
-                                        if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                                    val canSkipPrevious = playerConnection.player.previousMediaItemIndex != -1
-                                    val canSkipNext = playerConnection.player.nextMediaItemIndex != -1
-                                    val allowLeft = adjustedDragAmount < 0 && canSkipNext
-                                    val allowRight = adjustedDragAmount > 0 && canSkipPrevious
-                                    if (allowLeft || allowRight) {
-                                        totalDragDistance += kotlin.math.abs(adjustedDragAmount)
-                                        coroutineScope.launch {
-                                            offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
-                                        }
-                                    }
-                                },
-                                onDragEnd = {
-                                    val dragDuration = System.currentTimeMillis() - dragStartTime
-                                    val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
-                                    val currentOffset = offsetXAnimatable.value
-
-                                    val minDistanceThreshold = 50f
-                                    val velocityThreshold = (swipeSensitivity * -8.25f) + 8.5f
-
-                                    val shouldChangeSong =
-                                        (
-                                            kotlin.math.abs(currentOffset) > minDistanceThreshold &&
-                                                velocity > velocityThreshold
-                                        ) || (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
-
-                                    if (shouldChangeSong) {
-                                        val isRightSwipe = currentOffset > 0
-                                        val canSkipPrevious = playerConnection.player.previousMediaItemIndex != -1
-                                        val canSkipNext = playerConnection.player.nextMediaItemIndex != -1
-
-                                        if (isRightSwipe && canSkipPrevious) {
-                                            if (enableHapticFeedback) {
-                                                view.performHapticFeedback(
-                                                    android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                                    android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                                                )
-                                            }
-                                            playerConnection.player.seekToPreviousMediaItem()
-                                        } else if (!isRightSwipe && canSkipNext) {
-                                            if (enableHapticFeedback) {
-                                                view.performHapticFeedback(
-                                                    android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                                    android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                                                )
-                                            }
-                                            playerConnection.player.seekToNext()
-                                        }
-                                    }
-
-                                    coroutineScope.launch {
-                                        offsetXAnimatable.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = animationSpec,
-                                        )
-                                    }
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .let { baseModifier ->
+                        if (containerMaxWidth == null) {
+                            baseModifier.fillMaxWidth()
+                        } else {
+                            baseModifier
+                                .widthIn(max = containerMaxWidth)
+                                .fillMaxWidth()
+                        }
+                    }.height(MiniPlayerHeight)
+                    .let { baseModifier ->
+                        if (useLegacyBackground) {
+                            baseModifier.background(
+                                if (pureBlack) {
+                                    Color.Black
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainer
                                 },
                             )
+                        } else {
+                            baseModifier.padding(horizontal = NavigationBarHorizontalPadding)
                         }
-                    } else {
-                        baseModifier
-                    }
-                },
-    ) {
-        content(offsetXAnimatable.value)
+                    }.let { baseModifier ->
+                        if (swipeThumbnail) {
+                            baseModifier.pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        dragStartTime = System.currentTimeMillis()
+                                        totalDragDistance = 0f
+                                    },
+                                    onDragCancel = {
+                                        coroutineScope.launch {
+                                            offsetXAnimatable.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = animationSpec,
+                                            )
+                                        }
+                                    },
+                                    onHorizontalDrag = { _, dragAmount ->
+                                        val adjustedDragAmount =
+                                            if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
+                                        val canSkipPrevious = playerConnection.player.previousMediaItemIndex != -1
+                                        val canSkipNext = playerConnection.player.nextMediaItemIndex != -1
+                                        val allowLeft = adjustedDragAmount < 0 && canSkipNext
+                                        val allowRight = adjustedDragAmount > 0 && canSkipPrevious
+                                        if (allowLeft || allowRight) {
+                                            totalDragDistance += kotlin.math.abs(adjustedDragAmount)
+                                            coroutineScope.launch {
+                                                offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
+                                            }
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        val dragDuration = System.currentTimeMillis() - dragStartTime
+                                        val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
+                                        val currentOffset = offsetXAnimatable.value
 
-        if (offsetXAnimatable.value.absoluteValue > 50f) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(if (offsetXAnimatable.value > 0) Alignment.CenterStart else Alignment.CenterEnd)
-                        .padding(horizontal = 16.dp),
-            ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            if (offsetXAnimatable.value > 0) R.drawable.skip_previous else R.drawable.skip_next,
-                        ),
-                    contentDescription = null,
-                    tint =
-                        MaterialTheme.colorScheme.primary.copy(
-                            alpha = (offsetXAnimatable.value.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f),
-                        ),
-                    modifier = Modifier.size(24.dp),
-                )
+                                        val minDistanceThreshold = 50f
+                                        val velocityThreshold = (swipeSensitivity * -8.25f) + 8.5f
+
+                                        val shouldChangeSong =
+                                            (
+                                                kotlin.math.abs(currentOffset) > minDistanceThreshold &&
+                                                    velocity > velocityThreshold
+                                            ) || (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
+
+                                        if (shouldChangeSong) {
+                                            val isRightSwipe = currentOffset > 0
+                                            val canSkipPrevious = playerConnection.player.previousMediaItemIndex != -1
+                                            val canSkipNext = playerConnection.player.nextMediaItemIndex != -1
+
+                                            if (isRightSwipe && canSkipPrevious) {
+                                                if (enableHapticFeedback) {
+                                                    view.performHapticFeedback(
+                                                        android.view.HapticFeedbackConstants.CONTEXT_CLICK,
+                                                        android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+                                                    )
+                                                }
+                                                playerConnection.player.seekToPreviousMediaItem()
+                                            } else if (!isRightSwipe && canSkipNext) {
+                                                if (enableHapticFeedback) {
+                                                    view.performHapticFeedback(
+                                                        android.view.HapticFeedbackConstants.CONTEXT_CLICK,
+                                                        android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+                                                    )
+                                                }
+                                                playerConnection.player.seekToNext()
+                                            }
+                                        }
+
+                                        coroutineScope.launch {
+                                            offsetXAnimatable.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = animationSpec,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        } else {
+                            baseModifier
+                        }
+                    },
+        ) {
+            content(offsetXAnimatable.value)
+
+            if (offsetXAnimatable.value.absoluteValue > 50f) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(if (offsetXAnimatable.value > 0) Alignment.CenterStart else Alignment.CenterEnd)
+                            .padding(horizontal = 16.dp),
+                ) {
+                    Icon(
+                        painter =
+                            painterResource(
+                                if (offsetXAnimatable.value > 0) R.drawable.skip_previous else R.drawable.skip_next,
+                            ),
+                        contentDescription = null,
+                        tint =
+                            MaterialTheme.colorScheme.primary.copy(
+                                alpha = (offsetXAnimatable.value.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f),
+                            ),
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }

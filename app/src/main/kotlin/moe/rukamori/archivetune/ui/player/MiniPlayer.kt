@@ -46,6 +46,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
+import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -193,6 +194,7 @@ private fun NewMiniPlayer(
 
     SwipeableMiniPlayerBox(
         modifier = modifier,
+        contentMaxWidth = if (isPairedWithNavigation) NavigationBarMaxWidth else null,
         swipeSensitivity = swipeSensitivity,
         swipeThumbnail = swipeThumbnail,
         playerConnection = playerConnection,

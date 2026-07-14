@@ -89,12 +89,14 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineSearchResult(
     navController: NavController,
+    searchSort: OnlineSearchSort,
     viewModel: OnlineSearchViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -107,7 +109,6 @@ fun OnlineSearchResult(
     val lazyListState = rememberLazyListState()
 
     val searchFilter by viewModel.filter.collectAsStateWithLifecycle()
-    val searchSort by viewModel.sort.collectAsStateWithLifecycle()
     val searchSummary = viewModel.summaryPage
     val itemsPage by remember(searchFilter) {
         derivedStateOf {

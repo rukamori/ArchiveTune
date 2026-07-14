@@ -615,7 +615,6 @@
     <string name="external_downloader_not_configured">No hay ningún programa de descarga externo configurado. Configura uno en Ajustes → Reproductor.</string>
     <string name="preload_queue_lyrics">Cargar previamente la letra de la canción</string>
     <string name="queue_lyrics_preload_count">Número de canciones que se van a precargar</string>
-    <string name="open_youtube_music">Abrir YouTube Music</string>
     <string name="po_token_generation">Generación de tokens de autenticación</string>
     <string name="web_client_po_token">Token de verificación basado en web</string>
     <string name="web_client_po_token_desc">Habilitar la generación de tokens de verificación para el reproductor multimedia basado en la web</string>
@@ -771,7 +770,6 @@
     <string name="lyrics_mode_v2">Versión 2 heredada/obsoleta</string>
     <string name="lyrics_mode_enhanced">Mejorado</string>
     <string name="lyrics_animation_style_v2_only">Solo disponible en modo letra V2</string>
-    <string name="could_not_open_youtube_music">No se ha podido abrir YouTube Music</string>
     <string name="proxy_connection_invalid_configuration">Host o puerto de proxy no válido</string>
     <string name="ip_rotation">Rotación de direcciones IP</string>
     <string name="ip_rotation_desc">Cambia la dirección IP actual cuando surjan problemas de reproducción o con el contenido.</string>

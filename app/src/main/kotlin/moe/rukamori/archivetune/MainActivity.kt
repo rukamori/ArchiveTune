@@ -200,9 +200,6 @@ import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableScreenshotKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
-import moe.rukamori.archivetune.constants.NavigationBarBottomPadding
-import moe.rukamori.archivetune.constants.NavigationBarHeight
-import moe.rukamori.archivetune.constants.NavigationBarHorizontalPadding
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.HasPressedStarKey
 import moe.rukamori.archivetune.constants.LaunchCountKey
@@ -210,6 +207,9 @@ import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
+import moe.rukamori.archivetune.constants.NavigationBarBottomPadding
+import moe.rukamori.archivetune.constants.NavigationBarHeight
+import moe.rukamori.archivetune.constants.NavigationBarHorizontalPadding
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -307,7 +307,6 @@ import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import moe.rukamori.archivetune.viewmodels.NetworkBannerViewModel
 import moe.rukamori.archivetune.viewmodels.NewsViewModel
 import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
-import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.roundToInt
@@ -875,18 +874,13 @@ class MainActivity : ComponentActivity() {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
-                    val onlineSearchViewModel: OnlineSearchViewModel? =
-                        if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true && navBackStackEntry != null) {
-                            hiltViewModel(navBackStackEntry!!)
-                        } else {
-                            null
-                        }
-                    val onlineSearchSort =
-                        if (onlineSearchViewModel != null) {
-                            onlineSearchViewModel.sort.collectAsStateWithLifecycle().value
-                        } else {
-                            OnlineSearchSort.DEFAULT
-                        }
+                    val onlineSearchEncodedQuery =
+                        navBackStackEntry
+                            ?.takeIf {
+                                it.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true
+                            }?.arguments
+                            ?.getString(OnlineSearchResultArgument)
+                    var onlineSearchSort by rememberSaveable { mutableStateOf(OnlineSearchSort.DEFAULT) }
                     val isYearInMusicScreen = currentRoute?.startsWith("year_in_music") == true
 
                     val navigationItems =
@@ -942,6 +936,10 @@ class MainActivity : ComponentActivity() {
                     val searchBarFocusRequester = remember { FocusRequester() }
                     val tvRailFocusRequester = remember { FocusRequester() }
                     val contentAreaFocusRequester = remember { FocusRequester() }
+
+                    LaunchedEffect(onlineSearchEncodedQuery) {
+                        onlineSearchSort = OnlineSearchSort.DEFAULT
+                    }
 
                     val openSearch: () -> Unit = {
                         onActiveChange(true)
@@ -1209,12 +1207,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         } else {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+                            if (navController.currentDestination?.route != screen.route) {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         }
                     }
@@ -1974,10 +1974,10 @@ class MainActivity : ComponentActivity() {
                                                                 contentDescription = null,
                                                             )
                                                         }
-                                                    } else if (onlineSearchViewModel != null) {
+                                                    } else if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true) {
                                                         OnlineSearchSortMenu(
                                                             selectedSort = onlineSearchSort,
-                                                            onSortSelected = onlineSearchViewModel::updateSort,
+                                                            onSortSelected = { onlineSearchSort = it },
                                                         )
                                                     }
                                                 }
@@ -2376,6 +2376,7 @@ class MainActivity : ComponentActivity() {
                                         onClearUpdateBadge = { latestVersionName = BuildConfig.VERSION_NAME },
                                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                                         searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
+                                        onlineSearchSort = onlineSearchSort,
                                     )
                                 }
                             }

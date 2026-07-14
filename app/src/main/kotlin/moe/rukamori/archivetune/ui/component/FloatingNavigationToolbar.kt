@@ -18,12 +18,16 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -48,10 +52,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.NavigationBarHeight
+import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.utils.rememberPreference
 
-private val NavigationBarMaxWidth = 420.dp
 private val NavigationItemsMaxWidth = 360.dp
 private val NavigationItemVerticalPadding = 8.dp
 
@@ -83,7 +87,10 @@ fun FloatingNavigationToolbar(
     val motionScheme = MaterialTheme.motionScheme
     val (disableAnimations) = rememberPreference(DisableAnimationsKey, defaultValue = false)
     Box(
-        modifier = modifier.fillMaxWidth(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
         contentAlignment = Alignment.Center,
     ) {
         Surface(

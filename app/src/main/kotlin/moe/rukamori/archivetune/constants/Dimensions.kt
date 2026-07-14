@@ -21,6 +21,7 @@ const val CONTENT_TYPE_PLAYLIST = 5
 
 val NavigationBarHorizontalPadding = 12.dp
 val NavigationBarBottomPadding = 10.dp
+val NavigationBarMaxWidth = 420.dp
 val NavigationBarHeight = 78.dp
 val MiniPlayerHeight = 70.dp
 val MiniPlayerBottomSpacing = 4.dp
