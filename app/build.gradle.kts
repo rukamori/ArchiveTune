@@ -35,6 +35,43 @@ val hasReleaseSigningConfig =
         releaseStorePassword != null &&
         releaseKeyAlias != null &&
         releaseKeyPassword != null
+val admobAppId =
+    (
+        localProperties.getProperty("ADMOB_APP_ID")
+            ?: System.getenv("ADMOB_APP_ID")
+            ?: ""
+        ).trim()
+val admobRewardedAdUnitId =
+    (
+        localProperties.getProperty("ADMOB_REWARDED_AD_UNIT_ID")
+            ?: System.getenv("ADMOB_REWARDED_AD_UNIT_ID")
+            ?: ""
+        ).trim()
+val admobSampleAppId = "ca-app-pub-3940256099942544~3347511713"
+val admobSampleRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+val admobAppIdPattern = Regex("^ca-app-pub-\\d{16}~\\d{10}$")
+val admobAdUnitIdPattern = Regex("^ca-app-pub-\\d{16}/\\d{10}$")
+val validateAdMobReleaseConfiguration =
+    tasks.register("validateAdMobReleaseConfiguration") {
+        doLast {
+            require(admobAppIdPattern.matches(admobAppId)) {
+                "A valid ADMOB_APP_ID is required for GMS release builds."
+            }
+            require(admobAdUnitIdPattern.matches(admobRewardedAdUnitId)) {
+                "A valid ADMOB_REWARDED_AD_UNIT_ID is required for GMS release builds."
+            }
+        }
+    }
+
+tasks.configureEach {
+    val isGmsReleaseArtifactTask =
+        (name.startsWith("assemble") || name.startsWith("bundle")) &&
+            name.contains("Gms") &&
+            name.endsWith("Release")
+    if (isGmsReleaseArtifactTask) {
+        dependsOn(validateAdMobReleaseConfiguration)
+    }
+}
 
 android {
     namespace = "moe.rukamori.archivetune"
@@ -101,6 +138,17 @@ android {
             buildConfigField("long", "DISCORD_APPLICATION_ID_LONG", "${discordApplicationIdLong}L")
             buildConfigField("String", "DISCORD_REDIRECT_SCHEME", "\"$discordRedirectScheme\"")
             manifestPlaceholders["discordRedirectScheme"] = discordRedirectScheme
+            manifestPlaceholders["admobAppId"] = admobAppId.ifBlank { admobSampleAppId }
+            buildConfigField(
+                "String",
+                "ADMOB_APP_ID",
+                "\"${admobAppId.ifBlank { admobSampleAppId }}\"",
+            )
+            buildConfigField(
+                "String",
+                "ADMOB_REWARDED_AD_UNIT_ID",
+                "\"${admobRewardedAdUnitId.ifBlank { admobSampleRewardedAdUnitId }}\"",
+            )
         }
         create("foss") {
             dimension = "distribution"
@@ -174,6 +222,13 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
+            manifestPlaceholders["admobAppId"] = admobSampleAppId
+            buildConfigField("String", "ADMOB_APP_ID", "\"$admobSampleAppId\"")
+            buildConfigField(
+                "String",
+                "ADMOB_REWARDED_AD_UNIT_ID",
+                "\"$admobSampleRewardedAdUnitId\"",
+            )
         }
     }
 
@@ -290,6 +345,8 @@ dependencies {
     implementation("androidx.media3:media3-ui-compose:${libs.versions.media3.get()}")
     add("gmsImplementation", libs.media3.cast)
     add("gmsImplementation", libs.mediarouter)
+    add("gmsImplementation", libs.google.mobile.ads)
+    add("gmsImplementation", libs.google.ump)
     implementation(libs.squigglyslider)
 
     implementation(libs.room.runtime)

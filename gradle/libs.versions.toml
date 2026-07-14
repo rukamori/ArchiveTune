@@ -44,6 +44,8 @@ accompanist = "1.0.19"
 accompanist-core = "0.4.7"
 androidsvg = "1.4"
 aboutLibraries = "15.0.3"
+googleMobileAds = "1.2.1"
+googleUmp = "4.0.0"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -147,6 +149,8 @@ accompanist-lyrics-ui = { module = "com.mocharealm.accompanist:lyrics-ui", versi
 accompanist-lyrics-core = { module = "com.mocharealm.accompanist:lyrics-core", version.ref = "accompanist-core" }
 androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
+google-mobile-ads = { module = "com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk", version.ref = "googleMobileAds" }
+google-ump = { module = "com.google.android.ump:user-messaging-platform", version.ref = "googleUmp" }
 
 
 [plugins]
