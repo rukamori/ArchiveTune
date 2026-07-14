@@ -124,8 +124,11 @@ fun SettingsScreen(
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
     var isUpdateDismissed by remember { mutableStateOf(false) }
     val settingsGroups = buildSettingsGroups(navController, isAndroid12OrLater, hasUpdate, context)
+    // buildSettingsGroups returns a fresh list identity on every recomposition, so key the flatten
+    // on the stable inputs that actually change its contents. This keeps the top-bar scroll/enter
+    // animation from re-flattening the whole list every frame.
     val settingsItems =
-        remember(settingsGroups) {
+        remember(isAndroid12OrLater, hasUpdate) {
             settingsGroups.flatMap { it.items }
         }
 

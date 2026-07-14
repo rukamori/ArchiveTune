@@ -67,24 +67,11 @@ object TidalAudioProvider {
     private const val STRONG_MATCH_SCORE = 150
     private const val REJECT_SCORE = -1_000_000
     private val AMAZON_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
-    // Current public streaming instances, mirroring the official monochrome.tf frontend. These
-    // rotate over time, so auto-discovery (see [INSTANCE_DISCOVERY_SOURCES]) and the user's manual
-    // list can extend/override them at runtime. The `*.geeked.wtf` hosts (hifi.geeked.wtf,
-    // tidal-uptime.geeked.wtf) were removed after they started returning NXDOMAIN — only the apex
-    // geeked.wtf still resolves. The monochrome.tf regional hosts resolve and are ordered first.
-    private val DEFAULT_DOWNLOAD_API_ENDPOINTS =
-        listOf(
-            TidalDownloadEndpoint("Monochrome EU", "https://eu-central.monochrome.tf"),
-            TidalDownloadEndpoint("Monochrome US", "https://us-west.monochrome.tf"),
-            TidalDownloadEndpoint("Monochrome API", "https://api.monochrome.tf"),
-            TidalDownloadEndpoint("Monochrome Hot", "https://hot.monochrome.tf"),
-            TidalDownloadEndpoint("Wolf QQDL", "https://wolf.qqdl.site"),
-            TidalDownloadEndpoint("Maus QQDL", "https://maus.qqdl.site"),
-            TidalDownloadEndpoint("Vogel QQDL", "https://vogel.qqdl.site"),
-            TidalDownloadEndpoint("Katze QQDL", "https://katze.qqdl.site"),
-            TidalDownloadEndpoint("Hund QQDL", "https://hund.qqdl.site"),
-            TidalDownloadEndpoint("Samidy (Monochrome)", "https://monochrome-api.samidy.com"),
-        )
+    // No pre-built/bundled public instances are shipped anymore. The user must add their own
+    // HiFi/QQDL instance(s) in Tidal settings; if they add none (or remove them all) the public
+    // streaming path simply stays empty and playback falls through to the next audio source.
+    // This list is intentionally empty so nothing is ever baked into the app or silently used.
+    private val DEFAULT_DOWNLOAD_API_ENDPOINTS = emptyList<TidalDownloadEndpoint>()
 
     // Live uptime feed used by the official monochrome.tf frontend to discover currently-healthy
     // instances. Best-effort only: it rotates and may be unreachable, so discovery is allowed to
@@ -94,37 +81,39 @@ object TidalAudioProvider {
     private val INSTANCE_DISCOVERY_SOURCES = emptyList<String>()
 
     /**
-     * User-configured instance list (base URLs), applied via [setInstances]. When null or empty
-     * the built-in [DEFAULT_DOWNLOAD_API_ENDPOINTS] are used so the source keeps working out of
-     * the box.
+     * User-configured instance list (base URLs), applied via [setInstances]. When empty there are
+     * no public instances at all — the provider does NOT fall back to any bundled defaults, so
+     * clearing the list in settings truly disables the public streaming path.
      */
     @Volatile
-    private var customEndpoints: List<TidalDownloadEndpoint>? = null
+    private var customEndpoints: List<TidalDownloadEndpoint> = emptyList()
 
     private val activeEndpoints: List<TidalDownloadEndpoint>
-        get() = customEndpoints?.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_API_ENDPOINTS
+        get() = customEndpoints
 
-    /** Base URLs of the built-in default instances, for the settings UI "reset" action. */
+    /**
+     * Base URLs of the built-in default instances. Now always empty — no instances are bundled —
+     * kept so the settings UI "reset" action still compiles/behaves (reset == clear).
+     */
     val defaultInstanceUrls: List<String>
         get() = DEFAULT_DOWNLOAD_API_ENDPOINTS.map { it.baseUrl }
 
-    /** Base URLs currently in effect (custom list if set, otherwise defaults). */
+    /** Base URLs currently in effect (the user's configured list, or empty). */
     val activeInstanceUrls: List<String>
         get() = activeEndpoints.map { it.baseUrl }
 
     /**
-     * Replaces the active instance list. Invalid or duplicate URLs are dropped; if nothing valid
-     * remains the provider reverts to the built-in defaults.
+     * Replaces the active instance list. Invalid or duplicate URLs are dropped. An empty result
+     * stays empty — the provider never reverts to bundled defaults.
      */
     fun setInstances(baseUrls: List<String>) {
         val seen = LinkedHashSet<String>()
-        val parsed =
+        customEndpoints =
             baseUrls.mapNotNull { raw ->
                 val normalized = normalizeInstanceUrl(raw) ?: return@mapNotNull null
                 if (!seen.add(normalized)) return@mapNotNull null
                 TidalDownloadEndpoint(instanceLabel(normalized), normalized)
             }
-        customEndpoints = parsed.ifEmpty { null }
     }
 
     /** Normalizes an instance URL to `scheme://host[:port]` form, or null if it is not valid. */

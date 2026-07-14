@@ -282,8 +282,9 @@ object TidalAccountManager {
         }
 
     /**
-     * Resolves the subscription tier for the signed-in account. Any paid tier (HIFI, PREMIUM,
-     * PREMIUM_PLUS, HIFI_PLUS, etc.) maps to [Subscription.PREMIUM]; an explicit free tier maps to
+     * Resolves the subscription tier for the signed-in account. Prefers Tidal's authoritative
+     * `premiumAccess` boolean, then falls back to `highestSoundQuality` and the `subscription.type`
+     * string. A real paying account maps to [Subscription.PREMIUM]; a free account maps to
      * [Subscription.FREE]; anything indeterminate is [Subscription.UNKNOWN]. Runs on IO.
      */
     suspend fun fetchSubscription(
@@ -312,11 +313,29 @@ object TidalAccountManager {
                             ?.optString("type")
                             ?.uppercase()
                             .orEmpty()
+                    val soundQuality = json.optString("highestSoundQuality").uppercase()
+                    // `premiumAccess` is Tidal's authoritative entitlement flag and is the only
+                    // signal that reliably separates a real paying account from a free one. Free
+                    // accounts frequently still report a non-blank subscription.type (e.g. an
+                    // "INTRO"/"PREMIUM" placeholder), which is exactly why the old
+                    // "anything not FREE = premium" check reported free accounts as premium.
                     when {
-                        type.isBlank() -> Subscription.UNKNOWN
+                        json.has("premiumAccess") ->
+                            if (json.optBoolean("premiumAccess", false)) {
+                                Subscription.PREMIUM
+                            } else {
+                                Subscription.FREE
+                            }
                         type.contains("FREE") -> Subscription.FREE
-                        // HIFI, HIFI_PLUS, PREMIUM, PREMIUM_PLUS, etc.
-                        else -> Subscription.PREMIUM
+                        // Lossless-capable tiers are unambiguously paid.
+                        soundQuality.contains("LOSSLESS") || soundQuality.contains("HI_RES") ->
+                            Subscription.PREMIUM
+                        // A low-quality ceiling with no premium flag means a free account.
+                        soundQuality == "LOW" -> Subscription.FREE
+                        // Known paid tier names, as a last resort when no better signal exists.
+                        type.contains("HIFI") || type.contains("PREMIUM") || type.contains("PLUS") ->
+                            Subscription.PREMIUM
+                        else -> Subscription.UNKNOWN
                     }
                 }
             }.getOrElse {

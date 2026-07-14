@@ -443,7 +443,7 @@ fun SettingsRow(
                         },
                     ) {
                         Icon(
-                            painter = item.icon,
+                            painter = painterResource(item.icon),
                             contentDescription = null,
                             tint = effectiveAccent,
                             modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
@@ -451,7 +451,7 @@ fun SettingsRow(
                     }
                 } else {
                     Icon(
-                        painter = item.icon,
+                        painter = painterResource(item.icon),
                         contentDescription = null,
                         tint = effectiveAccent,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
@@ -615,7 +615,7 @@ fun SettingsSegmentedItem(
                         },
                     ) {
                         Icon(
-                            painter = item.icon,
+                            painter = painterResource(item.icon),
                             contentDescription = null,
                             tint = iconContentColor,
                             modifier = Modifier.size(26.dp),
@@ -623,7 +623,7 @@ fun SettingsSegmentedItem(
                     }
                 } else {
                     Icon(
-                        painter = item.icon,
+                        painter = painterResource(item.icon),
                         contentDescription = null,
                         tint = iconContentColor,
                         modifier = Modifier.size(26.dp),
@@ -747,14 +747,14 @@ fun SettingsFlatItem(
                     modifier = Modifier.padding(start = 8.dp, end = 16.dp),
                 ) {
                     Icon(
-                        painter = item.icon,
+                        painter = painterResource(item.icon),
                         contentDescription = null,
                         tint = effectiveAccent,
                     )
                 }
             } else {
                 Icon(
-                    painter = item.icon,
+                    painter = painterResource(item.icon),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, end = 16.dp),

@@ -687,13 +687,13 @@
     <string name="tidal_playback_fell_back">Tidal couldn\'t resolve this track — playing from YouTube</string>
     <!-- Tidal HiFi instances -->
     <string name="tidal_instances">HiFi instances</string>
-    <string name="tidal_instances_description">Tidal streams are resolved through public HiFi/QQDL instances. Add or remove them, then tap Test instances to check which ones work.</string>
+    <string name="tidal_instances_description">Tidal streams are resolved through public HiFi/QQDL instances. None are bundled — add your own, then tap Test instances to check which ones work. If the list is empty, Tidal streaming is disabled.</string>
     <string name="tidal_add_instance">Add instance</string>
     <string name="tidal_instance_url_hint">https://instance.example.com</string>
     <string name="tidal_instance_invalid_url">Enter a valid http(s) URL</string>
     <string name="tidal_instance_duplicate">That instance is already in the list</string>
     <string name="tidal_remove_instance">Remove instance</string>
-    <string name="tidal_reset_instances">Reset to default instances</string>
+    <string name="tidal_reset_instances">Clear all instances</string>
     <string name="tidal_no_instances">No instances configured. Add one or reset to defaults.</string>
     <string name="tidal_check_instances">Test instances</string>
     <string name="tidal_checking_instances">Testing…</string>
