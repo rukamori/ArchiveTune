@@ -59,22 +59,32 @@ object PlayerColorExtractor {
             for (swatch in rankedSwatches) {
                 val hsv = FloatArray(3)
                 android.graphics.Color.colorToHSV(swatch.rgb, hsv)
-                val satFactor = if (hsv[1] > 0.3f) 1.25f else 1.05f
+                // Gentle saturation lift only for already-dull colors so the glow stays close to
+                // the artwork's real color instead of being pushed to an oversaturated hue.
+                val satFactor = if (hsv[1] > 0.3f) 1.1f else 1.04f
                 addIfUnique(Color(swatch.rgb), satFactor)
                 if (availableColors.size >= 6) break
             }
 
             val totalPopulation = allSwatches.sumOf { it.population }.coerceAtLeast(1)
-            val weightedExtractedSaturation =
+            // Only treat the artwork as greyscale when NO meaningfully-present color exists. Using
+            // the peak saturation among non-trivial swatches (instead of a population-weighted mean)
+            // stops a large dull/grey/white background from washing out a smaller vivid accent and
+            // falsely forcing the grey glow. Tiny specks (<2% of pixels) are ignored so a stray
+            // colored pixel can't defeat the check either.
+            val meaningfulSwatches =
                 allSwatches
-                    .sumOf { swatch ->
-                        val hsv = FloatArray(3)
-                        android.graphics.Color.colorToHSV(swatch.rgb, hsv)
-                        (hsv[1] * swatch.population).toDouble()
-                    }.toFloat() / totalPopulation.toFloat()
+                    .filter { it.population.toFloat() >= totalPopulation.toFloat() * 0.02f }
+                    .ifEmpty { allSwatches }
+            val peakSaturation =
+                meaningfulSwatches.maxOfOrNull { swatch ->
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(swatch.rgb, hsv)
+                    hsv[1]
+                } ?: 0f
 
             val dominantColor = availableColors.firstOrNull() ?: Color(fallbackColor)
-            val isGreyscaleImage = weightedExtractedSaturation < 0.22f || isNearGray(dominantColor)
+            val isGreyscaleImage = peakSaturation < 0.12f && isNearGray(dominantColor)
 
             if (isGreyscaleImage) {
                 availableColors.clear()
@@ -161,8 +171,20 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(swatch.rgb, hsv)
         val saturation = hsv[1]
         val brightness = hsv[2]
-        val vibrancyBonus = if (saturation > 0.3f && brightness in 0.2f..0.9f) 1.3f else 1.0f
-        return population * vibrancyBonus
+        // Strongly favor saturated colors so a vivid accent beats a large dull/grey background
+        // (fixes the glow picking the most populous color instead of the representative one).
+        // A near-grey background (saturation ~0) is scored ~0.2x population, while a vivid swatch
+        // (saturation ~0.9) is scored ~1.4x, letting even a smaller colorful region win.
+        val saturationFactor = 0.2f + saturation * 1.35f
+        // Near-black and near-white make poor, washed-out glows: down-weight them heavily.
+        val brightnessFactor =
+            when {
+                brightness < 0.08f -> 0.15f
+                brightness < 0.18f -> 0.55f
+                brightness > 0.95f -> 0.4f
+                else -> 1.0f
+            }
+        return population * saturationFactor * brightnessFactor
     }
 
     /**
