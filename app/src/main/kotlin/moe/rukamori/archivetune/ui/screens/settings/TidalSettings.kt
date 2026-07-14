@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.constants.TidalSubscriptionKey
 import moe.rukamori.archivetune.constants.TidalSubscriptionStatus
 import moe.rukamori.archivetune.constants.TidalTokenExpiryKey
 import moe.rukamori.archivetune.constants.TidalUserIdKey
+import moe.rukamori.archivetune.qobuz.SourceInputParsing
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -111,9 +112,34 @@ fun TidalSettings(navController: NavController) {
     val healthLatency = remember { mutableStateMapOf<String, Long>() }
     var testingInstances by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showBulkDialog by remember { mutableStateOf(false) }
 
     fun toast(message: String) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    // Removes every instance whose last scan matched [statuses], returning the count removed.
+    fun removeInstancesWithStatus(statuses: Set<TidalAudioProvider.InstanceHealth>) {
+        val doomed = effectiveInstances.filter { healthStatus[it] in statuses }
+        if (doomed.isEmpty()) {
+            toast(context.getString(R.string.source_nothing_to_do))
+            return
+        }
+        doomed.forEach {
+            healthStatus.remove(it)
+            healthLatency.remove(it)
+        }
+        persistInstances(effectiveInstances - doomed.toSet())
+        toast(context.getString(R.string.source_removed, doomed.size))
+    }
+
+    fun copyOnlineInstances() {
+        val online = effectiveInstances.filter { healthStatus[it] == TidalAudioProvider.InstanceHealth.HEALTHY }
+        if (online.isEmpty()) {
+            toast(context.getString(R.string.source_nothing_to_do))
+            return
+        }
+        copyToClipboard(context, "Tidal instances", online)
     }
 
     // Turns a scan status into its ping label:
@@ -168,6 +194,27 @@ fun TidalSettings(navController: NavController) {
                 }
             },
             onDismiss = { showAddDialog = false },
+        )
+    }
+
+    if (showBulkDialog) {
+        TextFieldDialog(
+            icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+            title = { Text(stringResource(R.string.source_bulk_add)) },
+            placeholder = { Text(stringResource(R.string.source_bulk_hint)) },
+            singleLine = false,
+            isInputValid = { it.isNotBlank() },
+            onDone = { raw ->
+                val parsed = SourceInputParsing.parseUrls(raw).mapNotNull { TidalAudioProvider.normalizeInstanceUrl(it) }
+                val added = parsed.filterNot { effectiveInstances.contains(it) }
+                if (added.isEmpty()) {
+                    toast(context.getString(R.string.source_bulk_none))
+                } else {
+                    persistInstances(effectiveInstances + added)
+                    toast(context.getString(R.string.source_bulk_added, added.size))
+                }
+            },
+            onDismiss = { showBulkDialog = false },
         )
     }
 
@@ -344,6 +391,15 @@ fun TidalSettings(navController: NavController) {
 
                 item {
                     PreferenceEntry(
+                        title = { Text(stringResource(R.string.source_bulk_add)) },
+                        description = stringResource(R.string.source_bulk_hint),
+                        icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+                        onClick = { showBulkDialog = true },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
                         title = {
                             Text(
                                 if (testingInstances) {
@@ -356,6 +412,34 @@ fun TidalSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.sync), null) },
                         isEnabled = !testingInstances,
                         onClick = { runInstanceTest() },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.source_copy_online)) },
+                        icon = { Icon(painterResource(R.drawable.copy), null) },
+                        onClick = { copyOnlineInstances() },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.source_remove_dead)) },
+                        icon = { Icon(painterResource(R.drawable.delete), null) },
+                        onClick = {
+                            removeInstancesWithStatus(setOf(TidalAudioProvider.InstanceHealth.UNREACHABLE))
+                        },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.source_remove_deprecated)) },
+                        icon = { Icon(painterResource(R.drawable.delete), null) },
+                        onClick = {
+                            removeInstancesWithStatus(setOf(TidalAudioProvider.InstanceHealth.PREVIEW_ONLY))
+                        },
                     )
                 }
 
