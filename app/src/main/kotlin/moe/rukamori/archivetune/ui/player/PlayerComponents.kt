@@ -909,23 +909,13 @@ fun PlayerTimeLabel(
 }
 
 /**
- * Small animated "Crossfading" label (SimpMusic-style) shown between the time labels while a
- * track-to-track crossfade is running. Its text color cycles through an RGB rainbow to match the
- * shimmering seek bar, with a subtle breathing alpha so it reads as "in progress".
+ * Small animated "Crossfading" label shown between the time labels while a track-to-track crossfade
+ * is running. Uses a solid theme color with a subtle breathing alpha so it reads as "in progress"
+ * (no rainbow color cycling).
  */
 @Composable
 fun CrossfadingLabel(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "crossfadeLabel")
-    val hue by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(1200, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-        label = "crossfadeLabelHue",
-    )
     val alpha by transition.animateFloat(
         initialValue = 0.6f,
         targetValue = 1f,
@@ -936,6 +926,7 @@ fun CrossfadingLabel(modifier: Modifier = Modifier) {
             ),
         label = "crossfadeLabelAlpha",
     )
+    val labelColor = MaterialTheme.colorScheme.primary.copy(alpha = alpha)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -945,12 +936,12 @@ fun CrossfadingLabel(modifier: Modifier = Modifier) {
             painter = painterResource(R.drawable.sync),
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = Color.hsv(hue, 0.7f, 1f).copy(alpha = alpha),
+            tint = labelColor,
         )
         Text(
             text = stringResource(R.string.crossfade_in_progress),
             style = MaterialTheme.typography.labelMedium,
-            color = Color.hsv(hue, 0.7f, 1f).copy(alpha = alpha),
+            color = labelColor,
             maxLines = 1,
         )
     }
