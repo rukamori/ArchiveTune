@@ -235,6 +235,20 @@ class BackupArchiveRepository
                     "spotify_access_token_expires_at",
                     "spotify_account_name",
                     "spotify_account_avatar_url",
+                    // Tidal login/session (sensitive) — travels with an Account backup, not a
+                    // Settings-only one. Instance URL lists (tidalInstances) stay under Settings.
+                    "tidalAccessToken",
+                    "tidalRefreshToken",
+                    "tidalTokenExpiry",
+                    "tidalSubscription",
+                    "tidalAuthFlow",
+                    "tidalCountryCode",
+                    "tidalUserId",
+                    "tidalNeedsRelogin",
+                    "tidal_account_name",
+                    "tidalCookie",
+                    // Qobuz direct-API tokens (contain user_auth_token + app_secret — sensitive).
+                    "qobuzTokens",
                 )
         }
     }
