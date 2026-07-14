@@ -131,11 +131,11 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.ui.utils.preferredThumbnailRatio
 import moe.rukamori.archivetune.ui.utils.resize
-import moe.rukamori.archivetune.ui.utils.YTThumbQuality
-import moe.rukamori.archivetune.ui.utils.resolveMaxresFallback
-import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
+import moe.rukamori.archivetune.ui.utils.thumbnailSourceRatio
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -1394,22 +1394,27 @@ fun YouTubeListItem(
         )
     }
 
-   if (item is SongItem && isSwipeable && swipeEnabled) {
-       SwipeToSongBox(
-           mediaItem =
-               item
-                   .copy(
-                       thumbnail = item.thumbnail.resize(1080, 1080, maxresAllowed = true),
-                       thumbnailWidth = null,
-                       thumbnailHeight = null,
-                   ).toMediaItem(),
-           modifier = Modifier.fillMaxWidth(),
-       ) {
-           content()
-       }
-   } else {
-       content()
-   }
+    if (item is SongItem && isSwipeable && swipeEnabled) {
+        SwipeToSongBox(
+            mediaItem =
+                item
+                    .copy(
+                        thumbnail =
+                            item.thumbnail.resize(
+                                width = 1080,
+                                height = 1080,
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
+                        thumbnailWidth = null,
+                        thumbnailHeight = null,
+                    ).toMediaItem(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            content()
+        }
+    } else {
+        content()
+    }
 }
 
 @Composable
@@ -1485,6 +1490,7 @@ fun YouTubeGridItem(
                 isPlaying = isPlaying,
                 shape = shape,
                 thumbnailRatio = resolvedThumbnailRatio,
+                sourceAspectRatio = item.thumbnailSourceRatio,
             )
 
             if (item is SongItem && !isActive) {
@@ -1623,6 +1629,7 @@ fun ItemThumbnail(
     showPlaceholder: Boolean = false,
     maxSizePx: Int? = null,
     sizeBuckets: List<Int>? = null,
+    sourceAspectRatio: Float? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1651,8 +1658,17 @@ fun ItemThumbnail(
         val guardedWidthPx = if (maxSizePx != null && widthPx != null) minOf(widthPx, maxSizePx) else widthPx
         val guardedHeightPx = if (maxSizePx != null && heightPx != null) minOf(heightPx, maxSizePx) else heightPx
 
-        var currentUrl by remember(thumbnailUrl, guardedWidthPx, guardedHeightPx, sizeBuckets) {
-            mutableStateOf(thumbnailUrl?.resize(guardedWidthPx, guardedHeightPx, maxresAllowed = false, sizeBuckets = sizeBuckets))
+        var currentUrl by remember(thumbnailUrl, guardedWidthPx, guardedHeightPx, sizeBuckets, sourceAspectRatio) {
+            mutableStateOf(
+                thumbnailUrl?.resize(
+                    width = guardedWidthPx,
+                    height = guardedHeightPx,
+                    maxresAllowed = false,
+                    sizeBuckets = sizeBuckets,
+                    ytimgResizePolicy = YtimgResizePolicy.MatchSourceAspect,
+                    sourceAspectRatio = sourceAspectRatio,
+                ),
+            )
         }
 
         if (albumIndex == null) {
@@ -1927,7 +1943,13 @@ fun PlaylistThumbnail(
                 remember(thumbnails, sizePx) {
                     ImageRequest
                         .Builder(context)
-                        .data(thumbnails[0].resize((sizePx * 1.5).toInt(), (sizePx * 1.5).toInt()))
+                        .data(
+                            thumbnails[0].resize(
+                                width = (sizePx * 1.5).toInt(),
+                                height = (sizePx * 1.5).toInt(),
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
+                        )
                         .size(sizePx, sizePx)
                         .allowHardware(true)
                         .build()
@@ -1962,7 +1984,13 @@ fun PlaylistThumbnail(
                         remember(url, halfPx) {
                             ImageRequest
                                 .Builder(context)
-                                .data(url?.resize((halfPx * 1.5).toInt(), (halfPx * 1.5).toInt()))
+                                .data(
+                                    url?.resize(
+                                        width = (halfPx * 1.5).toInt(),
+                                        height = (halfPx * 1.5).toInt(),
+                                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                                    ),
+                                )
                                 .size(halfPx, halfPx)
                                 .allowHardware(true)
                                 .build()

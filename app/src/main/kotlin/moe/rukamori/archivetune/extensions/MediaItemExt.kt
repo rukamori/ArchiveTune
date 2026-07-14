@@ -18,6 +18,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.ui.utils.YTThumbQuality
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.NotificationArtworkSizePx
@@ -28,7 +29,14 @@ const val ExtraIsMusicVideo = "moe.rukamori.archivetune.extra.IS_MUSIC_VIDEO"
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
 
-private fun String?.toNotificationArtworkUri() = this?.resize(NotificationArtworkSizePx, NotificationArtworkSizePx, maxresAllowed = true)?.toUri()
+private fun String?.toNotificationArtworkUri() =
+    this
+        ?.resize(
+            width = NotificationArtworkSizePx,
+            height = NotificationArtworkSizePx,
+            ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+        )
+        ?.toUri()
 
 private fun MediaItem.Builder.setCacheKeyIfRemote(mediaId: String): MediaItem.Builder {
     if (!mediaId.isLocalMediaId()) {

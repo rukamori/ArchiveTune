@@ -189,10 +189,9 @@ import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
-import moe.rukamori.archivetune.ui.utils.resize
-import moe.rukamori.archivetune.ui.utils.YTThumbQuality
-import moe.rukamori.archivetune.ui.utils.resolveMaxresFallback
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
+import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -1851,7 +1850,14 @@ private fun V8PlayerBackdrop(
     modifier: Modifier = Modifier,
 ) {
     var currentUrl by remember(thumbnailUrl) {
-        mutableStateOf(thumbnailUrl?.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx, maxresAllowed = true))
+        mutableStateOf(
+            thumbnailUrl?.resize(
+                width = V8BackdropArtworkSizePx,
+                height = V8BackdropArtworkSizePx,
+                maxresAllowed = true,
+                ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+            ),
+        )
     }
     val backdropRequest = rememberOfflineArtworkImageRequest(currentUrl)
     val blurRadiusDp = 44.dp * (backdropBlurAmount.toFloat() / 100f)
@@ -2123,7 +2129,14 @@ private fun V7PlayerBackdrop(
             )
         }
     var backdropArtworkModel by remember(backdropArtworkUrl, backdropArtworkSizePx) {
-        mutableStateOf(backdropArtworkUrl?.resize(backdropArtworkSizePx, backdropArtworkSizePx, maxresAllowed = true))
+        mutableStateOf(
+            backdropArtworkUrl?.resize(
+                width = backdropArtworkSizePx,
+                height = backdropArtworkSizePx,
+                maxresAllowed = true,
+                ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+            ),
+        )
     }
     val backdropArtworkRequest = rememberOfflineArtworkImageRequest(backdropArtworkModel)
     val sharpStageBottomScrim =
@@ -2263,7 +2276,14 @@ private fun V7PlayerBackdrop(
                     .clipToBounds(),
         ) { backdrop ->
             var sharpArtworkModel by remember(backdrop.artworkUrl, backdropArtworkSizePx) {
-                mutableStateOf(backdrop.artworkUrl?.resize(backdropArtworkSizePx, backdropArtworkSizePx, maxresAllowed = true))
+                mutableStateOf(
+                    backdrop.artworkUrl?.resize(
+                        width = backdropArtworkSizePx,
+                        height = backdropArtworkSizePx,
+                        maxresAllowed = true,
+                        ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+                    ),
+                )
             }
             val sharpArtworkRequest = rememberOfflineArtworkImageRequest(sharpArtworkModel)
 

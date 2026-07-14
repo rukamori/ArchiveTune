@@ -20,6 +20,17 @@ private const val LANDSCAPE_RATIO = 16f / 9f
  */
 private const val SNAP_THRESHOLD = 4f / 3f
 
+val YTItem.thumbnailSourceRatio: Float?
+    get() {
+        val width = thumbnailWidth
+        val height = thumbnailHeight
+        return if (width != null && height != null && width > 0 && height > 0) {
+            width.toFloat() / height.toFloat()
+        } else {
+            null
+        }
+    }
+
 val YTItem.preferredThumbnailRatio: Float
     get() = preferredThumbnailRatio(cropThumbnailToSquare = false)
 
@@ -30,11 +41,8 @@ fun YTItem.preferredThumbnailRatio(cropThumbnailToSquare: Boolean): Float {
         return SQUARE_RATIO
     }
 
-    val width = thumbnailWidth
-    val height = thumbnailHeight
-    if (width != null && height != null && width > 0 && height > 0) {
-        val rawRatio = width.toFloat() / height.toFloat()
-        return if (rawRatio >= SNAP_THRESHOLD) LANDSCAPE_RATIO else SQUARE_RATIO
+    thumbnailSourceRatio?.let { sourceRatio ->
+        return if (sourceRatio >= SNAP_THRESHOLD) LANDSCAPE_RATIO else SQUARE_RATIO
     }
 
     return fallbackThumbnailRatio
