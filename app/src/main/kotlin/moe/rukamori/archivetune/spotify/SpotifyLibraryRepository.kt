@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -50,6 +52,8 @@ class SpotifyLibraryRepository
 
         private val _errorMessage = MutableStateFlow<String?>(null)
         val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+        private val tokenRefreshMutex = Mutex()
 
         suspend fun restoreCachedPlaylists() {
             withContext(Dispatchers.IO) {
@@ -118,7 +122,10 @@ class SpotifyLibraryRepository
             spKey: String,
         ): SpotifyAccountSession =
             withContext(Dispatchers.IO) {
+                var credentialsChanged = false
                 context.dataStore.edit { prefs ->
+                    credentialsChanged =
+                        prefs[SpotifySpDcKey] != spDc || prefs[SpotifySpKeyKey].orEmpty() != spKey
                     prefs[SpotifySpDcKey] = spDc
                     prefs.remove(SpotifyLibraryPlaylistsCacheKey)
                     if (spKey.isNotBlank()) {
@@ -126,7 +133,12 @@ class SpotifyLibraryRepository
                     } else {
                         prefs.remove(SpotifySpKeyKey)
                     }
+                    if (credentialsChanged) {
+                        prefs.remove(SpotifyAccessTokenKey)
+                        prefs.remove(SpotifyAccessTokenExpiresAtKey)
+                    }
                 }
+                if (credentialsChanged) Spotify.accessToken = null
                 _playlists.value = emptyList()
                 _errorMessage.value = null
                 refreshAccessToken(spDc = spDc, spKey = spKey).getOrThrow()
@@ -239,17 +251,41 @@ class SpotifyLibraryRepository
         private suspend fun refreshAccessToken(
             spDc: String,
             spKey: String,
+            rejectedAccessToken: String? = null,
         ): Result<Unit> =
-            SpotifyAuth
-                .fetchAccessToken(spDc = spDc, spKey = spKey)
-                .mapCatching { token ->
+            try {
+                tokenRefreshMutex.withLock {
+                    val prefs = context.dataStore.data.first()
+                    val storedAccessToken = prefs[SpotifyAccessTokenKey].orEmpty()
+                    val storedExpiresAt = prefs[SpotifyAccessTokenExpiresAtKey] ?: 0L
+                    val credentialsMatch =
+                        prefs[SpotifySpDcKey].orEmpty() == spDc &&
+                            prefs[SpotifySpKeyKey].orEmpty() == spKey
+                    val canReuseStoredToken =
+                        credentialsMatch &&
+                            storedAccessToken.isNotBlank() &&
+                            storedExpiresAt > System.currentTimeMillis() + TOKEN_EXPIRY_GRACE_MS &&
+                            (rejectedAccessToken == null || storedAccessToken != rejectedAccessToken)
+
+                    if (canReuseStoredToken) {
+                        Spotify.accessToken = storedAccessToken
+                        return@withLock Result.success(Unit)
+                    }
+
+                    val token = SpotifyAuth.fetchAccessToken(spDc = spDc, spKey = spKey).getOrThrow()
                     Spotify.accessToken = token.accessToken
                     context.dataStore.edit { prefs ->
                         prefs[SpotifyAccessTokenKey] = token.accessToken
                         prefs[SpotifyAccessTokenExpiresAtKey] = token.accessTokenExpirationTimestampMs
                     }
                     refreshProfile()
+                    Result.success(Unit)
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Result.failure(error)
+            }
 
         private suspend fun refreshProfile() {
             Spotify
@@ -314,15 +350,21 @@ class SpotifyLibraryRepository
             }
 
         private suspend fun <T> spotifyCallWithTokenRetry(block: suspend () -> T): T =
-            runCatching { block() }
-                .getOrElse { error ->
-                    if ((error as? Spotify.SpotifyException)?.statusCode != 401) throw error
-                    val prefs = context.dataStore.data.first()
-                    val spDc = prefs[SpotifySpDcKey].orEmpty()
-                    if (spDc.isBlank()) throw error
-                    refreshAccessToken(spDc = spDc, spKey = prefs[SpotifySpKeyKey].orEmpty()).getOrThrow()
-                    block()
-                }
+            Spotify.accessToken.let { rejectedAccessToken ->
+                runCatching { block() }
+                    .getOrElse { error ->
+                        if ((error as? Spotify.SpotifyException)?.statusCode != 401) throw error
+                        val prefs = context.dataStore.data.first()
+                        val spDc = prefs[SpotifySpDcKey].orEmpty()
+                        if (spDc.isBlank()) throw error
+                        refreshAccessToken(
+                            spDc = spDc,
+                            spKey = prefs[SpotifySpKeyKey].orEmpty(),
+                            rejectedAccessToken = rejectedAccessToken,
+                        ).getOrThrow()
+                        block()
+                    }
+            }
 
         companion object {
             private const val TOKEN_EXPIRY_GRACE_MS = 60_000L

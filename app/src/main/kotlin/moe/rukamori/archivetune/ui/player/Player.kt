@@ -137,6 +137,7 @@ import androidx.media3.common.Player.STATE_BUFFERING
 import androidx.media3.common.Player.STATE_READY
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -161,6 +162,7 @@ import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -172,6 +174,8 @@ import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
+import moe.rukamori.archivetune.constants.PoTokenGvsKey
+import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.QueuePeekHeight
 import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.SliderStyle
@@ -179,6 +183,7 @@ import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
@@ -186,7 +191,10 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
+import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
+import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
+import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
@@ -306,6 +314,47 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
 
     val playerConnection = LocalPlayerConnection.current ?: return
+    val playbackError by playerConnection.error.collectAsStateWithLifecycle()
+    val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, defaultValue = "")
+    val (poTokenGvs) = rememberPreference(PoTokenGvsKey, defaultValue = "")
+    val (poTokenPlayer) = rememberPreference(PoTokenPlayerKey, defaultValue = "")
+    val isYouTubeLoggedIn =
+        remember(innerTubeCookie) {
+            hasYouTubeLoginCookie(innerTubeCookie)
+        }
+    val isPoTokenLoggedIn =
+        remember(poTokenGvs, poTokenPlayer) {
+            poTokenGvs.isNotBlank() && poTokenPlayer.isNotBlank()
+        }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val retryPlayback =
+        remember(playerConnection) {
+            {
+                playerConnection.player.prepare()
+                playerConnection.player.play()
+            }
+        }
+    val dismissPlaybackError =
+        remember(playerConnection) {
+            playerConnection::dismissPlaybackError
+        }
+    val navigateToLogin: (String?) -> Unit =
+        remember(navController) {
+            { recoveryUrl ->
+                navController.navigate(buildLoginRoute(recoveryUrl)) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    val navigateToPoTokenLogin =
+        remember(navController) {
+            {
+                navController.navigate(PO_TOKEN_ROUTE) {
+                    launchSingleTop = true
+                }
+            }
+        }
 
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
@@ -1774,6 +1823,27 @@ fun BottomSheetPlayer(
                 )
             }
         }
+    }
+
+    val activePlaybackError = playbackError
+    val isRecoveryDestination =
+        currentRoute?.startsWith(LOGIN_ROUTE) == true || currentRoute == PO_TOKEN_ROUTE
+    if (activePlaybackError != null && !isRecoveryDestination) {
+        val errorInfo = remember(activePlaybackError) { activePlaybackError.toPlaybackErrorInfo() }
+        val loginClick =
+            remember(errorInfo.loginRecoveryUrl, navigateToLogin) {
+                { navigateToLogin(errorInfo.loginRecoveryUrl) }
+            }
+
+        PlaybackErrorDialog(
+            error = activePlaybackError,
+            showLoginAction = !isYouTubeLoggedIn,
+            showPoTokenLoginAction = !isPoTokenLoggedIn,
+            onRetry = retryPlayback,
+            onClose = dismissPlaybackError,
+            onLogin = loginClick,
+            onPoTokenLogin = navigateToPoTokenLogin,
+        )
     }
 }
 

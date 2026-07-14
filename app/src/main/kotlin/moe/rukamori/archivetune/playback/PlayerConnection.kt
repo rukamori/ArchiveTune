@@ -93,6 +93,7 @@ class PlayerConnection(
     val aodModeEnabled = MutableStateFlow(false)
 
     val error = MutableStateFlow<PlaybackException?>(null)
+    private var dismissedPlaybackError: PlaybackException? = null
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
@@ -245,6 +246,11 @@ class PlayerConnection(
         service.toggleLike()
     }
 
+    fun dismissPlaybackError() {
+        dismissedPlaybackError = error.value ?: player.playerError
+        error.value = null
+    }
+
     fun seekToNext() {
         val state = service.togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (state?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -269,7 +275,7 @@ class PlayerConnection(
 
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state
-        error.value = player.playerError
+        updatePlaybackError(player.playerError)
     }
 
     override fun onPlayWhenReadyChanged(
@@ -319,7 +325,21 @@ class PlayerConnection(
         if (playbackError != null) {
             reportException(playbackError)
         }
-        error.value = playbackError
+        updatePlaybackError(playbackError)
+    }
+
+    private fun updatePlaybackError(playbackError: PlaybackException?) {
+        when {
+            playbackError == null -> {
+                dismissedPlaybackError = null
+                error.value = null
+            }
+
+            playbackError !== dismissedPlaybackError -> {
+                dismissedPlaybackError = null
+                error.value = playbackError
+            }
+        }
     }
 
     private fun updateCanSkipPreviousAndNext() {

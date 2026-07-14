@@ -477,12 +477,12 @@
     <string name="action_logout">Log out</string>
     <string name="action_login">Log in</string>
     <string name="login">Login</string>
+    <string name="playback_login_po_token">Login PO Token</string>
     <string name="not_logged_in">Not logged in</string>
     <string name="playback_confirmation_required">Playback confirmation required</string>
     <string name="playback_requires_youtube_music_confirmation">Confirm playback in YouTube Music, then return to ArchiveTune.</string>
     <string name="playback_login_refresh_required">Refresh YouTube Music login</string>
     <string name="playback_requires_youtube_music_login_refresh">Refresh your YouTube Music login, then return to ArchiveTune.</string>
-    <string name="could_not_open_youtube_music">Could not open YouTube Music</string>
     <string name="playback_error_code">Code</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">Message</string>
@@ -821,7 +821,6 @@
     <string name="playback_state_unknown">UNKNOWN</string>
     <string name="share_logs">Share logs</string>
     <string name="about">About</string>
-    <string name="open_youtube_music">Open YouTube Music</string>
     <string name="new_version_available">New version available</string>
     <string name="updates">Updates</string>
     <string name="updates_subtitle_stable">Stable releases and release notes</string>

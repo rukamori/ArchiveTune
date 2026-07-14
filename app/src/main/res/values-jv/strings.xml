@@ -322,7 +322,6 @@
     <string name="playback_requires_youtube_music_confirmation">Konfirmasikan pemutaran di YouTube Music, lalu kembali ke ArchiveTune.</string>
     <string name="playback_login_refresh_required">Segarkan login YouTube Music</string>
     <string name="playback_requires_youtube_music_login_refresh">Segarkan login YouTube Music Kowe, lalu kembali ke ArchiveTune.</string>
-    <string name="could_not_open_youtube_music">Ora bisa membuka YouTube Music</string>
     <string name="content_language">Bahasa konten default</string>
     <string name="content_country">Negara konten default</string>
     <string name="system_default">Bawaan sistem</string>
@@ -619,7 +618,6 @@
     <string name="playback_state_unknown">UNKNOWN</string>
     <string name="share_logs">Bagekake log</string>
     <string name="about">Babagan</string>
-    <string name="open_youtube_music">Buka YouTube Musik</string>
     <string name="new_version_available">Versi baru tersedia</string>
     <string name="updates">Pembaruan</string>
     <string name="updates_subtitle_stable">Rilis stabil dan catatan rilis</string>

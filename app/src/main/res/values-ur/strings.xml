@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">گھر</string>
     <string name="songs">گیت</string>
@@ -462,7 +462,6 @@
     <string name="playback_requires_youtube_music_confirmation">یوٹیوب میوسک میں نشر کی تصدیق کریں، پھر آرکائوٹیون پر واپس آئیں۔</string>
     <string name="playback_login_refresh_required">یوٹیوب میوسک کے لاگن کوتازہ کریں</string>
     <string name="playback_requires_youtube_music_login_refresh">اپنے یوٹیوب میوسک کے لاگن کوتازہ کریں، پھر آرکائوٹیون پر واپس آئیں۔</string>
-    <string name="could_not_open_youtube_music">یوٹیوب میوسک کھول نہیں سکا</string>
     <string name="playback_error_code">کوڈ</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">پیغام</string>

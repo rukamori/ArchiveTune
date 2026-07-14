@@ -218,7 +218,6 @@
     <string name="palette_midnight_navy">כחול נייבי</string>
     <string name="unlimited">ללא הגבלה</string>
     <string name="palette_terracotta">טרה קוטה</string>
-    <string name="could_not_open_youtube_music">לא ניתן היה לפתוח את YouTube Music</string>
     <plurals name="n_playlist">
         <item quantity="one">פלייליסט אחד</item>
         <item quantity="two">שני פלייליסטים</item>
@@ -756,7 +755,6 @@
     <string name="playback_state_unknown">לא ידוע</string>
     <string name="share_logs">שיתוף יומני רישום</string>
     <string name="about">אודות</string>
-    <string name="open_youtube_music">פתיחת YouTube Music</string>
     <string name="new_version_available">גרסה חדשה זמינה</string>
     <string name="updates">עדכונים</string>
     <string name="updates_subtitle_stable">מהדורות יציבות והערות שחרור</string>
