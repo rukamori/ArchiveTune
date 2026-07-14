@@ -781,8 +781,6 @@ class MusicService :
     private val togetherParticipantNames = ConcurrentHashMap<String, String>()
     private var lastTogetherNoticeAtElapsedMs: Long = 0L
     private var lastTogetherNoticeKey: String? = null
-    private var lastTidalNoticeAtElapsedMs: Long = 0L
-    private var lastTidalNoticeKey: String? = null
 
     private data class TogetherPendingGuestControl(
         val desiredIsPlaying: Boolean? = null,
@@ -7200,11 +7198,11 @@ class MusicService :
             Timber.tag("MusicService").d("Source %s did not resolve \"%s\"", source.name, query.title)
         }
 
-        // A non-YouTube source was requested but none could resolve this track; fall back to
-        // YouTube and surface a one-off notice so the user knows why.
+        // A non-YouTube source was requested but none could resolve this track; silently fall back
+        // to YouTube (no user-facing notice — the track just plays from YouTube). Kept as a debug
+        // log only.
         Timber.tag("MusicService").w("All lossless sources failed for \"%s\"; falling back to YouTube", query.title)
         tidalActiveMediaIds.remove(mediaId)
-        showTidalNotice(getString(R.string.tidal_playback_fell_back), key = "source_fallback")
         return null
     }
 
@@ -7587,20 +7585,6 @@ class MusicService :
         // external lossless source (Tidal or Qobuz) must bypass the ephemeral YouTube player cache
         // so toggling a source on takes effect immediately instead of replaying cached YT bytes.
         return dataStore.get(TidalEnabledKey, true) || dataStore.get(QobuzEnabledKey, false)
-    }
-
-    private fun showTidalNotice(
-        message: String,
-        key: String? = null,
-    ) {
-        val now = android.os.SystemClock.elapsedRealtime()
-        val normalizedKey = key ?: message
-        if (normalizedKey == lastTidalNoticeKey && now - lastTidalNoticeAtElapsedMs < 4000L) return
-        lastTidalNoticeKey = normalizedKey
-        lastTidalNoticeAtElapsedMs = now
-        scope.launch(SilentHandler) {
-            Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun resolvePlaybackDataSpec(
