@@ -527,7 +527,15 @@ class MusicService :
     private var crossfadeJob: Job? = null
     private var secondaryCrossfadePlayer: ExoPlayer? = null
     private var secondaryCrossfadeTarget: CrossfadeTarget? = null
-    private var isCrossfading = false
+    // Observable crossfade state so the UI (player progress bar) can react while a
+    // track-to-track crossfade is in progress. Backed by a StateFlow; all existing
+    // boolean reads/writes of isCrossfading continue to work through the accessors.
+    val isCrossfadingFlow = MutableStateFlow(false)
+    private var isCrossfading: Boolean
+        get() = isCrossfadingFlow.value
+        set(value) {
+            isCrossfadingFlow.value = value
+        }
     private var crossfadeHandoffInProgress = false
     private var crossfadeBaseVolume = 1f
     private var crossfadeIncomingBaseVolume = 1f

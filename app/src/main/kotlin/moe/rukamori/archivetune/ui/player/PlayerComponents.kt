@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -719,9 +720,30 @@ fun PlayerSlider(
     textButtonColor: Color,
     onValueChange: (Long) -> Unit,
     onValueChangeFinished: () -> Unit,
+    isCrossfading: Boolean = false,
 ) {
     val safeDuration = if (duration <= 0L) 0f else duration.toFloat()
     val safeValue = (sliderPosition ?: position).toFloat().coerceIn(0f, maxOf(0f, safeDuration))
+
+    // Crossfade indicator (SimpMusic-style): while a track-to-track crossfade is
+    // running, cycle the slider's active color through an RGB rainbow so the seek
+    // bar visibly "shimmers" during the blend, then eases back to the normal color.
+    val rainbowTransition = rememberInfiniteTransition(label = "crossfadeRainbow")
+    val rainbowHue by rainbowTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        label = "crossfadeHue",
+    )
+    val activeColor by animateColorAsState(
+        targetValue = if (isCrossfading) Color.hsv(rainbowHue, 0.7f, 1f) else textButtonColor,
+        animationSpec = tween(300),
+        label = "crossfadeSliderColor",
+    )
 
     StyledPlaybackSlider(
         sliderStyle = sliderStyle,
@@ -729,7 +751,7 @@ fun PlayerSlider(
         valueRange = 0f..maxOf(1f, safeDuration),
         onValueChange = { onValueChange(it.toLong()) },
         onValueChangeFinished = onValueChangeFinished,
-        activeColor = textButtonColor,
+        activeColor = activeColor,
         isPlaying = isPlaying,
         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
     )
@@ -1846,6 +1868,8 @@ fun PlayerControlsContent(
 
     Spacer(Modifier.height(12.dp))
 
+    val isCrossfading by playerConnection.isCrossfading.collectAsState()
+
     PlayerSlider(
         sliderStyle = sliderStyle,
         sliderPosition = sliderPosition,
@@ -1855,6 +1879,7 @@ fun PlayerControlsContent(
         textButtonColor = textButtonColor,
         onValueChange = onSliderValueChange,
         onValueChangeFinished = onSliderValueChangeFinished,
+        isCrossfading = isCrossfading,
     )
 
     Spacer(Modifier.height(4.dp))
