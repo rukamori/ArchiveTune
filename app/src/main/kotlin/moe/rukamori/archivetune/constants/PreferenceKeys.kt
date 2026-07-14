@@ -305,6 +305,12 @@ val StorageFolderDisplayNameKey = stringPreferencesKey("storageFolderDisplayName
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
+
+// When true (default), plays are reported to the logged-in YouTube account's listen history even
+// when the audio was streamed from another source (Tidal/Qobuz). History is keyed off the YouTube
+// video id, so it stays source-independent; this toggle lets the user opt out of the remote report
+// without affecting the local play-count/history DB (governed by PauseListenHistoryKey).
+val SyncPlaybackToYouTubeHistoryKey = booleanPreferencesKey("syncPlaybackToYouTubeHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
 // Integration screen: account cards. YouTube is always shown; Last.fm and Discord
@@ -800,6 +806,47 @@ val TidalAudioQualityOptions =
     )
 
 // ---------------------------------------------------------------------------
+// Qobuz source (user-provided Qobuz-DL proxy instances, e.g. squid.wtf-style)
+// ---------------------------------------------------------------------------
+// Streaming/playback only (like Tidal): the app never bundles endpoints — the user pastes their own
+// proxy instance URLs. Each instance exposes get-music (search) + download-music (stream URL).
+val QobuzEnabledKey = booleanPreferencesKey("qobuzEnabled")
+
+// CSV of user-provided Qobuz proxy instance base URLs, highest priority first.
+val QobuzInstancesKey = stringPreferencesKey("qobuzInstances")
+
+// JSON cache of the last Qobuz instance health scan, mirroring TidalVerifiedInstancesKey.
+val QobuzVerifiedInstancesKey = stringPreferencesKey("qobuzVerifiedInstances")
+
+// The last Qobuz track id that resolved successfully, used as a health "probe" track so we can tell
+// a fully-working instance from a reachable-but-preview-only one.
+val QobuzLastProbeTrackKey = stringPreferencesKey("qobuzLastProbeTrack")
+
+// Qobuz quality maps to the proxy/Qobuz format_id: FLAC=6 (CD 16-bit), HI_RES=7 (≤96kHz),
+// MAX=27 (>96kHz). MP3 (5) is intentionally omitted — this is a lossless source.
+enum class QobuzAudioQuality {
+    FLAC,
+    HI_RES,
+    MAX,
+}
+
+val QobuzAudioQualityOptions =
+    listOf(
+        QobuzAudioQuality.FLAC,
+        QobuzAudioQuality.HI_RES,
+        QobuzAudioQuality.MAX,
+    )
+
+val QobuzAudioQualityKey = stringPreferencesKey("qobuzAudioQuality")
+
+fun QobuzAudioQuality.toFormatId(): Int =
+    when (this) {
+        QobuzAudioQuality.FLAC -> 6
+        QobuzAudioQuality.HI_RES -> 7
+        QobuzAudioQuality.MAX -> 27
+    }
+
+// ---------------------------------------------------------------------------
 // Multi-source audio framework
 // ---------------------------------------------------------------------------
 // A configurable set of lossless/stream sources. The user can reorder them (priority for playback
@@ -808,6 +855,7 @@ val TidalAudioQualityOptions =
 
 enum class AudioSourceType {
     TIDAL,
+    QOBUZ,
     YOUTUBE,
 }
 

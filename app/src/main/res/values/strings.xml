@@ -664,7 +664,7 @@
     <!-- Tidal music source integration -->
     <string name="music_sources">Music Sources</string>
     <string name="streaming_sources">Streaming sources</string>
-    <string name="streaming_sources_description">Configure Tidal lossless sources and priority</string>
+    <string name="streaming_sources_description">Configure Tidal and Qobuz lossless sources and priority</string>
     <string name="tidal_integration">Tidal</string>
     <string name="tidal_integration_description">Log in and manage Tidal HiFi instances</string>
     <string name="tidal_enable">Enable Tidal source</string>
@@ -701,6 +701,34 @@
     <string name="tidal_instance_unreachable">connection failed</string>
     <string name="tidal_instance_preview_only">deprecated — %1$d ms</string>
     <string name="tidal_instance_unknown">Not tested — tap Test instances</string>
+
+    <!-- Qobuz music source integration -->
+    <string name="source_qobuz">Qobuz</string>
+    <string name="qobuz_integration">Qobuz</string>
+    <string name="qobuz_integration_description">Manage Qobuz proxy instances and lossless quality</string>
+    <string name="qobuz_enable">Enable Qobuz source</string>
+    <string name="qobuz_enable_description">Route playback through your Qobuz proxy instances when a matching track is found</string>
+    <string name="qobuz_audio_quality">Audio quality</string>
+    <string name="qobuz_quality_flac">FLAC (CD 16-bit)</string>
+    <string name="qobuz_quality_hires">Hi-Res (up to 96 kHz)</string>
+    <string name="qobuz_quality_max">Hi-Res Max (up to 192 kHz)</string>
+    <string name="qobuz_manage_instances">Manage Qobuz instances</string>
+    <string name="qobuz_instances">Qobuz instances</string>
+    <string name="qobuz_instances_description">Qobuz streams are resolved through Qobuz-DL proxy instances. None are bundled — add your own, then tap Test instances to check which ones work. If the list is empty, Qobuz streaming is disabled.</string>
+    <string name="qobuz_add_instance">Add instance</string>
+    <string name="qobuz_reset_instances">Clear all instances</string>
+    <string name="qobuz_check_instances">Test instances</string>
+    <string name="qobuz_checking_instances">Testing…</string>
+
+    <!-- Shared source settings -->
+    <string name="source_manage_instances">Manage instances</string>
+    <string name="tidal_manage_instances">Manage Tidal instances</string>
+
+    <!-- Listening history sync -->
+    <string name="listening_history">Listening history</string>
+    <string name="sync_youtube_history">Report plays to YouTube history</string>
+    <string name="sync_youtube_history_description">Add tracks to your YouTube account\'s listen history, even when the audio is streamed from Tidal or Qobuz. Only affects your YouTube account — the in-app history is unaffected.</string>
+
     <!-- Tidal account login / premium -->
     <string name="tidal_login">Sign in to Tidal</string>
     <string name="tidal_login_start">Start sign-in</string>

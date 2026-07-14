@@ -46,6 +46,7 @@ import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.tidal.TidalAudioProvider
 import moe.rukamori.archivetune.tidal.TidalInstanceHealthManager
+import moe.rukamori.archivetune.qobuz.QobuzAudioProvider
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
@@ -232,6 +233,20 @@ class App :
                 }
             } catch (e: Exception) {
                 Timber.w(e, "Tidal instance startup health scan failed")
+            }
+        }
+
+        // Restore the Qobuz health-probe track so the settings "Test" action can distinguish a
+        // fully-working instance from a preview-only (unsubscribed) one on the first probe.
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                if (dataStore.get(QobuzEnabledKey, false)) {
+                    dataStore.get(QobuzLastProbeTrackKey)?.takeIf { it.isNotBlank() }?.let {
+                        QobuzAudioProvider.seedProbeTrack(it)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Qobuz probe-track restore failed")
             }
         }
 

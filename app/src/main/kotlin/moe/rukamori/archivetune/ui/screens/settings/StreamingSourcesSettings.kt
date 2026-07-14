@@ -42,6 +42,9 @@ import moe.rukamori.archivetune.constants.TidalArtworkFallbackEnabledKey
 import moe.rukamori.archivetune.constants.TidalAudioQuality
 import moe.rukamori.archivetune.constants.TidalAudioQualityKey
 import moe.rukamori.archivetune.constants.TidalEnabledKey
+import moe.rukamori.archivetune.constants.QobuzAudioQuality
+import moe.rukamori.archivetune.constants.QobuzAudioQualityKey
+import moe.rukamori.archivetune.constants.QobuzEnabledKey
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -59,6 +62,9 @@ fun StreamingSourcesSettings(navController: NavController) {
     val context = LocalContext.current
 
     val (tidalEnabled, onTidalEnabledChange) = rememberPreference(TidalEnabledKey, true)
+    val (qobuzEnabled, onQobuzEnabledChange) = rememberPreference(QobuzEnabledKey, false)
+    val (qobuzQuality, onQobuzQualityChange) =
+        rememberEnumPreference(QobuzAudioQualityKey, QobuzAudioQuality.FLAC)
     val (audioQuality, onAudioQualityChange) =
         rememberEnumPreference(TidalAudioQualityKey, TidalAudioQuality.FLAC)
     val (artworkFallback, onArtworkFallbackChange) =
@@ -93,7 +99,15 @@ fun StreamingSourcesSettings(navController: NavController) {
     fun sourceLabel(source: AudioSourceType): String =
         when (source) {
             AudioSourceType.TIDAL -> context.getString(R.string.source_tidal)
+            AudioSourceType.QOBUZ -> context.getString(R.string.source_qobuz)
             AudioSourceType.YOUTUBE -> context.getString(R.string.source_youtube)
+        }
+
+    fun sourceIcon(source: AudioSourceType): Int =
+        when (source) {
+            AudioSourceType.TIDAL -> R.drawable.provider_tidal
+            AudioSourceType.QOBUZ -> R.drawable.provider_qobuz
+            AudioSourceType.YOUTUBE -> R.drawable.play
         }
 
     Scaffold(
@@ -148,6 +162,7 @@ fun StreamingSourcesSettings(navController: NavController) {
                         val enabled =
                             when (source) {
                                 AudioSourceType.TIDAL -> tidalEnabled
+                                AudioSourceType.QOBUZ -> qobuzEnabled
                                 AudioSourceType.YOUTUBE -> true
                             }
                         PreferenceEntry(
@@ -158,7 +173,7 @@ fun StreamingSourcesSettings(navController: NavController) {
                                 } else {
                                     stringResource(R.string.audio_source_disabled)
                                 },
-                            icon = { Icon(painterResource(R.drawable.play), null) },
+                            icon = { Icon(painterResource(sourceIcon(source)), null) },
                             trailingContent = {
                                 Row {
                                     IconButton(
@@ -222,6 +237,51 @@ fun StreamingSourcesSettings(navController: NavController) {
                                 TidalAudioQuality.HI_RES_LOSSLESS -> stringResource(R.string.tidal_quality_hires)
                             }
                         },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.tidal_manage_instances)) },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        onClick = { navController.navigate("settings/tidal") },
+                    )
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.qobuz_integration)) {
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.qobuz_enable)) },
+                        description = stringResource(R.string.qobuz_enable_description),
+                        icon = { Icon(painterResource(R.drawable.provider_qobuz), null) },
+                        checked = qobuzEnabled,
+                        onCheckedChange = onQobuzEnabledChange,
+                    )
+                }
+
+                item {
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.qobuz_audio_quality)) },
+                        icon = { Icon(painterResource(R.drawable.play), null) },
+                        selectedValue = qobuzQuality,
+                        onValueSelected = onQobuzQualityChange,
+                        isEnabled = qobuzEnabled,
+                        valueText = { quality ->
+                            when (quality) {
+                                QobuzAudioQuality.FLAC -> stringResource(R.string.qobuz_quality_flac)
+                                QobuzAudioQuality.HI_RES -> stringResource(R.string.qobuz_quality_hires)
+                                QobuzAudioQuality.MAX -> stringResource(R.string.qobuz_quality_max)
+                            }
+                        },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.qobuz_manage_instances)) },
+                        icon = { Icon(painterResource(R.drawable.token), null) },
+                        onClick = { navController.navigate("settings/qobuz") },
                     )
                 }
             }

@@ -167,6 +167,7 @@ import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleRep
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleShuffle
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleStartRadio
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
+import moe.rukamori.archivetune.constants.SyncPlaybackToYouTubeHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
@@ -188,6 +189,13 @@ import moe.rukamori.archivetune.constants.TidalAuthFlowKey
 import moe.rukamori.archivetune.constants.TidalCountryCodeKey
 import moe.rukamori.archivetune.constants.TidalUserIdKey
 import moe.rukamori.archivetune.constants.TidalNeedsReloginKey
+import moe.rukamori.archivetune.constants.QobuzEnabledKey
+import moe.rukamori.archivetune.constants.QobuzInstancesKey
+import moe.rukamori.archivetune.constants.QobuzAudioQuality
+import moe.rukamori.archivetune.constants.QobuzAudioQualityKey
+import moe.rukamori.archivetune.constants.QobuzLastProbeTrackKey
+import moe.rukamori.archivetune.constants.toFormatId
+import moe.rukamori.archivetune.qobuz.QobuzAudioProvider
 import moe.rukamori.archivetune.audiosource.AudioSourceConfig
 import moe.rukamori.archivetune.audiosource.DirectStream
 import moe.rukamori.archivetune.tidal.TidalAccountManager
@@ -6068,6 +6076,14 @@ class MusicService :
         }
 
     private suspend fun registerRemotePlaybackHistory(mediaId: String): Boolean {
+        // Reporting to the YouTube account's listen history is keyed off the YouTube video id, so it
+        // works regardless of which source (YouTube/Tidal/Qobuz) actually streamed the audio. This
+        // opt-out toggle disables only the remote report; the local play-history DB is unaffected
+        // (that stays governed by PauseListenHistoryKey).
+        if (!dataStore.get(SyncPlaybackToYouTubeHistoryKey, true)) {
+            Timber.tag("MusicService").d("Skipping remote YouTube history for %s (sync disabled)", mediaId)
+            return false
+        }
         if (database
                 .song(mediaId)
                 .first()
@@ -7027,6 +7043,7 @@ class MusicService :
                 // Defaults MUST match the toggle defaults in StreamingSourcesSettings so the
                 // UI and the resolver agree on which sources are active out of the box.
                 AudioSourceType.TIDAL to dataStore.get(TidalEnabledKey, true),
+                AudioSourceType.QOBUZ to dataStore.get(QobuzEnabledKey, false),
                 AudioSourceType.YOUTUBE to true,
             )
         val search =
@@ -7109,15 +7126,22 @@ class MusicService :
             val stream: DirectStream? =
                 when (source) {
                     AudioSourceType.TIDAL -> resolveTidalStream(query)
+                    AudioSourceType.QOBUZ -> resolveQobuzStream(query)
                     AudioSourceType.YOUTUBE -> null
                 }
             if (stream != null) {
                 Timber.tag("MusicService").i("Source WIN: %s resolved \"%s\" [%s] (%s)", source.name, query.title, stream.label, stream.uri.take(80))
-                // Persist the winning Tidal track id as a future health-probe track.
+                // Persist the winning source's track id as a future health-probe track.
                 if (source == AudioSourceType.TIDAL) {
                     TidalAudioProvider.lastResolvedTrackId?.takeIf { it.isNotBlank() }?.let { probe ->
                         runCatching {
                             runBlocking { dataStore.edit { prefs -> prefs[TidalLastProbeTrackKey] = probe } }
+                        }
+                    }
+                } else if (source == AudioSourceType.QOBUZ) {
+                    QobuzAudioProvider.lastResolvedTrackId?.takeIf { it.isNotBlank() }?.let { probe ->
+                        runCatching {
+                            runBlocking { dataStore.edit { prefs -> prefs[QobuzLastProbeTrackKey] = probe } }
                         }
                     }
                 }
@@ -7370,6 +7394,47 @@ class MusicService :
         )
     }
 
+    /** Resolves a Qobuz stream through the user-provided proxy instances. */
+    private fun resolveQobuzStream(query: SourceQuery): DirectStream? {
+        val configuredInstances = parseQobuzInstances()
+        if (configuredInstances.isEmpty()) {
+            Timber.tag("MusicService").d("Qobuz skip: no instances configured")
+            return null
+        }
+        val formatId = parseQobuzAudioQuality().toFormatId()
+        Timber.tag("MusicService").d("Qobuz resolve start | formatId=%d instances=%d", formatId, configuredInstances.size)
+        QobuzAudioProvider.setInstances(configuredInstances)
+        return runCatching {
+            runBlocking(Dispatchers.IO) {
+                QobuzAudioProvider.resolve(
+                    query =
+                        QobuzAudioProvider.Query(
+                            mediaId = query.mediaId,
+                            title = query.title,
+                            artists = query.artists,
+                            album = query.album,
+                            durationMs = query.durationMs,
+                        ),
+                    formatId = formatId,
+                )
+            }
+        }.onFailure { error ->
+            Timber.tag("MusicService").w(error, "QOBUZ stream resolution failed for %s", query.mediaId)
+        }.getOrNull()
+    }
+
+    private fun parseQobuzInstances(): List<String> =
+        dataStore
+            .get(QobuzInstancesKey, "")
+            .split('\n')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+    private fun parseQobuzAudioQuality(): QobuzAudioQuality {
+        val stored = dataStore.get(QobuzAudioQualityKey, QobuzAudioQuality.FLAC.name)
+        return runCatching { QobuzAudioQuality.valueOf(stored) }.getOrDefault(QobuzAudioQuality.FLAC)
+    }
+
     /**
      * Applies a resolved [DirectStream] to the [dataSpec]: namespaces the cache key per-source so
      * bytes never collide with the YouTube stream (or another source) for the same media id, and
@@ -7450,6 +7515,7 @@ class MusicService :
     ): String =
         when (source) {
             AudioSourceType.TIDAL -> "$TIDAL_CACHE_KEY_PREFIX$mediaId"
+            AudioSourceType.QOBUZ -> "qobuz:$mediaId"
             else -> "${source.name.lowercase()}:$mediaId"
         }
 
@@ -7460,8 +7526,10 @@ class MusicService :
      */
     private fun tidalSourceApplies(mediaId: String): Boolean {
         if (mediaId.isLocalMediaId()) return false
-        // Defaults MUST match StreamingSourcesSettings + sourceResolutionChain().
-        return dataStore.get(TidalEnabledKey, true)
+        // Defaults MUST match StreamingSourcesSettings + sourceResolutionChain(). Any enabled
+        // external lossless source (Tidal or Qobuz) must bypass the ephemeral YouTube player cache
+        // so toggling a source on takes effect immediately instead of replaying cached YT bytes.
+        return dataStore.get(TidalEnabledKey, true) || dataStore.get(QobuzEnabledKey, false)
     }
 
     private fun showTidalNotice(

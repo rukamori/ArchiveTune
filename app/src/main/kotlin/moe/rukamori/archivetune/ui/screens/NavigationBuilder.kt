@@ -64,6 +64,7 @@ import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
 import moe.rukamori.archivetune.ui.screens.settings.StreamingSourcesSettings
 import moe.rukamori.archivetune.ui.screens.settings.TidalSettings
+import moe.rukamori.archivetune.ui.screens.settings.QobuzSettings
 import moe.rukamori.archivetune.ui.screens.settings.TidalLoginScreen
 import moe.rukamori.archivetune.ui.screens.settings.TIDAL_LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.settings.LastFMSettings
@@ -430,6 +431,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/tidal") {
         TidalSettings(navController)
+    }
+    composable("settings/qobuz") {
+        QobuzSettings(navController)
     }
     composable(TIDAL_LOGIN_ROUTE) {
         TidalLoginScreen(navController)
