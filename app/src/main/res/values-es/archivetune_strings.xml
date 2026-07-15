@@ -459,7 +459,7 @@
     <string name="lyrics_share_style_deep_blur">Desenfoque profundo</string>
     <string name="lyrics_share_style_vivid_glow">Brillo intenso</string>
     <string name="mini_player_background_style">Ventana flotante en miniatura</string>
-    <string name="player_design_v8">Inmersivo extendido</string>
+    <string name="player_design_v8">Inmersivo ampliado</string>
     <string name="player_design_v9">Versión extendida</string>
     <string name="aod_shape_arch">Arco</string>
     <string name="storage_folder">Carpeta de almacenamiento</string>
@@ -549,8 +549,9 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Donar</string>
-    <string name="aod_customize_sample_title">Midnight Archive</string>
+    <string name="aod_customize_sample_title">Archivos Midnight</string>
     <string name="player_stream_client_archivetune_extractor_desc">Utiliza el extractor del backend ArchiveTune para las transmisiones de reproducción. Se recomienda seleccionar «Audio de alta calidad automático».</string>
     <string name="player_stream_client_archivetune_extractor">Extractor de ArchiveTune</string>
     <string name="unblock_artist">Desbloquear artista</string>
+    <string name="block_artist">bloqueo artístico o creativo</string>
 </resources>
