@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 
 @Composable
@@ -93,7 +94,13 @@ fun MediaDetailHero(
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(
-                model = thumbnailUrl.resize(1200, 1200),
+                model =
+                    thumbnailUrl.resize(
+                        width = MediaDetailHeroArtworkSizePx,
+                        height = MediaDetailHeroArtworkSizePx,
+                        sizeBuckets = MediaDetailHeroArtworkSizeBuckets,
+                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                    ),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -372,6 +379,8 @@ fun MediaDetailIconAction(
     }
 }
 
+private const val MediaDetailHeroArtworkSizePx = 1200
+private val MediaDetailHeroArtworkSizeBuckets = listOf(MediaDetailHeroArtworkSizePx)
 private val MediaDetailHeroMinHeight = 560.dp
 private val MediaDetailHorizontalPadding = 24.dp
 private val MediaDetailContentMaxWidth = 720.dp

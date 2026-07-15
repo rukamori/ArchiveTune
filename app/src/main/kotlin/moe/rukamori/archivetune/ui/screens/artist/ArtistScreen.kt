@@ -122,7 +122,6 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.AlbumGridItem
-import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -142,6 +141,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.resize
@@ -399,7 +399,13 @@ fun ArtistScreen(
                     ) {
                         if (thumbnail != null) {
                             AsyncImage(
-                                model = thumbnail.resize(1200, 1200),
+                                model =
+                                    thumbnail.resize(
+                                        width = ArtistHeroArtworkSizePx,
+                                        height = ArtistHeroArtworkSizePx,
+                                        sizeBuckets = ArtistHeroArtworkSizeBuckets,
+                                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                                    ),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.matchParentSize(),
@@ -1139,6 +1145,9 @@ private fun ArtistOverflowMenuItem(
 }
 
 private const val ArtistOverflowMenuItemCount = 3
+private const val ArtistHeroArtworkSizePx = 1200
+private const val ArtistReleaseArtworkSizePx = 320
+private val ArtistHeroArtworkSizeBuckets = listOf(ArtistHeroArtworkSizePx)
 private val ArtistHeroMinHeight = 560.dp
 private val ArtistHorizontalPadding = 24.dp
 private val ArtistContentMaxWidth = 720.dp
@@ -1244,7 +1253,12 @@ private fun ArtistNewReleaseSection(
             ) {
                 if (release.thumbnailUrl != null) {
                     AsyncImage(
-                        model = release.thumbnailUrl.resize(320, 320),
+                        model =
+                            release.thumbnailUrl.resize(
+                                width = ArtistReleaseArtworkSizePx,
+                                height = ArtistReleaseArtworkSizePx,
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier =
