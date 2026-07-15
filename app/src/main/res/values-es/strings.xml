@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Inicio</string>
     <string name="songs">Canciones</string>
@@ -630,7 +630,7 @@
     <string name="tokens_generated">Tokens generados correctamente</string>
     <string name="token_generation_failed">Error al generar los tokens</string>
     <string name="token_copied">Token copiado en el portapapeles</string>
-    <string name="extracting_from_url">Extrayendo tokens de la URL…</string>
+    <string name="extracting_from_url">Extrayendo tokens de la URL</string>
     <string name="po_token_account_notice_title">Utiliza la misma cuenta</string>
     <string name="po_token_account_notice_body">Inicia sesión aquí con la misma cuenta de Google que ya utilizas para YouTube Music dentro de ArchiveTune antes de generar un token PO.</string>
     <string name="po_token_account_notice_same_account">Si esta WebView utiliza una cuenta diferente, el token generado no funcionará correctamente.</string>
@@ -798,11 +798,11 @@
     <string name="discord_open_authorization">Conéctate a Discord</string>
     <string name="discord_waiting_for_authorization">Esperando la autorización de Discord...</string>
     <string name="discord_authorization_success">Cuenta de Discord conectada</string>
-    <string name="discord_authorization_failed">Falló la autenticación en Discord.</string>
+    <string name="discord_authorization_failed">Falló la autenticación en Discord</string>
     <string name="discord_account_ready">ArchiveTune está listo para publicar tu Rich Presence (estado) de tu sesión de escucha.</string>
     <string name="discord_connection_settings">Conexión</string>
     <string name="discord_activity_content">Actividad</string>
-    <string name="discord_refresh_success">Se ha actualizado la presencia en Discord.</string>
+    <string name="discord_refresh_success">Se ha actualizado la presencia en Discord</string>
     <string name="discord_refresh_failed">Error al actualizar la presencia en Discord</string>
     <string name="discord_url_source_song">Enlace a la canción</string>
     <string name="discord_url_source_artist">Enlace del artista</string>
@@ -867,4 +867,22 @@
     <string name="app_icon_subtitle">Personaliza tu lanzador</string>
     <string name="app_icon_default">Por defecto</string>
     <string name="app_icon_description">Elige el icono del lanzador</string>
+    <string name="library_top_mixes_ai_not_configured_title">Configurar la IA para crear mezclas</string>
+    <string name="library_top_mixes_ai_not_configured_desc">Es necesario integrar la IA para que ArchiveTune pueda crear listas de reproducción personalizadas.</string>
+    <string name="library_top_mixes_no_recent_history_title">Aún no hay ninguna lista de reproducción reciente</string>
+    <string name="library_top_mixes_no_recent_history">Escucha más canciones y, a continuación, actualiza la página para crear mezclas generadas por IA a partir de tu historial reciente.</string>
+    <string name="library_top_mixes_no_valid_mixes">La IA no ha encontrado ninguna mezcla reproducible en tu historial reciente.</string>
+    <string name="library_top_mixes_failed">Error al compilar las mezclas principales</string>
+    <string name="cast">Transmitir</string>
+    <string name="cast_devices">Receptores multimedia</string>
+    <string name="cast_sheet_subtitle">Elige dónde se reproduce ArchiveTune</string>
+    <string name="cast_available_devices">Dispositivos disponibles</string>
+    <string name="cast_searching_devices">Buscando dispositivos</string>
+    <string name="cast_no_devices">No se han encontrado receptores multimedia</string>
+    <string name="cast_no_devices_desc">Asegúrate de que tu dispositivo esté conectado a la misma Wi-Fi.</string>
+    <string name="cast_connected_to">Conectado a %1$s</string>
+    <string name="cast_disconnect">Desconectar</string>
+    <string name="cast_available_device">Dispositivo disponible</string>
+    <string name="cast_available_device_count">Dispositivos encontrados: %1$d</string>
+    <string name="cast_route_picker_unavailable">La transmisión no está disponible en este momento.</string>
 </resources>
