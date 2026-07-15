@@ -197,6 +197,8 @@ import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -1917,11 +1919,17 @@ private fun V8PlayerBackdrop(
     backdropBlurAmount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val backdropModel =
-        remember(thumbnailUrl) {
-            thumbnailUrl?.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx)
-        }
-    val backdropRequest = rememberOfflineArtworkImageRequest(backdropModel)
+    var currentUrl by remember(thumbnailUrl) {
+        mutableStateOf(
+            thumbnailUrl?.resize(
+                width = V8BackdropArtworkSizePx,
+                height = V8BackdropArtworkSizePx,
+                maxresAllowed = true,
+                ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+            ),
+        )
+    }
+    val backdropRequest = rememberOfflineArtworkImageRequest(currentUrl)
     val blurRadiusDp = 44.dp * (backdropBlurAmount.toFloat() / 100f)
 
     Box(
@@ -1930,7 +1938,7 @@ private fun V8PlayerBackdrop(
                 .fillMaxSize()
                 .background(Color.Black),
     ) {
-        if (backdropModel != null) {
+        if (currentUrl != null) {
             val backdropHasBlur = backdropBlurAmount > 0
             if (backdropHasBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 AsyncImage(
@@ -1946,10 +1954,15 @@ private fun V8PlayerBackdrop(
                                 scaleY = 1.16f
                                 alpha = 0.66f
                             },
+                    onState = { state ->
+                        if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                            getNextFallbackUrl(currentUrl)?.let { currentUrl = it }
+                        }
+                    },
                 )
             } else if (backdropHasBlur) {
                 BackdropBlurApi30(
-                    model = backdropModel,
+                    model = currentUrl,
                     blurAmount = backdropBlurAmount,
                     modifier =
                         Modifier
@@ -1959,6 +1972,9 @@ private fun V8PlayerBackdrop(
                                 scaleY = 1.16f
                                 alpha = 0.66f
                             },
+                    onError = { failedUrl ->
+                        getNextFallbackUrl(failedUrl)?.let { currentUrl = it }
+                    },
                 )
             } else {
                 AsyncImage(
@@ -1973,6 +1989,11 @@ private fun V8PlayerBackdrop(
                                 scaleY = 1.16f
                                 alpha = 0.66f
                             },
+                    onState = { state ->
+                        if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                            getNextFallbackUrl(currentUrl)?.let { currentUrl = it }
+                        }
+                    },
                 )
             }
         }
@@ -1991,6 +2012,7 @@ private fun BackdropBlurApi30(
     model: String?,
     blurAmount: Int,
     modifier: Modifier = Modifier,
+    onError: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val imageLoader = context.imageLoader
@@ -2020,10 +2042,22 @@ private fun BackdropBlurApi30(
                         }
 
                         else -> {
+                            if (onError != null) {
+                                withContext(Dispatchers.Main) {
+                                    onError(model)
+                                }
+                            }
                             null
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
+                    if (onError != null) {
+                        withContext(Dispatchers.Main) {
+                            onError(model)
+                        }
+                    }
                     null
                 }
             }
@@ -2043,6 +2077,11 @@ private fun BackdropBlurApi30(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = modifier,
+            onState = { state ->
+                if (state is coil3.compose.AsyncImagePainter.State.Error && model != null) {
+                    onError?.invoke(model)
+                }
+            },
         )
     }
 }
@@ -2161,10 +2200,16 @@ private fun V7PlayerBackdrop(
                 canvasFallbackUrl = canvasFallback,
             )
         }
-    val backdropArtworkModel =
-        remember(backdropArtworkUrl, backdropArtworkSizePx) {
-            backdropArtworkUrl?.resize(backdropArtworkSizePx, backdropArtworkSizePx)
-        }
+    var backdropArtworkModel by remember(backdropArtworkUrl, backdropArtworkSizePx) {
+        mutableStateOf(
+            backdropArtworkUrl?.resize(
+                width = backdropArtworkSizePx,
+                height = backdropArtworkSizePx,
+                maxresAllowed = true,
+                ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+            ),
+        )
+    }
     val backdropArtworkRequest = rememberOfflineArtworkImageRequest(backdropArtworkModel)
     val sharpStageBottomScrim =
         remember(backdropPalette) {
@@ -2244,6 +2289,11 @@ private fun V7PlayerBackdrop(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = backdropImageModifier.blur(backdropBlurRadius),
+                        onState = { state ->
+                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                                getNextFallbackUrl(backdropArtworkModel)?.let { backdropArtworkModel = it }
+                            }
+                        },
                     )
                 } else if (needsBlur) {
                     BackdropBlurApi30(
@@ -2257,6 +2307,9 @@ private fun V7PlayerBackdrop(
                                     scaleY = V7BackdropBlurScale
                                     alpha = 0.58f
                                 },
+                        onError = { failedUrl ->
+                            getNextFallbackUrl(failedUrl)?.let { backdropArtworkModel = it }
+                        },
                     )
                 } else {
                     AsyncImage(
@@ -2264,6 +2317,11 @@ private fun V7PlayerBackdrop(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = backdropImageModifier,
+                        onState = { state ->
+                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                                getNextFallbackUrl(backdropArtworkModel)?.let { backdropArtworkModel = it }
+                            }
+                        },
                     )
                 }
             }
@@ -2289,10 +2347,16 @@ private fun V7PlayerBackdrop(
                     .height(sharpStageHeight)
                     .clipToBounds(),
         ) { backdrop ->
-            val sharpArtworkModel =
-                remember(backdrop.artworkUrl, backdropArtworkSizePx) {
-                    backdrop.artworkUrl?.resize(backdropArtworkSizePx, backdropArtworkSizePx)
-                }
+            var sharpArtworkModel by remember(backdrop.artworkUrl, backdropArtworkSizePx) {
+                mutableStateOf(
+                    backdrop.artworkUrl?.resize(
+                        width = backdropArtworkSizePx,
+                        height = backdropArtworkSizePx,
+                        maxresAllowed = true,
+                        ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
+                    ),
+                )
+            }
             val sharpArtworkRequest = rememberOfflineArtworkImageRequest(sharpArtworkModel)
 
             Box(
@@ -2308,6 +2372,11 @@ private fun V7PlayerBackdrop(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
+                        onState = { state ->
+                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                                getNextFallbackUrl(sharpArtworkModel)?.let { sharpArtworkModel = it }
+                            }
+                        },
                     )
                 }
 

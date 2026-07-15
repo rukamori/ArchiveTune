@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.AD_ID" />
 
     <application>
+        <provider
+            android:name="com.startapp.sdk.adsbase.StartAppInitProvider"
+            android:authorities="${applicationId}.startappinitprovider"
+            tools:node="remove" />
+
         <activity
             android:name=".musicrecognition.MusicRecognitionCaptureActivity"
             android:excludeFromRecents="true"

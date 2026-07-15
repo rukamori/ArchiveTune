@@ -65,6 +65,7 @@ import moe.rukamori.archivetune.innertube.pages.AlbumPage
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 import java.text.Collator
 import java.time.LocalDateTime
@@ -1791,7 +1792,12 @@ interface DatabaseDao {
         update(
             artist.copy(
                 name = artistPage.artist.title,
-                thumbnailUrl = artistPage.artist.thumbnail?.resize(1080, 1080),
+                thumbnailUrl =
+                    artistPage.artist.thumbnail?.resize(
+                        width = 1080,
+                        height = 1080,
+                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                    ),
                 lastUpdateTime = LocalDateTime.now(),
             ),
         )
@@ -2122,4 +2128,5 @@ interface DatabaseDao {
             addTagToPlaylist(playlistId, tagId)
         }
     }
+
 }

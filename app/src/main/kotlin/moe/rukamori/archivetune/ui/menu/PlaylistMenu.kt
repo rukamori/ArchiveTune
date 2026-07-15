@@ -119,6 +119,7 @@ fun PlaylistMenu(
     autoPlaylist: Boolean? = false,
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
+    onChangeCover: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -751,6 +752,27 @@ fun PlaylistMenu(
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
+
+                        onChangeCover?.let { changeCover ->
+                            HorizontalDivider(
+                                modifier = dividerModifier,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = stringResource(R.string.change_playlist_cover))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.image),
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier = Modifier.clickable(onClick = changeCover),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                        }
                     }
 
                     if (autoPlaylist != true && downloadPlaylist != true) {

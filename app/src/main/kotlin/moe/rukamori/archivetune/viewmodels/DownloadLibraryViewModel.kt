@@ -11,6 +11,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.downloads.DownloadEntryUiModel
 import moe.rukamori.archivetune.downloads.DownloadLibraryUiModel
+import moe.rukamori.archivetune.downloads.DownloadMediaType
 import moe.rukamori.archivetune.downloads.DownloadSectionUiModel
 import moe.rukamori.archivetune.downloads.ManageDownloadsUseCase
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -76,6 +78,8 @@ sealed interface DownloadLibraryEvent {
 
     data class PlaySong(
         val metadata: MediaMetadata,
+        val queue: ImmutableList<MediaMetadata>,
+        val startIndex: Int,
     ) : DownloadLibraryEvent
 }
 
@@ -174,9 +178,42 @@ class DownloadLibraryViewModel
         fun open(entry: DownloadEntryUiModel) {
             val event =
                 entry.destinationRoute?.let { DownloadLibraryEvent.Navigate(it) }
-                    ?: entry.playbackMetadata?.let { DownloadLibraryEvent.PlaySong(it) }
+                    ?: createPlaySongEvent(entry)
                     ?: return
             eventChannel.trySend(event)
+        }
+
+        private fun createPlaySongEvent(entry: DownloadEntryUiModel): DownloadLibraryEvent.PlaySong? {
+            val selectedMetadata = entry.playbackMetadata ?: return null
+            val downloadedSongQueue = currentDownloadedSongQueue()
+            val startIndex = downloadedSongQueue.indexOfFirst { metadata -> metadata.id == selectedMetadata.id }
+
+            return if (startIndex >= 0) {
+                DownloadLibraryEvent.PlaySong(
+                    metadata = selectedMetadata,
+                    queue = downloadedSongQueue,
+                    startIndex = startIndex,
+                )
+            } else {
+                DownloadLibraryEvent.PlaySong(
+                    metadata = selectedMetadata,
+                    queue = ImmutableList.of(selectedMetadata),
+                    startIndex = 0,
+                )
+            }
+        }
+
+        private fun currentDownloadedSongQueue(): ImmutableList<MediaMetadata> {
+            val state = screenState.value as? DownloadLibraryScreenState.Success ?: return ImmutableList.of()
+            if (state.selectedTab != DownloadLibraryTab.DOWNLOADED) return ImmutableList.of()
+
+            val metadata =
+                state.library.downloadedSections
+                    .firstOrNull { section -> section.mediaType == DownloadMediaType.SONG }
+                    ?.entries
+                    .orEmpty()
+                    .mapNotNull { entry -> entry.playbackMetadata }
+            return ImmutableList.copyOf(metadata)
         }
 
         fun pause(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.pause(entry.songIds) }

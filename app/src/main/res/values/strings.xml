@@ -137,6 +137,7 @@
     <string name="details">Details</string>
     <string name="edit">Edit</string>
     <string name="start_radio">Start radio</string>
+    <string name="start_mix">Start mix</string>
     <string name="play">Play</string>
     <string name="widget_pause">Pause</string>
     <string name="widget_previous">Previous</string>
@@ -1056,4 +1057,5 @@
     <string name="scheduled_backup_directory_saved">Backup directory saved</string>
     <string name="scheduled_backup_load_failed">Scheduled backup settings could not be loaded</string>
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
+    <string name="gatekeeper_connection_blocked">ArchiveTune could not verify network access. Connections are blocked.</string>
 </resources>

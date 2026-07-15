@@ -13,6 +13,7 @@ import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -113,7 +114,12 @@ fun SongItem.toMediaMetadata() =
                 )
             },
         duration = duration ?: -1,
-        thumbnailUrl = thumbnail.resize(1080, 1080),
+        thumbnailUrl =
+            thumbnail.resize(
+                width = 1080,
+                height = 1080,
+                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+            ),
         album =
             album?.let {
                 MediaMetadata.Album(
