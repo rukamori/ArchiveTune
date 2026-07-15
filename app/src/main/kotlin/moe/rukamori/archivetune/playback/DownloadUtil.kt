@@ -22,8 +22,11 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
@@ -73,6 +76,7 @@ class DownloadUtil
         private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val exportJobs = ConcurrentHashMap<String, Job>()
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
         private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
 
@@ -201,9 +205,7 @@ class DownloadUtil
                                 }
                             }
                             if (download.state == Download.STATE_COMPLETED) {
-                                downloadScope.launch {
-                                    downloadedSongExporter.export(download)
-                                }
+                                scheduleExport(download)
                             }
                         }
 
@@ -220,6 +222,7 @@ class DownloadUtil
                                 DownloadRemovalExportPolicy.PRESERVE -> Unit
                                 DownloadRemovalExportPolicy.DELETE -> {
                                     downloadScope.launch {
+                                        exportJobs.remove(download.request.id)?.cancelAndJoin()
                                         downloadedSongExporter.removeExport(download.request.id)
                                     }
                                 }
@@ -242,7 +245,7 @@ class DownloadUtil
                     if (download.state == Download.STATE_COMPLETED &&
                         !downloadedSongExporter.isAlreadyExported(download)
                     ) {
-                        downloadedSongExporter.export(download)
+                        scheduleExport(download).join()
                     }
                 }
             }
@@ -254,7 +257,7 @@ class DownloadUtil
                     .collect {
                         downloads.value.values
                             .filter { download -> download.state == Download.STATE_COMPLETED }
-                            .forEach { download -> downloadedSongExporter.export(download) }
+                            .forEach { download -> scheduleExport(download).join() }
                     }
             }
             downloadScope.launch {
@@ -343,6 +346,20 @@ class DownloadUtil
             }
         }
 
+        private fun scheduleExport(download: Download): Job {
+            val songId = download.request.id
+            val exportJob =
+                downloadScope.launch(start = CoroutineStart.LAZY) {
+                    downloadedSongExporter.export(download)
+                }
+            exportJobs.put(songId, exportJob)?.cancel()
+            exportJob.invokeOnCompletion {
+                exportJobs.remove(songId, exportJob)
+            }
+            exportJob.start()
+            return exportJob
+        }
+
         companion object {
             private const val DEFAULT_MAX_PARALLEL_DOWNLOADS = 6
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
@@ -357,4 +374,4 @@ internal enum class DownloadRemovalExportPolicy {
     DELETE,
 }
 
-internal val DefaultDownloadRemovalExportPolicy = DownloadRemovalExportPolicy.PRESERVE
+internal val DefaultDownloadRemovalExportPolicy = DownloadRemovalExportPolicy.DELETE

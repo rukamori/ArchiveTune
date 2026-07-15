@@ -163,29 +163,48 @@ class DownloadedSongExporter
                 }
             }
 
-        /** Explicitly removes an exported copy. Download removal intentionally does not call this. */
+        /** Removes every exported copy from the active SAF folder and the app-managed export folder. */
         suspend fun removeExport(songId: String): Boolean =
             withContext(Dispatchers.IO) {
-                runCatching {
-                    selectedTreeUri()?.let { treeUri ->
-                        deleteExistingTreeExports(
-                            treeUri = treeUri,
-                            songId = songId,
-                            expectedBaseName = null,
-                        )
+                exportCoordinator.run(songId) {
+                    val treeDeleted =
+                        runCatching {
+                            selectedTreeUri()?.let { treeUri ->
+                                deleteExistingTreeExports(
+                                    treeUri = treeUri,
+                                    songId = songId,
+                                    expectedBaseName = null,
+                                )
+                            } ?: true
+                        }.getOrElse { throwable ->
+                            if (throwable is CancellationException) throw throwable
+                            Timber.tag(LogTag).w(throwable, "Failed to remove exported tree song %s", songId)
+                            false
+                        }
+
+                    val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
+                    val internalDeleted =
+                        if (!targetDirectory.exists()) {
+                            true
+                        } else {
+                            val metadata =
+                                loadSongForExport(songId)?.let { song ->
+                                    ExportedSongMetadata.from(songId, song, null, context)
+                                }
+                            deleteExistingExports(
+                                directory = targetDirectory,
+                                songId = songId,
+                                expectedBaseName = metadata?.let { buildExportBaseName(it, songId) },
+                                except = null,
+                            )
+                        }
+
+                    (treeDeleted && internalDeleted).also { deleted ->
+                        if (!deleted) {
+                            Timber.tag(LogTag).w("Failed to remove every exported copy of song %s", songId)
+                        }
                     }
-                }.onFailure { throwable ->
-                    Timber.tag(LogTag).w(throwable, "Failed to remove exported tree song %s", songId)
                 }
-                val targetDirectory = StorageLocationRepository.exportedDownloadsDirectory(context)
-                if (!targetDirectory.exists()) return@withContext true
-                val metadata = loadSongForExport(songId)?.let { song -> ExportedSongMetadata.from(songId, song, null, context) }
-                deleteExistingExports(
-                    directory = targetDirectory,
-                    songId = songId,
-                    expectedBaseName = metadata?.let { buildExportBaseName(it, songId) },
-                    except = null,
-                )
             }
 
         private fun Cache.exportableSpans(songId: String): List<CacheSpan> =
@@ -527,29 +546,30 @@ class DownloadedSongExporter
             val resolver = context.contentResolver
             val childrenUri = treeUri.toChildDocumentsUri()
             var deleted = true
-            resolver
-                .query(
+            val cursor =
+                resolver.query(
                     childrenUri,
                     arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME),
                     null,
                     null,
                     null,
-                )?.use { cursor ->
-                    val idIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
-                    val nameIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DISPLAY_NAME)
-                    while (cursor.moveToNext()) {
-                        val displayName = cursor.getString(nameIndex) ?: continue
-                        val matchingName =
-                            expectedBaseName != null &&
-                                displayName.nameWithoutKnownAudioExtension() == expectedBaseName
-                        if (!displayName.contains(marker) && !matchingName) continue
-                        val documentUri = treeUri.toChildDocumentUri(cursor.getString(idIndex))
-                        if (documentUri == except) continue
-                        if (!runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }.getOrDefault(false)) {
-                            deleted = false
-                        }
+                ) ?: return false
+            cursor.use {
+                val idIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
+                val nameIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DISPLAY_NAME)
+                while (cursor.moveToNext()) {
+                    val displayName = cursor.getString(nameIndex) ?: continue
+                    val matchingName =
+                        expectedBaseName != null &&
+                            displayName.nameWithoutKnownAudioExtension() == expectedBaseName
+                    if (!displayName.contains(marker) && !matchingName) continue
+                    val documentUri = treeUri.toChildDocumentUri(cursor.getString(idIndex))
+                    if (documentUri == except) continue
+                    if (!runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }.getOrDefault(false)) {
+                        deleted = false
                     }
                 }
+            }
             return deleted
         }
 

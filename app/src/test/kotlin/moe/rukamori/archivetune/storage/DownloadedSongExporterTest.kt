@@ -133,8 +133,39 @@ class DownloadedSongExporterTest {
         }
 
     @Test
-    fun testDownloadRemovalPreservesExportByDefault() {
-        assertEquals(DownloadRemovalExportPolicy.PRESERVE, DefaultDownloadRemovalExportPolicy)
+    fun testDownloadRemovalDeletesExportByDefault() {
+        assertEquals(DownloadRemovalExportPolicy.DELETE, DefaultDownloadRemovalExportPolicy)
+    }
+
+    @Test
+    fun testDownloadRemovalWaitsForActiveExportBeforeDeleting() =
+        runBlocking {
+            val coordinator = SongExportCoordinator()
+            val events = mutableListOf<String>()
+            val exportStarted = CompletableDeferred<Unit>()
+            val finishExport = CompletableDeferred<Unit>()
+
+            val export =
+                async(Dispatchers.Default) {
+                    coordinator.run("song-id") {
+                        events += "export-started"
+                        exportStarted.complete(Unit)
+                        finishExport.await()
+                        events += "export-finished"
+                    }
+                }
+            exportStarted.await()
+            val deletion =
+                async(Dispatchers.Default) {
+                    coordinator.run("song-id") {
+                        events += "export-deleted"
+                    }
+                }
+            finishExport.complete(Unit)
+            export.await()
+            deletion.await()
+
+            assertEquals(listOf("export-started", "export-finished", "export-deleted"), events)
     }
 
     @Test
