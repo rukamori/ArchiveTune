@@ -1558,7 +1558,7 @@ private fun LyricsSearchInputContext(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val iconShape = remember { MaterialShapes.Cookie6Sided.toShape() }
+    val iconShape = MaterialShapes.Cookie6Sided.toShape()
     val contentArrangement = remember { Arrangement.spacedBy(16.dp) }
 
     Surface(
