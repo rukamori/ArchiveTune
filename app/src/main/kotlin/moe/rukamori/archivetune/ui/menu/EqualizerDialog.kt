@@ -407,12 +407,25 @@ private fun EqualizerHero(
     onEnabledChange: (Boolean) -> Unit,
     onOpenSystemEqualizer: () -> Unit,
 ) {
+    val containerColor =
+        if (enabled) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
+    val contentColor =
+        if (enabled) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         colors =
             CardDefaults.cardColors(
-                containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = containerColor,
+                contentColor = contentColor,
             ),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -433,7 +446,7 @@ private fun EqualizerHero(
                     Text(
                         text = stringResource(R.string.eq_enable_description),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = contentColor,
                     )
                 }
                 Switch(checked = enabled, onCheckedChange = onEnabledChange)
