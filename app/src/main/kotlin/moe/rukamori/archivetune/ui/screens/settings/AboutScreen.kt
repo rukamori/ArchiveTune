@@ -678,7 +678,7 @@ private fun AboutSuccessContent(
         state = listState,
         modifier = modifier,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(AboutSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(AboutSpacing.sm),
     ) {
         item(key = "identity", contentType = "about_identity") {
             AboutContentContainer {

@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,17 +43,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
@@ -131,7 +126,8 @@ import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MediaDetailSupportingIconAction
+import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
+import moe.rukamori.archivetune.ui.component.MediaDetailPrimaryActions
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
@@ -370,7 +366,7 @@ fun ArtistScreen(
                     val albumsLabel = stringResource(R.string.albums)
                     val monthlyListenersLabel = stringResource(R.string.monthly_listeners)
                     val subscribersLabel = stringResource(R.string.subscribers)
-                    val artistStatsText =
+                    val artistStats =
                         remember(
                             showLocal,
                             artistPage,
@@ -381,7 +377,7 @@ fun ArtistScreen(
                             monthlyListenersLabel,
                             subscribersLabel,
                         ) {
-                            buildArtistStatsText(
+                            buildArtistStats(
                                 showLocal = showLocal,
                                 artistPage = artistPage,
                                 librarySongCount = librarySongs.size,
@@ -463,31 +459,9 @@ fun ArtistScreen(
                                 overflow = TextOverflow.Ellipsis,
                             )
 
-                            val description = artistPage?.description
-                            if (!description.isNullOrBlank()) {
-                                var isExpanded by rememberSaveable { mutableStateOf(false) }
-                                val maxLines = if (isExpanded) Int.MAX_VALUE else 2
-
+                            if (artistStats.audience.isNotEmpty()) {
                                 Text(
-                                    text = description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = heroContentColor.copy(alpha = 0.76f),
-                                    textAlign = TextAlign.Center,
-                                    maxLines = maxLines,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier =
-                                        Modifier
-                                            .padding(top = 6.dp)
-                                            .combinedClickable(
-                                                onClick = { isExpanded = !isExpanded },
-                                                onLongClick = {},
-                                            ),
-                                )
-                            }
-
-                            if (artistStatsText.isNotEmpty()) {
-                                Text(
-                                    text = artistStatsText,
+                                    text = artistStats.audience,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = heroContentColor.copy(alpha = 0.62f),
                                     fontWeight = FontWeight.Medium,
@@ -498,6 +472,29 @@ fun ArtistScreen(
                                         Modifier
                                             .fillMaxWidth()
                                             .padding(top = 16.dp),
+                                )
+                            }
+
+                            if (artistStats.catalog.isNotEmpty()) {
+                                Text(
+                                    text = artistStats.catalog,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = heroContentColor.copy(alpha = 0.62f),
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                top =
+                                                    if (artistStats.audience.isEmpty()) {
+                                                        16.dp
+                                                    } else {
+                                                        4.dp
+                                                    },
+                                            ),
                                 )
                             }
 
@@ -580,12 +577,40 @@ fun ArtistScreen(
                                             }
                                         }
                                     },
-                                onMore = showArtistOverflowMenu,
                                 modifier = Modifier.padding(top = 12.dp),
                             )
                         }
                     }
                 }
+
+                artistPage
+                    ?.description
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { description ->
+                        item(
+                            key = "artist_description",
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
+                            var isExpanded by rememberSaveable(description) { mutableStateOf(false) }
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .widthIn(max = ArtistContentMaxWidth)
+                                        .padding(horizontal = ArtistHorizontalPadding, vertical = 12.dp)
+                                        .combinedClickable(
+                                            onClick = { isExpanded = !isExpanded },
+                                            onLongClick = {},
+                                        ),
+                            )
+                        }
+                    }
 
                 latestRelease?.let { release ->
                     item(
@@ -1010,6 +1035,17 @@ fun ArtistScreen(
                 )
             }
         },
+        actions = {
+            IconButton(
+                onClick = showArtistOverflowMenu,
+                onLongClick = {},
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_horiz),
+                    contentDescription = stringResource(R.string.more_options),
+                )
+            }
+        },
         colors =
             if (transparentAppBar) {
                 TopAppBarDefaults.topAppBarColors(
@@ -1106,9 +1142,14 @@ private const val ArtistOverflowMenuItemCount = 3
 private val ArtistHeroMinHeight = 560.dp
 private val ArtistHorizontalPadding = 24.dp
 private val ArtistContentMaxWidth = 720.dp
-private val ArtistSecondaryActionSize = 52.dp
 private val ArtistReleaseArtworkSize = 112.dp
 private const val ArtistStatSeparator = "  •  "
+
+@Immutable
+private data class ArtistStatsUi(
+    val audience: String,
+    val catalog: String,
+)
 
 @Immutable
 private data class ArtistReleaseUiModel(
@@ -1130,108 +1171,29 @@ private fun ArtistPrimaryActions(
     onPlay: () -> Unit,
     onToggleSubscription: () -> Unit,
     onRadio: (() -> Unit)?,
-    onMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val secondaryButtonColors =
-        IconButtonDefaults.filledTonalIconButtonColors(
-            containerColor = contentColor.copy(alpha = 0.16f),
-            contentColor = contentColor,
-            disabledContainerColor = contentColor.copy(alpha = 0.08f),
-            disabledContentColor = contentColor.copy(alpha = 0.38f),
-        )
-
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .widthIn(max = ArtistContentMaxWidth),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilledTonalIconButton(
-                onClick = onShuffle,
-                enabled = canShuffle,
-                shape = CircleShape,
-                colors = secondaryButtonColors,
-                modifier = Modifier.size(ArtistSecondaryActionSize),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.shuffle),
-                    contentDescription = stringResource(R.string.shuffle),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-            val playButtonHeight = ButtonDefaults.MediumContainerHeight
-            Button(
-                onClick = onPlay,
-                enabled = canPlay,
-                shape = RoundedCornerShape(percent = 50),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = contentColor,
-                        contentColor = contrastingColor,
-                        disabledContainerColor = contentColor.copy(alpha = 0.38f),
-                        disabledContentColor = contrastingColor.copy(alpha = 0.54f),
-                    ),
-                contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
-                modifier = Modifier.heightIn(min = playButtonHeight),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
-                Text(
-                    text = stringResource(R.string.play),
-                    style = ButtonDefaults.textStyleFor(playButtonHeight),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            FilledTonalIconButton(
-                onClick = onToggleSubscription,
-                shape = CircleShape,
-                colors = secondaryButtonColors,
-                modifier = Modifier.size(ArtistSecondaryActionSize),
-            ) {
-                Icon(
-                    painter = painterResource(if (isSubscribed) R.drawable.done else R.drawable.add),
-                    contentDescription =
-                        stringResource(
-                            if (isSubscribed) R.string.subscribed else R.string.subscribe,
-                        ),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            onRadio?.let {
-                MediaDetailSupportingIconAction(
+    MediaDetailPrimaryActions(
+        isAdded = isSubscribed,
+        contentColor = contentColor,
+        contrastingColor = contrastingColor,
+        addContentDescription = R.string.subscribe,
+        removeContentDescription = R.string.subscribed,
+        onShuffle = if (canShuffle) onShuffle else null,
+        onPlay = if (canPlay) onPlay else null,
+        onToggleAdd = onToggleSubscription,
+        additionalActions = { actionColor ->
+            onRadio?.let { radio ->
+                MediaDetailIconAction(
                     icon = R.drawable.radio,
                     contentDescription = R.string.start_radio,
-                    contentColor = contentColor,
-                    onClick = it,
+                    contentColor = actionColor,
+                    onClick = radio,
                 )
             }
-            MediaDetailSupportingIconAction(
-                icon = R.drawable.more_vert,
-                contentDescription = R.string.more_options,
-                contentColor = contentColor,
-                onClick = onMore,
-            )
-        }
-    }
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1340,7 +1302,7 @@ private fun ArtistNewReleaseSection(
     }
 }
 
-private fun buildArtistStatsText(
+private fun buildArtistStats(
     showLocal: Boolean,
     artistPage: ArtistPage?,
     librarySongCount: Int,
@@ -1349,7 +1311,7 @@ private fun buildArtistStatsText(
     albumsLabel: String,
     monthlyListenersLabel: String,
     subscribersLabel: String,
-): String {
+): ArtistStatsUi {
     val songSections =
         artistPage?.sections?.filter { section ->
             section.items.any { it is SongItem }
@@ -1384,25 +1346,33 @@ private fun buildArtistStatsText(
         }
     val hasMoreAlbums = !showLocal && albumSections?.any { it.moreEndpoint != null } == true
 
-    return buildList {
-        artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
-            add("$value $monthlyListenersLabel")
-        }
+    val audience =
+        buildList {
+            artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
+                add("$value $monthlyListenersLabel")
+            }
 
-        artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
-            add("$value $subscribersLabel")
-        }
+            artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
+                add("$value $subscribersLabel")
+            }
+        }.joinToString(ArtistStatSeparator)
+    val catalog =
+        buildList {
+            if (songCount > 0) {
+                val value = compactCountText(songCount, hasMoreSongs)
+                add("$value $songsLabel")
+            }
 
-        if (songCount > 0) {
-            val value = compactCountText(songCount, hasMoreSongs)
-            add("$value $songsLabel")
-        }
+            if (albumCount > 0) {
+                val value = compactCountText(albumCount, hasMoreAlbums)
+                add("$value $albumsLabel")
+            }
+        }.joinToString(ArtistStatSeparator)
 
-        if (albumCount > 0) {
-            val value = compactCountText(albumCount, hasMoreAlbums)
-            add("$value $albumsLabel")
-        }
-    }.joinToString(ArtistStatSeparator)
+    return ArtistStatsUi(
+        audience = audience,
+        catalog = catalog,
+    )
 }
 
 private fun AlbumItem.toArtistReleaseUiModel() =

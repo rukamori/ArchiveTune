@@ -5,19 +5,20 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-@file:OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package moe.rukamori.archivetune.ui.component
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -73,7 +74,7 @@ fun MediaDetailHero(
     subtitle: AnnotatedString? = null,
     metadata: String? = null,
     description: String? = null,
-    supportingActions: (@Composable (Color) -> Unit)? = null,
+    additionalPrimaryActions: (@Composable RowScope.(Color) -> Unit)? = null,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val heroContentColor =
@@ -202,23 +203,9 @@ fun MediaDetailHero(
                 onShuffle = onShuffle,
                 onPlay = onPlay,
                 onToggleAdd = onToggleAdd,
+                additionalActions = additionalPrimaryActions,
                 modifier = Modifier.padding(top = 12.dp),
             )
-
-            supportingActions?.let { actions ->
-                FlowRow(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = 6,
-                ) {
-                    actions(heroContentColor)
-                }
-            }
         }
     }
 }
@@ -234,6 +221,7 @@ fun MediaDetailPrimaryActions(
     onPlay: (() -> Unit)?,
     onToggleAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    additionalActions: (@Composable RowScope.(Color) -> Unit)? = null,
 ) {
     val secondaryButtonColors =
         IconButtonDefaults.filledTonalIconButtonColors(
@@ -247,73 +235,77 @@ fun MediaDetailPrimaryActions(
         modifier =
             modifier
                 .fillMaxWidth()
-                .widthIn(max = MediaDetailContentMaxWidth),
+                .widthIn(max = MediaDetailContentMaxWidth)
+                .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilledTonalIconButton(
-            onClick = { onShuffle?.invoke() },
-            enabled = onShuffle != null,
-            shape = CircleShape,
-            colors = secondaryButtonColors,
-            modifier = Modifier.size(MediaDetailSecondaryActionSize),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.shuffle),
-                contentDescription = stringResource(R.string.shuffle),
-                modifier = Modifier.size(22.dp),
-            )
+        onShuffle?.let { shuffle ->
+            FilledTonalIconButton(
+                onClick = shuffle,
+                shape = CircleShape,
+                colors = secondaryButtonColors,
+                modifier = Modifier.size(MediaDetailSecondaryActionSize),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.shuffle),
+                    contentDescription = stringResource(R.string.shuffle),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
 
-        val playButtonHeight = ButtonDefaults.MediumContainerHeight
-        Button(
-            onClick = { onPlay?.invoke() },
-            enabled = onPlay != null,
-            shape = RoundedCornerShape(percent = 50),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = contentColor,
-                    contentColor = contrastingColor,
-                    disabledContainerColor = contentColor.copy(alpha = 0.38f),
-                    disabledContentColor = contrastingColor.copy(alpha = 0.54f),
-                ),
-            contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
-            modifier = Modifier.heightIn(min = playButtonHeight),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.play),
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
-            )
-            Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
-            Text(
-                text = stringResource(R.string.play),
-                style = ButtonDefaults.textStyleFor(playButtonHeight),
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        FilledTonalIconButton(
-            onClick = { onToggleAdd?.invoke() },
-            enabled = onToggleAdd != null,
-            shape = CircleShape,
-            colors = secondaryButtonColors,
-            modifier = Modifier.size(MediaDetailSecondaryActionSize),
-        ) {
-            Icon(
-                painter = painterResource(if (isAdded) R.drawable.done else R.drawable.add),
-                contentDescription =
-                    stringResource(
-                        if (isAdded) removeContentDescription else addContentDescription,
+        onPlay?.let { play ->
+            val playButtonHeight = ButtonDefaults.MediumContainerHeight
+            Button(
+                onClick = play,
+                shape = RoundedCornerShape(percent = 50),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = contentColor,
+                        contentColor = contrastingColor,
                     ),
-                modifier = Modifier.size(22.dp),
-            )
+                contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
+                modifier = Modifier.heightIn(min = playButtonHeight),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.play),
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
+                )
+                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
+                Text(
+                    text = stringResource(R.string.play),
+                    style = ButtonDefaults.textStyleFor(playButtonHeight),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
+
+        onToggleAdd?.let { toggleAdd ->
+            FilledTonalIconButton(
+                onClick = toggleAdd,
+                shape = CircleShape,
+                colors = secondaryButtonColors,
+                modifier = Modifier.size(MediaDetailSecondaryActionSize),
+            ) {
+                Icon(
+                    painter = painterResource(if (isAdded) R.drawable.done else R.drawable.add),
+                    contentDescription =
+                        stringResource(
+                            if (isAdded) removeContentDescription else addContentDescription,
+                        ),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        additionalActions?.invoke(this, contentColor)
     }
 }
 
 @Composable
-fun MediaDetailSupportingAction(
+fun MediaDetailAction(
     @StringRes contentDescription: Int,
     contentColor: Color,
     onClick: () -> Unit,
@@ -347,7 +339,7 @@ fun MediaDetailSupportingAction(
         colors = colors,
         modifier =
             modifier
-                .size(MediaDetailSupportingActionSize)
+                .size(MediaDetailActionSize)
                 .semantics { this.contentDescription = actionDescription },
     ) {
         content()
@@ -355,7 +347,7 @@ fun MediaDetailSupportingAction(
 }
 
 @Composable
-fun MediaDetailSupportingIconAction(
+fun MediaDetailIconAction(
     @DrawableRes icon: Int,
     @StringRes contentDescription: Int,
     contentColor: Color,
@@ -364,7 +356,7 @@ fun MediaDetailSupportingIconAction(
     enabled: Boolean = true,
     isDestructive: Boolean = false,
 ) {
-    MediaDetailSupportingAction(
+    MediaDetailAction(
         contentDescription = contentDescription,
         contentColor = contentColor,
         onClick = onClick,
@@ -384,4 +376,4 @@ private val MediaDetailHeroMinHeight = 560.dp
 private val MediaDetailHorizontalPadding = 24.dp
 private val MediaDetailContentMaxWidth = 720.dp
 private val MediaDetailSecondaryActionSize = 52.dp
-private val MediaDetailSupportingActionSize = 48.dp
+private val MediaDetailActionSize = 48.dp

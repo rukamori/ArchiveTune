@@ -90,8 +90,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailHero
-import moe.rukamori.archivetune.ui.component.MediaDetailSupportingAction
-import moe.rukamori.archivetune.ui.component.MediaDetailSupportingIconAction
+import moe.rukamori.archivetune.ui.component.MediaDetailAction
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
@@ -254,106 +253,99 @@ fun AlbumScreen(
                         isAdded = isBookmarked,
                         addContentDescription = R.string.add_to_library,
                         removeContentDescription = R.string.remove_from_library,
-                        onShuffle = {
-                            playerConnection.playQueue(
-                                LocalAlbumRadio(
-                                    albumWithSongs.copy(
-                                        songs = albumWithSongs.songs.shuffled(),
-                                    ),
-                                ),
-                            )
-                        },
-                        onPlay = {
-                            playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
-                        },
+                        onShuffle =
+                            if (albumWithSongs.songs.isEmpty()) {
+                                null
+                            } else {
+                                {
+                                    playerConnection.playQueue(
+                                        LocalAlbumRadio(
+                                            albumWithSongs.copy(
+                                                songs = albumWithSongs.songs.shuffled(),
+                                            ),
+                                        ),
+                                    )
+                                }
+                            },
+                        onPlay =
+                            if (albumWithSongs.songs.isEmpty()) {
+                                null
+                            } else {
+                                {
+                                    playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
+                                }
+                            },
                         onToggleAdd = {
                             database.query {
                                 update(albumWithSongs.album.toggleLike())
                             }
                         },
-                        supportingActions = { contentColor ->
-                            MediaDetailSupportingAction(
-                                contentDescription =
-                                    if (downloadState == HeaderDownloadState.Completed) {
-                                        R.string.remove_download
-                                    } else {
-                                        R.string.download
+                        additionalPrimaryActions = { contentColor ->
+                            if (albumWithSongs.songs.isNotEmpty()) {
+                                MediaDetailAction(
+                                    contentDescription =
+                                        if (downloadState == HeaderDownloadState.Completed) {
+                                            R.string.remove_download
+                                        } else {
+                                            R.string.download
+                                        },
+                                    contentColor = contentColor,
+                                    onClick = {
+                                        when (downloadState) {
+                                            HeaderDownloadState.Completed -> {
+                                                sendRemoveDownloads(
+                                                    context = context,
+                                                    songIds = albumWithSongs.songs.map { it.id },
+                                                )
+                                            }
+
+                                            is HeaderDownloadState.Partial -> {
+                                                navController.navigate("auto_playlist/downloaded?tab=progress")
+                                            }
+
+                                            HeaderDownloadState.None -> {
+                                                sendAddMissingDownloads(
+                                                    context = context,
+                                                    songs =
+                                                        albumWithSongs.songs.map {
+                                                            HeaderDownloadItem(
+                                                                id = it.id,
+                                                                title = it.song.title,
+                                                            )
+                                                        },
+                                                    downloads = downloads,
+                                                )
+                                                navController.navigate("auto_playlist/downloaded?tab=progress")
+                                            }
+                                        }
                                     },
-                                contentColor = contentColor,
-                                onClick = {
-                                    when (downloadState) {
+                                ) {
+                                    when (val state = downloadState) {
                                         HeaderDownloadState.Completed -> {
-                                            sendRemoveDownloads(
-                                                context = context,
-                                                songIds = albumWithSongs.songs.map { it.id },
+                                            Icon(
+                                                painter = painterResource(R.drawable.offline),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(22.dp),
                                             )
                                         }
 
                                         is HeaderDownloadState.Partial -> {
-                                            navController.navigate("auto_playlist/downloaded?tab=progress")
+                                            HeaderDownloadProgressIndicator(
+                                                progress = state.progress,
+                                                paused = state.paused,
+                                            )
                                         }
 
                                         HeaderDownloadState.None -> {
-                                            sendAddMissingDownloads(
-                                                context = context,
-                                                songs =
-                                                    albumWithSongs.songs.map {
-                                                        HeaderDownloadItem(
-                                                            id = it.id,
-                                                            title = it.song.title,
-                                                        )
-                                                    },
-                                                downloads = downloads,
+                                            Icon(
+                                                painter = painterResource(R.drawable.download),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(22.dp),
                                             )
-                                            navController.navigate("auto_playlist/downloaded?tab=progress")
                                         }
-                                    }
-                                },
-                            ) {
-                                when (val state = downloadState) {
-                                    HeaderDownloadState.Completed -> {
-                                        Icon(
-                                            painter = painterResource(R.drawable.offline),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(22.dp),
-                                        )
-                                    }
-
-                                    is HeaderDownloadState.Partial -> {
-                                        HeaderDownloadProgressIndicator(
-                                            progress = state.progress,
-                                            paused = state.paused,
-                                        )
-                                    }
-
-                                    HeaderDownloadState.None -> {
-                                        Icon(
-                                            painter = painterResource(R.drawable.download),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(22.dp),
-                                        )
                                     }
                                 }
                             }
-
-                            MediaDetailSupportingIconAction(
-                                icon = R.drawable.more_vert,
-                                contentDescription = R.string.more_options,
-                                contentColor = contentColor,
-                                onClick = {
-                                    menuState.show {
-                                        AlbumMenu(
-                                            originalAlbum =
-                                                Album(
-                                                    albumWithSongs.album,
-                                                    albumWithSongs.artists,
-                                                ),
-                                            navController = navController,
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                            )
                         },
                     )
                 }
@@ -713,6 +705,30 @@ fun AlbumScreen(
                             painter = painterResource(R.drawable.more_vert),
                             contentDescription = null,
                         )
+                    }
+                } else {
+                    albumWithSongs?.let { currentAlbum ->
+                        IconButton(
+                            onClick = {
+                                menuState.show {
+                                    AlbumMenu(
+                                        originalAlbum =
+                                            Album(
+                                                currentAlbum.album,
+                                                currentAlbum.artists,
+                                            ),
+                                        navController = navController,
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                            onLongClick = {},
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_horiz),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
                     }
                 }
             },

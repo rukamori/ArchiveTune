@@ -96,15 +96,11 @@ import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.db.entities.PlaylistSong
-import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.innertube.utils.completed
-import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.LocalMixQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
@@ -117,8 +113,8 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailHero
-import moe.rukamori.archivetune.ui.component.MediaDetailSupportingAction
-import moe.rukamori.archivetune.ui.component.MediaDetailSupportingIconAction
+import moe.rukamori.archivetune.ui.component.MediaDetailAction
+import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
@@ -590,9 +586,9 @@ fun LocalPlaylistScreen(
                                         update(playlist.playlist.toggleLike())
                                     }
                                 },
-                                supportingActions = { contentColor ->
+                                additionalPrimaryActions = { contentColor ->
                                     if (editable) {
-                                        MediaDetailSupportingIconAction(
+                                        MediaDetailIconAction(
                                             icon = R.drawable.delete,
                                             contentDescription = R.string.delete,
                                             contentColor = contentColor,
@@ -601,106 +597,77 @@ fun LocalPlaylistScreen(
                                         )
                                     }
 
-                                    MediaDetailSupportingAction(
-                                        contentDescription =
-                                            if (downloadState == HeaderDownloadState.Completed) {
-                                                R.string.remove_download
-                                            } else {
-                                                R.string.download
+                                    if (songs.isNotEmpty()) {
+                                        MediaDetailAction(
+                                            contentDescription =
+                                                if (downloadState == HeaderDownloadState.Completed) {
+                                                    R.string.remove_download
+                                                } else {
+                                                    R.string.download
+                                                },
+                                            contentColor = contentColor,
+                                            onClick = {
+                                                when (downloadState) {
+                                                    HeaderDownloadState.Completed -> {
+                                                        showRemoveDownloadDialog = true
+                                                    }
+
+                                                    is HeaderDownloadState.Partial -> {
+                                                        navController.navigate(
+                                                            "auto_playlist/downloaded?tab=progress",
+                                                        )
+                                                    }
+
+                                                    HeaderDownloadState.None -> {
+                                                        sendAddMissingDownloads(
+                                                            context = context,
+                                                            songs =
+                                                                songs.map {
+                                                                    HeaderDownloadItem(
+                                                                        id = it.song.id,
+                                                                        title = it.song.song.title,
+                                                                    )
+                                                                },
+                                                            downloads = downloads,
+                                                        )
+                                                        navController.navigate(
+                                                            "auto_playlist/downloaded?tab=progress",
+                                                        )
+                                                    }
+                                                }
                                             },
-                                        contentColor = contentColor,
-                                        onClick = {
-                                            when (downloadState) {
+                                        ) {
+                                            when (val state = downloadState) {
                                                 HeaderDownloadState.Completed -> {
-                                                    showRemoveDownloadDialog = true
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.offline),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(22.dp),
+                                                    )
                                                 }
 
                                                 is HeaderDownloadState.Partial -> {
-                                                    navController.navigate(
-                                                        "auto_playlist/downloaded?tab=progress",
+                                                    HeaderDownloadProgressIndicator(
+                                                        progress = state.progress,
+                                                        paused = state.paused,
                                                     )
                                                 }
 
                                                 HeaderDownloadState.None -> {
-                                                    sendAddMissingDownloads(
-                                                        context = context,
-                                                        songs =
-                                                            songs.map {
-                                                                HeaderDownloadItem(
-                                                                    id = it.song.id,
-                                                                    title = it.song.song.title,
-                                                                )
-                                                            },
-                                                        downloads = downloads,
-                                                    )
-                                                    navController.navigate(
-                                                        "auto_playlist/downloaded?tab=progress",
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.download),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(22.dp),
                                                     )
                                                 }
                                             }
-                                        },
-                                    ) {
-                                        when (val state = downloadState) {
-                                            HeaderDownloadState.Completed -> {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.offline),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(22.dp),
-                                                )
-                                            }
-
-                                            is HeaderDownloadState.Partial -> {
-                                                HeaderDownloadProgressIndicator(
-                                                    progress = state.progress,
-                                                    paused = state.paused,
-                                                )
-                                            }
-
-                                            HeaderDownloadState.None -> {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.download),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(22.dp),
-                                                )
-                                            }
                                         }
-                                    }
 
-                                    MediaDetailSupportingIconAction(
-                                        icon = R.drawable.mix,
-                                        contentDescription = R.string.start_mix,
-                                        contentColor = contentColor,
-                                        enabled = songs.isNotEmpty(),
-                                        onClick = {
-                                            playerConnection.playQueue(
-                                                LocalMixQueue(
-                                                    database = database,
-                                                    playlistId = playlist.id,
-                                                    maxMixSize = 50,
-                                                ),
-                                            )
-                                        },
-                                    )
-
-                                    MediaDetailSupportingIconAction(
-                                        icon = R.drawable.radio,
-                                        contentDescription = R.string.start_radio,
-                                        contentColor = contentColor,
-                                        enabled = songs.isNotEmpty(),
-                                        onClick = {
-                                            val browseId = playlist.playlist.browseId
-                                            if (browseId != null) {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue(
-                                                        WatchEndpoint(
-                                                            playlistId = "RDAMPL$browseId",
-                                                            params =
-                                                                playlist.playlist
-                                                                    .radioEndpointParams,
-                                                        ),
-                                                    ),
-                                                )
-                                            } else {
+                                        MediaDetailIconAction(
+                                            icon = R.drawable.mix,
+                                            contentDescription = R.string.start_mix,
+                                            contentColor = contentColor,
+                                            onClick = {
                                                 playerConnection.playQueue(
                                                     LocalMixQueue(
                                                         database = database,
@@ -708,78 +675,45 @@ fun LocalPlaylistScreen(
                                                         maxMixSize = 50,
                                                     ),
                                                 )
-                                            }
-                                        },
-                                    )
-
-                                    MediaDetailSupportingIconAction(
-                                        icon = R.drawable.more_vert,
-                                        contentDescription = R.string.more_options,
-                                        contentColor = contentColor,
-                                        onClick = {
-                                            menuState.show {
-                                                PlaylistMenu(
-                                                    playlist = playlist,
-                                                    coroutineScope = coroutineScope,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    )
-
-                                    if (editable) {
-                                        MediaDetailSupportingIconAction(
-                                            icon = R.drawable.edit,
-                                            contentDescription = R.string.edit_playlist,
-                                            contentColor = contentColor,
-                                            onClick = { showEditDialog = true },
-                                        )
-                                        MediaDetailSupportingIconAction(
-                                            icon = R.drawable.image,
-                                            contentDescription =
-                                                R.string.change_playlist_cover,
-                                            contentColor = contentColor,
-                                            onClick = {
-                                                pickCoverLauncher.launch(arrayOf("image/*"))
                                             },
                                         )
-                                    } else if (playlist.playlist.browseId != null) {
-                                        MediaDetailSupportingIconAction(
-                                            icon = R.drawable.sync,
-                                            contentDescription = R.string.sync_playlist,
+
+                                        MediaDetailIconAction(
+                                            icon = R.drawable.radio,
+                                            contentDescription = R.string.start_radio,
                                             contentColor = contentColor,
                                             onClick = {
-                                                coroutineScope.launch(Dispatchers.IO) {
-                                                    val playlistPage =
-                                                        YouTube
-                                                            .playlist(
-                                                                playlist.playlist.browseId,
-                                                            ).completed()
-                                                            .getOrNull()
-                                                            ?: return@launch
-                                                    database.transaction {
-                                                        clearPlaylist(playlist.id)
-                                                        playlistPage.songs
-                                                            .map(SongItem::toMediaMetadata)
-                                                            .onEach(::insert)
-                                                            .mapIndexed { position, song ->
-                                                                PlaylistSongMap(
-                                                                    songId = song.id,
-                                                                    playlistId = playlist.id,
-                                                                    position = position,
-                                                                    setVideoId = song.setVideoId,
-                                                                )
-                                                            }.forEach(::insert)
-                                                    }
-                                                }
-                                                coroutineScope.launch(Dispatchers.Main) {
-                                                    snackbarHostState.showSnackbar(
-                                                        context.getString(
-                                                            R.string.playlist_synced,
+                                                val browseId = playlist.playlist.browseId
+                                                if (browseId != null) {
+                                                    playerConnection.playQueue(
+                                                        YouTubeQueue(
+                                                            WatchEndpoint(
+                                                                playlistId = "RDAMPL$browseId",
+                                                                params =
+                                                                    playlist.playlist
+                                                                        .radioEndpointParams,
+                                                            ),
+                                                        ),
+                                                    )
+                                                } else {
+                                                    playerConnection.playQueue(
+                                                        LocalMixQueue(
+                                                            database = database,
+                                                            playlistId = playlist.id,
+                                                            maxMixSize = 50,
                                                         ),
                                                     )
                                                 }
                                             },
+                                        )
+                                    }
+
+                                    if (editable) {
+                                        MediaDetailIconAction(
+                                            icon = R.drawable.edit,
+                                            contentDescription = R.string.edit_playlist,
+                                            contentColor = contentColor,
+                                            onClick = { showEditDialog = true },
                                         )
                                     }
                                 },
@@ -1278,6 +1212,34 @@ fun LocalPlaylistScreen(
                             painter = painterResource(R.drawable.search),
                             contentDescription = null,
                         )
+                    }
+                    playlist?.let { currentPlaylist ->
+                        IconButton(
+                            onClick = {
+                                menuState.show {
+                                    PlaylistMenu(
+                                        playlist = currentPlaylist,
+                                        coroutineScope = coroutineScope,
+                                        onDismiss = menuState::dismiss,
+                                        onChangeCover =
+                                            if (currentPlaylist.playlist.isEditable == true) {
+                                                {
+                                                    menuState.dismiss()
+                                                    pickCoverLauncher.launch(arrayOf("image/*"))
+                                                }
+                                            } else {
+                                                null
+                                            },
+                                    )
+                                }
+                            },
+                            onLongClick = {},
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_horiz),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
                     }
                 }
             },
