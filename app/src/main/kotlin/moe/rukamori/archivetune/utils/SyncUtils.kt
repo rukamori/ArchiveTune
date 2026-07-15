@@ -318,7 +318,7 @@ class SyncUtils
                                         if (!isSyncStillEnabled(gen)) return@withTransaction
                                         if (dbSong == null) {
                                             insert(song.toMediaMetadata()) { it.copy(liked = true, likedDate = timestamp) }
-                                        } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp) {
+                                        } else if (!dbSong.song.liked || dbSong.song.likedDate == null) {
                                             update(dbSong.song.copy(liked = true, likedDate = timestamp))
                                         }
                                     }
