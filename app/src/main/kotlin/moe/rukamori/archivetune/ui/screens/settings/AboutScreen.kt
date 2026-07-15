@@ -678,7 +678,7 @@ private fun AboutSuccessContent(
         state = listState,
         modifier = modifier,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(AboutSpacing.lg),
+        verticalArrangement = Arrangement.spacedBy(AboutSpacing.sm),
     ) {
         item(key = "identity", contentType = "about_identity") {
             AboutContentContainer {
@@ -1395,7 +1395,6 @@ private object AboutSpacing {
     val xs = 8.dp
     val sm = 16.dp
     val md = 24.dp
-    val lg = 32.dp
 }
 
 private object AboutListItemDefaults {

@@ -52,7 +52,6 @@ internal class StartIoSupportAdRepository
         private val adLoading = AtomicBoolean(false)
         private val pendingUserRequest = AtomicBoolean(false)
         private val adShowing = AtomicBoolean(false)
-        private val rewardEarned = AtomicBoolean(false)
         private val privacyRevision = AtomicLong(0L)
 
         private val _availability = MutableStateFlow(SupportAdAvailability.Preparing)
@@ -72,6 +71,7 @@ internal class StartIoSupportAdRepository
         private var resumedActivity = WeakReference<Activity>(null)
         private var adActivity = WeakReference<Activity>(null)
         private var startAppAd: StartAppAd? = null
+        private var loadTimeoutRunnable: Runnable? = null
 
         fun initialize(application: Application) {
             if (!initialized.compareAndSet(false, true)) return
@@ -134,7 +134,7 @@ internal class StartIoSupportAdRepository
             if (!consentRecorded || BuildConfig.START_IO_APP_ID.isBlank()) return
             if (sdkInitialized.get()) {
                 configurePrivacySignals()
-                loadRewardedAdIfNecessary()
+                loadSupportAdIfNecessary()
                 return
             }
             if (!sdkInitializationStarted.compareAndSet(false, true)) return
@@ -150,7 +150,7 @@ internal class StartIoSupportAdRepository
                     .setReturnAdsEnabled(false)
                     .setCallback {
                         sdkInitialized.set(true)
-                        mainHandler.post(::loadRewardedAdIfNecessary)
+                        mainHandler.post(::loadSupportAdIfNecessary)
                     }.init()
                 StartAppSDK.setUserConsent(
                     application,
@@ -195,20 +195,20 @@ internal class StartIoSupportAdRepository
             if (!sdkInitialized.get()) return
             val ad = startAppAd
             if (ad != null && adActivity.get() === activity && ad.isReady) {
-                showRewardedAd(ad)
+                showSupportAd(ad)
             } else {
                 clearLoadedAd()
-                loadRewardedAdIfNecessary()
+                loadSupportAdIfNecessary()
             }
         }
 
-        private fun loadRewardedAdIfNecessary() {
+        private fun loadSupportAdIfNecessary() {
             if (!sdkInitialized.get() || adShowing.get() || !consentRecorded) return
             val activity = currentActivity() ?: return
             val existingAd = startAppAd
             if (existingAd != null && adActivity.get() === activity && existingAd.isReady) {
                 _availability.value = SupportAdAvailability.Ready
-                if (pendingUserRequest.get()) showRewardedAd(existingAd)
+                if (pendingUserRequest.get()) showSupportAd(existingAd)
                 return
             }
             if (!adLoading.compareAndSet(false, true)) return
@@ -217,49 +217,48 @@ internal class StartIoSupportAdRepository
             val ad = StartAppAd(activity)
             startAppAd = ad
             adActivity = WeakReference(activity)
-            ad.setVideoListener { rewardEarned.set(true) }
-            ad.loadAd(
-                StartAppAd.AdMode.REWARDED_VIDEO,
-                object : AdEventListener {
-                    override fun onReceiveAd(receivedAd: Ad) {
-                        mainHandler.post {
-                            if (startAppAd !== ad) {
-                                ad.close()
-                                return@post
+            scheduleLoadTimeout(ad)
+            runCatching {
+                ad.loadAd(
+                    StartAppAd.AdMode.AUTOMATIC,
+                    object : AdEventListener {
+                        override fun onReceiveAd(receivedAd: Ad) {
+                            mainHandler.post {
+                                if (startAppAd !== ad) {
+                                    ad.close()
+                                    return@post
+                                }
+                                cancelLoadTimeout()
+                                adLoading.set(false)
+                                _availability.value = SupportAdAvailability.Ready
+                                if (pendingUserRequest.get()) showSupportAd(ad)
                             }
-                            adLoading.set(false)
-                            _availability.value = SupportAdAvailability.Ready
-                            if (pendingUserRequest.get()) showRewardedAd(ad)
                         }
-                    }
 
-                    override fun onFailedToReceiveAd(failedAd: Ad?) {
-                        mainHandler.post {
-                            if (startAppAd !== ad) {
-                                ad.close()
-                                return@post
+                        override fun onFailedToReceiveAd(failedAd: Ad?) {
+                            mainHandler.post {
+                                if (startAppAd !== ad) return@post
+                                _availability.value = SupportAdAvailability.Preparing
+                                Timber.w(
+                                    "Start.io support ad load failed; SDK retry remains active: %s",
+                                    failedAd?.errorMessage,
+                                )
                             }
-                            startAppAd = null
-                            adActivity.clear()
-                            ad.close()
-                            adLoading.set(false)
-                            _availability.value = SupportAdAvailability.Failed
-                            Timber.w("Start.io rewarded ad failed to load: %s", failedAd?.errorMessage)
-                            clearPendingRequest(SupportAdEvent.AdFailed)
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }.onFailure { throwable ->
+                failAdLoad(ad, throwable)
+            }
         }
 
-        private fun showRewardedAd(ad: StartAppAd) {
+        private fun showSupportAd(ad: StartAppAd) {
             if (!pendingUserRequest.get() || !ad.isReady) {
-                loadRewardedAdIfNecessary()
+                loadSupportAdIfNecessary()
                 return
             }
             if (!adShowing.compareAndSet(false, true)) return
             pendingUserRequest.set(false)
-            rewardEarned.set(false)
             val completionHandled = AtomicBoolean(false)
             val displayListener =
                 object : AdDisplayListener {
@@ -278,7 +277,7 @@ internal class StartIoSupportAdRepository
                     }
                 }
             val shown = runCatching { ad.showAd(displayListener) }.getOrElse { throwable ->
-                Timber.e(throwable, "Start.io rewarded ad show call failed")
+                Timber.e(throwable, "Start.io support ad show call failed")
                 false
             }
             if (!shown) finishDisplayedAd(ad, completionHandled, failed = true)
@@ -299,11 +298,48 @@ internal class StartIoSupportAdRepository
                 ad.close()
                 if (failed) {
                     _events.tryEmit(SupportAdEvent.AdFailed)
-                } else if (rewardEarned.get()) {
+                } else {
                     _events.tryEmit(SupportAdEvent.RewardEarned)
                 }
-                loadRewardedAdIfNecessary()
+                loadSupportAdIfNecessary()
             }
+        }
+
+        private fun scheduleLoadTimeout(ad: StartAppAd) {
+            cancelLoadTimeout()
+            val timeoutRunnable =
+                Runnable {
+                    if (startAppAd !== ad || !adLoading.compareAndSet(true, false)) return@Runnable
+                    loadTimeoutRunnable = null
+                    startAppAd = null
+                    adActivity.clear()
+                    ad.close()
+                    _availability.value = SupportAdAvailability.Failed
+                    Timber.w("Start.io support ad load timed out after SDK retries")
+                    clearPendingRequest(SupportAdEvent.AdFailed)
+                }
+            loadTimeoutRunnable = timeoutRunnable
+            mainHandler.postDelayed(timeoutRunnable, SUPPORT_AD_LOAD_TIMEOUT_MILLIS)
+        }
+
+        private fun cancelLoadTimeout() {
+            loadTimeoutRunnable?.let(mainHandler::removeCallbacks)
+            loadTimeoutRunnable = null
+        }
+
+        private fun failAdLoad(
+            ad: StartAppAd,
+            throwable: Throwable,
+        ) {
+            if (startAppAd !== ad) return
+            cancelLoadTimeout()
+            startAppAd = null
+            adActivity.clear()
+            ad.close()
+            adLoading.set(false)
+            _availability.value = SupportAdAvailability.Failed
+            Timber.e(throwable, "Start.io support ad load call failed")
+            clearPendingRequest(SupportAdEvent.AdFailed)
         }
 
         private fun clearPendingRequest(event: SupportAdEvent) {
@@ -311,6 +347,7 @@ internal class StartIoSupportAdRepository
         }
 
         private fun clearLoadedAd(closeLoadingAd: Boolean = true) {
+            cancelLoadTimeout()
             val ad = startAppAd
             startAppAd = null
             adActivity.clear()
@@ -331,7 +368,7 @@ internal class StartIoSupportAdRepository
             resumedActivity = WeakReference(activity)
             if (previousActivity !== activity && !adShowing.get()) clearLoadedAd()
             startAppAd?.onResume()
-            if (sdkInitialized.get()) loadRewardedAdIfNecessary()
+            if (sdkInitialized.get()) loadSupportAdIfNecessary()
         }
 
         override fun onActivityPaused(activity: Activity) {
@@ -365,6 +402,7 @@ internal class StartIoSupportAdRepository
             private const val IAB_US_PRIVACY_STRING = "IABUSPrivacy_String"
             private const val CCPA_PERSONALIZED = "1YNN"
             private const val CCPA_OPT_OUT = "1YYN"
+            private const val SUPPORT_AD_LOAD_TIMEOUT_MILLIS = 30_000L
         }
     }
 

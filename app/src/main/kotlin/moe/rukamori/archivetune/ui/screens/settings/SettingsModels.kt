@@ -7,9 +7,9 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 
 @Immutable
 data class SettingsProfileState(
@@ -29,10 +29,7 @@ data class SettingsGroup(
 @Immutable
 data class SettingsItem(
     val key: String,
-    // Drawable resource id, resolved to a Painter lazily at render time. Holding a raw @DrawableRes
-    // (instead of an eagerly-inflated Painter) means opening the Settings screen no longer inflates
-    // every item's vector drawable up front — only the rows the LazyColumn actually shows do.
-    @param:DrawableRes val icon: Int,
+    val icon: Painter,
     val title: String,
     val subtitle: String? = null,
     val badge: String? = null,

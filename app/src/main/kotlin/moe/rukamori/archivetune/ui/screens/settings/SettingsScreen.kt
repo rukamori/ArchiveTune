@@ -12,53 +12,40 @@ package moe.rukamori.archivetune.ui.screens.settings
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.BuildConfig
@@ -124,37 +111,6 @@ fun SettingsScreen(
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
     var isUpdateDismissed by remember { mutableStateOf(false) }
     val settingsGroups = buildSettingsGroups(navController, isAndroid12OrLater, hasUpdate, context)
-    // buildSettingsGroups returns a fresh list identity on every recomposition, so key the flatten
-    // on the stable inputs that actually change its contents. This keeps the top-bar scroll/enter
-    // animation from re-flattening the whole list every frame.
-    val settingsItems =
-        remember(isAndroid12OrLater, hasUpdate) {
-            settingsGroups.flatMap { it.items }
-        }
-
-    var isSearching by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    BackHandler(enabled = isSearching) {
-        isSearching = false
-        searchQuery = ""
-    }
-
-    val filteredItems =
-        remember(settingsItems, searchQuery) {
-            val query = searchQuery.trim()
-            if (query.isEmpty()) {
-                settingsItems
-            } else {
-                settingsItems.filter { item ->
-                    item.title.contains(query, ignoreCase = true) ||
-                        item.subtitle?.contains(query, ignoreCase = true) == true ||
-                        item.keywords.any { it.contains(query, ignoreCase = true) }
-                }
-            }
-        }
 
     Scaffold(
         modifier =
@@ -166,91 +122,20 @@ fun SettingsScreen(
         topBar = {
             LargeFlexibleTopAppBar(
                 title = {
-                    if (isSearching) {
-                        // Compact, fully-rounded (pill) search field: shorter than the default
-                        // text-field height and curved on both the left and right ends.
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 46.dp)
-                                    .focusRequester(focusRequester),
-                            textStyle = MaterialTheme.typography.bodyMedium,
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.search_settings),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(percent = 50),
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.search),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        onLongClick = {},
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.close),
-                                            contentDescription = stringResource(R.string.clear_search),
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    }
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                            colors =
-                                OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                ),
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.settings),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.settings),
+                        fontWeight = FontWeight.Bold,
+                    )
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = {
-                            if (isSearching) {
-                                isSearching = false
-                                searchQuery = ""
-                            } else {
-                                navController.navigateUp()
-                            }
-                        },
+                        onClick = navController::navigateUp,
                         onLongClick = navController::backToMain,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
                             contentDescription = stringResource(R.string.back_button_desc),
                         )
-                    }
-                },
-                actions = {
-                    if (!isSearching) {
-                        IconButton(
-                            onClick = { isSearching = true },
-                            onLongClick = {},
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.search),
-                                contentDescription = stringResource(R.string.search_settings),
-                            )
-                        }
                     }
                 },
                 colors =
@@ -262,14 +147,8 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
-        LaunchedEffect(isSearching) {
-            if (isSearching) {
-                focusRequester.requestFocus()
-            }
-        }
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -284,7 +163,7 @@ fun SettingsScreen(
                     bottom = SettingsDimensions.ScreenBottomPadding,
                 ),
         ) {
-            if (!isSearching && hasUpdate && !isUpdateDismissed) {
+            if (hasUpdate && !isUpdateDismissed) {
                 item(key = "update", contentType = "settings_banner") {
                     SettingsUpdateBanner(
                         latestVersion = latestVersionName,
@@ -298,7 +177,7 @@ fun SettingsScreen(
                 }
             }
 
-            if (!isSearching && shouldShowPermissionHint) {
+            if (shouldShowPermissionHint) {
                 item(key = "permission", contentType = "settings_banner") {
                     SettingsPermissionBanner(
                         onRequestPermission = {
@@ -321,32 +200,38 @@ fun SettingsScreen(
                 }
             }
 
-            if (isSearching && searchQuery.isNotBlank() && filteredItems.isEmpty()) {
-                item(key = "search_empty", contentType = "settings_empty") {
-                    Text(
-                        text = stringResource(R.string.search_settings_empty, searchQuery.trim()),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            settingsGroups.forEachIndexed { groupIndex, group ->
+                if (groupIndex > 0) {
+                    item(
+                        key = "settings_group_spacing_$groupIndex",
+                        contentType = "settings_group_spacing",
+                    ) {
+                        Spacer(modifier = Modifier.height(SettingsDimensions.SectionSpacing))
+                    }
+                }
+
+                itemsIndexed(
+                    items = group.items,
+                    key = { _, item -> item.key },
+                    contentType = { _, _ -> "settings_segment" },
+                ) { index, settingsItem ->
+                    SettingsSegmentedItem(
+                        item = settingsItem,
+                        index = index,
+                        count = group.items.size,
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 26.dp)
-                                .padding(top = 32.dp),
+                                .padding(horizontal = SettingsDimensions.SegmentedGroupHorizontalPadding)
+                                .padding(
+                                    bottom =
+                                        if (index < group.items.lastIndex) {
+                                            SettingsDimensions.SegmentedItemGap
+                                        } else {
+                                            0.dp
+                                        },
+                                ),
                     )
                 }
-            }
-
-            itemsIndexed(
-                items = filteredItems,
-                key = { _, item -> item.key },
-                contentType = { _, _ -> "settings_segment" },
-            ) { index, settingsItem ->
-                SettingsSegmentedItem(
-                    item = settingsItem,
-                    index = index,
-                    count = filteredItems.size,
-                    modifier = Modifier.padding(horizontal = 26.dp),
-                )
             }
         }
     }
