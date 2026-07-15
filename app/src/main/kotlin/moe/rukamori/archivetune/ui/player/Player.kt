@@ -1980,6 +1980,8 @@ private fun BackdropBlurApi30(
                             null
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     if (onError != null) {
                         withContext(Dispatchers.Main) {
