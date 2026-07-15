@@ -866,6 +866,7 @@ private fun RankedSongItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = MaterialTheme.shapes.small,
+                    maxSizePx = 200,
                     modifier = Modifier.size(56.dp),
                 )
             }
