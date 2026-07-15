@@ -149,8 +149,8 @@ class GatekeeperRepository
         }
 
         private companion object {
-            const val HEADER_PACKAGE_NAME = "X-Package-Name"
-            const val HEADER_VERSION_CODE = "X-Version-Code"
+            const val HEADER_PACKAGE_NAME = "x-client-package-name"
+            const val HEADER_VERSION_CODE = "x-client-version-code"
             const val CONNECT_TIMEOUT_MILLIS = 10_000L
             const val REQUEST_TIMEOUT_MILLIS = 15_000L
             const val MAX_PLAIN_TEXT_MESSAGE_LENGTH = 500
