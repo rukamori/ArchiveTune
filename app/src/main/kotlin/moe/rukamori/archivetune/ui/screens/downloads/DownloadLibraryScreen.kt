@@ -126,7 +126,8 @@ fun DownloadLibraryScreen(
                     playerConnection?.playQueue(
                         ListQueue(
                             title = event.metadata.title,
-                            items = listOf(event.metadata.toMediaItem()),
+                            items = event.queue.map { metadata -> metadata.toMediaItem() },
+                            startIndex = event.startIndex,
                         ),
                     )
                 }

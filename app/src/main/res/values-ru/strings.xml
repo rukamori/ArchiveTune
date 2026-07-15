@@ -663,7 +663,6 @@
     <string name="external_downloader_not_installed">Внешнее приложение-загрузчик не установлено</string>
     <string name="external_downloader_not_configured">Не настроено ни одного внешнего загрузчика. Настройте один в Настройки → Плеер.</string>
     <string name="tap_to_activate_equalizer">Нажмите для активации эквалайзера</string>
-    <string name="open_youtube_music">Открыть YouTube Music</string>
     <string name="updates_subtitle_stable">Стабильные релизы и заметки релиза</string>
     <string name="updates_status_checking">Проверка последнего релиза</string>
     <string name="updates_status_current">Вы на последней версии релиза</string>

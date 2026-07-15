@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -48,6 +47,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,7 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -110,9 +110,16 @@ fun LibraryMixScreen(
     spotifyLibraryViewModel: SpotifyLibraryViewModel = hiltViewModel(),
 ) {
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val showMessage: (String) -> Unit =
+        remember(coroutineScope, snackbarHostState) {
+            { message ->
+                coroutineScope.launch { snackbarHostState.showSnackbar(message) }
+                Unit
+            }
+        }
     val database = LocalDatabase.current
 
     val likedSongsCount by database.likedSongsCount().collectAsState(initial = 0)
@@ -152,7 +159,7 @@ fun LibraryMixScreen(
 
     LaunchedEffect(viewModel) {
         viewModel.topMixEvents.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -162,17 +169,18 @@ fun LibraryMixScreen(
             .asPaddingValues()
             .calculateBottomPadding() + 12.dp
 
-    ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.syncAllLibrary() },
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        LazyColumn(
-            state = rememberLazyListState(),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(bottom = playerAwareBottomPadding),
+    Box(modifier = Modifier.fillMaxSize()) {
+        ExpressivePullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.syncAllLibrary() },
             modifier = Modifier.fillMaxSize(),
         ) {
+            LazyColumn(
+                state = rememberLazyListState(),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding = PaddingValues(bottom = playerAwareBottomPadding),
+                modifier = Modifier.fillMaxSize(),
+            ) {
             item(key = "most_played_album_spotlight", contentType = "spotlight") {
                 val state = mostPlayedAlbumUiState
                 if (state is MostPlayedAlbumUiState.Success) {
@@ -265,6 +273,15 @@ fun LibraryMixScreen(
                             onClick = { navController.navigate("local_songs") },
                         )
                     }
+                }
+            }
+
+            if (supportArchiveTuneAvailable) {
+                item(key = "support_archive_tune", contentType = "support_ad") {
+                    SupportArchiveTuneSection(
+                        onMessage = showMessage,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
                 }
             }
 
@@ -672,7 +689,16 @@ fun LibraryMixScreen(
                     }
                 }
             }
+            }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = playerAwareBottomPadding),
+        )
     }
 }
 

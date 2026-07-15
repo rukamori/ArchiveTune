@@ -1,5 +1,23 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
+
+@DisableCachingByDefault(because = "Validation-only task has no outputs.")
+abstract class ValidateStartIoReleaseConfigurationTask : DefaultTask() {
+    @get:Input
+    abstract val appId: Property<String>
+
+    @TaskAction
+    fun validate() {
+        require(appId.get().isNotBlank()) {
+            "START_IO_APP_ID is required for GMS release builds."
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -35,6 +53,27 @@ val hasReleaseSigningConfig =
         releaseStorePassword != null &&
         releaseKeyAlias != null &&
         releaseKeyPassword != null
+val startIoAppId =
+    (
+        localProperties.getProperty("START_IO_APP_ID")
+            ?: System.getenv("START_IO_APP_ID")
+            ?: ""
+        ).trim()
+tasks.register<ValidateStartIoReleaseConfigurationTask>("validateStartIoReleaseConfiguration") {
+    group = "verification"
+    description = "Validates the production Start.io identifier for GMS release artifacts."
+    appId.set(startIoAppId)
+}
+
+tasks.configureEach {
+    val isGmsReleaseArtifactTask =
+        (name.startsWith("assemble") || name.startsWith("bundle")) &&
+            name.contains("Gms") &&
+            name.endsWith("Release")
+    if (isGmsReleaseArtifactTask) {
+        dependsOn("validateStartIoReleaseConfiguration")
+    }
+}
 
 android {
     namespace = "moe.rukamori.archivetune"
@@ -101,6 +140,11 @@ android {
             buildConfigField("long", "DISCORD_APPLICATION_ID_LONG", "${discordApplicationIdLong}L")
             buildConfigField("String", "DISCORD_REDIRECT_SCHEME", "\"$discordRedirectScheme\"")
             manifestPlaceholders["discordRedirectScheme"] = discordRedirectScheme
+            buildConfigField(
+                "String",
+                "START_IO_APP_ID",
+                "\"$startIoAppId\"",
+            )
         }
         create("foss") {
             dimension = "distribution"
@@ -290,6 +334,7 @@ dependencies {
     implementation("androidx.media3:media3-ui-compose:${libs.versions.media3.get()}")
     add("gmsImplementation", libs.media3.cast)
     add("gmsImplementation", libs.mediarouter)
+    add("gmsImplementation", libs.startio.ads)
     implementation(libs.squigglyslider)
 
     implementation(libs.room.runtime)

@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ads.SupportAdsInitializer
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.extensions.*
@@ -110,6 +111,7 @@ class App :
         }
 
         initializeCriticalSync()
+        SupportAdsInitializer.initialize(this)
         initializeDeferredAsync()
     }
 

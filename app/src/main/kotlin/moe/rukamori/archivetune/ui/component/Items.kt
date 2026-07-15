@@ -152,6 +152,7 @@ inline fun ListItem(
     thumbnailContent: @Composable () -> Unit,
     crossinline trailingContent: @Composable RowScope.() -> Unit = {},
     isActive: Boolean = false,
+    showActiveContainer: Boolean = true,
 ) {
     val titleColor =
         if (isActive) {
@@ -180,7 +181,7 @@ inline fun ListItem(
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
                 .then(
-                    if (isActive) {
+                    if (isActive && showActiveContainer) {
                         Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -229,10 +230,12 @@ fun ListItem(
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
     isActive: Boolean = false,
+    showActiveContainer: Boolean = true,
 ) = ListItem(
     title = title,
     modifier = modifier,
     isActive = isActive,
+    showActiveContainer = showActiveContainer,
     subtitle = {
         badges()
         if (!subtitle.isNullOrEmpty()) {
@@ -372,6 +375,7 @@ fun SongListItem(
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
     swipeContentBackgroundColor: Color? = null,
+    showActiveContainer: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
@@ -403,6 +407,7 @@ fun SongListItem(
             trailingContent = trailingContent,
             modifier = modifier,
             isActive = isActive,
+            showActiveContainer = showActiveContainer,
         )
     }
 
@@ -1329,6 +1334,8 @@ fun YouTubeListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
+    swipeContentBackgroundColor: Color? = null,
+    showActiveContainer: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
@@ -1393,6 +1400,7 @@ fun YouTubeListItem(
             trailingContent = trailingContent,
             modifier = modifier,
             isActive = isActive,
+            showActiveContainer = showActiveContainer,
         )
     }
 
@@ -1411,6 +1419,7 @@ fun YouTubeListItem(
                         thumbnailHeight = null,
                     ).toMediaItem(),
             modifier = Modifier.fillMaxWidth(),
+            contentBackgroundColor = swipeContentBackgroundColor,
         ) {
             content()
         }

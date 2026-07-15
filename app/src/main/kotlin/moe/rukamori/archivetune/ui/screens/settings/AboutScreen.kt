@@ -508,8 +508,8 @@ private fun TranslationContributorList(
             modifier =
                 Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth()
-                    .widthIn(max = AboutDimensions.DialogContentMaxWidth),
+                    .widthIn(max = AboutDimensions.DialogContentMaxWidth)
+                    .fillMaxWidth(),
             contentPadding = AboutDimensions.DialogListPadding,
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
         ) {
@@ -585,8 +585,8 @@ private fun DependencyLicenseList(
             modifier =
                 Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth()
-                    .widthIn(max = AboutDimensions.DialogContentMaxWidth),
+                    .widthIn(max = AboutDimensions.DialogContentMaxWidth)
+                    .fillMaxWidth(),
             contentPadding = AboutDimensions.DialogListPadding,
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
         ) {
@@ -763,8 +763,8 @@ private fun AboutContentContainer(
         Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = AboutDimensions.ScreenContentMaxWidth),
+                    .widthIn(max = AboutDimensions.ScreenContentMaxWidth)
+                    .fillMaxWidth(),
         ) {
             content()
         }
@@ -1077,12 +1077,20 @@ private fun TeamMemberListItem(
 
     SegmentedListItem(
         onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = itemCount),
+        shapes =
+            if (itemCount == 1) {
+                ListItemDefaults.shapes(
+                    shape = MaterialTheme.shapes.extraLarge,
+                )
+            } else {
+                ListItemDefaults.segmentedShapes(index = index, count = itemCount)
+            },
         modifier =
             modifier
                 .fillMaxWidth()
                 .heightIn(min = minHeight),
         colors = AboutListItemDefaults.colors(),
+        verticalAlignment = Alignment.CenterVertically,
         leadingContent = {
             AsyncImage(
                 model = member.avatarUrl,
