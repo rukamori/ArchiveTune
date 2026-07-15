@@ -93,6 +93,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
@@ -259,6 +260,12 @@ fun OnlinePlaylistScreen(
     ) {
         LazyColumn(
             state = lazyListState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = if (isSearching) systemBarsTopPadding + AppBarHeight else 0.dp,
+                    ),
             contentPadding =
                 PaddingValues(
                     bottom =

@@ -75,6 +75,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.MyTopFilter
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -252,6 +253,12 @@ fun TopPlaylistScreen(
     ) {
         LazyColumn(
             state = lazyListState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = if (isSearching) systemBarsTopPadding + AppBarHeight else 0.dp,
+                    ),
             contentPadding =
                 PaddingValues(
                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),

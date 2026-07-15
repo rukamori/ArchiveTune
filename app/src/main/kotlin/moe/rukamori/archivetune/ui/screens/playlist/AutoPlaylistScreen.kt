@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortDescendingKey
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
@@ -291,6 +292,12 @@ fun AutoPlaylistScreen(
     ) {
         LazyColumn(
             state = lazyListState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = if (isSearching) systemBarsTopPadding + AppBarHeight else 0.dp,
+                    ),
             contentPadding =
                 PaddingValues(
                     bottom =

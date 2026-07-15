@@ -68,6 +68,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyMapper
@@ -219,7 +220,12 @@ fun SpotifyPlaylistScreen(
                             .asPaddingValues()
                             .calculateBottomPadding(),
                 ),
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = if (isSearching) systemBarsTopPadding + AppBarHeight else 0.dp,
+                    ),
         ) {
             if (!isSearching) {
                 playlist?.let { currentPlaylist ->
