@@ -436,6 +436,7 @@ fun AlbumScreen(
                                     isActive = false,
                                     isPlaying = false,
                                     shape = RoundedCornerShape(16.dp),
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
                                 )
                             }

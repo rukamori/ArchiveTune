@@ -567,6 +567,7 @@ fun ArtistScreen(
                                     isActive = false,
                                     isPlaying = false,
                                     shape = CircleShape,
+                                    contentScale = ContentScale.Crop,
                                     modifier =
                                         Modifier
                                             .size(210.dp),

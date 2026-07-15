@@ -477,6 +477,7 @@ fun LibrarySongsScreen(
                             isActive = isActive,
                             isPlaying = isPlaying,
                             shape = RoundedCornerShape(thumbCorner),
+                            contentScale = ContentScale.Crop,
                             showPlaceholder = true,
                             modifier =
                                 Modifier

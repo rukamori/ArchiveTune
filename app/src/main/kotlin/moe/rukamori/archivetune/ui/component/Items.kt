@@ -512,6 +512,7 @@ fun ArtistListItem(
             isActive = false,
             isPlaying = false,
             shape = CircleShape,
+            contentScale = ContentScale.Crop,
             maxSizePx = 200,
             modifier = Modifier.size(ListThumbnailSize),
         )
@@ -540,6 +541,7 @@ fun ArtistGridItem(
             isActive = false,
             isPlaying = false,
             shape = CircleShape,
+            contentScale = ContentScale.Crop,
             maxSizePx = 544,
             modifier = Modifier.fillMaxSize(),
         )
@@ -1626,6 +1628,7 @@ fun ItemThumbnail(
     shouldLoadImage: Boolean = true,
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
+    contentScale: ContentScale? = null,
     showPlaceholder: Boolean = false,
     maxSizePx: Int? = null,
     sizeBuckets: List<Int>? = null,
@@ -1652,6 +1655,7 @@ fun ItemThumbnail(
         val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
         val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
         val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
+        val resolvedContentScale = contentScale ?: if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
 
@@ -1705,7 +1709,7 @@ fun ItemThumbnail(
                 AsyncImage(
                     model = request,
                     contentDescription = null,
-                    contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
+                    contentScale = resolvedContentScale,
                     modifier =
                         Modifier
                             .fillMaxSize()

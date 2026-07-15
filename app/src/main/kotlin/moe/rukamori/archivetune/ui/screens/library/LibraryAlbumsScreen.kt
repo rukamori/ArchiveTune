@@ -394,6 +394,7 @@ fun LibraryAlbumsScreen(
                                             isActive = false,
                                             isPlaying = false,
                                             shape = RoundedCornerShape(24.dp),
+                                            contentScale = ContentScale.Crop,
                                             modifier =
                                                 Modifier
                                                     .size(80.dp),
@@ -519,6 +520,7 @@ fun LibraryAlbumsScreen(
                                     isActive = false,
                                     isPlaying = false,
                                     shape = RoundedCornerShape(22.dp),
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
                                 )
                                 // Play Overlay button on cover
@@ -599,6 +601,7 @@ fun LibraryAlbumsScreen(
                                 isActive = false,
                                 isPlaying = false,
                                 shape = RoundedCornerShape(20.dp),
+                                contentScale = ContentScale.Crop,
                                 modifier =
                                     Modifier
                                         .size(60.dp),
