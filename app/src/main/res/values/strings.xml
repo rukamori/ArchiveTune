@@ -1057,4 +1057,5 @@
     <string name="scheduled_backup_directory_saved">Backup directory saved</string>
     <string name="scheduled_backup_load_failed">Scheduled backup settings could not be loaded</string>
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
+    <string name="gatekeeper_connection_blocked">ArchiveTune could not verify network access. Connections are blocked.</string>
 </resources>

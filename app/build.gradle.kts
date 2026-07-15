@@ -34,6 +34,26 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
+fun String.asBuildConfigString(): String =
+    "\"${
+        replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+    }\""
+
+val fallbackDataServerUrl = "archive-tune-admin-remote.vercel.app"
+val dataServerUrl =
+    rootProject
+        .file("DataServer.txt")
+        .takeIf { it.isFile }
+        ?.readText()
+        ?.trim()
+        ?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+        ?: fallbackDataServerUrl
+val apiBearerToken = System.getenv("API_BEARER_TOKEN")?.trim().orEmpty()
+
 val discordApplicationId =
     (
         localProperties.getProperty("DISCORD_APPLICATION_ID")
@@ -117,6 +137,9 @@ android {
                 ?: System.getenv("EXTRACTOR_BEARER")
                 ?: ""
         buildConfigField("String", "EXTRACTOR_BEARER", "\"$extractorBearer\"")
+
+        buildConfigField("String", "DATA_SERVER_URL", dataServerUrl.asBuildConfigString())
+        buildConfigField("String", "API_BEARER_TOKEN", apiBearerToken.asBuildConfigString())
 
         val nightlyBuildHash =
             (

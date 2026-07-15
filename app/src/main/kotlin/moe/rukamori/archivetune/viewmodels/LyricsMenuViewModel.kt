@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 sealed interface LyricsSearchScreenState {
@@ -92,6 +93,7 @@ class LyricsMenuViewModel
     ) : ViewModel() {
         private var job: Job? = null
         private var aiTranslationJob: Job? = null
+        private val searchGeneration = AtomicLong(0L)
         private val _lyricsSearchState = MutableStateFlow<LyricsSearchScreenState>(LyricsSearchScreenState.Empty)
         val lyricsSearchState: StateFlow<LyricsSearchScreenState> = _lyricsSearchState.asStateFlow()
         private val _isRefetching = MutableStateFlow(false)
@@ -128,14 +130,22 @@ class LyricsMenuViewModel
             album: String?,
             duration: Int,
         ) {
+            val generation = searchGeneration.incrementAndGet()
             job?.cancel()
-            lyricsHelper.cancelCurrentLyricsJob()
             _lyricsSearchState.value = LyricsSearchScreenState.Loading
             job =
                 viewModelScope.launch(Dispatchers.IO) {
                     val resultModels = mutableListOf<LyricsSearchResultUiModel>()
                     try {
-                        lyricsHelper.getAllLyrics(mediaId, title, artist, album, duration) { result ->
+                        lyricsHelper.getAllLyrics(
+                            mediaId = mediaId,
+                            songTitle = title,
+                            songArtists = artist,
+                            songAlbum = album,
+                            duration = duration,
+                            forceRefresh = true,
+                        ) { result ->
+                            if (generation != searchGeneration.get()) return@getAllLyrics
                             val model = result.toUiModel(resultModels.size)
                             if (model.preview.isBlank()) return@getAllLyrics
 
@@ -146,6 +156,7 @@ class LyricsMenuViewModel
                                     isSearching = true,
                                 )
                         }
+                        if (generation != searchGeneration.get()) return@launch
                         _lyricsSearchState.value =
                             if (resultModels.isEmpty()) {
                                 LyricsSearchScreenState.Empty
@@ -158,15 +169,17 @@ class LyricsMenuViewModel
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        _lyricsSearchState.value = LyricsSearchScreenState.Error(R.string.error_unknown)
+                        if (generation == searchGeneration.get()) {
+                            _lyricsSearchState.value = LyricsSearchScreenState.Error(R.string.error_unknown)
+                        }
                     }
                 }
         }
 
         fun cancelSearch() {
+            searchGeneration.incrementAndGet()
             job?.cancel()
             job = null
-            lyricsHelper.cancelCurrentLyricsJob()
         }
 
         fun resetSearchState() {
@@ -179,7 +192,7 @@ class LyricsMenuViewModel
 
             viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val lyrics = lyricsHelper.getLyrics(mediaMetadata)
+                    val lyrics = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
                     database.withTransaction {
                         replaceLyrics(
                             id = mediaMetadata.id,

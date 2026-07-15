@@ -54,6 +54,7 @@ jobs:
           PULL_REQUEST: "true"
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
 

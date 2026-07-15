@@ -35,6 +35,7 @@ import moe.rukamori.archivetune.ads.SupportAdsInitializer
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.extensions.*
+import moe.rukamori.archivetune.gatekeeper.RunGatekeeperCheckUseCase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
@@ -68,12 +69,16 @@ import java.io.StringWriter
 import java.net.Proxy
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
 import kotlin.system.exitProcess
 
 @HiltAndroidApp
 class App :
     Application(),
     SingletonImageLoader.Factory {
+    @Inject
+    lateinit var runGatekeeperCheckUseCase: RunGatekeeperCheckUseCase
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile private var isInitialized = false
@@ -110,6 +115,9 @@ class App :
         } catch (_: Exception) {
         }
 
+        applicationScope.launch(Dispatchers.IO) {
+            runGatekeeperCheckUseCase()
+        }
         initializeCriticalSync()
         SupportAdsInitializer.initialize(this)
         initializeDeferredAsync()

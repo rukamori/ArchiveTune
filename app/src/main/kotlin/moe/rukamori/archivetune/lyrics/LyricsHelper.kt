@@ -12,16 +12,13 @@ import android.util.Log
 import android.util.LruCache
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.LyricsProviderOrderKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
@@ -58,22 +55,26 @@ class LyricsHelper
 
         private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
         private val singleLyricsCache = LruCache<String, String>(MAX_CACHE_SIZE)
-        private var currentLyricsJob: Job? = null
 
         suspend fun getLyrics(
             mediaMetadata: MediaMetadata,
             preferredProviderOnly: Boolean = false,
+            forceRefresh: Boolean = false,
         ): String {
             val cacheKey = mediaMetadata.lyricsCacheKey
-            singleLyricsCache.get(cacheKey)?.let { lyrics ->
-                GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
-                return lyrics
-            }
+            if (forceRefresh) {
+                invalidateCache(cacheKey)
+            } else {
+                singleLyricsCache.get(cacheKey)?.let { lyrics ->
+                    GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
+                    return lyrics
+                }
 
-            val cached = cache.get(cacheKey)?.firstOrNull()
-            if (cached != null) {
-                GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
-                return cached.lyrics
+                val cached = cache.get(cacheKey)?.firstOrNull()
+                if (cached != null) {
+                    GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
+                    return cached.lyrics
+                }
             }
 
             GlobalLog.append(
@@ -112,16 +113,17 @@ class LyricsHelper
             songArtists: String,
             songAlbum: String?,
             duration: Int,
+            forceRefresh: Boolean = false,
             callback: (LyricsResult) -> Unit,
         ) {
-            currentLyricsJob?.cancel()
-
             val cacheKey = lyricsCacheKey(songTitle, songArtists)
-            cache.get(cacheKey)?.let { results ->
-                results.forEach {
-                    callback(it)
+            if (forceRefresh) {
+                invalidateCache(cacheKey)
+            } else {
+                cache.get(cacheKey)?.let { results ->
+                    results.forEach(callback)
+                    return
                 }
-                return
             }
 
             val isNetworkAvailable =
@@ -137,27 +139,26 @@ class LyricsHelper
 
             val allResult = mutableListOf<LyricsResult>()
             val providers = orderedProviders()
-            currentLyricsJob =
-                CoroutineScope(SupervisorJob() + Dispatchers.IO).async {
-                    providers.forEach { provider ->
-                        if (!provider.isEnabled(context)) return@forEach
+            withContext(Dispatchers.IO) {
+                providers.forEach { provider ->
+                    if (!provider.isEnabled(context)) return@forEach
 
-                        try {
-                            provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
-                                val normalizedLyrics = LyricsUtils.lyricsOrNotFound(lyrics)
-                                if (normalizedLyrics == LYRICS_NOT_FOUND) return@lyricsCallback
-                                val result = LyricsResult(provider.name, normalizedLyrics)
-                                allResult += result
-                                callback(result)
-                            }
-                        } catch (e: Exception) {
-                            reportException(e)
+                    try {
+                        provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
+                            val normalizedLyrics = LyricsUtils.lyricsOrNotFound(lyrics)
+                            if (normalizedLyrics == LYRICS_NOT_FOUND) return@lyricsCallback
+                            val result = LyricsResult(provider.name, normalizedLyrics)
+                            allResult += result
+                            callback(result)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
                     }
-                    cache.put(cacheKey, allResult)
                 }
-
-            currentLyricsJob?.join()
+            }
+            cache.put(cacheKey, allResult.toList())
         }
 
         private suspend fun fetchPriorityLyrics(
@@ -261,14 +262,14 @@ class LyricsHelper
 
         private fun isMeaningfulLyrics(lyrics: String): Boolean = LyricsUtils.hasMeaningfulLyricsContent(lyrics)
 
-        fun cancelCurrentLyricsJob() {
-            currentLyricsJob?.cancel()
-            currentLyricsJob = null
-        }
-
         fun clearCache() {
             cache.evictAll()
             singleLyricsCache.evictAll()
+        }
+
+        private fun invalidateCache(cacheKey: String) {
+            cache.remove(cacheKey)
+            singleLyricsCache.remove(cacheKey)
         }
 
         private val MediaMetadata.lyricsCacheKey: String
