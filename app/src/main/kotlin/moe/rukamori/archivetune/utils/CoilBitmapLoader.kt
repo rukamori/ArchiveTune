@@ -90,11 +90,12 @@ class CoilBitmapLoader(
                                         Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
                                     }
 
-                                if (scaled == null) {
+                                val mediaSessionBitmap = scaled?.toOwnedMediaSessionBitmap()
+                                if (mediaSessionBitmap == null) {
                                     return@future createBitmap(64, 64)
                                 }
 
-                                return@future scaled
+                                return@future mediaSessionBitmap
                             } catch (e: Exception) {
                                 reportException(e)
                             }
@@ -115,4 +116,9 @@ class CoilBitmapLoader(
             }
             createBitmap(64, 64)
         }
+}
+
+private fun Bitmap.toOwnedMediaSessionBitmap(): Bitmap? {
+    if (isRecycled) return null
+    return copy(Bitmap.Config.ARGB_8888, false)?.takeUnless(Bitmap::isRecycled)
 }
