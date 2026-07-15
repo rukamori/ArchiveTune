@@ -14,11 +14,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -110,10 +111,6 @@ fun SettingsScreen(
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
     var isUpdateDismissed by remember { mutableStateOf(false) }
     val settingsGroups = buildSettingsGroups(navController, isAndroid12OrLater, hasUpdate, context)
-    val settingsItems =
-        remember(settingsGroups) {
-            settingsGroups.flatMap { it.items }
-        }
 
     Scaffold(
         modifier =
@@ -152,7 +149,6 @@ fun SettingsScreen(
     ) { innerPadding ->
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -204,17 +200,38 @@ fun SettingsScreen(
                 }
             }
 
-            itemsIndexed(
-                items = settingsItems,
-                key = { _, item -> item.key },
-                contentType = { _, _ -> "settings_segment" },
-            ) { index, settingsItem ->
-                SettingsSegmentedItem(
-                    item = settingsItem,
-                    index = index,
-                    count = settingsItems.size,
-                    modifier = Modifier.padding(horizontal = 26.dp),
-                )
+            settingsGroups.forEachIndexed { groupIndex, group ->
+                if (groupIndex > 0) {
+                    item(
+                        key = "settings_group_spacing_$groupIndex",
+                        contentType = "settings_group_spacing",
+                    ) {
+                        Spacer(modifier = Modifier.height(SettingsDimensions.SectionSpacing))
+                    }
+                }
+
+                itemsIndexed(
+                    items = group.items,
+                    key = { _, item -> item.key },
+                    contentType = { _, _ -> "settings_segment" },
+                ) { index, settingsItem ->
+                    SettingsSegmentedItem(
+                        item = settingsItem,
+                        index = index,
+                        count = group.items.size,
+                        modifier =
+                            Modifier
+                                .padding(horizontal = SettingsDimensions.SegmentedGroupHorizontalPadding)
+                                .padding(
+                                    bottom =
+                                        if (index < group.items.lastIndex) {
+                                            SettingsDimensions.SegmentedItemGap
+                                        } else {
+                                            0.dp
+                                        },
+                                ),
+                    )
+                }
             }
         }
     }
