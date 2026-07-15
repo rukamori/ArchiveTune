@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -63,8 +64,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.NavigationBarHeight
@@ -75,8 +74,11 @@ import kotlin.math.roundToInt
 
 private val NavigationItemsMaxWidth = 360.dp
 private val NavigationItemVerticalPadding = 8.dp
-private val NavigationIndicatorHorizontalInset = 8.dp
-private val NavigationIndicatorVerticalInset = 12.dp
+
+// The sliding pill wraps just the icon (like the stock indicator), so the label sits below it,
+// outside the bubble. These are the standard Material3 active-indicator dimensions.
+private val NavigationIndicatorWidth = 56.dp
+private val NavigationIndicatorHeight = 32.dp
 
 /**
  * Forces the signature navigation-bar motion (the sliding pill + icon pop) to always run at its
@@ -117,7 +119,7 @@ fun FloatingNavigationToolbar(
     val (disableAnimations) = rememberPreference(DisableAnimationsKey, defaultValue = false)
     val density = LocalDensity.current
 
-    // Color of the custom sliding pill that sits behind the selected item.
+    // Color of the custom sliding pill that sits behind the selected item's icon.
     val indicatorColor =
         if (pureBlack) Color.White.copy(alpha = 0.16f) else MaterialTheme.colorScheme.secondaryContainer
 
@@ -138,41 +140,35 @@ fun FloatingNavigationToolbar(
 
     val selectedIndex = items.indexOfFirst { isSelected(it) }
 
-    // Measured bounds of each item (x in root-space, width in px) and of the row container, used to
-    // slide the pill to the exact position of the selected item regardless of layout/insets.
-    val itemBounds = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
-    var containerX by remember { mutableStateOf(0f) }
+    // Measured center of each item's icon (root-space) and the row container's top-left, so the pill
+    // can slide to the exact icon position regardless of layout/insets. Only the icon is tracked so
+    // the bubble hugs the icon and leaves the text label outside of it.
+    val iconCenters = remember { mutableStateMapOf<Int, Offset>() }
+    var containerPos by remember { mutableStateOf(Offset.Zero) }
 
     val indicatorX = remember { Animatable(0f) }
-    val indicatorWidth = remember { Animatable(0f) }
+    var indicatorY by remember { mutableStateOf(0f) }
+    var indicatorPlaced by remember { mutableStateOf(false) }
 
-    val selectedBounds = if (selectedIndex >= 0) itemBounds[selectedIndex] else null
-    LaunchedEffect(selectedIndex, selectedBounds, containerX, disableAnimations) {
-        val bounds = selectedBounds ?: return@LaunchedEffect
-        val insetPx = with(density) { NavigationIndicatorHorizontalInset.toPx() }
-        val targetX = (bounds.first - containerX) + insetPx
-        val targetWidth = (bounds.second - insetPx * 2f).coerceAtLeast(0f)
-        val firstPlacement = indicatorWidth.value == 0f
+    val selectedCenter = if (selectedIndex >= 0) iconCenters[selectedIndex] else null
+    LaunchedEffect(selectedIndex, selectedCenter, containerPos, disableAnimations) {
+        val center = selectedCenter ?: return@LaunchedEffect
+        val widthPx = with(density) { NavigationIndicatorWidth.toPx() }
+        val heightPx = with(density) { NavigationIndicatorHeight.toPx() }
+        val targetX = (center.x - containerPos.x) - widthPx / 2f
+        // All icons share a row, so Y is constant; compute it directly (no animation needed).
+        indicatorY = (center.y - containerPos.y) - heightPx / 2f
+        val firstPlacement = !indicatorPlaced
         if (disableAnimations || firstPlacement) {
             indicatorX.snapTo(targetX)
-            indicatorWidth.snapTo(targetWidth)
+            indicatorPlaced = true
         } else {
             // Run at a fixed motion scale so the slide stays lively even at 0.5x system scale.
             withContext(FullMotionDurationScale) {
-                coroutineScope {
-                    launch {
-                        indicatorX.animateTo(
-                            targetValue = targetX,
-                            animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
-                        )
-                    }
-                    launch {
-                        indicatorWidth.animateTo(
-                            targetValue = targetWidth,
-                            animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow),
-                        )
-                    }
-                }
+                indicatorX.animateTo(
+                    targetValue = targetX,
+                    animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
+                )
             }
         }
     }
@@ -206,19 +202,18 @@ fun FloatingNavigationToolbar(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .onGloballyPositioned { containerX = it.positionInRoot().x },
+                            .onGloballyPositioned { containerPos = it.positionInRoot() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    // Custom sliding pill indicator, drawn behind the items.
-                    if (selectedIndex >= 0 && indicatorWidth.value > 0f) {
+                    // Custom sliding pill indicator, drawn behind the icons (label stays outside it).
+                    if (selectedIndex >= 0 && indicatorPlaced) {
                         Box(
                             modifier =
                                 Modifier
-                                    .align(Alignment.CenterStart)
-                                    .offset { IntOffset(indicatorX.value.roundToInt(), 0) }
-                                    .width(with(density) { indicatorWidth.value.toDp() })
-                                    .fillMaxHeight()
-                                    .padding(vertical = NavigationIndicatorVerticalInset)
+                                    .align(Alignment.TopStart)
+                                    .offset { IntOffset(indicatorX.value.roundToInt(), indicatorY.roundToInt()) }
+                                    .width(NavigationIndicatorWidth)
+                                    .height(NavigationIndicatorHeight)
                                     .clip(RoundedCornerShape(percent = 50))
                                     .background(indicatorColor),
                         )
@@ -285,31 +280,39 @@ fun FloatingNavigationToolbar(
                                 selected = selected,
                                 onClick = onClick,
                                 colors = itemColors,
-                                modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .onGloballyPositioned { coordinates ->
-                                            itemBounds[index] =
-                                                coordinates.positionInRoot().x to coordinates.size.width.toFloat()
-                                        },
+                                modifier = Modifier.weight(1f),
                                 icon = {
-                                    Crossfade(
-                                        targetState = selected,
-                                        animationSpec = motionScheme.fastEffectsSpec(),
-                                        label = "navigationItemIcon",
-                                    ) { isSelected ->
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    if (isSelected) screen.iconIdActive else screen.iconIdInactive,
-                                                ),
-                                            contentDescription = null,
-                                            modifier =
-                                                Modifier.graphicsLayer {
-                                                    scaleX = iconScale.value
-                                                    scaleY = iconScale.value
-                                                },
-                                        )
+                                    // Measure the icon's own bounds so the pill hugs only the icon.
+                                    Box(
+                                        modifier =
+                                            Modifier.onGloballyPositioned { coordinates ->
+                                                val pos = coordinates.positionInRoot()
+                                                iconCenters[index] =
+                                                    Offset(
+                                                        pos.x + coordinates.size.width / 2f,
+                                                        pos.y + coordinates.size.height / 2f,
+                                                    )
+                                            },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Crossfade(
+                                            targetState = selected,
+                                            animationSpec = motionScheme.fastEffectsSpec(),
+                                            label = "navigationItemIcon",
+                                        ) { isSelected ->
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        if (isSelected) screen.iconIdActive else screen.iconIdInactive,
+                                                    ),
+                                                contentDescription = null,
+                                                modifier =
+                                                    Modifier.graphicsLayer {
+                                                        scaleX = iconScale.value
+                                                        scaleY = iconScale.value
+                                                    },
+                                            )
+                                        }
                                     }
                                 },
                                 label = {
