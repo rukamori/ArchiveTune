@@ -130,6 +130,7 @@ import moe.rukamori.archivetune.ui.component.AlbumGridItem
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.MediaDetailSupportingIconAction
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
@@ -282,6 +283,31 @@ fun ArtistScreen(
                 listOf(topSongsSection) + sections.filterNot { it === topSongsSection }
             }
         }
+    val showArtistOverflowMenu: () -> Unit = {
+        menuState.show {
+            ArtistOverflowMenu(
+                isBlocked = isArtistBlocked,
+                blockActionEnabled =
+                    blockState !is ArtistBlockState.Loading &&
+                        (
+                            artistPage
+                                ?.artist
+                                ?.title
+                                .orEmpty()
+                                .isNotBlank() ||
+                                libraryArtist
+                                    ?.artist
+                                    ?.name
+                                    .orEmpty()
+                                    .isNotBlank()
+                        ),
+                onAction = { action ->
+                    viewModel.onAction(action)
+                    menuState.dismiss()
+                },
+            )
+        }
+    }
 
     Box(
         modifier =
@@ -541,6 +567,19 @@ fun ArtistScreen(
                                         }
                                     }
                                 },
+                                onRadio =
+                                    if (showLocal) {
+                                        null
+                                    } else {
+                                        artistPage?.artist?.radioEndpoint?.let { endpoint ->
+                                            {
+                                                playerConnection.playQueue(
+                                                    YouTubeQueue(endpoint),
+                                                )
+                                            }
+                                        }
+                                    },
+                                onMore = showArtistOverflowMenu,
                                 modifier = Modifier.padding(top = 12.dp),
                             )
                         }
@@ -970,41 +1009,6 @@ fun ArtistScreen(
                 )
             }
         },
-        actions = {
-            IconButton(
-                onClick = {
-                    menuState.show {
-                        ArtistOverflowMenu(
-                            isBlocked = isArtistBlocked,
-                            blockActionEnabled =
-                                blockState !is ArtistBlockState.Loading &&
-                                    (
-                                        artistPage
-                                            ?.artist
-                                            ?.title
-                                            .orEmpty()
-                                            .isNotBlank() ||
-                                            libraryArtist
-                                                ?.artist
-                                                ?.name
-                                                .orEmpty()
-                                                .isNotBlank()
-                                    ),
-                            onAction = { action ->
-                                viewModel.onAction(action)
-                                menuState.dismiss()
-                            },
-                        )
-                    }
-                },
-                onLongClick = {},
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = stringResource(R.string.more_options),
-                )
-            }
-        },
         colors =
             if (transparentAppBar) {
                 TopAppBarDefaults.topAppBarColors(
@@ -1102,7 +1106,6 @@ private val ArtistHeroMinHeight = 560.dp
 private val ArtistHorizontalPadding = 24.dp
 private val ArtistContentMaxWidth = 720.dp
 private val ArtistSecondaryActionSize = 52.dp
-private val ArtistPlayActionMinWidth = 132.dp
 private val ArtistReleaseArtworkSize = 112.dp
 private const val ArtistStatSeparator = "  •  "
 
@@ -1125,6 +1128,8 @@ private fun ArtistPrimaryActions(
     onShuffle: () -> Unit,
     onPlay: () -> Unit,
     onToggleSubscription: () -> Unit,
+    onRadio: (() -> Unit)?,
+    onMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val secondaryButtonColors =
@@ -1135,72 +1140,94 @@ private fun ArtistPrimaryActions(
             disabledContentColor = contentColor.copy(alpha = 0.38f),
         )
 
-    Row(
+    Column(
         modifier =
             modifier
                 .fillMaxWidth()
                 .widthIn(max = ArtistContentMaxWidth),
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FilledTonalIconButton(
-            onClick = onShuffle,
-            enabled = canShuffle,
-            shape = CircleShape,
-            colors = secondaryButtonColors,
-            modifier = Modifier.size(ArtistSecondaryActionSize),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.shuffle),
-                contentDescription = stringResource(R.string.shuffle),
-                modifier = Modifier.size(22.dp),
-            )
-        }
+            FilledTonalIconButton(
+                onClick = onShuffle,
+                enabled = canShuffle,
+                shape = CircleShape,
+                colors = secondaryButtonColors,
+                modifier = Modifier.size(ArtistSecondaryActionSize),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.shuffle),
+                    contentDescription = stringResource(R.string.shuffle),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
 
-        val playButtonHeight = ButtonDefaults.MediumContainerHeight
-        Button(
-            onClick = onPlay,
-            enabled = canPlay,
-            shape = CircleShape,
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = contentColor,
-                    contentColor = contrastingColor,
-                    disabledContainerColor = contentColor.copy(alpha = 0.38f),
-                    disabledContentColor = contrastingColor.copy(alpha = 0.54f),
-                ),
-            contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
-            modifier =
-                Modifier
-                    .widthIn(min = ArtistPlayActionMinWidth)
-                    .heightIn(min = playButtonHeight),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.play),
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
-            )
-            Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
-            Text(
-                text = stringResource(R.string.play),
-                style = ButtonDefaults.textStyleFor(playButtonHeight),
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        FilledTonalIconButton(
-            onClick = onToggleSubscription,
-            shape = CircleShape,
-            colors = secondaryButtonColors,
-            modifier = Modifier.size(ArtistSecondaryActionSize),
-        ) {
-            Icon(
-                painter = painterResource(if (isSubscribed) R.drawable.done else R.drawable.add),
-                contentDescription =
-                    stringResource(
-                        if (isSubscribed) R.string.subscribed else R.string.subscribe,
+            val playButtonHeight = ButtonDefaults.MediumContainerHeight
+            Button(
+                onClick = onPlay,
+                enabled = canPlay,
+                shape = RoundedCornerShape(percent = 50),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = contentColor,
+                        contentColor = contrastingColor,
+                        disabledContainerColor = contentColor.copy(alpha = 0.38f),
+                        disabledContentColor = contrastingColor.copy(alpha = 0.54f),
                     ),
-                modifier = Modifier.size(22.dp),
+                contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
+                modifier = Modifier.heightIn(min = playButtonHeight),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.play),
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
+                )
+                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
+                Text(
+                    text = stringResource(R.string.play),
+                    style = ButtonDefaults.textStyleFor(playButtonHeight),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            FilledTonalIconButton(
+                onClick = onToggleSubscription,
+                shape = CircleShape,
+                colors = secondaryButtonColors,
+                modifier = Modifier.size(ArtistSecondaryActionSize),
+            ) {
+                Icon(
+                    painter = painterResource(if (isSubscribed) R.drawable.done else R.drawable.add),
+                    contentDescription =
+                        stringResource(
+                            if (isSubscribed) R.string.subscribed else R.string.subscribe,
+                        ),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            onRadio?.let {
+                MediaDetailSupportingIconAction(
+                    icon = R.drawable.radio,
+                    contentDescription = R.string.start_radio,
+                    contentColor = contentColor,
+                    onClick = it,
+                )
+            }
+            MediaDetailSupportingIconAction(
+                icon = R.drawable.more_vert,
+                contentDescription = R.string.more_options,
+                contentColor = contentColor,
+                onClick = onMore,
             )
         }
     }
