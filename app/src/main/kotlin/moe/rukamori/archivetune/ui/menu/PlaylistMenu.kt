@@ -120,6 +120,7 @@ fun PlaylistMenu(
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
     onChangeCover: (() -> Unit)? = null,
+    onRemoveCover: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -770,6 +771,27 @@ fun PlaylistMenu(
                                     )
                                 },
                                 modifier = Modifier.clickable(onClick = changeCover),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                        }
+
+                        onRemoveCover?.let { removeCover ->
+                            HorizontalDivider(
+                                modifier = dividerModifier,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = stringResource(R.string.remove_playlist_cover))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.delete),
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier = Modifier.clickable(onClick = removeCover),
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             )
                         }

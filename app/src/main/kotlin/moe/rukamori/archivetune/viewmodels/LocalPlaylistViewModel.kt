@@ -8,14 +8,20 @@
 package moe.rukamori.archivetune.viewmodels
 
 import android.content.Context
+import android.net.Uri
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,6 +31,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -53,6 +60,8 @@ import moe.rukamori.archivetune.models.PlaylistSuggestion
 import moe.rukamori.archivetune.models.PlaylistSuggestionPage
 import moe.rukamori.archivetune.models.PlaylistSuggestionQuery
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.playlist.RemovePlaylistCoverUseCase
+import moe.rukamori.archivetune.playlist.UpdatePlaylistCoverUseCase
 import moe.rukamori.archivetune.utils.PlaylistSuggestionQueryBuilder
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
@@ -68,6 +77,8 @@ class LocalPlaylistViewModel
         @ApplicationContext private val context: Context,
         private val database: MusicDatabase,
         private val syncUtils: SyncUtils,
+        private val updatePlaylistCover: UpdatePlaylistCoverUseCase,
+        private val removePlaylistCover: RemovePlaylistCoverUseCase,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         val playlistId = savedStateHandle.get<String>("playlistId")!!
@@ -175,6 +186,14 @@ class LocalPlaylistViewModel
         private val _isRefreshing = MutableStateFlow(false)
         val isRefreshing = _isRefreshing.asStateFlow()
 
+        private val _coverState = MutableStateFlow<PlaylistCoverState>(PlaylistCoverState.Empty)
+        val coverState = _coverState.asStateFlow()
+
+        private val coverEventChannel = Channel<PlaylistCoverEvent>(Channel.BUFFERED)
+        val coverEvents = coverEventChannel.receiveAsFlow()
+
+        private var coverMutationJob: Job? = null
+
         init {
             viewModelScope.launch(Dispatchers.IO) {
                 val sortedSongs =
@@ -275,6 +294,33 @@ class LocalPlaylistViewModel
                     _isRefreshing.value = false
                 }
             }
+        }
+
+        fun updateCover(uri: Uri) {
+            mutateCover { updatePlaylistCover(playlistId, uri) }
+        }
+
+        fun removeCover() {
+            mutateCover { removePlaylistCover(playlistId) }
+        }
+
+        private fun mutateCover(mutation: suspend () -> Unit) {
+            if (coverMutationJob?.isActive == true) return
+            coverMutationJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    _coverState.value = PlaylistCoverState.Loading
+                    try {
+                        mutation()
+                        _coverState.value = PlaylistCoverState.Success
+                        coverEventChannel.send(PlaylistCoverEvent.ShowMessage(R.string.playlist_cover_updated))
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (throwable: Throwable) {
+                        reportException(throwable)
+                        _coverState.value = PlaylistCoverState.Error(R.string.playlist_cover_update_failed)
+                        coverEventChannel.send(PlaylistCoverEvent.ShowMessage(R.string.playlist_cover_update_failed))
+                    }
+                }
         }
 
         // Playlist Suggestions Functions
@@ -630,3 +676,22 @@ class LocalPlaylistViewModel
             return filteredItems
         }
     }
+
+@Immutable
+sealed interface PlaylistCoverState {
+    data object Loading : PlaylistCoverState
+
+    data object Success : PlaylistCoverState
+
+    data object Empty : PlaylistCoverState
+
+    data class Error(
+        @StringRes val messageRes: Int,
+    ) : PlaylistCoverState
+}
+
+sealed interface PlaylistCoverEvent {
+    data class ShowMessage(
+        @StringRes val messageRes: Int,
+    ) : PlaylistCoverEvent
+}

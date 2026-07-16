@@ -111,6 +111,9 @@
     <string name="remove_download_playlist_confirm">Do you really want to remove all \"%s\" playlist songs from the Downloaded Songs storage?</string>
     <string name="delete_playlist_confirm">Do you really want to delete the playlist \"%s\"?</string>
     <string name="change_playlist_cover">Change playlist cover</string>
+    <string name="remove_playlist_cover">Remove custom cover</string>
+    <string name="playlist_cover_updated">Playlist cover updated</string>
+    <string name="playlist_cover_update_failed">Couldn’t update playlist cover</string>
     <string name="retry">Retry</string>
     <string name="cast">Cast</string>
     <string name="cast_devices">Cast devices</string>
