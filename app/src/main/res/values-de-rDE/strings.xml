@@ -99,13 +99,13 @@
     <string name="save">Speichern</string>
     <string name="edit_playlist">Playlist bearbeiten</string>
     <string name="create_playlist">Playlist erstellen</string>
-    <string name="playlist_name">Name der Wiedergabeliste</string>
+    <string name="playlist_name">Name der Playlist</string>
     <string name="artist_name">Künstlername</string>
     <string name="duplicates">Duplikate</string>
-    <string name="skip_duplicates">Überspringen Sie Duplikate</string>
+    <string name="skip_duplicates">Duplikat überspringen</string>
     <string name="add_anyway">Trotzdem hinzufügen</string>
-    <string name="duplicates_description_single">Das Lied ist bereits in Ihrer Playlist</string>
-    <string name="duplicates_description_multiple">%d Songs sind bereits in Ihrer Playlist</string>
+    <string name="duplicates_description_single">Der Song ist bereits in deiner Playlist</string>
+    <string name="duplicates_description_multiple">%d Songs sind bereits in deiner Playlist</string>
     <plurals name="n_song">
         <item quantity="one">%d Lied</item>
         <item quantity="other">%d Lieder</item>
@@ -149,18 +149,18 @@
     <string name="error_unknown">Unbekannter Fehler</string>
     <string name="action_like">Wie</string>
     <string name="action_remove_like">Like entfernen</string>
-    <string name="action_shuffle_on">Mischen Sie weiter</string>
-    <string name="action_shuffle_off">Schlurfen Sie ab</string>
+    <string name="action_shuffle_on">Shuffle an</string>
+    <string name="action_shuffle_off">Shuffle aus</string>
     <string name="repeat_mode_off">Wiederholungsmodus aus</string>
-    <string name="repeat_mode_one">Aktuelles Lied wiederholen</string>
+    <string name="repeat_mode_one">Aktuellen Song wiederholen</string>
     <string name="repeat_mode_all">Warteschlange wiederholen</string>
-    <string name="queue_all_songs">Alle Lieder</string>
+    <string name="queue_all_songs">Alle Songs</string>
     <string name="queue_searched_songs">Gesuchte Lieder</string>
     <string name="music_player">Musik-Player</string>
     <string name="settings">Einstellungen</string>
     <string name="appearance">Aussehen</string>
     <string name="theme">Thema</string>
-    <string name="enable_dynamic_theme">Aktivieren Sie das dynamische Design</string>
+    <string name="enable_dynamic_theme">Dynamisches Design aktivieren</string>
     <string name="color_palette">Farbpalette</string>
     <string name="customize_theme_colors">Wähle die Farben deines App-Themes</string>
     <string name="palette_default">Standard</string>
@@ -237,7 +237,7 @@
     <string name="show_button">Schaltfläche anzeigen</string>
     <string name="corner_radius">Eckenradius: %1$d</string>
     <string name="adjust_radius">Eckenradius anpassen</string>
-    <string name="cancel_button">Stornieren</string>
+    <string name="cancel_button">Abbrechen</string>
     <string name="ok_button">OK</string>
     <string name="custom_radius">Passen Sie den Eckenradius der Miniaturansicht an</string>
     <string name="custom">Benutzerdefiniert</string>
@@ -251,7 +251,7 @@
     <string name="show_button1_description">Schalten Sie die Sichtbarkeit von Schaltfläche 1 in Discord Rich Presence um</string>
     <string name="show_button2_description">Schalten Sie die Sichtbarkeit von Schaltfläche 2 in Discord Rich Presence um</string>
     <string name="discord_activity_type">Aktivitätstyp</string>
-    <string name="dark_theme_follow_system">Folgen Sie dem System</string>
+    <string name="dark_theme_follow_system">System folgen</string>
     <string name="pure_black">Reines Schwarz</string>
     <string name="disable_blur">Unschärfeeffekte deaktivieren</string>
     <string name="disable_blur_desc">Deaktivieren Sie Unschärfeeffekte in der gesamten App</string>
@@ -262,7 +262,7 @@
     <string name="lyrics_animation_style">Songtext-Animationsstil</string>
     <string name="content">Inhalt</string>
     <string name="action_logout">Abmelden</string>
-    <string name="action_login">Einloggen</string>
+    <string name="action_login">Anmelden</string>
     <string name="login">Login</string>
     <string name="not_logged_in">Nicht angemeldet</string>
     <string name="content_language">Standardinhaltssprache</string>
@@ -432,11 +432,11 @@
     <string name="pitch_mode_multiplier_short">x</string>
     <string name="added_to_playlist">Zu %s hinzugefügt</string>
     <string name="added_n_songs_to_playlist">%1$d Lieder zu %2$s hinzugefügt</string>
-    <string name="added_to_n_playlists">Zu %d playlist hinzugefügt</string>
+    <string name="added_to_n_playlists">Zu %d Playlists hinzugefügt</string>
     <string name="added_n_songs_to_n_playlists">%1$d Lieder zu %2$d Playlists hinzugefügt</string>
     <string name="queue_continue_playing">Wiedergabe fortsetzen</string>
     <string name="queue_autoplaying_similar">Ähnliche Musik automatisch abspielen</string>
-    <string name="random_theme_on_startup">Zufälliges Theme beim start</string>
+    <string name="random_theme_on_startup">Zufälliges Thema beim Start</string>
     <string name="random_theme_on_startup_desc">Wende eine zufällige Farbpalette bei jedem Appstart an</string>
     <string name="music_recognition">Musikerkennung</string>
     <string name="removed_song_from_queue">\"%s\" aus der Warteschlange entfernen</string>
@@ -448,9 +448,9 @@
     <string name="album_backdrop_desc">Kunstwerk als unscharfen Hintergrund auf dem Player anzeigen</string>
     <string name="backdrop_blur_amount">Stärke der Hintergrundunschärfe</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="enable_unison_lyrics">Unison Songtexte aktivieren</string>
-    <string name="enable_simpmusic_lyrics">SimpMusic Songtexte aktivieren</string>
-    <string name="enable_paxsenix_lyrics">Paxsenix Songtexte aktivieren</string>
+    <string name="enable_unison_lyrics">Unison-Songtexte aktivieren</string>
+    <string name="enable_simpmusic_lyrics">SimpMusic-Songtexte aktivieren</string>
+    <string name="enable_paxsenix_lyrics">Paxsenix-Songtexte aktivieren</string>
     <string name="low_data_mode_title">Datensparmodus</string>
     <string name="low_data_mode_description">Reduziert den mobilen Datenverbrauch, indem in Netzwerken mit Datenvolumenbegrenzung Streams in niedriger Qualität verwendet und die Wiedergabecache-Funktion, Canvas sowie das Vorladen von Songtexten im Hintergrund deaktiviert werden</string>
     <string name="permanent_shuffle">Permanenter Shuffle-Modus</string>
@@ -491,7 +491,7 @@
     <string name="player_background_style_v8_v9_desc">Nicht verfügbar mit V8 und V9 Player-Stil</string>
     <string name="disable_animations">Animationen deaktivieren</string>
     <string name="disable_animations_desc">Die meisten Appanimationen deaktivieren. Für Low-end-Geräte empfohlen</string>
-    <string name="blur_intensity">Intensität der Unschärfe</string>
+    <string name="blur_intensity">Unschärfeintensität</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="slider_style_standard">Standard</string>
     <string name="library_subtitle">Deine Musik, für dich organisiert</string>
@@ -507,7 +507,7 @@
     <string name="proxy_auth">Proxy Authorisierung (optional)</string>
     <string name="proxy_username">Benutzername</string>
     <string name="proxy_password">Passwort</string>
-    <string name="test_proxy_connection">Teste Proxy-Verbindung</string>
+    <string name="test_proxy_connection">Proxy-Verbindung testen</string>
     <string name="testing_proxy_connection">Teste Proxy-Verbindung</string>
     <string name="proxy_connection_success">Proxy-Verbindung erfolgreich!</string>
     <string name="proxy_connection_failed">Proxy-Verbindung fehlgeschlagen: %s</string>
@@ -534,7 +534,7 @@
     <string name="slider_style_wavy">Wellig</string>
     <string name="slider_style_thick">Dick</string>
     <string name="slider_style_circular">Rund</string>
-    <string name="slider_style_simple">Vereinfacht</string>
+    <string name="slider_style_simple">Einfach</string>
     <string name="haptics">Vibration</string>
     <string name="haptics_desc">Haptisches Feedback bei interaktiven Elementen aktivieren</string>
     <string name="lyrics_mode">Songtextmodus</string>
@@ -571,7 +571,7 @@
     <string name="open_with_downloader">Mit Downloader öffnen</string>
     <string name="external_downloader_not_installed">Externe Downloader-App ist nicht installiert</string>
     <string name="tap_to_activate_equalizer">Tippen, um den Equalizer zu aktivieren</string>
-    <string name="eq_open_system_equalizer">Öffne System-Equalizer</string>
+    <string name="eq_open_system_equalizer">System-Equalizer öffnen</string>
     <string name="eq_presets">Voreinstellungen</string>
     <string name="eq_flat">Flach</string>
     <string name="eq_profiles">Profile</string>
@@ -922,4 +922,5 @@
     <string name="hidden_playlists_description">Ausgeblendete Playlists deiner Bibliothek erscheinen hier</string>
     <string name="no_hidden_playlists">Keine ausgeblendeten Playlists</string>
     <string name="unhide">Einblenden</string>
+    <string name="app_icon_default">Standard</string>
 </resources>
