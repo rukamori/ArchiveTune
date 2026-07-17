@@ -424,6 +424,7 @@ class MusicService :
     private var currentQueue: Queue = EmptyQueue
     var queueTitle: String? = null
     private var blockedArtistIds: Set<String> = emptySet()
+    private var hideMusicVideos = false
     private var infiniteQueueJob: Job? = null
     private var infiniteQueueGeneration = 0L
     private val persistentStateLock = Any()
@@ -1097,6 +1098,15 @@ class MusicService :
             .collect(scope) { updatedBlockedArtistIds ->
                 blockedArtistIds = updatedBlockedArtistIds
                 removeBlockedArtistItems(updatedBlockedArtistIds)
+            }
+        dataStore.data
+            .map { preferences -> preferences[HideVideoKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { shouldHideMusicVideos ->
+                hideMusicVideos = shouldHideMusicVideos
+                if (shouldHideMusicVideos) {
+                    removeMusicVideoItems()
+                }
             }
         widgetUpdater =
             MusicServiceWidgetUpdater(
@@ -1975,10 +1985,20 @@ class MusicService :
     private fun removeBlockedArtistItems(updatedBlockedArtistIds: Set<String>) {
         if (updatedBlockedArtistIds.isEmpty() || player.mediaItemCount == 0) return
 
+        removeQueueItems { item -> item.hasBlockedArtist(updatedBlockedArtistIds) }
+    }
+
+    private fun removeMusicVideoItems() {
+        removeQueueItems { item -> item.metadata?.isMusicVideo == true }
+    }
+
+    private inline fun removeQueueItems(shouldRemove: (MediaItem) -> Boolean) {
+        if (player.mediaItemCount == 0) return
+
         var blockedRangeEnd = C.INDEX_UNSET
         for (index in player.mediaItemCount - 1 downTo 0) {
             val item = player.getMediaItemAt(index)
-            if (item.hasBlockedArtist(updatedBlockedArtistIds)) {
+            if (shouldRemove(item)) {
                 autoAddedMediaIds.remove(item.mediaId)
                 if (blockedRangeEnd == C.INDEX_UNSET) {
                     blockedRangeEnd = index + 1
@@ -3921,7 +3941,10 @@ class MusicService :
     }
 
     fun playNext(items: List<MediaItem>) {
-        val allowedItems = items.filterBlockedArtists(blockedArtistIds)
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
         if (allowedItems.isEmpty()) return
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -3962,7 +3985,10 @@ class MusicService :
     }
 
     fun addToQueue(items: List<MediaItem>) {
-        val allowedItems = items.filterBlockedArtists(blockedArtistIds)
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
         if (allowedItems.isEmpty()) return
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -7785,6 +7811,7 @@ class MusicService :
                 albumId = media.album?.id,
                 albumName = media.album?.title,
                 explicit = media.explicit,
+                isMusicVideo = media.isMusicVideo,
                 isLocal = media.id.isLocalMediaId(),
             )
 
