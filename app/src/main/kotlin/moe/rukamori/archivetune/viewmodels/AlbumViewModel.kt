@@ -7,22 +7,28 @@
 
 package moe.rukamori.archivetune.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
+import moe.rukamori.archivetune.extensions.filterVideo
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
 
@@ -52,24 +58,30 @@ private sealed interface FetchState {
 class AlbumViewModel
     @Inject
     constructor(
+        @ApplicationContext context: Context,
         private val database: MusicDatabase,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         val albumId = savedStateHandle.get<String>("albumId")!!
         val playlistId = MutableStateFlow("")
         val albumWithSongs =
-            database
-                .albumWithSongs(albumId)
-                .map { album ->
-                    album?.copy(
-                        songs =
-                            if (album.artists.any { it.blockedAt != null }) {
-                                emptyList()
-                            } else {
-                                album.songs.filterBlockedArtists()
-                            },
-                    )
-                }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+            combine(
+                database.albumWithSongs(albumId),
+                context.dataStore.data
+                    .map { preferences -> preferences[HideVideoKey] ?: false }
+                    .distinctUntilChanged(),
+            ) { album, hideVideo ->
+                album?.copy(
+                    songs =
+                        if (album.artists.any { it.blockedAt != null }) {
+                            emptyList()
+                        } else {
+                            album.songs
+                                .filterBlockedArtists()
+                                .filterVideo(hideVideo)
+                        },
+                )
+            }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
         var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
 
         private val _fetchState = MutableStateFlow<FetchState>(FetchState.Pending)
