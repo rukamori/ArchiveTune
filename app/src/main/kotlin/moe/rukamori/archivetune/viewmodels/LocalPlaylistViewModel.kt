@@ -104,8 +104,14 @@ class LocalPlaylistViewModel
                 database.playlistSongs(playlistId),
                 sortType,
                 sortDescending,
-            ) { songs, sortType, sortDescending ->
-                val visibleSongs = songs.filter { playlistSong -> playlistSong.song.artists.none { it.blockedAt != null } }
+                context.dataStore.data
+                    .map { preferences -> preferences[HideVideoKey] ?: false }
+                    .distinctUntilChanged(),
+            ) { songs, sortType, sortDescending, hideVideo ->
+                val visibleSongs =
+                    songs
+                        .filter { playlistSong -> playlistSong.song.artists.none { it.blockedAt != null } }
+                        .filter { playlistSong -> !hideVideo || !playlistSong.song.song.isMusicVideo }
                 when (sortType) {
                     PlaylistSongSortType.CUSTOM -> {
                         visibleSongs
