@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,6 +34,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -46,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,7 +68,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -72,7 +78,9 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyMapper
+import moe.rukamori.archivetune.spotify.SpotifyDownloadItem
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
+import moe.rukamori.archivetune.spotify.SpotifyPlaylistEvent
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistViewModel
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -80,11 +88,18 @@ import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.MediaDetailAction
 import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
+import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
+import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
+import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
+import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
 import kotlin.math.abs
 
@@ -96,6 +111,8 @@ fun SpotifyPlaylistScreen(
     viewModel: SpotifyPlaylistViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadUtil = LocalDownloadUtil.current
+    val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
     val coroutineScope = rememberCoroutineScope()
     val isPlaying by playerConnection?.isPlaying?.collectAsStateWithLifecycle()
@@ -106,6 +123,53 @@ fun SpotifyPlaylistScreen(
     val tracks = state.tracks
     val lazyListState = rememberLazyListState()
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val downloadActionFailedMessage = stringResource(R.string.download_action_failed)
+    val latestDownloads by rememberUpdatedState(downloads)
+
+    val downloadState =
+        remember(state.downloadItems, downloads) {
+            headerDownloadState(
+                songIds = state.downloadItems.map(SpotifyDownloadItem::id),
+                downloads = downloads,
+            )
+        }
+
+    fun handleDownloadAction(
+        items: ImmutableList<SpotifyDownloadItem>,
+        removeCompleted: Boolean = true,
+    ) {
+        val songIds = items.map(SpotifyDownloadItem::id)
+        when (headerDownloadState(songIds, latestDownloads)) {
+            HeaderDownloadState.Completed -> {
+                if (removeCompleted) {
+                    sendRemoveDownloads(
+                        context = navController.context,
+                        songIds = songIds,
+                    )
+                }
+            }
+
+            is HeaderDownloadState.Partial -> {
+                navController.navigate("auto_playlist/downloaded?tab=progress")
+            }
+
+            HeaderDownloadState.None -> {
+                sendAddMissingDownloads(
+                    context = navController.context,
+                    songs =
+                        items.map { item ->
+                            HeaderDownloadItem(
+                                id = item.id,
+                                title = item.title,
+                            )
+                        },
+                    downloads = latestDownloads,
+                )
+                navController.navigate("auto_playlist/downloaded?tab=progress")
+            }
+        }
+    }
 
     val showTopBarTitle by remember {
         derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
@@ -163,6 +227,23 @@ fun SpotifyPlaylistScreen(
 
     LaunchedEffect(isSearching) {
         if (isSearching) focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                SpotifyPlaylistEvent.DownloadResolutionFailed -> {
+                    snackbarHostState.showSnackbar(downloadActionFailedMessage)
+                }
+
+                is SpotifyPlaylistEvent.DownloadsResolved -> {
+                    handleDownloadAction(
+                        items = event.items,
+                        removeCompleted = false,
+                    )
+                }
+            }
+        }
     }
 
     if (isSearching) {
@@ -268,6 +349,56 @@ fun SpotifyPlaylistScreen(
                                 },
                             onToggleAdd = null,
                             additionalPrimaryActions = { contentColor ->
+                                if (tracks.isNotEmpty()) {
+                                    MediaDetailAction(
+                                        contentDescription =
+                                            if (downloadState == HeaderDownloadState.Completed) {
+                                                R.string.remove_download
+                                            } else {
+                                                R.string.download
+                                            },
+                                        contentColor = contentColor,
+                                        enabled = !state.isLoading && !state.isResolvingDownloads,
+                                        onClick = {
+                                            if (state.downloadItems.isEmpty()) {
+                                                viewModel.resolveDownloads()
+                                            } else {
+                                                handleDownloadAction(state.downloadItems)
+                                            }
+                                        },
+                                    ) {
+                                        if (state.isResolvingDownloads) {
+                                            CircularWavyProgressIndicator(
+                                                modifier = Modifier.size(22.dp),
+                                            )
+                                        } else {
+                                            when (val currentState = downloadState) {
+                                                HeaderDownloadState.Completed -> {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.offline),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(22.dp),
+                                                    )
+                                                }
+
+                                                is HeaderDownloadState.Partial -> {
+                                                    HeaderDownloadProgressIndicator(
+                                                        progress = currentState.progress,
+                                                        paused = currentState.paused,
+                                                    )
+                                                }
+
+                                                HeaderDownloadState.None -> {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.download),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(22.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 MediaDetailIconAction(
                                     icon = R.drawable.sync,
                                     contentDescription = R.string.spotify_reload_playlist,
@@ -452,6 +583,16 @@ fun SpotifyPlaylistScreen(
                 }
             },
             scrollBehavior = scrollBehavior,
+        )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier =
+                Modifier
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current
+                            .union(WindowInsets.ime),
+                    ).align(Alignment.BottomCenter),
         )
     }
 }
