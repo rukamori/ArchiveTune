@@ -225,8 +225,10 @@ import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
+import moe.rukamori.archivetune.playback.queues.hasBlockedArtist
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
@@ -421,6 +423,8 @@ class MusicService :
 
     private var currentQueue: Queue = EmptyQueue
     var queueTitle: String? = null
+    private var blockedArtistIds: Set<String> = emptySet()
+    private var hideMusicVideos = false
     private var infiniteQueueJob: Job? = null
     private var infiniteQueueGeneration = 0L
     private val persistentStateLock = Any()
@@ -1086,6 +1090,24 @@ class MusicService :
                     addListener(sleepTimer)
                 }
         playerInitialized.value = true
+        database
+            .blockedArtistIds()
+            .map { ids -> ids.toSet() }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.IO)
+            .collect(scope) { updatedBlockedArtistIds ->
+                blockedArtistIds = updatedBlockedArtistIds
+                removeBlockedArtistItems(updatedBlockedArtistIds)
+            }
+        dataStore.data
+            .map { preferences -> preferences[HideVideoKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { shouldHideMusicVideos ->
+                hideMusicVideos = shouldHideMusicVideos
+                if (shouldHideMusicVideos) {
+                    removeMusicVideoItems()
+                }
+            }
         widgetUpdater =
             MusicServiceWidgetUpdater(
                 service = this,
@@ -1939,6 +1961,63 @@ class MusicService :
         isHydratingRestoredQueue = false
     }
 
+    private suspend fun Queue.Status.filterPlaybackContent(
+        hideExplicit: Boolean,
+        hideVideo: Boolean,
+    ): Queue.Status =
+        filterExplicit(hideExplicit)
+            .filterVideo(hideVideo)
+            .filterBlockedArtists(loadBlockedArtistIds())
+
+    private suspend fun List<MediaItem>.filterPlaybackContent(
+        hideExplicit: Boolean,
+        hideVideo: Boolean,
+    ): List<MediaItem> =
+        filterExplicit(hideExplicit)
+            .filterVideo(hideVideo)
+            .filterBlockedArtists(loadBlockedArtistIds())
+
+    private suspend fun loadBlockedArtistIds(): Set<String> =
+        withContext(Dispatchers.IO) {
+            database.getBlockedArtistIds().toSet()
+        }
+
+    private fun removeBlockedArtistItems(updatedBlockedArtistIds: Set<String>) {
+        if (updatedBlockedArtistIds.isEmpty() || player.mediaItemCount == 0) return
+
+        removeQueueItems { item -> item.hasBlockedArtist(updatedBlockedArtistIds) }
+    }
+
+    private fun removeMusicVideoItems() {
+        removeQueueItems { item -> item.metadata?.isMusicVideo == true }
+    }
+
+    private inline fun removeQueueItems(shouldRemove: (MediaItem) -> Boolean) {
+        if (player.mediaItemCount == 0) return
+
+        var blockedRangeEnd = C.INDEX_UNSET
+        for (index in player.mediaItemCount - 1 downTo 0) {
+            val item = player.getMediaItemAt(index)
+            if (shouldRemove(item)) {
+                autoAddedMediaIds.remove(item.mediaId)
+                if (blockedRangeEnd == C.INDEX_UNSET) {
+                    blockedRangeEnd = index + 1
+                }
+            } else if (blockedRangeEnd != C.INDEX_UNSET) {
+                player.removeMediaItems(index + 1, blockedRangeEnd)
+                blockedRangeEnd = C.INDEX_UNSET
+            }
+        }
+        if (blockedRangeEnd != C.INDEX_UNSET) {
+            player.removeMediaItems(0, blockedRangeEnd)
+        }
+        if (player.mediaItemCount == 0) {
+            cancelInfiniteQueueBootstrap()
+            currentQueue = EmptyQueue
+            queueTitle = null
+        }
+    }
+
     private suspend fun restorePersistentQueue(persistedQueue: PersistQueue) {
         cancelRestoredQueueHydration()
         val hydrationGeneration = restoredQueueHydrationGeneration.incrementAndGet()
@@ -1951,8 +2030,7 @@ class MusicService :
         val initialStatus =
             itemQueue
                 .getInitialStatus()
-                .filterExplicit(hideExplicit)
-                .filterVideo(hideVideo)
+                .filterPlaybackContent(hideExplicit, hideVideo)
 
         withContext(Dispatchers.Main) {
             currentQueue = continuationQueue
@@ -3472,13 +3550,19 @@ class MusicService :
                     withContext(Dispatchers.IO) {
                         queue
                             .getInitialStatus()
-                            .filterExplicit(dataStore.get(HideExplicitKey, false))
-                            .filterVideo(dataStore.get(HideVideoKey, false))
+                            .filterPlaybackContent(
+                                hideExplicit = dataStore.get(HideExplicitKey, false),
+                                hideVideo = dataStore.get(HideVideoKey, false),
+                            )
                     }
 
                 val targetItem =
                     initialStatus.items.getOrNull(initialStatus.mediaItemIndex)
-                        ?: queue.preloadItem?.toMediaItem()
+                        ?: queue.preloadItem
+                            ?.toMediaItem()
+                            ?.takeUnless { item ->
+                                item.hasBlockedArtist(loadBlockedArtistIds())
+                            }
 
                 val meta = targetItem?.metadata
                 val trackId =
@@ -3541,21 +3625,26 @@ class MusicService :
 
         clearAutomix()
         autoAddedMediaIds.clear()
-        if (queue.preloadItem != null) {
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
-            player.prepare()
-            player.playWhenReady = playWhenReady
-        }
         scope.launch(SilentHandler) {
             val hideExplicit = dataStore.get(HideExplicitKey, false)
             val hideVideo = dataStore.get(HideVideoKey, false)
             val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
+            val preloadItem =
+                queue.preloadItem
+                    ?.toMediaItem()
+                    ?.takeUnless { item ->
+                        item.hasBlockedArtist(loadBlockedArtistIds())
+                    }
+            if (preloadItem != null) {
+                player.setMediaItem(preloadItem)
+                player.prepare()
+                player.playWhenReady = playWhenReady
+            }
             var initialStatus =
                 withContext(Dispatchers.IO) {
                     queue
                         .getInitialStatus()
-                        .filterExplicit(hideExplicit)
-                        .filterVideo(hideVideo)
+                        .filterPlaybackContent(hideExplicit, hideVideo)
                 }
             if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
                 val expandedItems = initialStatus.items.toMutableList()
@@ -3566,8 +3655,7 @@ class MusicService :
                         withContext(Dispatchers.IO) {
                             queue
                                 .nextPage()
-                                .filterExplicit(hideExplicit)
-                                .filterVideo(hideVideo)
+                                .filterPlaybackContent(hideExplicit, hideVideo)
                         }
                     if (nextItems.isNotEmpty()) {
                         expandedItems += nextItems
@@ -3579,8 +3667,8 @@ class MusicService :
                 queueTitle = initialStatus.title
             }
             if (initialStatus.items.isEmpty()) return@launch
-            if (queue.preloadItem != null) {
-                val preloadMediaId = checkNotNull(queue.preloadItem).id.trim()
+            if (preloadItem != null) {
+                val preloadMediaId = preloadItem.mediaId.trim()
                 val insertionIndex =
                     initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
                 val itemsBeforeCurrent =
@@ -3703,9 +3791,10 @@ class MusicService :
                 withContext(Dispatchers.IO) {
                     radioQueue
                         .getInitialStatus()
-                        .filterExplicit(
-                            dataStore.get(HideExplicitKey, false),
-                        ).filterVideo(dataStore.get(HideVideoKey, false))
+                        .filterPlaybackContent(
+                            hideExplicit = dataStore.get(HideExplicitKey, false),
+                            hideVideo = dataStore.get(HideVideoKey, false),
+                        )
                 }
 
             if (initialStatus.title != null) {
@@ -3772,8 +3861,7 @@ class MusicService :
                         withContext(Dispatchers.IO) {
                             radioQueue
                                 .getInitialStatus()
-                                .filterExplicit(hideExplicit)
-                                .filterVideo(hideVideo)
+                                .filterPlaybackContent(hideExplicit, hideVideo)
                         }
                     val knownIds =
                         (0 until player.mediaItemCount)
@@ -3791,8 +3879,7 @@ class MusicService :
                             withContext(Dispatchers.IO) {
                                 radioQueue
                                     .nextPage()
-                                    .filterExplicit(hideExplicit)
-                                    .filterVideo(hideVideo)
+                                    .filterPlaybackContent(hideExplicit, hideVideo)
                             }
                         newItems += page.filter { knownIds.add(it.mediaId) }
                     }
@@ -3854,13 +3941,18 @@ class MusicService :
     }
 
     fun playNext(items: List<MediaItem>) {
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
+        if (allowedItems.isEmpty()) return
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
             if (!joined.roomState.settings.allowGuestsToAddTracks) {
                 return
             }
             val tracks =
-                items.mapNotNull { it.metadata }.map { meta ->
+                allowedItems.mapNotNull { it.metadata }.map { meta ->
                     moe.rukamori.archivetune.together.TogetherTrack(
                         id = meta.id,
                         title = meta.title,
@@ -3881,25 +3973,30 @@ class MusicService :
                 buildPlayNextShuffleOrder(
                     currentIndex = player.currentMediaItemIndex,
                     insertionIndex = insertionIndex,
-                    insertionCount = items.size,
+                    insertionCount = allowedItems.size,
                 )
             } else {
                 null
             }
 
-        player.addMediaItems(insertionIndex, items)
+        player.addMediaItems(insertionIndex, allowedItems)
         playNextShuffleOrder?.let(localPlayer::setShuffleOrder)
         player.prepare()
     }
 
     fun addToQueue(items: List<MediaItem>) {
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
+        if (allowedItems.isEmpty()) return
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
             if (!joined.roomState.settings.allowGuestsToAddTracks) {
                 return
             }
             val tracks =
-                items.mapNotNull { it.metadata }.map { meta ->
+                allowedItems.mapNotNull { it.metadata }.map { meta ->
                     moe.rukamori.archivetune.together.TogetherTrack(
                         id = meta.id,
                         title = meta.title,
@@ -3914,7 +4011,7 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
-        player.addMediaItems(items)
+        player.addMediaItems(allowedItems)
         player.prepare()
     }
 
@@ -6110,11 +6207,9 @@ class MusicService :
 
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
-        // Pre-load lyrics for upcoming songs in queue
         val currentIndex = player.currentMediaItemIndex
-        // Convert media items to MediaMetadata for lyrics pre-loading
-        val queue = player.mediaItems.mapNotNull { it.metadata }
-        if (queue.isNotEmpty()) {
+        val queue = player.mediaItems.map { it.metadata }
+        if (queue.any { it != null }) {
             lyricsPreloadManager?.onSongChanged(currentIndex, queue)
         }
 
@@ -6177,9 +6272,10 @@ class MusicService :
                 val mediaItems =
                     currentQueue
                         .nextPage()
-                        .filterExplicit(
-                            dataStore.get(HideExplicitKey, false),
-                        ).filterVideo(dataStore.get(HideVideoKey, false))
+                        .filterPlaybackContent(
+                            hideExplicit = dataStore.get(HideExplicitKey, false),
+                            hideVideo = dataStore.get(HideVideoKey, false),
+                        )
                 if (player.playbackState != STATE_IDLE) {
                     player.addMediaItems(mediaItems.drop(1))
                 } else {
@@ -7715,6 +7811,7 @@ class MusicService :
                 albumId = media.album?.id,
                 albumName = media.album?.title,
                 explicit = media.explicit,
+                isMusicVideo = media.isMusicVideo,
                 isLocal = media.id.isLocalMediaId(),
             )
 
@@ -7964,6 +8061,8 @@ class MusicService :
             connectivityObserver.unregister()
         } catch (_: Exception) {
         }
+        lyricsPreloadManager?.destroy()
+        lyricsPreloadManager = null
         abandonAudioFocus()
         try {
             releaseAudioEffects()

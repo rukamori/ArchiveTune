@@ -50,6 +50,8 @@ data class PlaylistEntity(
     companion object {
         const val LIKED_PLAYLIST_ID = "LP_LIKED"
         const val DOWNLOADED_PLAYLIST_ID = "LP_DOWNLOADED"
+        private const val LOCAL_CUSTOM_COVER_PREFIX = "content://"
+        private const val REMOTE_CUSTOM_COVER_MARKER = "studio_square_thumbnail"
 
         fun generatePlaylistId() = "LP" + RandomStringUtils.insecure().next(8, true, false)
     }
@@ -62,6 +64,16 @@ data class PlaylistEntity(
                 null
             }
         }
+
+    val hasCustomCover: Boolean
+        get() =
+            thumbnailUrl?.let { url ->
+                url.startsWith(LOCAL_CUSTOM_COVER_PREFIX) ||
+                    url.contains(REMOTE_CUSTOM_COVER_MARKER, ignoreCase = true)
+            } == true
+
+    val hasLocalCustomCover: Boolean
+        get() = thumbnailUrl?.startsWith(LOCAL_CUSTOM_COVER_PREFIX) == true
 
     fun localToggleLike() =
         copy(

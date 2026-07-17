@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
+import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -63,6 +65,8 @@ class NewReleaseViewModel
     constructor(
         @ApplicationContext val context: Context,
         private val database: MusicDatabase,
+        private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
+        private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<NewReleaseUiState>(NewReleaseUiState.Loading)
         val uiState = _uiState.asStateFlow()
@@ -81,6 +85,7 @@ class NewReleaseViewModel
                 try {
                     val albums = YouTube.newReleaseAlbums().getOrThrow()
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val aiContentFilterPolicy = loadAiContentFilterPolicy()
                     val artistRanks: MutableMap<String, Int> = mutableMapOf()
                     val favouriteArtistRanks: MutableMap<String, Int> = mutableMapOf()
                     database.allArtistsByPlayTime().first().let { list ->
@@ -94,18 +99,20 @@ class NewReleaseViewModel
                         }
                     }
                     val filtered =
-                        albums
-                            .sortedBy { album ->
-                                val artistIds = album.artists.orEmpty().mapNotNull { it.id }
-                                val firstArtistKey =
-                                    artistIds.firstNotNullOfOrNull { artistId ->
-                                        favouriteArtistRanks[artistId] ?: artistRanks[artistId]
-                                    } ?: Int.MAX_VALUE
-                                firstArtistKey
-                            }.filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                            .filterVideo(context.dataStore.get(HideVideoKey, false))
-                            .filterBlockedArtists(blockedArtistIds)
-                            .distinctBy { it.id }
+                        filterAiContent(
+                            albums
+                                .sortedBy { album ->
+                                    val artistIds = album.artists.orEmpty().mapNotNull { it.id }
+                                    val firstArtistKey =
+                                        artistIds.firstNotNullOfOrNull { artistId ->
+                                            favouriteArtistRanks[artistId] ?: artistRanks[artistId]
+                                        } ?: Int.MAX_VALUE
+                                    firstArtistKey
+                                }.filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                .filterVideo(context.dataStore.get(HideVideoKey, false))
+                                .filterBlockedArtists(blockedArtistIds),
+                            aiContentFilterPolicy,
+                        ).distinctBy { it.id }
                     val content = filtered.toNewReleaseContent()
                     _uiState.value =
                         if (content.isEmpty) {

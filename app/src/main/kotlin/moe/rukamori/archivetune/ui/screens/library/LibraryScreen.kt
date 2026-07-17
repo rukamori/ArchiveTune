@@ -79,6 +79,9 @@ import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
+internal val LibraryHeaderContentPadding = 64.dp
+internal val LibraryPullToRefreshIndicatorOffset = 0.dp
+
 @Composable
 fun LibraryScreen(navController: NavController) {
     val defaultFilter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
@@ -196,63 +199,16 @@ fun LibraryScreen(navController: NavController) {
                 tabListState.animateScrollToItem(targetPage, scrollOffset = -targetOffsetPx)
             }
 
-            // Expressive Tab Chips Row
-            LazyRow(
-                state = tabListState,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items(
-                    items = libraryFilters,
-                    key = { filter -> filter.name },
-                    contentType = { "library_filter_chip" },
-                ) { filter ->
-                    val page = libraryFilters.indexOf(filter)
-                    val label =
-                        when (filter) {
-                            LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
-                            LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                            LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
-                            LibraryFilter.SONGS -> stringResource(R.string.songs)
-                            LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                            LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                        }
-                    val iconRes =
-                        when (filter) {
-                            LibraryFilter.LIBRARY -> R.drawable.graphic_eq
-                            LibraryFilter.PLAYLISTS -> R.drawable.queue_music
-                            LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
-                            LibraryFilter.SONGS -> R.drawable.music_note
-                            LibraryFilter.ARTISTS -> R.drawable.person
-                            LibraryFilter.ALBUMS -> R.drawable.album
-                        }
-                    ExpressiveTabChip(
-                        label = label,
-                        iconRes = iconRes,
-                        selected = currentFilter == filter,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(page)
-                            }
-                        },
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HorizontalPager(
-                state = pagerState,
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-            ) { page ->
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
                 when (libraryFilters.getOrElse(page) { LibraryFilter.LIBRARY }) {
                     LibraryFilter.LIBRARY -> {
                         LibraryMixScreen(
@@ -332,6 +288,54 @@ fun LibraryScreen(navController: NavController) {
                             onDeselect = {
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(0)
+                                }
+                            },
+                        )
+                    }
+                }
+                }
+
+                LazyRow(
+                    state = tabListState,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items(
+                        items = libraryFilters,
+                        key = { filter -> filter.name },
+                        contentType = { "library_filter_chip" },
+                    ) { filter ->
+                        val page = libraryFilters.indexOf(filter)
+                        val label =
+                            when (filter) {
+                                LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
+                                LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
+                                LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
+                                LibraryFilter.SONGS -> stringResource(R.string.songs)
+                                LibraryFilter.ARTISTS -> stringResource(R.string.artists)
+                                LibraryFilter.ALBUMS -> stringResource(R.string.albums)
+                            }
+                        val iconRes =
+                            when (filter) {
+                                LibraryFilter.LIBRARY -> R.drawable.graphic_eq
+                                LibraryFilter.PLAYLISTS -> R.drawable.queue_music
+                                LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
+                                LibraryFilter.SONGS -> R.drawable.music_note
+                                LibraryFilter.ARTISTS -> R.drawable.person
+                                LibraryFilter.ALBUMS -> R.drawable.album
+                            }
+                        ExpressiveTabChip(
+                            label = label,
+                            iconRes = iconRes,
+                            selected = currentFilter == filter,
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(page)
                                 }
                             },
                         )

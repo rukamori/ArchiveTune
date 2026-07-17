@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortDescendingKey
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterExplicit
@@ -64,20 +65,21 @@ class AutoPlaylistViewModel
         val likedSongs =
             context.dataStore.data
                 .map {
-                    Pair(
+                    Triple(
                         it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (
                             it[AutoPlaylistSongSortDescendingKey]
                                 ?: true
                         ),
                         it[HideExplicitKey] ?: false,
+                        it[HideVideoKey] ?: false,
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (sortDesc, hideExplicit) ->
+                .flatMapLatest { (sortDesc, hideExplicit, hideVideo) ->
                     val (sortType, descending) = sortDesc
                     val songSortType = sortType.toSongSortType()
                     when (playlist) {
                         "liked" -> {
-                            database.likedSongs(songSortType, descending).map { it.filterExplicit(hideExplicit) }
+                            database.likedSongs(songSortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
                         }
 
                         else -> {

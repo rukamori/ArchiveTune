@@ -205,8 +205,14 @@ fun LibraryPlaylistsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = LibraryHeaderContentPadding),
+        ) {
             // Control row (Sort dropdown, grid/list layout toggle, + add button)
             Row(
                 modifier =

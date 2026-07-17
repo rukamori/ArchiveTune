@@ -57,11 +57,17 @@ fun Song.toMediaItem() =
                 .setTitle(song.title)
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
-                .setArtworkUri(song.thumbnailUrl.toNotificationArtworkUri())
+                .setArtworkUri(
+                    if (song.isMusicVideo) {
+                        buildYTThumbnailUrl(song.id, YTThumbQuality.HQ).toUri()
+                    } else {
+                        song.thumbnailUrl.toNotificationArtworkUri()
+                    },
+                )
                 .setAlbumTitle(song.albumName)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
-                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, false) })
+                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, song.isMusicVideo) })
                 .build(),
         ).build()
 

@@ -36,7 +36,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -78,6 +80,7 @@ fun MediaDetailHero(
     additionalPrimaryActions: (@Composable RowScope.(Color) -> Unit)? = null,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
+    val menuState = LocalMenuState.current
     val heroContentColor =
         if (surfaceColor.luminance() > 0.5f) {
             MaterialTheme.colorScheme.onSurface
@@ -209,11 +212,70 @@ fun MediaDetailHero(
                 removeContentDescription = removeContentDescription,
                 onShuffle = onShuffle,
                 onPlay = onPlay,
-                onToggleAdd = onToggleAdd,
+                onToggleAdd =
+                    remember(isAdded, menuState, onToggleAdd, removeContentDescription, title) {
+                        onToggleAdd?.let { toggleAdd ->
+                            if (isAdded) {
+                                {
+                                    menuState.showDialog {
+                                        MediaDetailRemovalConfirmationDialog(
+                                            title = title,
+                                            removeContentDescription = removeContentDescription,
+                                            onDismiss = menuState::dismissDialog,
+                                            onConfirm = {
+                                                menuState.dismissDialog()
+                                                toggleAdd()
+                                            },
+                                        )
+                                    }
+                                }
+                            } else {
+                                toggleAdd
+                            }
+                        }
+                    },
                 additionalActions = additionalPrimaryActions,
                 modifier = Modifier.padding(top = 12.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun MediaDetailRemovalConfirmationDialog(
+    title: String,
+    @StringRes removeContentDescription: Int,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    DefaultDialog(
+        onDismiss = onDismiss,
+        title = {
+            Text(text = stringResource(removeContentDescription))
+        },
+        buttons = {
+            TextButton(
+                onClick = onDismiss,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(text = stringResource(android.R.string.cancel))
+            }
+            TextButton(
+                onClick = onConfirm,
+                shapes = ButtonDefaults.shapes(),
+                colors =
+                    ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+            ) {
+                Text(text = stringResource(removeContentDescription))
+            }
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.remove_from_library_confirm, title),
+            style = MaterialTheme.typography.bodyLarge,
+        )
     }
 }
 

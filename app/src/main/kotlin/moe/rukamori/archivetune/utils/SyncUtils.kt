@@ -314,12 +314,18 @@ class SyncUtils
                                 dbWriteSemaphore.withPermit {
                                     if (!isSyncStillEnabled(gen)) return@withPermit
                                     val dbSong = database.song(song.id).firstOrNull()
+                                    val mediaMetadata = song.toMediaMetadata()
                                     database.withTransaction {
                                         if (!isSyncStillEnabled(gen)) return@withTransaction
                                         if (dbSong == null) {
-                                            insert(song.toMediaMetadata()) { it.copy(liked = true, likedDate = timestamp) }
-                                        } else if (!dbSong.song.liked || dbSong.song.likedDate == null) {
-                                            update(dbSong.song.copy(liked = true, likedDate = timestamp))
+                                            insert(mediaMetadata) { it.copy(liked = true, likedDate = timestamp) }
+                                        } else {
+                                            update(dbSong, mediaMetadata)
+                                            if (!dbSong.song.liked || dbSong.song.likedDate == null) {
+                                                getSongByIdBlocking(song.id)?.song?.let { refreshedSong ->
+                                                    update(refreshedSong.copy(liked = true, likedDate = timestamp))
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -374,12 +380,18 @@ class SyncUtils
                                 dbWriteSemaphore.withPermit {
                                     if (!isSyncStillEnabled(gen)) return@withPermit
                                     val dbSong = database.song(song.id).firstOrNull()
+                                    val mediaMetadata = song.toMediaMetadata()
                                     database.withTransaction {
                                         if (!isSyncStillEnabled(gen)) return@withTransaction
                                         if (dbSong == null) {
-                                            insert(song.toMediaMetadata()) { it.toggleLibrary() }
-                                        } else if (dbSong.song.inLibrary == null) {
-                                            update(dbSong.song.toggleLibrary())
+                                            insert(mediaMetadata) { it.toggleLibrary() }
+                                        } else {
+                                            update(dbSong, mediaMetadata)
+                                            if (dbSong.song.inLibrary == null) {
+                                                getSongByIdBlocking(song.id)?.song?.let { refreshedSong ->
+                                                    update(refreshedSong.toggleLibrary())
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -809,6 +821,16 @@ class SyncUtils
                 }
 
             if (remoteIds == localIds) {
+                database.withTransaction {
+                    songs.forEach { song ->
+                        val existingSong = getSongByIdBlocking(song.id)
+                        if (existingSong == null) {
+                            insert(song)
+                        } else {
+                            update(existingSong, song)
+                        }
+                    }
+                }
                 Timber.d("syncPlaylist: Local and remote are in sync, no changes needed")
                 onProgress(remoteIds.size, remoteIds.size)
                 return@coroutineScope
@@ -825,8 +847,11 @@ class SyncUtils
                     songs.forEachIndexed { idx, song ->
                         if (!isSyncStillEnabled(gen)) return@withTransaction
                         val songId = song.id ?: return@forEachIndexed
-                        if (database.song(songId).firstOrNull() == null) {
+                        val existingSong = getSongByIdBlocking(songId)
+                        if (existingSong == null) {
                             database.insert(song)
+                        } else {
+                            database.update(existingSong, song)
                         }
                         database.insert(
                             PlaylistSongMap(

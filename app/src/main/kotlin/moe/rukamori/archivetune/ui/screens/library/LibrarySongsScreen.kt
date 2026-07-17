@@ -165,8 +165,14 @@ fun LibrarySongsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.refresh(filter) },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = LibraryHeaderContentPadding),
+        ) {
             // Sub-Filters Row (All Songs, Downloaded, Liked)
             Row(
                 modifier =

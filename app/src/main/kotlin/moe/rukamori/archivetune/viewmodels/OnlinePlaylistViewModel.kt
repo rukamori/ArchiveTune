@@ -7,10 +7,12 @@
 
 package moe.rukamori.archivetune.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -25,11 +27,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.filterVideo
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
 
@@ -37,6 +43,7 @@ import javax.inject.Inject
 class OnlinePlaylistViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         savedStateHandle: SavedStateHandle,
         private val database: MusicDatabase,
     ) : ViewModel() {
@@ -93,7 +100,9 @@ class OnlinePlaylistViewModel
                         .playlistContinuation(it, playlistId)
                         .onSuccess { playlistContinuationPage ->
                             val visibleSongs =
-                                playlistContinuationPage.songs.filterBlockedArtists(database.getBlockedArtistIds().toSet())
+                                playlistContinuationPage.songs
+                                    .filterVideo(context.dataStore.get(HideVideoKey, false))
+                                    .filterBlockedArtists(database.getBlockedArtistIds().toSet())
                             val currentSongs = _playlistSongs.value.toMutableList()
                             currentSongs.addAll(visibleSongs)
                             _playlistSongs.value = currentSongs
@@ -127,7 +136,10 @@ class OnlinePlaylistViewModel
                 YouTube
                     .playlist(playlistId)
                     .onSuccess { playlistPage ->
-                        val visibleSongs = playlistPage.songs.filterBlockedArtists(database.getBlockedArtistIds().toSet())
+                        val visibleSongs =
+                            playlistPage.songs
+                                .filterVideo(context.dataStore.get(HideVideoKey, false))
+                                .filterBlockedArtists(database.getBlockedArtistIds().toSet())
                         _playlist.value = playlistPage.playlist
                         _playlistSongs.value = visibleSongs
                         continuation = playlistPage.songsContinuation ?: playlistPage.continuation

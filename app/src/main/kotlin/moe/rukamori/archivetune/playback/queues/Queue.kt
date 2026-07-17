@@ -43,6 +43,13 @@ interface Queue {
                 this
             }
 
+        fun filterBlockedArtists(blockedArtistIds: Set<String>) =
+            if (blockedArtistIds.isEmpty()) {
+                this
+            } else {
+                filterItems { !it.hasBlockedArtist(blockedArtistIds) }
+            }
+
         private inline fun filterItems(keep: (MediaItem) -> Boolean): Status {
             if (items.isEmpty()) return this
 
@@ -89,3 +96,13 @@ fun List<MediaItem>.filterVideo(enabled: Boolean = true) =
     } else {
         this
     }
+
+fun List<MediaItem>.filterBlockedArtists(blockedArtistIds: Set<String>) =
+    if (blockedArtistIds.isEmpty()) {
+        this
+    } else {
+        filterNot { it.hasBlockedArtist(blockedArtistIds) }
+    }
+
+fun MediaItem.hasBlockedArtist(blockedArtistIds: Set<String>): Boolean =
+    metadata?.artists?.any { artist -> artist.id != null && artist.id in blockedArtistIds } == true

@@ -177,11 +177,16 @@ fun LibraryMixScreen(
             isRefreshing = isRefreshing,
             onRefresh = { viewModel.syncAllLibrary() },
             modifier = Modifier.fillMaxSize(),
+            indicatorOffset = LibraryPullToRefreshIndicatorOffset,
         ) {
             LazyColumn(
                 state = rememberLazyListState(),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                contentPadding = PaddingValues(bottom = playerAwareBottomPadding),
+                contentPadding =
+                    PaddingValues(
+                        top = LibraryHeaderContentPadding,
+                        bottom = playerAwareBottomPadding,
+                    ),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "most_played_album_spotlight", contentType = "spotlight") {

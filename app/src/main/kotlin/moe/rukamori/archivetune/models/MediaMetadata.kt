@@ -66,6 +66,7 @@ data class MediaMetadata(
             albumId = album?.id,
             albumName = album?.title,
             explicit = explicit,
+            isMusicVideo = isMusicVideo,
             liked = liked,
             likedDate = likedDate,
             inLibrary = inLibrary,
@@ -99,6 +100,7 @@ fun Song.toMediaMetadata() =
                 )
             },
         explicit = song.explicit,
+        isMusicVideo = song.isMusicVideo,
     )
 
 fun SongItem.toMediaMetadata() =

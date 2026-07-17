@@ -151,8 +151,14 @@ fun LibraryAlbumsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = LibraryHeaderContentPadding),
+        ) {
             // Sub-header controls (Sort dropdown, genres/filters, list/grid toggle)
             Row(
                 modifier =

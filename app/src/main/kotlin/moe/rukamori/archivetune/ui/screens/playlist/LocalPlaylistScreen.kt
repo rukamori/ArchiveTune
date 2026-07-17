@@ -10,8 +10,6 @@
 package moe.rukamori.archivetune.ui.screens.playlist
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -134,6 +132,8 @@ import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LocalPlaylistViewModel
+import moe.rukamori.archivetune.viewmodels.PlaylistCoverEvent
+import moe.rukamori.archivetune.viewmodels.PlaylistCoverState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDateTime
@@ -158,6 +158,7 @@ fun LocalPlaylistScreen(
     val songs by viewModel.playlistSongs.collectAsStateWithLifecycle()
     val viewCounts by viewModel.viewCounts.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val coverState by viewModel.coverState.collectAsStateWithLifecycle()
     val mutableSongs = remember { mutableStateListOf<PlaylistSong>() }
     val playlistLength =
         remember(songs) {
@@ -180,6 +181,16 @@ fun LocalPlaylistScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel, snackbarHostState) {
+        viewModel.coverEvents.collect { event ->
+            when (event) {
+                is PlaylistCoverEvent.ShowMessage -> {
+                    snackbarHostState.showSnackbar(context.getString(event.messageRes))
+                }
+            }
+        }
+    }
 
     // System bars padding
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
@@ -267,36 +278,7 @@ fun LocalPlaylistScreen(
 
     val pickCoverLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-            val oldUriString = playlist?.playlist?.thumbnailUrl
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                )
-            }
-            if (!oldUriString.isNullOrBlank() && oldUriString != uri.toString()) {
-                val oldUri = runCatching { Uri.parse(oldUriString) }.getOrNull()
-                if (oldUri?.scheme == "content") {
-                    runCatching {
-                        context.contentResolver.releasePersistableUriPermission(
-                            oldUri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                        )
-                    }
-                }
-            }
-            val newUriString = uri.toString()
-            playlist?.let { p ->
-                database.query {
-                    update(
-                        p.playlist.copy(
-                            thumbnailUrl = newUriString,
-                            lastUpdateTime = LocalDateTime.now(),
-                        ),
-                    )
-                }
-            }
+            uri?.let(viewModel::updateCover)
         }
 
     var showEditDialog by remember { mutableStateOf(false) }
@@ -1229,10 +1211,25 @@ fun LocalPlaylistScreen(
                                         coroutineScope = coroutineScope,
                                         onDismiss = menuState::dismiss,
                                         onChangeCover =
-                                            if (currentPlaylist.playlist.isEditable == true) {
+                                            if (
+                                                currentPlaylist.playlist.isEditable == true &&
+                                                coverState !is PlaylistCoverState.Loading
+                                            ) {
                                                 {
                                                     menuState.dismiss()
                                                     pickCoverLauncher.launch(arrayOf("image/*"))
+                                                }
+                                            } else {
+                                                null
+                                            },
+                                        onRemoveCover =
+                                            if (
+                                                currentPlaylist.playlist.hasCustomCover &&
+                                                coverState !is PlaylistCoverState.Loading
+                                            ) {
+                                                {
+                                                    menuState.dismiss()
+                                                    viewModel.removeCover()
                                                 }
                                             } else {
                                                 null
