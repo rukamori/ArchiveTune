@@ -219,7 +219,7 @@ fun LibraryPlaylistsScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Left: Sort dropdown
@@ -254,7 +254,10 @@ fun LibraryPlaylistsScreen(
                     label = "PlaylistSortDirectionRotation",
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box {
                         Row(
                             modifier =
@@ -267,8 +270,11 @@ fun LibraryPlaylistsScreen(
                         ) {
                             Text(
                                 text = currentSortLabel,
+                                modifier = Modifier.weight(1f, fill = false),
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
@@ -303,6 +309,27 @@ fun LibraryPlaylistsScreen(
                                     },
                                 )
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.hidden_playlists)) },
+                                onClick = {
+                                    showHidden = !showHidden
+                                    showSortMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.visibility_off),
+                                        contentDescription = null,
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (showHidden) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.check),
+                                            contentDescription = null,
+                                        )
+                                    }
+                                },
+                            )
                         }
                     }
 
@@ -397,46 +424,20 @@ fun LibraryPlaylistsScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Row(
-                        modifier =
-                            Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    IconButton(
+                        onClick = { showCreatePlaylistDialog = true },
+                        colors =
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        modifier = Modifier.size(40.dp),
                     ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (showHidden) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { showHidden = !showHidden },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.visibility_off),
-                                contentDescription = stringResource(R.string.show_hidden_playlists),
-                                tint = if (showHidden) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .clickable { showCreatePlaylistDialog = true },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.add),
-                                contentDescription = stringResource(R.string.create_playlist),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(id = R.drawable.add),
+                            contentDescription = stringResource(R.string.create_playlist),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
