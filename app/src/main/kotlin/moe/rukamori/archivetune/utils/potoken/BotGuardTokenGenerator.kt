@@ -39,8 +39,6 @@ import java.util.Collections
 import java.util.LinkedHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * Generates cryptographically valid PoTokens by running YouTube's BotGuard
@@ -348,6 +346,7 @@ object BotGuardTokenGenerator {
     ) {
         private val scope = MainScope()
         private val closed = AtomicBoolean(false)
+        private val terminalErrorSignaled = AtomicBoolean(false)
         private val readyCompleted = AtomicBoolean(false)
         private val pendingMints =
             Collections.synchronizedMap(
@@ -379,64 +378,72 @@ object BotGuardTokenGenerator {
 
         @JavascriptInterface
         fun onPageLoaded() {
-            Timber.tag(TAG).d("Page loaded — requesting challenge from Create")
-            postToBotGuard(CREATE_URL, "[ \"$REQUEST_KEY\" ]") { body ->
-                val challengeJson = parseCreateChallenge(body)
-                webView.evaluateJavascript(
-                    """
-                    try {
-                        var data = $challengeJson;
-                        runBotGuard(data).then(function(r) {
-                            this.webPoSignalOutput = r.webPoSignalOutput;
-                            $JS_BRIDGE.onBotGuardReady(r.botguardResponse);
-                        }, function(e) {
-                            $JS_BRIDGE.onFatalError(e + "\n" + e.stack);
-                        });
-                    } catch(e) { $JS_BRIDGE.onFatalError(e + "\n" + e.stack); }
-                    """.trimIndent(),
-                    null,
-                )
-            }
-        }
-
-        @JavascriptInterface
-        fun onBotGuardReady(botguardResponse: String) {
-            Timber.tag(TAG).d("BotGuard executed — requesting integrity token from GenerateIT")
-            postToBotGuard(GENERATE_IT_URL, "[ \"$REQUEST_KEY\", \"$botguardResponse\" ]") { body ->
-                try {
-                    val (tokenU8, lifetimeSec) = parseIntegrityToken(body)
-                    expiry = Instant.now().plusSeconds(lifetimeSec).minus(10, ChronoUnit.MINUTES)
-
+            dispatchBridgeCallback {
+                Timber.tag(TAG).d("Page loaded — requesting challenge from Create")
+                postToBotGuard(CREATE_URL, "[ \"$REQUEST_KEY\" ]") { body ->
+                    val challengeJson = parseCreateChallenge(body)
                     webView.evaluateJavascript(
                         """
                         try {
-                            this.integrityToken = $tokenU8;
-                            createPoTokenMinter(webPoSignalOutput, integrityToken).then(function() {
-                                $JS_BRIDGE.onMinterReady();
-                            }).catch(function(e) {
-                                $JS_BRIDGE.onFatalError(e + "\n" + (e.stack || ''));
+                            var data = $challengeJson;
+                            runBotGuard(data).then(function(r) {
+                                this.webPoSignalOutput = r.webPoSignalOutput;
+                                $JS_BRIDGE.onBotGuardReady(r.botguardResponse);
+                            }, function(e) {
+                                $JS_BRIDGE.onFatalError(e + "\n" + e.stack);
                             });
                         } catch(e) { $JS_BRIDGE.onFatalError(e + "\n" + e.stack); }
                         """.trimIndent(),
                         null,
                     )
-                } catch (e: Exception) {
-                    Timber.tag(TAG).e(e, "parseIntegrityToken failed")
-                    signalError(PoTokenException("GenerateIT parse failed: ${e.message}"))
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun onBotGuardReady(botguardResponse: String) {
+            dispatchBridgeCallback {
+                Timber.tag(TAG).d("BotGuard executed — requesting integrity token from GenerateIT")
+                postToBotGuard(GENERATE_IT_URL, "[ \"$REQUEST_KEY\", \"$botguardResponse\" ]") { body ->
+                    try {
+                        val (tokenU8, lifetimeSec) = parseIntegrityToken(body)
+                        expiry = Instant.now().plusSeconds(lifetimeSec).minus(10, ChronoUnit.MINUTES)
+
+                        webView.evaluateJavascript(
+                            """
+                            try {
+                                this.integrityToken = $tokenU8;
+                                createPoTokenMinter(webPoSignalOutput, integrityToken).then(function() {
+                                    $JS_BRIDGE.onMinterReady();
+                                }).catch(function(e) {
+                                    $JS_BRIDGE.onFatalError(e + "\n" + (e.stack || ''));
+                                });
+                            } catch(e) { $JS_BRIDGE.onFatalError(e + "\n" + e.stack); }
+                            """.trimIndent(),
+                            null,
+                        )
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(e, "parseIntegrityToken failed")
+                        signalError(PoTokenException("GenerateIT parse failed: ${e.message}"))
+                    }
                 }
             }
         }
 
         @JavascriptInterface
         fun onMinterReady() {
-            Timber.tag(TAG).d("Minter ready")
-            resumeReady(this@BotGuardEngine)
+            dispatchBridgeCallback {
+                Timber.tag(TAG).d("Minter ready")
+                resumeReady(this@BotGuardEngine)
+            }
         }
 
         @JavascriptInterface
         fun onFatalError(error: String) {
-            Timber.tag(TAG).e("Fatal JS error: $error")
-            signalError(classifyJsError(error))
+            dispatchBridgeCallback {
+                Timber.tag(TAG).e("Fatal JS error: $error")
+                signalError(classifyJsError(error))
+            }
         }
 
         suspend fun mint(identifier: String): String =
@@ -471,15 +478,15 @@ object BotGuardTokenGenerator {
             identifier: String,
             csvBytes: String,
         ) {
-            val base64 = commaSeparatedBytesToBase64(csvBytes)
-            Timber.tag(TAG).d("Minted token for $identifier (${base64.length} chars)")
-            pendingMints
-                .remove(identifier)
-                ?.let { continuation ->
-                    if (continuation.isActive) {
-                        continuation.resume(base64)
+            dispatchBridgeCallback {
+                val base64 = commaSeparatedBytesToBase64(csvBytes)
+                Timber.tag(TAG).d("Minted token for $identifier (${base64.length} chars)")
+                pendingMints
+                    .remove(identifier)
+                    ?.let { continuation ->
+                        continuation.tryResume(base64)?.let(continuation::completeResume)
                     }
-                }
+            }
         }
 
         @JavascriptInterface
@@ -487,41 +494,43 @@ object BotGuardTokenGenerator {
             identifier: String,
             error: String,
         ) {
-            Timber.tag(TAG).e("Mint failed for $identifier: $error")
-            pendingMints
-                .remove(identifier)
-                ?.let { continuation ->
-                    if (continuation.isActive) {
-                        continuation.resumeWithException(classifyJsError(error))
+            dispatchBridgeCallback {
+                Timber.tag(TAG).e("Mint failed for $identifier: $error")
+                pendingMints
+                    .remove(identifier)
+                    ?.let { continuation ->
+                        continuation
+                            .tryResumeWithException(classifyJsError(error))
+                            ?.let(continuation::completeResume)
                     }
-                }
+            }
         }
 
         private val exceptionHandler = CoroutineExceptionHandler { _, t -> signalError(t) }
 
+        private fun dispatchBridgeCallback(action: () -> Unit) {
+            scope.launch(exceptionHandler) {
+                if (!closed.get()) {
+                    action()
+                }
+            }
+        }
+
+        @MainThread
         private fun signalError(error: Throwable) {
+            if (!terminalErrorSignaled.compareAndSet(false, true)) return
             close()
             resumeReadyWithException(error)
         }
 
         private fun resumeReady(engine: BotGuardEngine) {
             if (!readyCompleted.compareAndSet(false, true)) return
-            if (!readySignal.isActive) return
-            runCatching {
-                readySignal.resume(engine)
-            }.onFailure { error ->
-                Timber.tag(TAG).w(error, "Ready signal was already completed")
-            }
+            readySignal.tryResume(engine)?.let(readySignal::completeResume)
         }
 
         private fun resumeReadyWithException(error: Throwable) {
             if (!readyCompleted.compareAndSet(false, true)) return
-            if (!readySignal.isActive) return
-            runCatching {
-                readySignal.resumeWithException(error)
-            }.onFailure { resumeError ->
-                Timber.tag(TAG).w(resumeError, "Ready signal was already completed")
-            }
+            readySignal.tryResumeWithException(error)?.let(readySignal::completeResume)
         }
 
         private fun postToBotGuard(
@@ -593,7 +602,7 @@ object BotGuardTokenGenerator {
                                 webChromeClient =
                                     object : WebChromeClient() {
                                         override fun onConsoleMessage(m: ConsoleMessage): Boolean {
-                                            if (m.message().contains("Uncaught")) {
+                                            if (!engine.closed.get() && m.message().contains("Uncaught")) {
                                                 val err = "\"${m.message()}\", ${m.sourceId()} (${m.lineNumber()})"
                                                 engine.signalError(BrokenWebViewException(err))
                                             }
