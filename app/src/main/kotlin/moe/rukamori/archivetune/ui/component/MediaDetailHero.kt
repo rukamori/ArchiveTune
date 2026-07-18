@@ -12,8 +12,6 @@ package moe.rukamori.archivetune.ui.component
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -45,6 +42,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -304,72 +303,188 @@ fun MediaDetailPrimaryActions(
         modifier =
             modifier
                 .fillMaxWidth()
-                .widthIn(max = MediaDetailContentMaxWidth)
-                .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+                .widthIn(max = MediaDetailContentMaxWidth),
     ) {
-        onShuffle?.let { shuffle ->
-            FilledTonalIconButton(
-                onClick = shuffle,
-                shape = CircleShape,
-                colors = secondaryButtonColors,
-                modifier = Modifier.size(MediaDetailSecondaryActionSize),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.shuffle),
-                    contentDescription = stringResource(R.string.shuffle),
-                    modifier = Modifier.size(22.dp),
-                )
+        MediaDetailBalancedActionLayout(
+            actionRowScope = this,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            onShuffle?.let { shuffle ->
+                FilledTonalIconButton(
+                    onClick = shuffle,
+                    shape = CircleShape,
+                    colors = secondaryButtonColors,
+                    modifier =
+                        Modifier
+                            .layoutId(MediaDetailActionLayoutId.Shuffle)
+                            .size(MediaDetailSecondaryActionSize),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = stringResource(R.string.shuffle),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
-        }
 
-        onPlay?.let { play ->
-            val playButtonHeight = ButtonDefaults.MediumContainerHeight
-            Button(
-                onClick = play,
-                shape = RoundedCornerShape(percent = 50),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = contentColor,
-                        contentColor = contrastingColor,
-                    ),
-                contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
-                modifier = Modifier.heightIn(min = playButtonHeight),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
-                Text(
-                    text = stringResource(R.string.play),
-                    style = ButtonDefaults.textStyleFor(playButtonHeight),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        onToggleAdd?.let { toggleAdd ->
-            FilledTonalIconButton(
-                onClick = toggleAdd,
-                shape = CircleShape,
-                colors = secondaryButtonColors,
-                modifier = Modifier.size(MediaDetailSecondaryActionSize),
-            ) {
-                Icon(
-                    painter = painterResource(if (isAdded) R.drawable.done else R.drawable.add),
-                    contentDescription =
-                        stringResource(
-                            if (isAdded) removeContentDescription else addContentDescription,
+            onPlay?.let { play ->
+                val playButtonHeight = ButtonDefaults.MediumContainerHeight
+                Button(
+                    onClick = play,
+                    shape = RoundedCornerShape(percent = 50),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = contentColor,
+                            contentColor = contrastingColor,
                         ),
-                    modifier = Modifier.size(22.dp),
-                )
+                    contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
+                    modifier =
+                        Modifier
+                            .layoutId(MediaDetailActionLayoutId.Play)
+                            .heightIn(min = playButtonHeight),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
+                    )
+                    Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
+                    Text(
+                        text = stringResource(R.string.play),
+                        style = ButtonDefaults.textStyleFor(playButtonHeight),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
-        }
 
-        additionalActions?.invoke(this, contentColor)
+            onToggleAdd?.let { toggleAdd ->
+                FilledTonalIconButton(
+                    onClick = toggleAdd,
+                    shape = CircleShape,
+                    colors = secondaryButtonColors,
+                    modifier =
+                        Modifier
+                            .layoutId(MediaDetailActionLayoutId.ToggleAdd)
+                            .size(MediaDetailSecondaryActionSize),
+                ) {
+                    Icon(
+                        painter = painterResource(if (isAdded) R.drawable.done else R.drawable.add),
+                        contentDescription =
+                            stringResource(
+                                if (isAdded) removeContentDescription else addContentDescription,
+                            ),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            additionalActions?.invoke(this, contentColor)
+        }
+    }
+}
+
+@Composable
+private fun MediaDetailBalancedActionLayout(
+    actionRowScope: RowScope,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Layout(
+        content = { content(actionRowScope) },
+        modifier = modifier,
+    ) { measurables, constraints ->
+        val actionSpacing = MediaDetailActionSpacing.roundToPx()
+        val shuffleActionIndex = measurables.indexOfFirst { it.layoutId == MediaDetailActionLayoutId.Shuffle }
+        val playActionIndex = measurables.indexOfFirst { it.layoutId == MediaDetailActionLayoutId.Play }
+        val toggleAddActionIndex = measurables.indexOfFirst { it.layoutId == MediaDetailActionLayoutId.ToggleAdd }
+        val placeables =
+            measurables.map { measurable ->
+                measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            }
+        val shuffleAction = placeables.getOrNull(shuffleActionIndex)
+        val playAction = placeables.getOrNull(playActionIndex)
+        val toggleAddAction = placeables.getOrNull(toggleAddActionIndex)
+        val otherActions =
+            placeables.filterIndexed { index, _ ->
+                index != shuffleActionIndex &&
+                    index != playActionIndex &&
+                    index != toggleAddActionIndex
+            }
+        val centeredContentWidth =
+            placeables.sumOf { it.width } +
+                actionSpacing * (placeables.size - 1).coerceAtLeast(0)
+        val leftOtherActionCount = otherActions.size / 2
+        val leftActions =
+            buildList {
+                addAll(otherActions.take(leftOtherActionCount))
+                if (shuffleAction != null) {
+                    add(shuffleAction)
+                }
+            }
+        val rightActions =
+            buildList {
+                if (toggleAddAction != null) {
+                    add(toggleAddAction)
+                }
+                addAll(otherActions.drop(leftOtherActionCount))
+            }
+        val leftActionsWidth =
+            leftActions.sumOf { it.width } +
+                actionSpacing * (leftActions.size - 1).coerceAtLeast(0)
+        val rightActionsWidth =
+            rightActions.sumOf { it.width } +
+                actionSpacing * (rightActions.size - 1).coerceAtLeast(0)
+        val balancedContentWidth =
+            if (playAction == null) {
+                centeredContentWidth
+            } else {
+                val sideSpacing = if (leftActions.isEmpty() && rightActions.isEmpty()) 0 else actionSpacing
+                playAction.width + 2 * (maxOf(leftActionsWidth, rightActionsWidth) + sideSpacing)
+            }
+        val layoutWidth =
+            if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                constraints.constrainWidth(balancedContentWidth)
+            }
+        val layoutHeight = constraints.constrainHeight(placeables.maxOfOrNull { it.height } ?: 0)
+
+        layout(layoutWidth, layoutHeight) {
+            if (playAction == null) {
+                var actionX = (layoutWidth - centeredContentWidth) / 2
+                placeables.forEach { action ->
+                    action.placeRelative(
+                        x = actionX,
+                        y = (layoutHeight - action.height) / 2,
+                    )
+                    actionX += action.width + actionSpacing
+                }
+                return@layout
+            }
+
+            val playActionX = (layoutWidth - playAction.width) / 2
+            var leftActionX = playActionX - actionSpacing - leftActionsWidth
+            var rightActionX = playActionX + playAction.width + actionSpacing
+
+            leftActions.forEach { action ->
+                action.placeRelative(
+                    x = leftActionX,
+                    y = (layoutHeight - action.height) / 2,
+                )
+                leftActionX += action.width + actionSpacing
+            }
+            rightActions.forEach { action ->
+                action.placeRelative(
+                    x = rightActionX,
+                    y = (layoutHeight - action.height) / 2,
+                )
+                rightActionX += action.width + actionSpacing
+            }
+            playAction.placeRelative(
+                x = playActionX,
+                y = (layoutHeight - playAction.height) / 2,
+            )
+        }
     }
 }
 
@@ -446,5 +561,12 @@ private val MediaDetailHeroArtworkSizeBuckets = listOf(MediaDetailHeroArtworkSiz
 private val MediaDetailHeroMinHeight = 560.dp
 private val MediaDetailHorizontalPadding = 24.dp
 private val MediaDetailContentMaxWidth = 720.dp
+private val MediaDetailActionSpacing = 12.dp
 private val MediaDetailSecondaryActionSize = 52.dp
 private val MediaDetailActionSize = 48.dp
+
+private enum class MediaDetailActionLayoutId {
+    Shuffle,
+    Play,
+    ToggleAdd,
+}
