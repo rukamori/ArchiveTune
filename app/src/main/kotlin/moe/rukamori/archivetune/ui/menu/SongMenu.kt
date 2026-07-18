@@ -119,6 +119,7 @@ fun SongMenu(
     navController: NavController,
     playlistSong: PlaylistSong? = null,
     playlistBrowseId: String? = null,
+    onChangeSource: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
 ) {
@@ -537,7 +538,12 @@ fun SongMenu(
             }
         }
 
-    val showMutationSection = event != null || playlistSong != null || isFromCache || !isLocalSong
+    val showMutationSection =
+        event != null ||
+            playlistSong != null ||
+            onChangeSource != null ||
+            isFromCache ||
+            !isLocalSong
 
     LazyColumn(
         contentPadding =
@@ -679,6 +685,34 @@ fun SongMenu(
                         }
 
                         if (event != null) {
+                            HorizontalDivider(
+                                modifier = dividerModifier,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
+
+                        if (onChangeSource != null) {
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = stringResource(R.string.change_song_source))
+                                },
+                                supportingContent = {
+                                    Text(text = stringResource(R.string.change_song_source_desc))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.sync),
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier =
+                                    Modifier.clickable {
+                                        onChangeSource()
+                                        onDismiss()
+                                    },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+
                             HorizontalDivider(
                                 modifier = dividerModifier,
                                 color = MaterialTheme.colorScheme.outlineVariant,

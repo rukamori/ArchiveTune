@@ -82,6 +82,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -100,9 +101,11 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
+import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.LocalMixQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playlistimport.replaceSongSource
 import moe.rukamori.archivetune.ui.component.AssignTagsDialog
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
@@ -119,6 +122,7 @@ import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.menu.SongSourceReplacementDialog
 import moe.rukamori.archivetune.ui.menu.removeSongFromRemotePlaylist
 import moe.rukamori.archivetune.ui.screens.playlist.PlaylistSuggestionsSection
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
@@ -136,6 +140,7 @@ import moe.rukamori.archivetune.viewmodels.PlaylistCoverEvent
 import moe.rukamori.archivetune.viewmodels.PlaylistCoverState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import timber.log.Timber
 import java.time.LocalDateTime
 
 @SuppressLint("RememberReturnType")
@@ -181,6 +186,48 @@ fun LocalPlaylistScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var sourceChangeTarget by remember { mutableStateOf<PlaylistSong?>(null) }
+    var sourceChangeSaving by remember { mutableStateOf(false) }
+
+    sourceChangeTarget?.let { target ->
+        SongSourceReplacementDialog(
+            currentSong = target.song,
+            isSaving = sourceChangeSaving,
+            onDismiss = {
+                if (!sourceChangeSaving) sourceChangeTarget = null
+            },
+            onConfirm = { replacement ->
+                sourceChangeSaving = true
+                coroutineScope.launch(Dispatchers.IO) {
+                    try {
+                        database.withTransaction {
+                            if (!replacement.song.isLocal) {
+                                insert(replacement.toMediaMetadata())
+                            }
+                            update(target.map.replaceSongSource(replacement.id))
+                        }
+                        withContext(Dispatchers.Main) {
+                            sourceChangeTarget = null
+                            sourceChangeSaving = false
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.song_source_changed),
+                            )
+                        }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Timber.e(error, "Failed to replace playlist song source")
+                        withContext(Dispatchers.Main) {
+                            sourceChangeSaving = false
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.song_source_change_failed),
+                            )
+                        }
+                    }
+                }
+            },
+        )
+    }
 
     LaunchedEffect(viewModel, snackbarHostState) {
         viewModel.coverEvents.collect { event ->
@@ -258,6 +305,7 @@ fun LocalPlaylistScreen(
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
 
     val editable: Boolean = playlist?.playlist?.isEditable == true
+    val canChangeSongSource = editable && playlist?.playlist?.browseId == null
     val isReorderingEnabled =
         editable &&
             sortType == PlaylistSongSortType.CUSTOM &&
@@ -829,6 +877,7 @@ fun LocalPlaylistScreen(
                         val content: @Composable () -> Unit = {
                             SongListItem(
                                 song = song.song,
+                                showSourceIcon = true,
                                 viewCountText =
                                     viewCounts[song.song.id]?.let { count -> formatCompactCount(count.toLong()) },
                                 isActive = song.song.id == mediaMetadata?.id,
@@ -842,6 +891,15 @@ fun LocalPlaylistScreen(
                                                     originalSong = song.song,
                                                     playlistSong = song,
                                                     playlistBrowseId = playlist?.playlist?.browseId,
+                                                    onChangeSource =
+                                                        if (canChangeSongSource) {
+                                                            {
+                                                                sourceChangeTarget = song
+                                                                sourceChangeSaving = false
+                                                            }
+                                                        } else {
+                                                            null
+                                                        },
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
@@ -927,6 +985,7 @@ fun LocalPlaylistScreen(
                         val content: @Composable () -> Unit = {
                             SongListItem(
                                 song = song.song,
+                                showSourceIcon = true,
                                 viewCountText =
                                     viewCounts[song.song.id]?.let { count -> formatCompactCount(count.toLong()) },
                                 isActive = song.song.id == mediaMetadata?.id,
@@ -939,6 +998,15 @@ fun LocalPlaylistScreen(
                                                 SongMenu(
                                                     originalSong = song.song,
                                                     playlistBrowseId = playlist?.playlist?.browseId,
+                                                    onChangeSource =
+                                                        if (canChangeSongSource) {
+                                                            {
+                                                                sourceChangeTarget = song
+                                                                sourceChangeSaving = false
+                                                            }
+                                                        } else {
+                                                            null
+                                                        },
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
