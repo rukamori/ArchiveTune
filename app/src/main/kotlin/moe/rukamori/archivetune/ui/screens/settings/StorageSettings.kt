@@ -185,47 +185,11 @@ fun StorageSettings(
             key = MaxCanvasCacheSizeKey,
             defaultValue = 256,
         )
-    val (downloadedSongsFolderTreeUri, onDownloadedSongsFolderTreeUriChange) =
-        rememberPreference(
-            key = DownloadedSongsFolderTreeUriKey,
-            defaultValue = "",
-        )
-    val (downloadedSongsFolderDisplayName, onDownloadedSongsFolderDisplayNameChange) =
-        rememberPreference(
-            key = DownloadedSongsFolderDisplayNameKey,
-            defaultValue = "",
-        )
     val downloadedSongsFolderPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            val permissionTaken =
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(uri, flags)
-                }.isSuccess
-            if (!permissionTaken) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        context.getString(R.string.downloaded_songs_location_permission_failed),
-                    )
-                }
-                return@rememberLauncherForActivityResult
+            if (uri != null) {
+                viewModel.setDownloadedSongsFolder(uri)
             }
-
-            val selectedUri = uri.toString()
-            downloadedSongsFolderTreeUri
-                .takeIf { previousUri -> previousUri.isNotBlank() && previousUri != selectedUri }
-                ?.let { previousUri ->
-                    runCatching {
-                        context.contentResolver.releasePersistableUriPermission(
-                            previousUri.toUri(),
-                            flags,
-                        )
-                    }
-                }
-            onDownloadedSongsFolderTreeUriChange(selectedUri)
-            onDownloadedSongsFolderDisplayNameChange(uri.downloadedSongsFolderDisplayName())
         }
     var clearCacheDialog by remember { mutableStateOf(false) }
     var clearDownloads by remember { mutableStateOf(false) }
@@ -395,17 +359,22 @@ fun StorageSettings(
                 onSelectFolder = viewModel::openStorageLocationPicker,
             )
 
+            val successState = screenState as? StorageSettingsScreenState.Success
+            val locationModel = successState?.model?.downloadedSongsLocation
+            val treeUri = locationModel?.treeUri.orEmpty()
+            val displayName = locationModel?.displayName.orEmpty()
+
             PreferenceGroup(title = stringResource(R.string.downloaded_songs)) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.downloaded_songs_location)) },
                         description =
-                            if (downloadedSongsFolderTreeUri.isBlank()) {
+                            if (treeUri.isBlank()) {
                                 stringResource(R.string.downloaded_songs_location_default)
                             } else {
                                 stringResource(
                                     R.string.downloaded_songs_location_selected,
-                                    downloadedSongsFolderDisplayName.ifBlank { downloadedSongsFolderTreeUri },
+                                    displayName.ifBlank { treeUri },
                                 )
                             },
                         icon = {
@@ -414,6 +383,16 @@ fun StorageSettings(
                                 contentDescription = null,
                             )
                         },
+                        trailingContent = if (treeUri.isNotBlank()) {
+                            {
+                                IconButton(onClick = { viewModel.resetDownloadedSongsFolder() }) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = stringResource(R.string.clear),
+                                    )
+                                }
+                            }
+                        } else null,
                         onClick = { downloadedSongsFolderPicker.launch(null) },
                     )
                 }
@@ -1015,14 +994,3 @@ private const val StorageRefreshIntervalMillis = 500L
 private const val CacheSizeBytesPerMegabyte = 1024L * 1024L
 
 private fun cacheSizeMegabytesToBytes(sizeMegabytes: Int): Long = sizeMegabytes.toLong().coerceAtLeast(0L) * CacheSizeBytesPerMegabyte
-
-private fun Uri.downloadedSongsFolderDisplayName(): String =
-    runCatching {
-        val treeDocumentId = DocumentsContract.getTreeDocumentId(this)
-        val folderName =
-            treeDocumentId
-                .substringAfter(':', treeDocumentId)
-                .substringAfterLast('/')
-                .ifBlank { treeDocumentId.substringBefore(':') }
-        Uri.decode(folderName).takeIf(String::isNotBlank) ?: toString()
-    }.getOrDefault(toString())
