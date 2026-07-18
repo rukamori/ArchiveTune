@@ -24,9 +24,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
+import timber.log.Timber
 import kotlin.math.roundToInt
 
 internal const val NotificationArtworkSizePx = 1080
+private const val NotificationArtworkLogTag = "NotificationArtwork"
 
 class CoilBitmapLoader(
     private val context: Context,
@@ -54,6 +56,12 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
+            Timber.tag(NotificationArtworkLogTag).d(
+                "load requested scheme=%s authority=%s local=%b",
+                uri.scheme,
+                uri.authority,
+                uri.scheme == "content",
+            )
             val attempts = 3
             for (attempt in 1..attempts) {
                 try {
@@ -95,6 +103,12 @@ class CoilBitmapLoader(
                                     return@future createBitmap(64, 64)
                                 }
 
+                                Timber.tag(NotificationArtworkLogTag).d(
+                                    "load succeeded scheme=%s authority=%s attempt=%d",
+                                    uri.scheme,
+                                    uri.authority,
+                                    attempt,
+                                )
                                 return@future mediaSessionBitmap
                             } catch (e: Exception) {
                                 reportException(e)
@@ -102,6 +116,13 @@ class CoilBitmapLoader(
                         }
 
                         is ErrorResult -> {
+                            Timber.tag(NotificationArtworkLogTag).w(
+                                result.throwable,
+                                "load failed scheme=%s authority=%s attempt=%d",
+                                uri.scheme,
+                                uri.authority,
+                                attempt,
+                            )
                             result.throwable?.let { reportException(it) }
                         }
                     }
