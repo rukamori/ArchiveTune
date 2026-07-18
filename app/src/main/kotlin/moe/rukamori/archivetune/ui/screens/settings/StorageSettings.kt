@@ -385,7 +385,10 @@ fun StorageSettings(
                         },
                         trailingContent = if (treeUri.isNotBlank()) {
                             {
-                                IconButton(onClick = { viewModel.resetDownloadedSongsFolder() }) {
+                                IconButton(
+                                    onClick = { viewModel.resetDownloadedSongsFolder() },
+                                    onLongClick = {},
+                                ) {
                                     Icon(
                                         painter = painterResource(R.drawable.close),
                                         contentDescription = stringResource(R.string.clear),
