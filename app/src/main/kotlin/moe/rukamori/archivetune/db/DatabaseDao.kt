@@ -1344,6 +1344,10 @@ interface DatabaseDao {
         previewSize: Int = Int.MAX_VALUE,
     ): Flow<List<Song>>
 
+    @Transaction
+    @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL OR isLocal ORDER BY rowId")
+    fun importSongCandidates(): Flow<List<Song>>
+
     @Query("SELECT COUNT(1) FROM song WHERE title LIKE '%' || :query || '%' AND inLibrary IS NOT NULL")
     suspend fun searchSongsCount(query: String): Int
 
