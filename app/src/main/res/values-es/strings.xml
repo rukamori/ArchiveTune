@@ -1021,4 +1021,23 @@
     <string name="hidden_playlists_description">Las listas de reproducción ocultas en la biblioteca aparecen aquí</string>
     <string name="no_hidden_playlists">No hay listas de reproducción ocultas</string>
     <string name="unhide">Mostrar</string>
+    <string name="remove_playlist_cover">Eliminar la portada personalizada</string>
+    <string name="playlist_cover_updated">Se ha actualizado la portada de la lista de reproducción</string>
+    <string name="playlist_cover_update_failed">No se ha podido actualizar la portada de la lista de reproducción</string>
+    <string name="start_mix">Iniciar mezcla</string>
+    <string name="remove_from_library_confirm">¿Quieres eliminar «%1$s» de tu biblioteca?</string>
+    <string name="refetch_canvas">Recargar el lienzo</string>
+    <string name="canvas_refetch_failed">No se ha podido actualizar el lienzo animado</string>
+    <string name="custom_background_scale_value">%1$d%%</string>
+    <string name="custom_background_permission_error">ArchiveTune no pudo conservar el acceso a esta imagen.</string>
+    <string name="custom_background_subtitle">Previsualiza y ajusta el fondo del reproductor y la letra</string>
+    <string name="custom_background_preview_player">Reproductor</string>
+    <string name="custom_background_preview_lyrics">Letras</string>
+    <string name="custom_background_preview_empty">Elige una imagen para ver una vista previa en tiempo real.</string>
+    <string name="custom_background_replace_image">Sustituir imagen</string>
+    <string name="custom_background_remove_image">Eliminar imagen</string>
+    <string name="custom_background_adjustments">Ajustes</string>
+    <string name="custom_background_adjustments_description">Ajusta la imagen en ambas vistas previas.</string>
+    <string name="custom_background_blur_value">%1$d dp</string>
+    <string name="custom_background_permission_cleanup_error">No se pudo conceder el acceso a la imagen anterior.</string>
 </resources>
