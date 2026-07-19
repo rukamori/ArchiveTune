@@ -636,4 +636,10 @@
     <string name="about_position_developers">Desarrollador | Equipo</string>
     <string name="mori_cipher_status">Estado del motor de software / base de datos</string>
     <string name="about_position_yuki">Cuenta de prueba de Reze | Admin</string>
+    <string name="lyrics_background_style">Estilo de fondo de letras</string>
+    <string name="lyrics_background_default">Por defecto</string>
+    <string name="latest_release">Última versión</string>
+    <string name="release_type_album">Álbum</string>
+    <string name="release_type_single">Sencillo</string>
+    <string name="release_metadata">%1$s • %2$d</string>
 </resources>
