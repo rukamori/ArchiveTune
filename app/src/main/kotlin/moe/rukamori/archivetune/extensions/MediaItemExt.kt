@@ -18,6 +18,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.ui.utils.YTThumbQuality
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.NotificationArtworkSizePx
@@ -28,7 +29,13 @@ const val ExtraIsMusicVideo = "moe.rukamori.archivetune.extra.IS_MUSIC_VIDEO"
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
 
-private fun String?.toNotificationArtworkUri() = this?.resize(NotificationArtworkSizePx, NotificationArtworkSizePx)?.toUri()
+private fun String?.toNotificationArtworkUri() =
+    this
+        ?.resize(
+            width = NotificationArtworkSizePx,
+            height = NotificationArtworkSizePx,
+            ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+        )?.toUri()
 
 private fun MediaItem.Builder.setCacheKeyIfRemote(mediaId: String): MediaItem.Builder {
     if (!mediaId.isLocalMediaId()) {
@@ -50,11 +57,17 @@ fun Song.toMediaItem() =
                 .setTitle(song.title)
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
-                .setArtworkUri(song.thumbnailUrl.toNotificationArtworkUri())
+                .setArtworkUri(
+                    if (song.isMusicVideo) {
+                        buildYTThumbnailUrl(song.id, YTThumbQuality.HQ).toUri()
+                    } else {
+                        song.thumbnailUrl.toNotificationArtworkUri()
+                    },
+                )
                 .setAlbumTitle(song.albumName)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
-                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, false) })
+                .setExtras(Bundle().apply { putBoolean(ExtraIsMusicVideo, song.isMusicVideo) })
                 .build(),
         ).build()
 

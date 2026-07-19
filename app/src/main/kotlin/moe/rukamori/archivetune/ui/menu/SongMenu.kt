@@ -101,6 +101,7 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
@@ -340,7 +341,12 @@ fun SongMenu(
                     },
                     leadingContent = {
                         AsyncImage(
-                            model = splitArtist.originalArtist?.thumbnailUrl?.resize(200, 200),
+                            model =
+                                splitArtist.originalArtist?.thumbnailUrl?.resize(
+                                    width = 200,
+                                    height = 200,
+                                    ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                                ),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier =

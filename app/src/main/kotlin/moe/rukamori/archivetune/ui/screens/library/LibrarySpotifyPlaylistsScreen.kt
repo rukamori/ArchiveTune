@@ -50,12 +50,14 @@ fun LibrarySpotifyPlaylistsScreen(
         isRefreshing = isRefreshing,
         onRefresh = viewModel::refreshPlaylists,
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
         LazyColumn(
             state = rememberLazyListState(),
             contentPadding =
                 PaddingValues(
                     start = 24.dp,
+                    top = LibraryHeaderContentPadding,
                     end = 24.dp,
                     bottom = playerAwareBottomPadding,
                 ),

@@ -49,7 +49,6 @@
     <string name="delete_playlist_confirm">\"%s\" 재생목록을 삭제하시겠습니까?</string>
     <string name="change_playlist_cover">재생목록 커버 변경</string>
     <string name="retry">재시도</string>
-    <string name="radio">라디오</string>
     <string name="shuffle">셔플</string>
     <string name="music_recognition">노래 검색</string>
     <string name="reset">재설정</string>
@@ -387,17 +386,12 @@
     <string name="add_symbol">특수 기호 추가</string>
     <string name="enter_symbol">사용할 특수 기호 입력</string>
     <string name="equalizer">이퀄라이저 (EQ)</string>
-    <string name="tap_to_activate_equalizer">탭하여 이퀄라이저 설정 켜기</string>
     <string name="eq_waiting_for_audio_session">오디오 활성 세션 감지 대기 중</string>
     <string name="eq_open_system_equalizer">안드로이드 순정 시스템 이퀄라이저 열기</string>
     <string name="eq_presets">EQ 기본 프리셋</string>
     <string name="eq_flat">플랫 (Flat)</string>
     <string name="eq_profiles">사용자 지정 EQ 프로필</string>
     <string name="eq_manage">프로필 관리</string>
-    <string name="eq_system_preset">기본 프리셋</string>
-    <string name="eq_manual">수동 조절</string>
-    <string name="eq_profile_hint">저장된 사용자 프로필을 불러오거나 현재 수치를 저장합니다.</string>
-    <string name="eq_save">저장</string>
     <string name="eq_save_profile">현재 프로필 저장</string>
     <string name="eq_profile_name">프로필 이름 설정</string>
     <string name="eq_custom_profile">나만의 오디오 맞춤 프로필</string>
@@ -634,8 +628,6 @@
     <string name="session_code">세션 고유 코드</string>
     <string name="add_current_song">현재 곡 대기열에 추가</string>
     <string name="dismiss">닫기</string>
-    <string name="enabled">사용 중</string>
-    <string name="disabled">사용 안 함</string>
     <string name="invalid_link">유효하지 않은 다이렉트 주소 구조입니다.</string>
     <string name="invalid_code">전달받은 고유 코드가 일치하지 않습니다.</string>
     <string name="not_allowed">해당 세션에 입장할 권한이 주어지지 않았습니다.</string>
@@ -732,7 +724,6 @@
     <string name="discord_activity_type_streaming_label">스트리밍 중</string>
     <string name="discord_url_source_song">곡 URL</string>
     <string name="discord_refresh_success">Discord Rich Presence를 새로고침했습니다.</string>
-    <string name="library_artists_subtitle">모든 즐겨찾기 아티스트</string>
     <string name="app_icon">앱 아이콘</string>
     <string name="youtube_synced">YouTube 동기화됨</string>
     <string name="your_collection">내 컬렉션</string>
@@ -767,7 +758,6 @@
     <string name="discord_activity_type_competing_label">경쟁 중</string>
     <string name="discord_platform_embedded">임베디드</string>
     <string name="recently_played">최근 재생한 음악</string>
-    <string name="library_playlists_subtitle">모든 재생목록을 한눈에</string>
     <string name="widget_tap_to_open">탭하여 ArchiveTune 열기</string>
     <string name="discord_refresh_failed">Discord Rich Presence 새로고침 실패</string>
     <string name="top_artist_badge">인기 아티스트</string>
@@ -775,8 +765,6 @@
     <string name="youtube_channels">YouTube 공식 아티스트 채널</string>
     <string name="no_artist_yet">등록된 아티스트가 없습니다.</string>
     <string name="discord_url_source_custom">사용자 정의 URL</string>
-    <string name="library_songs_subtitle">모든 보관함 수록 곡</string>
-    <string name="library_albums_subtitle">모든 수록 앨범</string>
     <string name="total_label">총</string>
     <string name="list_view">목록 보기</string>
     <string name="player_background_style_v8_v9_desc">V8 및 V9 플레이어 스타일에서는 사용할 수 없습니다.</string>
@@ -794,7 +782,6 @@
     <string name="discord_platform_xbox">Xbox</string>
     <string name="top_mixes">추천 믹스</string>
     <string name="discord_platform_android">Android</string>
-    <string name="library_subtitle">깔끔하게 정리된 나만의 음악 공간</string>
     <string name="sort_a_to_z">가나다순</string>
     <string name="discord_platform_desktop">데스크톱</string>
     <string name="more_playlists_desc">더 많은 재생목록</string>
@@ -807,7 +794,6 @@
     <string name="discord_presence_online">온라인</string>
     <string name="longest_duration">재생 시간이 긴 순</string>
     <string name="discord_platform_ps4">PS4</string>
-    <string name="library_title">내 보관함</string>
     <string name="sort_descending">내림차순 정렬</string>
     <string name="device_mute_recovery_volume_disabled">사용 안 함</string>
     <string name="your_artists">내 아티스트</string>

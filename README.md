@@ -296,6 +296,19 @@ ArchiveTune is an independent third-party client.
 - Does not bypass YouTube's technical protections.
 - Users are encouraged to support artists by purchasing music via official channels.
 
+## ⚖️ License, Copyright, and Trademark Notice
+
+ArchiveTune is licensed under the **GNU General Public License v3.0 (GPLv3)**.
+
+You may copy, modify, and redistribute the source code, including commercially, provided that you comply with the GPLv3. This includes preserving applicable copyright and license notices, clearly identifying modified versions, and providing the corresponding source code when required.
+
+Copyright © Rukamori and the ArchiveTune contributors for their respective original contributions.
+
+The **ArchiveTune™** name, logo, application icon, and official branding are not licensed under the GPLv3. Unofficial forks must not present themselves as official ArchiveTune releases or imply endorsement by the ArchiveTune maintainers.
+
+See the [`LICENSE`](LICENSE) file for the complete GPLv3 terms.
+
+
 ---
 
 <div align="center">

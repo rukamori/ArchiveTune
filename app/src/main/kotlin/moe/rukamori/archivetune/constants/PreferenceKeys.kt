@@ -161,6 +161,9 @@ val EnablePaxsenixYouTubeLyricsKey = booleanPreferencesKey("enablePaxsenixYouTub
 val EnableUnisonLyricsKey = booleanPreferencesKey("enableUnisonLyrics")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoKey = booleanPreferencesKey("hideVideo")
+val AiContentFilterEnabledKey = booleanPreferencesKey("aiContentFilterEnabled")
+val AiContentFilterIncludeModerateKey = booleanPreferencesKey("aiContentFilterIncludeModerate")
+val AiContentFilterLastUpdatedKey = longPreferencesKey("aiContentFilterLastUpdated")
 val ProxyEnabledKey = booleanPreferencesKey("proxyEnabled")
 val ProxyHostKey = stringPreferencesKey("proxyHost")
 val ProxyPortKey = intPreferencesKey("proxyPort")
@@ -203,8 +206,6 @@ val AiCustomModelKey = stringPreferencesKey("ai_custom_model")
 enum class AiProvider {
     CHATGPT,
     GEMINI,
-    CLAUDE,
-    OPENROUTER,
     CUSTOM,
     NONE,
 }
@@ -282,7 +283,9 @@ val ShowHomeCategoryChipsKey = booleanPreferencesKey("showHomeCategoryChips")
 val ShowTagsInLibraryKey = booleanPreferencesKey("showTagsInLibrary")
 
 val EqualizerEnabledKey = booleanPreferencesKey("equalizerEnabled")
+val EqualizerControlModeKey = stringPreferencesKey("equalizerControlMode")
 val EqualizerBandLevelsMbKey = stringPreferencesKey("equalizerBandLevelsMb")
+val EqualizerAutoHeadroomEnabledKey = booleanPreferencesKey("equalizerAutoHeadroomEnabled")
 val EqualizerOutputGainEnabledKey = booleanPreferencesKey("equalizerOutputGainEnabled")
 val EqualizerOutputGainMbKey = intPreferencesKey("equalizerOutputGainMb")
 val EqualizerBassBoostEnabledKey = booleanPreferencesKey("equalizerBassBoostEnabled")
@@ -631,6 +634,20 @@ enum class PlayerBackgroundStyle {
     GLOW_ANIMATED,
 }
 
+enum class LyricsBackgroundStyle {
+    DEFAULT,
+    FOLLOW_THEME,
+    COLORING,
+    CUSTOM;
+
+    fun resolveFor(playerBackgroundStyle: PlayerBackgroundStyle): LyricsBackgroundStyle =
+        when {
+            playerBackgroundStyle == PlayerBackgroundStyle.CUSTOM -> CUSTOM
+            this == CUSTOM -> DEFAULT
+            else -> this
+        }
+}
+
 enum class MiniPlayerBackgroundStyle {
     THEME,
     GRADIENT,
@@ -670,6 +687,7 @@ val HistoryDuration = intPreferencesKey("historyDuration")
 
 val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
+val LyricsBackgroundStyleKey = stringPreferencesKey("lyricsBackgroundStyle")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")

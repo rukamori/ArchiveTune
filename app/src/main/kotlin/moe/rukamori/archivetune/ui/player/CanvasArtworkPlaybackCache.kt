@@ -151,13 +151,45 @@ object CanvasArtworkPlaybackCache {
                         preferCachedOnly = false,
                     )
                 }
+            val artworkToCache = current ?: artwork
+            cacheArtworkInBackground(
+                directory = directory,
+                mediaId = mediaId,
+                artwork = artworkToCache,
+            )
+
+            artworkToCache
+        }
+
+    suspend fun replace(
+        mediaId: String,
+        artwork: CanvasArtwork,
+    ): CanvasArtwork =
+        withContext(Dispatchers.IO) {
+            if (maxSizeBytes == 0L || mediaId.isBlank()) return@withContext artwork
+            val directory = cacheDirectory ?: return@withContext artwork
+            directory.mkdirs()
+
+            val now = System.currentTimeMillis()
+            synchronized(this@CanvasArtworkPlaybackCache) {
+                remove(mediaId)
+                map[mediaId] =
+                    CanvasCacheEntry(
+                        mediaId = mediaId,
+                        artwork = artwork,
+                        regularFileName = null,
+                        verticalFileName = null,
+                        createdAtMs = now,
+                        lastAccessedAtMs = now,
+                    )
+                schedulePersist()
+            }
             cacheArtworkInBackground(
                 directory = directory,
                 mediaId = mediaId,
                 artwork = artwork,
             )
-
-            current ?: artwork
+            artwork
         }
 
     private fun cacheArtworkInBackground(

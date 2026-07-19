@@ -97,6 +97,7 @@ import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.SpeedDialPin
@@ -310,7 +311,12 @@ fun AlbumMenu(
                         contentAlignment = Alignment.Center,
                     ) {
                         AsyncImage(
-                            model = splitArtist.originalArtist?.thumbnailUrl?.resize(200, 200),
+                            model =
+                                splitArtist.originalArtist?.thumbnailUrl?.resize(
+                                    width = 200,
+                                    height = 200,
+                                    ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                                ),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier =

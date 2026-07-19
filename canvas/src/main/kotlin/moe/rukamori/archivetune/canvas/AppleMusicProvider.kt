@@ -124,10 +124,15 @@ object AppleMusicProvider {
         artist: String,
         album: String? = null,
         storefront: String = "us",
+        forceRefresh: Boolean = false,
     ): CanvasArtwork? {
         val key = cacheKey("song", song, artist, album ?: "", storefront)
-        cache[key]?.takeIf { it.expiresAtMs > System.currentTimeMillis() }?.let { return it.value }
-        val result = searchAndFetchMotion(song, artist, album, storefront, "songs")
+        if (forceRefresh) {
+            cache.remove(key)
+        } else {
+            cache[key]?.takeIf { it.expiresAtMs > System.currentTimeMillis() }?.let { return it.value }
+        }
+        val result = searchAndFetchMotion(song, artist, album, storefront, "songs", forceRefresh)
         if (result != null) cache[key] = CacheEntry(result, System.currentTimeMillis() + CACHE_TTL_MS)
         return result
     }
@@ -155,6 +160,7 @@ object AppleMusicProvider {
         album: String?,
         storefront: String,
         type: String, // "albums" or "songs"
+        forceRefresh: Boolean = false,
     ): CanvasArtwork? {
         return runCatching {
             Log.d("searching for $type: $term (album: $album) in $storefront")
@@ -173,6 +179,7 @@ object AppleMusicProvider {
                     parameter("limit", "10")
                     parameter("extend", "editorialVideo")
                     parameter("include", "albums")
+                    if (forceRefresh) header("Cache-Control", "no-cache")
                 }
             if (response.status != HttpStatusCode.OK) {
                 Log.w("search failed with status ${response.status}")

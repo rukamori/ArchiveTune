@@ -18,8 +18,12 @@ data class EqProfile(
     val bandCenterFreqHz: List<Int> = emptyList(),
     val bandLevelsMb: List<Int> = emptyList(),
     val outputGainMb: Int = 0,
+    val outputGainEnabled: Boolean? = null,
     val bassBoostStrength: Int = 0,
+    val bassBoostEnabled: Boolean? = null,
     val virtualizerStrength: Int = 0,
+    val virtualizerEnabled: Boolean? = null,
+    val autoHeadroomEnabled: Boolean = false,
 )
 
 @Serializable
@@ -45,6 +49,7 @@ data class EqSettings(
     val bassBoostStrength: Int,
     val virtualizerEnabled: Boolean,
     val virtualizerStrength: Int,
+    val autoHeadroomEnabled: Boolean,
 )
 
 internal object EqualizerJson {

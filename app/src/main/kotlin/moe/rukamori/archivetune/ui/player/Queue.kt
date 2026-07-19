@@ -60,6 +60,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -75,7 +76,6 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboard
@@ -700,7 +700,7 @@ fun Queue(
 
         val headerItems = 1
         val lazyListState = rememberLazyListState()
-        var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+        var dragInfo by remember { mutableStateOf<QueueDragInfo?>(null) }
 
         val currentPlayingUid =
             remember(currentWindowIndex, queueWindows) {
@@ -716,28 +716,41 @@ fun Queue(
                 lazyListState = lazyListState,
                 scrollThresholdPadding =
                     WindowInsets.systemBars
+                        .only(WindowInsetsSides.Bottom)
                         .add(
                             WindowInsets(
-                                top = ListItemHeight,
                                 bottom = ListItemHeight,
                             ),
                         ).asPaddingValues(),
-            ) { from, to ->
-                val currentDragInfo = dragInfo
+            ) onMove@{ from, to ->
+                val fromQueueIndex = from.index - headerItems
+                val toQueueIndex = to.index - headerItems
+                if (
+                    fromQueueIndex !in mutableQueueWindows.indices ||
+                    toQueueIndex !in mutableQueueWindows.indices
+                ) {
+                    return@onMove
+                }
+
+                val draggedItemUid = dragInfo?.draggedItemUid ?: mutableQueueWindows[fromQueueIndex].uid
+                val actualFromQueueIndex = mutableQueueWindows.indexOfFirst { it.uid == draggedItemUid }
+                if (actualFromQueueIndex == -1) return@onMove
+
+                mutableQueueWindows.move(actualFromQueueIndex, toQueueIndex)
                 dragInfo =
-                    if (currentDragInfo == null) {
-                        from.index to to.index
-                    } else {
-                        currentDragInfo.first to to.index
-                    }
-
-                val safeFrom = (from.index - headerItems).coerceIn(0, mutableQueueWindows.lastIndex)
-                val safeTo = (to.index - headerItems).coerceIn(0, mutableQueueWindows.lastIndex)
-
-                mutableQueueWindows.move(safeFrom, safeTo)
+                    QueueDragInfo(
+                        draggedItemUid = draggedItemUid,
+                        destination =
+                            if (toQueueIndex == 0) {
+                                QueueDragDestination.Start
+                            } else {
+                                QueueDragDestination.After(
+                                    itemUid = mutableQueueWindows[toQueueIndex - 1].uid,
+                                )
+                            },
+                    )
 
                 if (selection && currentWindowIndex in mutableQueueWindows.indices) {
-                    val draggedItemUid = mutableQueueWindows[if (to.index > from.index) safeTo else safeFrom].uid
                     val currentItem = queueWindows.getOrNull(currentWindowIndex)
 
                     if (currentItem?.uid == draggedItemUid) {
@@ -756,40 +769,56 @@ fun Queue(
                 }
             }
 
-        LaunchedEffect(reorderableState.isAnyItemDragging) {
-            if (!reorderableState.isAnyItemDragging) {
-                dragInfo?.let { (from, to) ->
-                    val safeFrom = (from - headerItems).coerceIn(0, queueWindows.lastIndex)
-                    val safeTo = (to - headerItems).coerceIn(0, queueWindows.lastIndex)
+        LaunchedEffect(queueWindows, reorderableState.isAnyItemDragging) {
+            if (reorderableState.isAnyItemDragging) return@LaunchedEffect
 
+            val completedDrag = dragInfo
+            if (completedDrag != null) {
+                val sourceIndex = queueWindows.indexOfFirst { it.uid == completedDrag.draggedItemUid }
+                val destinationIndex = completedDrag.destination.resolveIndex(queueWindows, sourceIndex)
+                dragInfo = null
+
+                if (
+                    sourceIndex != -1 &&
+                    destinationIndex != null &&
+                    sourceIndex != destinationIndex
+                ) {
                     if (!playerConnection.player.shuffleModeEnabled) {
-                        playerConnection.player.moveMediaItem(safeFrom, safeTo)
+                        playerConnection.player.moveMediaItem(sourceIndex, destinationIndex)
                     } else {
                         playerConnection.localPlayer.setShuffleOrder(
                             DefaultShuffleOrder(
                                 queueWindows
                                     .map { it.firstPeriodIndex }
                                     .toMutableList()
-                                    .move(safeFrom, safeTo)
+                                    .move(sourceIndex, destinationIndex)
                                     .toIntArray(),
                                 System.currentTimeMillis(),
                             ),
                         )
                     }
-                    dragInfo = null
+                    return@LaunchedEffect
                 }
             }
-        }
 
-        LaunchedEffect(queueWindows) {
             Snapshot.withMutableSnapshot {
                 mutableQueueWindows.clear()
                 mutableQueueWindows.addAll(queueWindows)
             }
         }
 
-        LaunchedEffect(state.isCollapsed, scrollToCurrentRequested, currentPlayingUid) {
-            if (!state.isCollapsed && scrollToCurrentRequested && currentPlayingUid != null) {
+        LaunchedEffect(
+            state.isCollapsed,
+            scrollToCurrentRequested,
+            currentPlayingUid,
+            reorderableState.isAnyItemDragging,
+        ) {
+            if (
+                !state.isCollapsed &&
+                scrollToCurrentRequested &&
+                currentPlayingUid != null &&
+                !reorderableState.isAnyItemDragging
+            ) {
                 val indexInMutableList = mutableQueueWindows.indexOfFirst { it.uid == currentPlayingUid }
                 if (indexInMutableList != -1) {
                     lazyListState.scrollToItem(indexInMutableList + headerItems)
@@ -949,11 +978,7 @@ fun Queue(
                             val content: @Composable () -> Unit = {
                                 Row(
                                     horizontalArrangement = Arrangement.Center,
-                                    modifier =
-                                        Modifier.graphicsLayer {
-                                            // Enable hardware acceleration for smoother dragging
-                                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                                        },
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     val shouldLoadImages by remember {
                                         derivedStateOf {
@@ -1000,13 +1025,7 @@ fun Queue(
                                             if (!effectiveLocked) {
                                                 IconButton(
                                                     onClick = { },
-                                                    modifier =
-                                                        Modifier
-                                                            .draggableHandle()
-                                                            .graphicsLayer {
-                                                                // Improve touch response
-                                                                alpha = 0.99f
-                                                            },
+                                                    modifier = Modifier.draggableHandle(),
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.drag_handle),
@@ -1172,6 +1191,38 @@ private val Timeline.Window.queueItemKey: Long
     get() =
         (uid.hashCode().toLong() shl Int.SIZE_BITS) xor
             (mediaItem.mediaId.hashCode().toLong() and UInt.MAX_VALUE.toLong())
+
+@Immutable
+private data class QueueDragInfo(
+    public val draggedItemUid: Any,
+    public val destination: QueueDragDestination,
+)
+
+@Immutable
+private sealed interface QueueDragDestination {
+    public data object Start : QueueDragDestination
+
+    public data class After(
+        public val itemUid: Any,
+    ) : QueueDragDestination
+}
+
+private fun QueueDragDestination.resolveIndex(
+    queueWindows: List<Timeline.Window>,
+    sourceIndex: Int,
+): Int? =
+    when (this) {
+        QueueDragDestination.Start -> if (queueWindows.isEmpty()) null else 0
+        is QueueDragDestination.After -> {
+            val anchorIndex = queueWindows.indexOfFirst { it.uid == itemUid }
+            when {
+                sourceIndex !in queueWindows.indices -> null
+                anchorIndex == -1 -> null
+                sourceIndex < anchorIndex -> anchorIndex
+                else -> (anchorIndex + 1).coerceAtMost(queueWindows.lastIndex)
+            }
+        }
+    }
 
 @Composable
 private fun QueueSelectionFloatingToolbar(

@@ -275,6 +275,8 @@
     <string name="seek_seconds_addup">Progressive seek</string>
     <string name="seek_seconds_addup_description">If enabled,  Adds up 5 extra seconds incrementally on each seek skip</string>
     <string name="player_background_style">Player background style</string>
+    <string name="lyrics_background_style">Lyrics background style</string>
+    <string name="lyrics_background_default">Default</string>
     <string name="mini_player_background_style">Mini player background style</string>
     <string name="follow_theme">Follow theme</string>
     <string name="gradient">Gradient</string>
@@ -399,6 +401,10 @@
     <string name="album_not_found">Album not found</string>
     <string name="album_not_found_desc">The requested album could not be loaded</string>
     <string name="new_releases">New releases</string>
+    <string name="latest_release">Latest Release</string>
+    <string name="release_type_album">Album</string>
+    <string name="release_type_single">Single</string>
+    <string name="release_metadata">%1$s • %2$d</string>
     <string name="total_releases">Total releases</string>
     <string name="singles">Singles</string>
     <string name="ep">EP</string>

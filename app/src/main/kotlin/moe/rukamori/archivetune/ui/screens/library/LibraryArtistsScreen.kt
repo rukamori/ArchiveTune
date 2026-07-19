@@ -66,7 +66,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -85,6 +84,7 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -138,10 +138,17 @@ fun LibraryArtistsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
+            contentPadding =
+                PaddingValues(
+                    start = 24.dp,
+                    top = LibraryHeaderContentPadding,
+                    end = 24.dp,
+                    bottom = playerAwareBottomPadding,
+                ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize(),
@@ -511,15 +518,16 @@ fun LibraryArtistsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Avatar image circle
-                    AsyncImage(
-                        model = artist.thumbnailUrl,
-                        contentDescription = null,
+                    ItemThumbnail(
+                        thumbnailUrl = artist.thumbnailUrl,
+                        isActive = false,
+                        isPlaying = false,
+                        shape = CircleShape,
                         contentScale = ContentScale.Crop,
+                        showPlaceholder = true,
                         modifier =
                             Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .size(52.dp),
                     )
 
                     Spacer(modifier = Modifier.width(10.dp))
@@ -606,14 +614,15 @@ fun LibraryArtistsScreen(
                                         },
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                AsyncImage(
-                                    model = artist.thumbnailUrl,
-                                    contentDescription = null,
+                                ItemThumbnail(
+                                    thumbnailUrl = artist.thumbnailUrl,
+                                    isActive = false,
+                                    isPlaying = false,
+                                    shape = CircleShape,
                                     contentScale = ContentScale.Crop,
                                     modifier =
                                         Modifier
-                                            .size(60.dp)
-                                            .clip(CircleShape),
+                                            .size(60.dp),
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(

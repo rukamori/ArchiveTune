@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -256,22 +257,82 @@ fun MoodAndGenresButton(
 @Composable
 private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? {
     endpoint ?: return null
+    val context = LocalContext.current
 
     val cacheKey = buildMoodAndGenresArtworkCacheKey(endpoint)
-    val cachedArtwork = moodAndGenresArtworkCache[cacheKey]
-    val artworkUrl by produceState(initialValue = cachedArtwork, key1 = cacheKey) {
-        if (!value.isNullOrBlank()) return@produceState
+    val cachedEntry = moodAndGenresArtworkCache[cacheKey]
+    val cachedArtwork =
+        cachedEntry
+            ?.takeIf { isMoodAndGenresArtworkFresh(it.cachedAt) }
+            ?.url
 
-        val resolvedArtwork =
-            withContext(Dispatchers.IO) {
-                YouTube.browse(endpoint.browseId, endpoint.params).getOrNull()?.thumbnail
+    if (cachedEntry != null && cachedArtwork == null) {
+        moodAndGenresArtworkCache.remove(cacheKey, cachedEntry)
+    }
+
+    val artworkUrl by
+        produceState(
+            initialValue = cachedArtwork,
+            key1 = cacheKey,
+            key2 = cachedArtwork,
+        ) {
+            if (cachedArtwork != null) {
+                value = cachedArtwork
+                return@produceState
             }
 
-        if (!resolvedArtwork.isNullOrBlank()) {
-            moodAndGenresArtworkCache[cacheKey] = resolvedArtwork
-            value = resolvedArtwork
+            // Clear a previously remembered value before resolving an expired entry.
+            value = null
+
+            val persistedEntry =
+                withContext(Dispatchers.IO) {
+                    val sharedPrefs =
+                        context.getSharedPreferences(
+                            MoodAndGenresArtworkPreferencesName,
+                            Context.MODE_PRIVATE,
+                        )
+                    val encodedEntry = sharedPrefs.getString(cacheKey, null)
+                    val entry = decodeMoodAndGenresArtworkCacheEntry(encodedEntry)
+                    if (entry != null && isMoodAndGenresArtworkFresh(entry.cachedAt)) {
+                        entry
+                    } else {
+                        if (encodedEntry != null) {
+                            sharedPrefs.edit().remove(cacheKey).apply()
+                        }
+                        null
+                    }
+                }
+
+            if (persistedEntry != null) {
+                moodAndGenresArtworkCache[cacheKey] = persistedEntry
+                value = persistedEntry.url
+                return@produceState
+            }
+
+            val resolvedArtwork =
+                withContext(Dispatchers.IO) {
+                    YouTube.browse(endpoint.browseId, endpoint.params).getOrNull()?.thumbnail
+                }
+
+            if (!resolvedArtwork.isNullOrBlank()) {
+                val resolvedEntry =
+                    MoodAndGenresArtworkCacheEntry(
+                        url = resolvedArtwork,
+                        cachedAt = System.currentTimeMillis(),
+                    )
+                withContext(Dispatchers.IO) {
+                    context
+                        .getSharedPreferences(
+                            MoodAndGenresArtworkPreferencesName,
+                            Context.MODE_PRIVATE,
+                        ).edit()
+                        .putString(cacheKey, resolvedEntry.encode())
+                        .apply()
+                }
+                moodAndGenresArtworkCache[cacheKey] = resolvedEntry
+                value = resolvedEntry.url
+            }
         }
-    }
 
     return artworkUrl
 }
@@ -285,17 +346,18 @@ private fun rememberMoodAndGenresArtworkModel(
 
     val context = LocalContext.current
     val requestSizePx = with(LocalDensity.current) { MoodAndGenresArtworkRequestSize.roundToPx() }
-    val cacheKey =
+    val imageCacheKey =
         remember(endpoint, artworkUrl) {
-            endpoint?.let(::buildMoodAndGenresArtworkCacheKey) ?: artworkUrl
+            val endpointKey = endpoint?.let(::buildMoodAndGenresArtworkCacheKey).orEmpty()
+            "mood_and_genres:$endpointKey:$artworkUrl"
         }
 
-    return remember(context, artworkUrl, cacheKey, requestSizePx) {
+    return remember(context, artworkUrl, imageCacheKey, requestSizePx) {
         ImageRequest
             .Builder(context)
             .data(artworkUrl)
-            .memoryCacheKey("mood_and_genres:$cacheKey")
-            .diskCacheKey("mood_and_genres:$cacheKey")
+            .memoryCacheKey(imageCacheKey)
+            .diskCacheKey(imageCacheKey)
             .diskCachePolicy(CachePolicy.ENABLED)
             .size(requestSizePx)
             .build()
@@ -304,7 +366,37 @@ private fun rememberMoodAndGenresArtworkModel(
 
 private fun buildMoodAndGenresArtworkCacheKey(endpoint: BrowseEndpoint): String = "${endpoint.browseId}:${endpoint.params.orEmpty()}"
 
-private val moodAndGenresArtworkCache = ConcurrentHashMap<String, String>()
+private data class MoodAndGenresArtworkCacheEntry(
+    val url: String,
+    val cachedAt: Long,
+) {
+    fun encode(): String = "$url|$cachedAt"
+}
+
+private fun decodeMoodAndGenresArtworkCacheEntry(encodedEntry: String?): MoodAndGenresArtworkCacheEntry? {
+    if (encodedEntry == null) return null
+    val separatorIndex = encodedEntry.lastIndexOf('|')
+    if (separatorIndex <= 0 || separatorIndex == encodedEntry.lastIndex) return null
+
+    val url = encodedEntry.substring(0, separatorIndex)
+    val cachedAt = encodedEntry.substring(separatorIndex + 1).toLongOrNull() ?: return null
+    return url
+        .takeIf(String::isNotBlank)
+        ?.let { MoodAndGenresArtworkCacheEntry(url = it, cachedAt = cachedAt) }
+}
+
+private fun isMoodAndGenresArtworkFresh(
+    cachedAt: Long,
+    now: Long = System.currentTimeMillis(),
+): Boolean {
+    val age = now - cachedAt
+    return cachedAt > 0L && age in 0..MoodAndGenresArtworkTtlMs
+}
+
+private const val MoodAndGenresArtworkPreferencesName = "mood_genre_artwork_cache"
+private const val MoodAndGenresArtworkTtlMs = 7L * 24 * 60 * 60 * 1000
+
+private val moodAndGenresArtworkCache = ConcurrentHashMap<String, MoodAndGenresArtworkCacheEntry>()
 
 private val MoodAndGenresButtonShape = RoundedCornerShape(24.dp)
 private val MoodAndGenresCoverShape = RoundedCornerShape(16.dp)

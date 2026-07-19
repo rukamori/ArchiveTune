@@ -131,7 +131,11 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
+import moe.rukamori.archivetune.ui.utils.preferredThumbnailRatio
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.thumbnailSourceRatio
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -389,13 +393,14 @@ fun SongListItem(
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
-                    thumbnailUrl = song.song.thumbnailUrl?.resize(200, 200),
+                    thumbnailUrl = song.song.thumbnailUrl,
                     albumIndex = albumIndex,
                     isSelected = isSelected,
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = RoundedCornerShape(ThumbnailCornerRadius),
                     placeholderIconRes = if (showSongIconPlaceholder) R.drawable.music_note else null,
+                    maxSizePx = 200,
                     modifier = Modifier.size(ListThumbnailSize),
                 )
             },
@@ -507,14 +512,14 @@ fun ArtistListItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(200, 200),
-            contentDescription = null,
+        ItemThumbnail(
+            thumbnailUrl = artist.artist.thumbnailUrl,
+            isActive = false,
+            isPlaying = false,
+            shape = CircleShape,
             contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .size(ListThumbnailSize)
-                    .clip(CircleShape),
+            maxSizePx = 200,
+            modifier = Modifier.size(ListThumbnailSize),
         )
     },
     trailingContent = trailingContent,
@@ -536,14 +541,14 @@ fun ArtistGridItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(544, 544),
-            contentDescription = null,
+        ItemThumbnail(
+            thumbnailUrl = artist.artist.thumbnailUrl,
+            isActive = false,
+            isPlaying = false,
+            shape = CircleShape,
             contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape),
+            maxSizePx = 544,
+            modifier = Modifier.fillMaxSize(),
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -619,6 +624,7 @@ fun AlbumListItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(ThumbnailCornerRadius),
+            maxSizePx = 200,
             modifier = Modifier.size(ListThumbnailSize),
         )
     },
@@ -704,6 +710,7 @@ fun AlbumGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(GridThumbnailCornerRadius),
+            maxSizePx = 544,
         )
 
         AlbumPlayButton(
@@ -1399,7 +1406,18 @@ fun YouTubeListItem(
 
     if (item is SongItem && isSwipeable && swipeEnabled) {
         SwipeToSongBox(
-            mediaItem = item.copy(thumbnail = item.thumbnail.resize(1080, 1080)).toMediaItem(),
+            mediaItem =
+                item
+                    .copy(
+                        thumbnail =
+                            item.thumbnail.resize(
+                                width = 1080,
+                                height = 1080,
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
+                        thumbnailWidth = null,
+                        thumbnailHeight = null,
+                    ).toMediaItem(),
             modifier = Modifier.fillMaxWidth(),
             contentBackgroundColor = swipeContentBackgroundColor,
         ) {
@@ -1433,86 +1451,92 @@ fun YouTubeGridItem(
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
-    thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
+    thumbnailRatio: Float? = null,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-) = GridItem(
-    title = {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.basicMarquee().fillMaxWidth(),
-        )
-    },
-    subtitle = {
-        val subtitle =
-            when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
-                is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
-                is ArtistItem -> null
-                is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
-            }
-        if (subtitle != null) {
+) {
+    val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
+    val resolvedThumbnailRatio = thumbnailRatio ?: item.preferredThumbnailRatio(cropThumbnailToSquare)
+
+    GridItem(
+        title = {
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 2,
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
+                modifier = Modifier.basicMarquee().fillMaxWidth(),
             )
-        }
-    },
-    badges = badges,
-    thumbnailContent = {
-        val database = LocalDatabase.current
-        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-        val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
+        },
+        subtitle = {
+            val subtitle =
+                when (item) {
+                    is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+                    is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+                    is ArtistItem -> null
+                    is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
+                }
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        badges = badges,
+        thumbnailContent = {
+            val database = LocalDatabase.current
+            val playerConnection = LocalPlayerConnection.current ?: return@GridItem
+            val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
 
-        ItemThumbnail(
-            thumbnailUrl = item.thumbnail,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            shape = shape,
-            thumbnailRatio = thumbnailRatio,
-        )
-
-        if (item is SongItem && !isActive) {
-            OverlayPlayButton(
-                visible = true,
+            ItemThumbnail(
+                thumbnailUrl = item.thumbnail,
+                isActive = isActive,
+                isPlaying = isPlaying,
+                shape = shape,
+                thumbnailRatio = resolvedThumbnailRatio,
+                sourceAspectRatio = item.thumbnailSourceRatio,
             )
-        }
 
-        AlbumPlayButton(
-            visible = item is AlbumItem && !isActive,
-            onClick = {
-                coroutineScope?.launch(Dispatchers.IO) {
-                    var albumWithSongs = database.albumWithSongs(item.id).first()
-                    if (albumWithSongs?.songs.isNullOrEmpty()) {
-                        YouTube
-                            .album(item.id)
-                            .onSuccess { albumPage ->
-                                database.transaction { insert(albumPage) }
-                                albumWithSongs = database.albumWithSongs(item.id).first()
-                            }.onFailure { reportException(it) }
-                    }
-                    albumWithSongs?.let {
-                        withContext(Dispatchers.Main) {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
+            if (item is SongItem && !isActive) {
+                OverlayPlayButton(
+                    visible = true,
+                )
+            }
+
+            AlbumPlayButton(
+                visible = item is AlbumItem && !isActive,
+                onClick = {
+                    coroutineScope?.launch(Dispatchers.IO) {
+                        var albumWithSongs = database.albumWithSongs(item.id).first()
+                        if (albumWithSongs?.songs.isNullOrEmpty()) {
+                            YouTube
+                                .album(item.id)
+                                .onSuccess { albumPage ->
+                                    database.transaction { insert(albumPage) }
+                                    albumWithSongs = database.albumWithSongs(item.id).first()
+                                }.onFailure { reportException(it) }
+                        }
+                        albumWithSongs?.let {
+                            withContext(Dispatchers.Main) {
+                                playerConnection.playQueue(LocalAlbumRadio(it))
+                            }
                         }
                     }
-                }
-            },
-        )
-    },
-    thumbnailRatio = thumbnailRatio,
-    fillMaxWidth = fillMaxWidth,
-    modifier = modifier,
-)
+                },
+            )
+        },
+        thumbnailRatio = resolvedThumbnailRatio,
+        fillMaxWidth = fillMaxWidth,
+        modifier = modifier,
+    )
+}
 
 @Composable
 fun LocalSongsGrid(
@@ -1613,6 +1637,11 @@ fun ItemThumbnail(
     shouldLoadImage: Boolean = true,
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
+    contentScale: ContentScale? = null,
+    showPlaceholder: Boolean = false,
+    maxSizePx: Int? = null,
+    sizeBuckets: List<Int>? = null,
+    sourceAspectRatio: Float? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1623,13 +1652,37 @@ fun ItemThumbnail(
             modifier
                 .fillMaxSize()
                 .aspectRatio(thumbnailRatio)
-                .clip(shape),
+                .clip(shape)
+                .let {
+                    if (showPlaceholder) {
+                        it.background(MaterialTheme.colorScheme.surfaceVariant)
+                    } else {
+                        it
+                    }
+                },
     ) {
         val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
         val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
         val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
+        val resolvedContentScale = contentScale ?: if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
+
+        val guardedWidthPx = if (maxSizePx != null && widthPx != null) minOf(widthPx, maxSizePx) else widthPx
+        val guardedHeightPx = if (maxSizePx != null && heightPx != null) minOf(heightPx, maxSizePx) else heightPx
+
+        var currentUrl by remember(thumbnailUrl, guardedWidthPx, guardedHeightPx, sizeBuckets, sourceAspectRatio) {
+            mutableStateOf(
+                thumbnailUrl?.resize(
+                    width = guardedWidthPx,
+                    height = guardedHeightPx,
+                    maxresAllowed = false,
+                    sizeBuckets = sizeBuckets,
+                    ytimgResizePolicy = YtimgResizePolicy.MatchSourceAspect,
+                    sourceAspectRatio = sourceAspectRatio,
+                ),
+            )
+        }
 
         if (albumIndex == null) {
             if (placeholderIconRes != null) {
@@ -1649,27 +1702,32 @@ fun ItemThumbnail(
                 }
             }
 
-            if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
+            if (shouldLoadImage && !currentUrl.isNullOrBlank()) {
                 val request =
-                    remember(thumbnailUrl, widthPx, heightPx) {
+                    remember(currentUrl, guardedWidthPx, guardedHeightPx) {
                         ImageRequest
                             .Builder(context)
-                            .data(thumbnailUrl?.resize(544, 544))
+                            .data(currentUrl)
                             .allowHardware(true)
                             .apply {
-                                if (widthPx != null && heightPx != null) {
-                                    size(widthPx, heightPx)
+                                if (guardedWidthPx != null && guardedHeightPx != null) {
+                                    size(guardedWidthPx, guardedHeightPx)
                                 }
                             }.build()
                     }
                 AsyncImage(
                     model = request,
                     contentDescription = null,
-                    contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
+                    contentScale = resolvedContentScale,
                     modifier =
                         Modifier
                             .fillMaxSize()
                             .let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it },
+                    onState = { state ->
+                        if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                            getNextFallbackUrl(currentUrl)?.let { currentUrl = it }
+                        }
+                    },
                 )
             } else if (placeholderIconRes == null) {
                 Box(
@@ -1898,8 +1956,13 @@ fun PlaylistThumbnail(
                 remember(thumbnails, sizePx) {
                     ImageRequest
                         .Builder(context)
-                        .data(thumbnails[0].resize((sizePx * 1.5).toInt(), (sizePx * 1.5).toInt()))
-                        .size(sizePx, sizePx)
+                        .data(
+                            thumbnails[0].resize(
+                                width = (sizePx * 1.5).toInt(),
+                                height = (sizePx * 1.5).toInt(),
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
+                        ).size(sizePx, sizePx)
                         .allowHardware(true)
                         .build()
                 }
@@ -1933,8 +1996,13 @@ fun PlaylistThumbnail(
                         remember(url, halfPx) {
                             ImageRequest
                                 .Builder(context)
-                                .data(url?.resize((halfPx * 1.5).toInt(), (halfPx * 1.5).toInt()))
-                                .size(halfPx, halfPx)
+                                .data(
+                                    url?.resize(
+                                        width = (halfPx * 1.5).toInt(),
+                                        height = (halfPx * 1.5).toInt(),
+                                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                                    ),
+                                ).size(halfPx, halfPx)
                                 .allowHardware(true)
                                 .build()
                         }

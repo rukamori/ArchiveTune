@@ -46,7 +46,6 @@
     <string name="remove_download_playlist_confirm">Vuoi davvero rimuovere tutti i brani della playlist \"%s\" dall\'archivio brani scaricati?</string>
     <string name="delete_playlist_confirm">Vuoi veramente eliminare la playlist \"%s\"?</string>
     <string name="retry">Riprova</string>
-    <string name="radio">Radio</string>
     <string name="shuffle">Mescola</string>
     <string name="reset">Ripristina</string>
     <string name="details">Dettagli</string>
@@ -302,10 +301,6 @@
     <string name="eq_flat">Piatto</string>
     <string name="eq_profiles">Profili</string>
     <string name="eq_manage">Gestisci</string>
-    <string name="eq_system_preset">Preimpostazione del sistema</string>
-    <string name="eq_manual">Manuale</string>
-    <string name="eq_profile_hint">Applica un profilo o salva le impostazioni correnti</string>
-    <string name="eq_save">Salva</string>
     <string name="eq_save_profile">Salva profilo</string>
     <string name="eq_profile_name">Nome del profilo</string>
     <string name="eq_custom_profile">Profilo personalizzato</string>
@@ -541,12 +536,6 @@
     <string name="album_backdrop_desc">Mostra l’opera d’arte come sfondo sfocato sul lettore</string>
     <string name="backdrop_blur_amount">Quantità di sfocatura dello sfondo</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="library_title">La tua Libreria</string>
-    <string name="library_subtitle">La tua musica, organizzata per te</string>
-    <string name="library_playlists_subtitle">Le tue playlist, organizzate per te</string>
-    <string name="library_songs_subtitle">Tutte le tue canzoni, organizzate per te</string>
-    <string name="library_artists_subtitle">Tutti i tuoi artisti preferiti, in un unico posto</string>
-    <string name="library_albums_subtitle">Tutti i tuoi album, perfettamente organizzati</string>
     <string name="most_played_badge">PIÙ ASCOLTATO</string>
     <string name="play_all">Riproduci tutto</string>
     <string name="offline_shortcut">Offline</string>

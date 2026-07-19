@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -48,6 +47,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,7 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -110,13 +110,23 @@ fun LibraryMixScreen(
     spotifyLibraryViewModel: SpotifyLibraryViewModel = hiltViewModel(),
 ) {
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val showMessage: (String) -> Unit =
+        remember(coroutineScope, snackbarHostState) {
+            { message ->
+                coroutineScope.launch { snackbarHostState.showSnackbar(message) }
+                Unit
+            }
+        }
     val database = LocalDatabase.current
 
     val likedSongsCount by database.likedSongsCount().collectAsState(initial = 0)
     val recentSongs by database.recentSongs(15).collectAsState(initial = emptyList())
+    val topSize by viewModel.topValue.collectAsStateWithLifecycle(initialValue = "50")
+    val myTopTitle = stringResource(R.string.my_top)
+    val topPlaylistTitle = remember(myTopTitle, topSize) { "$myTopTitle $topSize" }
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
@@ -152,7 +162,7 @@ fun LibraryMixScreen(
 
     LaunchedEffect(viewModel) {
         viewModel.topMixEvents.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -162,510 +172,547 @@ fun LibraryMixScreen(
             .asPaddingValues()
             .calculateBottomPadding() + 12.dp
 
-    ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.syncAllLibrary() },
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        LazyColumn(
-            state = rememberLazyListState(),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(bottom = playerAwareBottomPadding),
+    Box(modifier = Modifier.fillMaxSize()) {
+        ExpressivePullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.syncAllLibrary() },
             modifier = Modifier.fillMaxSize(),
+            indicatorOffset = LibraryPullToRefreshIndicatorOffset,
         ) {
-            item(key = "most_played_album_spotlight", contentType = "spotlight") {
-                val state = mostPlayedAlbumUiState
-                if (state is MostPlayedAlbumUiState.Success) {
-                    val album = state.album
-                    val playAlbum =
-                        remember(album.tracks, playerConnection) {
-                            {
-                                playerConnection.playQueue(
-                                    ListQueue(items = album.tracks.map { it.toMediaItem() }),
-                                )
+            LazyColumn(
+                state = rememberLazyListState(),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding =
+                    PaddingValues(
+                        top = LibraryHeaderContentPadding,
+                        bottom = playerAwareBottomPadding,
+                    ),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item(key = "most_played_album_spotlight", contentType = "spotlight") {
+                    val state = mostPlayedAlbumUiState
+                    if (state is MostPlayedAlbumUiState.Success) {
+                        val album = state.album
+                        val playAlbum =
+                            remember(album.tracks, playerConnection) {
+                                {
+                                    playerConnection.playQueue(
+                                        ListQueue(items = album.tracks.map { it.toMediaItem() }),
+                                    )
+                                }
                             }
-                        }
-                    val shuffleAlbum =
-                        remember(album.tracks, playerConnection) {
-                            {
-                                playerConnection.playQueue(
-                                    ListQueue(items = album.tracks.shuffled().map { it.toMediaItem() }),
-                                )
+                        val shuffleAlbum =
+                            remember(album.tracks, playerConnection) {
+                                {
+                                    playerConnection.playQueue(
+                                        ListQueue(items = album.tracks.shuffled().map { it.toMediaItem() }),
+                                    )
+                                }
                             }
-                        }
 
-                    MostPlayedAlbumSpotlightCard(
-                        album = album,
-                        onOpenAlbum = { navController.navigate("album/${album.id}") },
-                        onPlayAll = playAlbum,
-                        onShuffle = shuffleAlbum,
-                    )
-                }
-            }
-
-            // 2. Shortcuts 2x2 Grid
-            item(key = "shortcuts_grid") {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        // Liked Songs
-                        ShortcutCard(
-                            title = stringResource(R.string.liked_songs),
-                            countText = "$likedSongsCount ${stringResource(R.string.tracks_label)}",
-                            iconRes = R.drawable.favorite,
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
-                            iconColor = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate("auto_playlist/liked") },
-                        )
-
-                        // Offline/Downloaded
-                        ShortcutCard(
-                            title = stringResource(R.string.offline_shortcut),
-                            countText = stringResource(R.string.downloaded_desc),
-                            iconRes = R.drawable.offline,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                            iconColor = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate("auto_playlist/downloaded") },
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        // Cached
-                        ShortcutCard(
-                            title = stringResource(R.string.cached),
-                            countText = stringResource(R.string.instant_playback),
-                            iconRes = R.drawable.cached,
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                            iconColor = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate("cache_playlist/cached") },
-                        )
-
-                        // Local Files
-                        ShortcutCard(
-                            title = stringResource(R.string.local_files),
-                            countText = stringResource(R.string.on_device),
-                            iconRes = R.drawable.snippet_folder,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                            iconColor = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate("local_songs") },
+                        MostPlayedAlbumSpotlightCard(
+                            album = album,
+                            onOpenAlbum = { navController.navigate("album/${album.id}") },
+                            onPlayAll = playAlbum,
+                            onShuffle = shuffleAlbum,
                         )
                     }
                 }
-            }
 
-            // 3. Recently Played Horizontal Row
-            if (recentSongs.isNotEmpty()) {
-                item(key = "recently_played") {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(R.string.recently_played),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                // 2. Shortcuts Grid
+                item(key = "shortcuts_grid", contentType = "shortcuts_grid") {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            items(recentSongs) { song ->
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .width(110.dp)
-                                            .clickable {
-                                                playerConnection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
-                                            },
-                                ) {
-                                    Box(
+                            // Liked Songs
+                            ShortcutCard(
+                                title = stringResource(R.string.liked_songs),
+                                countText = "$likedSongsCount ${stringResource(R.string.tracks_label)}",
+                                iconRes = R.drawable.favorite,
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                                iconColor = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("auto_playlist/liked") },
+                            )
+
+                            // Offline/Downloaded
+                            ShortcutCard(
+                                title = stringResource(R.string.offline_shortcut),
+                                countText = stringResource(R.string.downloaded_desc),
+                                iconRes = R.drawable.offline,
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                iconColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("auto_playlist/downloaded") },
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            // Cached
+                            ShortcutCard(
+                                title = stringResource(R.string.cached),
+                                countText = stringResource(R.string.instant_playback),
+                                iconRes = R.drawable.cached,
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                                iconColor = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("cache_playlist/cached") },
+                            )
+
+                            // Local Files
+                            ShortcutCard(
+                                title = stringResource(R.string.local_files),
+                                countText = stringResource(R.string.on_device),
+                                iconRes = R.drawable.snippet_folder,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                iconColor = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("local_songs") },
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            ShortcutCard(
+                                title = topPlaylistTitle,
+                                countText = stringResource(R.string.all_time),
+                                iconRes = R.drawable.trending_up,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                iconColor = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("top_playlist/$topSize") },
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                if (supportArchiveTuneAvailable) {
+                    item(key = "support_archive_tune", contentType = "support_ad") {
+                        SupportArchiveTuneSection(
+                            onMessage = showMessage,
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                        )
+                    }
+                }
+
+                // 3. Recently Played Horizontal Row
+                if (recentSongs.isNotEmpty()) {
+                    item(key = "recently_played") {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(R.string.recently_played),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                items(recentSongs) { song ->
+                                    Column(
                                         modifier =
                                             Modifier
-                                                .size(110.dp)
-                                                .clip(RoundedCornerShape(28.dp)),
+                                                .width(110.dp)
+                                                .clickable {
+                                                    playerConnection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
+                                                },
                                     ) {
-                                        AsyncImage(
-                                            model = song.song.thumbnailUrl,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                        // Play Overlay button
                                         Box(
                                             modifier =
                                                 Modifier
-                                                    .align(Alignment.BottomEnd)
-                                                    .padding(8.dp)
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.primary),
-                                            contentAlignment = Alignment.Center,
+                                                    .size(110.dp)
+                                                    .clip(RoundedCornerShape(28.dp)),
                                         ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.play),
+                                            AsyncImage(
+                                                model = song.song.thumbnailUrl,
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.size(14.dp),
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize(),
                                             )
+                                            // Play Overlay button
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(8.dp)
+                                                        .size(28.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.play),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(14.dp),
+                                                )
+                                            }
                                         }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = song.song.title,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                        Text(
+                                            text = song.artists.joinToString(", ") { it.name },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = song.song.title,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                    Text(
-                                        text = song.artists.joinToString(", ") { it.name },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                    )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            item(key = "top_mixes") {
-                TopMixesForYouSection(
-                    state = topMixesUiState,
-                    onRefresh = viewModel::refreshTopMixes,
-                    onConfigureAi = { navController.navigate("settings/ai_integration") },
-                    onPlayMix = { mix ->
-                        playerConnection.playQueue(
-                            ListQueue(
-                                items = mix.tracks.map { it.toMediaItem() },
-                            ),
-                        )
-                    },
-                )
-            }
-
-            val playlistTagFilterContent = filterContent
-            if (playlistTagFilterContent != null) {
-                item(key = "playlist_tag_filters") {
-                    playlistTagFilterContent()
-                }
-            }
-
-            // Playlists Row
-            if (visiblePlaylists.isNotEmpty() || visibleSpotifyPlaylists.isNotEmpty()) {
-                item(key = "your_playlists") {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.your_playlists),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onBackground,
+                item(key = "top_mixes") {
+                    TopMixesForYouSection(
+                        state = topMixesUiState,
+                        onRefresh = viewModel::refreshTopMixes,
+                        onConfigureAi = { navController.navigate("settings/ai_integration") },
+                        onPlayMix = { mix ->
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    items = mix.tracks.map { it.toMediaItem() },
+                                ),
                             )
-                            Text(
-                                text = stringResource(R.string.see_all),
-                                style =
-                                    MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    ),
+                        },
+                    )
+                }
+
+                val playlistTagFilterContent = filterContent
+                if (playlistTagFilterContent != null) {
+                    item(key = "playlist_tag_filters") {
+                        playlistTagFilterContent()
+                    }
+                }
+
+                // Playlists Row
+                if (visiblePlaylists.isNotEmpty() || visibleSpotifyPlaylists.isNotEmpty()) {
+                    item(key = "your_playlists") {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
                                 modifier =
                                     Modifier
-                                        .clip(CircleShape)
-                                        .clickable { onTabSelected(LibraryFilter.PLAYLISTS) }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                        }
-
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            items(
-                                items = visiblePlaylists.take(8),
-                                key = { playlist -> "playlist_${playlist.id}" },
-                                contentType = { "library_playlist" },
-                            ) { playlist ->
-                                val cardBgColor =
-                                    rememberArtworkCardColor(
-                                        thumbnailUrl = playlist.thumbnails.getOrNull(0),
-                                        fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    )
-
-                                val interactionSource = remember { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isPressed) 0.97f else 1.0f,
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                    label = "MixPlaylistCardScale",
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.your_playlists),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onBackground,
                                 )
-
-                                Column(
+                                Text(
+                                    text = stringResource(R.string.see_all),
+                                    style =
+                                        MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        ),
                                     modifier =
                                         Modifier
-                                            .width(130.dp)
-                                            .graphicsLayer {
-                                                scaleX = scale
-                                                scaleY = scale
-                                            }.clip(RoundedCornerShape(32.dp))
-                                            .background(cardBgColor)
-                                            .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null,
-                                                onClick = {
-                                                    if (!playlist.playlist.isEditable && playlist.songCount == 0 &&
-                                                        playlist.playlist.remoteSongCount != 0
-                                                    ) {
-                                                        navController.navigate("online_playlist/${playlist.playlist.browseId}")
-                                                    } else {
-                                                        navController.navigate("local_playlist/${playlist.id}")
-                                                    }
-                                                },
-                                            ).padding(12.dp),
-                                ) {
-                                    Box(
+                                            .clip(CircleShape)
+                                            .clickable { onTabSelected(LibraryFilter.PLAYLISTS) }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                items(
+                                    items = visiblePlaylists.take(8),
+                                    key = { playlist -> "playlist_${playlist.id}" },
+                                    contentType = { "library_playlist" },
+                                ) { playlist ->
+                                    val cardBgColor =
+                                        rememberArtworkCardColor(
+                                            thumbnailUrl = playlist.thumbnails.getOrNull(0),
+                                            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                        )
+
+                                    val interactionSource = remember { MutableInteractionSource() }
+                                    val isPressed by interactionSource.collectIsPressedAsState()
+                                    val scale by animateFloatAsState(
+                                        targetValue = if (isPressed) 0.97f else 1.0f,
+                                        animationSpec =
+                                            spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessLow,
+                                            ),
+                                        label = "MixPlaylistCardScale",
+                                    )
+
+                                    Column(
                                         modifier =
                                             Modifier
-                                                .size(106.dp)
-                                                .clip(RoundedCornerShape(24.dp)),
+                                                .width(130.dp)
+                                                .graphicsLayer {
+                                                    scaleX = scale
+                                                    scaleY = scale
+                                                }.clip(RoundedCornerShape(32.dp))
+                                                .background(cardBgColor)
+                                                .clickable(
+                                                    interactionSource = interactionSource,
+                                                    indication = null,
+                                                    onClick = {
+                                                        if (!playlist.playlist.isEditable && playlist.songCount == 0 &&
+                                                            playlist.playlist.remoteSongCount != 0
+                                                        ) {
+                                                            navController.navigate("online_playlist/${playlist.playlist.browseId}")
+                                                        } else {
+                                                            navController.navigate("local_playlist/${playlist.id}")
+                                                        }
+                                                    },
+                                                ).padding(12.dp),
                                     ) {
-                                        AsyncImage(
-                                            model = playlist.thumbnails.getOrNull(0),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                        // Play Overlay button
                                         Box(
                                             modifier =
                                                 Modifier
-                                                    .align(Alignment.BottomEnd)
-                                                    .padding(6.dp)
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.primary)
-                                                    .clickable {
-                                                        playerConnection.let { conn ->
-                                                            coroutineScope.launch {
-                                                                database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
-                                                                    if (songs.isNotEmpty()) {
-                                                                        conn.playQueue(
-                                                                            ListQueue(items = songs.map { it.song.toMediaItem() }),
-                                                                        )
+                                                    .size(106.dp)
+                                                    .clip(RoundedCornerShape(24.dp)),
+                                        ) {
+                                            AsyncImage(
+                                                model = playlist.thumbnails.getOrNull(0),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                            // Play Overlay button
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(6.dp)
+                                                        .size(28.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary)
+                                                        .clickable {
+                                                            playerConnection.let { conn ->
+                                                                coroutineScope.launch {
+                                                                    database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
+                                                                        if (songs.isNotEmpty()) {
+                                                                            conn.playQueue(
+                                                                                ListQueue(items = songs.map { it.song.toMediaItem() }),
+                                                                            )
+                                                                        }
                                                                     }
                                                                 }
                                                             }
-                                                        }
-                                                    },
+                                                        },
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.play),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(14.dp),
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = playlist.playlist.name,
+                                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                        Text(
+                                            text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                        )
+                                    }
+                                }
+
+                                items(
+                                    items = visibleSpotifyPlaylists.take(8),
+                                    key = { playlist -> "spotify_playlist_${playlist.id}" },
+                                    contentType = { "library_spotify_playlist" },
+                                ) { playlist ->
+                                    SpotifyPlaylistCompactCard(
+                                        playlist = playlist,
+                                        onClick = {
+                                            navController.navigate("spotify_playlist/${playlist.id}")
+                                        },
+                                    )
+                                }
+
+                                // Ending "More" card
+                                item {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .width(130.dp)
+                                                .height(168.dp)
+                                                .clip(RoundedCornerShape(32.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                                .clickable {
+                                                    onTabSelected(LibraryFilter.PLAYLISTS)
+                                                },
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .size(56.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Icon(
-                                                painter = painterResource(id = R.drawable.play),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.size(14.dp),
+                                                painter = painterResource(id = R.drawable.expand_more),
+                                                contentDescription = stringResource(R.string.more_playlists_desc),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(24.dp),
                                             )
                                         }
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = playlist.playlist.name,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                    Text(
-                                        text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                    )
-                                }
-                            }
-
-                            items(
-                                items = visibleSpotifyPlaylists.take(8),
-                                key = { playlist -> "spotify_playlist_${playlist.id}" },
-                                contentType = { "library_spotify_playlist" },
-                            ) { playlist ->
-                                SpotifyPlaylistCompactCard(
-                                    playlist = playlist,
-                                    onClick = {
-                                        navController.navigate("spotify_playlist/${playlist.id}")
-                                    },
-                                )
-                            }
-
-                            // Ending "More" card
-                            item {
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .width(130.dp)
-                                            .height(168.dp)
-                                            .clip(RoundedCornerShape(32.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                            .clickable {
-                                                onTabSelected(LibraryFilter.PLAYLISTS)
-                                            },
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(56.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.expand_more),
-                                            contentDescription = stringResource(R.string.more_playlists_desc),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(24.dp),
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(R.string.more_label),
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onBackground,
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = stringResource(R.string.more_label),
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // 5. Your Artists Row
-            if (artists.isNotEmpty()) {
-                item(key = "your_artists") {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.your_artists),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            Text(
-                                text = stringResource(R.string.see_all),
-                                style =
-                                    MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    ),
+                // 5. Your Artists Row
+                if (artists.isNotEmpty()) {
+                    item(key = "your_artists") {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
                                 modifier =
                                     Modifier
-                                        .clip(CircleShape)
-                                        .clickable { onTabSelected(LibraryFilter.ARTISTS) }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                        }
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            items(artists.take(10)) { item ->
-                                val artist = item.artist
-                                Column(
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.your_artists),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                Text(
+                                    text = stringResource(R.string.see_all),
+                                    style =
+                                        MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        ),
                                     modifier =
                                         Modifier
-                                            .width(80.dp)
-                                            .clickable {
-                                                navController.navigate("artist/${artist.id}")
-                                            },
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    AsyncImage(
-                                        model = artist.thumbnailUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier =
-                                            Modifier
-                                                .size(72.dp)
-                                                .clip(CircleShape),
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = artist.name,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                }
+                                            .clip(CircleShape)
+                                            .clickable { onTabSelected(LibraryFilter.ARTISTS) }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
                             }
-
-                            // Ending "+" button
-                            item {
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .width(80.dp)
-                                            .clickable {
-                                                onTabSelected(LibraryFilter.ARTISTS)
-                                            },
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Box(
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                items(artists.take(10)) { item ->
+                                    val artist = item.artist
+                                    Column(
                                         modifier =
                                             Modifier
-                                                .size(72.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center,
+                                                .width(80.dp)
+                                                .clickable {
+                                                    navController.navigate("artist/${artist.id}")
+                                                },
+                                        horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.add),
-                                            contentDescription = stringResource(R.string.more_label),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(24.dp),
+                                        AsyncImage(
+                                            model = artist.thumbnailUrl,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier =
+                                                Modifier
+                                                    .size(72.dp)
+                                                    .clip(CircleShape),
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = artist.name,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onBackground,
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.more_label),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
+                                }
+
+                                // Ending "+" button
+                                item {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .width(80.dp)
+                                                .clickable {
+                                                    onTabSelected(LibraryFilter.ARTISTS)
+                                                },
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .size(72.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.add),
+                                                contentDescription = stringResource(R.string.more_label),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = stringResource(R.string.more_label),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -673,6 +720,14 @@ fun LibraryMixScreen(
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = playerAwareBottomPadding),
+        )
     }
 }
 

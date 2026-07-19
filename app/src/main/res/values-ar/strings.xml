@@ -51,7 +51,6 @@
     <string name="remove_download_playlist_confirm">هل تريد حقًا إزالة جميع أغاني قائمة التشغيل %s من مساحة الأغاني المحملة؟</string>
     <string name="delete_playlist_confirm">هل تريد حقًا حذف قائمة التشغيل %s؟</string>
     <string name="retry">اعادة المحاولة</string>
-    <string name="radio">راديو</string>
     <string name="shuffle">تشغيل عشوائي</string>
     <string name="reset">إعادة الضبط</string>
     <string name="details">التفاصيل</string>
@@ -342,10 +341,6 @@
     <string name="eq_flat">مسطح</string>
     <string name="eq_profiles">أنماط الصوت</string>
     <string name="eq_manage">إدارة الأنماط</string>
-    <string name="eq_system_preset">الإعدادات الافتراضية للنظام</string>
-    <string name="eq_manual">يدوي</string>
-    <string name="eq_profile_hint">طبّق نمطًا صوتيًا أو احفظ إعداداتك الحالية</string>
-    <string name="eq_save">حفظ</string>
     <string name="eq_save_profile">حفظ نمط الصوت</string>
     <string name="eq_profile_name">اسم نمط الصوت</string>
     <string name="eq_custom_profile">نمط صوت مخصص</string>
@@ -516,12 +511,6 @@
     <string name="playback_login_refresh_required">تحديث تسجيل الدخول إلى YouTube Music</string>
     <string name="playback_requires_youtube_music_login_refresh">قم بتحديث بيانات تسجيل الدخول الخاصة بك على YouTube Music، ثم عد إلى ArchiveTune</string>
     <string name="top_results">أفضل النتائج</string>
-    <string name="library_title">المكتبة</string>
-    <string name="library_subtitle">الموسيقى الخاصة بك ، مرتبة لأجلك</string>
-    <string name="library_playlists_subtitle">كل قوائم التشغيل الخاصة بك ، مرتبة لأجلك</string>
-    <string name="library_songs_subtitle">كل الأغاني الخاصة بك ، مرتبة لأجلك</string>
-    <string name="library_artists_subtitle">كل فنانيك المفضلين ، في مكان واحد</string>
-    <string name="library_albums_subtitle">كل ألبوماتك ، مرتبة لأجلك</string>
     <string name="most_played_badge">الأكثر تشغيلًا</string>
     <string name="play_all">تشغيل الكل</string>
     <string name="offline_shortcut">غير متصل بالإنترنت</string>

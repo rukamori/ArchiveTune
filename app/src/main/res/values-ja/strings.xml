@@ -41,12 +41,6 @@
     <string name="filter_featured_playlists">注目のプレイリスト</string>
     <string name="no_results_found">結果が見つからない</string>
     <string name="top_results">上位の結果</string>
-    <string name="library_title">ライブラリ</string>
-    <string name="library_subtitle">音楽を見やすく整理</string>
-    <string name="library_playlists_subtitle">プレイリストをまとめて整理</string>
-    <string name="library_songs_subtitle">すべての曲をまとめて整理</string>
-    <string name="library_artists_subtitle">すべてのアーティストをここにまとめる</string>
-    <string name="library_albums_subtitle">すべてのアルバムをきれいに整理</string>
     <string name="most_played_badge">よく再生</string>
     <string name="play_all">すべて再生</string>
     <string name="offline_shortcut">オフライン</string>
@@ -118,7 +112,6 @@
     <string name="delete_playlist_confirm">プレイリスト「%s」を本当に削除する？</string>
     <string name="change_playlist_cover">プレイリストのカバーを変更</string>
     <string name="retry">再試行</string>
-    <string name="radio">ラジオ</string>
     <string name="cast">キャスト</string>
     <string name="cast_devices">キャスト端末</string>
     <string name="cast_sheet_subtitle">ArchiveTuneを再生する場所を選ぶ</string>
@@ -558,17 +551,12 @@
     <string name="add_symbol">記号を追加</string>
     <string name="enter_symbol">記号を入力</string>
     <string name="equalizer">イコライザー</string>
-    <string name="tap_to_activate_equalizer">タップしてイコライザーを有効化</string>
     <string name="eq_waiting_for_audio_session">オーディオセッションを待機中</string>
     <string name="eq_open_system_equalizer">システムイコライザーを開く</string>
     <string name="eq_presets">プリセット</string>
     <string name="eq_flat">フラット</string>
     <string name="eq_profiles">プロファイル</string>
     <string name="eq_manage">管理</string>
-    <string name="eq_system_preset">システムプリセット</string>
-    <string name="eq_manual">手動</string>
-    <string name="eq_profile_hint">プロファイルを適用するか、現在の設定を保存</string>
-    <string name="eq_save">保存</string>
     <string name="eq_save_profile">プロファイルを保存</string>
     <string name="eq_profile_name">プロファイル名</string>
     <string name="eq_custom_profile">カスタムプロファイル</string>
@@ -908,8 +896,6 @@
     <string name="session_code">セッションコード</string>
     <string name="add_current_song">現在の曲を追加</string>
     <string name="dismiss">閉じる</string>
-    <string name="enabled">有効</string>
-    <string name="disabled">無効</string>
     <string name="invalid_link">無効なリンク</string>
     <string name="invalid_code">無効なコード</string>
     <string name="not_allowed">許可されていない</string>

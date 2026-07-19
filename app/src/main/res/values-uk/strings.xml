@@ -51,7 +51,6 @@
     <string name="delete_playlist_confirm">Ви дійсно хочете видалити плейліст \"%s\"?</string>
     <string name="change_playlist_cover">Змінити обкладинку плейліста</string>
     <string name="retry">Спробувати ще раз</string>
-    <string name="radio">Радіо</string>
     <string name="shuffle">Перемішати</string>
     <string name="reset">Скинути</string>
     <string name="details">Деталі</string>
@@ -380,10 +379,6 @@
     <string name="eq_flat">Плаский</string>
     <string name="eq_profiles">Профілі</string>
     <string name="eq_manage">Налаштувати</string>
-    <string name="eq_system_preset">Пресет системи</string>
-    <string name="eq_manual">Вручну</string>
-    <string name="eq_profile_hint">Застосуйте профіль або збережіть поточні налаштування</string>
-    <string name="eq_save">Зберегти</string>
     <string name="eq_save_profile">Зберегти профіль</string>
     <string name="eq_profile_name">Назва профілю</string>
     <string name="eq_custom_profile">Власний профіль</string>
@@ -590,8 +585,6 @@
     <string name="session_code">Код сеансу</string>
     <string name="add_current_song">Додати поточну пісню</string>
     <string name="dismiss">Відхилити</string>
-    <string name="enabled">Увімкнено</string>
-    <string name="disabled">Вимкнено</string>
     <string name="invalid_link">Посилання недійсне</string>
     <string name="invalid_code">Неправильний код</string>
     <string name="not_allowed">Заборонено</string>
@@ -667,7 +660,6 @@
     <string name="proxy_connection_success">Підключення через проксі-сервер встановлено!</string>
     <string name="proxy_connection_failed">Помилка підключення через проксі-сервер: %s</string>
     <string name="enable_paxsenix_lyrics">Увімкнути тексти пісень Paxsenix</string>
-    <string name="tap_to_activate_equalizer">Натисніть, щоб увімкнути еквалайзер</string>
     <string name="clear_lyrics_cache">Очистити кеш текстів пісень</string>
     <string name="clear_lyrics_cache_confirm">Ви впевнені, що хочете очистити весь кеш текстів пісень?</string>
     <string name="paxsenix_stats">Статистика API Paxsenix</string>

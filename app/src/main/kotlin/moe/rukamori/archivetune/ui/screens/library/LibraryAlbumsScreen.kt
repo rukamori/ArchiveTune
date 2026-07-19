@@ -69,7 +69,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -87,6 +86,7 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -151,8 +151,14 @@ fun LibraryAlbumsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = LibraryHeaderContentPadding),
+        ) {
             // Sub-header controls (Sort dropdown, genres/filters, list/grid toggle)
             Row(
                 modifier =
@@ -388,14 +394,15 @@ fun LibraryAlbumsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        AsyncImage(
-                                            model = album.album.thumbnailUrl,
-                                            contentDescription = null,
+                                        ItemThumbnail(
+                                            thumbnailUrl = album.album.thumbnailUrl,
+                                            isActive = false,
+                                            isPlaying = false,
+                                            shape = RoundedCornerShape(24.dp),
                                             contentScale = ContentScale.Crop,
                                             modifier =
                                                 Modifier
-                                                    .size(80.dp)
-                                                    .clip(RoundedCornerShape(24.dp)),
+                                                    .size(80.dp),
                                         )
 
                                         Spacer(modifier = Modifier.width(16.dp))
@@ -513,9 +520,11 @@ fun LibraryAlbumsScreen(
                                         .aspectRatio(1f)
                                         .clip(RoundedCornerShape(22.dp)),
                             ) {
-                                AsyncImage(
-                                    model = album.album.thumbnailUrl,
-                                    contentDescription = null,
+                                ItemThumbnail(
+                                    thumbnailUrl = album.album.thumbnailUrl,
+                                    isActive = false,
+                                    isPlaying = false,
+                                    shape = RoundedCornerShape(22.dp),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
                                 )
@@ -592,14 +601,15 @@ fun LibraryAlbumsScreen(
                                     ).padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            AsyncImage(
-                                model = album.album.thumbnailUrl,
-                                contentDescription = null,
+                            ItemThumbnail(
+                                thumbnailUrl = album.album.thumbnailUrl,
+                                isActive = false,
+                                isPlaying = false,
+                                shape = RoundedCornerShape(20.dp),
                                 contentScale = ContentScale.Crop,
                                 modifier =
                                     Modifier
-                                        .size(60.dp)
-                                        .clip(RoundedCornerShape(20.dp)),
+                                        .size(60.dp),
                             )
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {

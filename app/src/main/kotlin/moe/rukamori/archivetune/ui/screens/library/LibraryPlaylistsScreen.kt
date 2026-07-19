@@ -76,7 +76,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
-import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -102,6 +101,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
@@ -205,15 +205,21 @@ fun LibraryPlaylistsScreen(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
         modifier = Modifier.fillMaxSize(),
+        indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = LibraryHeaderContentPadding),
+        ) {
             // Control row (Sort dropdown, grid/list layout toggle, + add button)
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Left: Sort dropdown
@@ -248,7 +254,10 @@ fun LibraryPlaylistsScreen(
                     label = "PlaylistSortDirectionRotation",
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box {
                         Row(
                             modifier =
@@ -261,8 +270,11 @@ fun LibraryPlaylistsScreen(
                         ) {
                             Text(
                                 text = currentSortLabel,
+                                modifier = Modifier.weight(1f, fill = false),
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
@@ -297,6 +309,27 @@ fun LibraryPlaylistsScreen(
                                     },
                                 )
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.hidden_playlists)) },
+                                onClick = {
+                                    showHidden = !showHidden
+                                    showSortMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.visibility_off),
+                                        contentDescription = null,
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (showHidden) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.check),
+                                            contentDescription = null,
+                                        )
+                                    }
+                                },
+                            )
                         }
                     }
 
@@ -391,46 +424,20 @@ fun LibraryPlaylistsScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Row(
-                        modifier =
-                            Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    IconButton(
+                        onClick = { showCreatePlaylistDialog = true },
+                        colors =
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        modifier = Modifier.size(40.dp),
                     ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (showHidden) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { showHidden = !showHidden },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.visibility_off),
-                                contentDescription = stringResource(R.string.show_hidden_playlists),
-                                tint = if (showHidden) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .clickable { showCreatePlaylistDialog = true },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.add),
-                                contentDescription = stringResource(R.string.create_playlist),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(id = R.drawable.add),
+                            contentDescription = stringResource(R.string.create_playlist),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
@@ -740,15 +747,16 @@ fun PlaylistListCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Thumbnail
-        AsyncImage(
-            model = playlist.thumbnails.getOrNull(0),
-            contentDescription = null,
+        ItemThumbnail(
+            thumbnailUrl = playlist.thumbnails.getOrNull(0),
+            isActive = false,
+            isPlaying = false,
+            shape = RoundedCornerShape(24.dp),
             contentScale = ContentScale.Crop,
+            showPlaceholder = true,
             modifier =
                 Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .size(72.dp),
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -902,9 +910,11 @@ fun PlaylistGridCard(
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(26.dp)),
         ) {
-            AsyncImage(
-                model = playlist.thumbnails.getOrNull(0),
-                contentDescription = null,
+            ItemThumbnail(
+                thumbnailUrl = playlist.thumbnails.getOrNull(0),
+                isActive = false,
+                isPlaying = false,
+                shape = RoundedCornerShape(26.dp),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

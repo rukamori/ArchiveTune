@@ -181,6 +181,7 @@ fun UpdateScreen(
     var updateSheetNotes by remember { mutableStateOf<String?>(null) }
     var updateSheetError by remember { mutableStateOf<String?>(null) }
     var updateSheetIsSameVersion by remember { mutableStateOf(false) }
+    var updateCheckJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var showUpdateUpToDateDialog by remember { mutableStateOf(false) }
     var showUpdateErrorDialog by remember { mutableStateOf(false) }
     var updateDownloadProgress by remember { mutableStateOf<Float?>(null) }
@@ -292,48 +293,43 @@ fun UpdateScreen(
     }
 
     val onCheckForUpdate: () -> Unit = {
-        updateSheetLoading = true
-        updateSheetVersion = null
-        updateSheetNotes = null
-        updateSheetError = null
-        updateSheetIsSameVersion = false
-        showUpdateUpToDateDialog = false
-        showUpdateErrorDialog = false
+        if (updateCheckJob?.isActive != true) {
+            updateSheetLoading = true
+            updateSheetVersion = null
+            updateSheetNotes = null
+            updateSheetError = null
+            updateSheetIsSameVersion = false
+            showUpdateUpToDateDialog = false
+            showUpdateErrorDialog = false
 
-        coroutineScope.launch {
-            val versionResult =
-                when (updateChannel) {
-                    UpdateChannel.CANARY -> {
-                        Updater.getLatestCanaryReleaseNotes().onSuccess { notes ->
-                            updateSheetNotes = notes
+            updateCheckJob =
+                coroutineScope.launch {
+                    val releaseResult =
+                        when (updateChannel) {
+                            UpdateChannel.CANARY -> Updater.getLatestCanaryReleaseInfo(forceRefresh = true)
+                            UpdateChannel.STABLE -> Updater.getLatestReleaseInfo(forceRefresh = true)
                         }
-                        Updater.getLatestCanaryVersionName()
-                    }
 
-                    else -> {
-                        Updater.getLatestReleaseNotes().onSuccess { notes ->
-                            updateSheetNotes = notes
+                    updateSheetLoading = false
+
+                    releaseResult
+                        .onSuccess { release ->
+                            val version = Updater.getReleaseVersionName(release)
+                            latestVersion = version
+                            updateSheetNotes = release.body
+                            updateSheetIsSameVersion = !Updater.isUpdateAvailable(version, BuildConfig.VERSION_NAME)
+                            updateSheetVersion = version
+
+                            if (updateSheetIsSameVersion) {
+                                showUpdateUpToDateDialog = true
+                                onUpToDate()
+                            } else {
+                                updateSheetState.show(updateSheetContent)
+                            }
+                        }.onFailure { error ->
+                            updateSheetError = error.message ?: context.getString(R.string.error_unknown)
+                            showUpdateErrorDialog = true
                         }
-                        Updater.getLatestVersionName()
-                    }
-                }
-
-            updateSheetLoading = false
-
-            versionResult
-                .onSuccess { version ->
-                    updateSheetIsSameVersion = !Updater.isUpdateAvailable(version, BuildConfig.VERSION_NAME)
-                    updateSheetVersion = version
-
-                    if (updateSheetIsSameVersion) {
-                        showUpdateUpToDateDialog = true
-                        onUpToDate()
-                    } else {
-                        updateSheetState.show(updateSheetContent)
-                    }
-                }.onFailure { e ->
-                    updateSheetError = e.message ?: context.getString(R.string.error_unknown)
-                    showUpdateErrorDialog = true
                 }
         }
     }

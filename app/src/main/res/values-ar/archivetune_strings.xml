@@ -220,4 +220,9 @@
     <string name="music_recognition_permission_desc">السماح بالوصول إلى الميكروفون للتعرف على الموسيقى القريبة.</string>
     <string name="music_recognition_permission_action">سماح</string>
     <string name="music_recognition_error">حدث شيء خاطئ</string>
+    <string name="history_local_summary">تم تشغيلها على هذا الجهاز</string>
+    <string name="history_remote_summary">متزامنة من YouTube Music</string>
+    <string name="history_local_empty_title">لا يوجد سجل محلي حتى الآن</string>
+    <string name="history_local_empty_desc">ستظهر هنا الأغاني التي تشغلها على هذا الجهاز.</string>
+    <string name="history_remote_empty_desc">سيظهر سجل الاستماع الذي تمت مزامنته هنا بعد الاستماع إلى الموسيقى على YouTube Music.</string>
 </resources>

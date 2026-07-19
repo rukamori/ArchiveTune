@@ -41,12 +41,6 @@
     <string name="filter_featured_playlists">เพลย์ลิสต์แนะนำ</string>
     <string name="no_results_found">ไม่พบผลการค้นหา</string>
     <string name="top_results">ผลลัพธ์ยอดนิยม</string>
-    <string name="library_title">คลังเพลงของคุณ</string>
-    <string name="library_subtitle">เพลงของคุณ จัดระเบียบมาเพื่อคุณโดยเฉพาะ</string>
-    <string name="library_playlists_subtitle">เพลย์ลิสต์ทั้งหมดของคุณ จัดระเบียบเพื่อคุณ</string>
-    <string name="library_songs_subtitle">เพลงทั้งหมดของคุณ จัดระเบียบเพื่อคุณ</string>
-    <string name="library_artists_subtitle">ศิลปินทั้งหมดของคุณ ในที่เดียว</string>
-    <string name="library_albums_subtitle">ทุกอัลบั้มของคุณ จัดระเบียบอย่างสวยงาม</string>
     <string name="most_played_badge">ยอดนิยม</string>
     <string name="play_all">เล่นทั้งหมด</string>
     <string name="offline_shortcut">ออฟไลน์</string>

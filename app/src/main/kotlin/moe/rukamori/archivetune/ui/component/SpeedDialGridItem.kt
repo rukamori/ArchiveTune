@@ -45,6 +45,7 @@ import coil3.request.ImageRequest
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -111,8 +112,13 @@ fun SpeedDialGridItem(
                 remember(item.thumbnail, widthPx, heightPx) {
                     ImageRequest
                         .Builder(context)
-                        .data(item.thumbnail?.resize(widthPx, heightPx))
-                        .size(widthPx, heightPx)
+                        .data(
+                            item.thumbnail?.resize(
+                                width = widthPx,
+                                height = heightPx,
+                                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+                            ),
+                        ).size(widthPx, heightPx)
                         .build()
                 }
 

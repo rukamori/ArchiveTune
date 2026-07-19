@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="support_archivetune_title">Support ArchiveTune ❤️</string>
+    <string name="support_archivetune_description">Love the app? Tap to watch a quick ad and support its development.</string>
+    <string name="support_archivetune_preparing">Preparing a quick ad…</string>
+    <string name="support_archivetune_unavailable">Ads aren’t available for your current privacy choices.</string>
+    <string name="support_archivetune_retry">The ad isn’t ready. Tap to try again.</string>
+    <string name="support_archivetune_thanks">Thanks for supporting ArchiveTune!</string>
+    <string name="support_archivetune_failed">The ad couldn’t be shown. Please try again.</string>
+    <string name="support_archivetune_activity_unavailable">Return to ArchiveTune and try again.</string>
+    <string name="ad_privacy_section">Ads</string>
+    <string name="ad_privacy_title">Ad privacy options</string>
+    <string name="ad_privacy_description">Review or change your ad privacy choices</string>
+    <string name="ad_privacy_updated">Ad privacy choices updated.</string>
+    <string name="start_io_privacy_title">Ad privacy choice</string>
+    <string name="start_io_privacy_description">ArchiveTune uses Start.io to show optional support ads. Choose whether Start.io may use your data for personalized advertising. You can change this later in Privacy settings.</string>
+    <string name="start_io_personalized_ads">Allow personalized ads</string>
+    <string name="start_io_non_personalized_ads">Use non-personalized ads</string>
+    <string name="start_io_privacy_policy">Read Start.io privacy policy</string>
+</resources>

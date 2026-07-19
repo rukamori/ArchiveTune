@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Accueil</string>
     <string name="songs">Titres</string>
@@ -48,7 +48,6 @@
     <string name="remove_download_playlist_confirm">Voulez-vous vraiment supprimer tous les titres de la playlist « %s » du stockage des titres téléchargés ?</string>
     <string name="delete_playlist_confirm">Voulez-vous vraiment supprimer la playlist « %s » ?</string>
     <string name="retry">Réessayer</string>
-    <string name="radio">Radio</string>
     <string name="shuffle">Lecture Aléatoire</string>
     <string name="reset">Réinitialiser</string>
     <string name="details">Détails</string>
@@ -456,10 +455,6 @@
     <string name="eq_flat">Plat</string>
     <string name="eq_profiles">Profils</string>
     <string name="eq_manage">Gérer</string>
-    <string name="eq_system_preset">Préréglage du système</string>
-    <string name="eq_manual">Manuel</string>
-    <string name="eq_profile_hint">Appliquez un profil ou enregistrez vos paramètres actuels</string>
-    <string name="eq_save">Enregistrer</string>
     <string name="eq_save_profile">Enregistrer le profil</string>
     <string name="eq_profile_name">Nom du profil</string>
     <string name="eq_custom_profile">Profil personnalisé</string>
@@ -543,8 +538,6 @@
     <string name="session_link">Lien de session</string>
     <string name="session_code">Code de session</string>
     <string name="add_current_song">Ajouter le titre actuel</string>
-    <string name="enabled">Activé</string>
-    <string name="disabled">Désactivé</string>
     <string name="invalid_link">Lien invalide</string>
     <string name="invalid_code">Code invalide</string>
     <string name="not_allowed">Interdit</string>
@@ -637,7 +630,6 @@
     <string name="sort_order_descending">Décroissant</string>
     <string name="disable_animations">Désactiver les animations</string>
     <string name="disable_animations_desc">Désactivez la plupart des animations de l\'application. Recommandé pour les appareils bas de gamme</string>
-    <string name="tap_to_activate_equalizer">Appuyez pour activer l\'égaliseur</string>
     <string name="updates_subtitle_stable">Versions stables et notes de mise à jour</string>
     <string name="updates_status_checking">Vérification de la dernière version</string>
     <string name="updates_status_current">Vous utilisez la dernière version disponible</string>
@@ -688,12 +680,6 @@
     <string name="album_backdrop_desc">Afficher l’illustration comme arrière-plan flou sur le lecteur</string>
     <string name="backdrop_blur_amount">Quantité de flou d’arrière-plan</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="library_title">Votre Bibliothèque</string>
-    <string name="library_subtitle">Votre musique, classée pour vous</string>
-    <string name="library_playlists_subtitle">Toutes vos playlists, classées pour vous</string>
-    <string name="library_songs_subtitle">Tous vos titres, classés pour vous</string>
-    <string name="library_artists_subtitle">Tous vos artistes, réunis au même endroit</string>
-    <string name="library_albums_subtitle">Tous vos albums, parfaitement classés</string>
     <string name="most_played_badge">LES PLUS JOUÉS</string>
     <string name="play_all">Tout lire</string>
     <string name="offline_shortcut">Hors Ligne</string>
@@ -1013,4 +999,26 @@
     <string name="app_icon_empty">Aucune icône d\'application n\'est disponible</string>
     <string name="app_icon_load_failed">Impossible de charger les icônes des applications</string>
     <string name="app_icon_change_failed">Impossible de modifier l\'icône de l\'application</string>
+    <string name="together_room_closed_inactivity_notification">La salle a été fermée car personne ne s\'y est connecté pendant 10 minutes</string>
+    <string name="show_player_volume_bar">Afficher la barre de volume</string>
+    <string name="player_volume_bar_v7_v8_only">Disponible uniquement avec les modèles de lecteurs V7 et V8</string>
+    <string name="force_high_refresh_rate">Forcer un taux de rafraîchissement élevé</string>
+    <string name="max_supported_refresh_rate">Fréquence maximale prise en charge : %1$d Hz</string>
+    <string name="view_debug_logs_description">Afficher et filtrer les journaux d\'application</string>
+    <string name="resume_logs">Reprendre les journaux</string>
+    <string name="jump_to_latest_log">Aller au dernier message</string>
+    <string name="copy_log_entry">Copier l\'entrée du journal</string>
+    <string name="export_logs_failed">Impossible d\'exporter les journaux</string>
+    <string name="export">Exporter</string>
+    <string name="updates_subtitle_canary">Versions Canary et commits de développement récents</string>
+    <string name="enable_update_notification_channel_desc">Recevez une notification lorsqu\'une nouvelle version est disponible sur le canal sélectionné</string>
+    <string name="channel_canary">Canary</string>
+    <string name="updates_canary_hosting_description">Les versions « Canary » sont publiées automatiquement à partir de la dernière branche de développement.</string>
+    <string name="updates_channel_warning_canary_title">Versions Canary</string>
+    <string name="updates_channel_warning_canary_risk">Les versions « Canary » peuvent inclure des fonctionnalités expérimentales, des modifications non finalisées ou des régressions temporaires.</string>
+    <string name="updates_channel_warning_canary_unstable">Les versions « Canary » sont fournies uniquement à des fins de test et d\'accès anticipé.\nLa stabilité, la compatibilité et les fonctionnalités ne sont pas garanties.</string>
+    <string name="updates_channel_warning_canary_acknowledgement">Remarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.\nEn poursuivant, vous reconnaissez que les versions Canary peuvent être instables et que vous les utilisez à vos propres risques.</string>
+    <string name="updates_canary_channel_confirmation">Passez sur le canal Canary pour recevoir les versions de développement.\n\nLes versions Canary sont publiées automatiquement à partir de la dernière branche de développement.\nRemarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.</string>
+    <string name="onboarding_permission_device_audio_capture_title">Reconnaissance audio intégrée à l\'appareil</string>
+    <string name="onboarding_permission_device_audio_capture_desc">Identifiez la musique diffusée dans d\'autres applications sans utiliser le microphone. Android vous demande à chaque fois l\'autorisation de capturer l\'écran et le son, tandis qu\'ArchiveTune traite uniquement le son.</string>
 </resources>

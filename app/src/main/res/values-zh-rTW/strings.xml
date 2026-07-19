@@ -41,12 +41,6 @@
     <string name="filter_featured_playlists">精選歌單</string>
     <string name="no_results_found">未找到結果</string>
     <string name="top_results">最佳匹配</string>
-    <string name="library_title">你的媒體庫</string>
-    <string name="library_subtitle">為你量身打造的媒體庫</string>
-    <string name="library_playlists_subtitle">為你量身打造的播放清單</string>
-    <string name="library_songs_subtitle">為你量身打造的歌曲庫</string>
-    <string name="library_artists_subtitle">你的所有藝人，在此一覽無遺</string>
-    <string name="library_albums_subtitle">你的所有專輯，為你美觀呈現</string>
     <string name="most_played_badge">最昌播放</string>
     <string name="play_all">全部播放</string>
     <string name="offline_shortcut">離線</string>
@@ -118,7 +112,6 @@
     <string name="delete_playlist_confirm">您確定要刪除播放清單%s嗎？</string>
     <string name="change_playlist_cover">變更播放清單封面圖片</string>
     <string name="retry">重試</string>
-    <string name="radio">電台</string>
     <string name="cast">投放</string>
     <string name="cast_devices">投放裝置</string>
     <string name="cast_sheet_subtitle">選擇 ArchiveTune 的播放裝置</string>
@@ -530,17 +523,12 @@
     <string name="add_symbol">添加符號</string>
     <string name="enter_symbol">輸入符號</string>
     <string name="equalizer">均衡器</string>
-    <string name="tap_to_activate_equalizer">點擊以啟用均衡器</string>
     <string name="eq_waiting_for_audio_session">正在等待音訊連線</string>
     <string name="eq_open_system_equalizer">打開系統均衡器</string>
     <string name="eq_presets">預設</string>
     <string name="eq_flat">平坦</string>
     <string name="eq_profiles">簡介</string>
     <string name="eq_manage">管理</string>
-    <string name="eq_system_preset">系統預設</string>
-    <string name="eq_manual">手動</string>
-    <string name="eq_profile_hint">應用設定檔或儲存目前設定</string>
-    <string name="eq_save">儲存</string>
     <string name="eq_save_profile">儲存配置</string>
     <string name="eq_profile_name">配置名稱</string>
     <string name="eq_custom_profile">自訂配置</string>
@@ -879,8 +867,6 @@
     <string name="session_code">邀請碼</string>
     <string name="add_current_song">新增當前歌曲</string>
     <string name="dismiss">拒絕</string>
-    <string name="enabled">已啟用</string>
-    <string name="disabled">已停用</string>
     <string name="invalid_link">無效連結</string>
     <string name="invalid_code">無效邀請碼</string>
     <string name="not_allowed">不允許</string>

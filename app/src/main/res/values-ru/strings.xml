@@ -49,7 +49,6 @@
     <string name="remove_download_playlist_confirm">Вы действительно хотите удалить \"%s\" песен из хранилища скачанных песен?</string>
     <string name="delete_playlist_confirm">Вы действительно хотите удалить плейлист \"%s\"?</string>
     <string name="retry">Повтор</string>
-    <string name="radio">Радио</string>
     <string name="shuffle">Перемешать</string>
     <string name="reset">Сбросить</string>
     <string name="details">Детали</string>
@@ -346,10 +345,6 @@
     <string name="eq_flat">Плоский</string>
     <string name="eq_profiles">Профили</string>
     <string name="eq_manage">Управлять</string>
-    <string name="eq_system_preset">Системный пресет</string>
-    <string name="eq_manual">Вручную</string>
-    <string name="eq_profile_hint">Примените профиль или сохраните текущие настройки</string>
-    <string name="eq_save">Сохранить</string>
     <string name="eq_save_profile">Сохранить профиль</string>
     <string name="eq_profile_name">Название профиля</string>
     <string name="eq_custom_profile">Свой профиль</string>
@@ -553,8 +548,6 @@
     <string name="session_code">Код сессии</string>
     <string name="add_current_song">Добавить текущую песню</string>
     <string name="dismiss">Скрыть</string>
-    <string name="enabled">Включено</string>
-    <string name="disabled">Отключено</string>
     <string name="invalid_link">Неверная ссылка</string>
     <string name="invalid_code">Неверный код</string>
     <string name="not_allowed">Запрещено</string>
@@ -662,7 +655,6 @@
     <string name="open_with_downloader">Открыть с помощью загрузчика</string>
     <string name="external_downloader_not_installed">Внешнее приложение-загрузчик не установлено</string>
     <string name="external_downloader_not_configured">Не настроено ни одного внешнего загрузчика. Настройте один в Настройки → Плеер.</string>
-    <string name="tap_to_activate_equalizer">Нажмите для активации эквалайзера</string>
     <string name="updates_subtitle_stable">Стабильные релизы и заметки релиза</string>
     <string name="updates_status_checking">Проверка последнего релиза</string>
     <string name="updates_status_current">Вы на последней версии релиза</string>

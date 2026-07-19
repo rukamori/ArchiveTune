@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Início</string>
     <string name="songs">Músicas</string>
@@ -43,12 +43,6 @@
     <string name="filter_featured_playlists">Playlists em destaque</string>
     <string name="no_results_found">Nenhum resultado encontrado</string>
     <string name="top_results">Principais resultados</string>
-    <string name="library_title">Sua biblioteca</string>
-    <string name="library_subtitle">Sua música, organizada por você</string>
-    <string name="library_playlists_subtitle">Todas as suas playlists, organizadas por você</string>
-    <string name="library_songs_subtitle">Todas as suas músicas, organizadas por você</string>
-    <string name="library_artists_subtitle">Todos os seus artistas, em um só lugar</string>
-    <string name="library_albums_subtitle">Todos os seus álbuns, lindamente organizados</string>
     <string name="most_played_badge">MAIS TOCADAS</string>
     <string name="play_all">Tocar tudo</string>
     <string name="offline_shortcut">Offline</string>
@@ -120,7 +114,6 @@
     <string name="delete_playlist_confirm">Deseja realmente excluir a playlist \"%s\"?</string>
     <string name="change_playlist_cover">Alterar capa da playlist</string>
     <string name="retry">Tentar novamente</string>
-    <string name="radio">Rádio</string>
     <string name="cast">Transmitir</string>
     <string name="cast_devices">Dispositivos Cast</string>
     <string name="cast_sheet_subtitle">Escolha onde o ArchiveTune toca</string>
@@ -548,17 +541,12 @@
     <string name="add_symbol">Adicionar símbolo</string>
     <string name="enter_symbol">Inserir símbolo</string>
     <string name="equalizer">Equalizador</string>
-    <string name="tap_to_activate_equalizer">Toque para ativar o equalizador</string>
     <string name="eq_waiting_for_audio_session">Aguardando sessão de áudio</string>
     <string name="eq_open_system_equalizer">Abrir equalizador do sistema</string>
     <string name="eq_presets">Predefinições</string>
     <string name="eq_flat">Plano</string>
     <string name="eq_profiles">Perfis</string>
     <string name="eq_manage">Gerenciar</string>
-    <string name="eq_system_preset">Predefinição do sistema</string>
-    <string name="eq_manual">Manual</string>
-    <string name="eq_profile_hint">Aplique um perfil ou salve suas configurações atuais</string>
-    <string name="eq_save">Salvar</string>
     <string name="eq_save_profile">Salvar perfil</string>
     <string name="eq_profile_name">Nome do perfil</string>
     <string name="eq_custom_profile">Perfil personalizado</string>
@@ -897,8 +885,6 @@
     <string name="session_code">Código da sessão</string>
     <string name="add_current_song">Adicionar música atual</string>
     <string name="dismiss">Dispensar</string>
-    <string name="enabled">Ativado</string>
-    <string name="disabled">Desativado</string>
     <string name="invalid_link">Link inválido</string>
     <string name="invalid_code">Código inválido</string>
     <string name="not_allowed">Não permitido</string>
@@ -995,4 +981,44 @@
     <string name="unhide">Reexibir</string>
     <string name="source">Origem</string>
     <string name="enable_youlyplus_lyrics">Ativar letras do YouLyPlus</string>
+    <string name="together_room_closed_inactivity_notification">A sala foi fechada porque ninguém entrou por 10 minutos</string>
+    <string name="show_player_volume_bar">Mostrar a barra de volume</string>
+    <string name="player_volume_bar_v7_v8_only">Disponível apenas nos modelos de player V7 e V8</string>
+    <string name="app_icon_description">Escolha o ícone do launcher</string>
+    <string name="app_icon_default">Padrão</string>
+    <string name="app_icon_subtitle">Personalize o seu launcher</string>
+    <string name="app_icon_current">Ícone atual</string>
+    <string name="app_icon_available">Ícones disponíveis</string>
+    <string name="app_icon_builtin">Integrado</string>
+    <string name="app_icon_community">Ícone da comunidade</string>
+    <string name="app_icon_builtin_description">Ícone original do ArchiveTune</string>
+    <string name="app_icon_identifier">ID %1$s</string>
+    <string name="app_icon_community_notice">Os ícones da comunidade são criados pelos usuários e podem mudar com o tempo.</string>
+    <plurals name="app_icon_count">
+        <item quantity="one">%d ícone</item>
+        <item quantity="many">%d ícones</item>
+        <item quantity="other">%d ícones</item>
+    </plurals>
+    <string name="app_icon_empty">Não há ícones de aplicativos disponíveis</string>
+    <string name="app_icon_load_failed">Não foi possível carregar os ícones dos aplicativos</string>
+    <string name="app_icon_change_failed">Não consegui alterar o ícone do aplicativo</string>
+    <string name="force_high_refresh_rate">Forçar a taxa de atualização alta</string>
+    <string name="max_supported_refresh_rate">Máxima suportada: %1$d Hz</string>
+    <string name="view_debug_logs_description">Visualizar e filtrar registros de aplicativos</string>
+    <string name="resume_logs">Retomar registros</string>
+    <string name="jump_to_latest_log">Ir para o registro mais recente</string>
+    <string name="copy_log_entry">Copiar registro do log</string>
+    <string name="export_logs_failed">Não foi possível exportar os registros</string>
+    <string name="export">Exportar</string>
+    <string name="updates_subtitle_canary">Lançamentos da versão Canary e commits recentes de desenvolvimento</string>
+    <string name="enable_update_notification_channel_desc">Receba uma notificação quando uma nova versão estiver disponível no canal selecionado</string>
+    <string name="channel_canary">Canary</string>
+    <string name="updates_canary_hosting_description">As versões Canary são publicadas automaticamente a partir do ramo de desenvolvimento mais recente.</string>
+    <string name="updates_channel_warning_canary_title">Lançamentos canary</string>
+    <string name="updates_channel_warning_canary_risk">As versões Canary podem incluir recursos experimentais, alterações ainda não finalizadas ou regressões temporárias.</string>
+    <string name="updates_channel_warning_canary_unstable">As versões Canary são fornecidas exclusivamente para testes e acesso antecipado.\nA estabilidade, a compatibilidade e a funcionalidade não são garantidas.</string>
+    <string name="updates_channel_warning_canary_acknowledgement">Observação: o download direto do GitHub ignora qualquer verificação adicional realizada pela loja na qual você possa ter instalado o aplicativo originalmente.\nAo continuar, você reconhece que as versões Canary podem ser instáveis e que as utiliza por sua própria conta e risco.</string>
+    <string name="updates_canary_channel_confirmation">Mude para o canal Canary para receber versões de desenvolvimento.\n\nAs versões Canary são publicadas automaticamente a partir do ramo de desenvolvimento mais recente.\nObservação: o download direto do GitHub ignora qualquer verificação adicional realizada pela loja na qual você possa ter instalado o aplicativo originalmente.</string>
+    <string name="onboarding_permission_device_audio_capture_title">Reconhecimento de áudio no próprio dispositivo</string>
+    <string name="onboarding_permission_device_audio_capture_desc">Reconheça músicas que estão tocando em outros aplicativos sem usar o microfone. O Android solicita autorização para capturar a tela e o áudio a cada vez, enquanto o ArchiveTune processa apenas o áudio.</string>
 </resources>

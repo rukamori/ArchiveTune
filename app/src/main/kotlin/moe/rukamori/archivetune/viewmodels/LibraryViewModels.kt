@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
+import moe.rukamori.archivetune.extensions.filterVideo
 import moe.rukamori.archivetune.extensions.reversed
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
@@ -168,7 +169,9 @@ class LibrarySongsViewModel
                                             SongSortType.PLAY_TIME -> {
                                                 songs.sortedBy { song: Song -> song.song.totalPlayTime }
                                             }
-                                        }.reversed(descending).filterExplicit(hideExplicit)
+                                        }.reversed(descending)
+                                            .filterExplicit(hideExplicit)
+                                            .filterVideo(hideVideo)
                                     }
                             }
                         }
@@ -463,17 +466,20 @@ class ArtistSongsViewModel
         val songs =
             context.dataStore.data
                 .map {
-                    Pair(
+                    Triple(
                         it[ArtistSongSortTypeKey].toEnum(ArtistSongSortType.CREATE_DATE) to (
                             it[ArtistSongSortDescendingKey]
                                 ?: true
                         ),
                         it[HideExplicitKey] ?: false,
+                        it[HideVideoKey] ?: false,
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (sortDesc, hideExplicit) ->
+                .flatMapLatest { (sortDesc, hideExplicit, hideVideo) ->
                     val (sortType, descending) = sortDesc
-                    database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit) }
+                    database.artistSongs(artistId, sortType, descending).map {
+                        it.filterExplicit(hideExplicit).filterVideo(hideVideo)
+                    }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
 

@@ -67,6 +67,7 @@ internal suspend fun fetchCanvasArtworkForPlayback(
     artistNameRaw: String,
     storefront: String,
     requireVertical: Boolean,
+    forceRefresh: Boolean = false,
 ): CanvasArtwork? {
     val songTitle = normalizeCanvasSongTitle(songTitleRaw)
     val artistName = normalizeCanvasArtistName(artistNameRaw)
@@ -86,10 +87,34 @@ internal suspend fun fetchCanvasArtworkForPlayback(
                 song = song,
                 artist = artist,
                 storefront = storefront,
+                forceRefresh = forceRefresh,
             )?.takeIf { artwork ->
                 artwork.matchesSongIdentity(songTitleRaw, artistNameRaw) &&
                     artwork.hasRequiredCanvasVariant(requireVertical)
             }
+    }
+}
+
+internal suspend fun refetchCanvasArtworkForPlayback(
+    mediaId: String,
+    songTitleRaw: String,
+    artistNameRaw: String,
+    storefront: String,
+    requireVertical: Boolean,
+): CanvasArtwork? {
+    if (mediaId.isBlank()) return null
+
+    return withContext(Dispatchers.IO) {
+        val fetched =
+            fetchCanvasArtworkForPlayback(
+                songTitleRaw = songTitleRaw,
+                artistNameRaw = artistNameRaw,
+                storefront = storefront,
+                requireVertical = requireVertical,
+                forceRefresh = true,
+            ) ?: return@withContext null
+
+        CanvasArtworkPlaybackCache.replace(mediaId, fetched)
     }
 }
 

@@ -40,12 +40,6 @@
     <string name="filter_featured_playlists">פלייליסטים נבחרים</string>
     <string name="no_results_found">לא נמצאו תוצאות</string>
     <string name="top_results">תוצאות מובילות</string>
-    <string name="library_title">הספרייה שלך</string>
-    <string name="library_subtitle">המוזיקה שלך, מאורגנת בשבילך</string>
-    <string name="library_playlists_subtitle">כל הפלייליסטים שלך, מאורגנים בשבילך</string>
-    <string name="library_songs_subtitle">כל השירים שלך, מאורגנים בשבילך</string>
-    <string name="library_artists_subtitle">כל האמנים שלך, במקום אחד</string>
-    <string name="library_albums_subtitle">כל האלבומים שלך, מאורגנים פיקס</string>
     <string name="most_played_badge">המושמע ביותר</string>
     <string name="play_all">נגן הכל</string>
     <string name="offline_shortcut">לא מקוון</string>
@@ -135,9 +129,7 @@
     <string name="smart_trimmer_description">גוזם חכם מנהל באופן דינמי את מטמון התמונות ומטמון השירים, וגוזם ערכים ישנים כדי לחסוך מקום בדיסק.</string>
     <string name="palette_electric_blue">כחול חשמלי</string>
     <string name="pitch_mode_semitones_short">חצי טון</string>
-    <string name="radio">רדיו</string>
     <string name="reset">איפוס</string>
-    <string name="tap_to_activate_equalizer">הקש כדי להפעיל את האקולייזר</string>
     <string name="song_cache">מטמון שירים</string>
     <string name="lyrics_line_spacing">ריווח שורות בין מילות השיר</string>
     <string name="error_no_internet">אין חיבור רשת</string>
@@ -202,7 +194,6 @@
     <string name="haptics">רטט</string>
     <string name="palette_clay">חימר</string>
     <string name="corner_radius">רדיוס פינה: %1$d</string>
-    <string name="eq_system_preset">הגדרת מערכת</string>
     <string name="audio_offload_desc">אפשר למכשירים נתמכים להשמיע אודיו באמצעות פענוח חומרה בעל צריכת אנרגיה נמוכה. חלק מתכונות עיבוד השמע מושבתות.</string>
     <string name="content_language">שפת תוכן ברירת מחדל</string>
     <string name="enable_unison_lyrics">הפעלת Unison lyrics</string>
@@ -384,7 +375,6 @@
     <string name="end_of_song">סוף השיר</string>
     <string name="pitch_mode_multiplier_short">x</string>
     <string name="bitrate">קצב סיביות</string>
-    <string name="eq_save">שמירה</string>
     <string name="start_radio">התחל רדיו</string>
     <string name="view_all">הצג הכל</string>
     <string name="default_open_tab">כרטיסייה פתוחה כברירת מחדל</string>
@@ -427,7 +417,6 @@
     <string name="palette_spring">אביב</string>
     <string name="login">התחברות</string>
     <string name="content_country">מדינת תוכן ברירת מחדל</string>
-    <string name="eq_manual">ידני</string>
     <string name="media_id">מזהה מדיה</string>
     <string name="remove_from_library">הסר מהספרייה</string>
     <string name="together_role_host">מארח</string>
@@ -477,7 +466,6 @@
     <string name="enable_dynamic_theme">הפעלת ערכת נושא דינמית</string>
     <string name="queue_searched_songs">שירים שחיפשת</string>
     <string name="liked_songs">שירים מועדפים</string>
-    <string name="eq_profile_hint">החל פרופיל או שמור את ההגדרות הנוכחיות שלך</string>
     <string name="palette_magenta_pop">מנג\'טה</string>
     <string name="external_downloader">מוריד חיצוני</string>
     <string name="palette_teal_wave">טורקיז</string>
@@ -812,8 +800,6 @@
     <string name="session_code">קוד סשן</string>
     <string name="add_current_song">הוסף את השיר הנוכחי</string>
     <string name="dismiss">התעלמות</string>
-    <string name="enabled">מופעל</string>
-    <string name="disabled">מושבת</string>
     <string name="invalid_link">קישור לא תקין</string>
     <string name="invalid_code">קוד לא תקין</string>
     <string name="not_allowed">אסור</string>

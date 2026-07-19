@@ -49,7 +49,6 @@
     <string name="delete_playlist_confirm">Yakin ingin menghapus playlist \"%s\"?</string>
     <string name="change_playlist_cover">Ubah sampul playlist</string>
     <string name="retry">Jajal maneh</string>
-    <string name="radio">Radio</string>
     <string name="shuffle">Acak</string>
     <string name="music_recognition">Pengenalan Musik</string>
     <string name="reset">Setel ulang</string>
@@ -392,17 +391,12 @@
     <string name="add_symbol">Tambahke simbol</string>
     <string name="enter_symbol">Masukkan simbol</string>
     <string name="equalizer">Ekualiser</string>
-    <string name="tap_to_activate_equalizer">Ketuk untuk mengaktifkan ekualiser</string>
     <string name="eq_waiting_for_audio_session">Menunggu sesi audio…</string>
     <string name="eq_open_system_equalizer">Buka ekualiser sistem</string>
     <string name="eq_presets">Preset</string>
     <string name="eq_flat">Datar</string>
     <string name="eq_profiles">Profil</string>
     <string name="eq_manage">Kelola</string>
-    <string name="eq_system_preset">Preset sistem</string>
-    <string name="eq_manual">Manual</string>
-    <string name="eq_profile_hint">Terapkan profil atau simpan pengaturan Kowe saat ini</string>
-    <string name="eq_save">Simpen</string>
     <string name="eq_save_profile">Simpen profil</string>
     <string name="eq_profile_name">Nama profil</string>
     <string name="eq_custom_profile">Profil kustom</string>
@@ -674,8 +668,6 @@
     <string name="session_code">Kode sesi</string>
     <string name="add_current_song">Tambahke lagu saat ini</string>
     <string name="dismiss">Tutup</string>
-    <string name="enabled">Diaktifkan</string>
-    <string name="disabled">Nonaktifkan</string>
     <string name="invalid_link">Tautan tidak valid</string>
     <string name="invalid_code">Kode tidak valid</string>
     <string name="not_allowed">Tidak diperbolehkan</string>
@@ -737,12 +729,6 @@
     <string name="album_backdrop_desc">Tampilake karya seni sebagai latar belakang buram di pemutar</string>
     <string name="backdrop_blur_amount">Jumlah buram latar belakang</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
-    <string name="library_title">Pustaka Kowe</string>
-    <string name="library_subtitle">Musik Kowe, diatur untuk Kowe</string>
-    <string name="library_playlists_subtitle">Kabeh playlist Kowe, diatur untuk Kowe</string>
-    <string name="library_songs_subtitle">Kabeh lagu Kowe, diatur untuk Kowe</string>
-    <string name="library_artists_subtitle">Kabeh artis Kowe, di satu tempat</string>
-    <string name="library_albums_subtitle">Kabeh album Kowe, tersusun rapi</string>
     <string name="most_played_badge">PALING SERING DIPUTAR</string>
     <string name="play_all">Puter semua</string>
 </resources>

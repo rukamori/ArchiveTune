@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Trang chủ</string>
     <string name="songs">Bài hát</string>
@@ -39,12 +39,6 @@
     <string name="filter_community_playlists">Danh sách phát từ cộng đồng</string>
     <string name="filter_featured_playlists">Danh sách phát nổi bật</string>
     <string name="no_results_found">Không tìm thấy kết quả</string>
-    <string name="library_title">Thư viện của bạn</string>
-    <string name="library_subtitle">Nhạc của bạn, được sắp xếp gọn gàng</string>
-    <string name="library_playlists_subtitle">Tất cả danh sách phát của bạn, được sắp xếp gọn gàng</string>
-    <string name="library_songs_subtitle">Tất cả bài hát của bạn, được sắp xếp gọn gàng</string>
-    <string name="library_artists_subtitle">Tất cả nghệ sĩ của bạn, tập trung một chỗ</string>
-    <string name="library_albums_subtitle">Tất cả album của bạn, được sắp xếp đẹp mắt</string>
     <string name="most_played_badge">NGHE NHIỀU NHẤT</string>
     <string name="play_all">Phát tất cả</string>
     <string name="offline_shortcut">Ngoại tuyến</string>
@@ -107,7 +101,6 @@
     <string name="delete_playlist_confirm">Bạn có muốn xóa danh sách phát \"%s\" không?</string>
     <string name="change_playlist_cover">Thay đổi ảnh bìa danh sách phát</string>
     <string name="retry">Thử lại</string>
-    <string name="radio">Radio</string>
     <string name="shuffle">Xáo trộn</string>
     <string name="reset">Đặt lại</string>
     <string name="details">Chi tiết</string>
@@ -391,10 +384,6 @@
     <string name="eq_flat">Phẳng</string>
     <string name="eq_profiles">Hồ sơ</string>
     <string name="eq_manage">Quản lý</string>
-    <string name="eq_system_preset">Cài đặt sẵn hệ thống</string>
-    <string name="eq_manual">Thủ công</string>
-    <string name="eq_profile_hint">Áp dụng hồ sơ hoặc lưu cài đặt hiện tại của bạn</string>
-    <string name="eq_save">Lưu</string>
     <string name="eq_save_profile">Lưu hồ sơ</string>
     <string name="eq_profile_name">Tên hồ sơ</string>
     <string name="eq_custom_profile">Hồ sơ tùy chỉnh</string>
@@ -615,8 +604,6 @@
     <string name="session_link">Liên kết phiên</string>
     <string name="session_code">Mã phiên</string>
     <string name="add_current_song">Thêm bài hát hiện tại</string>
-    <string name="enabled">Đã bật</string>
-    <string name="disabled">Đã tắt</string>
     <string name="invalid_link">Liên kết không hợp lệ</string>
     <string name="invalid_code">Mã không hợp lệ</string>
     <string name="not_allowed">Không được phép</string>
@@ -709,7 +696,6 @@
     <string name="sort_order_descending">Giảm dần</string>
     <string name="disable_animations">Vô hiệu hóa hoạt ảnh</string>
     <string name="disable_animations_desc">Vô hiệu hóa hầu hết các hoạt ảnh ứng dụng. Được đề xuất cho các thiết bị cấu hình thấp</string>
-    <string name="tap_to_activate_equalizer">Nhấn để kích hoạt bộ cân bằng</string>
     <string name="updates_subtitle_stable">Phát hành ổn định và ghi chú phát hành</string>
     <string name="updates_status_checking">Kiểm tra bản phát hành mới nhất</string>
     <string name="updates_status_current">Bạn đang ở trên phiên bản mới nhất có sẵn</string>
@@ -981,4 +967,29 @@
     <string name="onboarding_community_telegram_title">Tham gia Telegram</string>
     <string name="onboarding_community_telegram_desc">Trò chuyện với cộng đồng và nhận cập nhật.</string>
     <string name="onboarding_community_donate_desc">Hỗ trợ phát triển liên tục.</string>
+    <string name="together_room_closed_inactivity_notification">Phòng bị đóng vì không có ai tham gia trong 10 phút</string>
+    <string name="show_player_volume_bar">Hiện thanh âm lượng</string>
+    <string name="player_volume_bar_v7_v8_only">Chỉ khả dụng với kiểu trình phát V7 và V8</string>
+    <string name="app_icon_description">Chọn biểu tượng trình khởi động</string>
+    <string name="app_icon_default">Mặc định</string>
+    <string name="app_icon_subtitle">Cá nhân hoá trình khởi động của bạn</string>
+    <string name="app_icon_current">Biểu tượng hiện tại</string>
+    <string name="app_icon_available">Biểu tượng hiện có</string>
+    <string name="app_icon_builtin">Tích hợp sẵn</string>
+    <string name="app_icon_community">Biểu tượng cộng đồng</string>
+    <string name="app_icon_builtin_description">Biểu tượng mặc định của ArchiveTune</string>
+    <string name="app_icon_identifier">ID %1$s</string>
+    <string name="app_icon_community_notice">Những biểu tượng cồng đồng được tạo bởi người dùng và có thể thay đổi theo thời gian</string>
+    <plurals name="app_icon_count">
+        <item quantity="other">%d biểu tượng</item>
+    </plurals>
+    <string name="app_icon_empty">Không có biểu tượng</string>
+    <string name="app_icon_load_failed">Không thể tải biểu tượng ứng dụng</string>
+    <string name="app_icon_change_failed">Không thể đổi biểu tượng ứng dụng</string>
+    <string name="force_high_refresh_rate">Ép tần số quét cao</string>
+    <string name="max_supported_refresh_rate">Cao nhất được hỗ trợ: %1$d Hz</string>
+    <string name="view_debug_logs_description">Xem và lọc nhật ký ứng dụng</string>
+    <string name="resume_logs">Tiếp tục nhật ký</string>
+    <string name="jump_to_latest_log">Nhảy đến nhật ký mới nhất</string>
+    <string name="copy_log_entry">Sao chép nội dung nhật ký</string>
 </resources>

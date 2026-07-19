@@ -40,9 +40,12 @@ class MenuState(
 ) {
     var isVisible by mutableStateOf(isVisible)
     var content by mutableStateOf(content)
+    internal var dialogContent by mutableStateOf<(@Composable () -> Unit)?>(null)
+        private set
 
     @OptIn(ExperimentalMaterial3Api::class)
     fun show(content: @Composable ColumnScope.() -> Unit) {
+        dialogContent = null
         isVisible = true
         this.content = content
     }
@@ -50,6 +53,15 @@ class MenuState(
     @OptIn(ExperimentalMaterial3Api::class)
     fun dismiss() {
         isVisible = false
+    }
+
+    fun showDialog(content: @Composable () -> Unit) {
+        isVisible = false
+        dialogContent = content
+    }
+
+    fun dismissDialog() {
+        dialogContent = null
     }
 }
 
@@ -61,6 +73,8 @@ fun BottomSheetMenu(
     background: Color = MaterialTheme.colorScheme.surface,
 ) {
     val focusManager = LocalFocusManager.current
+
+    state.dialogContent?.invoke()
 
     if (state.isVisible) {
         ModalBottomSheet(

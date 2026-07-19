@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="album_backdrop">Achtergrondvervaging</string>
     <string name="album_backdrop_desc">Toon artwork als vervaagde achtergrond op de speler</string>
@@ -42,12 +42,6 @@
     <string name="filter_featured_playlists">Aanbevolen afspeellijsten</string>
     <string name="no_results_found">Geen resultaten gevonden</string>
     <string name="top_results">Topresultaten</string>
-    <string name="library_title">Jouw Bibliotheek</string>
-    <string name="library_subtitle">Jouw muziek, speciaal voor jou geordend</string>
-    <string name="library_playlists_subtitle">Al je afspeellijsten, netjes voor je geordend</string>
-    <string name="library_songs_subtitle">Al je liedjes, overzichtelijk voor je gerangschikt</string>
-    <string name="library_artists_subtitle">Al je artiesten, op één plek</string>
-    <string name="library_albums_subtitle">Al je albums, overzichtelijk geordend</string>
     <string name="most_played_badge">MEEST GESPEELD</string>
     <string name="play_all">Alles afspelen</string>
     <string name="offline_shortcut">Offline</string>
@@ -119,7 +113,6 @@
     <string name="delete_playlist_confirm">Wil je de afspeellijst “%s” echt verwijderen?</string>
     <string name="change_playlist_cover">Afbeelding van afspeellijst wijzigen</string>
     <string name="retry">Opnieuw proberen</string>
-    <string name="radio">Radio</string>
     <string name="cast">Cast</string>
     <string name="cast_devices">Cast apparaten</string>
     <string name="cast_sheet_subtitle">Kies waar ArchiveTune wordt afgespeeld</string>

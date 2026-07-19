@@ -27,13 +27,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ads.SupportAdsInitializer
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.extensions.*
+import moe.rukamori.archivetune.gatekeeper.GatekeeperResult
+import moe.rukamori.archivetune.gatekeeper.RunGatekeeperCheckUseCase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
@@ -67,12 +72,16 @@ import java.io.StringWriter
 import java.net.Proxy
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
 import kotlin.system.exitProcess
 
 @HiltAndroidApp
 class App :
     Application(),
     SingletonImageLoader.Factory {
+    @Inject
+    lateinit var runGatekeeperCheckUseCase: RunGatekeeperCheckUseCase
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile private var isInitialized = false
@@ -109,8 +118,20 @@ class App :
         } catch (_: Exception) {
         }
 
+        initializeGatekeeper()
         initializeCriticalSync()
+        SupportAdsInitializer.initialize(this)
         initializeDeferredAsync()
+    }
+
+    private fun initializeGatekeeper() {
+        applicationScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val result = runGatekeeperCheckUseCase()
+                if (result !is GatekeeperResult.Blocked || !result.retryable) return@launch
+                delay(GATEKEEPER_RETRY_INTERVAL_MILLIS)
+            }
+        }
     }
 
     override fun onTrimMemory(level: Int) {
@@ -371,6 +392,8 @@ class App :
     }
 
     companion object {
+        private const val GATEKEEPER_RETRY_INTERVAL_MILLIS = 30_000L
+
         lateinit var instance: App
             private set
 

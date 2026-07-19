@@ -19,6 +19,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
+import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.innertube.YouTube
@@ -52,6 +54,8 @@ class OnlineSearchViewModel
     constructor(
         @ApplicationContext val context: Context,
         savedStateHandle: SavedStateHandle,
+        private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
+        private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
         val query =
             decodeOnlineSearchQuery(
@@ -100,10 +104,20 @@ class OnlineSearchViewModel
                 YouTube
                     .searchSummary(query)
                     .onSuccess {
-                        summaryPage =
+                        val aiContentFilterPolicy = loadAiContentFilterPolicy()
+                        val contentFilteredPage =
                             it
                                 .filterExplicit(context.dataStore.get(HideExplicitKey, false))
                                 .filterVideo(context.dataStore.get(HideVideoKey, false))
+                        summaryPage =
+                            contentFilteredPage.copy(
+                                summaries =
+                                    contentFilteredPage.summaries.mapNotNull { summary ->
+                                        summary
+                                            .copy(items = filterAiContent(summary.items, aiContentFilterPolicy))
+                                            .takeIf { filteredSummary -> filteredSummary.items.isNotEmpty() }
+                                    },
+                            )
                     }.onFailure {
                         reportException(it)
                     }
@@ -120,16 +134,20 @@ class OnlineSearchViewModel
                 YouTube
                     .search(query, filter)
                     .onSuccess { result ->
+                        val aiContentFilterPolicy = loadAiContentFilterPolicy()
                         viewStateMap[filterKey] =
                             ItemsPage(
-                                result.items
-                                    .distinctBy { it.id }
-                                    .filterExplicit(
-                                        context.dataStore.get(
-                                            HideExplicitKey,
-                                            false,
-                                        ),
-                                    ).filterVideo(context.dataStore.get(HideVideoKey, false)),
+                                filterAiContent(
+                                    result.items
+                                        .distinctBy { it.id }
+                                        .filterExplicit(
+                                            context.dataStore.get(
+                                                HideExplicitKey,
+                                                false,
+                                            ),
+                                        ).filterVideo(context.dataStore.get(HideVideoKey, false)),
+                                    aiContentFilterPolicy,
+                                ),
                                 result.continuation,
                             )
                     }.onFailure {
@@ -149,9 +167,17 @@ class OnlineSearchViewModel
                 if (continuation != null) {
                     val searchResult =
                         YouTube.searchContinuation(continuation).getOrNull() ?: return@launch
+                    val aiContentFilterPolicy = loadAiContentFilterPolicy()
+                    val continuedItems =
+                        filterAiContent(
+                            searchResult.items
+                                .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                .filterVideo(context.dataStore.get(HideVideoKey, false)),
+                            aiContentFilterPolicy,
+                        )
                     viewStateMap[filter] =
                         ItemsPage(
-                            (viewState.items + searchResult.items).distinctBy { it.id },
+                            (viewState.items + continuedItems).distinctBy { it.id },
                             searchResult.continuation,
                         )
                 }

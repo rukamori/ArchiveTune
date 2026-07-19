@@ -316,9 +316,13 @@ fun TextFieldDialog(
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     initialTextFieldValue: TextFieldValue = TextFieldValue(), // legacy
+    textFieldValue: String? = null,
+    onTextFieldValueChange: ((String) -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     singleLine: Boolean = true,
     autoFocus: Boolean = true,
+    enabled: Boolean = true,
+    dismissOnDone: Boolean = true,
     maxLines: Int = if (singleLine) 1 else 10,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
     isInputValid: (String) -> Boolean = { it.isNotEmpty() },
@@ -331,6 +335,7 @@ fun TextFieldDialog(
     extraContent: (@Composable () -> Unit)? = null,
 ) {
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
+    val currentLegacyValue = textFieldValue ?: legacyFieldState.value.text
 
     val focusRequester = remember { FocusRequester() }
 
@@ -354,17 +359,19 @@ fun TextFieldDialog(
 
             val isValid =
                 textFields?.all { isInputValid(it.second.text) }
-                    ?: isInputValid(legacyFieldState.value.text)
+                    ?: isInputValid(currentLegacyValue)
 
             TextButton(
-                enabled = isValid,
+                enabled = enabled && isValid,
                 onClick = {
                     if (textFields != null && onDoneMultiple != null) {
                         onDoneMultiple(textFields.map { it.second.text })
                     } else {
-                        onDone(legacyFieldState.value.text)
+                        onDone(currentLegacyValue)
                     }
-                    onDismiss()
+                    if (dismissOnDone) {
+                        onDismiss()
+                    }
                 },
                 shapes = ButtonDefaults.shapes(),
             ) {
@@ -379,6 +386,7 @@ fun TextFieldDialog(
                         value = value,
                         onValueChange = { onTextFieldsChange?.invoke(index, it) },
                         placeholder = { Text(label) },
+                        enabled = enabled,
                         singleLine = singleLine,
                         maxLines = maxLines,
                         colors = OutlinedTextFieldDefaults.colors(),
@@ -386,9 +394,12 @@ fun TextFieldDialog(
                         keyboardActions =
                             KeyboardActions(
                                 onDone = {
-                                    if (onDoneMultiple != null) {
+                                    val areFieldsValid = textFields.all { isInputValid(it.second.text) }
+                                    if (enabled && areFieldsValid && onDoneMultiple != null) {
                                         onDoneMultiple(textFields.map { it.second.text })
-                                        onDismiss()
+                                        if (dismissOnDone) {
+                                            onDismiss()
+                                        }
                                     }
                                 },
                             ),
@@ -401,9 +412,16 @@ fun TextFieldDialog(
                 }
             } else {
                 TextField(
-                    value = legacyFieldState.value,
-                    onValueChange = { legacyFieldState.value = it },
+                    value = currentLegacyValue,
+                    onValueChange = { value ->
+                        if (onTextFieldValueChange != null) {
+                            onTextFieldValueChange(value)
+                        } else {
+                            legacyFieldState.value = TextFieldValue(value)
+                        }
+                    },
                     placeholder = placeholder,
+                    enabled = enabled,
                     singleLine = singleLine,
                     maxLines = maxLines,
                     colors = OutlinedTextFieldDefaults.colors(),
@@ -411,8 +429,12 @@ fun TextFieldDialog(
                     keyboardActions =
                         KeyboardActions(
                             onDone = {
-                                onDone(legacyFieldState.value.text)
-                                onDismiss()
+                                if (enabled && isInputValid(currentLegacyValue)) {
+                                    onDone(currentLegacyValue)
+                                    if (dismissOnDone) {
+                                        onDismiss()
+                                    }
+                                }
                             },
                         ),
                     modifier =

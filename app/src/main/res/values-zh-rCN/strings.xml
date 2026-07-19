@@ -43,7 +43,6 @@
     <string name="playlist_is_empty">播放列表是空的</string>
     <string name="remove_download_playlist_confirm">确定要从“已下载歌曲”存储中删除所有“%s”播放列表中的歌曲吗？</string>
     <string name="retry">重试</string>
-    <string name="radio">广播</string>
     <string name="shuffle">随机</string>
     <string name="reset">重置</string>
     <string name="details">细节</string>
@@ -414,7 +413,6 @@
     <string name="enable_scrobbling">启用 Scrobbling</string>
     <string name="lastfm_now_playing">更新「正在播放」状态</string>
     <string name="platform_status">平台</string>
-    <string name="eq_save">保存</string>
     <string name="eq_save_profile">保存配置</string>
     <string name="eq_profile_name">配置名称</string>
     <string name="eq_custom_profile">自定义配置</string>
@@ -436,9 +434,6 @@
     <string name="eq_flat">平坦</string>
     <string name="eq_profiles">简介</string>
     <string name="eq_manage">管理</string>
-    <string name="eq_system_preset">系统预设</string>
-    <string name="eq_manual">手动</string>
-    <string name="eq_profile_hint">应用配置文件或保存当前设置</string>
     <string name="eq_import">导入</string>
     <string name="duplicates_description_multiple">%d 首歌曲在你的播放列表已就绪</string>
     <plurals name="n_song">
@@ -540,8 +535,6 @@
     <string name="session_link">同步链接</string>
     <string name="session_code">加入码</string>
     <string name="add_current_song">添加当前歌曲</string>
-    <string name="enabled">启用</string>
-    <string name="disabled">停用</string>
     <string name="invalid_link">无效链接</string>
     <string name="invalid_code">无效代码</string>
     <string name="not_allowed">不允许</string>

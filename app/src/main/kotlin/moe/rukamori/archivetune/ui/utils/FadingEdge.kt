@@ -59,8 +59,8 @@ fun Modifier.fadingEdge(
                     Brush.horizontalGradient(
                         colors =
                             listOf(
-                                Color.Black,
                                 Color.Transparent,
+                                Color.Black,
                             ),
                         startX = 0f,
                         endX = left.toPx(),
@@ -74,8 +74,8 @@ fun Modifier.fadingEdge(
                     Brush.horizontalGradient(
                         colors =
                             listOf(
-                                Color.Transparent,
                                 Color.Black,
+                                Color.Transparent,
                             ),
                         startX = size.width - right.toPx(),
                         endX = size.width,

@@ -56,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -112,13 +113,15 @@ private data class PlaylistSyncProgressUi(
 }
 
 @Composable
-fun PlaylistMenu(
+public fun PlaylistMenu(
     playlist: Playlist,
     coroutineScope: CoroutineScope,
     onDismiss: () -> Unit,
     autoPlaylist: Boolean? = false,
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
+    onChangeCover: (() -> Unit)? = null,
+    onRemoveCover: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -256,6 +259,8 @@ fun PlaylistMenu(
                         ).show()
                     onDismiss()
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 Timber.e(e, "Failed to sync playlist ${playlist.playlist.name}")
                 withContext(Dispatchers.Main) {
@@ -751,6 +756,48 @@ fun PlaylistMenu(
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
+
+                        onChangeCover?.let { changeCover ->
+                            HorizontalDivider(
+                                modifier = dividerModifier,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = stringResource(R.string.change_playlist_cover))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.image),
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier = Modifier.clickable(onClick = changeCover),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                        }
+
+                        onRemoveCover?.let { removeCover ->
+                            HorizontalDivider(
+                                modifier = dividerModifier,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = stringResource(R.string.remove_playlist_cover))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.delete),
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier = Modifier.clickable(onClick = removeCover),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                        }
                     }
 
                     if (autoPlaylist != true && downloadPlaylist != true) {

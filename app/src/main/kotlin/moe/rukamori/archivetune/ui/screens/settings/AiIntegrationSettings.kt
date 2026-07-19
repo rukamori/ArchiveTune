@@ -182,8 +182,6 @@ fun AiIntegrationSettings(
                         listOf(
                             AiProvider.CHATGPT,
                             AiProvider.GEMINI,
-                            AiProvider.CLAUDE,
-                            AiProvider.OPENROUTER,
                             AiProvider.CUSTOM,
                             AiProvider.NONE,
                         ),
@@ -416,10 +414,8 @@ private fun RowScope.ApiKeyDialogButtons(
 @Composable
 private fun AiProvider.label(): String =
     when (this) {
-        AiProvider.CHATGPT -> "ChatGPT"
+        AiProvider.CHATGPT -> "OpenAI"
         AiProvider.GEMINI -> "Gemini"
-        AiProvider.CLAUDE -> "Claude"
-        AiProvider.OPENROUTER -> "OpenRouter"
         AiProvider.CUSTOM -> stringResource(R.string.custom)
         AiProvider.NONE -> stringResource(R.string.ai_provider_none)
     }

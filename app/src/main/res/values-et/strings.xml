@@ -47,7 +47,6 @@
     <string name="remove_download_playlist_confirm">Kas sa kindlasti soovid kõik „%s“ esitusloendi lood eemaldada allalaaditud lugude andmekogust?</string>
     <string name="delete_playlist_confirm">Kas sa kindlasti soovid kustutada „%s“ esitusloendi?</string>
     <string name="retry">Proovi uuesti</string>
-    <string name="radio">Raadio</string>
     <string name="shuffle">Sega lood</string>
     <string name="reset">Lähtesta</string>
     <string name="details">Üksikasjad</string>
