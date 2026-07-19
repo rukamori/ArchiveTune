@@ -1,10 +1,10 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home">Home</string>
-    <string name="songs">Lieder</string>
+    <string name="home">Start</string>
+    <string name="songs">Songs</string>
     <string name="artists">Künstler</string>
     <string name="albums">Alben</string>
-    <string name="playlists">Wiedergabelisten</string>
+    <string name="playlists">Playlists</string>
     <plurals name="n_selected">
         <item quantity="one">%d ausgewählt</item>
         <item quantity="other">%d ausgewählt</item>
@@ -17,31 +17,31 @@
     <string name="forgotten_favorites">Vergessene Favoriten</string>
     <string name="keep_listening">Weiterhören</string>
     <string name="your_youtube_playlists">Deine YouTube-Playlists</string>
-    <string name="similar_to">Ähnlich</string>
+    <string name="similar_to">Ähnlich wie</string>
     <string name="new_release_albums">Neue Veröffentlichungsalben</string>
     <string name="integration">Integration</string>
     <string name="today">Heute</string>
     <string name="yesterday">Gestern</string>
     <string name="this_week">Diese Woche</string>
     <string name="last_week">Letzte Woche</string>
-    <string name="most_played_songs">Die meisten gespielten Lieder</string>
-    <string name="search">Suchen</string>
+    <string name="most_played_songs">Meistgespielte Songs</string>
+    <string name="search">Suche</string>
     <string name="search_yt_music">YouTube Music durchsuchen</string>
     <string name="search_library">Bibliothek durchsuchen</string>
     <string name="filter_library">Bibliothek</string>
-    <string name="filter_liked">Gefällt mir</string>
+    <string name="filter_liked">Mag ich</string>
     <string name="filter_downloaded">Heruntergeladen</string>
     <string name="filter_all">Alle</string>
-    <string name="filter_songs">Lieder</string>
+    <string name="filter_songs">Songs</string>
     <string name="filter_videos">Videos</string>
     <string name="filter_albums">Alben</string>
     <string name="filter_artists">Künstler</string>
-    <string name="filter_playlists">Wiedergabelisten</string>
+    <string name="filter_playlists">Playlists</string>
     <string name="filter_community_playlists">Community-Playlists</string>
     <string name="filter_featured_playlists">Empfohlene Playlists</string>
     <string name="no_results_found">Keine Ergebnisse gefunden</string>
     <string name="other_versions">Andere Versionen</string>
-    <string name="liked_songs">Gefallene Lieder</string>
+    <string name="liked_songs">Songs, die ich mag</string>
     <string name="downloaded_songs">Heruntergeladene Lieder</string>
     <string name="playlist_is_empty">Die Playlist ist leer</string>
     <string name="remove_download_playlist_confirm">Möchten Sie wirklich alle \"%s\" Playlist-Lieder aus dem Speicher für heruntergeladene Songs entfernen?</string>
@@ -52,8 +52,8 @@
     <string name="details">Details</string>
     <string name="edit">Bearbeiten</string>
     <string name="start_radio">Radio starten</string>
-    <string name="play">Spielen</string>
-    <string name="play_next">Als nächstes spielen</string>
+    <string name="play">Abspielen</string>
+    <string name="play_next">Als nächstes abspielen</string>
     <string name="add_to_queue">Zur Warteschlange hinzufügen</string>
     <string name="add_to_library">Zur Bibliothek hinzufügen</string>
     <string name="remove_from_library">Aus der Bibliothek entfernen</string>
@@ -87,7 +87,7 @@
     <string name="bitrate">Bitrate</string>
     <string name="sample_rate">Abtastrate</string>
     <string name="loudness">Lautstärke</string>
-    <string name="volume">Volumen</string>
+    <string name="volume">Lautstärke</string>
     <string name="file_size">Dateigröße</string>
     <string name="unknown">Unbekannt</string>
     <string name="copied">In die Zwischenablage kopiert</string>
@@ -106,8 +106,8 @@
     <string name="duplicates_description_single">Der Song ist bereits in deiner Playlist</string>
     <string name="duplicates_description_multiple">%d Songs sind bereits in deiner Playlist</string>
     <plurals name="n_song">
-        <item quantity="one">%d Lied</item>
-        <item quantity="other">%d Lieder</item>
+        <item quantity="one">%d Song</item>
+        <item quantity="other">%d Songs</item>
     </plurals>
     <plurals name="n_artist">
         <item quantity="one">%d Künstler</item>
@@ -118,8 +118,8 @@
         <item quantity="other">%d Alben</item>
     </plurals>
     <plurals name="n_playlist">
-        <item quantity="one">%d Wiedergabeliste</item>
-        <item quantity="other">%d Wiedergabelisten</item>
+        <item quantity="one">%d Playlist</item>
+        <item quantity="other">%d Playlists</item>
     </plurals>
     <plurals name="n_week">
         <item quantity="one">%d Woche</item>
@@ -137,9 +137,9 @@
     <string name="undo">Rückgängig machen</string>
     <string name="lyrics_not_found">Songtext nicht gefunden</string>
     <string name="sleep_timer">Sleep-Timer</string>
-    <string name="end_of_song">Ende des Liedes</string>
+    <string name="end_of_song">Songende</string>
     <plurals name="minute">
-        <item quantity="one">1 minute</item>
+        <item quantity="one">1 Minute</item>
         <item quantity="other">%d Minuten</item>
     </plurals>
     <string name="error_no_stream">Kein Stream verfügbar</string>
@@ -253,7 +253,7 @@
     <string name="dark_theme_follow_system">System folgen</string>
     <string name="pure_black">Reines Schwarz</string>
     <string name="disable_blur">Unschärfeeffekte deaktivieren</string>
-    <string name="disable_blur_desc">Deaktivieren Sie Unschärfeeffekte in der gesamten App</string>
+    <string name="disable_blur_desc">Unschärfeeffekte in der gesamten App deaktivieren</string>
     <string name="player">Spieler</string>
     <string name="player_slider_style">Player-Slider-Stil</string>
     <string name="misc">Sonstiges</string>
@@ -288,16 +288,16 @@
     <string name="enter_symbol">Symbol eingeben</string>
     <string name="equalizer">Equalizer</string>
     <string name="storage">Speicher</string>
-    <string name="cache">Zwischenspeicher</string>
+    <string name="cache">Cache</string>
     <string name="image_cache">Bildcache</string>
     <string name="song_cache">Song-Cache</string>
     <string name="max_cache_size">Maximale Cachegröße</string>
     <string name="unlimited">Unbegrenzt</string>
     <string name="clear_all_downloads">Alle Downloads löschen</string>
     <string name="max_image_cache_size">Maximale Größe des Bildcaches</string>
-    <string name="clear_image_cache">Bildcache löschen</string>
+    <string name="clear_image_cache">Bildcache leeren</string>
     <string name="max_song_cache_size">Maximale Song-Cache-Größe</string>
-    <string name="clear_song_cache">Song-Cache löschen</string>
+    <string name="clear_song_cache">Song-Cache leeren</string>
     <string name="size_used">%s verwendet</string>
     <string name="privacy">Privatsphäre</string>
     <string name="listen_history">Hörverlauf</string>
@@ -311,8 +311,8 @@
     <string name="use_login_for_browse_desc">Dies kann beeinflussen, welche Inhalte Sie sehen und zeigt beispielsweise nur Premium-Alben an, wenn Sie mit einem Premium-Konto angemeldet sind</string>
     <string name="disable_screenshot">Screenshot deaktivieren</string>
     <string name="disable_screenshot_desc">Wenn diese Option aktiviert ist, sind Screenshots und die Ansicht der App in „Letzte“ deaktiviert.</string>
-    <string name="enable_lrclib">Aktivieren Sie den Textanbieter LrcLib</string>
-    <string name="enable_kugou">Aktivieren Sie den KuGou-Textanbieter</string>
+    <string name="enable_lrclib">LrcLib-Songtexte aktivieren</string>
+    <string name="enable_kugou">KuGou-Songtexte aktivieren</string>
     <string name="hide_explicit">Anstößige Inhalte ausblenden</string>
     <string name="backup_restore">Sichern und Wiederherstellen</string>
     <string name="action_backup">Sicherung</string>
@@ -434,7 +434,7 @@
     <string name="added_to_n_playlists">Zu %d Playlists hinzugefügt</string>
     <string name="added_n_songs_to_n_playlists">%1$d Lieder zu %2$d Playlists hinzugefügt</string>
     <string name="queue_continue_playing">Wiedergabe fortsetzen</string>
-    <string name="queue_autoplaying_similar">Ähnliche Musik automatisch abspielen</string>
+    <string name="queue_autoplaying_similar">Automatisch ähnliche Musik abspielen</string>
     <string name="random_theme_on_startup">Zufälliges Thema beim Start</string>
     <string name="random_theme_on_startup_desc">Wende eine zufällige Farbpalette bei jedem Appstart an</string>
     <string name="music_recognition">Musikerkennung</string>
@@ -454,7 +454,7 @@
     <string name="low_data_mode_description">Reduziert den mobilen Datenverbrauch, indem in Netzwerken mit Datenvolumenbegrenzung Streams in niedriger Qualität verwendet und die Wiedergabecache-Funktion, Canvas sowie das Vorladen von Songtexten im Hintergrund deaktiviert werden</string>
     <string name="permanent_shuffle">Permanenter Shuffle-Modus</string>
     <string name="permanent_shuffle_desc">Lässt Schuffle aktiviert, wenn du einen neuen Song startest</string>
-    <string name="library_top_mixes_configure_ai">Konfiguriere KI</string>
+    <string name="library_top_mixes_configure_ai">KI konfigurieren</string>
     <string name="your_artists">Deine Künstler</string>
     <string name="all_songs">Alle Songs</string>
     <string name="newest_first">Neuste zuerst</string>
@@ -470,7 +470,7 @@
     <string name="playing_desc">Spielt</string>
     <string name="tracks_label">Titel</string>
     <string name="song_singular">Song</string>
-    <string name="more_playlists_desc">Weitere Wiedergabelisten</string>
+    <string name="more_playlists_desc">Weitere Playlists</string>
     <string name="more_label">Mehr</string>
     <string name="tracks_count_label">Titelanzahl</string>
     <string name="recently_updated">Kürzlich aktualisiert</string>
@@ -574,19 +574,19 @@
     <string name="eq_import_failed">Ungültige Profildaten</string>
     <string name="eq_imported_profile">Importiert</string>
     <string name="eq_import_success">%1$d Profile importiert</string>
-    <string name="eq_bands">Bands</string>
+    <string name="eq_bands">Bänder</string>
     <string name="eq_bass_boost">Bassverstärkung</string>
     <string name="smart_trimmer">Smart Trimmer</string>
     <string name="smart_trimmer_description">Der Smart Trimmer verwaltet den Bild- und Song-Cache dynamisch und löscht alte Einträge, um Speicherplatz zu sparen.</string>
     <string name="clear_lyrics_cache">Songtextcache leeren</string>
-    <string name="clear_lyrics_cache_confirm">Möchtest du wirklich den gesamten Songtext-Cache löschen?</string>
+    <string name="clear_lyrics_cache_confirm">Möchtest du wirklich den gesamten Songtext-Cache leeren?</string>
     <string name="paxsenix_stats">Paxsenix API Statistik</string>
     <string name="uptime">Verfügbarkeit</string>
     <string name="total_requests">Gesamte Anfragen</string>
     <string name="success_rate">Erfolgsrate</string>
     <string name="providers">Anbieter</string>
     <string name="paxsenix_stats_failed">Laden der API-Statistiken fehlgeschlagen</string>
-    <string name="visit_website">Website besuchen</string>
+    <string name="visit_website">Webseite besuchen</string>
     <string name="recent_requests">Letzte Anfragen</string>
     <string name="preload_queue_lyrics">Songtexte in der Warteschlange laden</string>
     <string name="queue_lyrics_preload_count">Anzahl der Songs zum Vorausladen</string>
@@ -730,7 +730,7 @@
     <string name="saved_accounts">Gespeicherte Konten</string>
     <string name="save_current_account">Aktuelles Konto speichern</string>
     <string name="library_top_mixes_no_recent_history">Höre dir mehr Songs an, dann aktualisiere, um KI-Mixe aus deinem bisherigen Verlauf zu erstellen.</string>
-    <string name="no_artist_yet">Kein Künstler bisher</string>
+    <string name="no_artist_yet">Noch kein Künstler</string>
     <string name="cached">Im Cache</string>
     <string name="library_top_mixes_refresh">Mixe aktualisieren</string>
     <string name="library_top_mixes_ai_not_configured_title">Konfiguriere KI, um Mixe zu erstellen</string>
@@ -907,4 +907,19 @@
     <string name="no_hidden_playlists">Keine ausgeblendeten Playlists</string>
     <string name="unhide">Einblenden</string>
     <string name="app_icon_default">Standard</string>
+    <string name="remove_from_library_confirm">\"%1$s\" aus deiner Bibliothek entfernen?</string>
+    <string name="custom_background_replace_image">Bild ersetzen</string>
+    <string name="custom_background_remove_image">Bild entfernen</string>
+    <string name="custom_background_adjustments">Anpassungen</string>
+    <string name="custom_background_blur_value">%1$d dp</string>
+    <string name="custom_background_scale_value">%1$d%%</string>
+    <string name="eq_basic">Einfach</string>
+    <string name="eq_profile_saved">Profil gespeichert</string>
+    <string name="eq_close">Schließen</string>
+    <string name="eq_bass">Bass</string>
+    <string name="eq_decibels">%1$+.1f dB</string>
+    <string name="eq_percent">%1$d%%</string>
+    <string name="eq_frequency_hertz">%1$d Hz</string>
+    <string name="eq_frequency_kilohertz">%1$.1f kHz</string>
+    <string name="ai_content_filter_source">Über AiSList</string>
 </resources>
