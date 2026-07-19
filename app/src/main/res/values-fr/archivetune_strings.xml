@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Explorer</string>
     <string name="local_history">Locale</string>
@@ -636,4 +636,10 @@
     <string name="mori_cipher_empty_description">Connectez-vous à Internet pour charger la configuration actuelle du lecteur YouTube.</string>
     <string name="mori_cipher_error_title">Décryptage indisponible</string>
     <string name="mori_cipher_load_failed">La configuration actuelle du lecteur n\'a pas pu être chargée. Les solutions de secours existantes pour la lecture restent disponibles.</string>
+    <string name="lyrics_background_style">Style de mise en page des paroles</string>
+    <string name="lyrics_background_default">Par défaut</string>
+    <string name="latest_release">Dernière version</string>
+    <string name="release_type_album">Album</string>
+    <string name="release_type_single">Single</string>
+    <string name="release_metadata">%1$s • %2$d</string>
 </resources>
