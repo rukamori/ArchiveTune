@@ -197,13 +197,37 @@ fun AutoPlaylistScreen(
         }
     }
 
+    val globalDownloadState = remember(downloads) {
+        val activeDownloads = downloads.values.filter {
+            it.state == Download.STATE_DOWNLOADING ||
+            it.state == Download.STATE_QUEUED ||
+            it.state == Download.STATE_RESTARTING ||
+            it.state == Download.STATE_STOPPED
+        }
+        if (activeDownloads.isEmpty()) {
+            HeaderDownloadState.None
+        } else {
+            var progressTotal = 0f
+            var hasRunning = false
+            var hasPaused = false
+            activeDownloads.forEach { download ->
+                val progress = download.percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
+                progressTotal += progress.coerceIn(0f, 1f)
+                if (download.state == Download.STATE_STOPPED) {
+                    hasPaused = hasPaused || download.stopReason == 1
+                } else {
+                    hasRunning = true
+                }
+            }
+            HeaderDownloadState.Partial(
+                progress = progressTotal / activeDownloads.size,
+                paused = hasPaused && !hasRunning,
+            )
+        }
+    }
+
     LaunchedEffect(songs) {
         val songIds = songs.map { it.song.id }
-        if (songIds.isEmpty()) {
-            downloads = emptyMap()
-            downloadState = HeaderDownloadState.None
-            return@LaunchedEffect
-        }
         downloadUtil.downloads.collect { currentDownloads ->
             downloads = currentDownloads
             downloadState = headerDownloadState(songIds, currentDownloads)
@@ -358,25 +382,26 @@ fun AutoPlaylistScreen(
                             },
                             onToggleAdd = null,
                             additionalPrimaryActions = { contentColor ->
+                                val isCompleted = downloadState == HeaderDownloadState.Completed
                                 MediaDetailAction(
                                     contentDescription =
-                                        if (downloadState == HeaderDownloadState.Completed) {
+                                        if (isCompleted) {
                                             R.string.remove_download
                                         } else {
                                             R.string.download
                                         },
                                     contentColor = contentColor,
                                     onClick = {
-                                        val currentDownloadState = downloadState
-                                        when (currentDownloadState) {
+                                        when (downloadState) {
                                             HeaderDownloadState.Completed -> {
                                                 showRemoveDownloadDialog = true
                                             }
-
                                             is HeaderDownloadState.Partial -> {
-                                                navController.navigate("auto_playlist/downloaded?tab=progress")
+                                                sendRemoveDownloads(
+                                                    context = context,
+                                                    songIds = songs.map { it.song.id },
+                                                )
                                             }
-
                                             HeaderDownloadState.None -> {
                                                 sendAddMissingDownloads(
                                                     context = context,
@@ -389,36 +414,49 @@ fun AutoPlaylistScreen(
                                                         },
                                                     downloads = downloads,
                                                 )
-                                                navController.navigate("auto_playlist/downloaded?tab=progress")
                                             }
                                         }
                                     },
                                 ) {
-                                    val state = downloadState
-                                    when (state) {
+                                    when (val state = downloadState) {
                                         HeaderDownloadState.Completed -> {
-                                            Icon(
-                                                painter = painterResource(R.drawable.offline),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(22.dp),
-                                            )
+                                             Icon(
+                                                 painter = painterResource(R.drawable.offline),
+                                                 contentDescription = null,
+                                                 modifier = Modifier.size(22.dp),
+                                             )
                                         }
-
                                         is HeaderDownloadState.Partial -> {
-                                            HeaderDownloadProgressIndicator(
-                                                progress = state.progress,
-                                                paused = state.paused,
-                                            )
+                                             HeaderDownloadProgressIndicator(
+                                                 progress = state.progress,
+                                                 paused = state.paused,
+                                                 icon = R.drawable.download,
+                                             )
                                         }
-
                                         HeaderDownloadState.None -> {
-                                            Icon(
-                                                painter = painterResource(R.drawable.download),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(22.dp),
-                                            )
+                                             Icon(
+                                                 painter = painterResource(R.drawable.download),
+                                                 contentDescription = null,
+                                                 modifier = Modifier.size(22.dp),
+                                             )
                                         }
                                     }
+                                }
+
+                                MediaDetailAction(
+                                    contentDescription = R.string.download,
+                                    contentColor = contentColor,
+                                    onClick = {
+                                        navController.navigate("auto_playlist/downloaded?tab=progress")
+                                    },
+                                ) {
+                                    val globalProgress = (globalDownloadState as? HeaderDownloadState.Partial)?.progress ?: 0f
+                                    val globalPaused = (globalDownloadState as? HeaderDownloadState.Partial)?.paused ?: false
+                                    HeaderDownloadProgressIndicator(
+                                        progress = globalProgress,
+                                        paused = globalPaused,
+                                        icon = R.drawable.list,
+                                    )
                                 }
                             },
                         )

@@ -2456,7 +2456,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (intent.action == ACTION_MUSIC_RECOGNITION) {
-            navController.openMusicRecognition()
+            navController.openMusicRecognition(0L)
             return
         }
         if (intent.action == ACTION_AOD_MODE) {
