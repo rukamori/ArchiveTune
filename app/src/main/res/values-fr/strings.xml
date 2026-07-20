@@ -828,7 +828,7 @@
     <string name="library_top_mixes_no_recent_history">Écoutez d\'autres morceaux, puis actualisez la page pour créer des playlists générées par l\'IA à partir de votre historique récent.</string>
     <string name="library_top_mixes_no_valid_mixes">L\'IA n\'a trouvé aucun mix écoutable dans votre historique récent.</string>
     <string name="library_top_mixes_failed">Échec de la création des meilleurs mixages</string>
-    <string name="cast">Cast</string>
+    <string name="cast">Casting</string>
     <string name="cast_devices">Appareils de diffusion</string>
     <string name="cast_sheet_subtitle">Choisissez où ArchiveTune est diffusé</string>
     <string name="cast_available_devices">Appareils disponibles</string>
