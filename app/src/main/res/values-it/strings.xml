@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Home</string>
     <string name="songs">Canzoni</string>
@@ -546,4 +546,9 @@
     <string name="recently_played">Riprodotto di recente</string>
     <string name="top_mixes">Le migliori combinazioni per te</string>
     <string name="library_top_mixes_loading">Preparando i tuoi Mixes AI</string>
+    <string name="library_top_mixes_no_recent_history">Ascolta ancora altre canzoni così che l\'AI possa creare dei mix in base ai tuoi ascolti recenti.</string>
+    <string name="library_top_mixes_no_valid_mixes">L\'intelligenza artificiale non ha restituito alcun mix riproducibile dalla cronologia recente.</string>
+    <string name="library_top_mixes_failed">Impossibile creare i mix migliori</string>
+    <string name="your_playlists">Le tue playlist</string>
+    <string name="library_top_mixes_ai_not_configured_desc">L\'integrazione AI è richiesta prima, così che ArchiveTune possa creare personali mix in base ai tuoi gusti</string>
 </resources>
