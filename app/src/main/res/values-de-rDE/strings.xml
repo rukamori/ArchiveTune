@@ -370,7 +370,7 @@
     <string name="language_label">Sprache</string>
     <string name="lyrics">Text</string>
     <string name="translation_success">Übersetzung gespeichert</string>
-    <string name="translation_failed">Die Übersetzung ist fehlgeschlagen</string>
+    <string name="translation_failed">Übersetzung fehlgeschlagen</string>
     <string name="discord_button_options">Schaltflächenoptionen</string>
     <string name="discord_image_options">Bildoptionen</string>
     <string name="refresh">Aktualisieren</string>
@@ -378,10 +378,10 @@
     <string name="discord_show_when_paused">RPC anzeigen, wenn es angehalten ist</string>
     <string name="discord_show_when_paused_desc">Wenn aktiviert, bleibt Rich Presence im angehaltenen Zustand mit einem Pausensymbol sichtbar. Wenn deaktiviert, verschwindet RPC, wenn es angehalten wird.</string>
     <string name="discord_paused">Angehalten</string>
-    <string name="logout_confirm_title">Bestätigen Sie die Abmeldung</string>
-    <string name="logout_confirm_message">Sind Sie sicher, dass Sie sich von Discord abmelden möchten?</string>
+    <string name="logout_confirm_title">Abmeldung bestätigen</string>
+    <string name="logout_confirm_message">Bist du sicher, dass du dich von Discord abmelden möchtest?</string>
     <string name="logout_confirm_yes">Abmelden</string>
-    <string name="logout_confirm_no">Stornieren</string>
+    <string name="logout_confirm_no">Abbrechen</string>
     <string name="experiment_settings">Experimentelle Einstellungen</string>
     <string name="show_discord_debug_ui">Debug-Benutzeroberfläche anzeigen</string>
     <string name="enable_discord_debug_lines">Debug-Einstellungszeilen aktivieren</string>
@@ -629,7 +629,7 @@
     <string name="status_inactive">INAKTIV</string>
     <string name="last_start">Letzter Start</string>
     <string name="last_end">Letztes Ende</string>
-    <string name="debug_logs">Debug Protokolle</string>
+    <string name="debug_logs">Debugprotokolle</string>
     <string name="log_level_verbose">Ausführlich</string>
     <string name="log_level_debug">Fehlerbehebung</string>
     <string name="log_level_info">Infos</string>
@@ -648,8 +648,8 @@
     <string name="share_logs">Protokolle teilen</string>
     <string name="updates">Updates</string>
     <string name="updates_status_checking">Überprüfe auf die aktuellste Version</string>
-    <string name="updates_status_current">Du bist auf der aktuellsten verfügbaren Version</string>
-    <string name="enable_update_notification">Aktiviere Upadatebenachrichtigung</string>
+    <string name="updates_status_current">Du verwendest die aktuellste verfügbare Version</string>
+    <string name="enable_update_notification">Updatebenachrichtigung aktivieren</string>
     <string name="update_channel">Updatekanal</string>
     <string name="channel_stable">Stabil</string>
     <string name="recent_commits">Neueste Beiträge</string>
@@ -945,4 +945,12 @@
     <string name="scheduled_backup_directory_saved">Sicherungsordner gespeichert</string>
     <string name="scheduled_backup_load_failed">Geplante Sicherungseinstellungen konnten nicht geladen werden</string>
     <string name="scheduled_backup_update_failed">Geplante Sicherungseinstellungen konnten nicht gespeichert werden</string>
+    <string name="downloads">Downloads</string>
+    <string name="no_downloads">Noch keine heruntergeladene Musik</string>
+    <string name="resume_download">Fortsetzen</string>
+    <string name="pause_download">Anhalten</string>
+    <string name="downloads_load_failed">Konnte Downloads nicht laden</string>
+    <string name="download_failed_state">Download fehlgeschlagen</string>
+    <string name="playlist_cover_update_failed">Playlistcover konnte nicht aktualisiert werden</string>
+    <string name="canvas_refetch_failed">Animiertes Canvas konnte nicht aktualisiert werden</string>
 </resources>
