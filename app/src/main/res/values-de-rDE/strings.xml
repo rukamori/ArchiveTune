@@ -324,7 +324,7 @@
     <string name="dismiss">Zurückweisen</string>
     <string name="options">Optionen</string>
     <string name="preview">Vorschau</string>
-    <string name="enable_discord_rpc">Aktivieren Sie Rich Presence</string>
+    <string name="enable_discord_rpc">Rich Presence aktivieren</string>
     <string name="scrobbling">Scrobbling</string>
     <string name="lastfm_integration">Last.fm-Integration</string>
     <string name="enable_scrobbling">Scrobbling aktivieren</string>
@@ -592,13 +592,13 @@
     <string name="queue_lyrics_preload_count">Anzahl der Songs zum Vorausladen</string>
     <string name="display">Anzeige</string>
     <string name="romanization">Romanisierung</string>
-    <string name="hide_video">Verstecke Musikvideos</string>
+    <string name="hide_video">Musikvideos verstecken</string>
     <string name="restore_success">Sicherung erfolgreich wiederhergestellt</string>
-    <string name="discord_login_description">Verbinde dein Discord-Konto über OAuth, damit ArchiveTune Rich Presence über das offizielle Social SDK von Discord veröffentlichen kann.</string>
-    <string name="discord_open_authorization">Öffne Discord Autorisierung</string>
+    <string name="discord_login_description">Verbinde dein Discord-Konto über OAuth, damit ArchiveTune Rich Presence veröffentlichen kann.</string>
+    <string name="discord_open_authorization">Discord-Autorisierung öffnen</string>
     <string name="discord_waiting_for_authorization">Warte auf Discord Autorisierung…</string>
-    <string name="discord_authorization_success">Discord Konto verbunden</string>
-    <string name="discord_authorization_failed">Discord Autorisierung fehlgeschlagen</string>
+    <string name="discord_authorization_success">Discord-Konto verbunden</string>
+    <string name="discord_authorization_failed">Discord-Autorisierung fehlgeschlagen</string>
     <string name="discord_connection_settings">Verbindung</string>
     <string name="discord_url_source_song">Song-URL</string>
     <string name="discord_url_source_artist">Künstler-URL</string>
@@ -961,4 +961,16 @@
     <string name="eq_export_success">Profil exportiert</string>
     <string name="ai_content_filter">KI-Inhaltsfilter</string>
     <string name="ai_content_filter_hide">KI-generierte Inhalte verstecken</string>
+    <string name="ai_content_filter_update">Kanallisten aktualisieren</string>
+    <string name="ai_content_filter_updated">KI-Kanallisten aktualisiert</string>
+    <string name="ai_content_filter_hide_summary">Filtere Songs, Videos, Alben, Künstler und Playlists von Kanälen, die mit hoher Sicherheit KI sind, in Start und Suche heraus</string>
+    <string name="ai_content_filter_moderate">Beziehe Kanäle mit mittlerer Sicherheit mit ein</string>
+    <string name="ai_content_filter_moderate_summary">Verstecke auch Kanäle die wahrscheinlich, aber nicht bestätigt KI-generierte Inhalte verwenden</string>
+    <string name="ai_content_filter_list_counts">Hohe Sicherheit: %1$d · Mittlere Sicherheit: %2$d</string>
+    <string name="ai_content_filter_source_summary">Community-gepflegte Kanaldaten von AiSlopList.com</string>
+    <string name="ai_content_filter_update_failed">Konnte KI-Kanallisten nicht aktualisieren. Die vorherigen Listen bleiben aktiv.</string>
+    <string name="lastfm_api_credentials">API-Anmeldedaten</string>
+    <string name="lastfm_api_credentials_default">Standardanmeldedaten verwenden</string>
+    <string name="discord_activity_type_listening_label">Hört</string>
+    <string name="discord_activity_type_watching_label">Schaut</string>
 </resources>
