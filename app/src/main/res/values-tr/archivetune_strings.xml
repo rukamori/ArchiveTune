@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Keşfet</string>
     <string name="local_history">Yerel</string>
@@ -211,4 +211,5 @@
     <string name="local_songs_empty_title">Yerel şarkı bulunamadı</string>
     <string name="local_songs_empty_desc">Üst çubuktan ayarları açın ve bu cihazda çevrimdışı ses bulmak için bir cihaz taraması yapın.</string>
     <string name="local_songs_scan_failed">Bu cihazın taraması tamamlanamadı.</string>
+    <string name="release_type_album">Albüm</string>
 </resources>
