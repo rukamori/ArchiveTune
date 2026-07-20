@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.media3.exoplayer.offline.Download
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -135,6 +136,35 @@ fun SpotifyPlaylistScreen(
             )
         }
 
+    val globalDownloadState = remember(downloads) {
+        val activeDownloads = downloads.values.filter {
+            it.state == Download.STATE_DOWNLOADING ||
+            it.state == Download.STATE_QUEUED ||
+            it.state == Download.STATE_RESTARTING ||
+            it.state == Download.STATE_STOPPED
+        }
+        if (activeDownloads.isEmpty()) {
+            HeaderDownloadState.None
+        } else {
+            var progressTotal = 0f
+            var hasRunning = false
+            var hasPaused = false
+            activeDownloads.forEach { download ->
+                val progress = download.percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
+                progressTotal += progress.coerceIn(0f, 1f)
+                if (download.state == Download.STATE_STOPPED) {
+                    hasPaused = hasPaused || download.stopReason == 1
+                } else {
+                    hasRunning = true
+                }
+            }
+            HeaderDownloadState.Partial(
+                progress = progressTotal / activeDownloads.size,
+                paused = hasPaused && !hasRunning,
+            )
+        }
+    }
+
     fun handleDownloadAction(
         items: ImmutableList<SpotifyDownloadItem>,
         removeCompleted: Boolean = true,
@@ -151,7 +181,10 @@ fun SpotifyPlaylistScreen(
             }
 
             is HeaderDownloadState.Partial -> {
-                navController.navigate("auto_playlist/downloaded?tab=progress")
+                sendRemoveDownloads(
+                    context = navController.context,
+                    songIds = songIds,
+                )
             }
 
             HeaderDownloadState.None -> {
@@ -385,6 +418,7 @@ fun SpotifyPlaylistScreen(
                                                     HeaderDownloadProgressIndicator(
                                                         progress = currentState.progress,
                                                         paused = currentState.paused,
+                                                        icon = R.drawable.download,
                                                     )
                                                 }
 
@@ -397,6 +431,24 @@ fun SpotifyPlaylistScreen(
                                                 }
                                             }
                                         }
+                                    }
+
+                                    MediaDetailAction(
+                                        contentDescription = R.string.download,
+                                        contentColor = contentColor,
+                                        onClick = {
+                                            navController.navigate(
+                                                "auto_playlist/downloaded?tab=progress",
+                                            )
+                                        },
+                                    ) {
+                                        val globalProgress = (globalDownloadState as? HeaderDownloadState.Partial)?.progress ?: 0f
+                                        val globalPaused = (globalDownloadState as? HeaderDownloadState.Partial)?.paused ?: false
+                                        HeaderDownloadProgressIndicator(
+                                            progress = globalProgress,
+                                            paused = globalPaused,
+                                            icon = R.drawable.list,
+                                        )
                                     }
                                 }
                                 MediaDetailIconAction(

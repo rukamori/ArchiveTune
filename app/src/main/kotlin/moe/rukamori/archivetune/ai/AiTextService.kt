@@ -16,6 +16,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.AiProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,7 +53,7 @@ object AiTextService {
                 temperature = 0.0,
                 maxTokens = 32,
             ).trim()
-        if (!response.equals("OK", ignoreCase = true)) {
+        if (!response.contains("OK", ignoreCase = true)) {
             throw AiServiceException("AI API returned an unexpected test response")
         }
     }
@@ -120,6 +121,7 @@ object AiTextService {
                     maxTokens = maxTokens,
                 )
             }
+
 
             AiProvider.GEMINI -> {
                 completeGemini(
@@ -277,6 +279,7 @@ object AiTextService {
             }
         }
     }
+
 
     private fun apiException(
         status: Int,
