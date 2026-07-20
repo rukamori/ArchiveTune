@@ -44,7 +44,7 @@
     <string name="liked_songs">Songs, die ich mag</string>
     <string name="downloaded_songs">Heruntergeladene Songs</string>
     <string name="playlist_is_empty">Die Playlist ist leer</string>
-    <string name="remove_download_playlist_confirm">Möchten Sie wirklich alle \"%s\" Playlist-Songs aus dem Speicher für heruntergeladene Songs entfernen?</string>
+    <string name="remove_download_playlist_confirm">Möchtest du wirklich alle \"%s\" Playlist-Songs aus dem Speicher für heruntergeladene Songs entfernen?</string>
     <string name="delete_playlist_confirm">Möchtest du die Playlist \"%s\" wirklich löschen?</string>
     <string name="retry">Wiederholen</string>
     <string name="shuffle">Shuffle</string>
@@ -76,7 +76,7 @@
     <string name="remove_from_queue">Aus der Warteschlange entfernen</string>
     <string name="search_online">Online suchen</string>
     <string name="tempo_and_pitch">Tempo und Tonhöhe</string>
-    <string name="sort_by_create_date">Datum hinzugefügt</string>
+    <string name="sort_by_create_date">Hinzufügedatum</string>
     <string name="sort_by_name">Name</string>
     <string name="sort_by_artist">Künstler</string>
     <string name="sort_by_play_time">Wiedergabezeit</string>
@@ -238,7 +238,7 @@
     <string name="adjust_radius">Eckenradius anpassen</string>
     <string name="cancel_button">Abbrechen</string>
     <string name="ok_button">OK</string>
-    <string name="custom_radius">Passen Sie den Eckenradius der Miniaturansicht an</string>
+    <string name="custom_radius">Eckenradius des Thumbnails anpassen</string>
     <string name="custom">Benutzerdefiniert</string>
     <string name="custom_value">Benutzerdefinierter Wert</string>
     <string name="customized_background">Angepasster Hintergrund</string>
@@ -247,8 +247,8 @@
     <string name="blur">Unschärfe</string>
     <string name="contrast">Kontrast</string>
     <string name="brightness">Helligkeit</string>
-    <string name="show_button1_description">Schalten Sie die Sichtbarkeit von Schaltfläche 1 in Discord Rich Presence um</string>
-    <string name="show_button2_description">Schalten Sie die Sichtbarkeit von Schaltfläche 2 in Discord Rich Presence um</string>
+    <string name="show_button1_description">Sichtbarkeit von Schaltfläche 1 in Discord Rich Presence umschalten</string>
+    <string name="show_button2_description">Sichtbarkeit von Schaltfläche 2 in Discord Rich Presence umschalten</string>
     <string name="discord_activity_type">Aktivitätstyp</string>
     <string name="dark_theme_follow_system">System folgen</string>
     <string name="pure_black">Reines Schwarz</string>
@@ -411,7 +411,7 @@
     <string name="media_id_label">Medien-ID</string>
     <string name="about">Über</string>
     <string name="new_version_available">Neue Version verfügbar</string>
-    <string name="change_playlist_cover">Playlist cover ändern</string>
+    <string name="change_playlist_cover">Playlist-Cover ändern</string>
     <string name="together_participants">Teilnehmer</string>
     <string name="together_connected_count">%1$d verbunden</string>
     <string name="together_role_host">Host</string>
@@ -420,9 +420,9 @@
     <string name="together_waiting_approval">Warte auf Bestätigung</string>
     <string name="together_host_left_session">Host hat Sitzungen verlassen</string>
     <string name="together_kick">Herauswerfen</string>
-    <string name="together_ban">Ban</string>
+    <string name="together_ban">Bannen</string>
     <string name="together_kick_confirm">%1$s herauswerfen?</string>
-    <string name="together_ban_confirm">Ban %1$s?</string>
+    <string name="together_ban_confirm">%1$s bannen?</string>
     <string name="together_requesting_song_change">Frage Host den Song zu wechseln…</string>
     <string name="together_song_change_failed">Songänderung nicht angewendet. Bitte erneut versuchen.</string>
     <string name="tempo">Tempo</string>
@@ -438,7 +438,7 @@
     <string name="random_theme_on_startup">Zufälliges Thema beim Start</string>
     <string name="random_theme_on_startup_desc">Wende eine zufällige Farbpalette bei jedem Appstart an</string>
     <string name="music_recognition">Musikerkennung</string>
-    <string name="removed_song_from_queue">\"%s\" aus der Warteschlange entfernen</string>
+    <string name="removed_song_from_queue">\"%s\" aus der Warteschlange entfernt</string>
     <string name="speed_dial">Schnellwahl</string>
     <string name="top_results">Top-Ergebnisse</string>
     <string name="pin_to_speed_dial">An Schnellwahl anheften</string>
@@ -483,7 +483,7 @@
     <string name="sort_order_descending">Absteigend</string>
     <string name="no_matching_playlists">Keine übereinstimmende Playlist</string>
     <string name="error_malformed_stream">Quellenfehler</string>
-    <string name="archivetune_canvas">ArchiveTune Canvas</string>
+    <string name="archivetune_canvas">ArchiveTune-Canvas</string>
     <string name="archivetune_canvas_desc">Albumcover animieren während des Abpielens (Unterstützt von BetterLyrics)</string>
     <string name="player_background_style_v8_v9_desc">Nicht verfügbar mit V8 und V9 Player-Stil</string>
     <string name="disable_animations">Animationen deaktivieren</string>
@@ -519,7 +519,7 @@
     <string name="library_top_mixes_loading">Bereite deine KI-Mixe vor…</string>
     <string name="widget_pause">Pause</string>
     <string name="widget_previous">Vorheriger</string>
-    <string name="widget_tap_to_open">Tippe um ArchiveTune zu öffnen</string>
+    <string name="widget_tap_to_open">Tippe, um ArchiveTune zu öffnen</string>
     <string name="removed_n_songs_from_queue">%d Songs aus der Warteschlange entfernt</string>
     <string name="aod_mode">AOD-Modus</string>
     <string name="aod_mode_exit">AOD verlassen</string>
@@ -576,11 +576,11 @@
     <string name="eq_import_success">%1$d Profile importiert</string>
     <string name="eq_bands">Bänder</string>
     <string name="eq_bass_boost">Bassverstärkung</string>
-    <string name="smart_trimmer">Smart Trimmer</string>
-    <string name="smart_trimmer_description">Der Smart Trimmer verwaltet den Bild- und Song-Cache dynamisch und löscht alte Einträge, um Speicherplatz zu sparen.</string>
+    <string name="smart_trimmer">Smart-Trimmer</string>
+    <string name="smart_trimmer_description">Der Smart-Trimmer verwaltet den Bild- und Song-Cache dynamisch und löscht alte Einträge, um Speicherplatz zu sparen.</string>
     <string name="clear_lyrics_cache">Songtextcache leeren</string>
     <string name="clear_lyrics_cache_confirm">Möchtest du wirklich den gesamten Songtext-Cache leeren?</string>
-    <string name="paxsenix_stats">Paxsenix API Statistik</string>
+    <string name="paxsenix_stats">Paxsenix-API-Statistik</string>
     <string name="uptime">Verfügbarkeit</string>
     <string name="total_requests">Gesamte Anfragen</string>
     <string name="success_rate">Erfolgsrate</string>
@@ -927,7 +927,7 @@
     <string name="together_reject">Ablehnen</string>
     <string name="lyrics_search_plain_badge">Schlicht</string>
     <string name="custom_background_preview_lyrics">Songtexte</string>
-    <string name="start_mix">Starte Mix</string>
+    <string name="start_mix">Mix starten</string>
     <string name="scheduled_backup">Automatische, geplante Sicherung</string>
     <string name="scheduled_backup_enabled">Aktiviere geplante Sicherung</string>
     <string name="scheduled_backup_frequency">Sicherungsplan</string>
@@ -951,6 +951,14 @@
     <string name="pause_download">Anhalten</string>
     <string name="downloads_load_failed">Konnte Downloads nicht laden</string>
     <string name="download_failed_state">Download fehlgeschlagen</string>
-    <string name="playlist_cover_update_failed">Playlistcover konnte nicht aktualisiert werden</string>
+    <string name="playlist_cover_update_failed">Playlist-Cover konnte nicht aktualisiert werden</string>
     <string name="canvas_refetch_failed">Animiertes Canvas konnte nicht aktualisiert werden</string>
+    <string name="remove_playlist_cover">Individuelles Cover entfernen</string>
+    <string name="playlist_cover_updated">Playlist-Cover aktualisiert</string>
+    <string name="cast_route_picker_unavailable">Übertragen ist gerade nicht verfügbar.</string>
+    <string name="refetch_canvas">Canvas neu laden</string>
+    <string name="custom_background_preview_empty">Wähle ein Bild aus, um eine Livevorschau zu sehen.</string>
+    <string name="eq_export_success">Profil exportiert</string>
+    <string name="ai_content_filter">KI-Inhaltsfilter</string>
+    <string name="ai_content_filter_hide">KI-generierte Inhalte verstecken</string>
 </resources>
