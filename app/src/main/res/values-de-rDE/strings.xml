@@ -444,7 +444,7 @@
     <string name="pin_to_speed_dial">An Schnellwahl anheften</string>
     <string name="remove_from_speed_dial">Aus der Schnellwahl entfernen</string>
     <string name="album_backdrop">Hintergrundunschärfe</string>
-    <string name="album_backdrop_desc">Kunstwerk als unscharfen Hintergrund auf dem Player anzeigen</string>
+    <string name="album_backdrop_desc">Cover als unscharfen Hintergrund auf dem Player anzeigen</string>
     <string name="backdrop_blur_amount">Stärke der Hintergrundunschärfe</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
     <string name="enable_unison_lyrics">Unison-Songtexte aktivieren</string>
@@ -938,7 +938,7 @@
     <string name="scheduled_backup_custom">Benutzerdefiniert</string>
     <string name="scheduled_backup_custom_title">Wähle Sicherungsdatum</string>
     <string name="scheduled_backup_custom_date">Nächste Sicherung: %1$s</string>
-    <string name="scheduled_backup_directory">Sicherungsordner</string>
+    <string name="scheduled_backup_directory">Sicherungsverzeichnis</string>
     <string name="scheduled_backup_directory_description">Wähle einen Ordner, um geplante Sicherungen zu aktivieren.</string>
     <string name="scheduled_backup_overwrite">Überschreibe bestehende Sicherung</string>
     <string name="scheduled_backup_overwrite_description">Behalte eine aktuelle Sicherung, statt einem datierten Verlauf.</string>
