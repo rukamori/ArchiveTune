@@ -277,7 +277,7 @@
     <string name="audio_quality_low">Niedrig</string>
     <string name="queue">Warteschlange</string>
     <string name="persistent_queue">Persistente Warteschlange</string>
-    <string name="persistent_queue_desc">Stellen Sie Ihre letzte Warteschlange wieder her, wenn die App gestartet wird</string>
+    <string name="persistent_queue_desc">Letzte Warteschlange wiederherstellen, wenn die App gestartet wird</string>
     <string name="skip_silence">Stille überspringen</string>
     <string name="audio_normalization">Audionormalisierung</string>
     <string name="auto_skip_next_on_error">Automatisches Springen zum nächsten Song, wenn ein Fehler auftritt</string>
@@ -303,12 +303,12 @@
     <string name="listen_history">Hörverlauf</string>
     <string name="pause_listen_history">Hörverlauf pausieren</string>
     <string name="clear_listen_history">Hörverlauf löschen</string>
-    <string name="clear_listen_history_confirm">Sind Sie sicher, dass Sie den gesamten Hörverlauf löschen möchten?</string>
+    <string name="clear_listen_history_confirm">Bist du sicher, dass du den gesamten Hörverlauf löschen möchtest?</string>
     <string name="search_history">Suchverlauf</string>
     <string name="pause_search_history">Suchverlauf pausieren</string>
     <string name="clear_search_history">Suchverlauf löschen</string>
-    <string name="clear_search_history_confirm">Sind Sie sicher, dass Sie den gesamten Suchverlauf löschen möchten?</string>
-    <string name="use_login_for_browse_desc">Dies kann beeinflussen, welche Inhalte Sie sehen und zeigt beispielsweise nur Premium-Alben an, wenn Sie mit einem Premium-Konto angemeldet sind</string>
+    <string name="clear_search_history_confirm">Bist du sicher, dass du den gesamten Suchverlauf löschen möchtest?</string>
+    <string name="use_login_for_browse_desc">Dies kann beeinflussen, welche Inhalte du siehst und zeigt beispielsweise Nur-Premium-Alben an, wenn du mit einem Premium-Konto angemeldet bist</string>
     <string name="disable_screenshot">Screenshot deaktivieren</string>
     <string name="disable_screenshot_desc">Wenn diese Option aktiviert ist, sind Screenshots und die Ansicht der App in „Letzte“ deaktiviert.</string>
     <string name="enable_lrclib">LrcLib-Songtexte aktivieren</string>
