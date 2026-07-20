@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Erkunden</string>
     <string name="local_history">Lokal</string>
@@ -50,8 +50,8 @@
         <item quantity="other">%d Elemente</item>
     </plurals>
     <plurals name="n_time">
-        <item quantity="one">%d Mal</item>
-        <item quantity="other">%d Mal</item>
+        <item quantity="one">%d mal</item>
+        <item quantity="other">%d mal</item>
     </plurals>
     <string name="seek_forward_dynamic">+%1$d Sekunden vorwärts</string>
     <string name="seek_backward_dynamic">-%1$d Sekunden zurück</string>
