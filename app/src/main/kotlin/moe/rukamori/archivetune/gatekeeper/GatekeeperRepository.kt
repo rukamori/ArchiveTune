@@ -27,11 +27,14 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.NetworkGatekeeper
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed interface GatekeeperResult {
     data object Allowed : GatekeeperResult
+
+    data object Unavailable : GatekeeperResult
 
     data class Blocked(
         val message: String,
@@ -101,9 +104,12 @@ class GatekeeperRepository
                 }
             } catch (exception: CancellationException) {
                 throw exception
+            } catch (exception: IOException) {
+                Timber.w(exception, "Gatekeeper is unavailable")
+                unavailable()
             } catch (exception: Exception) {
                 Timber.w(exception, "Gatekeeper request failed")
-                blocked(fallbackMessage, retryable = true)
+                blocked(fallbackMessage, retryable = false)
             }
         }
 
@@ -136,6 +142,11 @@ class GatekeeperRepository
                 message = message,
                 retryable = retryable,
             )
+        }
+
+        private fun unavailable(): GatekeeperResult.Unavailable {
+            NetworkGatekeeper.setConnectionBlocked(true)
+            return GatekeeperResult.Unavailable
         }
 
         private fun resolveWarningMessage(
