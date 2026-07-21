@@ -125,6 +125,9 @@ import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.utils.oem.SystemMediaControlResolver
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.zIndex
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDateTime
@@ -167,6 +170,11 @@ fun Queue(
     val selectedSongs = remember { mutableStateListOf<MediaMetadata>() }
     val selectedItems = remember { mutableStateListOf<Timeline.Window>() }
     var selection by remember { mutableStateOf(false) }
+
+    var dragStartWindows by remember { mutableStateOf<List<Timeline.Window>?>(null) }
+    var dragStartSelectedIndices by remember { mutableStateOf<List<Int>?>(null) }
+    var dragStartGrabbedIndex by remember { mutableStateOf<Int?>(null) }
+    var multiItemDragPerformed by remember { mutableStateOf(false) }
 
     fun clearSelection() {
         selection = false
@@ -692,6 +700,34 @@ fun Queue(
                     addAll(queueWindows)
                 }
             }
+
+        val contiguousGroups by remember(selection, selectedSongs, mutableQueueWindows) {
+            derivedStateOf {
+                val groups = mutableListOf<IntRange>()
+                if (!selection || selectedSongs.isEmpty()) return@derivedStateOf groups
+
+                val selectedIndices = mutableQueueWindows.indices.filter { idx ->
+                    mutableQueueWindows[idx].mediaItem.metadata in selectedSongs
+                }
+                if (selectedIndices.isEmpty()) return@derivedStateOf groups
+
+                var start = selectedIndices[0]
+                var prev = selectedIndices[0]
+
+                for (k in 1 until selectedIndices.size) {
+                    val curr = selectedIndices[k]
+                    if (curr == prev + 1) {
+                        prev = curr
+                    } else {
+                        groups.add(start..prev)
+                        start = curr
+                        prev = curr
+                    }
+                }
+                groups.add(start..prev)
+                groups
+            }
+        }
         val queueLength by remember {
             derivedStateOf {
                 queueWindows.sumOf { it.mediaItem.metadata?.duration ?: 0 }
@@ -729,6 +765,57 @@ fun Queue(
                     fromQueueIndex !in mutableQueueWindows.indices ||
                     toQueueIndex !in mutableQueueWindows.indices
                 ) {
+                    return@onMove
+                }
+
+                if (selection) {
+                    multiItemDragPerformed = true
+
+                    var startWindows = dragStartWindows
+                    var startSelectedIndices = dragStartSelectedIndices
+                    var startGrabbedIndex = dragStartGrabbedIndex
+
+                    if (startWindows == null || startSelectedIndices == null || startGrabbedIndex == null) {
+                        startWindows = mutableQueueWindows.toList()
+                        startSelectedIndices = startWindows.indices.filter { idx ->
+                            startWindows[idx].mediaItem.metadata in selectedSongs
+                        }
+                        startGrabbedIndex = fromQueueIndex
+
+                        dragStartWindows = startWindows
+                        dragStartSelectedIndices = startSelectedIndices
+                        dragStartGrabbedIndex = startGrabbedIndex
+                    }
+
+                    val minSelected = startSelectedIndices.minOrNull()
+                    val maxSelected = startSelectedIndices.maxOrNull()
+                    if (minSelected != null && maxSelected != null) {
+                        val N = startWindows.size
+                        val clampedDelta = (toQueueIndex - startGrabbedIndex).coerceIn(0 - minSelected, (N - 1) - maxSelected)
+
+                        val newSelectedIndices = startSelectedIndices.map { it + clampedDelta }
+                        val newSelectedIndicesSet = newSelectedIndices.toSet()
+
+                        val selectedItemsList = startSelectedIndices.map { startWindows[it] }
+                        val unselectedItemsList = startWindows.filterIndexed { idx, _ -> idx !in startSelectedIndices }
+
+                        var selectedPtr = 0
+                        var unselectedPtr = 0
+
+                        val newList = ArrayList<Timeline.Window>(N)
+                        for (i in 0 until N) {
+                            if (i in newSelectedIndicesSet) {
+                                newList.add(selectedItemsList[selectedPtr++])
+                            } else {
+                                newList.add(unselectedItemsList[unselectedPtr++])
+                            }
+                        }
+
+                        Snapshot.withMutableSnapshot {
+                            mutableQueueWindows.clear()
+                            mutableQueueWindows.addAll(newList)
+                        }
+                    }
                     return@onMove
                 }
 
@@ -771,6 +858,57 @@ fun Queue(
 
         LaunchedEffect(queueWindows, reorderableState.isAnyItemDragging) {
             if (reorderableState.isAnyItemDragging) return@LaunchedEffect
+
+            dragStartWindows = null
+            dragStartSelectedIndices = null
+            dragStartGrabbedIndex = null
+
+            if (multiItemDragPerformed) {
+                multiItemDragPerformed = false
+                dragInfo = null
+
+                if (!playerConnection.player.shuffleModeEnabled) {
+                    val current = queueWindows.map { it.uid }.toMutableList()
+                    val target = mutableQueueWindows.map { it.uid }
+
+                    val commonUids = current.intersect(target.toSet())
+                    val targetCommonOrder = target.filter { it in commonUids }
+
+                    val targetCompiled = ArrayList<Any>(current.size)
+                    var commonPtr = 0
+                    for (i in current.indices) {
+                        if (current[i] in commonUids) {
+                            if (commonPtr < targetCommonOrder.size) {
+                                targetCompiled.add(targetCommonOrder[commonPtr++])
+                            } else {
+                                targetCompiled.add(current[i])
+                            }
+                        } else {
+                            targetCompiled.add(current[i])
+                        }
+                    }
+
+                    for (i in targetCompiled.indices) {
+                        if (current[i] != targetCompiled[i]) {
+                            val j = current.indexOf(targetCompiled[i])
+                            if (j != -1) {
+                                playerConnection.player.moveMediaItem(j, i)
+                                current.move(j, i)
+                            }
+                        }
+                    }
+                } else {
+                    playerConnection.localPlayer.setShuffleOrder(
+                        DefaultShuffleOrder(
+                            mutableQueueWindows
+                                .map { it.firstPeriodIndex }
+                                .toIntArray(),
+                            System.currentTimeMillis(),
+                        ),
+                    )
+                }
+                return@LaunchedEffect
+            }
 
             val completedDrag = dragInfo
             if (completedDrag != null) {
@@ -952,6 +1090,18 @@ fun Queue(
                             state = reorderableState,
                             key = window.queueItemKey,
                         ) {
+                            val isThisSelected = selection && window.mediaItem.metadata in selectedSongs
+                            val groupForThis = if (isThisSelected) {
+                                contiguousGroups.find { index in it }
+                            } else {
+                                null
+                            }
+                            val isMidOfGroup = groupForThis != null && {
+                                val size = groupForThis.last - groupForThis.first + 1
+                                val mid = groupForThis.first + (size - 1) / 2
+                                index == mid
+                            }()
+
                             val currentItem by rememberUpdatedState(window)
                             val isActive = window.uid == currentPlayingUid
                             val dismissBoxState =
@@ -976,9 +1126,14 @@ fun Queue(
                             }
 
                             val content: @Composable () -> Unit = {
+                                val itemModifier = if (isThisSelected) {
+                                    Modifier.offset(x = 36.dp).fillMaxWidth()
+                                } else {
+                                    Modifier.fillMaxWidth()
+                                }
                                 Row(
                                     horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = itemModifier,
                                 ) {
                                     val shouldLoadImages by remember {
                                         derivedStateOf {
@@ -1022,7 +1177,7 @@ fun Queue(
                                                     contentDescription = null,
                                                 )
                                             }
-                                            if (!effectiveLocked) {
+                                            if (!effectiveLocked && !selection) {
                                                 IconButton(
                                                     onClick = { },
                                                     modifier = Modifier.draggableHandle(),
@@ -1109,14 +1264,40 @@ fun Queue(
                                 }
                             }
 
-                            if (effectiveLocked) {
-                                content()
-                            } else {
-                                SwipeToDismissBox(
-                                    state = dismissBoxState,
-                                    backgroundContent = {},
-                                ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (effectiveLocked) {
                                     content()
+                                } else {
+                                    SwipeToDismissBox(
+                                        state = dismissBoxState,
+                                        backgroundContent = {},
+                                    ) {
+                                        content()
+                                    }
+                                }
+
+                                if (isMidOfGroup && selection) {
+                                    val size = groupForThis!!.last - groupForThis.first + 1
+                                    val verticalOffset = if (size % 2 == 0) 36.dp else 0.dp
+
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterStart)
+                                            .offset(y = verticalOffset)
+                                            .width(36.dp)
+                                            .height(ListItemHeight)
+                                            .zIndex(1f)
+                                            .draggableHandle(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.drag_indicator),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
