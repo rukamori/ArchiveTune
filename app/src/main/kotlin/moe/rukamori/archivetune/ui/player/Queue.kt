@@ -871,9 +871,26 @@ fun Queue(
                     val current = queueWindows.map { it.uid }.toMutableList()
                     val target = mutableQueueWindows.map { it.uid }
 
-                    for (i in target.indices) {
-                        if (current[i] != target[i]) {
-                            val j = current.indexOf(target[i])
+                    val commonUids = current.intersect(target.toSet())
+                    val targetCommonOrder = target.filter { it in commonUids }
+
+                    val targetCompiled = ArrayList<Any>(current.size)
+                    var commonPtr = 0
+                    for (i in current.indices) {
+                        if (current[i] in commonUids) {
+                            if (commonPtr < targetCommonOrder.size) {
+                                targetCompiled.add(targetCommonOrder[commonPtr++])
+                            } else {
+                                targetCompiled.add(current[i])
+                            }
+                        } else {
+                            targetCompiled.add(current[i])
+                        }
+                    }
+
+                    for (i in targetCompiled.indices) {
+                        if (current[i] != targetCompiled[i]) {
+                            val j = current.indexOf(targetCompiled[i])
                             if (j != -1) {
                                 playerConnection.player.moveMediaItem(j, i)
                                 current.move(j, i)
