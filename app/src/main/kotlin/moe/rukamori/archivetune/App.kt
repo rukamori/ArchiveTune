@@ -128,7 +128,11 @@ class App :
         applicationScope.launch(Dispatchers.IO) {
             while (isActive) {
                 val result = runGatekeeperCheckUseCase()
-                if (result !is GatekeeperResult.Blocked || !result.retryable) return@launch
+                when (result) {
+                    GatekeeperResult.Allowed -> return@launch
+                    GatekeeperResult.Unavailable -> Unit
+                    is GatekeeperResult.Blocked -> if (!result.retryable) return@launch
+                }
                 delay(GATEKEEPER_RETRY_INTERVAL_MILLIS)
             }
         }
