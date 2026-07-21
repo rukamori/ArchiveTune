@@ -117,6 +117,7 @@ import moe.rukamori.archivetune.viewmodels.RecognitionHistorySheetUiState
 import moe.rukamori.archivetune.viewmodels.RecognitionHistoryUiModel
 import moe.rukamori.archivetune.viewmodels.RecognitionPhaseUi
 import moe.rukamori.archivetune.viewmodels.RecognizedTrackUiModel
+import moe.rukamori.archivetune.musicrecognition.navigateToMusicRecognitionDetails
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,6 +188,10 @@ fun MusicRecognitionScreen(
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(intent)
                     }
+                }
+
+                is MusicRecognitionEvent.NavigateToDetails -> {
+                    navController.navigateToMusicRecognitionDetails(event.track)
                 }
             }
         }
@@ -624,7 +629,7 @@ private fun RecognitionErrorState(
 }
 
 @Composable
-private fun RecognitionResultContent(
+fun RecognitionResultContent(
     track: RecognizedTrackUiModel,
     useWideLayout: Boolean,
     onListenAgain: () -> Unit,
@@ -687,7 +692,7 @@ private fun RecognitionResultContent(
 }
 
 @Composable
-private fun ResultIdentity(
+fun ResultIdentity(
     track: RecognizedTrackUiModel,
     artworkSize: Dp,
     modifier: Modifier = Modifier,
@@ -744,7 +749,7 @@ private fun ResultIdentity(
 }
 
 @Composable
-private fun ResultSupportingContent(
+fun ResultSupportingContent(
     track: RecognizedTrackUiModel,
     onOpenUri: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -796,7 +801,7 @@ private fun ResultSupportingContent(
 }
 
 @Composable
-private fun ResultInformationBlock(
+fun ResultInformationBlock(
     iconRes: Int,
     title: String,
     body: String?,
@@ -842,7 +847,7 @@ private fun ResultInformationBlock(
 }
 
 @Composable
-private fun ResultActions(
+fun ResultActions(
     onListenAgain: () -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -903,7 +908,7 @@ private fun ResultActions(
 }
 
 @Composable
-private fun MetadataPill(
+fun MetadataPill(
     iconRes: Int,
     text: String,
 ) {
@@ -1294,7 +1299,7 @@ private fun RecognitionHistoryEmptyState(
 }
 
 @Composable
-private fun CoverArt(
+fun CoverArt(
     artworkUrl: String?,
     displaySize: Dp,
     shape: Shape = MaterialTheme.shapes.large,

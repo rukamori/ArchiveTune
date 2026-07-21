@@ -17,10 +17,11 @@ import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import android.util.Base64
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.json.Json
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import javax.inject.Inject
 
 class MusicRecognitionNotificationManager
@@ -107,7 +108,7 @@ class MusicRecognitionNotificationManager
                 text = summary,
                 status = R.string.music_recognition_notification_status_result,
                 alert = true,
-            ).setContentIntent(resultPendingIntent(track.searchQuery))
+            ).setContentIntent(resultPendingIntent(track))
                 .setStyle(NotificationCompat.BigTextStyle().bigText(details))
                 .setTimeoutAfter(ResultNotificationTimeoutMillis)
                 .build()
@@ -202,10 +203,15 @@ class MusicRecognitionNotificationManager
             )
         }
 
-        private fun resultPendingIntent(searchQuery: String): PendingIntent {
+        private fun resultPendingIntent(track: RecognizedTrack): PendingIntent {
+            val jsonString = Json.encodeToString(RecognizedTrack.serializer(), track)
+            val encodedTrack = Base64.encodeToString(
+                jsonString.toByteArray(Charsets.UTF_8),
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
             val intent = Intent(context, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra("navigate_to", onlineSearchResultRoute(searchQuery))
+                putExtra("navigate_to", "music_recognition/details/$encodedTrack")
             }
             return PendingIntent.getActivity(
                 context,

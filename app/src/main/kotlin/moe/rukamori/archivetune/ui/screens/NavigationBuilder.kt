@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.defaultUpdateChannel
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionDetailsRoute
 import moe.rukamori.archivetune.ui.screens.BrowseScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistAlbumsScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistItemsScreen
@@ -35,6 +36,7 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.library.LibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.LocalSongScreen
 import moe.rukamori.archivetune.ui.screens.musicrecognition.MusicRecognitionScreen
+import moe.rukamori.archivetune.ui.screens.musicrecognition.MusicRecognitionDetailsScreen
 import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
@@ -147,6 +149,10 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable(MusicRecognitionRoute) {
         MusicRecognitionScreen(navController)
+    }
+    composable(MusicRecognitionDetailsRoute) { backStackEntry ->
+        val encodedTrack = backStackEntry.arguments?.getString("encodedTrack").orEmpty()
+        MusicRecognitionDetailsScreen(navController, encodedTrack)
     }
     composable(Screens.MoodAndGenres.route) {
         MoodAndGenresScreen(navController)

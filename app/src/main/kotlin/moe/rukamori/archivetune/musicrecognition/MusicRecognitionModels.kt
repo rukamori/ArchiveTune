@@ -7,6 +7,9 @@
 
 package moe.rukamori.archivetune.musicrecognition
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class RecognizedTrack(
     val trackId: String,
     val title: String,
