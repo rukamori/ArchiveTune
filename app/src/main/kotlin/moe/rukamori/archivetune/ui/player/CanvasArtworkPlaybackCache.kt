@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.Context
+import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -674,12 +675,13 @@ private fun File.isUsableFile(): Boolean = isFile && length() > 0L
 
 private fun File.isValidCanvasVideo(): Boolean {
     val extractor = MediaExtractor()
+    val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
     return try {
         extractor.setDataSource(absolutePath)
         (0 until extractor.trackCount).any { index ->
             val format = extractor.getTrackFormat(index)
             val mime = format.getString(MediaFormat.KEY_MIME).orEmpty()
-            mime.startsWith("video/")
+            mime.startsWith("video/") && codecList.findDecoderForFormat(format) != null
         }
     } catch (error: Throwable) {
         Timber.tag(CanvasCacheLogTag).w(error, "Failed to inspect cached canvas video")
