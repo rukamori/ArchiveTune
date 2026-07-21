@@ -97,7 +97,7 @@ internal class StartIoSupportAdRepository
             
             // Web Ad container URL hosted on ArchiveTune data server
             val appId = BuildConfig.START_IO_APP_ID.ifBlank { DEFAULT_TEST_APP_ID }
-            val adUrl = "https://archivetune-data.koiiverse.cloud/support.html?appId=$appId"
+            val adUrl = "https://archivetune.koiiverse.cloud/support.html?appId=$appId"
 
             mainHandler.post {
                 runCatching {
