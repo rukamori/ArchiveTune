@@ -26,6 +26,7 @@ fun HeaderDownloadProgressIndicator(
     progress: Float,
     paused: Boolean,
     modifier: Modifier = Modifier,
+    icon: Int = R.drawable.list,
 ) {
     val boundedProgress =
         remember(progress) {
@@ -44,8 +45,8 @@ fun HeaderDownloadProgressIndicator(
             strokeWidth = 3.dp,
         )
         Icon(
-            painter = painterResource(if (paused) R.drawable.play else R.drawable.pause),
-            contentDescription = stringResource(if (paused) R.string.play else R.string.widget_pause),
+            painter = painterResource(icon),
+            contentDescription = stringResource(R.string.download),
             modifier = Modifier.size(18.dp),
         )
     }

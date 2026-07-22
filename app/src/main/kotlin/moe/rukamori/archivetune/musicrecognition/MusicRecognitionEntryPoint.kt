@@ -7,11 +7,14 @@
 
 package moe.rukamori.archivetune.musicrecognition
 
+import android.util.Base64
 import androidx.navigation.NavHostController
+import kotlinx.serialization.json.Json
 
 const val MusicRecognitionRoute = "music_recognition"
 const val ACTION_MUSIC_RECOGNITION = "moe.rukamori.archivetune.action.MUSIC_RECOGNITION"
 const val MusicRecognitionAutoStartRequestKey = "music_recognition_auto_start_request"
+const val MusicRecognitionDetailsRoute = "music_recognition/details/{encodedTrack}"
 
 fun NavHostController.openMusicRecognition(autoStartRequestId: Long = System.currentTimeMillis()) {
     val currentRoute = currentDestination?.route
@@ -24,3 +27,21 @@ fun NavHostController.openMusicRecognition(autoStartRequestId: Long = System.cur
     getBackStackEntry(MusicRecognitionRoute).savedStateHandle[MusicRecognitionAutoStartRequestKey] =
         autoStartRequestId
 }
+
+fun NavHostController.navigateToMusicRecognitionDetails(track: RecognizedTrack) {
+    val jsonString = Json.encodeToString(RecognizedTrack.serializer(), track)
+    val encodedTrack = Base64.encodeToString(
+        jsonString.toByteArray(Charsets.UTF_8),
+        Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+    )
+    navigate("music_recognition/details/$encodedTrack") {
+        launchSingleTop = true
+    }
+}
+
+fun decodeRecognizedTrack(encodedTrack: String): RecognizedTrack {
+    val decodedBytes = Base64.decode(encodedTrack, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    val jsonString = String(decodedBytes, Charsets.UTF_8)
+    return Json.decodeFromString(RecognizedTrack.serializer(), jsonString)
+}
+

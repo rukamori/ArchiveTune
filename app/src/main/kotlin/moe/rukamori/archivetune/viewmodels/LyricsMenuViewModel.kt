@@ -272,17 +272,11 @@ class LyricsMenuViewModel
                                 source = LyricsEntity.Source.AI_TRANSLATION.value,
                             )
                         }
-                        context.dataStore.edit { settings ->
-                            settings[AiApiValidationStatusKey] = AiApiValidationStatus.SUCCESS.name
-                        }
                         val msg = context.getString(R.string.translation_success)
                         _aiTranslationEvents.emit(msg)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        context.dataStore.edit { settings ->
-                            settings[AiApiValidationStatusKey] = AiApiValidationStatus.FAILED.name
-                        }
                         val msg = context.getString(R.string.translation_failed) + ": " + (e.localizedMessage ?: e.toString())
                         _aiTranslationEvents.emit(msg)
                     } finally {
