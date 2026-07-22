@@ -52,6 +52,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
@@ -181,16 +182,31 @@ class PoTokenExtractionActivity : ComponentActivity() {
         fun completeIfReady() {
             if (isCompletionStarted || isFinishing) return
             val visitorData = extractedVisitorData?.takeIf(String::isNotBlank) ?: return
-            val gvsToken = extractedGvsToken?.takeIf(String::isNotBlank) ?: return
+            val playbackAuthState = YouTube.currentPlaybackAuthState()
+            val tokenBindingId = playbackAuthState.sessionId ?: visitorData
+            val persistedVisitorData =
+                if (playbackAuthState.hasPlaybackLoginContext) {
+                    playbackAuthState.visitorData ?: visitorData
+                } else {
+                    visitorData
+                }
+            val useGeneratedGvsToken = tokenBindingId != visitorData
+            val pageGvsToken = extractedGvsToken?.takeIf(String::isNotBlank)
+            if (!useGeneratedGvsToken && pageGvsToken == null) return
             isCompletionStarted = true
 
             this@PoTokenExtractionActivity.lifecycleScope.launch {
-                val playerToken =
+                val tokenResult =
                     BotGuardTokenGenerator
-                        .mintToken("player", visitorData)
-                        ?.playerToken
-                        .orEmpty()
-                if (playerToken.isBlank()) {
+                        .mintToken("player", tokenBindingId)
+                val playerToken = tokenResult?.playerToken.orEmpty()
+                val gvsToken =
+                    if (useGeneratedGvsToken) {
+                        tokenResult?.sessionToken.orEmpty()
+                    } else {
+                        pageGvsToken.orEmpty()
+                    }
+                if (playerToken.isBlank() || gvsToken.isBlank()) {
                     closeCanceled(context.getString(R.string.token_generation_failed))
                     return@launch
                 }
@@ -198,7 +214,7 @@ class PoTokenExtractionActivity : ComponentActivity() {
                 setResult(
                     Activity.RESULT_OK,
                     Intent().apply {
-                        putExtra(EXTRA_VISITOR_DATA, visitorData)
+                        putExtra(EXTRA_VISITOR_DATA, persistedVisitorData)
                         putExtra(EXTRA_GVS_TOKEN, gvsToken)
                         putExtra(EXTRA_PLAYER_TOKEN, playerToken)
                     },
