@@ -34,10 +34,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
-import moe.rukamori.archivetune.viewmodels.LoginEvent
+import moe.rukamori.archivetune.viewmodels.LoginScreenState
 import moe.rukamori.archivetune.viewmodels.LoginViewModel
 
 const val LOGIN_ROUTE = "login"
@@ -49,6 +50,11 @@ fun buildLoginRoute(startUrl: String? = null): String {
 }
 
 private const val DEFAULT_LOGIN_URL = "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
+private const val LOGIN_CONTEXT_RETRY_DELAY_MS = 1_000L
+private const val LOGIN_CONTEXT_EXTRACTION_ATTEMPTS = 10
+
+private const val LOGIN_CONTEXT_SCRIPT =
+    "(function(){try{var c=window.ytcfg;var y=window.yt&&window.yt.config_;var s=document.querySelectorAll('script');var v=c&&c.get&&c.get('VISITOR_DATA')||y&&y.VISITOR_DATA;var d=c&&c.get&&c.get('DATASYNC_ID')||y&&y.DATASYNC_ID;var t=c&&c.get&&c.get('PO_TOKEN');for(var i=0;i<s.length&&(!v||!d||!t);i++){var x=s[i].textContent;if(!v){var vm=x.match(/\"VISITOR_DATA\":\"([^\"]+)\"/);if(vm)v=vm[1]}if(!d){var dm=x.match(/[\"'](?:DATASYNC_ID|dataSyncId)[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(dm)d=dm[1]}if(!t){var tm=x.match(/\"PO_TOKEN\":\"([^\"]+)\"/);if(tm)t=tm[1]}}if(v)Android.onRetrieveVisitorData(v);if(d)Android.onRetrieveDataSyncId(d);if(t)Android.onRetrievePoToken(t)}catch(e){}})();"
 
 private val YOUTUBE_COOKIE_URLS =
     listOf(
@@ -67,19 +73,14 @@ fun LoginScreen(
 ) {
     val context = LocalContext.current
 
-    @Suppress("UNUSED_VARIABLE")
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val loginSuccessMessage = stringResource(R.string.login_success)
     var webView: WebView? = null
 
-    LaunchedEffect(viewModel, loginSuccessMessage) {
-        viewModel.events.collect { event ->
-            when (event) {
-                LoginEvent.Completed -> {
-                    Toast.makeText(context, loginSuccessMessage, Toast.LENGTH_SHORT).show()
-                    navController.navigateUp()
-                }
-            }
+    LaunchedEffect(screenState, loginSuccessMessage) {
+        if (screenState is LoginScreenState.Success) {
+            Toast.makeText(context, loginSuccessMessage, Toast.LENGTH_SHORT).show()
+            navController.navigateUp()
         }
     }
 
@@ -92,51 +93,38 @@ fun LoginScreen(
             WebView(context).apply {
                 val cookieManager = CookieManager.getInstance()
                 webViewClient =
-                    object : WebViewClient() {
-                        override fun onPageFinished(
-                            view: WebView,
-                            url: String?,
-                        ) {
-                            val isYouTubePage = url?.contains("youtube.com", ignoreCase = true) == true
-                            if (isYouTubePage) {
-                                loadUrl(
-                                    "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var v=c.get('VISITOR_DATA');if(v){Android.onRetrieveVisitorData(v);return}}var y=window.yt&&window.yt.config_;if(y&&y.VISITOR_DATA){Android.onRetrieveVisitorData(y.VISITOR_DATA);return}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/\"VISITOR_DATA\":\"([^\"]+)\"/);if(m){Android.onRetrieveVisitorData(m[1]);return}}}catch(e){}})())",
-                                )
-                                loadUrl(
-                                    "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var d=c.get('DATASYNC_ID');if(d){Android.onRetrieveDataSyncId(d);return}}var y=window.yt&&window.yt.config_;if(y&&y.DATASYNC_ID){Android.onRetrieveDataSyncId(y.DATASYNC_ID);return}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/[\\\"'](?:DATASYNC_ID|dataSyncId)[\\\"']\\s*:\\s*[\\\"']([^\\\"']+)[\\\"']/);if(m){Android.onRetrieveDataSyncId(m[1]);return}}}catch(e){}})())",
-                                )
-                                loadUrl(
-                                    "javascript:void((function(){try{var c=window.ytcfg;if(c&&c.get){var t=c.get('PO_TOKEN');if(t){Android.onRetrievePoToken(t);return}}var s=document.querySelectorAll('script');for(var i=0;i<s.length;i++){var m=s[i].textContent.match(/\"PO_TOKEN\":\"([^\"]+)\"/);if(m){Android.onRetrievePoToken(m[1]);return}}}catch(e){}})())",
-                                )
-                            }
-
-                            val mergedCookie = mergeYouTubeCookies(cookieManager, url)
-                            if (!mergedCookie.isNullOrBlank()) {
-                                viewModel.onCookiesCaptured(mergedCookie)
-                            }
-                        }
-                    }
+                    YouTubeLoginWebViewClient(
+                        cookieManager = cookieManager,
+                        onCookiesCaptured = viewModel::onCookiesCaptured,
+                    )
                 settings.apply {
                     javaScriptEnabled = true
                     setSupportZoom(true)
                     builtInZoomControls = true
                     displayZoomControls = false
                 }
+                val loginWebView = this
                 addJavascriptInterface(
                     object {
                         @JavascriptInterface
                         fun onRetrieveVisitorData(newVisitorData: String?) {
-                            viewModel.onVisitorDataExtracted(newVisitorData)
+                            loginWebView.post {
+                                viewModel.onVisitorDataExtracted(newVisitorData)
+                            }
                         }
 
                         @JavascriptInterface
                         fun onRetrieveDataSyncId(newDataSyncId: String?) {
-                            viewModel.onDataSyncIdExtracted(newDataSyncId)
+                            loginWebView.post {
+                                viewModel.onDataSyncIdExtracted(newDataSyncId)
+                            }
                         }
 
                         @JavascriptInterface
                         fun onRetrievePoToken(newPoToken: String?) {
-                            viewModel.onPoTokenExtracted(newPoToken)
+                            loginWebView.post {
+                                viewModel.onPoTokenExtracted(newPoToken)
+                            }
                         }
                     },
                     "Android",
@@ -145,6 +133,15 @@ fun LoginScreen(
                 resetAuthWebViewSession(context, this, clearCookies = true) {
                     loadUrl(startUrl?.takeIf { it.isNotBlank() } ?: DEFAULT_LOGIN_URL)
                 }
+            }
+        },
+        onRelease = { releasedWebView ->
+            (releasedWebView.webViewClient as? YouTubeLoginWebViewClient)?.release(releasedWebView)
+            releasedWebView.removeJavascriptInterface("Android")
+            releasedWebView.stopLoading()
+            releasedWebView.destroy()
+            if (webView === releasedWebView) {
+                webView = null
             }
         },
     )
@@ -167,6 +164,77 @@ fun LoginScreen(
     BackHandler(enabled = webView?.canGoBack() == true) {
         webView?.goBack()
     }
+}
+
+private class YouTubeLoginWebViewClient(
+    private val cookieManager: CookieManager,
+    private val onCookiesCaptured: (String) -> Unit,
+) : WebViewClient() {
+    private var extractionRunnable: Runnable? = null
+    private var lastCapturedCookie: String? = null
+
+    override fun onPageFinished(
+        view: WebView,
+        url: String?,
+    ) {
+        super.onPageFinished(view, url)
+        scheduleLoginContextExtraction(view, url)
+    }
+
+    override fun doUpdateVisitedHistory(
+        view: WebView,
+        url: String?,
+        isReload: Boolean,
+    ) {
+        super.doUpdateVisitedHistory(view, url, isReload)
+        scheduleLoginContextExtraction(view, url)
+    }
+
+    fun release(view: WebView) {
+        extractionRunnable?.let(view::removeCallbacks)
+        extractionRunnable = null
+    }
+
+    private fun scheduleLoginContextExtraction(
+        view: WebView,
+        url: String?,
+    ) {
+        extractionRunnable?.let(view::removeCallbacks)
+        extractionRunnable = null
+
+        if (!url.isYouTubeUrl()) return
+
+        var remainingAttempts = LOGIN_CONTEXT_EXTRACTION_ATTEMPTS
+        val runnable =
+            object : Runnable {
+                override fun run() {
+                    if (!view.url.isYouTubeUrl()) return
+
+                    view.evaluateJavascript(LOGIN_CONTEXT_SCRIPT, null)
+                    captureCookies(view.url)
+
+                    remainingAttempts -= 1
+                    if (remainingAttempts > 0) {
+                        view.postDelayed(this, LOGIN_CONTEXT_RETRY_DELAY_MS)
+                    }
+                }
+            }
+        extractionRunnable = runnable
+        view.post(runnable)
+    }
+
+    private fun captureCookies(currentUrl: String?) {
+        val mergedCookie = mergeYouTubeCookies(cookieManager, currentUrl) ?: return
+        if (!hasYouTubeLoginCookie(mergedCookie) || mergedCookie == lastCapturedCookie) return
+
+        lastCapturedCookie = mergedCookie
+        onCookiesCaptured(mergedCookie)
+    }
+}
+
+private fun String?.isYouTubeUrl(): Boolean {
+    val host = this?.let(Uri::parse)?.host?.lowercase() ?: return false
+    return host == "youtube.com" || host.endsWith(".youtube.com")
 }
 
 private fun mergeYouTubeCookies(
