@@ -1119,4 +1119,5 @@
     <string name="scheduled_backup_load_failed">Impossible de charger les paramètres de sauvegarde planifiée</string>
     <string name="scheduled_backup_update_failed">Impossible d\'enregistrer les paramètres de sauvegarde planifiée</string>
     <string name="gatekeeper_connection_blocked">Connexion bloquée par ArchiveTune Remote. Il n\'a pas été possible de vérifier que cette application correspondait à une version officielle d\'ArchiveTune. Installez une version officielle à partir de https://github.com/rukamori/ArchiveTune ou https://t.me/ArchiveTuneGC.</string>
+    <string name="enable_megalobiz_lyrics">Activer les paroles de Megalobiz</string>
 </resources>
