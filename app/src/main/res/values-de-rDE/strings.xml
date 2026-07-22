@@ -975,4 +975,5 @@
     <string name="discord_activity_type_watching_label">Schaut</string>
     <string name="together_participants_empty">Noch keine Teilnehmer</string>
     <string name="together_activity_log_empty">Noch keine Aktivität</string>
+    <string name="enable_megalobiz_lyrics">Megalobiz-Songtexte aktivieren</string>
 </resources>
