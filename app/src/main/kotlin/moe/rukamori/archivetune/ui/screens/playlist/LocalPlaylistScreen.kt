@@ -865,6 +865,7 @@ fun LocalPlaylistScreen(
                         val content: @Composable () -> Unit = {
                             SongListItem(
                                 song = song.song,
+                                showSourceIcon = true,
                                 viewCountText =
                                     viewCounts[song.song.id]?.let { count -> formatCompactCount(count.toLong()) },
                                 isActive = song.song.id == mediaMetadata?.id,
@@ -963,6 +964,7 @@ fun LocalPlaylistScreen(
                         val content: @Composable () -> Unit = {
                             SongListItem(
                                 song = song.song,
+                                showSourceIcon = true,
                                 viewCountText =
                                     viewCounts[song.song.id]?.let { count -> formatCompactCount(count.toLong()) },
                                 isActive = song.song.id == mediaMetadata?.id,

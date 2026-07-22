@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Device outline -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="
+            M7,2
+            C5.9,2 5,2.9 5,4
+            L5,20
+            C5,21.1 5.9,22 7,22
+            L17,22
+            C18.1,22 19,21.1 19,20
+            L19,4
+            C19,2.9 18.1,2 17,2
+            Z
+
+            M7,4
+            L17,4
+            L17,18
+            L7,18
+            Z
+
+            M10,20
+            L14,20
+            L14,21
+            L10,21
+            Z" />
+
+    <!-- Music note -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="
+            M14,6
+            L18,6
+            L18,8
+            L16,8
+            L16,14.2
+            C16,16 14.55,17.5 12.75,17.5
+            C11.1,17.5 9.8,16.35 9.8,14.9
+            C9.8,13.45 11.1,12.3 12.75,12.3
+            C13.2,12.3 13.65,12.4 14,12.6
+            Z" />
+</vector>

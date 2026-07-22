@@ -99,6 +99,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.backup.ScheduledBackupFrequency
+import moe.rukamori.archivetune.constants.ImportSourcePriorityKey
 import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.spotify.SpotifyAccountUiState
@@ -107,6 +108,7 @@ import moe.rukamori.archivetune.spotify.SpotifyAuth
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.PreferenceGroupScope
@@ -167,6 +169,7 @@ fun BackupAndRestore(
     val backupRestoreProgress by viewModel.backupRestoreProgress.collectAsStateWithLifecycle()
     val scheduledBackupState by viewModel.scheduledBackupState.collectAsStateWithLifecycle()
     val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
+    val (importLocalFirst, onImportLocalFirstChange) = rememberPreference(ImportSourcePriorityKey, false)
     val (showSpotifyPlaylists, onShowSpotifyPlaylistsChange) = rememberPreference(ShowSpotifyPlaylistsKey, false)
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -324,6 +327,35 @@ fun BackupAndRestore(
                         description = stringResource(R.string.restore_select_backup),
                         icon = { Icon(painterResource(R.drawable.restore), null) },
                         onClick = { restoreLauncher.launch(arrayOf("application/octet-stream", "application/zip")) },
+                    )
+                }
+
+                item {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.import_priority_setting_title)) },
+                        description = stringResource(R.string.import_priority_setting_desc),
+                        icon = { Icon(painterResource(R.drawable.playlist_import), null) },
+                        selectedValue = importLocalFirst,
+                        values = listOf(true, false),
+                        valueText = { localFirst ->
+                            stringResource(
+                                if (localFirst) {
+                                    R.string.import_priority_local_first
+                                } else {
+                                    R.string.import_priority_youtube_only
+                                },
+                            )
+                        },
+                        valueDescription = { localFirst ->
+                            stringResource(
+                                if (localFirst) {
+                                    R.string.import_priority_local_first_desc
+                                } else {
+                                    R.string.import_priority_youtube_only_desc
+                                },
+                            )
+                        },
+                        onValueSelected = onImportLocalFirstChange,
                     )
                 }
 
