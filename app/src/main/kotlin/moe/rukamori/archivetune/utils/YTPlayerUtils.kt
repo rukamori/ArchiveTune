@@ -36,6 +36,7 @@ import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_CRE
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
+import moe.rukamori.archivetune.utils.potoken.PoTokenResult
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import timber.log.Timber
 import java.util.Locale
@@ -173,6 +174,7 @@ object YTPlayerUtils {
     }
 
     suspend fun recoverFromBadStreamPlayerResponse(videoId: String) {
+        BotGuardTokenGenerator.invalidateAll()
         val authState = YouTube.currentPlaybackAuthState()
         val refreshedAuthState =
             ensureVisitorDataReady(
@@ -235,13 +237,22 @@ object YTPlayerUtils {
                         reportException(it)
                     }.getOrNull()
                     ?.let { channels ->
-                        channels.firstOrNull { it.isSelected } ?: channels.firstOrNull()
+                        channels.firstOrNull { it.dataSyncId == authState.dataSyncId }
+                            ?: channels.firstOrNull { it.isSelected }
+                            ?: channels.firstOrNull()
                     }
 
             val refreshedDataSyncId = activeChannel?.dataSyncId?.takeIf { it.isNotBlank() }
             if (refreshedDataSyncId != null && refreshedDataSyncId != repairedAuthState.dataSyncId) {
                 Timber.tag(logTag).i("Refreshed playback dataSyncId for %s after bot detection", videoId)
-                repairedAuthState = repairedAuthState.copy(dataSyncId = refreshedDataSyncId).normalized()
+                repairedAuthState =
+                    repairedAuthState
+                        .copy(
+                            dataSyncId = refreshedDataSyncId,
+                            poToken = null,
+                            poTokenGvs = null,
+                            poTokenPlayer = null,
+                        ).normalized()
             }
         }
 
@@ -258,6 +269,10 @@ object YTPlayerUtils {
                 )
         }
 
+        if (!hasCompleteWebPlaybackPoToken(repairedAuthState)) {
+            repairedAuthState = mintWebPlaybackPoTokens(videoId, repairedAuthState)
+        }
+
         if (repairedAuthState.fingerprint != authState.fingerprint) {
             YouTube.authState = repairedAuthState
             clearPlaybackAuthCaches()
@@ -270,6 +285,48 @@ object YTPlayerUtils {
         authState.webClientPoTokenEnabled &&
             !authState.resolvePlayerPoToken(WEB_REMIX).isNullOrBlank() &&
             !authState.resolveGvsPoToken(WEB_REMIX).isNullOrBlank()
+
+    private suspend fun mintWebPlaybackPoTokens(
+        videoId: String,
+        authState: PlaybackAuthState,
+    ): PlaybackAuthState {
+        val sessionId = authState.sessionId ?: return authState
+        val tokenResult = BotGuardTokenGenerator.mintToken(videoId, sessionId) ?: return authState
+        return authState.withGeneratedPoTokens(tokenResult)
+    }
+
+    private fun PlaybackAuthState.withGeneratedPoTokens(tokenResult: PoTokenResult): PlaybackAuthState {
+        val updatedAuthState =
+            copy(
+                poTokenGvs = tokenResult.sessionToken,
+                poTokenPlayer = tokenResult.playerToken,
+                webClientPoTokenEnabled = true,
+            ).normalized()
+        val currentAuthState = YouTube.currentPlaybackAuthState()
+        if (hasSamePlaybackSession(currentAuthState)) {
+            YouTube.authState =
+                currentAuthState
+                    .copy(
+                        poTokenGvs = tokenResult.sessionToken,
+                        poTokenPlayer = tokenResult.playerToken,
+                        webClientPoTokenEnabled = true,
+                    ).normalized()
+        }
+        return updatedAuthState
+    }
+
+    private fun PlaybackAuthState.hasSamePlaybackSession(other: PlaybackAuthState): Boolean =
+        cookie == other.cookie &&
+            visitorData == other.visitorData &&
+            dataSyncId == other.dataSyncId
+
+    private fun PlaybackAuthState.withoutAccountBoundPlaybackState(): PlaybackAuthState =
+        copy(
+            dataSyncId = null,
+            poToken = null,
+            poTokenGvs = null,
+            poTokenPlayer = null,
+        ).normalized()
 
     internal fun shouldSkipCipheredWebPlaybackCandidate(
         webClientPoTokenEnabled: Boolean,
@@ -684,7 +741,7 @@ object YTPlayerUtils {
                     reason = if (hasLoginCookie) "cookie-only playback fallback" else "anonymous playback bootstrap",
                 )
         }
-        val sessionId = authState.visitorData
+        val sessionId = authState.sessionId
         val authStatus =
             when {
                 canUseLoggedInPlayback -> "Logged in"
@@ -701,27 +758,20 @@ object YTPlayerUtils {
         var didRepairAuthAfterBotDetection = false
         var didRetryWithoutRejectedLoginContext = false
 
-        val metadataClient = MAIN_CLIENT
+        var metadataClient = MAIN_CLIENT
 
         Timber.tag(logTag).i("Fetching metadata response using client: ${metadataClient.clientName}")
 
-        var metadataPoToken: String? = null
         if (metadataClient.useWebPoTokens && sessionId != null) {
             try {
-                val tokenResult = BotGuardTokenGenerator.mintToken(videoId, sessionId)
-                metadataPoToken = tokenResult?.playerToken
-                tokenResult?.let {
-                    YouTube.authState =
-                        YouTube.authState.copy(
-                            poTokenGvs = it.sessionToken,
-                            poTokenPlayer = it.playerToken,
-                            webClientPoTokenEnabled = true,
-                        )
-                }
+                authState = mintWebPlaybackPoTokens(videoId, authState)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 Timber.tag(logTag).w(e, "PoToken generation failed for metadata request")
             }
         }
+        var metadataPoToken = authState.resolvePlayerPoToken(metadataClient)
 
         var metadataResult =
             YouTube.player(
@@ -743,26 +793,20 @@ object YTPlayerUtils {
             authState =
                 ensureVisitorDataReady(
                     videoId = videoId,
-                    authState = authState.copy(dataSyncId = null).normalized(),
+                    authState = authState.withoutAccountBoundPlaybackState(),
                     forceRefresh = true,
                     reason = "stale logged-in playback context",
                 )
             canUseLoggedInPlayback = false
             clearPlaybackAuthCaches()
 
-            val newSessionId = authState.visitorData
+            val newSessionId = authState.sessionId
             if (metadataClient.useWebPoTokens && newSessionId != null) {
                 try {
-                    val tokenResult = BotGuardTokenGenerator.mintToken(videoId, newSessionId)
-                    metadataPoToken = tokenResult?.playerToken
-                    tokenResult?.let {
-                        YouTube.authState =
-                            YouTube.authState.copy(
-                                poTokenGvs = it.sessionToken,
-                                poTokenPlayer = it.playerToken,
-                                webClientPoTokenEnabled = true,
-                            )
-                    }
+                    authState = mintWebPlaybackPoTokens(videoId, authState)
+                    metadataPoToken = authState.resolvePlayerPoToken(metadataClient)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
                 } catch (e: Exception) {
                     Timber.tag(logTag).w(e, "PoToken generation failed for metadata retry request")
                 }
@@ -778,6 +822,34 @@ object YTPlayerUtils {
                     setLogin = true,
                     authState = authState,
                 )
+        }
+        if (metadataResult.exceptionOrNull()?.isForbiddenPlayerRequest() == true) {
+            for (fallbackClient in buildStreamClientOrder(preferredStreamClient, authState)) {
+                if (fallbackClient == metadataClient) continue
+                val useCookieAuthentication = canUseLoggedInPlayback && fallbackClient.supportsCookieAuthentication
+                if (fallbackClient.loginRequired && !useCookieAuthentication) continue
+
+                Timber.tag(logTag).i(
+                    "Metadata request was forbidden for %s; trying %s",
+                    describeClient(metadataClient),
+                    describeClient(fallbackClient),
+                )
+                val fallbackResult =
+                    YouTube.player(
+                        videoId = videoId,
+                        playlistId = playlistId,
+                        client = fallbackClient,
+                        signatureTimestamp = signatureTimestamp,
+                        setLogin = useCookieAuthentication,
+                        authState = authState,
+                    )
+                val fallbackResponse = fallbackResult.getOrNull() ?: continue
+                if (fallbackResponse.playabilityStatus.status != "OK") continue
+
+                metadataClient = fallbackClient
+                metadataResult = fallbackResult
+                break
+            }
         }
         var metadataPlayerResponse = metadataResult.getPlaybackPlayerResponseOrThrow(videoId, authState)
         var expectedDurationMs =
@@ -859,12 +931,22 @@ object YTPlayerUtils {
                     authState =
                         ensureVisitorDataReady(
                             videoId = videoId,
-                            authState = authState.copy(dataSyncId = null).normalized(),
+                            authState = authState.withoutAccountBoundPlaybackState(),
                             reason = "logged-in playback context rejected by ${client.clientName}",
                         )
                     canUseLoggedInPlayback = false
                     requestUsesCookieAuthentication = false
                     clearPlaybackAuthCaches()
+
+                    if (client.useWebPoTokens) {
+                        try {
+                            authState = mintWebPlaybackPoTokens(videoId, authState)
+                        } catch (cancellation: CancellationException) {
+                            throw cancellation
+                        } catch (e: Exception) {
+                            Timber.tag(logTag).w(e, "PoToken generation failed for visitor playback retry")
+                        }
+                    }
 
                     if (!client.loginRequired) {
                         Timber.tag(logTag).i(
@@ -1163,21 +1245,14 @@ object YTPlayerUtils {
         Timber.tag(logTag).i("Fetching metadata player response for videoId: $videoId")
 
         val signatureTimestamp = getSignatureTimestampOrNull(videoId)
-        val sessionId = authState.visitorData
-        var poToken: String? = null
+        var resolvedAuthState = authState
+        val sessionId = resolvedAuthState.sessionId
 
         if (MAIN_CLIENT.useWebPoTokens && sessionId != null) {
             try {
-                val tokenResult = BotGuardTokenGenerator.mintToken(videoId, sessionId)
-                poToken = tokenResult?.playerToken
-                tokenResult?.let {
-                    YouTube.authState =
-                        YouTube.authState.copy(
-                            poTokenGvs = it.sessionToken,
-                            poTokenPlayer = it.playerToken,
-                            webClientPoTokenEnabled = true,
-                        )
-                }
+                resolvedAuthState = mintWebPlaybackPoTokens(videoId, resolvedAuthState)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 Timber.tag(logTag).w(e, "PoToken generation failed for metadata request")
             }
@@ -1189,9 +1264,9 @@ object YTPlayerUtils {
                 playlistId = playlistId,
                 client = MAIN_CLIENT,
                 signatureTimestamp = signatureTimestamp,
-                poToken = poToken,
+                poToken = resolvedAuthState.resolvePlayerPoToken(MAIN_CLIENT),
                 setLogin = true,
-                authState = authState,
+                authState = resolvedAuthState,
             ).onSuccess { Timber.tag(logTag).d("Successfully fetched metadata") }
             .onFailure { Timber.tag(logTag).e(it, "Failed to fetch metadata") }
     }
@@ -1448,6 +1523,9 @@ object YTPlayerUtils {
         return message.contains("INVALID_ARGUMENT", ignoreCase = true) ||
             message.contains("invalid argument", ignoreCase = true)
     }
+
+    private fun Throwable.isForbiddenPlayerRequest(): Boolean =
+        (this as? ClientRequestException)?.response?.status == HttpStatusCode.Forbidden
 
     private fun isBotDetectionError(reason: String): Boolean {
         val lower = reason.lowercase(Locale.US)
