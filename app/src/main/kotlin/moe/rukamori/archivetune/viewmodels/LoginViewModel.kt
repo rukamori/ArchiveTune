@@ -12,11 +12,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.auth.CompleteYouTubeLoginUseCase
 import moe.rukamori.archivetune.auth.MissingYouTubeDataSyncIdException
@@ -53,10 +51,6 @@ enum class LoginError {
     LoginFailed,
 }
 
-sealed interface LoginEvent {
-    data object Completed : LoginEvent
-}
-
 @HiltViewModel
 class LoginViewModel
     @Inject
@@ -67,9 +61,6 @@ class LoginViewModel
     ) : ViewModel() {
         private val _screenState = MutableStateFlow<LoginScreenState>(LoginScreenState.Empty)
         val screenState: StateFlow<LoginScreenState> = _screenState.asStateFlow()
-
-        private val _events = Channel<LoginEvent>(Channel.BUFFERED)
-        val events = _events.receiveAsFlow()
 
         private var latestVisitorData: String? = null
         private var latestDataSyncId: String? = null
@@ -87,6 +78,8 @@ class LoginViewModel
 
         fun onDataSyncIdExtracted(dataSyncId: String?) {
             val normalized = dataSyncId.normalizeDataSyncId() ?: return
+            if (latestDataSyncId == normalized) return
+
             val currentState = _screenState.value
             if (currentState is LoginScreenState.Success && currentState.account.dataSyncId != normalized) return
 
@@ -94,9 +87,7 @@ class LoginViewModel
             viewModelScope.launch {
                 updateYouTubeLoginContext(dataSyncId = normalized)
             }
-            if (currentState is LoginScreenState.Error && currentState.error == LoginError.MissingDataSyncId) {
-                onCookiesCaptured(activeCookie)
-            }
+            activeCookie?.let { startLogin(it, replaceActive = true) }
         }
 
         fun onPoTokenExtracted(poToken: String?) {
@@ -108,8 +99,15 @@ class LoginViewModel
 
         fun onCookiesCaptured(cookie: String?) {
             val normalizedCookie = cookie.normalizeAuthValue() ?: return
+            startLogin(normalizedCookie, replaceActive = false)
+        }
+
+        private fun startLogin(
+            normalizedCookie: String,
+            replaceActive: Boolean,
+        ) {
             if (completedCookie == normalizedCookie) return
-            if (loginJob?.isActive == true && activeCookie == normalizedCookie) return
+            if (!replaceActive && loginJob?.isActive == true && activeCookie == normalizedCookie) return
 
             activeCookie = normalizedCookie
             loginJob?.cancel()
@@ -133,7 +131,6 @@ class LoginViewModel
                                     dataSyncId = session.authState.dataSyncId.orEmpty(),
                                 ),
                             )
-                        _events.send(LoginEvent.Completed)
                     }.onFailure { throwable ->
                         Timber.e(throwable, "Failed to complete YouTube login")
                         _screenState.value =
