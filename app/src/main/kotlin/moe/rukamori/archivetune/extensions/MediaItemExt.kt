@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.extensions
 
-import android.os.Build
 import android.os.Bundle
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -31,16 +30,12 @@ val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
 
 private fun String?.toNotificationArtworkUri() =
-    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-        null
-    } else {
-        this
-            ?.resize(
-                width = NotificationArtworkSizePx,
-                height = NotificationArtworkSizePx,
-                ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
-            )?.toUri()
-    }
+    this
+        ?.resize(
+            width = NotificationArtworkSizePx,
+            height = NotificationArtworkSizePx,
+            ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+        )?.toUri()
 
 private fun MediaItem.Builder.setCacheKeyIfRemote(mediaId: String): MediaItem.Builder {
     if (!mediaId.isLocalMediaId()) {
