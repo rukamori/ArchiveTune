@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Explorar</string>
     <string name="suggestions">Sugestões</string>
@@ -636,4 +636,10 @@
     <string name="mori_cipher_empty_description">Conecte-se à internet para carregar a configuração atual do player do YouTube.</string>
     <string name="mori_cipher_error_title">Descriptografia indisponível</string>
     <string name="mori_cipher_load_failed">Não foi possível carregar a configuração atual do player. As opções alternativas de reprodução existentes continuam disponíveis.</string>
+    <string name="lyrics_background_style">Estilo de fundo das letras</string>
+    <string name="lyrics_background_default">Padrão</string>
+    <string name="latest_release">Último Lançamento</string>
+    <string name="release_type_album">Álbum</string>
+    <string name="release_type_single">Single</string>
+    <string name="release_metadata">%1$s • %2$d</string>
 </resources>
