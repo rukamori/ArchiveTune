@@ -281,7 +281,7 @@
     <string name="skip_silence">Stille überspringen</string>
     <string name="audio_normalization">Audionormalisierung</string>
     <string name="auto_skip_next_on_error">Automatisches Springen zum nächsten Song, wenn ein Fehler auftritt</string>
-    <string name="auto_skip_next_on_error_desc">Sorgen Sie für ein kontinuierliches Wiedergabeerlebnis</string>
+    <string name="auto_skip_next_on_error_desc">Für ein kontinuierliches Wiedergabeerlebnis sorgen</string>
     <string name="stop_music_on_task_clear">Stoppen Sie die Musik bei der Aufgabe</string>
     <string name="artist_separators">Künstler-Trennzeichen</string>
     <string name="add_symbol">Symbol hinzufügen</string>
@@ -359,7 +359,7 @@
     <string name="platform_status">Plattform</string>
     <string name="translator_options">Übersetzeroptionen</string>
     <string name="enable_translator">Übersetzer aktivieren</string>
-    <string name="enable_translator_desc">Übersetzen Sie ausgewählte Felder, bevor Sie sie an Discord RPC senden</string>
+    <string name="enable_translator_desc">Ausgewählte Felder vor dem Senden an Discord RPC übersetzen</string>
     <string name="context_info">Kontexte (durch Kommas getrennt)</string>
     <string name="target_language">Zielsprache</string>
     <string name="close_dialog">Schließen</string>
@@ -552,7 +552,7 @@
     <string name="audio_offload_desc">Lässt unterstützte Geräte Audio mithilfe einer stromsparenden Hardware-Decodierung wiedergeben. Einige Funktionen zur Audioverarbeitung sind deaktiviert.</string>
     <string name="pause_on_device_mute">Pausieren, wenn die Gerätelautstärke 0 ist</string>
     <string name="pause_on_device_mute_desc">Pausiere Musik automatisch bei Stummschaltung und setze fort, wenn diese aufgehoben wird</string>
-    <string name="wakelock">Halte die CPU während der Wiedergabe wach</string>
+    <string name="wakelock">CPU während der Wiedergabe wachhalten</string>
     <string name="wakelock_desc">Verhindert Unterbrechungen durch das System, indem die CPU wach gehalten wird</string>
     <string name="auto_start_on_bluetooth">Autostart bei Bluetooth-Verbindung</string>
     <string name="auto_start_on_bluetooth_desc">Wiedergabe automatisch fortsetzen, wenn ein Bluetooth-Audiogerät verbunden wird</string>
@@ -657,7 +657,7 @@
     <string name="changelog">Änderungsverlauf</string>
     <string name="view_changelog">Änderungsverlauf anzeigen</string>
     <string name="error_loading_changelog">Fehler beim Laden des Änderungsverlaufs</string>
-    <string name="update_notification_channel_name">Appupdates</string>
+    <string name="update_notification_channel_name">App-Updates</string>
     <string name="update_notification_channel_desc">Benachrichtigungen bei neuen App-Updates</string>
     <string name="update_notification_title">Update verfügbar</string>
     <string name="update_notification_text">ArchiveTune %s ist jetzt verfügbar</string>
@@ -976,4 +976,25 @@
     <string name="together_participants_empty">Noch keine Teilnehmer</string>
     <string name="together_activity_log_empty">Noch keine Aktivität</string>
     <string name="enable_megalobiz_lyrics">Megalobiz-Songtexte aktivieren</string>
+    <string name="most_tracks">Meiste Titel</string>
+    <string name="least_tracks">Wenigste Titel</string>
+    <string name="cast_devices">Übertragungsgeräte</string>
+    <string name="together_approve">Bestätigen</string>
+    <string name="font_preference_desc">Wähle die Quelle für App-Schriftarten</string>
+    <string name="eq_screen_subtitle">Passe die Wiedergabe für deine Ohren und dein Equipment an</string>
+    <string name="eq_sound_shaping_on">Soundanpassung ist an</string>
+    <string name="eq_sound_shaping_off">Soundanpassung ist aus</string>
+    <string name="eq_enable_description">Diese Kontrollen auf die ArchiveTune-Wiedergabe anwenden</string>
+    <string name="eq_control_mode">Kontrollmodus</string>
+    <string name="eq_advanced">Erweitert</string>
+    <string name="eq_preset_number">Voreinstellung %1$d</string>
+    <string name="eq_profiles_description">Behalte, importiere und teile ganze Konfigurationen</string>
+    <string name="export_logs_failed">Nicht in der Lage, die Logs zu exportieren</string>
+    <string name="export">Exportieren</string>
+    <string name="download_speed">%1$s/s</string>
+    <string name="download_progress_summary">%1$d%% · %2$s/s</string>
+    <string name="download_action_failed">Download konnte nicht aktualisiert werden</string>
+    <string name="onboarding_community_subtitle">Folge der Entwicklung, melde Probleme oder unterstütze ArchiveTune.</string>
+    <string name="onboarding_permission_app_installation_title">App-Installation</string>
+    <string name="onboarding_permission_app_installation_desc">Installiere heruntergeladene APK-Updates von ArchiveTune.</string>
 </resources>
