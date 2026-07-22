@@ -85,7 +85,6 @@ jobs:
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          START_IO_APP_ID: ${{ secrets.START_IO_APP_ID }}
         run: |
           set -euo pipefail
           DEVICE="mobile"
@@ -325,7 +324,6 @@ jobs:
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          START_IO_APP_ID: ${{ secrets.START_IO_APP_ID }}
 
       - name: Resolve release output directory
         id: release_dir

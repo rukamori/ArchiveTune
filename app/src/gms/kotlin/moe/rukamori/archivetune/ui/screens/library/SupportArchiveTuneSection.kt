@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ads.presentation.StartIoConsentDialog
 import moe.rukamori.archivetune.ads.presentation.SupportArchiveTuneScreenState
 import moe.rukamori.archivetune.ads.presentation.SupportArchiveTuneUiEvent
 import moe.rukamori.archivetune.ads.presentation.SupportArchiveTuneViewModel
@@ -53,44 +51,23 @@ internal fun SupportArchiveTuneSection(
     viewModel: SupportArchiveTuneViewModel = hiltViewModel(),
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
-    val rewardMessage = stringResource(R.string.support_archivetune_thanks)
     val failureMessage = stringResource(R.string.support_archivetune_failed)
-    val activityUnavailableMessage = stringResource(R.string.support_archivetune_activity_unavailable)
-    val uriHandler = LocalUriHandler.current
-    val openPrivacyPolicy = remember(uriHandler) { { uriHandler.openUri(START_IO_PRIVACY_POLICY_URL) } }
-    val selectPersonalizedAds =
-        remember(viewModel) { { viewModel.onConsentSelected(personalized = true) } }
-    val selectNonPersonalizedAds =
-        remember(viewModel) { { viewModel.onConsentSelected(personalized = false) } }
+    val openSupportPage = remember(viewModel) { viewModel::onSupportArchiveTuneClick }
 
-    if (state.model.consentDialogPurpose != null) {
-        StartIoConsentDialog(
-            onPersonalizedAdsSelected = selectPersonalizedAds,
-            onNonPersonalizedAdsSelected = selectNonPersonalizedAds,
-            onPrivacyPolicyClick = openPrivacyPolicy,
-            onDismiss = viewModel::onConsentDialogDismissed,
-        )
-    }
-
-    LaunchedEffect(viewModel, onMessage, rewardMessage, failureMessage, activityUnavailableMessage) {
+    LaunchedEffect(viewModel, onMessage, failureMessage) {
         viewModel.events.collect { event ->
             when (event) {
-                SupportArchiveTuneUiEvent.RewardEarned -> onMessage(rewardMessage)
-                SupportArchiveTuneUiEvent.AdFailed -> onMessage(failureMessage)
-                SupportArchiveTuneUiEvent.ActivityUnavailable -> onMessage(activityUnavailableMessage)
-                SupportArchiveTuneUiEvent.PrivacyOptionsUpdated -> Unit
+                SupportArchiveTuneUiEvent.OpenFailed -> onMessage(failureMessage)
             }
         }
     }
 
     SupportArchiveTuneCard(
         state = state,
-        onClick = viewModel::onSupportArchiveTuneClick,
+        onClick = openSupportPage,
         modifier = modifier,
     )
 }
-
-private const val START_IO_PRIVACY_POLICY_URL = "https://www.start.io/policy/privacy-policy/"
 
 @Composable
 private fun SupportArchiveTuneCard(
@@ -129,7 +106,9 @@ private fun SupportArchiveTuneCard(
 
     Card(
         onClick = onClick,
-        enabled = state !is SupportArchiveTuneScreenState.Empty,
+        enabled =
+            state !is SupportArchiveTuneScreenState.Loading &&
+                state !is SupportArchiveTuneScreenState.Empty,
         shape = MaterialTheme.shapes.extraLarge,
         colors =
             CardDefaults.cardColors(
