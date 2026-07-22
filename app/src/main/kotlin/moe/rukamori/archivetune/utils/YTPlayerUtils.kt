@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ANDROID
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ANDROID_MUSIC
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ANDROID_TESTSUITE
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ANDROID_UNPLUGGED
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_65_10
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.IOS
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.IOS_MUSIC
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.IPADOS
@@ -126,6 +127,7 @@ object YTPlayerUtils {
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> =
         arrayOf(
             WEB_REMIX,
+            ANDROID_VR_1_65_10,
             IOS,
             MOBILE,
             ANDROID_MUSIC,
@@ -419,6 +421,10 @@ object YTPlayerUtils {
         authState: PlaybackAuthState,
     ): YouTubeClient =
         when (preferredStreamClient) {
+            PlayerStreamClient.ANDROID_VR -> {
+                ANDROID_VR_1_65_10
+            }
+
             PlayerStreamClient.WEB_REMIX -> {
                 WEB_REMIX
             }
@@ -453,25 +459,29 @@ object YTPlayerUtils {
         authState: PlaybackAuthState,
     ): List<YouTubeClient> {
         val preferredYouTubeClient = resolvePreferredPlaybackClient(preferredStreamClient, authState)
+        val hasCompleteWebPoTokens = hasCompleteWebPlaybackPoToken(authState)
         val lastSuccessfulClient =
             lastSuccessfulClientKey?.let { key ->
                 STREAM_FALLBACK_CLIENTS.find { StreamClientUtils.buildClientKey(it) == key }
             }
 
         val orderedFallbackClients =
-            if (authState.hasPlaybackLoginContext) {
+            if (authState.hasPlaybackLoginContext && hasCompleteWebPoTokens) {
                 STREAM_FALLBACK_CLIENTS.filter { it.supportsCookieAuthentication } +
                     STREAM_FALLBACK_CLIENTS.filterNot { it.supportsCookieAuthentication }
             } else {
-                STREAM_FALLBACK_CLIENTS.toList()
+                STREAM_FALLBACK_CLIENTS.filterNot { it.supportsCookieAuthentication } +
+                    STREAM_FALLBACK_CLIENTS.filter { it.supportsCookieAuthentication }
             }
 
         return buildList {
-            lastSuccessfulClient?.let { add(it) }
-            if (authState.hasPlaybackLoginContext && hasCompleteWebPlaybackPoToken(authState)) {
+            add(preferredYouTubeClient)
+            lastSuccessfulClient
+                ?.takeIf { it != preferredYouTubeClient }
+                ?.let { add(it) }
+            if (authState.hasPlaybackLoginContext && hasCompleteWebPoTokens) {
                 add(WEB_REMIX)
             }
-            add(preferredYouTubeClient)
             addAll(orderedFallbackClients)
             if (preferredYouTubeClient != MAIN_CLIENT) add(MAIN_CLIENT)
             if (preferredStreamClient == PlayerStreamClient.WEB_REMIX) {
