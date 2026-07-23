@@ -1155,7 +1155,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val searchScrollBehavior =
@@ -1163,7 +1163,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val topAppBarScrollBehavior =
@@ -1171,7 +1171,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
 
