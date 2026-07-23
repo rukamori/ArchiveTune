@@ -305,6 +305,8 @@ val StorageFolderIdKey = stringPreferencesKey("storageFolderId")
 val StorageFolderTreeUriKey = stringPreferencesKey("storageFolderTreeUri")
 val StorageFolderPathKey = stringPreferencesKey("storageFolderPath")
 val StorageFolderDisplayNameKey = stringPreferencesKey("storageFolderDisplayName")
+val DownloadedSongsFolderTreeUriKey = stringPreferencesKey("downloadedSongsFolderTreeUri")
+val DownloadedSongsFolderDisplayNameKey = stringPreferencesKey("downloadedSongsFolderDisplayName")
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")

@@ -346,6 +346,10 @@
     <string name="storage_location_removable_named">SD card %s</string>
     <string name="storage_location_free">%s free</string>
     <string name="storage_location_apply">Use this storage</string>
+    <string name="downloaded_songs_location">Select location</string>
+    <string name="downloaded_songs_location_default">App storage / songs</string>
+    <string name="downloaded_songs_location_selected">Selected: %1$s</string>
+    <string name="downloaded_songs_location_permission_failed">ArchiveTune cannot write to this folder.</string>
     <string name="storage_migration_cache_progress">Moving Cache...%1$d%%</string>
     <string name="storage_migration_downloads_progress">Moving Downloads...%1$d%%</string>
     <string name="storage_migration_warning">Warning: Dont close the app or turn off your device during this process. Doing so may cause data loss.</string>

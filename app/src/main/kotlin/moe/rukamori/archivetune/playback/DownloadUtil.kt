@@ -22,26 +22,33 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.storage.DownloadedSongExporter
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamClientUtils
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.isLowDataModeActive
@@ -59,15 +66,17 @@ import javax.inject.Singleton
 class DownloadUtil
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @ApplicationContext private val context: Context,
         val database: MusicDatabase,
         val databaseProvider: DatabaseProvider,
         @DownloadCache val downloadCache: Cache,
         @PlayerCache val playerCache: Cache,
+        private val downloadedSongExporter: DownloadedSongExporter,
     ) {
         private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val exportJobs = ConcurrentHashMap<String, Job>()
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
         private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
 
@@ -195,14 +204,31 @@ class DownloadUtil
                                     set(download.request.id, download)
                                 }
                             }
+                            if (download.state == Download.STATE_COMPLETED) {
+                                scheduleExport(download)
+                            }
                         }
 
                         override fun onDownloadRemoved(
                             downloadManager: DownloadManager,
                             download: Download,
                         ) {
-                            downloads.update { map -> map - download.request.id }
+                            downloads.update { map ->
+                                map.toMutableMap().apply {
+                                    remove(download.request.id)
+                                }
+                            }
+                            when (DefaultDownloadRemovalExportPolicy) {
+                                DownloadRemovalExportPolicy.PRESERVE -> Unit
+                                DownloadRemovalExportPolicy.DELETE -> {
+                                    downloadScope.launch {
+                                        exportJobs.remove(download.request.id)?.cancelAndJoin()
+                                        downloadedSongExporter.removeExport(download.request.id)
+                                    }
+                                }
+                            }
                         }
+
                     },
                 )
             }
@@ -215,6 +241,24 @@ class DownloadUtil
                     result[cursor.download.request.id] = cursor.download
                 }
                 downloads.value = result
+                for (download in result.values) {
+                    if (download.state == Download.STATE_COMPLETED &&
+                        !downloadedSongExporter.isAlreadyExported(download)
+                    ) {
+                        scheduleExport(download).join()
+                    }
+                }
+            }
+            downloadScope.launch {
+                context.dataStore.data
+                    .map { preferences -> preferences[DownloadedSongsFolderTreeUriKey].orEmpty() }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collect {
+                        downloads.value.values
+                            .filter { download -> download.state == Download.STATE_COMPLETED }
+                            .forEach { download -> scheduleExport(download).join() }
+                    }
             }
             downloadScope.launch {
                 var previousFingerprint: String? = null
@@ -302,6 +346,20 @@ class DownloadUtil
             }
         }
 
+        private fun scheduleExport(download: Download): Job {
+            val songId = download.request.id
+            val exportJob =
+                downloadScope.launch(start = CoroutineStart.LAZY) {
+                    downloadedSongExporter.export(download)
+                }
+            exportJobs.put(songId, exportJob)?.cancel()
+            exportJob.invokeOnCompletion {
+                exportJobs.remove(songId, exportJob)
+            }
+            exportJob.start()
+            return exportJob
+        }
+
         companion object {
             private const val DEFAULT_MAX_PARALLEL_DOWNLOADS = 6
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
@@ -310,3 +368,10 @@ class DownloadUtil
             private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
         }
     }
+
+internal enum class DownloadRemovalExportPolicy {
+    PRESERVE,
+    DELETE,
+}
+
+internal val DefaultDownloadRemovalExportPolicy = DownloadRemovalExportPolicy.DELETE

@@ -53,6 +53,7 @@ enum class StorageFolderKind(
 ) {
     SONG_CACHE(defaultDirectoryName = "exoplayer"),
     DOWNLOADS(defaultDirectoryName = "download"),
+    EXPORTED_DOWNLOADS(defaultDirectoryName = "songs"),
     IMAGE_CACHE(defaultDirectoryName = "coil"),
     CANVAS_CACHE(defaultDirectoryName = "canvas"),
     ARTWORK_CACHE(defaultDirectoryName = "artwork"),
@@ -323,7 +324,10 @@ class StorageLocationRepository
             StorageMigrationPlan(
                 cacheDirectories =
                     StorageFolderKind.entries
-                        .filterNot { kind -> kind == StorageFolderKind.DOWNLOADS }
+                        .filterNot { kind ->
+                            kind == StorageFolderKind.DOWNLOADS ||
+                                kind == StorageFolderKind.EXPORTED_DOWNLOADS
+                        }
                         .map { kind ->
                             StorageDirectoryMove(
                                 source = activeCacheDirectory(preferences, kind),
@@ -335,6 +339,10 @@ class StorageLocationRepository
                         StorageDirectoryMove(
                             source = activeCacheDirectory(preferences, StorageFolderKind.DOWNLOADS),
                             target = targetDirectory(StorageFolderKind.DOWNLOADS),
+                        ),
+                        StorageDirectoryMove(
+                            source = activeCacheDirectory(preferences, StorageFolderKind.EXPORTED_DOWNLOADS),
+                            target = targetDirectory(StorageFolderKind.EXPORTED_DOWNLOADS),
                         ),
                     ),
                 cacheFiles =
@@ -402,7 +410,9 @@ class StorageLocationRepository
         private suspend fun clearDownloads(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean =
             runCatching {
                 downloadUtil.downloadManager.removeAllDownloads()
-            }.isSuccess && clearMediaCache(downloadCache, StorageCacheKind.DOWNLOADS, onProgress)
+            }.isSuccess &&
+                clearMediaCache(downloadCache, StorageCacheKind.DOWNLOADS, onProgress) &&
+                clearCacheDirectory(StorageFolderKind.EXPORTED_DOWNLOADS, onProgress)
 
         private suspend fun clearCanvasCache(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean {
             val memoryAndIndexCleared = CanvasArtworkPlaybackCache.clearAndPersist()
@@ -649,6 +659,9 @@ class StorageLocationRepository
                 kind: StorageFolderKind,
                 fileName: String,
             ): File = cacheDirectory(context, kind).resolve(fileName)
+
+            fun exportedDownloadsDirectory(context: Context): File =
+                cacheDirectory(context, StorageFolderKind.EXPORTED_DOWNLOADS)
         }
     }
 
@@ -906,6 +919,7 @@ private fun StorageFolderKind.toCacheKind(): StorageCacheKind =
         StorageFolderKind.SONG_CACHE -> StorageCacheKind.SONGS
 
         StorageFolderKind.DOWNLOADS -> StorageCacheKind.DOWNLOADS
+        StorageFolderKind.EXPORTED_DOWNLOADS -> StorageCacheKind.DOWNLOADS
 
         StorageFolderKind.IMAGE_CACHE,
         StorageFolderKind.ARTWORK_CACHE,
