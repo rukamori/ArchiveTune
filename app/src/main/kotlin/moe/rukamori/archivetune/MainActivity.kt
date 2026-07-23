@@ -1155,7 +1155,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val searchScrollBehavior =
@@ -1163,7 +1163,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val topAppBarScrollBehavior =
@@ -1171,7 +1171,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
 
@@ -1203,17 +1203,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(currentRoute) {
-                        when (currentRoute) {
-                            Screens.Home.route -> {
-                                homeScrollBehavior.state.resetHeightOffset()
-                            }
+                    LaunchedEffect(currentRoute, playerBottomSheetState.isExpanded) {
+                        if (!playerBottomSheetState.isExpanded) {
+                            when (currentRoute) {
+                                Screens.Home.route -> {
+                                    homeScrollBehavior.state.resetHeightOffset()
+                                }
 
-                            Screens.Search.route -> {
-                                searchScrollBehavior.state.resetHeightOffset()
-                            }
+                                Screens.Search.route -> {
+                                    searchScrollBehavior.state.resetHeightOffset()
+                                }
 
-                            else -> {}
+                                else -> {}
+                            }
                         }
                     }
 
@@ -1497,7 +1499,10 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Row {
                             AnimatedVisibility(
-                                visible = useRail && shouldShowNavigationBar,
+                                visible =
+                                    useRail &&
+                                        shouldShowNavigationBar &&
+                                        (isTvDevice || !playerBottomSheetState.isExpandedOrExpanding),
                                 enter = fadeIn(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 150)),
                                 exit = fadeOut(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 100)),
                             ) {
