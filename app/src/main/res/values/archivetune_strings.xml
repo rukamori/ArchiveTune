@@ -328,6 +328,7 @@
     <string name="last_song_listened">Based on last song listened</string>
     <string name="dont_show">Dont Show</string>
     <string name="app_language">App language</string>
+    <string name="use_system_language">Use system language</string>
     <string name="open_supported_links">Open supported link by default</string>
     <string name="set_first_lyrics_provider">Preferred lyrics provider</string>
     <string name="audio_quality_max">Max (beta)</string>

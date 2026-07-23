@@ -189,6 +189,7 @@ import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
+import moe.rukamori.archivetune.constants.UseSystemLanguageKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.CustomThemeColorKey
 import moe.rukamori.archivetune.constants.DarkModeKey
@@ -504,29 +505,28 @@ class MainActivity : ComponentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            val initialLocale =
-                PreferenceStore
-                    .get(AppLanguageKey)
-                    ?.takeUnless { it == SYSTEM_DEFAULT }
-                    ?.let { Locale.forLanguageTag(it) }
-                    ?: Locale.getDefault()
-            setAppLocale(this, initialLocale)
+        val initialLocale =
+            if (PreferenceStore.get(UseSystemLanguageKey) ?: true) {
+                Locale.getDefault()
+            } else {
+                Locale.ENGLISH
+            }
+        setAppLocale(this, initialLocale)
 
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching {
-                    dataStore.data.first()[AppLanguageKey]
-                }.onSuccess { lang ->
-                    val targetLocale =
-                        lang
-                            ?.takeUnless { it == SYSTEM_DEFAULT }
-                            ?.let { Locale.forLanguageTag(it) }
-                            ?: Locale.getDefault()
-                    if (targetLocale != initialLocale) {
-                        withContext(Dispatchers.Main) {
-                            setAppLocale(this@MainActivity, targetLocale)
-                            recreate()
-                        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                dataStore.data.first().let { prefs ->
+                    if (prefs[UseSystemLanguageKey] ?: true) {
+                        Locale.getDefault()
+                    } else {
+                        Locale.ENGLISH
+                    }
+                }
+            }.onSuccess { targetLocale ->
+                if (targetLocale != initialLocale) {
+                    withContext(Dispatchers.Main) {
+                        setAppLocale(this@MainActivity, targetLocale)
+                        recreate()
                     }
                 }
             }
