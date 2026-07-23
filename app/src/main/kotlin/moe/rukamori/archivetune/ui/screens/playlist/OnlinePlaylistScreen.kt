@@ -536,6 +536,7 @@ fun OnlinePlaylistScreen(
                                                         sendRemoveDownloads(
                                                             context = context,
                                                             songIds = songs.map { it.id },
+                                                            downloads = downloads,
                                                         )
                                                     }
 

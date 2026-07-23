@@ -138,6 +138,8 @@ import androidx.media3.common.Player.STATE_READY
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -517,9 +519,10 @@ fun BottomSheetPlayer(
         }
     }
 
-    LaunchedEffect(mediaMetadata?.id, playerBackground) {
+    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, playerBackground, playerDesignStyle) {
         if (aodModeEnabled) return@LaunchedEffect
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
+        if (playerDesignStyle == PlayerDesignStyle.V9 ||
+            playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
             playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
             playerBackground == PlayerBackgroundStyle.GLOW ||
             playerBackground == PlayerBackgroundStyle.GLOW_ANIMATED
@@ -587,8 +590,64 @@ fun BottomSheetPlayer(
 
     val changeBound = state.expandedBound / 3
 
+    val dominantColor = gradientColors.firstOrNull() ?: MaterialTheme.colorScheme.primary
+    val targetBgColor = remember(dominantColor, useDarkTheme) {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(dominantColor.toArgb(), hsv)
+        if (useDarkTheme) {
+            hsv[1] = hsv[1].coerceIn(0.12f, 0.35f)
+            hsv[2] = 0.08f
+        } else {
+            hsv[1] = hsv[1].coerceIn(0.04f, 0.12f)
+            hsv[2] = 0.96f
+        }
+        Color(android.graphics.Color.HSVToColor(hsv))
+    }
+    val dynamicBgColor by animateColorAsState(
+        targetValue = targetBgColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicBgColor"
+    )
+
+    val targetAccentColor = dominantColor
+    val dynamicAccentColor by animateColorAsState(
+        targetValue = targetAccentColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicAccentColor"
+    )
+
+    val targetTextColor = remember(dominantColor, useDarkTheme) {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(dominantColor.toArgb(), hsv)
+        if (useDarkTheme) {
+            hsv[1] = hsv[1].coerceAtMost(0.12f)
+            hsv[2] = 0.96f
+        } else {
+            hsv[1] = hsv[1].coerceIn(0.12f, 0.35f)
+            hsv[2] = 0.08f
+        }
+        Color(android.graphics.Color.HSVToColor(hsv))
+    }
+    val dynamicTextColor by animateColorAsState(
+        targetValue = targetTextColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicTextColor"
+    )
+
+    val targetIconButtonColor = remember(dynamicAccentColor) {
+        val luminance = 0.299f * dynamicAccentColor.red + 0.587f * dynamicAccentColor.green + 0.114f * dynamicAccentColor.blue
+        if (luminance > 0.5f) Color.Black else Color.White
+    }
+    val dynamicIconButtonColor by animateColorAsState(
+        targetValue = targetIconButtonColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicIconButtonColor"
+    )
+
     val TextBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        if (playerDesignStyle == PlayerDesignStyle.V9) {
+            dynamicTextColor
+        } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.White
         } else {
             when (playerBackground) {
@@ -604,7 +663,9 @@ fun BottomSheetPlayer(
         }
 
     val icBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        if (playerDesignStyle == PlayerDesignStyle.V9) {
+            dynamicBgColor
+        } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.Black
         } else {
             when (playerBackground) {
@@ -620,20 +681,26 @@ fun BottomSheetPlayer(
         }
 
     val (textButtonColor, iconButtonColor) =
-        when (playerButtonsStyle) {
-            PlayerButtonsStyle.DEFAULT -> {
-                Pair(TextBackgroundColor, icBackgroundColor)
-            }
+        if (playerDesignStyle == PlayerDesignStyle.V9) {
+            Pair(dynamicAccentColor, dynamicIconButtonColor)
+        } else {
+            when (playerButtonsStyle) {
+                PlayerButtonsStyle.DEFAULT -> {
+                    Pair(TextBackgroundColor, icBackgroundColor)
+                }
 
-            PlayerButtonsStyle.SECONDARY -> {
-                Pair(
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.onSecondary,
-                )
+                PlayerButtonsStyle.SECONDARY -> {
+                    Pair(
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.onSecondary,
+                    )
+                }
             }
         }.let { (tb, ib) ->
             if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
                 Pair(Color.White, Color.Black)
+            } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+                Pair(dynamicAccentColor, dynamicIconButtonColor)
             } else {
                 Pair(tb, ib)
             }
@@ -938,7 +1005,18 @@ fun BottomSheetPlayer(
                     }
                 },
         backgroundColor =
-            if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+            if (playerDesignStyle == PlayerDesignStyle.V9) {
+                val progress =
+                    ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
+                        .coerceIn(0f, 1f)
+                val fadeProgress =
+                    if (progress < 0.2f) {
+                        ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                dynamicBgColor.copy(alpha = 1f - fadeProgress)
+            } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
                 val progress =
                     ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                         .coerceIn(0f, 1f)
@@ -1459,6 +1537,7 @@ fun BottomSheetPlayer(
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
                             landscape = true,
+                            gradientColors = gradientColors,
                             modifier =
                                 Modifier
                                     .fillMaxSize()
@@ -1732,6 +1811,7 @@ fun BottomSheetPlayer(
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            gradientColors = gradientColors,
                             modifier =
                                 Modifier
                                     .fillMaxSize()
@@ -2203,10 +2283,8 @@ private fun V7PlayerBackdrop(
                                 .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
                                 .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
                                 .generate()
-                        PlayerColorExtractor.extractGradientColors(
-                            palette = palette,
-                            fallbackColor = fallbackColor,
-                        )
+                        val dominantRgb = palette.dominantSwatch?.rgb ?: palette.getDominantColor(fallbackColor)
+                        listOf(Color(dominantRgb))
                     }
                 }
             } catch (e: CancellationException) {
@@ -2469,7 +2547,7 @@ private fun Color.v7BackdropTone(
         if (hsv[1] < 0.12f) {
             hsv[1].coerceAtMost(0.08f)
         } else {
-            (hsv[1] * 1.22f).coerceIn(0f, 1f)
+            (hsv[1] * 1.27f).coerceIn(0f, 1f)
         }
     hsv[2] = hsv[2].coerceIn(valueMin, valueMax)
     return Color(android.graphics.Color.HSVToColor(hsv))

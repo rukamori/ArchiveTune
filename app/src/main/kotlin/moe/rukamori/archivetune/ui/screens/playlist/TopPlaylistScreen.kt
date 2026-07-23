@@ -355,6 +355,7 @@ fun TopPlaylistScreen(
                                                     sendRemoveDownloads(
                                                         context = context,
                                                         songIds = songs.orEmpty().map { it.song.id },
+                                                        downloads = downloads,
                                                     )
                                                 }
 

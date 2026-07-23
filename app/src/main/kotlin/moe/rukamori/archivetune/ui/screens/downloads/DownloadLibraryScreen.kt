@@ -43,6 +43,7 @@ import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -67,6 +68,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -447,6 +451,7 @@ private fun DownloadSections(
     onResumeSection: (DownloadSectionUiModel) -> Unit,
     onRemoveSection: (DownloadSectionUiModel) -> Unit,
 ) {
+    var expandedItemIds by remember { mutableStateOf(emptySet<String>()) }
     if (sections.isEmpty()) {
         EmptyPlaceholder(
             icon =
@@ -512,6 +517,14 @@ private fun DownloadSections(
                 val pauseAction = remember(entry, onPauseEntry) { { onPauseEntry(entry) } }
                 val resumeAction = remember(entry, onResumeEntry) { { onResumeEntry(entry) } }
                 val removeAction = remember(entry, onRemoveEntry) { { onRemoveEntry(entry) } }
+                val isExpanded = entry.id in expandedItemIds
+                val toggleExpand = {
+                    expandedItemIds = if (isExpanded) {
+                        expandedItemIds - entry.id
+                    } else {
+                        expandedItemIds + entry.id
+                    }
+                }
                 DownloadEntry(
                     entry = entry,
                     inProgress = inProgress,
@@ -519,6 +532,9 @@ private fun DownloadSections(
                     onPause = pauseAction,
                     onResume = resumeAction,
                     onRemove = removeAction,
+                    isExpanded = isExpanded,
+                    onExpandToggle = toggleExpand,
+                    onRemoveChild = onRemoveEntry,
                     modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
                 )
             }
@@ -620,9 +636,12 @@ private fun DownloadEntry(
     onResume: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
+    onExpandToggle: () -> Unit = {},
+    onRemoveChild: (DownloadEntryUiModel) -> Unit = {},
 ) {
     Card(
-        onClick = onOpen,
+        onClick = if (inProgress || entry.children.isEmpty()) onOpen else onExpandToggle,
         modifier = modifier,
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -696,6 +715,16 @@ private fun DownloadEntry(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (!inProgress) {
+                        if (entry.children.isNotEmpty()) {
+                            IconButton(onClick = onExpandToggle) {
+                                Icon(
+                                    painter = painterResource(
+                                        if (isExpanded) R.drawable.expand_less else R.drawable.expand_more
+                                    ),
+                                    contentDescription = null,
+                                )
+                            }
+                        }
                         entry.durationSeconds?.let { durationSeconds ->
                             Surface(
                                 shape = MaterialTheme.shapes.extraLarge,
@@ -728,6 +757,68 @@ private fun DownloadEntry(
             },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         )
+        if (isExpanded && entry.children.isNotEmpty()) {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+            ) {
+                entry.children.forEach { child ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = child.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        supportingContent = child.supportingText?.let { supportingText ->
+                            {
+                                Text(
+                                    text = supportingText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        },
+                        leadingContent = {
+                            AsyncImage(
+                                model = child.thumbnailUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+                            )
+                        },
+                        trailingContent = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                child.durationSeconds?.let { durationSeconds ->
+                                    Text(
+                                        text = makeTimeString(durationSeconds * 1_000L),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
+                                }
+                                PrimaryFilledIconButton(
+                                    icon = R.drawable.delete,
+                                    contentDescription = stringResource(R.string.remove_download),
+                                    onClick = { onRemoveChild(child) },
+                                )
+                            }
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+            }
+        }
     }
 }
 

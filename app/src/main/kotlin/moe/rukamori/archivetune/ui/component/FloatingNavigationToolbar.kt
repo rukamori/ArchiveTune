@@ -112,8 +112,7 @@ fun FloatingNavigationToolbar(
                             Modifier
                                 .widthIn(max = NavigationItemsMaxWidth)
                                 .fillMaxWidth()
-                                .fillMaxHeight()
-                                .padding(vertical = NavigationItemVerticalPadding),
+                                .fillMaxHeight(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         items.forEach { screen ->
