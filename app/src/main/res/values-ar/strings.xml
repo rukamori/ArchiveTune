@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">الرئيسية</string>
     <string name="songs">الأغاني</string>
@@ -31,7 +31,7 @@
     <string name="most_played_songs">الأغاني الأكثر استماعاً</string>
     <string name="search">البحث</string>
     <string name="search_yt_music">البحث في YouTube Music</string>
-    <string name="search_library">ابحث في المكتبة…</string>
+    <string name="search_library">ابحث في المكتبة</string>
     <string name="filter_library">المكتبة</string>
     <string name="filter_liked">أعجبني</string>
     <string name="filter_downloaded">تم التنزيل</string>
@@ -377,7 +377,7 @@
     <string name="clear_search_history_confirm">أنت متأكد أنك تريد مسح سجل البحث بالكامل؟</string>
     <string name="use_login_for_browse_desc">قد يؤثر هذا على المحتوى الذي يظهر لك، مثل عرض ألبومات حصرية للمشتركين في حال تسجيل الدخول بحساب بريميوم</string>
     <string name="disable_screenshot">تعطيل لقطات الشاشة</string>
-    <string name="disable_screenshot_desc">عند تفعيل هذا الخيار، يتم تعطيل لقطات الشاشة وعرض التطبيق في قائمة التطبيقات الحديثة</string>
+    <string name="disable_screenshot_desc">عند تفعيل هذا الخيار، يتم تعطيل لقطات الشاشة وعرض التطبيق في قائمة التطبيقات الحديثة.</string>
     <string name="enable_lrclib">تفعيل مزود كلمات الأغاني LrcLib</string>
     <string name="enable_kugou">تفعيل مزود كلمات الأغاني KuGou</string>
     <string name="hide_explicit">إخفاء المحتوى الحساس</string>
@@ -447,7 +447,7 @@
     <string name="discord_show_when_paused_desc">في حال تفعيل هذا الخيار، ستظل Rich Presence ظاهرة أثناء الإيقاف المؤقت مع ظهور أيقونة الإيقاف المؤقت. أما إذا تم تعطيله، فسيتم إخفاء Rich Presence عند الإيقاف المؤقت.</string>
     <string name="discord_paused">إيقاف مؤقت</string>
     <string name="logout_confirm_title">تأكيد تسجيل الخروج</string>
-    <string name="logout_confirm_message">هل أنت متأكد من أنك تريد تسجيل الخروج من ديسكورد ؟</string>
+    <string name="logout_confirm_message">هل أنت متأكد من أنك تريد تسجيل الخروج من ديسكورد؟</string>
     <string name="logout_confirm_yes">تسجيل الخروج</string>
     <string name="logout_confirm_no">إلغاء</string>
     <string name="experiment_settings">الإعدادات التجريبية</string>
@@ -493,7 +493,7 @@
     <string name="music_recognition">التعرف على الموسيقى</string>
     <string name="pin_to_speed_dial">التثبيت إلى قائمة الوصول السريع</string>
     <string name="remove_from_speed_dial">الإزالة من قائمة الوصول السريع</string>
-    <string name="playback_requires_youtube_music_confirmation">تأكد من تشغيل المقطع في YouTube Music ثم عد إلى ArchiveTune</string>
+    <string name="playback_requires_youtube_music_confirmation">تأكد من تشغيل المقطع في YouTube Music ثم عد إلى ArchiveTune.</string>
     <string name="wakelock">إبقاء المعالج نشطًا أثناء التشغيل</string>
     <string name="wakelock_desc">يمنع النظام من مقاطعة تشغيل الموسيقى عبر إبقاء المعالج في حالة نشطة</string>
     <string name="external_downloader">برنامج تنزيل خارجي</string>
@@ -509,7 +509,7 @@
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="playback_confirmation_required">يُلزم تأكيد المشغل</string>
     <string name="playback_login_refresh_required">تحديث تسجيل الدخول إلى YouTube Music</string>
-    <string name="playback_requires_youtube_music_login_refresh">قم بتحديث بيانات تسجيل الدخول الخاصة بك على YouTube Music، ثم عد إلى ArchiveTune</string>
+    <string name="playback_requires_youtube_music_login_refresh">قم بتحديث بيانات تسجيل الدخول الخاصة بك على YouTube Music، ثم عد إلى ArchiveTune.</string>
     <string name="top_results">أفضل النتائج</string>
     <string name="most_played_badge">الأكثر تشغيلًا</string>
     <string name="play_all">تشغيل الكل</string>
