@@ -574,4 +574,7 @@
     <string name="release_metadata">%1$s • %2$d</string>
     <string name="year_in_music_current_card">Karte teilen</string>
     <string name="stats_time_range">Zeitspanne</string>
+    <string name="storage_cache_clear_failed">Cache konnte nicht geleert werden. Überprüfe den SD-Kartenzugriff</string>
+    <string name="aod_customize_show_time_labels">Zeitbeschriftungen anzeigen</string>
+    <string name="show_lyrics_player_controls">Wiedergabesteuerung anzeigen</string>
 </resources>
