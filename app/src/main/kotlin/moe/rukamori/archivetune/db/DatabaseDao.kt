@@ -75,6 +75,10 @@ import java.util.Locale
 @Dao
 interface DatabaseDao {
     @Transaction
+    @Query("SELECT * FROM song WHERE dateDownload IS NOT NULL")
+    fun downloadedSongsList(): List<Song>
+
+    @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
 

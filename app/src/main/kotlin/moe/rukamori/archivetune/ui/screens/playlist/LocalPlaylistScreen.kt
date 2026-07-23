@@ -639,6 +639,7 @@ fun LocalPlaylistScreen(
                                                         sendRemoveDownloads(
                                                             context = context,
                                                             songIds = songs.map { it.song.id },
+                                                            downloads = downloads,
                                                         )
                                                     }
                                                     HeaderDownloadState.None -> {

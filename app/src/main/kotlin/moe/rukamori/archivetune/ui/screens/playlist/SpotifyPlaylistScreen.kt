@@ -184,6 +184,7 @@ fun SpotifyPlaylistScreen(
                 sendRemoveDownloads(
                     context = navController.context,
                     songIds = songIds,
+                    downloads = latestDownloads,
                 )
             }
 

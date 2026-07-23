@@ -566,6 +566,42 @@ class MainActivity : ComponentActivity() {
                 }
                 delay(500)
 
+                try {
+                    val redownload = withContext(Dispatchers.IO) {
+                        dataStore.data.first()[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] ?: false
+                    }
+                    if (redownload) {
+                        val downloaded = withContext(Dispatchers.IO) {
+                            database.downloadedSongsList()
+                        }
+                        if (downloaded.isNotEmpty()) {
+                            downloaded.forEach { song ->
+                                val downloadRequest = androidx.media3.exoplayer.offline.DownloadRequest
+                                    .Builder(song.id, song.id.toUri())
+                                    .setCustomCacheKey(song.id)
+                                    .setData(song.title.toByteArray())
+                                    .build()
+                                androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                                    this@MainActivity,
+                                    moe.rukamori.archivetune.playback.ExoDownloadService::class.java,
+                                    downloadRequest,
+                                    false,
+                                )
+                            }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@MainActivity, "Re-downloading ${downloaded.size} offline songs...", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        withContext(Dispatchers.IO) {
+                            dataStore.edit { prefs ->
+                                prefs[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] = false
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    moe.rukamori.archivetune.utils.reportException(e)
+                }
+
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
@@ -2777,12 +2813,14 @@ class MainActivity : ComponentActivity() {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings
+                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads
                             }
                         val descRes =
                             when (category) {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library_desc
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
+                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads_desc
                             }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),

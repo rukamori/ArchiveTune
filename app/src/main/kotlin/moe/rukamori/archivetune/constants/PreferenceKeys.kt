@@ -875,6 +875,8 @@ val CanaryReleasesFingerprintKey = stringPreferencesKey("daily_nightly_releases_
 val TogetherOnlineEndpointCacheKey = stringPreferencesKey("together_online_endpoint_cache")
 val TogetherOnlineEndpointLastCheckedAtKey = longPreferencesKey("together_online_endpoint_last_checked_at")
 
+val RedownloadOnRestoreKey = booleanPreferencesKey("redownloadOnRestore")
+
 enum class UpdateChannel {
     STABLE,
     CANARY,

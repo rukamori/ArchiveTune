@@ -330,6 +330,7 @@ fun AlbumScreen(
                                                 sendRemoveDownloads(
                                                     context = context,
                                                     songIds = albumWithSongs.songs.map { it.id },
+                                                    downloads = downloads,
                                                 )
                                             }
 

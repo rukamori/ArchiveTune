@@ -6586,21 +6586,23 @@ class MusicService :
                 reason = "timeline_or_position_discontinuity",
                 force = true,
             )
+            val currentMediaId = player.currentMediaItem?.mediaId
+            val currentMetadata = player.currentMetadata
+            val currentDuration = player.duration
+            val currentPosition = player.currentPosition
             scope.launch {
                 try {
-                    val mediaId = player.currentMediaItem?.mediaId
-                    val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
+                    val song = if (currentMediaId != null) withContext(Dispatchers.IO) { database.song(currentMediaId).first() } else null
                     val finalSong =
                         resolvePresenceSong(
                             dbSong = song,
-                            mediaMetadata = player.currentMetadata,
-                            durationMs = player.duration,
+                            mediaMetadata = currentMetadata,
+                            durationMs = currentDuration,
                         ) ?: return@launch
                     try {
                         val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
                         val lbToken = dataStore.get(ListenBrainzTokenKey, "")
                         val historyPaused = dataStore.get(PauseListenHistoryKey, false)
-                        val currentPosition = player.currentPosition
                         if (lbEnabled && !lbToken.isNullOrBlank() && !historyPaused) {
                             scope.launch(Dispatchers.IO) {
                                 try {
