@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">تصفح</string>
     <string name="local_history">على الجهاز</string>
@@ -71,12 +71,11 @@
     <string name="seek_forward_dynamic">+%1$d ثواني تقديم</string>
     <string name="seek_backward_dynamic">-%1$d ثواني تأخير</string>
     <plurals name="n_element">
-        <item quantity="zero">لا توجد عناصر</item>
-        <item quantity="one">عنصر واحد</item>
-        <item quantity="two">عنصران</item>
-        <item quantity="few">%d عناصر</item>
-        <item quantity="many">%d عنصراً</item>
-        <item quantity="other">%d عنصر</item>
+        <item quantity="zero">صفر</item>
+        <item quantity="one">واحدة</item>
+        <item quantity="two">اثنتان</item>
+        <item quantity="few">بضعة</item>
+        <item quantity="many">الكثير من</item>
     </plurals>
     <string name="seek_seconds_addup">تقديم تصاعدي</string>
     <string name="seek_seconds_addup_description">في حال التفعيل، تتم إضافة 5 ثوانٍ إضافية تدريجيًا مع كل عملية تخطي</string>
