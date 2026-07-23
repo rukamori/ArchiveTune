@@ -531,6 +531,7 @@
     <string name="stream_bypass_proxy">Bypass proxy for streams</string>
     <string name="stream_bypass_proxy_desc">Use your direct IP for stream playback to avoid IP mismatch</string>
     <string name="enable_betterlyrics">Enable BetterLyrics</string>
+    <string name="enable_betterlyrics_portato">Enable BetterLyrics Portato</string>
     <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
