@@ -12,6 +12,7 @@ import android.text.format.DateUtils
 import com.atilika.kuromoji.ipadic.Tokenizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.betterlyrics.QRCParser
 import moe.rukamori.archivetune.betterlyrics.TTMLParser
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import java.lang.Character.UnicodeScript
@@ -36,6 +37,13 @@ object LyricsUtils {
     private val INLINE_MILLISECONDS_TIME_REGEX = Regex("""<\d{1,8}(?:,\d{1,8})?>""")
     private val YRC_LINE_REGEX = Regex("""\[(\d{1,8}),\d{1,8}\](.*)""")
     private val YRC_WORD_TIME_REGEX = Regex("""\(\d{1,8},\d{1,8}(?:,\d{1,8})?\)""")
+    private val TTML_SPAN_REGEX =
+        Regex(
+            pattern = """<span\b[^>]*>""",
+            options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+        )
+    private val TTML_BEGIN_ATTRIBUTE_REGEX = Regex("""\bbegin\s*=""", RegexOption.IGNORE_CASE)
+    private val TTML_END_ATTRIBUTE_REGEX = Regex("""\b(?:end|dur)\s*=""", RegexOption.IGNORE_CASE)
     private val INVISIBLE_CHARS_REGEX = Regex("""[\u200B\u200C\u200D\u2060\u00AD]""")
     private const val NBSP = '\u00A0'
     private const val GENERIC_ROMANIZATION_TRANSFORM = "Any-Latin; Latin-ASCII"
@@ -384,10 +392,22 @@ object LyricsUtils {
     }
 
     fun isLineSyncedLrc(lyrics: String): Boolean =
-        lyrics.lineSequence().any { line ->
+        QRCParser.isQrc(normalizeLyricsText(lyrics)) ||
+            lyrics.lineSequence().any { line ->
             val trimmedLine = line.trim()
             LINE_REGEX.matches(trimmedLine) || YRC_LINE_REGEX.matches(trimmedLine)
         }
+
+    fun hasWordSyncedLyrics(lyrics: String): Boolean {
+        val normalized = normalizeLyricsText(lyrics)
+        if (QRCParser.isQrc(normalized)) return QRCParser.hasWordTimings(normalized)
+        if (!isTtml(normalized)) return false
+
+        return TTML_SPAN_REGEX.findAll(normalized).any { match ->
+            TTML_BEGIN_ATTRIBUTE_REGEX.containsMatchIn(match.value) &&
+                TTML_END_ATTRIBUTE_REGEX.containsMatchIn(match.value)
+        }
+    }
 
     fun parseTtml(
         lyrics: String,
@@ -425,7 +445,28 @@ object LyricsUtils {
     }
 
     fun parseLyrics(lyrics: String): List<LyricsEntry> {
-        val lines = lyrics.lines()
+        val normalizedLyrics = normalizeLyricsText(lyrics)
+        if (QRCParser.isQrc(normalizedLyrics)) {
+            return QRCParser.parseQrc(normalizedLyrics).map { line ->
+                LyricsEntry(
+                    time = (line.startTime * 1000.0).toLong(),
+                    text = line.text,
+                    words =
+                        line.words
+                            .map { word ->
+                                WordTimestamp(
+                                    text = word.text,
+                                    startTime = word.startTime,
+                                    endTime = word.endTime,
+                                )
+                            }.takeIf { it.isNotEmpty() },
+                    agent = line.agent,
+                    durationMs = ((line.endTime - line.startTime) * 1000.0).toLong().coerceAtLeast(0L),
+                )
+            }
+        }
+
+        val lines = normalizedLyrics.lines()
         val result = mutableListOf<LyricsEntry>()
 
         for (line in lines) {

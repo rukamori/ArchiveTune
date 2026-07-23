@@ -39,6 +39,7 @@ class LyricsHelper
         private val baseProviders =
             listOf(
                 BetterLyricsProvider,
+                BetterLyricsPortatoProvider,
                 YouLyPlusLyricsProvider,
                 LrcLibLyricsProvider,
                 KuGouLyricsProvider,
@@ -181,10 +182,8 @@ class LyricsHelper
 
             if (results.isEmpty()) return LYRICS_NOT_FOUND
 
-            // 1. Prioritize synced/karaoke LRC lyrics across providers
+            results.firstOrNull { LyricsUtils.hasWordSyncedLyrics(it) }?.let { return it }
             results.firstOrNull { LyricsUtils.isLineSyncedLrc(it) }?.let { return it }
-
-            // 2. Fallback to first available plain lyrics
             return results.first()
         }
 
@@ -226,6 +225,7 @@ class LyricsHelper
                     PreferredLyricsProvider.KUGOU to KuGouLyricsProvider,
                     PreferredLyricsProvider.MEGALOBIZ to MegalobizLyricsProvider,
                     PreferredLyricsProvider.BETTER_LYRICS to BetterLyricsProvider,
+                    PreferredLyricsProvider.BETTER_LYRICS_PORTATO to BetterLyricsPortatoProvider,
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to PaxsenixAppleMusicLyricsProvider,
