@@ -1497,7 +1497,10 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Row {
                             AnimatedVisibility(
-                                visible = useRail && shouldShowNavigationBar,
+                                visible =
+                                    useRail &&
+                                        shouldShowNavigationBar &&
+                                        (isTvDevice || !playerBottomSheetState.isExpandedOrExpanding),
                                 enter = fadeIn(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 150)),
                                 exit = fadeOut(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 100)),
                             ) {
