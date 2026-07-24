@@ -1205,6 +1205,7 @@ class MusicService :
         }
 
         currentSong.debounce(300).collect(scope) { song ->
+            logPlaybackMetadataSnapshot("current_song_emission")
             updateNotification()
             requestDiscordSync(
                 reason =
@@ -6307,6 +6308,7 @@ class MusicService :
 
         val timelineEmpty = player.currentTimeline.isEmpty || player.mediaItemCount == 0 || player.currentMediaItem == null
         currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
+        logPlaybackMetadataSnapshot("media_item_transition:$reason")
 
         widgetUpdater.update()
 
@@ -6382,6 +6384,33 @@ class MusicService :
                 ?.localConfiguration
                 ?.uri
                 ?.shouldBypassPlayerCache() == true
+
+    /**
+     * Temporary transition diagnostics for local-to-remote playback. Keep the player, tagged
+     * metadata, and Room-backed song identities together so a stale source is immediately visible.
+     */
+    private fun logPlaybackMetadataSnapshot(source: String) {
+        val item = player.currentMediaItem
+        val taggedMetadata = player.currentMetadata
+        val dbSong = currentSong.value
+        val playbackUri = item?.localConfiguration?.uri
+        val artworkUri = item?.mediaMetadata?.artworkUri
+
+        Timber.tag(LOCAL_MEDIA_METADATA_TAG).d(
+            "source=%s itemId=%s itemLocal=%b metadataId=%s metadataLocal=%b dbSongId=%s dbSongLocal=%s playbackUri=%s://%s artworkUri=%s://%s",
+            source,
+            item?.mediaId,
+            item?.mediaId?.trim()?.isLocalMediaId() == true,
+            taggedMetadata?.id,
+            taggedMetadata?.id?.trim()?.isLocalMediaId() == true,
+            dbSong?.song?.id,
+            dbSong?.song?.isLocal,
+            playbackUri?.scheme,
+            playbackUri?.authority,
+            artworkUri?.scheme,
+            artworkUri?.authority,
+        )
+    }
 
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,
@@ -6508,6 +6537,7 @@ class MusicService :
         }
         if (events.contains(Player.EVENT_MEDIA_METADATA_CHANGED)) {
             currentMediaMetadata.value = player.currentMetadata
+            logPlaybackMetadataSnapshot("media_metadata_changed")
         }
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
@@ -8370,6 +8400,7 @@ class MusicService :
         private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
         private const val INFINITE_QUEUE_MAX_BOOTSTRAP_PAGES = 3
         private const val DISCORD_SYNC_TAG = "DiscordSync"
+        private const val LOCAL_MEDIA_METADATA_TAG = "LocalMediaMetadata"
         private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
         const val CHANNEL_ID = "music_channel_01"
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
