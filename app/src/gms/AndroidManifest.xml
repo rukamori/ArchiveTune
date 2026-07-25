@@ -8,12 +8,8 @@
     <uses-permission android:name="android.permission.AD_ID" />
 
     <application>
-        <provider
-            android:name="com.startapp.sdk.adsbase.StartAppInitProvider"
-            android:authorities="${applicationId}.startappinitprovider"
-            tools:node="remove" />
-
         <activity
+
             android:name=".musicrecognition.MusicRecognitionCaptureActivity"
             android:excludeFromRecents="true"
             android:exported="false"

@@ -212,7 +212,7 @@ private suspend fun captureSamples(
 }
 
 private const val SampleRateHz = 16_000
-private const val RecordingDurationMillis = 4_200L
+private const val RecordingDurationMillis = 8_400L
 private const val MinimumBufferSizeBytes = 4_096
 private const val MusicRecognitionHistoryLimit = 50
 private const val BackgroundRecognitionEnabledDefault = true

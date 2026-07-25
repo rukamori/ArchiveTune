@@ -180,8 +180,8 @@ fun AiIntegrationSettings(
                     selectedValue = provider,
                     values =
                         listOf(
-                            AiProvider.CHATGPT,
                             AiProvider.GEMINI,
+                            AiProvider.CHATGPT,
                             AiProvider.CUSTOM,
                             AiProvider.NONE,
                         ),

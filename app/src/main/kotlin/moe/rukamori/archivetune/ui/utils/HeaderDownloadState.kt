@@ -93,7 +93,7 @@ fun headerDownloadState(
             HeaderDownloadState.Completed
         }
 
-        hasAnyDownload -> {
+        hasRunningDownload || hasPausedDownload -> {
             HeaderDownloadState.Partial(
                 progress = (progressTotal / distinctCount).coerceIn(0f, 1f),
                 paused = hasPausedDownload && !hasRunningDownload,
