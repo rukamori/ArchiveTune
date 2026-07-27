@@ -191,6 +191,23 @@ object LastFM {
         )
     }
 
+    suspend fun getSimilarTracks(
+        artist: String,
+        track: String,
+        limit: Int = 20,
+    ) = runCatching {
+        postAndDecode<moe.rukamori.archivetune.lastfm.models.SimilarTracksResponse>(
+            method = "track.getSimilar",
+            extra =
+                buildMap {
+                    put("artist", artist)
+                    put("track", track)
+                    put("limit", limit.toString())
+                    put("autocorrect", "1")
+                },
+        )
+    }
+
     fun initialize(
         apiKey: String,
         secret: String,

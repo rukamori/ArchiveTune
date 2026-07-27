@@ -1108,11 +1108,20 @@ class MainActivity : ComponentActivity() {
                         mutableStateOf(false)
                     }
 
+                    val isDiscoverScreen = currentRoute == "discover"
+
+                    LaunchedEffect(isDiscoverScreen) {
+                        if (isDiscoverScreen) {
+                            playerBottomSheetState.dismiss()
+                        }
+                    }
+
                     LaunchedEffect(miniPlayerAnchor, isYearInMusicScreen, miniPlayerAnchorPersistenceEnabled) {
-                        if (!isYearInMusicScreen && miniPlayerAnchorPersistenceEnabled) {
+                        if (!isYearInMusicScreen && !isDiscoverScreen && miniPlayerAnchorPersistenceEnabled) {
                             setSavedMiniPlayerAnchor(miniPlayerAnchor)
                         }
                     }
+
 
                     var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableStateOf(-1) }
 
@@ -1356,6 +1365,7 @@ class MainActivity : ComponentActivity() {
 
                     val currentPlayerBottomSheetState = rememberUpdatedState(playerBottomSheetState)
                     val currentIsYearInMusicScreen = rememberUpdatedState(isYearInMusicScreen)
+                    val currentIsDiscoverScreen = rememberUpdatedState(isDiscoverScreen)
 
                     DisposableEffect(playerConnection) {
                         val player =
@@ -1370,11 +1380,13 @@ class MainActivity : ComponentActivity() {
                                         player.playbackState != Player.STATE_IDLE &&
                                         player.playbackState != Player.STATE_ENDED &&
                                         currentPlayerBottomSheetState.value.isDismissed &&
-                                        !currentIsYearInMusicScreen.value
+                                        !currentIsYearInMusicScreen.value &&
+                                        !currentIsDiscoverScreen.value
                                     ) {
                                         currentPlayerBottomSheetState.value.collapseSoft()
                                     }
                                 }
+
 
                                 override fun onMediaItemTransition(
                                     mediaItem: MediaItem?,
@@ -2077,12 +2089,14 @@ class MainActivity : ComponentActivity() {
                                                 !useRail &&
                                                 playerBottomSheetState.isCollapsed
 
-                                        BottomSheetPlayer(
-                                            state = playerBottomSheetState,
-                                            navController = navController,
-                                            pureBlack = pureBlack,
-                                            isMiniPlayerPairedWithNavigation = areBottomBarsPaired,
-                                        )
+                                        if (!isDiscoverScreen) {
+                                            BottomSheetPlayer(
+                                                state = playerBottomSheetState,
+                                                navController = navController,
+                                                pureBlack = pureBlack,
+                                                isMiniPlayerPairedWithNavigation = areBottomBarsPaired,
+                                            )
+                                        }
 
                                         if (useRail) return@Box
 

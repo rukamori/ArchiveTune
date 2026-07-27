@@ -47,8 +47,16 @@ sealed class Screens(
         route = "mood_and_genres",
     )
 
+    object Discover : Screens(
+        titleId = R.string.discover,
+        iconIdInactive = R.drawable.auto_awesome,
+        iconIdActive = R.drawable.auto_awesome,
+        route = "discover",
+    )
+
     companion object {
-        val MainScreens = listOf(Home, Search, Library)
-        val TvMainScreens = listOf(Home, Search, Library)
+        val MainScreens = listOf(Home, Search, Discover, Library)
+        val TvMainScreens = listOf(Home, Search, Discover, Library)
     }
 }
+

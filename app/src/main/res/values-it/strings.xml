@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="home">Home</string>
+    <string name="discover">Discover</string>
     <string name="songs">Canzoni</string>
     <string name="artists">Artisti</string>
     <string name="albums">Album</string>
