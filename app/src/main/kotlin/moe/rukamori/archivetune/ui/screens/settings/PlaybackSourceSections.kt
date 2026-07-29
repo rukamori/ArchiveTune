@@ -204,6 +204,8 @@ fun PlaybackSourceSections(navController: NavController) {
                         AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                         AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                         AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+                        AudioQuality.LOSSLESS -> stringResource(R.string.audio_quality_lossless)
+                        else -> it.name
                     }
                 },
             )
