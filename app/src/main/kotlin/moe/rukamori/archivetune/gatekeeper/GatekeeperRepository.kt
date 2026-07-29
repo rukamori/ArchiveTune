@@ -75,18 +75,12 @@ class GatekeeperRepository
         }
 
         private suspend fun performCheck(): GatekeeperResult {
-            if (BuildConfig.DEBUG) {
-                NetworkGatekeeper.setConnectionBlocked(false)
-                return GatekeeperResult.Allowed
-            }
-
             val fallbackMessage = context.getString(R.string.gatekeeper_connection_blocked)
             val bearerToken = BuildConfig.API_BEARER_TOKEN.trim()
             if (bearerToken.isEmpty()) {
                 Timber.w("Gatekeeper bearer token is not configured")
                 return blocked(fallbackMessage, retryable = false)
             }
-
 
             return try {
                 val packageName = context.packageName
