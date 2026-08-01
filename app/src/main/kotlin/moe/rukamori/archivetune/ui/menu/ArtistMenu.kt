@@ -195,7 +195,7 @@ fun ArtistMenu(
                                                     type = "text/plain"
                                                     putExtra(
                                                         Intent.EXTRA_TEXT,
-                                                        "https://music.youtube.com/channel/${artist.id}",
+                                                        moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildChannelShareUrl(artist.id),
                                                     )
                                                 }
                                             context.startActivity(Intent.createChooser(intent, null))

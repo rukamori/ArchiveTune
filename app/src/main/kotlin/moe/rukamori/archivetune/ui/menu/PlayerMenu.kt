@@ -578,7 +578,7 @@ fun PlayerMenu(
                                             val clip =
                                                 android.content.ClipData.newPlainText(
                                                     context.getString(R.string.copy_link),
-                                                    "https://music.youtube.com/watch?v=${mediaMetadata.id}",
+                                                    moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildSongShareUrl(mediaMetadata.id),
                                                 )
                                             clipboard.setPrimaryClip(clip)
                                             android.widget.Toast

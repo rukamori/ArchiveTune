@@ -413,7 +413,7 @@ fun YouTubeSongMenu(
                             Intent().apply {
                                 action = Intent.ACTION_SEND
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, song.shareLink)
+                                putExtra(Intent.EXTRA_TEXT, moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildSongShareUrl(song.id))
                             }
                         context.startActivity(Intent.createChooser(intent, null))
                         onDismiss()

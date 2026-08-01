@@ -453,7 +453,7 @@ fun AlbumMenu(
                                                     type = "text/plain"
                                                     putExtra(
                                                         Intent.EXTRA_TEXT,
-                                                        "https://music.youtube.com/playlist?list=${album.album.playlistId}",
+                                                        moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildAlbumShareUrl(album.album.id),
                                                     )
                                                 }
                                             context.startActivity(Intent.createChooser(intent, null))

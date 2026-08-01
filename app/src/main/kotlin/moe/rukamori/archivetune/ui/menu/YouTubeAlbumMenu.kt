@@ -406,7 +406,7 @@ fun YouTubeAlbumMenu(
                                         Intent().apply {
                                             action = Intent.ACTION_SEND
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, albumItem.shareLink)
+                                            putExtra(Intent.EXTRA_TEXT, moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildAlbumShareUrl(albumItem.browseId))
                                         }
                                     context.startActivity(Intent.createChooser(intent, null))
                                 },

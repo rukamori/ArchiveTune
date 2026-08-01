@@ -229,5 +229,5 @@ class ArtistViewModel
                 }
         }
 
-        private fun artistShareLink(): String = artistPage?.artist?.shareLink ?: "https://music.youtube.com/channel/$artistId"
+        private fun artistShareLink(): String = moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildChannelShareUrl(artistPage?.artist?.id ?: artistId)
     }

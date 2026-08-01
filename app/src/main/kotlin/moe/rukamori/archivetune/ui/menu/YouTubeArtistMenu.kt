@@ -162,7 +162,7 @@ fun YouTubeArtistMenu(
                                             Intent().apply {
                                                 action = Intent.ACTION_SEND
                                                 type = "text/plain"
-                                                putExtra(Intent.EXTRA_TEXT, artist.shareLink)
+                                                putExtra(Intent.EXTRA_TEXT, moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildChannelShareUrl(artist.id))
                                             }
                                         context.startActivity(Intent.createChooser(intent, null))
                                         onDismiss()

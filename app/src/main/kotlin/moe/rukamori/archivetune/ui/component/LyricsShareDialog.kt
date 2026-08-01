@@ -99,7 +99,7 @@ fun shareLyricsAsText(
     payload: LyricsSharePayload,
     songId: String?,
 ) {
-    val songLink = songId?.takeIf { it.isNotBlank() }?.let { "https://music.youtube.com/watch?v=$it" }
+    val songLink = songId?.takeIf { it.isNotBlank() }?.let { moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildSongShareUrl(it) }
     val shareBody =
         buildString {
             append("\"")
