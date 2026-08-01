@@ -243,5 +243,4 @@ enum class BackupArchiveCategory {
     LIBRARY,
     ACCOUNT,
     SETTINGS,
-    DOWNLOADS,
 }
