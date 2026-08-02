@@ -7,7 +7,9 @@
 
 package moe.rukamori.archivetune.ui.player
 
+import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,11 +27,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
@@ -38,8 +48,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -48,12 +60,15 @@ import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
+import moe.rukamori.archivetune.playback.artwork.PlayerPaletteCacheKey
+import moe.rukamori.archivetune.playback.artwork.guessArtworkProvider
+import moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop
+import moe.rukamori.archivetune.ui.component.rememberPreSFrostedBitmap
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.PlayerPaletteCache
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
-
-private const val MiniPlayerPaletteCacheSize = 24
 
 @Composable
 fun MiniPlayer(
@@ -91,40 +106,49 @@ private fun NewMiniPlayer(
         defaultValue = MiniPlayerBackgroundStyle.THEME,
     )
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    // Keep the previous valid palette while the next artwork loads; replace only on success.
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
-    val gradientColorsCache =
-        remember {
-            object : LinkedHashMap<String, List<Color>>(MiniPlayerPaletteCacheSize, 0.75f, true) {
-                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Color>>?): Boolean =
-                    size > MiniPlayerPaletteCacheSize
-            }
-        }
+    var hasValidPalette by remember { mutableStateOf(false) }
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
-    val shouldUseArtworkBackground = miniPlayerBackgroundStyle != MiniPlayerBackgroundStyle.THEME
+    // Only the artwork-derived styles need palette extraction; THEME and FROSTED don't.
+    val shouldUseArtworkBackground =
+        miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.GRADIENT ||
+            miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.GLOW
+    val darkTheme = isSystemInDarkTheme()
 
     LaunchedEffect(
         mediaMetadata?.id,
         mediaMetadata?.thumbnailUrl,
         shouldUseArtworkBackground,
         fallbackColor,
+        darkTheme,
     ) {
         if (!shouldUseArtworkBackground) {
             gradientColors = emptyList()
+            hasValidPalette = false
             return@LaunchedEffect
         }
 
         val currentMetadata = mediaMetadata
         val thumbnailUrl = currentMetadata?.thumbnailUrl
         if (currentMetadata == null || thumbnailUrl.isNullOrBlank()) {
-            gradientColors = emptyList()
+            if (!hasValidPalette) gradientColors = emptyList()
             return@LaunchedEffect
         }
 
-        val cachedColors = gradientColorsCache[currentMetadata.id]
-        if (cachedColors != null) {
+        val cacheKey =
+            PlayerPaletteCacheKey(
+                mediaId = currentMetadata.id,
+                provider = guessArtworkProvider(thumbnailUrl),
+                artworkIdentity = thumbnailUrl,
+                backgroundMode = miniPlayerBackgroundStyle.name,
+                darkTheme = darkTheme,
+            )
+        PlayerPaletteCache.get(cacheKey)?.let { cachedColors ->
             gradientColors = cachedColors
+            hasValidPalette = true
             return@LaunchedEffect
         }
 
@@ -137,30 +161,51 @@ private fun NewMiniPlayer(
                 .build()
 
         val extractedColors =
-            runCatching {
+            try {
                 val result =
                     withContext(Dispatchers.IO) {
                         context.imageLoader.execute(request)
                     }
-                val bitmap = result.image?.toBitmap() ?: return@runCatching emptyList()
-                val palette =
-                    withContext(Dispatchers.Default) {
-                        Palette
-                            .from(bitmap)
-                            .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                            .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                            .generate()
+                if (result !is SuccessResult) {
+                    null
+                } else {
+                    val bitmap = result.image?.toBitmap()
+                    if (bitmap == null) {
+                        null
+                    } else {
+                        val palette =
+                            withContext(Dispatchers.Default) {
+                                Palette
+                                    .from(bitmap)
+                                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                                    .generate()
+                            }
+                        PlayerColorExtractor.extractGradientColors(
+                            palette = palette,
+                            fallbackColor = fallbackColor,
+                        )
                     }
-                PlayerColorExtractor.extractGradientColors(
-                    palette = palette,
-                    fallbackColor = fallbackColor,
-                )
-            }.getOrDefault(emptyList())
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                null
+            }
 
-        if (extractedColors.isNotEmpty()) {
-            gradientColorsCache[currentMetadata.id] = extractedColors
+        // On failure/cancellation keep the previous valid palette; never force a grey fallback.
+        if (extractedColors != null) {
+            val stillCurrent =
+                mediaMetadata?.id == currentMetadata.id &&
+                    mediaMetadata?.thumbnailUrl == thumbnailUrl
+            if (stillCurrent) {
+                PlayerPaletteCache.put(cacheKey, extractedColors)
+                gradientColors = extractedColors
+                hasValidPalette = true
+            }
+        } else if (!hasValidPalette) {
+            gradientColors = emptyList()
         }
-        gradientColors = extractedColors
     }
 
     val backgroundPalette =
@@ -168,15 +213,17 @@ private fun NewMiniPlayer(
             MiniPlayerBackgroundPalette.from(gradientColors)
         }
     val effectiveBackgroundStyle =
-        if (shouldUseArtworkBackground && backgroundPalette != null) {
-            miniPlayerBackgroundStyle
-        } else {
-            MiniPlayerBackgroundStyle.THEME
+        when {
+            miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.FROSTED -> MiniPlayerBackgroundStyle.FROSTED
+            shouldUseArtworkBackground && backgroundPalette != null -> miniPlayerBackgroundStyle
+            else -> MiniPlayerBackgroundStyle.THEME
         }
 
     val contentColors =
         rememberMiniPlayerContentColors(
-            useArtworkBackground = effectiveBackgroundStyle != MiniPlayerBackgroundStyle.THEME,
+            useArtworkBackground =
+                effectiveBackgroundStyle == MiniPlayerBackgroundStyle.GRADIENT ||
+                    effectiveBackgroundStyle == MiniPlayerBackgroundStyle.GLOW,
         )
     val miniPlayerShape =
         remember(isPairedWithNavigation) {
@@ -278,6 +325,11 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
     }
 }
 
+// Frosted mini-player backdrop: blur radius in raw px (RenderEffect works in pixels) and the
+// bounded fraction of blurred content shown over the opaque base — same recipe as the nav bar.
+private const val FrostedMiniPlayerBlurRadiusPx = 60f
+private const val FrostedMiniPlayerOverlayAlpha = 0.30f
+
 @Composable
 private fun MiniPlayerBackground(
     style: MiniPlayerBackgroundStyle,
@@ -289,6 +341,82 @@ private fun MiniPlayerBackground(
             Box(
                 modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh),
             )
+        }
+
+        MiniPlayerBackgroundStyle.FROSTED -> {
+            // Same frosted-glass recipe as the navigation bar: an always-opaque surface with the
+            // captured app content blurred and composited on top at a bounded alpha. On Android
+            // 12+ this uses RenderEffect (every frame, hardware-accelerated). Below API 31
+            // RenderEffect is unavailable, so we fall back to a periodically captured + CPU-blurred
+            // bitmap (see [rememberPreSFrostedBitmap]) — same approach as the moving-blur lyrics
+            // background. When no backdrop capture is available (rail layouts), the plain theme
+            // surface is shown.
+            val backdrop = LocalNavigationBarBackdrop.current
+            val baseColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            if (backdrop == null) {
+                Box(modifier = modifier.background(baseColor))
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                // Pre-S: CPU-blurred bitmap fallback. The bitmap is updated a few times per
+                // second (see [rememberPreSFrostedBitmap]) — enough for a frosted-glass effect
+                // without the per-frame cost that would tank pre-S hardware.
+                val blurredBitmap = rememberPreSFrostedBitmap(
+                    backdrop = backdrop,
+                    blurRadiusPx = FrostedMiniPlayerBlurRadiusPx,
+                )
+                var positionInRoot by remember { mutableStateOf(Offset.Zero) }
+                Box(
+                    modifier =
+                        modifier
+                            .onGloballyPositioned { positionInRoot = it.positionInRoot() }
+                            .background(baseColor),
+                ) {
+                    if (blurredBitmap != null) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = FrostedMiniPlayerOverlayAlpha
+                                        clip = true
+                                    }.drawBehind {
+                                        val offset = backdrop.contentOffsetInRoot - positionInRoot
+                                        translate(offset.x, offset.y) {
+                                            drawImage(blurredBitmap)
+                                        }
+                                    },
+                        )
+                    }
+                }
+            } else {
+                var positionInRoot by remember { mutableStateOf(Offset.Zero) }
+                Box(
+                    modifier =
+                        modifier
+                            .onGloballyPositioned { positionInRoot = it.positionInRoot() }
+                            .background(baseColor),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    renderEffect =
+                                        BlurEffect(
+                                            radiusX = FrostedMiniPlayerBlurRadiusPx,
+                                            radiusY = FrostedMiniPlayerBlurRadiusPx,
+                                            edgeTreatment = TileMode.Clamp,
+                                        )
+                                    alpha = FrostedMiniPlayerOverlayAlpha
+                                    clip = true
+                                }.drawBehind {
+                                    val offset = backdrop.contentOffsetInRoot - positionInRoot
+                                    translate(offset.x, offset.y) {
+                                        drawLayer(backdrop.layer)
+                                    }
+                                },
+                    )
+                }
+            }
         }
 
         MiniPlayerBackgroundStyle.GRADIENT -> {

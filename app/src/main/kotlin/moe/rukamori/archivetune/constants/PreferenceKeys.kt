@@ -626,6 +626,7 @@ enum class PlayerDesignStyle {
     V7,
     V8,
     V9,
+    APPLE_MUSIC,
 }
 
 enum class PlayerBackgroundStyle {
@@ -657,7 +658,22 @@ enum class MiniPlayerBackgroundStyle {
     THEME,
     GRADIENT,
     GLOW,
+    FROSTED,
 }
+
+// Bottom navigation bar look: DEFAULT keeps the docked full-width bar; FLOATING detaches it into
+// a pill with larger margins that never pairs with the mini player.
+enum class NavigationBarStyle {
+    DEFAULT,
+    FLOATING,
+}
+
+val NavigationBarStyleKey = stringPreferencesKey("navigationBarStyle")
+
+// Draws a frosted (blurred app content) backdrop behind the navigation bar. True backdrop blur on
+// Android 12+; a translucent surface fallback below that.
+val NavigationBarFrostedBlurKey = booleanPreferencesKey("navigationBarFrostedBlur")
+val HideNavigationBarLabelsKey = booleanPreferencesKey("hideNavigationBarLabels")
 
 // Keys for customized background
 val PlayerCustomImageUriKey = stringPreferencesKey("playerCustomImageUri")

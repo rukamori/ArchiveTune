@@ -1109,4 +1109,12 @@
     <string name="scheduled_backup_load_failed">Scheduled backup settings could not be loaded</string>
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
     <string name="gatekeeper_connection_blocked">Connection blocked by ArchiveTune Remote. This app could not be verified as an official ArchiveTune build. Install an official build from https://github.com/rukamori/ArchiveTune or https://t.me/ArchiveTuneGC.</string>
+    <string name="frosted_blur">Frosted blur</string>
+    <string name="navigation_bar_style">Navigation bar style</string>
+    <string name="navigation_bar_style_default">Default</string>
+    <string name="navigation_bar_style_floating">Floating</string>
+    <string name="navigation_bar_frosted_blur">Frosted navigation bar</string>
+    <string name="navigation_bar_frosted_blur_desc">Apply a frosted blur behind the navigation bar</string>
+    <string name="hide_navigation_bar_labels">Hide labels in navigation bar</string>
+    <string name="hide_navigation_bar_labels_desc">Show only icons in the bottom navigation bar</string>
 </resources>
