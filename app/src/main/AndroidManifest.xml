@@ -257,6 +257,18 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".aod.AodDreamService"
+            android:permission="android.permission.BIND_DREAM_SERVICE"
+            android:exported="true"
+            android:icon="@drawable/bedtime"
+            android:label="@string/aod_mode">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"
             android:exported="true">

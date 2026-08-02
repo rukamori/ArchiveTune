@@ -74,16 +74,23 @@ import moe.rukamori.archivetune.constants.AodAccentStyle
 import moe.rukamori.archivetune.constants.AodAccentStyleKey
 import moe.rukamori.archivetune.constants.AodAmbientIntensityKey
 import moe.rukamori.archivetune.constants.AodArtworkGlowKey
+import moe.rukamori.archivetune.constants.AodAutoDimmingKey
 import moe.rukamori.archivetune.constants.AodBackgroundStyle
 import moe.rukamori.archivetune.constants.AodBackgroundStyleKey
+import moe.rukamori.archivetune.constants.AodClockStyle
+import moe.rukamori.archivetune.constants.AodClockStyleKey
 import moe.rukamori.archivetune.constants.AodContentPosition
 import moe.rukamori.archivetune.constants.AodContentPositionKey
 import moe.rukamori.archivetune.constants.AodControlSizeKey
 import moe.rukamori.archivetune.constants.AodControlStyle
 import moe.rukamori.archivetune.constants.AodControlStyleKey
+import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
 import moe.rukamori.archivetune.constants.AodHorizontalPaddingKey
+import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
 import moe.rukamori.archivetune.constants.AodShowAlbumKey
 import moe.rukamori.archivetune.constants.AodShowArtistKey
+import moe.rukamori.archivetune.constants.AodShowBatteryKey
+import moe.rukamori.archivetune.constants.AodShowClockKey
 import moe.rukamori.archivetune.constants.AodShowControlsKey
 import moe.rukamori.archivetune.constants.AodShowExitButtonKey
 import moe.rukamori.archivetune.constants.AodShowProgressKey
@@ -96,6 +103,15 @@ import moe.rukamori.archivetune.constants.AodThumbnailShapeKey
 import moe.rukamori.archivetune.constants.AodThumbnailShapeRotationKey
 import moe.rukamori.archivetune.constants.AodThumbnailSizeKey
 import moe.rukamori.archivetune.constants.AodTitleMaxLinesKey
+import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
+import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
+import moe.rukamori.archivetune.constants.AodAutoDimmingKey
+import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
+import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
+import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
+import moe.rukamori.archivetune.constants.AodTouchLockEnabledKey
+import moe.rukamori.archivetune.constants.AodUnlockMethod
+import moe.rukamori.archivetune.constants.AodUnlockMethodKey
 import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.ui.component.EnumListPreference
@@ -187,6 +203,21 @@ fun AodCustomizedScreen(navController: NavController) {
     val (verticalSpacing, onVerticalSpacingChange) = rememberPreference(AodVerticalSpacingKey, defaultValue = 20f)
     val (titleMaxLines, onTitleMaxLinesChange) = rememberPreference(AodTitleMaxLinesKey, defaultValue = 1)
     val (ambientIntensity, onAmbientIntensityChange) = rememberPreference(AodAmbientIntensityKey, defaultValue = 0.18f)
+
+    val (touchLockEnabled, onTouchLockEnabledChange) = rememberPreference(AodTouchLockEnabledKey, defaultValue = false)
+    val (unlockMethod, onUnlockMethodChange) = rememberEnumPreference(AodUnlockMethodKey, defaultValue = AodUnlockMethod.SLIDE)
+    val (showClock, onShowClockChange) = rememberPreference(AodShowClockKey, defaultValue = true)
+    val (clockStyle, onClockStyleChange) = rememberEnumPreference(AodClockStyleKey, defaultValue = AodClockStyle.BOLD_DIGITAL)
+    val (showBattery, onShowBatteryChange) = rememberPreference(AodShowBatteryKey, defaultValue = true)
+    val (pixelShiftEnabled, onPixelShiftEnabledChange) = rememberPreference(AodPixelShiftEnabledKey, defaultValue = true)
+    val (autoDimming, onAutoDimmingChange) = rememberPreference(AodAutoDimmingKey, defaultValue = true)
+    val (gesturesEnabled, onGesturesEnabledChange) = rememberPreference(AodGesturesEnabledKey, defaultValue = true)
+    // New feature preferences
+    val (shakeToUnlock, onShakeToUnlockChange) = rememberPreference(AodShakeToUnlockKey, defaultValue = false)
+    val (autoLockEnabled, onAutoLockEnabledChange) = rememberPreference(AodAutoLockEnabledKey, defaultValue = false)
+    val (autoLockTimeout, onAutoLockTimeoutChange) = rememberPreference(AodAutoLockTimeoutKey, defaultValue = 10)
+    val (marqueeTitles, onMarqueeTitlesChange) = rememberPreference(AodMarqueeTitlesKey, defaultValue = false)
+    val (minimalLockedState, onMinimalLockedStateChange) = rememberPreference(AodMinimalLockedStateKey, defaultValue = false)
 
     val previewSettings =
         remember(
@@ -529,6 +560,131 @@ fun AodCustomizedScreen(navController: NavController) {
                             valueLabel = { stringResource(R.string.aod_customize_dp_value, it.roundToInt()) },
                             onValueChange = onControlSizeChange,
                             isEnabled = showControls,
+                        )
+                    }
+                }
+            }
+
+            item(
+                key = "aod_advanced",
+                contentType = "preference_group",
+            ) {
+                PreferenceGroup(title = "Security & Power (Advanced AOD)") {
+                    item {
+                        SwitchPreference(
+                            title = { Text("Touch Lock Enabled") },
+                            description = "Prevents accidental touches on AOD screen",
+                            icon = { Icon(painterResource(R.drawable.buttons), null) },
+                            checked = touchLockEnabled,
+                            onCheckedChange = onTouchLockEnabledChange,
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text("Show Digital Clock") },
+                            icon = { Icon(painterResource(R.drawable.timer), null) },
+                            checked = showClock,
+                            onCheckedChange = onShowClockChange,
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text("Show Battery Status") },
+                            icon = { Icon(painterResource(R.drawable.sliders), null) },
+                            checked = showBattery,
+                            onCheckedChange = onShowBatteryChange,
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text("OLED Burn-in Protection") },
+                            description = "Periodically shifts display offset every 60 seconds",
+                            icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                            checked = pixelShiftEnabled,
+                            onCheckedChange = onPixelShiftEnabledChange,
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text("Auto-Dimming Low Power Mode") },
+                            description = "Lowers screen opacity after 10 seconds of inactivity",
+                            icon = { Icon(painterResource(R.drawable.blur_on), null) },
+                            checked = autoDimming,
+                            onCheckedChange = onAutoDimmingChange,
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text("Gesture Controls") },
+                            description = "Double-tap to play/pause, swipe left/right to skip tracks",
+                            icon = { Icon(painterResource(R.drawable.drag_handle), null) },
+                            checked = gesturesEnabled,
+                            onCheckedChange = onGesturesEnabledChange,
+                        )
+                    }
+                }
+            }
+
+            item(
+                key = "aod_smart_lock",
+                contentType = "preference_group",
+            ) {
+                PreferenceGroup(title = "Smart Lock & Display") {
+                    // Feature #1: Shake-to-unlock
+                    item {
+                        SwitchPreference(
+                            title = { Text("Shake to Unlock") },
+                            description = "Shake your phone to exit touch-lock mode",
+                            icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                            checked = shakeToUnlock,
+                            onCheckedChange = onShakeToUnlockChange,
+                            isEnabled = touchLockEnabled,
+                        )
+                    }
+                    // Feature #2: Auto-lock toggle
+                    item {
+                        SwitchPreference(
+                            title = { Text("Auto-Lock on AOD Entry") },
+                            description = "Automatically lock screen N seconds after entering AOD (like iPhone)",
+                            icon = { Icon(painterResource(R.drawable.timer), null) },
+                            checked = autoLockEnabled,
+                            onCheckedChange = onAutoLockEnabledChange,
+                            isEnabled = touchLockEnabled,
+                        )
+                    }
+                    // Feature #2: Auto-lock timeout slider (only shown when auto-lock is on)
+                    if (autoLockEnabled && touchLockEnabled) {
+                        item {
+                            AodSliderPreference(
+                                title = "Auto-Lock Delay",
+                                icon = { Icon(painterResource(R.drawable.timer), null) },
+                                value = autoLockTimeout.toFloat(),
+                                valueRange = 3f..120f,
+                                steps = 23,
+                                valueLabel = { "${it.roundToInt()}s" },
+                                onValueChange = { onAutoLockTimeoutChange(it.roundToInt()) },
+                            )
+                        }
+                    }
+                    // Feature #4: Marquee scrolling for long titles
+                    item {
+                        SwitchPreference(
+                            title = { Text("Marquee Song Titles") },
+                            description = "Scroll long song titles instead of truncating",
+                            icon = { Icon(painterResource(R.drawable.drag_handle), null) },
+                            checked = marqueeTitles,
+                            onCheckedChange = onMarqueeTitlesChange,
+                        )
+                    }
+                    // Feature #5: Minimal locked state
+                    item {
+                        SwitchPreference(
+                            title = { Text("Minimal Locked View") },
+                            description = "When locked, show only clock and song title — hides artwork and controls",
+                            icon = { Icon(painterResource(R.drawable.blur_on), null) },
+                            checked = minimalLockedState,
+                            onCheckedChange = onMinimalLockedStateChange,
+                            isEnabled = touchLockEnabled,
                         )
                     }
                 }

@@ -9,6 +9,7 @@
 
 package moe.rukamori.archivetune.ui.player
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,6 +91,63 @@ import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.alpha
+import android.app.Activity
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.delay
+import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
+import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
+import moe.rukamori.archivetune.constants.AodAutoDimTimeoutKey
+import moe.rukamori.archivetune.constants.AodAutoDimmingKey
+import moe.rukamori.archivetune.constants.AodClockStyle
+import moe.rukamori.archivetune.constants.AodClockStyleKey
+import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
+import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
+import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
+import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
+import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
+import moe.rukamori.archivetune.constants.AodShowBatteryKey
+import moe.rukamori.archivetune.constants.AodShowClockKey
+import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
+import moe.rukamori.archivetune.constants.AodTouchLockEnabledKey
+import moe.rukamori.archivetune.constants.AodUnlockMethod
+import moe.rukamori.archivetune.constants.AodUnlockMethodKey
+import moe.rukamori.archivetune.ui.player.AodClockWidget
+import moe.rukamori.archivetune.ui.player.AodTouchLockOverlay
+
 private val White70 = Color.White.copy(alpha = 0.70f)
 private val White65 = Color.White.copy(alpha = 0.65f)
 private val White35 = Color.White.copy(alpha = 0.35f)
@@ -137,6 +195,125 @@ fun AodPlayerScreen(
     val (verticalSpacing) = rememberPreference(AodVerticalSpacingKey, 20f)
     val (titleMaxLines) = rememberPreference(AodTitleMaxLinesKey, 1)
     val (ambientIntensity) = rememberPreference(AodAmbientIntensityKey, 0.18f)
+
+    // New Advanced AOD Preferences
+    val (touchLockEnabled) = rememberPreference(AodTouchLockEnabledKey, false)
+    val (unlockMethod) = rememberEnumPreference(AodUnlockMethodKey, AodUnlockMethod.SLIDE)
+    val (showClock) = rememberPreference(AodShowClockKey, true)
+    val (clockStyle) = rememberEnumPreference(AodClockStyleKey, AodClockStyle.BOLD_DIGITAL)
+    val (showBattery) = rememberPreference(AodShowBatteryKey, true)
+    val (pixelShiftEnabled) = rememberPreference(AodPixelShiftEnabledKey, true)
+    val (autoDimming) = rememberPreference(AodAutoDimmingKey, true)
+    val (autoDimTimeout) = rememberPreference(AodAutoDimTimeoutKey, 5)
+    val (gesturesEnabled) = rememberPreference(AodGesturesEnabledKey, true)
+    // Feature: shake-to-unlock, auto-lock, marquee, minimal locked state
+    val (shakeToUnlock) = rememberPreference(AodShakeToUnlockKey, false)
+    val (autoLockEnabled) = rememberPreference(AodAutoLockEnabledKey, false)
+    val (autoLockTimeout) = rememberPreference(AodAutoLockTimeoutKey, 10)
+    val (marqueeTitles) = rememberPreference(AodMarqueeTitlesKey, false)
+    val (minimalLockedState) = rememberPreference(AodMinimalLockedStateKey, false)
+
+    // Bug fix #1: Don't use touchLockEnabled as a remember key — that would reset
+    // isLocked to its default whenever ANY preference changes mid-session.
+    var isLocked by remember { mutableStateOf(touchLockEnabled) }
+    var pixelShiftOffset by remember { mutableStateOf(IntOffset.Zero) }
+    var isDimmed by remember { mutableStateOf(false) }
+    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isDimmed) 0.25f else 1.0f,
+        animationSpec = tween(500),
+        label = "dimAlpha",
+    )
+
+    fun resetInteraction() {
+        lastInteractionTime = System.currentTimeMillis()
+        if (isDimmed) isDimmed = false
+    }
+
+    // OLED Pixel Shifting Loop (Every 60 Seconds)
+    LaunchedEffect(pixelShiftEnabled) {
+        if (pixelShiftEnabled) {
+            val shifts = listOf(
+                IntOffset(0, 0), IntOffset(8, 4), IntOffset(-8, -4),
+                IntOffset(4, -8), IntOffset(-6, 6), IntOffset(6, -6)
+            )
+            var index = 0
+            while (true) {
+                delay(60000L)
+                index = (index + 1) % shifts.size
+                pixelShiftOffset = shifts[index]
+            }
+        } else {
+            pixelShiftOffset = IntOffset.Zero
+        }
+    }
+
+    // Feature #2: Auto-lock — automatically lock the screen after N seconds of entering AOD
+    LaunchedEffect(autoLockEnabled, autoLockTimeout) {
+        if (autoLockEnabled && !isLocked) {
+            delay(autoLockTimeout.coerceIn(3, 120) * 1000L)
+            isLocked = true
+        }
+    }
+
+    // Feature #1: Shake-to-unlock — register accelerometer listener when locked
+    DisposableEffect(shakeToUnlock, isLocked) {
+        if (!shakeToUnlock || !isLocked) return@DisposableEffect onDispose {}
+        val sensorManager = (context as? Activity)
+            ?.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
+        val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        var lastShakeTime = 0L
+        var lastX = 0f; var lastY = 0f; var lastZ = 0f
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                val x = event.values[0]; val y = event.values[1]; val z = event.values[2]
+                val delta = Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ)
+                lastX = x; lastY = y; lastZ = z
+                val now = System.currentTimeMillis()
+                if (delta > 18f && now - lastShakeTime > 1000L) {
+                    lastShakeTime = now
+                    isLocked = false
+                    resetInteraction()
+                }
+            }
+            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+        }
+        sensorManager?.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_UI)
+        onDispose { sensorManager?.unregisterListener(listener) }
+    }
+
+    // Bug fix #2: Use a single cancellable coroutine for auto-dim.
+    // LaunchedEffect cancels the previous coroutine when lastInteractionTime changes,
+    // so there's never more than one timer running at once.
+    LaunchedEffect(autoDimming, autoDimTimeout, lastInteractionTime) {
+        if (!autoDimming) return@LaunchedEffect
+        val timeoutMs = autoDimTimeout.coerceIn(3, 30) * 1000L
+        delay(timeoutMs)
+        isDimmed = true
+    }
+
+    // Hardware Screen Brightness Control (iPhone AOD Style Dimming)
+    DisposableEffect(isDimmed, isLocked) {
+        val window = (context as? Activity)?.window
+        window?.let { w ->
+            val lp = w.attributes
+            if (isDimmed || isLocked) {
+                lp.screenBrightness = 0.01f
+            } else {
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
+            w.attributes = lp
+        }
+        onDispose {
+            val window = (context as? Activity)?.window
+            window?.let { w ->
+                val lp = w.attributes
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                w.attributes = lp
+            }
+        }
+    }
     val accentColor =
         if (accentStyle == AodAccentStyle.THEME) MaterialTheme.colorScheme.primary else Color.White
     val supportsArtworkGlowShadow = thumbnailShapeType.supportsArtworkGlowShadow()
@@ -164,20 +341,59 @@ fun AodPlayerScreen(
     val textHorizontalAlignment = textAlignment.toHorizontalAlignment()
     val textAlign = textAlignment.toTextAlign()
 
+    BackHandler(enabled = true) {
+        if (isLocked) {
+            resetInteraction()
+        } else {
+            onExit()
+        }
+    }
+
     Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {}
+                .pointerInput(gesturesEnabled, isLocked) {
+                    detectTapGestures(
+                        onTap = { resetInteraction() },
+                        onDoubleTap = {
+                            resetInteraction()
+                            if (gesturesEnabled && !isLocked) {
+                                onPlayPause()
+                            }
+                        }
+                    )
+                }
+                .pointerInput(gesturesEnabled, isLocked) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { resetInteraction() },
+                        onHorizontalDrag = { _, _ -> },
+                        onDragEnd = {
+                            resetInteraction()
+                        }
+                    )
+                }
+                // Consume ALL vertical drags to block the notification shade
+                // from pulling down while in AOD mode.
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { resetInteraction() },
+                        onVerticalDrag = { _, _ -> }, // consume and discard
+                        onDragEnd = { resetInteraction() },
+                    )
+                }
                 .aodBackground(
                     style = backgroundStyle,
                     accentColor = accentColor,
                     ambientIntensity = ambientIntensity,
                 ),
     ) {
-        if (showExitButton) {
+        if (showExitButton && !isLocked) {
             IconButton(
-                onClick = onExit,
+                onClick = {
+                    resetInteraction()
+                    onExit()
+                },
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
@@ -199,12 +415,28 @@ fun AodPlayerScreen(
                 Modifier
                     .align(contentAlignment)
                     .fillMaxWidth()
+                    .offset { pixelShiftOffset }
+                    .alpha(contentAlpha)
                     .statusBarsPadding()
                     .navigationBarsPadding()
                     .padding(horizontal = horizontalPadding.coerceIn(16f, 72f).dp)
                     .padding(vertical = 32.dp),
         ) {
-            if (showThumbnail) {
+            // Live Clock & Battery Widget
+            AodClockWidget(
+                showClock = showClock,
+                clockStyle = clockStyle,
+                showBattery = showBattery,
+                accentColor = accentColor,
+            )
+
+            // Feature #5: Hide artwork in minimal locked state
+            AnimatedVisibility(
+                visible = showThumbnail && (!isLocked || !minimalLockedState),
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
+                if (showThumbnail) {
                 AsyncImage(
                     model = imageRequest,
                     contentDescription = null,
@@ -227,59 +459,91 @@ fun AodPlayerScreen(
                                 },
                             ).clip(thumbnailShape),
                 )
-            }
+                } // end if (showThumbnail)
+            } // end AnimatedVisibility
 
             Column(
                 horizontalAlignment = textHorizontalAlignment,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                // Feature #5: Minimal locked state — show only clock + title when locked
+                val showFullContent = !isLocked || !minimalLockedState
+
+                // Feature #4: Marquee scrolling for long titles
                 Text(
                     text = mediaMetadata.title,
                     style = MaterialTheme.typography.titleLarge,
                     color = Color.White,
-                    maxLines = titleMaxLines.coerceIn(1, 3),
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = if (marqueeTitles) 1 else titleMaxLines.coerceIn(1, 3),
+                    overflow = if (marqueeTitles) TextOverflow.Clip else TextOverflow.Ellipsis,
                     textAlign = textAlign,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (marqueeTitles) Modifier.basicMarquee() else Modifier),
                 )
-                if (showArtist) {
-                    Text(
-                        text = artistText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = White65,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = textAlign,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                AnimatedVisibility(
+                    visible = showFullContent && showArtist,
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300)),
+                ) {
+                    if (showArtist) {
+                        Text(
+                            text = artistText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = White65,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = textAlign,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
-                if (showAlbum && mediaMetadata.album?.title?.isNotBlank() == true) {
-                    Text(
-                        text = mediaMetadata.album.title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = White65.copy(alpha = 0.78f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = textAlign,
-                        modifier = Modifier.fillMaxWidth(),
+                AnimatedVisibility(
+                    visible = showFullContent && showAlbum && mediaMetadata.album?.title?.isNotBlank() == true,
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300)),
+                ) {
+                    if (showAlbum && mediaMetadata.album?.title?.isNotBlank() == true) {
+                        Text(
+                            text = mediaMetadata.album.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = White65.copy(alpha = 0.78f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = textAlign,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+
+            // Feature #5: Progress and controls hidden in minimal locked state
+            AnimatedVisibility(
+                visible = showProgress && (!isLocked || !minimalLockedState),
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
+                if (showProgress && !isLocked) {
+                    AodSliderSection(
+                        position = position,
+                        duration = duration,
+                        sliderPosition = sliderPosition,
+                        accentColor = accentColor,
+                        showTimeLabels = showTimeLabels,
+                        onSeek = {
+                            resetInteraction()
+                            onSeek(it)
+                        },
+                        onSeekFinished = {
+                            resetInteraction()
+                            onSeekFinished()
+                        },
                     )
                 }
             }
 
-            if (showProgress) {
-                AodSliderSection(
-                    position = position,
-                    duration = duration,
-                    sliderPosition = sliderPosition,
-                    accentColor = accentColor,
-                    showTimeLabels = showTimeLabels,
-                    onSeek = onSeek,
-                    onSeekFinished = onSeekFinished,
-                )
-            }
-
-            if (showControls) {
+            if (showControls && !isLocked) {
                 AodControls(
                     isPlaying = isPlaying,
                     canSkipPrevious = canSkipPrevious,
@@ -287,12 +551,49 @@ fun AodPlayerScreen(
                     controlStyle = controlStyle,
                     controlSize = controlSize.coerceIn(52f, 84f),
                     accentColor = accentColor,
-                    onPlayPause = onPlayPause,
-                    onSkipPrevious = onSkipPrevious,
-                    onSkipNext = onSkipNext,
+                    onPlayPause = {
+                        resetInteraction()
+                        onPlayPause()
+                    },
+                    onSkipPrevious = {
+                        resetInteraction()
+                        onSkipPrevious()
+                    },
+                    onSkipNext = {
+                        resetInteraction()
+                        onSkipNext()
+                    },
+                )
+            }
+
+            // Bug fix #5: Slide-to-lock shown independently of showControls so the
+            // user can always lock even when playback controls are hidden in settings.
+            if (!isLocked) {
+                AodSlideToLockButton(
+                    accentColor = accentColor,
+                    onLock = {
+                        resetInteraction()
+                        isLocked = true
+                    },
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
         }
+
+        // Touch Lock Overlay
+        AodTouchLockOverlay(
+            isLocked = isLocked,
+            unlockMethod = unlockMethod,
+            accentColor = accentColor,
+            onUnlock = {
+                resetInteraction()
+                isLocked = false
+            },
+            onAuthenticateBiometric = {
+                resetInteraction()
+                isLocked = false
+            },
+        )
     }
 }
 

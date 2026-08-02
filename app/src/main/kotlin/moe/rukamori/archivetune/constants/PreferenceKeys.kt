@@ -60,6 +60,23 @@ val AodHorizontalPaddingKey = floatPreferencesKey("aodHorizontalPadding")
 val AodVerticalSpacingKey = floatPreferencesKey("aodVerticalSpacing")
 val AodTitleMaxLinesKey = intPreferencesKey("aodTitleMaxLines")
 val AodAmbientIntensityKey = floatPreferencesKey("aodAmbientIntensity")
+val AodTouchLockEnabledKey = booleanPreferencesKey("aodTouchLockEnabled")
+val AodUnlockMethodKey = stringPreferencesKey("aodUnlockMethod")
+val AodShowClockKey = booleanPreferencesKey("aodShowClock")
+val AodClockStyleKey = stringPreferencesKey("aodClockStyle")
+val AodShowBatteryKey = booleanPreferencesKey("aodShowBattery")
+val AodPixelShiftEnabledKey = booleanPreferencesKey("aodPixelShiftEnabled")
+val AodShowLyricTickerKey = booleanPreferencesKey("aodShowLyricTicker")
+val AodAutoDimmingKey = booleanPreferencesKey("aodAutoDimming")
+val AodAutoDimTimeoutKey = intPreferencesKey("aodAutoDimTimeout")
+val AodGesturesEnabledKey = booleanPreferencesKey("aodGesturesEnabled")
+
+// New feature keys
+val AodShakeToUnlockKey = booleanPreferencesKey("aodShakeToUnlock")
+val AodAutoLockEnabledKey = booleanPreferencesKey("aodAutoLockEnabled")
+val AodAutoLockTimeoutKey = intPreferencesKey("aodAutoLockTimeout")   // seconds
+val AodMarqueeTitlesKey = booleanPreferencesKey("aodMarqueeTitles")
+val AodMinimalLockedStateKey = booleanPreferencesKey("aodMinimalLockedState")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val BlurRadiusKey = floatPreferencesKey("blurRadius")
@@ -119,6 +136,18 @@ enum class AodControlStyle {
     FILLED,
     TONAL,
     MINIMAL,
+}
+
+enum class AodUnlockMethod {
+    SLIDE,
+    FINGERPRINT,
+    HOLD,
+}
+
+enum class AodClockStyle {
+    BOLD_DIGITAL,
+    MINIMAL,
+    ELEGANT_THIN,
 }
 
 enum class SliderStyle {
