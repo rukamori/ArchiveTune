@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import android.os.Build
@@ -69,13 +70,13 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.layer.toImageBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -171,11 +172,12 @@ fun FloatingNavigationToolbar(
             }
         } ?: MaterialTheme.shapes.extraLarge
     // True backdrop blur on Android 12+ uses RenderEffect (hardware-accelerated, every frame).
-    // Below API 31, RenderEffect is unavailable — the pre-S path falls back to a periodically
-    // captured + CPU-blurred bitmap (see [rememberPreSFrostedBitmap]) so the frosted setting
-    // still has a visible effect on older devices instead of degrading to a plain solid bar.
-    val canBlurBackdrop = frostedBlur && frostedBackdrop != null
+    // Below API 31 the frosted effect is disabled entirely: the pre-S CPU-blurred-bitmap fallback
+    // produced visible glitches and tearing on older devices, so we degrade to a plain solid bar.
+    // The Settings screen surfaces a "not supported on Android versions below 12" warning under
+    // the toggle when running on pre-S.
     val isPreS = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    val canBlurBackdrop = frostedBlur && frostedBackdrop != null && !isPreS
     val navigationContainerColor =
         if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     val motionScheme = MaterialTheme.motionScheme
@@ -263,13 +265,17 @@ fun FloatingNavigationToolbar(
         contentAlignment = Alignment.Center,
     ) {
         var barPositionInRoot by remember { mutableStateOf(Offset.Zero) }
+        var barSize by remember { mutableStateOf(IntSize.Zero) }
         Surface(
             modifier =
                 Modifier
                     .widthIn(max = if (isFloating) FloatingNavigationBarMaxWidth else NavigationBarMaxWidth)
                     .fillMaxWidth()
                     .height(NavigationBarHeight)
-                    .onGloballyPositioned { barPositionInRoot = it.positionInRoot() },
+                    .onGloballyPositioned {
+                        barPositionInRoot = it.positionInRoot()
+                        barSize = it.size
+                    },
             shape = navigationShape,
             color = navigationContainerColor,
             tonalElevation = NavigationBarDefaults.Elevation,
@@ -278,13 +284,17 @@ fun FloatingNavigationToolbar(
             if (canBlurBackdrop && frostedBackdrop != null) {
                 if (isPreS) {
                     // Pre-Android 12: RenderEffect is unavailable. Capture the app-content
-                    // GraphicsLayer periodically (see [rememberPreSFrostedBitmap]), blur it on
-                    // the CPU via ImageBlurUtils, and composite the result on top of the opaque
-                    // bar at the same bounded alpha as the S+ path. The bar surface's shape
-                    // already clips its content, so the overlay is correctly clipped to the
-                    // pill shape.
+                    // GraphicsLayer periodically (see [rememberPreSFrostedBitmap]), extract just
+                    // the slice under the bar, blur it on the CPU via ImageBlurUtils, and composite
+                    // the small blurred slice on top of the opaque bar at the same bounded alpha as
+                    // the S+ path. The bar surface's shape already clips its content, so the
+                    // overlay is correctly clipped to the pill shape. The blurred slice is already
+                    // aligned to the bar's top-left (the helper extracts it from the bar's position
+                    // in root), so we draw it at (0, 0) — no translate, no clip needed.
                     val blurredBitmap = rememberPreSFrostedBitmap(
                         backdrop = frostedBackdrop,
+                        barPositionInRoot = barPositionInRoot,
+                        barSize = barSize,
                         blurRadiusPx = FrostedNavBarBlurRadiusPx,
                     )
                     if (blurredBitmap != null) {
@@ -296,10 +306,7 @@ fun FloatingNavigationToolbar(
                                         alpha = FrostedNavBarOverlayAlpha
                                         clip = true
                                     }.drawBehind {
-                                        val offset = frostedBackdrop.contentOffsetInRoot - barPositionInRoot
-                                        translate(offset.x, offset.y) {
-                                            drawImage(blurredBitmap)
-                                        }
+                                        drawImage(blurredBitmap)
                                     },
                         )
                     }
@@ -486,39 +493,153 @@ fun FloatingNavigationToolbar(
  * [ImageBlurUtils.blur] (a pure-CPU stack blur that needs no RenderEffect), and publishing the
  * result as an [ImageBitmap] the caller draws with the same offset/alpha as the S+ path.
  *
- * Throttling: the capture+blur runs on [Dispatchers.Default] every [updateIntervalMs] (default
- * ~5 fps). Frosted glass doesn't need 60 fps — the underlying content rarely changes faster than
- * that, and a full-screen stack blur every frame would tank pre-S hardware. The first frame is
- * captured immediately so the bar isn't transparent for a full interval on first composition.
+ * SLICE OPTIMIZATION (fixes the "weird glitchy blur" the user reported on pre-S):
+ * The original implementation captured the FULL app-content layer (typically 1080x2400 px on a
+ * phone), blurred the entire thing, then drew a small slice of it on the bar via translate+clip.
+ * That had three problems on pre-S hardware:
+ *   1. The full-screen capture + full-screen blur was slow, forcing a 200 ms update interval
+ *      (5 fps) — visible "jumps" as content scrolled, reading as glitchiness.
+ *   2. [ImageBlurUtils.blur] downscales any source >720 px to 720 px before stack-blurring, then
+ *      upscales back. On a full-screen source the downscale factor was ~0.3, so the blurred
+ *      result was extremely low-resolution and looked pixelated/muddy when upscaled.
+ *   3. Allocating a full-screen ARGB_8888 bitmap (~10 MB) every frame caused heavy GC pressure,
+ *      adding stutter on top of the slow blur.
  *
- * Returns `null` while the layer has no size (before first `record { ... }`) or if the capture
- * fails — the caller should keep the opaque base surface in that case.
+ * The slice path fixes all three: we capture the full layer ONCE per update (unavoidable —
+ * GraphicsLayer has no region capture), but then immediately extract just the small rectangle
+ * that lies under the bar (e.g. 1080x240 px) via [Bitmap.createBitmap] before blurring. The
+ * slice is small enough that [ImageBlurUtils.blur]'s 720 px downscale threshold either doesn't
+ * trigger or triggers at a much milder factor (~0.67 instead of ~0.3), so the blur keeps real
+ * resolution. The slice is also ~10x smaller, so allocation/GC is ~10x lighter and we can push
+ * the update interval down to 80 ms (~12 fps) for visibly smoother tracking. The slice is
+ * extracted with [blurRadiusPx] of padding on every side so the stack blur has neighboring
+ * pixels to sample at the bar's edges — without padding the blur would just clamp the bar's own
+ * edge pixels and the frost would look wrong at the boundary.
+ *
+ * The caller receives the small blurred slice (already aligned to the bar's top-left) and draws
+ * it at (0, 0) — no translate, no clip — at the same bounded alpha as the S+ path. If the bar
+ * moves between slice extraction and draw, the slice shows the content that was at the bar's
+ * extraction-time position; for the navigation bar (which is fixed) and the mini player (which
+ * only moves during drag), this is imperceptible.
+ *
+ * Returns `null` while the layer has no size (before first `record { ... }`), while the bar
+ * hasn't been positioned yet, or if the capture fails — the caller should keep the opaque base
+ * surface in that case.
+ *
+ * @param backdrop The shared capture handle (layer + content offset in root).
+ * @param barPositionInRoot The bar's current top-left position in root coordinates. Read fresh
+ *   each capture via [rememberUpdatedState], so the slice tracks the bar as it moves.
+ * @param barSize The bar's current size in pixels. Read fresh each capture.
+ * @param blurRadiusPx Blur radius in raw pixels (clamped to 0.5..48 by [ImageBlurUtils.blur]).
+ * @param updateIntervalMs Capture+blur throttle. Default 80 ms (~12 fps) — fast enough for
+ *   smooth frosted tracking, slow enough to not tank pre-S hardware.
  */
 @Composable
 internal fun rememberPreSFrostedBitmap(
     backdrop: NavigationBarBackdrop?,
+    barPositionInRoot: Offset,
+    barSize: IntSize,
     blurRadiusPx: Float,
-    updateIntervalMs: Long = 200L,
+    updateIntervalMs: Long = 80L,
 ): ImageBitmap? {
     if (backdrop == null) return null
     var blurred by remember(backdrop, blurRadiusPx, updateIntervalMs) {
         mutableStateOf<ImageBitmap?>(null)
     }
+    // rememberUpdatedState lets the LaunchedEffect's coroutine read the LATEST bar position/size
+    // without re-launching on every layout pass (the LaunchedEffect's keys are intentionally
+    // coarse — backdrop/blurRadius/interval — so the capture loop isn't torn down and rebuilt
+    // every time the bar moves).
+    val barPositionState = rememberUpdatedState(barPositionInRoot)
+    val barSizeState = rememberUpdatedState(barSize)
+
     LaunchedEffect(backdrop, blurRadiusPx, updateIntervalMs) {
-        // First frame: capture immediately so the bar isn't opaque-only for a full interval.
         while (isActive) {
             val layer = backdrop.layer
-            val w = layer.size.width
-            val h = layer.size.height
-            if (w > 0 && h > 0) {
+            val layerW = layer.size.width
+            val layerH = layer.size.height
+            if (layerW > 0 && layerH > 0) {
                 try {
                     val next = withContext(Dispatchers.Default) {
+                        // Read the latest bar geometry. These States are updated by the caller's
+                        // onGloballyPositioned, which fires on the main thread during layout.
+                        val pos = barPositionState.value
+                        val size = barSizeState.value
+                        if (size.width <= 0 || size.height <= 0) return@withContext null
+
+                        // The slice is the bar's bounds expressed in the LAYER's coordinate
+                        // system (layer's top-left is contentOffsetInRoot in root coords).
+                        val contentOffset = backdrop.contentOffsetInRoot
+                        val rawX = (pos.x - contentOffset.x).toInt()
+                        val rawY = (pos.y - contentOffset.y).toInt()
+
+                        // Padding around the slice so the stack blur has neighboring pixels to
+                        // sample at the bar's edges. Without this, the blur clamps the bar's own
+                        // edge pixels and the frost looks wrong at the boundary.
+                        val pad = blurRadiusPx.toInt().coerceIn(8, 64)
+
+                        // Clamp the padded slice to the layer's bounds. If the bar is partially
+                        // off-layer (e.g. floating bar that overshoots), we still capture what we
+                        // can — the missing pixels are filled with the layer's edge color via
+                        // stack blur's edge clamping, which is acceptable.
+                        val paddedX = rawX - pad
+                        val paddedY = rawY - pad
+                        val paddedW = size.width + 2 * pad
+                        val paddedH = size.height + 2 * pad
+                        val clampedX = paddedX.coerceIn(0, layerW - 1)
+                        val clampedY = paddedY.coerceIn(0, layerH - 1)
+                        val clampedRight = (paddedX + paddedW).coerceIn(1, layerW)
+                        val clampedBottom = (paddedY + paddedH).coerceIn(1, layerH)
+                        val clampedW = clampedRight - clampedX
+                        val clampedH = clampedBottom - clampedY
+                        if (clampedW <= 0 || clampedH <= 0) return@withContext null
+
+                        // Capture the full layer to a bitmap. This is the expensive part (GPU→CPU
+                        // readback) but is unavoidable — GraphicsLayer has no region capture API.
                         val imageBitmap = layer.toImageBitmap()
-                        val androidBmp: Bitmap = imageBitmap.asAndroidBitmap()
-                        val blurredBmp = ImageBlurUtils.blur(androidBmp, blurRadiusPx)
-                        blurredBmp.asImageBitmap()
+                        val fullBitmap = imageBitmap.asAndroidBitmap()
+
+                        // Extract just the small slice under the bar (with padding). This is a
+                        // cheap pixel copy; the slice is ~10x smaller than the full bitmap.
+                        val sliceBitmap = Bitmap.createBitmap(
+                            fullBitmap,
+                            clampedX,
+                            clampedY,
+                            clampedW,
+                            clampedH,
+                        )
+
+                        // Blur the small slice directly. Because the slice is small, the 720 px
+                        // downscale threshold in ImageBlurUtils either doesn't trigger or triggers
+                        // at a mild factor, so the blur keeps real resolution (no muddy upscale).
+                        val blurredSlice = ImageBlurUtils.blur(sliceBitmap, blurRadiusPx)
+
+                        // Crop the bar's actual bounds out of the (padded) blurred slice. The
+                        // slice's top-left corresponds to layer coords (clampedX, clampedY), so
+                        // the bar's top-left in the slice is at (rawX - clampedX, rawY - clampedY).
+                        // In the common case (no edge clipping) this is (pad, pad). If the bar
+                        // was near the layer's edge and padding was clipped, the offset is
+                        // smaller but never negative (clampedX <= rawX because the bar is inside
+                        // the layer, so rawX - clampedX >= 0).
+                        val barXInSlice = (rawX - clampedX).coerceIn(0, blurredSlice.width - 1)
+                        val barYInSlice = (rawY - clampedY).coerceIn(0, blurredSlice.height - 1)
+                        val barW = size.width.coerceAtMost(blurredSlice.width - barXInSlice)
+                        val barH = size.height.coerceAtMost(blurredSlice.height - barYInSlice)
+                        if (barW <= 0 || barH <= 0) {
+                            // Degenerate slice — return as-is and let the caller clip.
+                            blurredSlice.asImageBitmap()
+                        } else if (barXInSlice == 0 && barYInSlice == 0 &&
+                            blurredSlice.width == size.width && blurredSlice.height == size.height
+                        ) {
+                            // No padding was added (pad == 0, impossible here since pad >= 8) or
+                            // slice is already exactly the bar size — skip the extra allocation.
+                            blurredSlice.asImageBitmap()
+                        } else {
+                            Bitmap.createBitmap(blurredSlice, barXInSlice, barYInSlice, barW, barH)
+                                .asImageBitmap()
+                        }
                     }
-                    blurred = next
+                    if (next != null) blurred = next
                 } catch (_: Throwable) {
                     // Capture or blur failed (e.g. OOM, native crash on some devices) — keep the
                     // previous frame; the opaque base surface is still visible underneath.

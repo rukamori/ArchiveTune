@@ -22,8 +22,9 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -83,6 +84,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -93,6 +95,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -138,8 +141,6 @@ import androidx.media3.common.Player.STATE_READY
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -154,6 +155,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -190,6 +192,7 @@ import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
+import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
@@ -199,6 +202,9 @@ import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.PlayerPaletteCache
+import moe.rukamori.archivetune.playback.artwork.PlayerPaletteCacheKey
+import moe.rukamori.archivetune.playback.artwork.guessArtworkProvider
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
@@ -312,6 +318,7 @@ fun BottomSheetPlayer(
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
     isMiniPlayerPairedWithNavigation: Boolean = false,
+    onLyricsVisibilityChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -447,6 +454,10 @@ fun BottomSheetPlayer(
     val currentSongLiked = currentSong?.song?.liked == true
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
+    // Snapshot the lyrics entity for the AOD screen — AOD shows only the current line, so we
+    // pass the raw text down rather than the full Lyrics composable tree (cheaper to render,
+    // and matches the "dim, low-power" goal of always-on display).
+    val currentLyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
@@ -497,159 +508,119 @@ fun BottomSheetPlayer(
     // Track loading state: when buffering or when user is seeking
     val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
 
+    // Palette state. The previous valid palette stays visible while the next track's artwork
+    // loads; it is only replaced by a successfully extracted palette (or kept on failure).
+    // A theme-grey fallback is used only when no valid palette has ever existed.
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
+    var hasValidGradientPalette by remember { mutableStateOf(false) }
 
-    // Previous background states for smooth transitions
-    var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
-    var previousGradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
-
-    // Cache for gradient colors to prevent re-extraction for same songs
-    val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
-
-    // Default gradient colors for fallback
+    // Default gradient colors for the initial fallback
     val defaultGradientColors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    // Update previous states when media changes
-    LaunchedEffect(mediaMetadata?.id) {
-        val currentThumbnail = mediaMetadata?.thumbnailUrl
-        if (currentThumbnail != previousThumbnailUrl) {
-            previousThumbnailUrl = currentThumbnail
-            previousGradientColors = gradientColors
-        }
-    }
+    // The palette source is exactly the artwork the player displays: the metadata thumbnail
+    // (kept in sync with the authoritative artwork resolver, including Tidal fallback commits).
+    val paletteArtworkUrl = mediaMetadata?.thumbnailUrl
 
-    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, playerBackground, playerDesignStyle) {
+    LaunchedEffect(mediaMetadata?.id, paletteArtworkUrl, playerBackground, useDarkTheme) {
         if (aodModeEnabled) return@LaunchedEffect
-        if (playerDesignStyle == PlayerDesignStyle.V9 ||
+        val wantsPalette =
             playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
-            playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
-            playerBackground == PlayerBackgroundStyle.GLOW ||
-            playerBackground == PlayerBackgroundStyle.GLOW_ANIMATED
-        ) {
-            val currentMetadata = mediaMetadata
-            if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
-                // Check cache first
-                val cachedColors = gradientColorsCache[currentMetadata.id]
-                if (cachedColors != null) {
-                    gradientColors = cachedColors
-                } else {
-                    val request =
-                        ImageRequest
-                            .Builder(context)
-                            .data(currentMetadata.thumbnailUrl)
-                            .memoryCacheKey(currentMetadata.thumbnailUrl)
-                            .diskCacheKey(currentMetadata.thumbnailUrl)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .networkCachePolicy(CachePolicy.ENABLED)
-                            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                            .allowHardware(false)
-                            .build()
-
-                    val result =
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                context.imageLoader.execute(request)
-                            }
-                        }.getOrNull()
-
-                    if (result != null) {
-                        val bitmap = result.image?.toBitmap()
-                        if (bitmap != null) {
-                            val palette =
-                                withContext(Dispatchers.Default) {
-                                    Palette
-                                        .from(bitmap)
-                                        .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                        .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                                        .generate()
-                                }
-
-                            val extractedColors =
-                                PlayerColorExtractor.extractGradientColors(
-                                    palette = palette,
-                                    fallbackColor = fallbackColor,
-                                )
-
-                            gradientColorsCache[currentMetadata.id] = extractedColors
-                            gradientColors = extractedColors
-                        } else {
-                            gradientColors = defaultGradientColors
-                        }
-                    } else {
-                        gradientColors = defaultGradientColors
-                    }
-                }
-            } else {
-                gradientColors = emptyList()
-            }
-        } else {
+                playerBackground == PlayerBackgroundStyle.BLUR ||
+                playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
+                playerBackground == PlayerBackgroundStyle.GLOW ||
+                playerBackground == PlayerBackgroundStyle.GLOW_ANIMATED
+        if (!wantsPalette) {
             gradientColors = emptyList()
+            hasValidGradientPalette = false
+            return@LaunchedEffect
+        }
+        val currentMetadata = mediaMetadata
+        val artworkUrl = currentMetadata?.thumbnailUrl
+        if (currentMetadata == null || artworkUrl.isNullOrBlank()) {
+            if (!hasValidGradientPalette) gradientColors = emptyList()
+            return@LaunchedEffect
+        }
+
+        val cacheKey =
+            PlayerPaletteCacheKey(
+                mediaId = currentMetadata.id,
+                provider = guessArtworkProvider(artworkUrl),
+                artworkIdentity = artworkUrl,
+                backgroundMode = playerBackground.name,
+                darkTheme = useDarkTheme,
+            )
+        PlayerPaletteCache.get(cacheKey)?.let { cachedColors ->
+            gradientColors = cachedColors
+            hasValidGradientPalette = true
+            return@LaunchedEffect
+        }
+
+        val request =
+            ImageRequest
+                .Builder(context)
+                .data(artworkUrl)
+                .memoryCacheKey(artworkUrl)
+                .diskCacheKey(artworkUrl)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .networkCachePolicy(CachePolicy.ENABLED)
+                .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+                .allowHardware(false)
+                .build()
+
+        val result =
+            try {
+                withContext(Dispatchers.IO) { context.imageLoader.execute(request) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                null
+            }
+
+        // Only successful image results may feed the palette. On failure keep the previous
+        // valid palette; use the theme fallback only if no palette has ever succeeded.
+        if (result !is SuccessResult) {
+            if (!hasValidGradientPalette) gradientColors = defaultGradientColors
+            return@LaunchedEffect
+        }
+        val bitmap = result.image?.toBitmap()
+        if (bitmap == null) {
+            if (!hasValidGradientPalette) gradientColors = defaultGradientColors
+            return@LaunchedEffect
+        }
+
+        val palette =
+            withContext(Dispatchers.Default) {
+                Palette
+                    .from(bitmap)
+                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                    .generate()
+            }
+
+        val extractedColors =
+            PlayerColorExtractor.extractGradientColors(
+                palette = palette,
+                fallbackColor = fallbackColor,
+            )
+
+        // Stale-result guard: the artwork identity must still be what the player displays.
+        val stillCurrent =
+            mediaMetadata?.id == currentMetadata.id &&
+                mediaMetadata?.thumbnailUrl == artworkUrl
+        if (stillCurrent) {
+            PlayerPaletteCache.put(cacheKey, extractedColors)
+            gradientColors = extractedColors
+            hasValidGradientPalette = true
         }
     }
 
     val changeBound = state.expandedBound / 3
 
-    val dominantColor = gradientColors.firstOrNull() ?: MaterialTheme.colorScheme.primary
-    val targetBgColor = remember(dominantColor, useDarkTheme) {
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(dominantColor.toArgb(), hsv)
-        if (useDarkTheme) {
-            hsv[1] = hsv[1].coerceIn(0.12f, 0.35f)
-            hsv[2] = 0.08f
-        } else {
-            hsv[1] = hsv[1].coerceIn(0.04f, 0.12f)
-            hsv[2] = 0.96f
-        }
-        Color(android.graphics.Color.HSVToColor(hsv))
-    }
-    val dynamicBgColor by animateColorAsState(
-        targetValue = targetBgColor,
-        animationSpec = tween(durationMillis = 800),
-        label = "dynamicBgColor"
-    )
-
-    val targetAccentColor = dominantColor
-    val dynamicAccentColor by animateColorAsState(
-        targetValue = targetAccentColor,
-        animationSpec = tween(durationMillis = 800),
-        label = "dynamicAccentColor"
-    )
-
-    val targetTextColor = remember(dominantColor, useDarkTheme) {
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(dominantColor.toArgb(), hsv)
-        if (useDarkTheme) {
-            hsv[1] = hsv[1].coerceAtMost(0.12f)
-            hsv[2] = 0.96f
-        } else {
-            hsv[1] = hsv[1].coerceIn(0.12f, 0.35f)
-            hsv[2] = 0.08f
-        }
-        Color(android.graphics.Color.HSVToColor(hsv))
-    }
-    val dynamicTextColor by animateColorAsState(
-        targetValue = targetTextColor,
-        animationSpec = tween(durationMillis = 800),
-        label = "dynamicTextColor"
-    )
-
-    val targetIconButtonColor = remember(dynamicAccentColor) {
-        val luminance = 0.299f * dynamicAccentColor.red + 0.587f * dynamicAccentColor.green + 0.114f * dynamicAccentColor.blue
-        if (luminance > 0.5f) Color.Black else Color.White
-    }
-    val dynamicIconButtonColor by animateColorAsState(
-        targetValue = targetIconButtonColor,
-        animationSpec = tween(durationMillis = 800),
-        label = "dynamicIconButtonColor"
-    )
-
     val TextBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            dynamicTextColor
-        } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.White
         } else {
             when (playerBackground) {
@@ -665,9 +636,7 @@ fun BottomSheetPlayer(
         }
 
     val icBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            dynamicBgColor
-        } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.Black
         } else {
             when (playerBackground) {
@@ -683,26 +652,20 @@ fun BottomSheetPlayer(
         }
 
     val (textButtonColor, iconButtonColor) =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            Pair(dynamicAccentColor, dynamicIconButtonColor)
-        } else {
-            when (playerButtonsStyle) {
-                PlayerButtonsStyle.DEFAULT -> {
-                    Pair(TextBackgroundColor, icBackgroundColor)
-                }
+        when (playerButtonsStyle) {
+            PlayerButtonsStyle.DEFAULT -> {
+                Pair(TextBackgroundColor, icBackgroundColor)
+            }
 
-                PlayerButtonsStyle.SECONDARY -> {
-                    Pair(
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.onSecondary,
-                    )
-                }
+            PlayerButtonsStyle.SECONDARY -> {
+                Pair(
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.onSecondary,
+                )
             }
         }.let { (tb, ib) ->
             if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
                 Pair(Color.White, Color.Black)
-            } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-                Pair(dynamicAccentColor, dynamicIconButtonColor)
             } else {
                 Pair(tb, ib)
             }
@@ -751,7 +714,7 @@ fun BottomSheetPlayer(
             onDismissRequest = { showSleepTimerDialog = false },
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.bedtime),
+                    painter = painterResource(R.drawable.player_bedtime),
                     contentDescription = null,
                 )
             },
@@ -874,19 +837,107 @@ fun BottomSheetPlayer(
             QueuePeekHeight
         }
 
-    val dismissedBound = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+    val systemBarsBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+
+    // Queue sheet anchors. The previous code set collapsedBound == dismissedBound,
+    // which collapsed the sheet onto the dismissed anchor. At that anchor
+    // `isDismissed == true`, so per BottomSheet.kt the collapsedContent was NOT
+    // rendered (and neither was expandedContent since `isCollapsed == true`).
+    // Net effect: dragging the queue down made it vanish instantly — the user
+    // saw an empty strip with no controls and no way to drag it back up.
+    //
+    // The fix separates the two anchors:
+    //   - dismissedBound = 0.dp → sheet is fully off-screen (below the viewport)
+    //   - collapsedBound = peek + systemBarsBottom → sheet shows the peek/mini
+    //     controls just above the system bar
+    //
+    // Now dragging down snaps to collapsedBound (peek visible, controls tappable),
+    // and a hard downward fling past collapsedBound goes to dismissedBound only
+    // if `onDismiss != null` — which it isn't for Queue — so the sheet stays at
+    // the peek instead of vanishing. The user can tap the queue button to
+    // re-expand at any time.
+    val dismissedBound = 0.dp
+    val collapsedBound = dynamicQueuePeekHeight + systemBarsBottom
 
     val queueSheetState =
         rememberBottomSheetState(
             dismissedBound = dismissedBound,
             expandedBound = state.expandedBound,
-            collapsedBound = dismissedBound,
-            initialAnchor = 0,
+            collapsedBound = collapsedBound,
+            // Start at COLLAPSED so the per-style peek bar (QueueCollapsedContentVX,
+            // which lives in Queue.kt's BottomSheet.collapsedContent) is rendered as
+            // soon as the player expands. With the previous default (DISMISSED_ANCHOR)
+            // the collapsedContent was suppressed (BottomSheet only renders it when
+            // !isDismissed), so the peek — and every per-style lyrics / queue / sleep
+            // timer / repeat / shuffle / menu / audio-output button inside it — was
+            // invisible on first launch and after restoring a saved DISMISSED anchor,
+            // even though the player content already reserved `collapsedBound` of
+            // empty space for it. The Apple Music style was unaffected because its
+            // bottom row is baked into AppleMusicControlsColumn (player content), not
+            // into the queue sheet's peek.
+            initialAnchor = COLLAPSED_ANCHOR,
         )
+
+    // Per-style peek-bar visibility safety net.
+    //
+    // The per-style bottom controls (lyrics / queue / AirPlay / sleep-timer /
+    // repeat / shuffle / menu / audio-output device pill) all live inside the
+    // queue sheet's `collapsedContent` (QueueCollapsedContentV1..V9 in
+    // QueueComponents.kt). That content is only rendered on-screen when the
+    // queue sheet is at its COLLAPSED anchor — at EXPANDED the full queue list
+    // covers it, and at DISMISSED the outer Box is offset entirely off-screen
+    // (offset.y == expandedBound). In both cases the user sees the empty gap
+    // below the playback controls that they keep reporting, even though each
+    // style's peek bar is fully defined with its own buttons and styling.
+    //
+    // The queue sheet's `previousAnchor` is `rememberSaveable`, so it survives
+    // process death and player collapse/expand cycles. That means three
+    // non-COLLAPSED states can survive into the next player-open:
+    //
+    //   1. DISMISSED_ANCHOR — leftover from a pre-fix saved state (the old
+    //      default `initialAnchor = 0`). The queue sheet starts off-screen.
+    //   2. EXPANDED_ANCHOR — the user opened the queue list, then collapsed
+    //      the player without first collapsing the queue. The queue sheet
+    //      starts at EXPANDED, so the peek bar is suppressed and the queue
+    //      list covers the bottom of the player.
+    //   3. Mid-animation values — rare, but possible if the player is re-opened
+    //      while a previous queue animation is still settling.
+    //
+    // The previous safety net only handled case 1 (keyed on
+    // `queueSheetState.isDismissed`). Cases 2 and 3 still produced the empty
+    // gap. This net keys solely on `state.isExpandedOrExpanding` so it fires
+    // exactly once per player-open transition and snaps the queue sheet to
+    // COLLAPSED regardless of which non-COLLAPSED state it was in. The snap
+    // happens while the player content's alpha is still 0 (the player's
+    // content BoxWithConstraints uses `alpha = ((progress - 0.25f) * 4)` which
+    // is 0 for the first 25% of the expand animation), so the user never sees
+    // a flash of the queue list or a jarring jump — the peek bar is just
+    // visible by the time the player content fades in.
+    //
+    // The user can still expand the queue list at any time by tapping the
+    // queue button (which calls `openQueue` → `queueSheetState.expandSoft()`);
+    // this net only fires on the player-open transition, not on every
+    // recomposition, so it doesn't fight the user's explicit expand action.
+    LaunchedEffect(state.isExpandedOrExpanding) {
+        if (state.isExpandedOrExpanding && !queueSheetState.isCollapsed) {
+            queueSheetState.collapseSoft()
+        }
+    }
 
     var isLyricsScreenVisible by rememberSaveable {
         mutableStateOf(false)
     }
+
+    // Report full-screen lyrics visibility upward so the status bar can be hidden for every player
+    // style while the lyrics overlay is showing (previously only the Immersive style went edge-to-edge).
+    val lyricsFullScreenActive = isLyricsScreenVisible && state.isExpandedOrExpanding
+    LaunchedEffect(lyricsFullScreenActive) {
+        onLyricsVisibilityChange(lyricsFullScreenActive)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onLyricsVisibilityChange(false) }
+    }
+
     val openQueue =
         remember(state, queueSheetState) {
             {
@@ -1007,18 +1058,7 @@ fun BottomSheetPlayer(
                     }
                 },
         backgroundColor =
-            if (playerDesignStyle == PlayerDesignStyle.V9) {
-                val progress =
-                    ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                        .coerceIn(0f, 1f)
-                val fadeProgress =
-                    if (progress < 0.2f) {
-                        ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                    } else {
-                        0f
-                    }
-                dynamicBgColor.copy(alpha = 1f - fadeProgress)
-            } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+            if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
                 val progress =
                     ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                         .coerceIn(0f, 1f)
@@ -1177,6 +1217,34 @@ fun BottomSheetPlayer(
             mutableIntStateOf(0)
         }
 
+        // Prefetch the canvas artwork for the next-up song in the background
+        // so when the user skips, the canvas starts animating within ~100ms
+        // instead of waiting for the ArchiveTuneCanvas API lookup (~200-800ms).
+        // Skipped if the next-up canvas is already cached (cheap in-memory
+        // check) or if low-data mode is on (respect the user's data-saver).
+        LaunchedEffect(nextUpMetadata?.id, shouldUseV7Canvas, shouldUseArtworkCanvas, lowDataModeActive) {
+            val next = nextUpMetadata ?: return@LaunchedEffect
+            val nextMediaId = next.id.trim().takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+            if (!shouldUseV7Canvas && !shouldUseArtworkCanvas) return@LaunchedEffect
+            if (lowDataModeActive) return@LaunchedEffect
+            // Skip if already cached — CanvasArtworkPlaybackCache.hasEntry is
+            // a cheap in-memory map lookup, no I/O.
+            if (CanvasArtworkPlaybackCache.hasEntry(nextMediaId)) return@LaunchedEffect
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                runCatching {
+                    resolveCanvasArtworkForPlayback(
+                        mediaId = nextMediaId,
+                        songTitleRaw = next.title,
+                        artistNameRaw = next.artists.firstOrNull()?.name.orEmpty(),
+                        storefront = storefront,
+                        requireVertical = shouldUseV7Canvas,
+                        allowNetwork = true,
+                        albumTitle = next.album?.title,
+                    )
+                }
+            }
+        }
+
         LaunchedEffect(playerConnection, mediaMetadata?.id) {
             playerConnection.canvasArtworkUpdates.collect { update ->
                 if (update.mediaId != mediaMetadata?.id) return@collect
@@ -1219,6 +1287,7 @@ fun BottomSheetPlayer(
                         storefront = storefront,
                         requireVertical = true,
                         allowNetwork = shouldFetchV7Canvas,
+                        albumTitle = metadata.album?.title,
                     )
                 if (requestRevision == canvasArtworkRevision) {
                     v7CanvasArtwork = resolvedArtwork
@@ -1256,6 +1325,7 @@ fun BottomSheetPlayer(
                         storefront = storefront,
                         requireVertical = false,
                         allowNetwork = shouldFetchArtworkCanvas,
+                        albumTitle = metadata.album?.title,
                     )
                 if (requestRevision == canvasArtworkRevision) {
                     artworkCanvas = resolvedArtwork
@@ -1544,7 +1614,6 @@ fun BottomSheetPlayer(
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
                             landscape = true,
-                            gradientColors = gradientColors,
                             modifier =
                                 Modifier
                                     .fillMaxSize()
@@ -1555,6 +1624,7 @@ fun BottomSheetPlayer(
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
+                    }
                 } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
                     enrichedMetadata?.let { metadata ->
                         AppleMusicPlayerContent(
@@ -1851,7 +1921,6 @@ fun BottomSheetPlayer(
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            gradientColors = gradientColors,
                             modifier =
                                 Modifier
                                     .fillMaxSize()
@@ -1862,6 +1931,7 @@ fun BottomSheetPlayer(
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
+                    }
                 } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
                     enrichedMetadata?.let { metadata ->
                         AppleMusicPlayerContent(
@@ -1967,7 +2037,7 @@ fun BottomSheetPlayer(
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
                 visible = isLyricsScreenVisible,
-                backHandlerEnabled = isLyricsScreenVisible && state.isExpandedOrExpanding,
+                backHandlerEnabled = false,
                 mediaMetadata = metadata,
                 navController = navController,
                 lyricsSyncOffset = lyricsSyncOffset,
@@ -1996,6 +2066,7 @@ fun BottomSheetPlayer(
                     canSkipPrevious = canSkipPrevious,
                     canSkipNext = canSkipNext,
                     thumbnailCornerRadius = thumbnailCornerRadius,
+                    lyricsText = currentLyricsEntity?.lyrics,
                     onPlayPause = { playerConnection.player.togglePlayPause() },
                     onSkipPrevious = playerConnection::seekToPrevious,
                     onSkipNext = playerConnection::seekToNext,
@@ -2041,43 +2112,82 @@ private fun MikoLyricsTransition(
     onQueueClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val progress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec =
-            spring(
-                dampingRatio = 0.82f,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        label = "mikoLyricsTransition",
-    )
+    // Apple-Music-style sheet motion: the lyrics sheet slides straight up from the bottom edge on an
+    // interruptible spring, staying fully opaque the whole way (no cross-fade), while a dim scrim
+    // fades in behind it. All derived transforms are read inside graphicsLayer/draw lambdas so the
+    // animation runs entirely in the draw phase — zero recomposition per frame.
+    //
+    // Direction-aware spring: the OPEN glide is the soft critically-damped spring (dampingRatio=1f
+    // / stiffness=160f, ~500 ms settle) that the user explicitly asked to keep. The CLOSE glide is
+    // ~40% slower (stiffness=80f, ~700 ms settle) per the user's follow-up request to slow down
+    // the lyrics UI closing transition. Critically-damped (no overshoot) on both sides so the
+    // close doesn't feel bouncy.
+    //
+    // We use an `Animatable` driven by `LaunchedEffect(visible)` (rather than `animateFloatAsState`)
+    // because `animateFloatAsState` is direction-symmetric — the same spec applies whether the
+    // target is going 0→1 or 1→0 — and we need separate specs per direction.
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val progress = remember { Animatable(initialValue = 0f) }
+    LaunchedEffect(visible, animationsDisabled) {
+        if (animationsDisabled) {
+            progress.snapTo(if (visible) 1f else 0f)
+        } else {
+            progress.animateTo(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec =
+                    if (visible) {
+                        // OPEN — keep the premium slow glide (~500 ms).
+                        spring(
+                            dampingRatio = 1f,
+                            stiffness = 160f,
+                            visibilityThreshold = 0.001f,
+                        )
+                    } else {
+                        // CLOSE — slower by ~40% (~700 ms) per user request.
+                        spring(
+                            dampingRatio = 1f,
+                            stiffness = 80f,
+                            visibilityThreshold = 0.001f,
+                        )
+                    },
+            )
+        }
+    }
+    val progressState = progress.asState()
+    val showContent by remember {
+        // Defer composing the heavy LyricsScreen tree until the sheet has crossed the halfway
+        // mark (progress > 0.5). On open, the slow spring takes ~250 ms to reach this point,
+        // which is enough time for the slide-up to visually "commit" before the lyrics tree is
+        // composed — this avoids jank on low-end devices and avoids the "blank panel then
+        // pop-in" artifact that immediate composition introduced on devices where the first
+        // frame of the lyrics tree takes longer than 16ms to compute. On close, the lyrics
+        // tree stays composed until progress drops back below 0.5, so the slide-down is smooth.
+        derivedStateOf { visible || progressState.value > 0.5f }
+    }
 
-    val boundedProgress = progress.coerceIn(0f, 1f)
-
-    if (visible || boundedProgress > 0.001f) {
-        val scaleX = 0.92f + (0.08f * boundedProgress)
-        val scaleY = 0.78f + (0.22f * boundedProgress)
-        val alpha = (0.2f + (0.8f * boundedProgress)).coerceIn(0f, 1f)
-        val cornerRadius = 32.dp * (1f - boundedProgress)
-
+    if (showContent) {
+        val surfaceColor = MaterialTheme.colorScheme.surface
         Box(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .graphicsLayer { this.alpha = boundedProgress }
-                    .background(Color.Black.copy(alpha = 0.24f * boundedProgress)),
+                    .drawBehind {
+                        drawRect(Color.Black.copy(alpha = 0.32f * progressState.value.coerceIn(0f, 1f)))
+                    },
         ) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            transformOrigin = TransformOrigin(0.5f, 1f)
-                            this.scaleX = scaleX
-                            this.scaleY = scaleY
-                            this.alpha = alpha
-                            translationY = size.height * 0.16f * (1f - boundedProgress)
-                        }.clip(RoundedCornerShape(cornerRadius))
-                        .background(MaterialTheme.colorScheme.surface),
+                            val p = progressState.value.coerceIn(0f, 1f)
+                            // Pure slide-up: the whole sheet travels from just below the screen to
+                            // its resting position, with a small rounded top lip while in transit.
+                            translationY = size.height * (1f - p)
+                            val corner = 28.dp.toPx() * (1f - p)
+                            shape = RoundedCornerShape(topStart = corner, topEnd = corner)
+                            clip = true
+                        }.background(surfaceColor),
             ) {
                 LyricsScreen(
                     mediaMetadata = mediaMetadata,
@@ -2309,13 +2419,19 @@ private fun V7PlayerBackdrop(
     // For palette extraction, use canvas static when canvas is active so the scrim
     // gradient is derived from the canvas colors rather than the YTM thumbnail.
     val paletteSourceUrl = if (hasCanvas && canvasStatic != null) canvasStatic else backdropArtworkUrl
-    var backdropPalette by remember(paletteSourceUrl, fallbackColor) {
+    // Keep the previous valid palette while the next artwork loads; only replace on success.
+    var backdropPalette by remember {
         mutableStateOf(V7BackdropPalette.fromColors(emptyList(), fallbackColor))
     }
+    var hasValidBackdropPalette by remember { mutableStateOf(false) }
 
     LaunchedEffect(paletteSourceUrl, hasCanvas, fallbackColor) {
-        backdropPalette = V7BackdropPalette.fromColors(emptyList(), fallbackColor)
-        if (paletteSourceUrl == null) return@LaunchedEffect
+        if (paletteSourceUrl == null) {
+            if (!hasValidBackdropPalette) {
+                backdropPalette = V7BackdropPalette.fromColors(emptyList(), fallbackColor)
+            }
+            return@LaunchedEffect
+        }
 
         val request =
             ImageRequest
@@ -2331,34 +2447,40 @@ private fun V7PlayerBackdrop(
 
         val extractedColors =
             try {
-                val image =
+                val result =
                     withContext(Dispatchers.IO) {
                         context.imageLoader.execute(request)
-                    }.image
-                if (image == null) {
+                    }
+                if (result !is SuccessResult) {
                     null
                 } else {
                     withContext(Dispatchers.Default) {
-                        val fullBitmap = image.toBitmap()
-                        // When canvas is active, extract from the bottom 30% of the static frame.
-                        // This gives us the actual colors at the canvas bottom edge, so the scrim
-                        // gradient blends seamlessly into the backdrop below.
-                        val bitmapForPalette =
-                            if (hasCanvas && fullBitmap.height > 4) {
-                                val startY = (fullBitmap.height * 0.70f).toInt().coerceAtLeast(0)
-                                val cropHeight = (fullBitmap.height - startY).coerceAtLeast(1)
-                                android.graphics.Bitmap.createBitmap(fullBitmap, 0, startY, fullBitmap.width, cropHeight)
-                            } else {
-                                fullBitmap
-                            }
-                        val palette =
-                            Palette
-                                .from(bitmapForPalette)
-                                .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                                .generate()
-                        val dominantRgb = palette.dominantSwatch?.rgb ?: palette.getDominantColor(fallbackColor)
-                        listOf(Color(dominantRgb))
+                        val fullBitmap = result.image?.toBitmap()
+                        if (fullBitmap == null) {
+                            null
+                        } else {
+                            // When canvas is active, extract from the bottom 30% of the static frame.
+                            // This gives us the actual colors at the canvas bottom edge, so the scrim
+                            // gradient blends seamlessly into the backdrop below.
+                            val bitmapForPalette =
+                                if (hasCanvas && fullBitmap.height > 4) {
+                                    val startY = (fullBitmap.height * 0.70f).toInt().coerceAtLeast(0)
+                                    val cropHeight = (fullBitmap.height - startY).coerceAtLeast(1)
+                                    android.graphics.Bitmap.createBitmap(fullBitmap, 0, startY, fullBitmap.width, cropHeight)
+                                } else {
+                                    fullBitmap
+                                }
+                            val palette =
+                                Palette
+                                    .from(bitmapForPalette)
+                                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                                    .generate()
+                            PlayerColorExtractor.extractGradientColors(
+                                palette = palette,
+                                fallbackColor = fallbackColor,
+                            )
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -2367,7 +2489,12 @@ private fun V7PlayerBackdrop(
                 null
             }
 
-        backdropPalette = V7BackdropPalette.fromColors(extractedColors.orEmpty(), fallbackColor)
+        if (extractedColors != null) {
+            backdropPalette = V7BackdropPalette.fromColors(extractedColors, fallbackColor)
+            hasValidBackdropPalette = true
+        } else if (!hasValidBackdropPalette) {
+            backdropPalette = V7BackdropPalette.fromColors(emptyList(), fallbackColor)
+        }
     }
 
     val backdropState =
@@ -2621,7 +2748,7 @@ private fun Color.v7BackdropTone(
         if (hsv[1] < 0.12f) {
             hsv[1].coerceAtMost(0.08f)
         } else {
-            (hsv[1] * 1.27f).coerceIn(0f, 1f)
+            (hsv[1] * 1.22f).coerceIn(0f, 1f)
         }
     hsv[2] = hsv[2].coerceIn(valueMin, valueMax)
     return Color(android.graphics.Color.HSVToColor(hsv))
@@ -2767,7 +2894,7 @@ private fun LittlePlayerContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.expand_more),
+                    painter = painterResource(R.drawable.player_expand_more),
                     contentDescription = null,
                     tint = textColor.copy(alpha = 0.8f),
                     modifier =
@@ -2783,7 +2910,7 @@ private fun LittlePlayerContent(
                 Spacer(Modifier.weight(1f))
 
                 Icon(
-                    painter = painterResource(if (liked) R.drawable.favorite else R.drawable.favorite_border),
+                    painter = painterResource(if (liked) R.drawable.player_favorite else R.drawable.player_favorite_border),
                     contentDescription = null,
                     tint =
                         if (liked) {
@@ -2803,24 +2930,35 @@ private fun LittlePlayerContent(
 
                 Spacer(Modifier.width((18f * scale).dp))
 
-                Icon(
-                    painter = painterResource(R.drawable.queue_music),
-                    contentDescription = null,
-                    tint = textColor.copy(alpha = 0.78f),
+                // Queue button — wrapped in a 48dp Box (Material minimum touch target) so the
+                // tap is reliably registerable even on dense layouts. The previous version put
+                // .clickable directly on the 26dp Icon, which (combined with indication=null)
+                // made taps very easy to miss — one of the root causes of the "queue button
+                // doesn't work at all" report. The Icon itself stays at iconSize for visual
+                // consistency; only the touch target grows.
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier =
                         Modifier
-                            .size(iconSize)
+                            .size(48.dp)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                                 onClick = onExpandQueue,
                             ),
-                )
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.player_queue_music),
+                        contentDescription = null,
+                        tint = textColor.copy(alpha = 0.78f),
+                        modifier = Modifier.size(iconSize),
+                    )
+                }
 
                 Spacer(Modifier.width((18f * scale).dp))
 
                 Icon(
-                    painter = painterResource(R.drawable.more_vert),
+                    painter = painterResource(R.drawable.player_more_vert),
                     contentDescription = null,
                     tint = textColor.copy(alpha = 0.78f),
                     modifier =

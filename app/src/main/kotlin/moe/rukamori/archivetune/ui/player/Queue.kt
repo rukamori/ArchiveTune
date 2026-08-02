@@ -244,7 +244,7 @@ fun Queue(
         TextFieldDialog(
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.queue_music),
+                    painter = painterResource(R.drawable.player_queue_music),
                     contentDescription = null,
                 )
             },
@@ -494,39 +494,14 @@ fun Queue(
                 }
 
                 PlayerDesignStyle.V5 -> {
-                    QueueCollapsedContentV3(
-                        showCodecOnPlayer = showCodecOnPlayer,
-                        currentFormat = currentFormat,
-                        textBackgroundColor = TextBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        onExpandQueue = openQueue,
-                        onSleepTimerClick = {
-                            if (sleepTimerEnabled) {
-                                playerConnection.service.sleepTimer.clear()
-                            } else {
-                                showSleepTimerDialog = true
-                            }
-                        },
-                        onShowLyrics = onShowLyrics,
-                        onMenuClick = {
-                            menuState.show {
-                                PlayerMenu(
-                                    mediaMetadata = mediaMetadata,
-                                    navController = navController,
-                                    playerBottomSheetState = playerBottomSheetState,
-                                    onShowDetailsDialog = {
-                                        mediaMetadata?.id?.let {
-                                            bottomSheetPageState.show {
-                                                ShowMediaInfo(it)
-                                            }
-                                        }
-                                    },
-                                    onDismiss = menuState::dismiss,
-                                )
-                            }
-                        },
-                    )
+                    // V5 keeps its collapsed peek bar empty, matching the APPLE_MUSIC approach.
+                    // The LittlePlayer (rendered inside Player.kt) already exposes queue, like,
+                    // and more-menu buttons with proper 48dp touch targets. Previously this
+                    // branch rendered QueueCollapsedContentV3 inside a 0dp-tall peek Box —
+                    // the button row overflowed the parent and its touch zone was clipped/
+                    // competed-for by the BottomSheet wrapper's own clickable, which caused
+                    // "queue button doesn't work at all" reports on V5. Sleep timer, lyrics,
+                    // and other controls remain reachable via the LittlePlayer's more-menu.
                 }
 
                 PlayerDesignStyle.V4 -> {
@@ -590,6 +565,11 @@ fun Queue(
                         },
                         onShowLyrics = onShowLyrics,
                     )
+                }
+
+                PlayerDesignStyle.APPLE_MUSIC -> {
+                    // The Apple Music style keeps its collapsed peek bar empty: the queue, lyrics and
+                    // output controls all live in the player's own bottom row, so no extra pills here.
                 }
 
                 PlayerDesignStyle.V9 -> {
@@ -742,7 +722,13 @@ fun Queue(
                         draggedItemUid = draggedItemUid,
                         destination =
                             if (toQueueIndex == 0) {
-                                QueueDragDestination.Start
+                                // In the filtered queue list the current song is always at
+                                // index 0, so dropping at position 0 means "make this the
+                                // next song after the current one" rather than "move to the
+                                // very start of the full timeline" (which would place it
+                                // before already-played songs and is not visible anyway).
+                                currentPlayingUid?.let { QueueDragDestination.After(itemUid = it) }
+                                    ?: QueueDragDestination.Start
                             } else {
                                 QueueDragDestination.After(
                                     itemUid = mutableQueueWindows[toQueueIndex - 1].uid,
@@ -750,7 +736,7 @@ fun Queue(
                             },
                     )
 
-                if (selection && currentWindowIndex in mutableQueueWindows.indices) {
+                if (selection) {
                     val currentItem = queueWindows.getOrNull(currentWindowIndex)
 
                     if (currentItem?.uid == draggedItemUid) {
@@ -769,7 +755,7 @@ fun Queue(
                 }
             }
 
-        LaunchedEffect(queueWindows, reorderableState.isAnyItemDragging) {
+        LaunchedEffect(queueWindows, currentWindowIndex, reorderableState.isAnyItemDragging) {
             if (reorderableState.isAnyItemDragging) return@LaunchedEffect
 
             val completedDrag = dragInfo
@@ -801,11 +787,28 @@ fun Queue(
                 }
             }
 
+            // Only display the current song and upcoming songs in the queue list.
+            // Previously-played songs are excluded so the currently playing track is
+            // always at the top of the queue list — matching the "Continue Playing"
+            // header and the behaviour of mainstream music apps (Spotify, Apple Music).
+            // The full `queueWindows` (including played songs) is still used for
+            // queue stats, clear-queue, and drag-source resolution.
             Snapshot.withMutableSnapshot {
                 mutableQueueWindows.clear()
-                mutableQueueWindows.addAll(queueWindows)
+                val startIndex = currentWindowIndex.coerceAtLeast(0)
+                mutableQueueWindows.addAll(queueWindows.drop(startIndex))
             }
         }
+
+        // Tracks the previous collapsed state so we can detect the exact
+        // moment the queue sheet transitions from collapsed → expanded
+        // (whether via the queue button or a swipe-up gesture) and scroll
+        // to the currently playing song. Without this, the queue opens
+        // scrolled to the top, forcing the user to manually find what's
+        // playing. We avoid re-scrolling on every `currentPlayingUid`
+        // change so the user is free to browse the queue after opening it
+        // without being yanked back to the current song mid-scroll.
+        var prevIsCollapsed by remember { mutableStateOf(state.isCollapsed) }
 
         LaunchedEffect(
             state.isCollapsed,
@@ -813,16 +816,33 @@ fun Queue(
             currentPlayingUid,
             reorderableState.isAnyItemDragging,
         ) {
-            if (
+            val justOpened = prevIsCollapsed && !state.isCollapsed
+            prevIsCollapsed = state.isCollapsed
+            val shouldScroll =
                 !state.isCollapsed &&
-                scrollToCurrentRequested &&
-                currentPlayingUid != null &&
-                !reorderableState.isAnyItemDragging
-            ) {
-                val indexInMutableList = mutableQueueWindows.indexOfFirst { it.uid == currentPlayingUid }
-                if (indexInMutableList != -1) {
-                    lazyListState.scrollToItem(indexInMutableList + headerItems)
-                    scrollToCurrentRequested = false
+                    (justOpened || scrollToCurrentRequested) &&
+                    currentPlayingUid != null &&
+                    !reorderableState.isAnyItemDragging
+            if (shouldScroll) {
+                // Wait briefly for the queue windows to populate after the
+                // sheet expands. The first composition after expand often has
+                // an empty `mutableQueueWindows` (the Snapshot.withMutableSnapshot
+                // that copies `queueWindows` into `mutableQueueWindows` runs
+                // in a separate LaunchedEffect that hasn't fired yet). A short
+                // retry loop lets the index lookup succeed.
+                var attempts = 0
+                while (attempts < 8) {
+                    val indexInMutableList =
+                        mutableQueueWindows.indexOfFirst { it.uid == currentPlayingUid }
+                    if (indexInMutableList != -1) {
+                        lazyListState.scrollToItem(
+                            (indexInMutableList + headerItems).coerceAtLeast(0),
+                        )
+                        scrollToCurrentRequested = false
+                        break
+                    }
+                    kotlinx.coroutines.delay(50L)
+                    attempts++
                 }
             }
         }
@@ -888,7 +908,9 @@ fun Queue(
                         }
 
                         if (infiniteQueueEnabled) {
-                            infiniteQueueEnabled = false
+                            // Clear the current auto-generated items without changing the user's
+                            // persisted global Infinite Queue choice. The next queue will respect
+                            // the same saved setting.
                             playerConnection.service.onInfiniteQueueDisabled()
                         }
                     },
@@ -1018,7 +1040,7 @@ fun Queue(
                                                 },
                                             ) {
                                                 Icon(
-                                                    painter = painterResource(R.drawable.more_vert),
+                                                    painter = painterResource(R.drawable.player_more_vert),
                                                     contentDescription = null,
                                                 )
                                             }
@@ -1028,7 +1050,7 @@ fun Queue(
                                                     modifier = Modifier.draggableHandle(),
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(R.drawable.drag_handle),
+                                                        painter = painterResource(R.drawable.player_drag_handle),
                                                         contentDescription = null,
                                                     )
                                                 }
@@ -1052,7 +1074,7 @@ fun Queue(
                                                                 selectedItems.add(currentItem)
                                                             }
                                                         } else {
-                                                            if (index == currentWindowIndex) {
+                                                            if (isActive) {
                                                                 playerConnection.player.togglePlayPause()
                                                             } else {
                                                                 val joined =
@@ -1251,7 +1273,7 @@ private fun QueueSelectionFloatingToolbar(
                 contentColor = fabContentColor,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.close),
+                    painter = painterResource(R.drawable.player_close),
                     contentDescription = stringResource(R.string.close),
                     modifier = Modifier.size(22.dp),
                 )
@@ -1271,28 +1293,28 @@ private fun QueueSelectionFloatingToolbar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             QueueSelectionToolbarAction(
-                icon = if (allSelected) R.drawable.deselect else R.drawable.select_all,
+                icon = if (allSelected) R.drawable.player_deselect else R.drawable.player_select_all,
                 contentDescription = null,
                 tint = toolbarContentColor,
                 onClick = onToggleSelectAll,
             )
 
             QueueSelectionToolbarAction(
-                icon = R.drawable.playlist_add,
+                icon = R.drawable.player_playlist_add,
                 contentDescription = stringResource(R.string.add_to_playlist),
                 tint = colorScheme.primary,
                 onClick = onAddToPlaylist,
             )
 
             QueueSelectionToolbarAction(
-                icon = R.drawable.queue_music,
+                icon = R.drawable.player_queue_music,
                 contentDescription = stringResource(R.string.create_playlist),
                 tint = colorScheme.primary,
                 onClick = onCreatePlaylist,
             )
 
             QueueSelectionToolbarAction(
-                icon = R.drawable.delete,
+                icon = R.drawable.player_delete,
                 contentDescription = stringResource(R.string.delete),
                 tint = colorScheme.error,
                 onClick = onDelete,

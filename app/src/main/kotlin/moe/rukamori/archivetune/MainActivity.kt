@@ -21,6 +21,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
@@ -35,6 +36,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -90,21 +93,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -123,18 +121,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -148,6 +150,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
@@ -173,12 +176,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowSizeClass
+import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -193,7 +199,8 @@ import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
-import moe.rukamori.archivetune.constants.UseSystemLanguageKey
+import moe.rukamori.archivetune.constants.AodAutoOnScreenDimKey
+import moe.rukamori.archivetune.constants.AodAutoTimerSecondsKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.CustomThemeColorKey
 import moe.rukamori.archivetune.constants.DarkModeKey
@@ -209,17 +216,19 @@ import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
+import moe.rukamori.archivetune.constants.FloatingNavigationBarBottomPadding
+import moe.rukamori.archivetune.constants.FloatingNavigationBarHorizontalPadding
 import moe.rukamori.archivetune.constants.NavigationBarBottomPadding
 import moe.rukamori.archivetune.constants.NavigationBarHeight
-import moe.rukamori.archivetune.constants.NavigationBarFrostedBlurKey
 import moe.rukamori.archivetune.constants.NavigationBarHorizontalPadding
-import moe.rukamori.archivetune.constants.NavigationBarStyle
-import moe.rukamori.archivetune.constants.NavigationBarStyleKey
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
+import moe.rukamori.archivetune.constants.NavigationBarFrostedBlurKey
+import moe.rukamori.archivetune.constants.NavigationBarStyle
+import moe.rukamori.archivetune.constants.NavigationBarStyleKey
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.RemindAfterKey
 import moe.rukamori.archivetune.constants.SYSTEM_DEFAULT
@@ -262,11 +271,17 @@ import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
+import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
+import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
+import moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop
+import moe.rukamori.archivetune.ui.component.NavigationBarBackdrop
+import moe.rukamori.archivetune.ui.component.ProfileMenuDialog
+import moe.rukamori.archivetune.ui.component.ProfileMenuItem
+import moe.rukamori.archivetune.ui.component.AutoResizeText
+import moe.rukamori.archivetune.ui.component.FontSizeRange
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop
-import moe.rukamori.archivetune.ui.component.NavigationBarBackdrop
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.StarDialog
@@ -514,28 +529,38 @@ class MainActivity : ComponentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val initialLocale =
-            if (PreferenceStore.get(UseSystemLanguageKey) ?: true) {
-                Locale.getDefault()
-            } else {
-                Locale.ENGLISH
-            }
-        setAppLocale(this, initialLocale)
-
+        // Pre-warm DNS + TLS connections to the most common download/stream
+        // hosts so the first song download of the session doesn't pay the
+        // ~300-800ms DNS+TCP+TLS handshake cost. Fires off a single HEAD
+        // request per host on a background IO coroutine; failures are
+        // silently swallowed (it's just an optimization).
         lifecycleScope.launch(Dispatchers.IO) {
-            runCatching {
-                dataStore.data.first().let { prefs ->
-                    if (prefs[UseSystemLanguageKey] ?: true) {
-                        Locale.getDefault()
-                    } else {
-                        Locale.ENGLISH
-                    }
-                }
-            }.onSuccess { targetLocale ->
-                if (targetLocale != initialLocale) {
-                    withContext(Dispatchers.Main) {
-                        setAppLocale(this@MainActivity, targetLocale)
-                        recreate()
+            runCatching { downloadUtil.prewarmDownloadConnections() }
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            val initialLocale =
+                PreferenceStore
+                    .get(AppLanguageKey)
+                    ?.takeUnless { it == SYSTEM_DEFAULT }
+                    ?.let { Locale.forLanguageTag(it) }
+                    ?: Locale.getDefault()
+            setAppLocale(this, initialLocale)
+
+            lifecycleScope.launch(Dispatchers.IO) {
+                runCatching {
+                    dataStore.data.first()[AppLanguageKey]
+                }.onSuccess { lang ->
+                    val targetLocale =
+                        lang
+                            ?.takeUnless { it == SYSTEM_DEFAULT }
+                            ?.let { Locale.forLanguageTag(it) }
+                            ?: Locale.getDefault()
+                    if (targetLocale != initialLocale) {
+                        withContext(Dispatchers.Main) {
+                            setAppLocale(this@MainActivity, targetLocale)
+                            recreate()
+                        }
                     }
                 }
             }
@@ -569,54 +594,32 @@ class MainActivity : ComponentActivity() {
 
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
+            // Canary builds (GitHub Actions / dev branch) are locked to the canary
+            // update channel — even if the user opens Update settings and switches
+            // to "Stable", a canary build must never pop up a stable-release update
+            // (the stable APK would sideload-downgrade the canary, and the user
+            // signed up for canary builds by installing a GitHub Actions artifact).
+            // Stable builds respect the user's selection. This single value drives
+            // both the version-check LaunchedEffect and the popup-show
+            // LaunchedEffect so they stay in sync.
+            val effectiveUpdateChannel = if (isCanaryBuild) UpdateChannel.CANARY else updateChannel
+
             LaunchedEffect(Unit) {
                 while (playerConnection == null) {
                     delay(100)
                 }
                 delay(500)
 
-                try {
-                    val redownload = withContext(Dispatchers.IO) {
-                        dataStore.data.first()[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] ?: false
-                    }
-                    if (redownload) {
-                        val downloaded = withContext(Dispatchers.IO) {
-                            database.downloadedSongsList()
-                        }
-                        if (downloaded.isNotEmpty()) {
-                            downloaded.forEach { song ->
-                                val downloadRequest = androidx.media3.exoplayer.offline.DownloadRequest
-                                    .Builder(song.id, song.id.toUri())
-                                    .setCustomCacheKey(song.id)
-                                    .setData(song.title.toByteArray())
-                                    .build()
-                                androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
-                                    this@MainActivity,
-                                    moe.rukamori.archivetune.playback.ExoDownloadService::class.java,
-                                    downloadRequest,
-                                    false,
-                                )
-                            }
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Re-downloading ${downloaded.size} offline songs...", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        withContext(Dispatchers.IO) {
-                            dataStore.edit { prefs ->
-                                prefs[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] = false
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    moe.rukamori.archivetune.utils.reportException(e)
-                }
-
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
                 ) {
                     val channelString = withContext(Dispatchers.IO) { dataStore.data.first()[UpdateChannelKey] }
-                    val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
+                    val userSelectedChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
+                    // Lock canary builds to canary updates regardless of the user's
+                    // selection — see the comment on effectiveUpdateChannel above.
+                    val actualChannel =
+                        if (isCanaryBuild) UpdateChannel.CANARY else userSelectedChannel
                     val versionResult =
                         when (actualChannel) {
                             UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
@@ -715,10 +718,10 @@ class MainActivity : ComponentActivity() {
             }
 
             // fetch release notes and show sheet when a new version is detected
-            LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel) {
+            LaunchedEffect(latestVersionName, latestUpdateChannel, effectiveUpdateChannel) {
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
-                    latestUpdateChannel == updateChannel &&
+                    latestUpdateChannel == effectiveUpdateChannel &&
                     Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
                 ) {
                     val releaseNotesResult =
@@ -829,10 +832,13 @@ class MainActivity : ComponentActivity() {
                                             .allowHardware(false)
                                             .build(),
                                     )
-                                val extractedColor = result.image?.toBitmap()?.extractThemeColor()
+                                val extractedColor =
+                                    (result as? SuccessResult)?.image?.toBitmap()?.extractThemeColor()
                                 withContext(Dispatchers.Main) {
                                     themeColor = extractedColor ?: DefaultThemeColor
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
                                     themeColor = DefaultThemeColor
@@ -873,10 +879,29 @@ class MainActivity : ComponentActivity() {
                     return@ArchiveTuneTheme
                 }
 
+                // App-open animation: the first time the main UI appears it fades in while
+                // gently scaling up from 96%, so launching the app feels like a smooth reveal
+                // rather than an abrupt cut. Runs once per process and honors "disable animations".
+                val appOpenProgress = remember { Animatable(if (disableAnimations) 1f else 0f) }
+                LaunchedEffect(Unit) {
+                    if (!disableAnimations && appOpenProgress.value < 1f) {
+                        appOpenProgress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                        )
+                    }
+                }
+
                 BoxWithConstraints(
                     modifier =
                         Modifier
                             .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = appOpenProgress.value
+                                val scale = 0.96f + 0.04f * appOpenProgress.value
+                                scaleX = scale
+                                scaleY = scale
+                            }
                             .background(
                                 if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface,
                             ),
@@ -906,8 +931,12 @@ class MainActivity : ComponentActivity() {
                     val newsViewModel: NewsViewModel = hiltViewModel()
                     val allLocalItems by homeViewModel.allLocalItems.collectAsState()
                     val allYtItems by homeViewModel.allYtItems.collectAsState()
+                    val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
+                    val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
                     val networkBannerState by networkBannerViewModel.bannerState.collectAsStateWithLifecycle()
                     val hasUnreadNews by newsViewModel.hasUnreadNews.collectAsStateWithLifecycle()
+                    // Hoisted profile-menu state.
+                    var profileMenuExpanded by rememberSaveable { mutableStateOf(false) }
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
@@ -1128,6 +1157,97 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Auto-enter AOD after N seconds of inactivity (player sheet collapsed while
+                    // music is playing). The user picks N via the AOD auto-timer slider in
+                    // AodCustomizedScreen; 0 disables. Cancellation is automatic when the user
+                    // expands the player sheet again or when playback stops — both invalidate
+                    // the LaunchedEffect keys.
+                    val aodAutoTimerSeconds by rememberPreference(AodAutoTimerSecondsKey, defaultValue = 0)
+                    val aodAutoOnScreenDim by rememberPreference(AodAutoOnScreenDimKey, defaultValue = false)
+                    val isPlayingNow by (playerConnection?.isPlaying ?: MutableStateFlow(false))
+                        .collectAsStateWithLifecycle()
+                    LaunchedEffect(
+                        aodAutoTimerSeconds,
+                        isPlayingNow,
+                        playerBottomSheetState.isExpanded,
+                        playerBottomSheetState.isDismissed,
+                        aodModeEnabled,
+                    ) {
+                        if (aodModeEnabled) return@LaunchedEffect
+                        if (aodAutoTimerSeconds <= 0) return@LaunchedEffect
+                        if (!isPlayingNow) return@LaunchedEffect
+                        if (playerBottomSheetState.isExpanded) return@LaunchedEffect
+                        if (playerBottomSheetState.isDismissed) return@LaunchedEffect
+                        // Wait the configured number of seconds; if the user opens the player
+                        // or pauses playback during the wait, the keys above change and the
+                        // effect is cancelled (delay throws CancellationException internally).
+                        delay(aodAutoTimerSeconds * 1000L)
+                        requestAodMode()
+                    }
+
+                    // Convenience: when "Enter AOD when screen dims" is ON, hold the screen on
+                    // past the system's screen-off timeout, then trigger AOD 2 seconds *before*
+                    // the system would have turned the screen off. This actually delivers on the
+                    // user-visible copy ("right before the screen turns off") and is what makes
+                    // the feature useful while driving — the driver sees AOD appear while the
+                    // screen is still lit, instead of seeing nothing until they manually wake
+                    // the device.
+                    //
+                    // Why this replaces the previous ACTION_SCREEN_OFF receiver:
+                    //   1. Android does NOT broadcast a "screen dimming" event. ACTION_SCREEN_OFF
+                    //      fires *after* the screen is already off — at that point the activity
+                    //      is in onStop() and any UI we flip on isn't drawn until the user wakes
+                    //      the device, which contradicts the in-app description.
+                    //   2. By holding FLAG_KEEP_SCREEN_ON we keep the window drawable, and by
+                    //      firing 2 s before the system timeout we ensure AOD appears while the
+                    //      user can still see it.
+                    //   3. The timer cancels automatically when the player sheet expands, when
+                    //      playback pauses, when AOD turns on, or when the toggle is turned off —
+                    //      all of which invalidate the LaunchedEffect keys.
+                    LaunchedEffect(
+                        aodAutoOnScreenDim,
+                        isPlayingNow,
+                        playerBottomSheetState.isExpanded,
+                        playerBottomSheetState.isDismissed,
+                        aodModeEnabled,
+                    ) {
+                        if (!aodAutoOnScreenDim) return@LaunchedEffect
+                        if (aodModeEnabled) return@LaunchedEffect
+                        if (!isPlayingNow) return@LaunchedEffect
+                        if (playerBottomSheetState.isExpanded) return@LaunchedEffect
+                        if (playerBottomSheetState.isDismissed) return@LaunchedEffect
+
+                        // Read the system screen-off timeout (e.g. 30 s). On most phones this is
+                        // 15 s – 2 min. Clamp to a sane range so a misconfigured device doesn't
+                        // either fire instantly or wait forever.
+                        val systemTimeoutMs =
+                            Settings.System
+                                .getLong(
+                                    contentResolver,
+                                    Settings.System.SCREEN_OFF_TIMEOUT,
+                                    30_000L,
+                                ).coerceIn(5_000L, 600_000L)
+
+                        // Fire 2 s before the system would have turned the screen off. This
+                        // window is what gives AOD time to fade in while the screen is still
+                        // lit. We also hold FLAG_KEEP_SCREEN_ON so the OS doesn't race us to
+                        // screen-off — AOD itself adds FLAG_KEEP_SCREEN_ON once it's enabled
+                        // (see the LaunchedEffect(aodModeEnabled) above), so the handoff is
+                        // seamless.
+                        val triggerDelayMs = (systemTimeoutMs - 2_000L).coerceAtLeast(2_000L)
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        try {
+                            delay(triggerDelayMs)
+                            requestAodMode()
+                        } finally {
+                            // Release the flag so the OS can manage screen-off normally again.
+                            // AOD's own LaunchedEffect(aodModeEnabled) will re-add it if AOD
+                            // actually engaged; if the timer was cancelled (e.g. the user
+                            // expanded the player sheet), we want the OS to dim/off normally.
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
+
                     LaunchedEffect(useDarkTheme, playerBottomSheetState.isExpanded, playerBackground, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
                         val isDarkStatusBar =
@@ -1163,16 +1283,32 @@ class MainActivity : ComponentActivity() {
 
                     var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableStateOf(-1) }
 
+                    var isPlayerLyricsFullScreen by remember { mutableStateOf(false) }
+
                     val shouldHideStatusBars =
                         isYearInMusicScreen ||
+                            bottomSheetPageState.isVisible ||
+                            menuState.isVisible ||
                             (
                                 playerBottomSheetState.isExpandedOrExpanding &&
                                     (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC)
-                            )
+                            ) ||
+                            (playerBottomSheetState.isExpandedOrExpanding && isPlayerLyricsFullScreen)
 
-                    LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
+                    LaunchedEffect(shouldHideStatusBars, menuState.isVisible, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
+                        // Re-assert the desired system-bar visibility. Material3's
+                        // ModalBottomSheet internally shows the system bars when it
+                        // expands; without re-asserting, opening the overflow menu
+                        // from the immersive lyrics view makes the status bar pop in
+                        // even though `shouldHideStatusBars` is still true. The
+                        // short delay gives the sheet's own inset logic time to run
+                        // before we re-hide, so our hide call wins.
                         setStatusBarsHidden(shouldHideStatusBars)
+                        if (menuState.isVisible && shouldHideStatusBars) {
+                            delay(150)
+                            setStatusBarsHidden(true)
+                        }
                     }
 
                     LaunchedEffect(isYearInMusicScreen, playerConnection) {
@@ -1290,19 +1426,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(currentRoute, playerBottomSheetState.isExpanded) {
-                        if (!playerBottomSheetState.isExpanded) {
-                            when (currentRoute) {
-                                Screens.Home.route -> {
-                                    homeScrollBehavior.state.resetHeightOffset()
-                                }
-
-                                Screens.Search.route -> {
-                                    searchScrollBehavior.state.resetHeightOffset()
-                                }
-
-                                else -> {}
+                    LaunchedEffect(currentRoute) {
+                        when (currentRoute) {
+                            Screens.Home.route -> {
+                                homeScrollBehavior.state.resetHeightOffset()
                             }
+
+                            Screens.Search.route -> {
+                                searchScrollBehavior.state.resetHeightOffset()
+                            }
+
+                            else -> {}
                         }
                     }
 
@@ -1583,7 +1717,7 @@ class MainActivity : ComponentActivity() {
                         LocalSyncUtils provides syncUtils,
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
-                        moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop provides navBarFrostedBackdrop,
+                        LocalNavigationBarBackdrop provides navBarFrostedBackdrop,
                     ) {
                         Row {
                             AnimatedVisibility(
@@ -1807,86 +1941,114 @@ class MainActivity : ComponentActivity() {
                                                                     .size(35.dp)
                                                                     .padding(end = 3.dp),
                                                         )
-                                                        Text(
+                                                        // Auto-resize the wordmark so the full "ArchiveTune"
+                                                        // always fits: on narrow layouts (where the fixed
+                                                        // titleLarge size used to ellipsize to "Archive…")
+                                                        // it shrinks down to as low as 14sp instead of
+                                                        // truncating, so the complete name shows at every dpi.
+                                                        AutoResizeText(
                                                             text = stringResource(R.string.app_name),
                                                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                                            fontSizeRange = FontSizeRange(min = 14.sp, max = 22.sp),
                                                             maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
+                                                            overflow = TextOverflow.Visible,
+                                                            softWrap = true,
+                                                            modifier = Modifier.weight(1f, fill = false),
                                                         )
                                                     }
                                                 },
                                                 actions = {
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("history") },
+                                                    Box(
+                                                        modifier = Modifier.padding(end = 4.dp),
                                                     ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.history),
-                                                            contentDescription = stringResource(R.string.history),
-                                                        )
-                                                    }
-                                                    TooltipBox(
-                                                        positionProvider =
-                                                            if (hasUnreadNews) {
-                                                                TooltipDefaults.rememberRichTooltipPositionProvider()
-                                                            } else {
-                                                                TooltipDefaults.rememberPlainTooltipPositionProvider()
-                                                            },
-                                                        tooltip = {
-                                                            if (hasUnreadNews) {
-                                                                RichTooltip(
-                                                                    title = { Text(stringResource(R.string.news_tooltip_title)) },
-                                                                ) {
-                                                                    Text(stringResource(R.string.news_tooltip_body))
-                                                                }
-                                                            } else {
-                                                                PlainTooltip {
-                                                                    Text(stringResource(R.string.news))
-                                                                }
-                                                            }
-                                                        },
-                                                        state = rememberTooltipState(),
-                                                    ) {
-                                                        TranslucentTopAppBarIconButton(
-                                                            onClick = { navController.navigate("news") },
+                                                        IconButton(
+                                                            onClick = { profileMenuExpanded = true },
+                                                            colors = IconButtonDefaults.iconButtonColors(
+                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                                                    .copy(alpha = TopAppBarIconButtonContainerAlpha),
+                                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            ),
                                                         ) {
-                                                            BadgedBox(badge = {
-                                                                if (hasUnreadNews) {
-                                                                    Badge()
-                                                                }
-                                                            }) {
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.newspaper),
-                                                                    contentDescription = stringResource(R.string.news),
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("new_release") },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.new_release),
-                                                            contentDescription = stringResource(R.string.new_release_albums),
-                                                        )
-                                                    }
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("settings") },
-                                                    ) {
-                                                        BadgedBox(badge = {
-                                                            if (
-                                                                BuildConfig.UPDATER_AVAILABLE &&
-                                                                latestUpdateChannel == updateChannel &&
-                                                                Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
+                                                            Surface(
+                                                                modifier = Modifier.size(28.dp),
+                                                                shape = CircleShape,
+                                                                color = MaterialTheme.colorScheme.primaryContainer,
                                                             ) {
-                                                                Badge()
+                                                                if (!accountImageUrl.isNullOrBlank()) {
+                                                                    AsyncImage(
+                                                                        model = accountImageUrl,
+                                                                        contentDescription = stringResource(R.string.account),
+                                                                        modifier = Modifier
+                                                                            .fillMaxSize()
+                                                                            .clip(CircleShape),
+                                                                        contentScale = ContentScale.Crop,
+                                                                    )
+                                                                } else {
+                                                                    Box(contentAlignment = Alignment.Center) {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.account),
+                                                                            contentDescription = stringResource(R.string.account),
+                                                                            modifier = Modifier.size(20.dp),
+                                                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                                        )
+                                                                    }
+                                                                }
                                                             }
-                                                        }) {
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.settings),
-                                                                contentDescription = stringResource(R.string.settings),
-                                                                modifier = Modifier.size(24.dp),
-                                                            )
                                                         }
+                                                    }
+                                                    if (profileMenuExpanded) {
+                                                        val showSettingsBadge = BuildConfig.UPDATER_AVAILABLE &&
+                                                            latestUpdateChannel == effectiveUpdateChannel &&
+                                                            Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
+                                                        ProfileMenuDialog(
+                                                            accountName = accountName,
+                                                            accountImageUrl = accountImageUrl,
+                                                            items = listOf(
+                                                                ProfileMenuItem(
+                                                                    icon = R.drawable.history,
+                                                                    label = stringResource(R.string.history),
+                                                                    onClick = {
+                                                                        profileMenuExpanded = false
+                                                                        navController.navigate("history")
+                                                                    },
+                                                                ),
+                                                                ProfileMenuItem(
+                                                                    icon = R.drawable.newspaper,
+                                                                    label = stringResource(R.string.news),
+                                                                    showBadge = hasUnreadNews,
+                                                                    onClick = {
+                                                                        profileMenuExpanded = false
+                                                                        navController.navigate("news")
+                                                                    },
+                                                                ),
+                                                                ProfileMenuItem(
+                                                                    icon = R.drawable.new_release,
+                                                                    label = stringResource(R.string.new_release_albums),
+                                                                    onClick = {
+                                                                        profileMenuExpanded = false
+                                                                        navController.navigate("new_release")
+                                                                    },
+                                                                ),
+                                                                ProfileMenuItem(
+                                                                    icon = R.drawable.stats,
+                                                                    label = stringResource(R.string.lastfm_dashboard),
+                                                                    onClick = {
+                                                                        profileMenuExpanded = false
+                                                                        navController.navigate("lastfm_dashboard")
+                                                                    },
+                                                                ),
+                                                                ProfileMenuItem(
+                                                                    icon = R.drawable.settings,
+                                                                    label = stringResource(R.string.settings),
+                                                                    showBadge = showSettingsBadge,
+                                                                    onClick = {
+                                                                        profileMenuExpanded = false
+                                                                        navController.navigate("settings")
+                                                                    },
+                                                                ),
+                                                            ),
+                                                            onDismiss = { profileMenuExpanded = false },
+                                                        )
                                                     }
                                                 },
                                                 scrollBehavior =
@@ -2124,6 +2286,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 bottomBar = {
                                     Box {
+                                        // A floating pill never docks with the mini player.
                                         val areBottomBarsPaired =
                                             shouldShowNavigationBar &&
                                                 !useRail &&
@@ -2135,6 +2298,7 @@ class MainActivity : ComponentActivity() {
                                             navController = navController,
                                             pureBlack = pureBlack,
                                             isMiniPlayerPairedWithNavigation = areBottomBarsPaired,
+                                            onLyricsVisibilityChange = { isPlayerLyricsFullScreen = it },
                                         )
 
                                         if (useRail) return@Box
@@ -2361,7 +2525,15 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            // Material "fade through" for bottom-nav switches: the
+                                            // incoming screen fades in slightly delayed while gently
+                                            // scaling up from 92%, so Home↔Search↔Library feels animated
+                                            // instead of an imperceptible straight crossfade.
+                                            fadeIn(tween(220, delayMillis = 90)) +
+                                                scaleIn(
+                                                    animationSpec = tween(220, delayMillis = 90),
+                                                    initialScale = 0.92f,
+                                                )
                                         } else {
                                             fadeIn(tween(250)) + slideInHorizontally { it / 2 }
                                         }
@@ -2372,7 +2544,7 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(tween(90))
                                         } else {
                                             fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
                                         }
@@ -2386,7 +2558,11 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            fadeIn(tween(220, delayMillis = 90)) +
+                                                scaleIn(
+                                                    animationSpec = tween(220, delayMillis = 90),
+                                                    initialScale = 0.92f,
+                                                )
                                         } else {
                                             fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
                                         }
@@ -2400,7 +2576,7 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(tween(90))
                                         } else {
                                             fadeOut(tween(200)) + slideOutHorizontally { it / 2 }
                                         }
@@ -2886,14 +3062,12 @@ class MainActivity : ComponentActivity() {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings
-                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads
                             }
                         val descRes =
                             when (category) {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library_desc
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
-                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads_desc
                             }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -3127,25 +3301,6 @@ private fun HomeOverflowMenuIcon(
 }
 
 private const val TopAppBarIconButtonContainerAlpha = 0.48f
-
-@Composable
-private fun TranslucentTopAppBarIconButton(
-    onClick: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        colors =
-            IconButtonDefaults.iconButtonColors(
-                containerColor =
-                    MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                        alpha = TopAppBarIconButtonContainerAlpha,
-                    ),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-        content = content,
-    )
-}
 
 @Composable
 private fun OnlineSearchSortMenu(
