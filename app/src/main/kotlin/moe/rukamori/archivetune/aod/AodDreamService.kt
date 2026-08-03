@@ -97,8 +97,6 @@ class AodDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner 
                     val mediaMetadata by (conn?.mediaMetadata ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
                     val isPlaying by (conn?.isPlaying ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsState()
 
-                    // Bug fix: ExoPlayer.currentPosition is not a Flow, so poll it every
-                    // second to keep the DreamService progress bar alive and moving.
                     var currentPos by remember { mutableLongStateOf(0L) }
                     var songDuration by remember { mutableLongStateOf(0L) }
                     LaunchedEffect(conn) {

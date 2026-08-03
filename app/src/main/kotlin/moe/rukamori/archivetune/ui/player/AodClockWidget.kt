@@ -63,7 +63,6 @@ fun AodClockWidget(
     var batteryLevel by remember { mutableIntStateOf(-1) }
     var isCharging by remember { mutableStateOf(false) }
 
-    // Live clock updater loop (updates every second)
     LaunchedEffect(clockStyle) {
         val timeFormatPattern = when (clockStyle) {
             AodClockStyle.BOLD_DIGITAL -> "HH:mm"
@@ -81,7 +80,6 @@ fun AodClockWidget(
         }
     }
 
-    // Battery status broadcast receiver
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {

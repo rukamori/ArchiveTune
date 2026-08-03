@@ -212,7 +212,6 @@ fun AodCustomizedScreen(navController: NavController) {
     val (pixelShiftEnabled, onPixelShiftEnabledChange) = rememberPreference(AodPixelShiftEnabledKey, defaultValue = true)
     val (autoDimming, onAutoDimmingChange) = rememberPreference(AodAutoDimmingKey, defaultValue = true)
     val (gesturesEnabled, onGesturesEnabledChange) = rememberPreference(AodGesturesEnabledKey, defaultValue = true)
-    // New feature preferences
     val (shakeToUnlock, onShakeToUnlockChange) = rememberPreference(AodShakeToUnlockKey, defaultValue = false)
     val (autoLockEnabled, onAutoLockEnabledChange) = rememberPreference(AodAutoLockEnabledKey, defaultValue = false)
     val (autoLockTimeout, onAutoLockTimeoutChange) = rememberPreference(AodAutoLockTimeoutKey, defaultValue = 10)
@@ -569,11 +568,11 @@ fun AodCustomizedScreen(navController: NavController) {
                 key = "aod_advanced",
                 contentType = "preference_group",
             ) {
-                PreferenceGroup(title = "Security & Power (Advanced AOD)") {
+                PreferenceGroup(title = stringResource(R.string.aod_customize_security_power)) {
                     item {
                         SwitchPreference(
-                            title = { Text("Touch Lock Enabled") },
-                            description = "Prevents accidental touches on AOD screen",
+                            title = { Text(stringResource(R.string.aod_customize_touch_lock)) },
+                            description = stringResource(R.string.aod_customize_touch_lock_desc),
                             icon = { Icon(painterResource(R.drawable.buttons), null) },
                             checked = touchLockEnabled,
                             onCheckedChange = onTouchLockEnabledChange,
@@ -581,7 +580,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     }
                     item {
                         SwitchPreference(
-                            title = { Text("Show Digital Clock") },
+                            title = { Text(stringResource(R.string.aod_customize_show_clock)) },
                             icon = { Icon(painterResource(R.drawable.timer), null) },
                             checked = showClock,
                             onCheckedChange = onShowClockChange,
@@ -589,7 +588,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     }
                     item {
                         SwitchPreference(
-                            title = { Text("Show Battery Status") },
+                            title = { Text(stringResource(R.string.aod_customize_show_battery)) },
                             icon = { Icon(painterResource(R.drawable.sliders), null) },
                             checked = showBattery,
                             onCheckedChange = onShowBatteryChange,
@@ -597,8 +596,8 @@ fun AodCustomizedScreen(navController: NavController) {
                     }
                     item {
                         SwitchPreference(
-                            title = { Text("OLED Burn-in Protection") },
-                            description = "Periodically shifts display offset every 60 seconds",
+                            title = { Text(stringResource(R.string.aod_customize_pixel_shift)) },
+                            description = stringResource(R.string.aod_customize_pixel_shift_desc),
                             icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                             checked = pixelShiftEnabled,
                             onCheckedChange = onPixelShiftEnabledChange,
@@ -606,8 +605,8 @@ fun AodCustomizedScreen(navController: NavController) {
                     }
                     item {
                         SwitchPreference(
-                            title = { Text("Auto-Dimming Low Power Mode") },
-                            description = "Lowers screen opacity after 10 seconds of inactivity",
+                            title = { Text(stringResource(R.string.aod_customize_auto_dimming)) },
+                            description = stringResource(R.string.aod_customize_auto_dimming_desc),
                             icon = { Icon(painterResource(R.drawable.blur_on), null) },
                             checked = autoDimming,
                             onCheckedChange = onAutoDimmingChange,
@@ -615,8 +614,8 @@ fun AodCustomizedScreen(navController: NavController) {
                     }
                     item {
                         SwitchPreference(
-                            title = { Text("Gesture Controls") },
-                            description = "Double-tap to play/pause, swipe left/right to skip tracks",
+                            title = { Text(stringResource(R.string.aod_customize_gestures)) },
+                            description = stringResource(R.string.aod_customize_gestures_desc),
                             icon = { Icon(painterResource(R.drawable.drag_handle), null) },
                             checked = gesturesEnabled,
                             onCheckedChange = onGesturesEnabledChange,
@@ -629,58 +628,53 @@ fun AodCustomizedScreen(navController: NavController) {
                 key = "aod_smart_lock",
                 contentType = "preference_group",
             ) {
-                PreferenceGroup(title = "Smart Lock & Display") {
-                    // Feature #1: Shake-to-unlock
+                PreferenceGroup(title = stringResource(R.string.aod_customize_smart_lock)) {
                     item {
                         SwitchPreference(
-                            title = { Text("Shake to Unlock") },
-                            description = "Shake your phone to exit touch-lock mode",
+                            title = { Text(stringResource(R.string.aod_customize_shake_to_unlock)) },
+                            description = stringResource(R.string.aod_customize_shake_to_unlock_desc),
                             icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                             checked = shakeToUnlock,
                             onCheckedChange = onShakeToUnlockChange,
                             isEnabled = touchLockEnabled,
                         )
                     }
-                    // Feature #2: Auto-lock toggle
                     item {
                         SwitchPreference(
-                            title = { Text("Auto-Lock on AOD Entry") },
-                            description = "Automatically lock screen N seconds after entering AOD (like iPhone)",
+                            title = { Text(stringResource(R.string.aod_customize_auto_lock)) },
+                            description = stringResource(R.string.aod_customize_auto_lock_desc),
                             icon = { Icon(painterResource(R.drawable.timer), null) },
                             checked = autoLockEnabled,
                             onCheckedChange = onAutoLockEnabledChange,
                             isEnabled = touchLockEnabled,
                         )
                     }
-                    // Feature #2: Auto-lock timeout slider (only shown when auto-lock is on)
                     if (autoLockEnabled && touchLockEnabled) {
                         item {
                             AodSliderPreference(
-                                title = "Auto-Lock Delay",
+                                title = stringResource(R.string.aod_customize_auto_lock_delay),
                                 icon = { Icon(painterResource(R.drawable.timer), null) },
                                 value = autoLockTimeout.toFloat(),
                                 valueRange = 3f..120f,
                                 steps = 23,
-                                valueLabel = { "${it.roundToInt()}s" },
+                                valueLabel = { stringResource(R.string.aod_customize_auto_lock_delay_value, it.roundToInt()) },
                                 onValueChange = { onAutoLockTimeoutChange(it.roundToInt()) },
                             )
                         }
                     }
-                    // Feature #4: Marquee scrolling for long titles
                     item {
                         SwitchPreference(
-                            title = { Text("Marquee Song Titles") },
-                            description = "Scroll long song titles instead of truncating",
+                            title = { Text(stringResource(R.string.aod_customize_marquee_titles)) },
+                            description = stringResource(R.string.aod_customize_marquee_titles_desc),
                             icon = { Icon(painterResource(R.drawable.drag_handle), null) },
                             checked = marqueeTitles,
                             onCheckedChange = onMarqueeTitlesChange,
                         )
                     }
-                    // Feature #5: Minimal locked state
                     item {
                         SwitchPreference(
-                            title = { Text("Minimal Locked View") },
-                            description = "When locked, show only clock and song title — hides artwork and controls",
+                            title = { Text(stringResource(R.string.aod_customize_minimal_locked_view)) },
+                            description = stringResource(R.string.aod_customize_minimal_locked_view_desc),
                             icon = { Icon(painterResource(R.drawable.blur_on), null) },
                             checked = minimalLockedState,
                             onCheckedChange = onMinimalLockedStateChange,

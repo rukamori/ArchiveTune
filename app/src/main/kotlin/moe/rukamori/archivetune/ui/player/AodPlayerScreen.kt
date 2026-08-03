@@ -196,7 +196,6 @@ fun AodPlayerScreen(
     val (titleMaxLines) = rememberPreference(AodTitleMaxLinesKey, 1)
     val (ambientIntensity) = rememberPreference(AodAmbientIntensityKey, 0.18f)
 
-    // New Advanced AOD Preferences
     val (touchLockEnabled) = rememberPreference(AodTouchLockEnabledKey, false)
     val (unlockMethod) = rememberEnumPreference(AodUnlockMethodKey, AodUnlockMethod.SLIDE)
     val (showClock) = rememberPreference(AodShowClockKey, true)
@@ -206,15 +205,12 @@ fun AodPlayerScreen(
     val (autoDimming) = rememberPreference(AodAutoDimmingKey, true)
     val (autoDimTimeout) = rememberPreference(AodAutoDimTimeoutKey, 5)
     val (gesturesEnabled) = rememberPreference(AodGesturesEnabledKey, true)
-    // Feature: shake-to-unlock, auto-lock, marquee, minimal locked state
     val (shakeToUnlock) = rememberPreference(AodShakeToUnlockKey, false)
     val (autoLockEnabled) = rememberPreference(AodAutoLockEnabledKey, false)
     val (autoLockTimeout) = rememberPreference(AodAutoLockTimeoutKey, 10)
     val (marqueeTitles) = rememberPreference(AodMarqueeTitlesKey, false)
     val (minimalLockedState) = rememberPreference(AodMinimalLockedStateKey, false)
 
-    // Bug fix #1: Don't use touchLockEnabled as a remember key — that would reset
-    // isLocked to its default whenever ANY preference changes mid-session.
     var isLocked by remember { mutableStateOf(touchLockEnabled) }
     var pixelShiftOffset by remember { mutableStateOf(IntOffset.Zero) }
     var isDimmed by remember { mutableStateOf(false) }
@@ -231,7 +227,6 @@ fun AodPlayerScreen(
         if (isDimmed) isDimmed = false
     }
 
-    // OLED Pixel Shifting Loop (Every 60 Seconds)
     LaunchedEffect(pixelShiftEnabled) {
         if (pixelShiftEnabled) {
             val shifts = listOf(
@@ -249,7 +244,6 @@ fun AodPlayerScreen(
         }
     }
 
-    // Feature #2: Auto-lock — automatically lock the screen after N seconds of entering AOD
     LaunchedEffect(autoLockEnabled, autoLockTimeout) {
         if (autoLockEnabled && !isLocked) {
             delay(autoLockTimeout.coerceIn(3, 120) * 1000L)
@@ -257,7 +251,6 @@ fun AodPlayerScreen(
         }
     }
 
-    // Feature #1: Shake-to-unlock — register accelerometer listener when locked
     DisposableEffect(shakeToUnlock, isLocked) {
         if (!shakeToUnlock || !isLocked) return@DisposableEffect onDispose {}
         val sensorManager = (context as? Activity)
@@ -283,9 +276,6 @@ fun AodPlayerScreen(
         onDispose { sensorManager?.unregisterListener(listener) }
     }
 
-    // Bug fix #2: Use a single cancellable coroutine for auto-dim.
-    // LaunchedEffect cancels the previous coroutine when lastInteractionTime changes,
-    // so there's never more than one timer running at once.
     LaunchedEffect(autoDimming, autoDimTimeout, lastInteractionTime) {
         if (!autoDimming) return@LaunchedEffect
         val timeoutMs = autoDimTimeout.coerceIn(3, 30) * 1000L
@@ -293,7 +283,6 @@ fun AodPlayerScreen(
         isDimmed = true
     }
 
-    // Hardware Screen Brightness Control (iPhone AOD Style Dimming)
     DisposableEffect(isDimmed, isLocked) {
         val window = (context as? Activity)?.window
         window?.let { w ->
@@ -373,8 +362,6 @@ fun AodPlayerScreen(
                         }
                     )
                 }
-                // Consume ALL vertical drags to block the notification shade
-                // from pulling down while in AOD mode.
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragStart = { resetInteraction() },
@@ -422,7 +409,6 @@ fun AodPlayerScreen(
                     .padding(horizontal = horizontalPadding.coerceIn(16f, 72f).dp)
                     .padding(vertical = 32.dp),
         ) {
-            // Live Clock & Battery Widget
             AodClockWidget(
                 showClock = showClock,
                 clockStyle = clockStyle,
@@ -430,7 +416,6 @@ fun AodPlayerScreen(
                 accentColor = accentColor,
             )
 
-            // Feature #5: Hide artwork in minimal locked state
             AnimatedVisibility(
                 visible = showThumbnail && (!isLocked || !minimalLockedState),
                 enter = fadeIn(tween(300)),
@@ -467,10 +452,8 @@ fun AodPlayerScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                // Feature #5: Minimal locked state — show only clock + title when locked
                 val showFullContent = !isLocked || !minimalLockedState
 
-                // Feature #4: Marquee scrolling for long titles
                 Text(
                     text = mediaMetadata.title,
                     style = MaterialTheme.typography.titleLarge,
@@ -518,7 +501,6 @@ fun AodPlayerScreen(
                 }
             }
 
-            // Feature #5: Progress and controls hidden in minimal locked state
             AnimatedVisibility(
                 visible = showProgress && (!isLocked || !minimalLockedState),
                 enter = fadeIn(tween(300)),
@@ -566,8 +548,6 @@ fun AodPlayerScreen(
                 )
             }
 
-            // Bug fix #5: Slide-to-lock shown independently of showControls so the
-            // user can always lock even when playback controls are hidden in settings.
             if (!isLocked) {
                 AodSlideToLockButton(
                     accentColor = accentColor,
@@ -580,7 +560,6 @@ fun AodPlayerScreen(
             }
         }
 
-        // Touch Lock Overlay
         AodTouchLockOverlay(
             isLocked = isLocked,
             unlockMethod = unlockMethod,

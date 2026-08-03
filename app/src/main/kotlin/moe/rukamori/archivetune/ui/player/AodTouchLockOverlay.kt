@@ -143,7 +143,6 @@ fun AodTouchLockOverlay(
         label = "slideOffset",
     )
 
-    // Hold to unlock progress loop
     LaunchedEffect(isHolding) {
         if (isHolding) {
             val startTime = System.currentTimeMillis()
@@ -167,8 +166,6 @@ fun AodTouchLockOverlay(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.75f))
-            // Consume ALL touch events — taps, horizontal AND vertical drags —
-            // so nothing leaks to the system notification shade.
             .pointerInput(Unit) {
                 detectTapGestures { /* consume tap */ }
             }
