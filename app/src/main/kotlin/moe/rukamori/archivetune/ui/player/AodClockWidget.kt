@@ -46,6 +46,8 @@ import moe.rukamori.archivetune.constants.AodClockStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import moe.rukamori.archivetune.R
 
 @Composable
 fun AodClockWidget(
@@ -161,7 +163,7 @@ fun AodClockWidget(
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
-                    text = "$batteryLevel%",
+                    text = stringResource(R.string.aod_battery_percent, batteryLevel),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.65f),
                 )

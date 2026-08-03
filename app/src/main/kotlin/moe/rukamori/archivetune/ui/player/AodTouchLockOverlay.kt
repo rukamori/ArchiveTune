@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.constants.AodUnlockMethod
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import moe.rukamori.archivetune.R
 
 @Composable
 fun AodSlideToLockButton(
@@ -95,7 +97,7 @@ fun AodSlideToLockButton(
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(
-            text = "Slide to Lock >>>",
+            text = stringResource(R.string.aod_slide_to_lock),
             style = MaterialTheme.typography.labelLarge,
             color = Color.White.copy(alpha = 0.65f),
             textAlign = TextAlign.Center,
@@ -113,7 +115,7 @@ fun AodSlideToLockButton(
         ) {
             Icon(
                 imageVector = Icons.Default.Lock,
-                contentDescription = "Lock",
+                contentDescription = stringResource(R.string.aod_lock_icon),
                 tint = Color.Black,
                 modifier = Modifier.size(22.dp),
             )
@@ -218,7 +220,7 @@ fun AodTouchLockOverlay(
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Text(
-                            text = "Slide to Unlock >>>",
+                            text = stringResource(R.string.aod_slide_to_unlock),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color.White.copy(alpha = 0.75f),
                             textAlign = TextAlign.Center,
@@ -236,7 +238,7 @@ fun AodTouchLockOverlay(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LockOpen,
-                                contentDescription = "Unlock",
+                                contentDescription = stringResource(R.string.aod_unlock_icon),
                                 tint = Color.Black,
                                 modifier = Modifier.size(24.dp),
                             )
@@ -260,14 +262,14 @@ fun AodTouchLockOverlay(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Fingerprint,
-                                contentDescription = "Fingerprint Unlock",
+                                contentDescription = stringResource(R.string.aod_fingerprint_icon),
                                 tint = accentColor,
                                 modifier = Modifier.size(36.dp),
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Tap fingerprint to unlock",
+                            text = stringResource(R.string.aod_fingerprint_unlock),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White.copy(alpha = 0.75f),
                         )
@@ -299,14 +301,14 @@ fun AodTouchLockOverlay(
                         }
                         Icon(
                             imageVector = if (holdProgress >= 1f) Icons.Default.LockOpen else Icons.Default.Lock,
-                            contentDescription = "Hold to Unlock",
+                            contentDescription = stringResource(R.string.aod_hold_unlock_icon),
                             tint = Color.White,
                             modifier = Modifier.size(32.dp),
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Hold for 1.5s to unlock",
+                        text = stringResource(R.string.aod_hold_to_unlock),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.75f),
                     )

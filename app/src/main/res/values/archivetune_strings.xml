@@ -203,6 +203,15 @@
     <string name="aod_customize_auto_dimming_desc">Lowers screen opacity after 10 seconds of inactivity</string>
     <string name="aod_customize_gestures">Gesture Controls</string>
     <string name="aod_customize_gestures_desc">Double-tap to play/pause, swipe left/right to skip tracks</string>
+    <string name="aod_slide_to_lock">Slide to Lock &gt;&gt;&gt;</string>
+    <string name="aod_slide_to_unlock">Slide to Unlock &gt;&gt;&gt;</string>
+    <string name="aod_fingerprint_unlock">Tap fingerprint to unlock</string>
+    <string name="aod_hold_to_unlock">Hold for 1.5s to unlock</string>
+    <string name="aod_lock_icon">Lock</string>
+    <string name="aod_unlock_icon">Unlock</string>
+    <string name="aod_fingerprint_icon">Fingerprint unlock</string>
+    <string name="aod_hold_unlock_icon">Hold to unlock</string>
+    <string name="aod_battery_percent">%d%%</string>
     <string name="retry_button">Retry</string>
     <string name="album_cover_desc">Album cover</string>
     <string name="top_music_videos">Top music videos</string>
