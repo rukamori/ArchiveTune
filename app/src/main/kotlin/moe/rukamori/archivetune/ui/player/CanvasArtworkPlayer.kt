@@ -59,11 +59,16 @@ internal fun CanvasArtworkPlayer(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val primary = primaryUrl?.takeIf { it.isNotBlank() }
-    val fallback = fallbackUrl?.takeIf { it.isNotBlank() }
+    val primary = primaryUrl?.trim()?.takeIf { it.isNotBlank() }
+    val fallback =
+        fallbackUrl
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.takeUnless { it == primary }
     val initial = primary ?: fallback ?: return
     var currentUrl by remember(initial) { mutableStateOf(initial) }
     var isVideoReady by remember(initial) { mutableStateOf(false) }
+    var hasPlaybackFailed by remember(initial) { mutableStateOf(false) }
     val shouldPlay by rememberUpdatedState(isPlaying)
 
     val okHttpClient =
@@ -133,7 +138,11 @@ internal fun CanvasArtworkPlayer(
         }
 
     LaunchedEffect(isPlaying) {
-        exoPlayer.setCanvasPlayback(isPlaying)
+        if (hasPlaybackFailed) {
+            exoPlayer.pause()
+        } else {
+            exoPlayer.setCanvasPlayback(isPlaying)
+        }
     }
 
     LaunchedEffect(currentUrl, isPlaying, primary, fallback, exoPlayer) {
@@ -173,7 +182,11 @@ internal fun CanvasArtworkPlayer(
     DisposableEffect(exoPlayer, lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
+                if (
+                    (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) &&
+                    !hasPlaybackFailed &&
+                    exoPlayer.playerError == null
+                ) {
                     exoPlayer.setCanvasPlayback(shouldPlay)
                 }
             }
@@ -188,6 +201,8 @@ internal fun CanvasArtworkPlayer(
             object : Player.Listener {
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                     Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed")
+                    hasPlaybackFailed = true
+                    isVideoReady = false
                     val next =
                         when (currentUrl) {
                             primary -> fallback?.takeIf { it != currentUrl }
@@ -195,19 +210,20 @@ internal fun CanvasArtworkPlayer(
                         }
                     if (!next.isNullOrBlank()) {
                         currentUrl = next
-                        isVideoReady = false
+                    } else {
+                        exoPlayer.stop()
                     }
                 }
 
                 override fun onRenderedFirstFrame() {
                     isVideoReady = true
-                    if (shouldPlay) {
+                    if (shouldPlay && !hasPlaybackFailed && exoPlayer.playerError == null) {
                         exoPlayer.setCanvasPlayback(isPlaying = true)
                     }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (!shouldPlay) return
+                    if (!shouldPlay || hasPlaybackFailed || exoPlayer.playerError != null) return
                     exoPlayer.setCanvasPlayback(isPlaying = true)
                 }
 
@@ -215,13 +231,13 @@ internal fun CanvasArtworkPlayer(
                     playWhenReady: Boolean,
                     reason: Int,
                 ) {
-                    if (shouldPlay && !playWhenReady) {
+                    if (shouldPlay && !playWhenReady && !hasPlaybackFailed && exoPlayer.playerError == null) {
                         exoPlayer.setCanvasPlayback(isPlaying = true)
                     }
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (shouldPlay && !isPlaying) {
+                    if (shouldPlay && !isPlaying && !hasPlaybackFailed && exoPlayer.playerError == null) {
                         exoPlayer.setCanvasPlayback(isPlaying = true)
                     }
                 }
@@ -233,6 +249,7 @@ internal fun CanvasArtworkPlayer(
     LaunchedEffect(currentUrl, exoPlayer) {
         val normalized = currentUrl.trim()
         isVideoReady = false
+        hasPlaybackFailed = false
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
         val mimeType =
             when {

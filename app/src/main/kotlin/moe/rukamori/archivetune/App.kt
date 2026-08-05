@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.ads.SupportAdsInitializer
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.extensions.*
@@ -120,7 +119,6 @@ class App :
 
         initializeGatekeeper()
         initializeCriticalSync()
-        SupportAdsInitializer.initialize(this)
         initializeDeferredAsync()
     }
 
@@ -128,7 +126,11 @@ class App :
         applicationScope.launch(Dispatchers.IO) {
             while (isActive) {
                 val result = runGatekeeperCheckUseCase()
-                if (result !is GatekeeperResult.Blocked || !result.retryable) return@launch
+                when (result) {
+                    GatekeeperResult.Allowed -> return@launch
+                    GatekeeperResult.Unavailable -> Unit
+                    is GatekeeperResult.Blocked -> if (!result.retryable) return@launch
+                }
                 delay(GATEKEEPER_RETRY_INTERVAL_MILLIS)
             }
         }
@@ -275,9 +277,9 @@ class App :
                     YouTube.authState = authState
                     if (previousFingerprint != authState.fingerprint) {
                         YTPlayerUtils.clearPlaybackAuthCaches()
-                        val visitorData = authState.visitorData
-                        if (!visitorData.isNullOrBlank()) {
-                            BotGuardTokenGenerator.preWarm(visitorData)
+                        val sessionId = authState.sessionId
+                        if (!sessionId.isNullOrBlank()) {
+                            BotGuardTokenGenerator.preWarm(sessionId)
                         }
                     }
                 }

@@ -93,7 +93,7 @@ fun headerDownloadState(
             HeaderDownloadState.Completed
         }
 
-        hasAnyDownload -> {
+        hasRunningDownload || hasPausedDownload -> {
             HeaderDownloadState.Partial(
                 progress = (progressTotal / distinctCount).coerceIn(0f, 1f),
                 paused = hasPausedDownload && !hasRunningDownload,
@@ -133,8 +133,17 @@ fun sendAddMissingDownloads(
 fun sendRemoveDownloads(
     context: Context,
     songIds: List<String>,
+    downloads: Map<String, Download>? = null,
 ) {
-    songIds.distinct().forEach { songId ->
+    val idsToRemove = if (downloads != null) {
+        songIds.distinct().filter { id ->
+            val download = downloads[id]
+            download != null && download.state != Download.STATE_COMPLETED
+        }
+    } else {
+        songIds.distinct()
+    }
+    idsToRemove.forEach { songId ->
         DownloadService.sendRemoveDownload(
             context,
             ExoDownloadService::class.java,

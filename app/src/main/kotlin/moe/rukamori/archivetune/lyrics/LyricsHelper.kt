@@ -39,9 +39,11 @@ class LyricsHelper
         private val baseProviders =
             listOf(
                 BetterLyricsProvider,
+                BetterLyricsPortatoProvider,
                 YouLyPlusLyricsProvider,
                 LrcLibLyricsProvider,
                 KuGouLyricsProvider,
+                MegalobizLyricsProvider,
                 SimpMusicLyricsProvider,
                 UnisonLyricsProvider,
                 PaxsenixAppleMusicLyricsProvider,
@@ -168,46 +170,22 @@ class LyricsHelper
             if (providers.isEmpty()) return LYRICS_NOT_FOUND
 
             val artist = mediaMetadata.artists.joinToString { it.name }
-            fetchProviderLyrics(providers.first(), mediaMetadata, artist)?.let { lyrics ->
-                return lyrics
-            }
-
-            return fetchFirstMeaningfulLyrics(providers.drop(1), mediaMetadata, artist)
-        }
-
-        private suspend fun fetchFirstMeaningfulLyrics(
-            providers: List<LyricsProvider>,
-            mediaMetadata: MediaMetadata,
-            artist: String,
-        ): String =
-            supervisorScope {
-                val requests =
+            val results =
+                supervisorScope {
                     providers
                         .map { provider ->
                             async(Dispatchers.IO) {
                                 fetchProviderLyrics(provider, mediaMetadata, artist)
                             }
-                        }
-
-                if (requests.isEmpty()) return@supervisorScope LYRICS_NOT_FOUND
-
-                val pending = requests.toMutableSet()
-                while (pending.isNotEmpty()) {
-                    val (request, lyrics) =
-                        select<Pair<Deferred<String?>, String?>> {
-                            pending.forEach { deferred ->
-                                deferred.onAwait { result -> deferred to result }
-                            }
-                        }
-                    pending.remove(request)
-                    if (lyrics != null) {
-                        pending.forEach { it.cancel() }
-                        return@supervisorScope lyrics
-                    }
+                        }.mapNotNull { it.await() }
                 }
 
-                LYRICS_NOT_FOUND
-            }
+            if (results.isEmpty()) return LYRICS_NOT_FOUND
+
+            results.firstOrNull { LyricsUtils.hasWordSyncedLyrics(it) }?.let { return it }
+            results.firstOrNull { LyricsUtils.isLineSyncedLrc(it) }?.let { return it }
+            return results.first()
+        }
 
         private suspend fun fetchProviderLyrics(
             provider: LyricsProvider,
@@ -245,7 +223,9 @@ class LyricsHelper
                 mapOf(
                     PreferredLyricsProvider.LRCLIB to LrcLibLyricsProvider,
                     PreferredLyricsProvider.KUGOU to KuGouLyricsProvider,
+                    PreferredLyricsProvider.MEGALOBIZ to MegalobizLyricsProvider,
                     PreferredLyricsProvider.BETTER_LYRICS to BetterLyricsProvider,
+                    PreferredLyricsProvider.BETTER_LYRICS_PORTATO to BetterLyricsPortatoProvider,
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to PaxsenixAppleMusicLyricsProvider,

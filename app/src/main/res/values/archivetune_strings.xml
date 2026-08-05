@@ -253,6 +253,7 @@
     <string name="close">Close</string>
     <string name="minimum_volume">Minimum Volume</string>
     <string name="maximum_volume">Maximum Volume</string>
+    <string name="muted">Muted</string>
     <string name="hide_player_thumbnail">Hide Player Thumbnail</string>
     <string name="hide_player_thumbnail_desc">Replace album artwork with app logo in player</string>
     <string name="crop_thumbnail_to_square">Crop thumbnails to 1:1</string>
@@ -290,6 +291,7 @@
     <string name="player_design_v7">Immersive</string>
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
+    <string name="player_design_apple_music">Apple Music</string>
     <string name="player_background_blur">Blur</string>
     <string name="coloring">Coloring</string>
     <string name="blur_gradient">Blur Gradient</string>
@@ -328,6 +330,7 @@
     <string name="last_song_listened">Based on last song listened</string>
     <string name="dont_show">Dont Show</string>
     <string name="app_language">App language</string>
+    <string name="use_system_language">Use system language</string>
     <string name="open_supported_links">Open supported link by default</string>
     <string name="set_first_lyrics_provider">Preferred lyrics provider</string>
     <string name="audio_quality_max">Max (beta)</string>
@@ -543,6 +546,8 @@
     <string name="backup_category_settings_desc">Appearance, playback &amp; preferences</string>
     <string name="backup_category_account">Account Details</string>
     <string name="backup_category_account_desc">YouTube, Spotify, Last.fm, Libre.fm, Discord &amp; proxy credentials</string>
+    <string name="backup_category_downloads">Re-download offline songs</string>
+    <string name="backup_category_downloads_desc">Will be downloaded again on restore</string>
     <string name="internal_service">Internal Service</string>
     <string name="external_service">External Service</string>
     <string name="restore_invalid_file">The selected file is not a valid backup archive.</string>

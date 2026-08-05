@@ -30,7 +30,8 @@ class GatekeeperViewModel
         init {
             viewModelScope.launch {
                 when (val result = runGatekeeperCheckUseCase()) {
-                    GatekeeperResult.Allowed -> Unit
+                    GatekeeperResult.Allowed,
+                    GatekeeperResult.Unavailable -> Unit
                     is GatekeeperResult.Blocked -> blockedMessageChannel.send(result.message)
                 }
             }

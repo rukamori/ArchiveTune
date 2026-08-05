@@ -137,6 +137,10 @@ sealed interface MusicRecognitionEvent {
     data class OpenUri(
         val uri: String,
     ) : MusicRecognitionEvent
+
+    data class NavigateToDetails(
+        val track: moe.rukamori.archivetune.musicrecognition.RecognizedTrack,
+    ) : MusicRecognitionEvent
 }
 
 @HiltViewModel
@@ -336,10 +340,10 @@ class MusicRecognitionViewModel
                     result.fold(
                         onSuccess = { track ->
                             _screenState.value =
-                                MusicRecognitionScreenState.Success(
-                                    track = track.toUiModel(),
+                                MusicRecognitionScreenState.Empty(
                                     history = currentHistory(),
                                 )
+                            _events.send(MusicRecognitionEvent.NavigateToDetails(track))
                         },
                         onFailure = { throwable ->
                             if (throwable is CancellationException) throw throwable

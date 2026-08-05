@@ -303,6 +303,34 @@ fun LocalPlaylistScreen(
     val downloadUtil = LocalDownloadUtil.current
     var downloads by remember { mutableStateOf<Map<String, Download>>(emptyMap()) }
     var downloadState by remember { mutableStateOf<HeaderDownloadState>(HeaderDownloadState.None) }
+    val globalDownloadState = remember(downloads) {
+        val activeDownloads = downloads.values.filter {
+            it.state == Download.STATE_DOWNLOADING ||
+            it.state == Download.STATE_QUEUED ||
+            it.state == Download.STATE_RESTARTING ||
+            it.state == Download.STATE_STOPPED
+        }
+        if (activeDownloads.isEmpty()) {
+            HeaderDownloadState.None
+        } else {
+            var progressTotal = 0f
+            var hasRunning = false
+            var hasPaused = false
+            activeDownloads.forEach { download ->
+                val progress = download.percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
+                progressTotal += progress.coerceIn(0f, 1f)
+                if (download.state == Download.STATE_STOPPED) {
+                    hasPaused = hasPaused || download.stopReason == 1
+                } else {
+                    hasRunning = true
+                }
+            }
+            HeaderDownloadState.Partial(
+                progress = progressTotal / activeDownloads.size,
+                paused = hasPaused && !hasRunning,
+            )
+        }
+    }
 
     val editable: Boolean = playlist?.playlist?.isEditable == true
     val canChangeSongSource = editable && playlist?.playlist?.browseId == null
@@ -325,11 +353,6 @@ fun LocalPlaylistScreen(
             addAll(songs)
         }
         val songIds = songs.map { it.song.id }
-        if (songIds.isEmpty()) {
-            downloads = emptyMap()
-            downloadState = HeaderDownloadState.None
-            return@LaunchedEffect
-        }
         downloadUtil.downloads.collect { currentDownloads ->
             downloads = currentDownloads
             downloadState = headerDownloadState(songIds, currentDownloads)
@@ -660,13 +683,13 @@ fun LocalPlaylistScreen(
                                                     HeaderDownloadState.Completed -> {
                                                         showRemoveDownloadDialog = true
                                                     }
-
                                                     is HeaderDownloadState.Partial -> {
-                                                        navController.navigate(
-                                                            "auto_playlist/downloaded?tab=progress",
+                                                        sendRemoveDownloads(
+                                                            context = context,
+                                                            songIds = songs.map { it.song.id },
+                                                            downloads = downloads,
                                                         )
                                                     }
-
                                                     HeaderDownloadState.None -> {
                                                         sendAddMissingDownloads(
                                                             context = context,
@@ -678,9 +701,6 @@ fun LocalPlaylistScreen(
                                                                     )
                                                                 },
                                                             downloads = downloads,
-                                                        )
-                                                        navController.navigate(
-                                                            "auto_playlist/downloaded?tab=progress",
                                                         )
                                                     }
                                                 }
@@ -694,14 +714,13 @@ fun LocalPlaylistScreen(
                                                         modifier = Modifier.size(22.dp),
                                                     )
                                                 }
-
                                                 is HeaderDownloadState.Partial -> {
                                                     HeaderDownloadProgressIndicator(
                                                         progress = state.progress,
                                                         paused = state.paused,
+                                                        icon = R.drawable.download,
                                                     )
                                                 }
-
                                                 HeaderDownloadState.None -> {
                                                     Icon(
                                                         painter = painterResource(R.drawable.download),
@@ -710,6 +729,24 @@ fun LocalPlaylistScreen(
                                                     )
                                                 }
                                             }
+                                        }
+
+                                        MediaDetailAction(
+                                            contentDescription = R.string.download,
+                                            contentColor = contentColor,
+                                            onClick = {
+                                                navController.navigate(
+                                                    "auto_playlist/downloaded?tab=progress",
+                                                )
+                                            },
+                                        ) {
+                                            val globalProgress = (globalDownloadState as? HeaderDownloadState.Partial)?.progress ?: 0f
+                                            val globalPaused = (globalDownloadState as? HeaderDownloadState.Partial)?.paused ?: false
+                                            HeaderDownloadProgressIndicator(
+                                                progress = globalProgress,
+                                                paused = globalPaused,
+                                                icon = R.drawable.list,
+                                            )
                                         }
 
                                         MediaDetailIconAction(

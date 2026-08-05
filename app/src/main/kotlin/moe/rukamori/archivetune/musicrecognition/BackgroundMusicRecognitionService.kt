@@ -30,6 +30,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import android.util.Base64
+import kotlinx.serialization.json.Json
+import moe.rukamori.archivetune.MainActivity
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -150,6 +153,7 @@ class BackgroundMusicRecognitionService : Service() {
                 onSuccess = { track ->
                     finishForeground()
                     notificationManager.notify(notificationManager.result(track))
+                    autoOpenResult(track)
                 },
                 onFailure = { throwable ->
                     if (throwable is CancellationException) throw throwable
@@ -225,6 +229,19 @@ class BackgroundMusicRecognitionService : Service() {
 
     private fun finishForeground() {
         stopForeground(STOP_FOREGROUND_DETACH)
+    }
+
+    private fun autoOpenResult(track: RecognizedTrack) {
+        val jsonString = Json.encodeToString(RecognizedTrack.serializer(), track)
+        val encodedTrack = Base64.encodeToString(
+            jsonString.toByteArray(Charsets.UTF_8),
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+        )
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("navigate_to", "music_recognition/details/$encodedTrack")
+        }
+        startActivity(intent)
     }
 
     private fun releaseProjection() {

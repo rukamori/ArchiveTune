@@ -66,8 +66,10 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
+import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
+import moe.rukamori.archivetune.constants.EnableMegalobizLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixAppleMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
@@ -157,9 +159,12 @@ fun LyricsSettings(
     val (enableLrclib, onEnableLrclibChange) = rememberPreference(key = EnableLrcLibKey, defaultValue = true)
     val (enableKugou, onEnableKugouChange) = rememberPreference(key = EnableKugouKey, defaultValue = true)
     val (enableBetterLyrics, onEnableBetterLyricsChange) = rememberPreference(key = EnableBetterLyricsKey, defaultValue = true)
+    val (enableBetterLyricsPortato, onEnableBetterLyricsPortatoChange) =
+        rememberPreference(key = EnableBetterLyricsPortatoKey, defaultValue = true)
     val (enableYouLyPlusLyrics, onEnableYouLyPlusLyricsChange) =
         rememberPreference(key = EnableYouLyPlusLyricsKey, defaultValue = true)
     val (enableSimpMusicLyrics, onEnableSimpMusicLyricsChange) = rememberPreference(key = EnableSimpMusicLyricsKey, defaultValue = true)
+    val (enableMegalobizLyrics, onEnableMegalobizLyricsChange) = rememberPreference(key = EnableMegalobizLyricsKey, defaultValue = true)
     val (enablePaxsenixLyrics, onEnablePaxsenixLyricsChange) = rememberPreference(key = EnablePaxsenixLyricsKey, defaultValue = true)
     val (enablePaxsenixAppleMusicLyrics, onEnablePaxsenixAppleMusicLyricsChange) =
         rememberPreference(
@@ -452,6 +457,15 @@ fun LyricsSettings(
 
             item {
                 SwitchPreference(
+                    title = { Text(stringResource(R.string.enable_betterlyrics_portato)) },
+                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
+                    checked = enableBetterLyricsPortato,
+                    onCheckedChange = onEnableBetterLyricsPortatoChange,
+                )
+            }
+
+            item {
+                SwitchPreference(
                     title = { Text(stringResource(R.string.enable_youlyplus_lyrics)) },
                     icon = { Icon(painterResource(R.drawable.lyrics), null) },
                     checked = enableYouLyPlusLyrics,
@@ -492,6 +506,15 @@ fun LyricsSettings(
                     icon = { Icon(painterResource(R.drawable.lyrics), null) },
                     checked = enableSimpMusicLyrics,
                     onCheckedChange = onEnableSimpMusicLyricsChange,
+                )
+            }
+
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.enable_megalobiz_lyrics)) },
+                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
+                    checked = enableMegalobizLyrics,
+                    onCheckedChange = onEnableMegalobizLyricsChange,
                 )
             }
 
@@ -670,7 +693,9 @@ private fun PreferredLyricsProvider.displayName(): String =
     when (this) {
         PreferredLyricsProvider.LRCLIB -> "LrcLib"
         PreferredLyricsProvider.KUGOU -> "KuGou"
+        PreferredLyricsProvider.MEGALOBIZ -> "Megalobiz"
         PreferredLyricsProvider.BETTER_LYRICS -> "BetterLyrics"
+        PreferredLyricsProvider.BETTER_LYRICS_PORTATO -> "BetterLyrics Portato"
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> "Paxsenix: Apple Music"

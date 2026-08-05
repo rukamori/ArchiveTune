@@ -67,13 +67,15 @@ class YouTubeLoginRepository
                             visitorData = visitorData,
                             dataSyncId = dataSyncId,
                         ).normalized()
-                    YouTube.authState = initialAuthState
+                    val verificationAuthState = initialAuthState.copy(dataSyncId = null)
+                    YouTube.authState = verificationAuthState
+
+                    val accountInfo = YouTube.accountInfo().getOrThrow()
 
                     val resolvedDataSyncId = resolveRequiredDataSyncId(initialAuthState.dataSyncId)
                     val resolvedAuthState = initialAuthState.copy(dataSyncId = resolvedDataSyncId).normalized()
                     YouTube.authState = resolvedAuthState
 
-                    val accountInfo = YouTube.accountInfo().getOrThrow()
                     persistLoginSession(
                         authState = resolvedAuthState,
                         accountInfo = accountInfo,

@@ -123,14 +123,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -189,6 +193,7 @@ import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
+import moe.rukamori.archivetune.constants.UseSystemLanguageKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.CustomThemeColorKey
 import moe.rukamori.archivetune.constants.DarkModeKey
@@ -206,7 +211,10 @@ import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.NavigationBarBottomPadding
 import moe.rukamori.archivetune.constants.NavigationBarHeight
+import moe.rukamori.archivetune.constants.NavigationBarFrostedBlurKey
 import moe.rukamori.archivetune.constants.NavigationBarHorizontalPadding
+import moe.rukamori.archivetune.constants.NavigationBarStyle
+import moe.rukamori.archivetune.constants.NavigationBarStyleKey
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -257,6 +265,8 @@ import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop
+import moe.rukamori.archivetune.ui.component.NavigationBarBackdrop
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.StarDialog
@@ -504,29 +514,28 @@ class MainActivity : ComponentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            val initialLocale =
-                PreferenceStore
-                    .get(AppLanguageKey)
-                    ?.takeUnless { it == SYSTEM_DEFAULT }
-                    ?.let { Locale.forLanguageTag(it) }
-                    ?: Locale.getDefault()
-            setAppLocale(this, initialLocale)
+        val initialLocale =
+            if (PreferenceStore.get(UseSystemLanguageKey) ?: true) {
+                Locale.getDefault()
+            } else {
+                Locale.ENGLISH
+            }
+        setAppLocale(this, initialLocale)
 
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching {
-                    dataStore.data.first()[AppLanguageKey]
-                }.onSuccess { lang ->
-                    val targetLocale =
-                        lang
-                            ?.takeUnless { it == SYSTEM_DEFAULT }
-                            ?.let { Locale.forLanguageTag(it) }
-                            ?: Locale.getDefault()
-                    if (targetLocale != initialLocale) {
-                        withContext(Dispatchers.Main) {
-                            setAppLocale(this@MainActivity, targetLocale)
-                            recreate()
-                        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                dataStore.data.first().let { prefs ->
+                    if (prefs[UseSystemLanguageKey] ?: true) {
+                        Locale.getDefault()
+                    } else {
+                        Locale.ENGLISH
+                    }
+                }
+            }.onSuccess { targetLocale ->
+                if (targetLocale != initialLocale) {
+                    withContext(Dispatchers.Main) {
+                        setAppLocale(this@MainActivity, targetLocale)
+                        recreate()
                     }
                 }
             }
@@ -565,6 +574,42 @@ class MainActivity : ComponentActivity() {
                     delay(100)
                 }
                 delay(500)
+
+                try {
+                    val redownload = withContext(Dispatchers.IO) {
+                        dataStore.data.first()[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] ?: false
+                    }
+                    if (redownload) {
+                        val downloaded = withContext(Dispatchers.IO) {
+                            database.downloadedSongsList()
+                        }
+                        if (downloaded.isNotEmpty()) {
+                            downloaded.forEach { song ->
+                                val downloadRequest = androidx.media3.exoplayer.offline.DownloadRequest
+                                    .Builder(song.id, song.id.toUri())
+                                    .setCustomCacheKey(song.id)
+                                    .setData(song.title.toByteArray())
+                                    .build()
+                                androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                                    this@MainActivity,
+                                    moe.rukamori.archivetune.playback.ExoDownloadService::class.java,
+                                    downloadRequest,
+                                    false,
+                                )
+                            }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@MainActivity, "Re-downloading ${downloaded.size} offline songs...", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        withContext(Dispatchers.IO) {
+                            dataStore.edit { prefs ->
+                                prefs[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] = false
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    moe.rukamori.archivetune.utils.reportException(e)
+                }
 
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
@@ -710,6 +755,14 @@ class MainActivity : ComponentActivity() {
                 }
             val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
             val pureBlack = pureBlackEnabled && useDarkTheme
+            val navigationBarStyle by rememberEnumPreference(
+                NavigationBarStyleKey,
+                defaultValue = NavigationBarStyle.DEFAULT,
+            )
+            val navigationBarFrostedBlur by rememberPreference(
+                NavigationBarFrostedBlurKey,
+                defaultValue = false,
+            )
 
             val customThemeSeedPalette =
                 remember(customThemeColorValue) {
@@ -971,8 +1024,38 @@ class MainActivity : ComponentActivity() {
                             0.dp
                         }
 
-                    val floatingBarsBottomPadding = NavigationBarBottomPadding
+                    // FLOATING detaches the bar into a pill: bigger bottom margin, tighter width.
+                    // Every consumer below (collapsed player anchor, slide distance, insets, FAB
+                    // padding) derives from these two values so the styles stay in sync.
+                    val isFloatingNavBar = navigationBarStyle == NavigationBarStyle.FLOATING
+                    val floatingBarsBottomPadding =
+                        if (isFloatingNavBar) FloatingNavigationBarBottomPadding else NavigationBarBottomPadding
                     val navVisibleHeight = NavigationBarHeight
+                    val navBarHorizontalPadding =
+                        if (isFloatingNavBar) FloatingNavigationBarHorizontalPadding else NavigationBarHorizontalPadding
+
+                    // Frosted backdrop (nav bar + mini player): only allocated when some frosted
+                    // surface can actually run (setting on, RenderEffect available, bottom bar in use).
+                    val miniPlayerBgStyle by rememberEnumPreference(
+                        MiniPlayerBackgroundStyleKey,
+                        defaultValue = MiniPlayerBackgroundStyle.THEME,
+                    )
+                    // Capture the app content into a GraphicsLayer every frame so the frosted
+                    // nav bar / mini player can draw it blurred. On Android 12+ the blur uses
+                    // RenderEffect (every frame, hardware-accelerated); on pre-S the consumers
+                    // fall back to a periodically captured + CPU-blurred bitmap
+                    // (see [rememberPreSFrostedBitmap]). Both paths need the same GraphicsLayer,
+                    // so we create it on every API level — `rememberGraphicsLayer` and
+                    // `layer.record { ... }` work without RenderEffect.
+                    val navBarFrostedBackdrop =
+                        if ((navigationBarFrostedBlur || miniPlayerBgStyle == MiniPlayerBackgroundStyle.FROSTED) &&
+                            !useRail
+                        ) {
+                            val frostedLayer = rememberGraphicsLayer()
+                            remember(frostedLayer) { NavigationBarBackdrop(frostedLayer) }
+                        } else {
+                            null
+                        }
 
                     val bottomNavigationBarHeight by animateDpAsState(
                         targetValue = if (shouldShowNavigationBar && !useRail) navVisibleHeight else 0.dp,
@@ -1082,7 +1165,10 @@ class MainActivity : ComponentActivity() {
 
                     val shouldHideStatusBars =
                         isYearInMusicScreen ||
-                            (playerBottomSheetState.isExpanded && playerDesignStyle == PlayerDesignStyle.V7)
+                            (
+                                playerBottomSheetState.isExpandedOrExpanding &&
+                                    (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC)
+                            )
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
@@ -1130,6 +1216,7 @@ class MainActivity : ComponentActivity() {
                             bottomInset,
                             shouldShowNavigationBar,
                             playerBottomSheetState.isDismissed,
+                            navigationBarStyle,
                         ) {
                             var bottom = bottomInset
                             if (shouldShowNavigationBar && !useRail) {
@@ -1155,7 +1242,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val searchScrollBehavior =
@@ -1163,7 +1250,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
                     val topAppBarScrollBehavior =
@@ -1171,7 +1258,7 @@ class MainActivity : ComponentActivity() {
                             canScroll = {
                                 navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == false &&
                                     navBackStackEntry?.destination?.route != Screens.Library.route &&
-                                    (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
+                                    !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
 
@@ -1203,17 +1290,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(currentRoute) {
-                        when (currentRoute) {
-                            Screens.Home.route -> {
-                                homeScrollBehavior.state.resetHeightOffset()
-                            }
+                    LaunchedEffect(currentRoute, playerBottomSheetState.isExpanded) {
+                        if (!playerBottomSheetState.isExpanded) {
+                            when (currentRoute) {
+                                Screens.Home.route -> {
+                                    homeScrollBehavior.state.resetHeightOffset()
+                                }
 
-                            Screens.Search.route -> {
-                                searchScrollBehavior.state.resetHeightOffset()
-                            }
+                                Screens.Search.route -> {
+                                    searchScrollBehavior.state.resetHeightOffset()
+                                }
 
-                            else -> {}
+                                else -> {}
+                            }
                         }
                     }
 
@@ -1494,10 +1583,14 @@ class MainActivity : ComponentActivity() {
                         LocalSyncUtils provides syncUtils,
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
+                        moe.rukamori.archivetune.ui.component.LocalNavigationBarBackdrop provides navBarFrostedBackdrop,
                     ) {
                         Row {
                             AnimatedVisibility(
-                                visible = useRail && shouldShowNavigationBar,
+                                visible =
+                                    useRail &&
+                                        shouldShowNavigationBar &&
+                                        (isTvDevice || !playerBottomSheetState.isExpandedOrExpanding),
                                 enter = fadeIn(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 150)),
                                 exit = fadeOut(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 100)),
                             ) {
@@ -2034,6 +2127,7 @@ class MainActivity : ComponentActivity() {
                                         val areBottomBarsPaired =
                                             shouldShowNavigationBar &&
                                                 !useRail &&
+                                                !isFloatingNavBar &&
                                                 playerBottomSheetState.isCollapsed
 
                                         BottomSheetPlayer(
@@ -2084,12 +2178,15 @@ class MainActivity : ComponentActivity() {
                                                 items = navigationItems,
                                                 pureBlack = pureBlack,
                                                 isPairedWithMiniPlayer = areBottomBarsPaired,
+                                                style = navigationBarStyle,
+                                                frostedBlur = navigationBarFrostedBlur,
+                                                frostedBackdrop = navBarFrostedBackdrop,
                                                 modifier =
                                                     Modifier
                                                         .align(Alignment.BottomCenter)
                                                         .padding(
-                                                            start = NavigationBarHorizontalPadding,
-                                                            end = NavigationBarHorizontalPadding,
+                                                            start = navBarHorizontalPadding,
+                                                            end = navBarHorizontalPadding,
                                                             bottom = bottomInset + floatingBarsBottomPadding,
                                                         ).height(navVisibleHeight),
                                                 isSelected = { screen ->
@@ -2319,6 +2416,23 @@ class MainActivity : ComponentActivity() {
                                                 } else {
                                                     Modifier
                                                 },
+                                            ).then(
+                                                // Frosted nav bar: capture the app content into a
+                                                // layer each frame so the bar can draw it blurred.
+                                                if (navBarFrostedBackdrop != null) {
+                                                    Modifier
+                                                        .onGloballyPositioned { coordinates ->
+                                                            navBarFrostedBackdrop.contentOffsetInRoot =
+                                                                coordinates.positionInRoot()
+                                                        }.drawWithContent {
+                                                            navBarFrostedBackdrop.layer.record {
+                                                                this@drawWithContent.drawContent()
+                                                            }
+                                                            drawLayer(navBarFrostedBackdrop.layer)
+                                                        }
+                                                } else {
+                                                    Modifier
+                                                },
                                             ).nestedScroll(
                                                 // Step 2b: the NavHost-level connection now serves
                                                 // ONLY shell-driven sub-screens (Album/Artist/
@@ -2456,7 +2570,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (intent.action == ACTION_MUSIC_RECOGNITION) {
-            navController.openMusicRecognition()
+            navController.openMusicRecognition(0L)
             return
         }
         if (intent.action == ACTION_AOD_MODE) {
@@ -2772,12 +2886,14 @@ class MainActivity : ComponentActivity() {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings
+                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads
                             }
                         val descRes =
                             when (category) {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library_desc
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
+                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads_desc
                             }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),

@@ -17,7 +17,9 @@ import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import android.util.Base64
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.json.Json
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
 import javax.inject.Inject
@@ -106,7 +108,7 @@ class MusicRecognitionNotificationManager
                 text = summary,
                 status = R.string.music_recognition_notification_status_result,
                 alert = true,
-            ).setContentIntent(resultPendingIntent(track.shazamUrl))
+            ).setContentIntent(resultPendingIntent(track))
                 .setStyle(NotificationCompat.BigTextStyle().bigText(details))
                 .setTimeoutAfter(ResultNotificationTimeoutMillis)
                 .build()
@@ -187,23 +189,33 @@ class MusicRecognitionNotificationManager
                 .setOngoing(false)
                 .setSilent(false)
                 .setOnlyAlertOnce(!alert)
-                .setContentIntent(resultPendingIntent(null))
+                .setContentIntent(basePendingIntent())
 
-        private fun resultPendingIntent(shazamUrl: String?): PendingIntent {
-            val intent =
-                shazamUrl
-                    ?.takeIf(String::isNotBlank)
-                    ?.let { url ->
-                        Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                    }
-                    ?: Intent(context, MainActivity::class.java).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    }
+        private fun basePendingIntent(): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
             return PendingIntent.getActivity(
                 context,
                 ResultRequestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun resultPendingIntent(track: RecognizedTrack): PendingIntent {
+            val jsonString = Json.encodeToString(RecognizedTrack.serializer(), track)
+            val encodedTrack = Base64.encodeToString(
+                jsonString.toByteArray(Charsets.UTF_8),
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+            val intent = Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra("navigate_to", "music_recognition/details/$encodedTrack")
+            }
+            return PendingIntent.getActivity(
+                context,
+                ResultClickRequestCode,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
@@ -222,6 +234,7 @@ class MusicRecognitionNotificationManager
             private const val ChannelId = "music_recognition"
             private const val ResultRequestCode = 9_411
             private const val CancelRequestCode = 9_412
+            private const val ResultClickRequestCode = 9_413
             private const val ResultNotificationTimeoutMillis = 5 * 60 * 1_000L
         }
     }

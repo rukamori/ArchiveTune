@@ -144,14 +144,17 @@ enum class PlaylistSuggestionSource {
 }
 
 val AppLanguageKey = stringPreferencesKey("appLanguage")
+val UseSystemLanguageKey = booleanPreferencesKey("useSystemLanguage")
 val ContentLanguageKey = stringPreferencesKey("contentLanguage")
 val ContentCountryKey = stringPreferencesKey("contentCountry")
 val PlaylistSuggestionSourceKey = stringPreferencesKey("playlistSuggestionSource")
 val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
+val EnableBetterLyricsPortatoKey = booleanPreferencesKey("enableBetterLyricsPortato")
 val EnableYouLyPlusLyricsKey = booleanPreferencesKey("enableYouLyPlusLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
+val EnableMegalobizLyricsKey = booleanPreferencesKey("enableMegalobizLyrics")
 val EnablePaxsenixLyricsKey = booleanPreferencesKey("enablePaxsenixLyrics")
 val EnablePaxsenixAppleMusicLyricsKey = booleanPreferencesKey("enablePaxsenixAppleMusicLyrics")
 val EnablePaxsenixNeteaseLyricsKey = booleanPreferencesKey("enablePaxsenixNeteaseLyrics")
@@ -551,9 +554,11 @@ enum class QuickPicks {
 
 enum class PreferredLyricsProvider {
     BETTER_LYRICS,
+    BETTER_LYRICS_PORTATO,
     YOULY_PLUS,
     LRCLIB,
     KUGOU,
+    MEGALOBIZ,
     SIMPMUSIC,
     UNISON,
     PAXSENIX_APPLE_MUSIC,
@@ -566,9 +571,11 @@ enum class PreferredLyricsProvider {
 val DefaultLyricsProviderOrder =
     listOf(
         PreferredLyricsProvider.BETTER_LYRICS,
+        PreferredLyricsProvider.BETTER_LYRICS_PORTATO,
         PreferredLyricsProvider.YOULY_PLUS,
         PreferredLyricsProvider.LRCLIB,
         PreferredLyricsProvider.KUGOU,
+        PreferredLyricsProvider.MEGALOBIZ,
         PreferredLyricsProvider.SIMPMUSIC,
         PreferredLyricsProvider.UNISON,
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC,
@@ -620,6 +627,7 @@ enum class PlayerDesignStyle {
     V7,
     V8,
     V9,
+    APPLE_MUSIC,
 }
 
 enum class PlayerBackgroundStyle {
@@ -651,7 +659,22 @@ enum class MiniPlayerBackgroundStyle {
     THEME,
     GRADIENT,
     GLOW,
+    FROSTED,
 }
+
+// Bottom navigation bar look: DEFAULT keeps the docked full-width bar; FLOATING detaches it into
+// a pill with larger margins that never pairs with the mini player.
+enum class NavigationBarStyle {
+    DEFAULT,
+    FLOATING,
+}
+
+val NavigationBarStyleKey = stringPreferencesKey("navigationBarStyle")
+
+// Draws a frosted (blurred app content) backdrop behind the navigation bar. True backdrop blur on
+// Android 12+; a translucent surface fallback below that.
+val NavigationBarFrostedBlurKey = booleanPreferencesKey("navigationBarFrostedBlur")
+val HideNavigationBarLabelsKey = booleanPreferencesKey("hideNavigationBarLabels")
 
 // Keys for customized background
 val PlayerCustomImageUriKey = stringPreferencesKey("playerCustomImageUri")
@@ -872,6 +895,8 @@ val CanaryReleasesFingerprintKey = stringPreferencesKey("daily_nightly_releases_
 
 val TogetherOnlineEndpointCacheKey = stringPreferencesKey("together_online_endpoint_cache")
 val TogetherOnlineEndpointLastCheckedAtKey = longPreferencesKey("together_online_endpoint_last_checked_at")
+
+val RedownloadOnRestoreKey = booleanPreferencesKey("redownloadOnRestore")
 
 enum class UpdateChannel {
     STABLE,

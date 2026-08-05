@@ -531,9 +531,11 @@
     <string name="stream_bypass_proxy">Bypass proxy for streams</string>
     <string name="stream_bypass_proxy_desc">Use your direct IP for stream playback to avoid IP mismatch</string>
     <string name="enable_betterlyrics">Enable BetterLyrics</string>
+    <string name="enable_betterlyrics_portato">Enable BetterLyrics Portato</string>
     <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
+    <string name="enable_megalobiz_lyrics">Enable Megalobiz lyrics</string>
     <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
     <string name="player_and_audio">Player and audio</string>
     <string name="audio_quality">Audio quality</string>
@@ -1107,4 +1109,12 @@
     <string name="scheduled_backup_load_failed">Scheduled backup settings could not be loaded</string>
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
     <string name="gatekeeper_connection_blocked">Connection blocked by ArchiveTune Remote. This app could not be verified as an official ArchiveTune build. Install an official build from https://github.com/rukamori/ArchiveTune or https://t.me/ArchiveTuneGC.</string>
+    <string name="frosted_blur">Frosted blur</string>
+    <string name="navigation_bar_style">Navigation bar style</string>
+    <string name="navigation_bar_style_default">Default</string>
+    <string name="navigation_bar_style_floating">Floating</string>
+    <string name="navigation_bar_frosted_blur">Frosted navigation bar</string>
+    <string name="navigation_bar_frosted_blur_desc">Apply a frosted blur behind the navigation bar</string>
+    <string name="hide_navigation_bar_labels">Hide labels in navigation bar</string>
+    <string name="hide_navigation_bar_labels_desc">Show only icons in the bottom navigation bar</string>
 </resources>

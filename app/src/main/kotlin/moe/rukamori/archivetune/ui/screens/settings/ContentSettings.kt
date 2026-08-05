@@ -81,8 +81,7 @@ fun ContentSettings(
         }
     }
 
-    // Used only before Android 13
-    val (appLanguage, onAppLanguageChange) = rememberPreference(key = AppLanguageKey, defaultValue = SYSTEM_DEFAULT)
+    val (useSystemLanguage, onUseSystemLanguageChange) = rememberPreference(key = UseSystemLanguageKey, defaultValue = true)
 
     val (contentLanguage, onContentLanguageChange) = rememberPreference(key = ContentLanguageKey, defaultValue = "system")
     val (contentCountry, onContentCountryChange) = rememberPreference(key = ContentCountryKey, defaultValue = "system")
@@ -206,40 +205,17 @@ fun ContentSettings(
 
         PreferenceGroup(title = stringResource(R.string.app_language)) {
             item {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.app_language)) },
-                        icon = { Icon(painterResource(R.drawable.language), null) },
-                        onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Settings.ACTION_APP_LOCALE_SETTINGS,
-                                    "package:${context.packageName}".toUri(),
-                                ),
-                            )
-                        },
-                    )
-                } else {
-                    ListPreference(
-                        title = { Text(stringResource(R.string.app_language)) },
-                        icon = { Icon(painterResource(R.drawable.language), null) },
-                        selectedValue = appLanguage,
-                        values = listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList(),
-                        valueText = {
-                            LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
-                        },
-                        onValueSelected = { langTag ->
-                            val newLocale =
-                                langTag
-                                    .takeUnless { it == SYSTEM_DEFAULT }
-                                    ?.let { Locale.forLanguageTag(it) }
-                                    ?: Locale.getDefault()
-
-                            onAppLanguageChange(langTag)
-                            setAppLocale(context, newLocale)
-                        },
-                    )
-                }
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.use_system_language)) },
+                    icon = { Icon(painterResource(R.drawable.language), null) },
+                    checked = useSystemLanguage,
+                    onCheckedChange = { checked ->
+                        onUseSystemLanguageChange(checked)
+                        val newLocale = if (checked) Locale.getDefault() else Locale.ENGLISH
+                        setAppLocale(context, newLocale)
+                        (context as? android.app.Activity)?.recreate()
+                    },
+                )
             }
         }
 
