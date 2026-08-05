@@ -459,6 +459,7 @@ fun BottomSheetPlayer(
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
+    val currentLyricsEntity by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 8f)
     val archiveTuneCanvasEnabled by rememberPreference(ArchiveTuneCanvasKey, false)
     val lowDataModeActive = rememberLowDataModeActive()
@@ -1832,24 +1833,29 @@ fun BottomSheetPlayer(
                     .fillMaxSize()
                     .background(Color.Black),
         ) {
-            mediaMetadata?.let { metadata ->
-                AodPlayerScreen(
-                    mediaMetadata = metadata,
-                    isPlaying = isPlaying,
-                    position = position,
-                    duration = duration,
-                    sliderPosition = sliderPosition,
-                    canSkipPrevious = canSkipPrevious,
-                    canSkipNext = canSkipNext,
-                    thumbnailCornerRadius = thumbnailCornerRadius,
-                    onPlayPause = { playerConnection.player.togglePlayPause() },
-                    onSkipPrevious = playerConnection::seekToPrevious,
-                    onSkipNext = playerConnection::seekToNext,
-                    onSeek = { sliderPosition = it },
-                    onSeekFinished = onSliderValueChangeFinished,
-                    onExit = { playerConnection.aodModeEnabled.value = false },
-                )
-            }
+            val metadata = mediaMetadata ?: MediaMetadata(
+                id = "",
+                title = stringResource(R.string.app_name),
+                artists = emptyList(),
+                duration = 0,
+            )
+            AodPlayerScreen(
+                mediaMetadata = metadata,
+                isPlaying = isPlaying,
+                position = position,
+                duration = duration,
+                sliderPosition = sliderPosition,
+                canSkipPrevious = canSkipPrevious,
+                canSkipNext = canSkipNext,
+                thumbnailCornerRadius = thumbnailCornerRadius,
+                onPlayPause = { playerConnection.player.togglePlayPause() },
+                onSkipPrevious = playerConnection::seekToPrevious,
+                onSkipNext = playerConnection::seekToNext,
+                onSeek = { sliderPosition = it },
+                onSeekFinished = onSliderValueChangeFinished,
+                onExit = { playerConnection.aodModeEnabled.value = false },
+                lyricsText = currentLyricsEntity?.lyrics,
+            )
         }
     }
 

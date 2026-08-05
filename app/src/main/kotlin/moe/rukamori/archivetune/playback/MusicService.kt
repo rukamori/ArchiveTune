@@ -125,6 +125,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
+import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
@@ -323,6 +325,7 @@ class MusicService :
     private var audiblePlaybackRecoveryJob: Job? = null
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
+    private var aodScreenOffReceiver: BroadcastReceiver? = null
 
     private lateinit var audioOutputResolver: AudioOutputResolver
 
@@ -1130,6 +1133,48 @@ class MusicService :
         audioDeviceCallbackRegistered = true
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
         audioOutputResolver.refresh()
+
+        val screenOffFilter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        val screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
+                scope.launch {
+                    val autoStartAod = dataStore.data.map { it[AodAutoStartScreenOffKey] ?: true }.first()
+                    if (!autoStartAod || !player.isPlaying) return@launch
+
+                    // Acquire a short WakeLock so the system lets us launch an Activity
+                    // from a background Service context after screen-off (Android 10+ restriction).
+                    val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    val aodLaunchWl = pm?.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "ArchiveTune:AodAutoStart",
+                    )
+                    aodLaunchWl?.acquire(3000L) // 3 s is enough to start the activity
+
+                    val aodIntent = Intent(this@MusicService, MainActivity::class.java).apply {
+                        action = ACTION_AOD_MODE
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    try {
+                        startActivity(aodIntent)
+                    } finally {
+                        if (aodLaunchWl?.isHeld == true) aodLaunchWl.release()
+                    }
+                }
+            }
+        }
+        aodScreenOffReceiver = screenReceiver
+        // ACTION_SCREEN_OFF is a protected system broadcast delivered to context-registered
+        // receivers on every Android version. The real constraint is Android 10+: starting an
+        // Activity from the background is restricted, and the short WakeLock below does not
+        // grant an exemption, so the AOD launch may be delayed or dropped by the OS.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenReceiver, screenOffFilter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(screenReceiver, screenOffFilter)
+        }
 
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
@@ -8120,6 +8165,13 @@ class MusicService :
         }
         unregisterBluetoothReceiver()
         unregisterMuteRecoveryObserver()
+        if (aodScreenOffReceiver != null) {
+            try {
+                unregisterReceiver(aodScreenOffReceiver)
+            } catch (_: Exception) {
+            }
+            aodScreenOffReceiver = null
+        }
         try {
             scope.launch { stopTogetherInternal() }
         } catch (_: Exception) {

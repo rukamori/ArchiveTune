@@ -8,6 +8,9 @@
 package moe.rukamori.archivetune.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -26,12 +29,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -115,7 +116,7 @@ fun AodSlideToLockButton(
         ) {
             Icon(
                 imageVector = Icons.Default.Lock,
-                contentDescription = stringResource(R.string.aod_lock_icon),
+                contentDescription = null,
                 tint = Color.Black,
                 modifier = Modifier.size(22.dp),
             )
@@ -129,7 +130,6 @@ fun AodTouchLockOverlay(
     unlockMethod: AodUnlockMethod,
     accentColor: Color,
     onUnlock: () -> Unit,
-    onAuthenticateBiometric: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (!isLocked) return
@@ -141,7 +141,14 @@ fun AodTouchLockOverlay(
 
     val animatedSlideOffset by animateFloatAsState(
         targetValue = slideOffsetPx,
-        animationSpec = tween(durationMillis = if (slideOffsetPx == 0f) 200 else 0),
+        animationSpec = if (slideOffsetPx == 0f) {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            )
+        } else {
+            snap()
+        },
         label = "slideOffset",
     )
 
@@ -169,7 +176,7 @@ fun AodTouchLockOverlay(
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.75f))
             .pointerInput(Unit) {
-                detectTapGestures { /* consume tap */ }
+                detectTapGestures { }
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -181,7 +188,7 @@ fun AodTouchLockOverlay(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragStart = {},
-                    onVerticalDrag = { _, _ -> }, // swallows notification shade swipe-down
+                    onVerticalDrag = { _, _ -> },
                     onDragEnd = {},
                 )
             },
@@ -238,41 +245,11 @@ fun AodTouchLockOverlay(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LockOpen,
-                                contentDescription = stringResource(R.string.aod_unlock_icon),
+                                contentDescription = null,
                                 tint = Color.Black,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
-                    }
-                }
-
-                AodUnlockMethod.FINGERPRINT -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        IconButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onAuthenticateBiometric()
-                            },
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(accentColor.copy(alpha = 0.25f)),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fingerprint,
-                                contentDescription = stringResource(R.string.aod_fingerprint_icon),
-                                tint = accentColor,
-                                modifier = Modifier.size(36.dp),
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.aod_fingerprint_unlock),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.75f),
-                        )
                     }
                 }
 
@@ -301,7 +278,7 @@ fun AodTouchLockOverlay(
                         }
                         Icon(
                             imageVector = if (holdProgress >= 1f) Icons.Default.LockOpen else Icons.Default.Lock,
-                            contentDescription = stringResource(R.string.aod_hold_unlock_icon),
+                            contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(32.dp),
                         )

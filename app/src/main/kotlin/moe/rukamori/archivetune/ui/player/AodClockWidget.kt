@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,43 +63,68 @@ fun AodClockWidget(
     val context = LocalContext.current
     var formattedTime by remember { mutableStateOf("") }
     var formattedDate by remember { mutableStateOf("") }
+    var formattedHours by remember { mutableStateOf("") }
+    var formattedMinutes by remember { mutableStateOf("") }
     var batteryLevel by remember { mutableIntStateOf(-1) }
     var isCharging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(clockStyle) {
-        val timeFormatPattern = when (clockStyle) {
-            AodClockStyle.BOLD_DIGITAL -> "HH:mm"
-            AodClockStyle.MINIMAL -> "h:mm a"
-            AodClockStyle.ELEGANT_THIN -> "HH:mm"
+    fun updateClock() {
+        val now = Date()
+        val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+        val timePattern = when (clockStyle) {
+            AodClockStyle.BOLD_DIGITAL -> if (is24Hour) "HH:mm" else "h:mm a"
+            AodClockStyle.MINIMAL -> if (is24Hour) "HH:mm" else "h:mm a"
+            AodClockStyle.ELEGANT_THIN -> if (is24Hour) "HH:mm" else "h:mm a"
+            AodClockStyle.PIXEL_STACKED -> if (is24Hour) "HH:mm" else "h:mm"
         }
-        val timeFormatter = SimpleDateFormat(timeFormatPattern, Locale.getDefault())
-        val dateFormatter = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
+        formattedTime = SimpleDateFormat(timePattern, Locale.getDefault()).format(now)
+        formattedDate = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(now)
+        formattedHours = SimpleDateFormat(if (is24Hour) "HH" else "hh", Locale.getDefault()).format(now)
+        formattedMinutes = SimpleDateFormat("mm", Locale.getDefault()).format(now)
+    }
 
+    LaunchedEffect(clockStyle) {
         while (true) {
-            val now = Date()
-            formattedTime = timeFormatter.format(now)
-            formattedDate = dateFormatter.format(now)
+            updateClock()
             delay(1000L)
         }
     }
 
-    DisposableEffect(context) {
+    DisposableEffect(context, clockStyle) {
+        updateClock()
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
-                    val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-                    val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-                    if (level >= 0 && scale > 0) {
-                        batteryLevel = (level * 100) / scale
+                when (intent?.action) {
+                    Intent.ACTION_TIME_TICK,
+                    Intent.ACTION_TIME_CHANGED,
+                    Intent.ACTION_TIMEZONE_CHANGED -> {
+                        updateClock()
                     }
-                    val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                    isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                            status == BatteryManager.BATTERY_STATUS_FULL
+                    Intent.ACTION_BATTERY_CHANGED -> {
+                        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                        if (level >= 0 && scale > 0) {
+                            batteryLevel = (level * 100) / scale
+                        }
+                        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                        isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                                status == BatteryManager.BATTERY_STATUS_FULL
+                    }
                 }
             }
         }
-        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        val registeredIntent = context.registerReceiver(receiver, filter)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_TIME_TICK)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+        }
+        val registeredIntent = ContextCompat.registerReceiver(
+            context,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         if (registeredIntent != null) {
             val level = registeredIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
             val scale = registeredIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
@@ -120,21 +146,45 @@ fun AodClockWidget(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.padding(vertical = 8.dp),
     ) {
-        if (showClock && formattedTime.isNotBlank()) {
-            val (fontSize, fontWeight, fontFamily) = when (clockStyle) {
-                AodClockStyle.BOLD_DIGITAL -> Triple(44.sp, FontWeight.Black, FontFamily.Monospace)
-                AodClockStyle.MINIMAL -> Triple(38.sp, FontWeight.Medium, FontFamily.Default)
-                AodClockStyle.ELEGANT_THIN -> Triple(48.sp, FontWeight.ExtraLight, FontFamily.SansSerif)
-            }
+        if (showClock) {
+            if (clockStyle == AodClockStyle.PIXEL_STACKED) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = formattedHours,
+                        fontSize = 64.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 60.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = formattedMinutes,
+                        fontSize = 64.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 60.sp,
+                        color = Color.White.copy(alpha = 0.80f),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            } else if (formattedTime.isNotBlank()) {
+                val (fontSize, fontWeight, fontFamily) = when (clockStyle) {
+                    AodClockStyle.BOLD_DIGITAL -> Triple(44.sp, FontWeight.Black, FontFamily.Monospace)
+                    AodClockStyle.MINIMAL -> Triple(38.sp, FontWeight.Medium, FontFamily.Default)
+                    AodClockStyle.ELEGANT_THIN -> Triple(48.sp, FontWeight.ExtraLight, FontFamily.SansSerif)
+                    AodClockStyle.PIXEL_STACKED -> Triple(44.sp, FontWeight.Bold, FontFamily.Default)
+                }
 
-            Text(
-                text = formattedTime,
-                fontSize = fontSize,
-                fontWeight = fontWeight,
-                fontFamily = fontFamily,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
+                Text(
+                    text = formattedTime,
+                    fontSize = fontSize,
+                    fontWeight = fontWeight,
+                    fontFamily = fontFamily,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
             if (formattedDate.isNotBlank()) {
                 Text(

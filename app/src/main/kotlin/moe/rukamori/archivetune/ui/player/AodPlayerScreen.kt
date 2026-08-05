@@ -9,8 +9,24 @@
 
 package moe.rukamori.archivetune.ui.player
 
+import android.app.Activity
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +34,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -34,42 +51,74 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.media3.common.C
+import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.toBitmap
+import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AodAccentStyle
 import moe.rukamori.archivetune.constants.AodAccentStyleKey
 import moe.rukamori.archivetune.constants.AodAmbientIntensityKey
 import moe.rukamori.archivetune.constants.AodArtworkGlowKey
+import moe.rukamori.archivetune.constants.AodAutoDimTimeoutKey
+import moe.rukamori.archivetune.constants.AodAutoDimmingKey
+import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
+import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
 import moe.rukamori.archivetune.constants.AodBackgroundStyle
 import moe.rukamori.archivetune.constants.AodBackgroundStyleKey
+import moe.rukamori.archivetune.constants.AodBrightnessKey
+import moe.rukamori.archivetune.constants.AodClockStyle
+import moe.rukamori.archivetune.constants.AodClockStyleKey
 import moe.rukamori.archivetune.constants.AodContentPosition
 import moe.rukamori.archivetune.constants.AodContentPositionKey
 import moe.rukamori.archivetune.constants.AodControlSizeKey
 import moe.rukamori.archivetune.constants.AodControlStyle
 import moe.rukamori.archivetune.constants.AodControlStyleKey
+import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
 import moe.rukamori.archivetune.constants.AodHorizontalPaddingKey
+import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
+import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
+import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
+import moe.rukamori.archivetune.constants.AodProximityBlackoutKey
+import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
 import moe.rukamori.archivetune.constants.AodShowAlbumKey
 import moe.rukamori.archivetune.constants.AodShowArtistKey
+import moe.rukamori.archivetune.constants.AodShowBatteryKey
+import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
+import moe.rukamori.archivetune.constants.AodShowClockKey
 import moe.rukamori.archivetune.constants.AodShowControlsKey
 import moe.rukamori.archivetune.constants.AodShowExitButtonKey
 import moe.rukamori.archivetune.constants.AodShowProgressKey
@@ -82,71 +131,19 @@ import moe.rukamori.archivetune.constants.AodThumbnailShapeKey
 import moe.rukamori.archivetune.constants.AodThumbnailShapeRotationKey
 import moe.rukamori.archivetune.constants.AodThumbnailSizeKey
 import moe.rukamori.archivetune.constants.AodTitleMaxLinesKey
+import moe.rukamori.archivetune.constants.AodTouchLockEnabledKey
+import moe.rukamori.archivetune.constants.AodTrueAmbientModeKey
+import moe.rukamori.archivetune.constants.AodUnlockMethod
+import moe.rukamori.archivetune.constants.AodUnlockMethodKey
 import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.supportsArtworkGlowShadow
 import moe.rukamori.archivetune.ui.utils.toComposeShape
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.offset
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.alpha
-import android.app.Activity
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.view.WindowManager
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.offset
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.unit.IntOffset
-import kotlinx.coroutines.delay
-import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
-import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
-import moe.rukamori.archivetune.constants.AodAutoDimTimeoutKey
-import moe.rukamori.archivetune.constants.AodAutoDimmingKey
-import moe.rukamori.archivetune.constants.AodClockStyle
-import moe.rukamori.archivetune.constants.AodClockStyleKey
-import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
-import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
-import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
-import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
-import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
-import moe.rukamori.archivetune.constants.AodShowBatteryKey
-import moe.rukamori.archivetune.constants.AodShowClockKey
-import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
-import moe.rukamori.archivetune.constants.AodTouchLockEnabledKey
-import moe.rukamori.archivetune.constants.AodUnlockMethod
-import moe.rukamori.archivetune.constants.AodUnlockMethodKey
-import moe.rukamori.archivetune.ui.player.AodClockWidget
-import moe.rukamori.archivetune.ui.player.AodTouchLockOverlay
 
 private val White70 = Color.White.copy(alpha = 0.70f)
 private val White65 = Color.White.copy(alpha = 0.65f)
@@ -171,6 +168,7 @@ fun AodPlayerScreen(
     onSeekFinished: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    lyricsText: String? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -184,6 +182,7 @@ fun AodPlayerScreen(
     val (showTimeLabels) = rememberPreference(AodShowTimeLabelsKey, true)
     val (showControls) = rememberPreference(AodShowControlsKey, true)
     val (showExitButton) = rememberPreference(AodShowExitButtonKey, true)
+    val (showLyricTicker) = rememberPreference(AodShowLyricTickerKey, true)
     val (artworkGlow) = rememberPreference(AodArtworkGlowKey, true)
     val (backgroundStyle) = rememberEnumPreference(AodBackgroundStyleKey, AodBackgroundStyle.PURE_BLACK)
     val (accentStyle) = rememberEnumPreference(AodAccentStyleKey, AodAccentStyle.MONOCHROME)
@@ -210,11 +209,17 @@ fun AodPlayerScreen(
     val (autoLockTimeout) = rememberPreference(AodAutoLockTimeoutKey, 10)
     val (marqueeTitles) = rememberPreference(AodMarqueeTitlesKey, false)
     val (minimalLockedState) = rememberPreference(AodMinimalLockedStateKey, false)
+    val (trueAmbientModeEnabled) = rememberPreference(AodTrueAmbientModeKey, true)
+    val (aodBrightness) = rememberPreference(AodBrightnessKey, 0.15f)
+    val (proximityBlackoutEnabled) = rememberPreference(AodProximityBlackoutKey, false)
 
     var isLocked by remember { mutableStateOf(touchLockEnabled) }
     var pixelShiftOffset by remember { mutableStateOf(IntOffset.Zero) }
     var isDimmed by remember { mutableStateOf(false) }
+    var isCovered by remember { mutableStateOf(false) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    val isAmbient = trueAmbientModeEnabled && isDimmed
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (isDimmed) 0.25f else 1.0f,
@@ -225,6 +230,10 @@ fun AodPlayerScreen(
     fun resetInteraction() {
         lastInteractionTime = System.currentTimeMillis()
         if (isDimmed) isDimmed = false
+    }
+
+    LaunchedEffect(Unit) {
+        resetInteraction()
     }
 
     LaunchedEffect(pixelShiftEnabled) {
@@ -244,24 +253,49 @@ fun AodPlayerScreen(
         }
     }
 
-    LaunchedEffect(autoLockEnabled, autoLockTimeout) {
-        if (autoLockEnabled && !isLocked) {
-            delay(autoLockTimeout.coerceIn(3, 120) * 1000L)
-            isLocked = true
+    LaunchedEffect(autoLockEnabled, autoLockTimeout, lastInteractionTime, isLocked) {
+        if (!autoLockEnabled || isLocked) return@LaunchedEffect
+        val timeoutMs = autoLockTimeout.coerceIn(3, 120) * 1000L
+        delay(timeoutMs)
+        isLocked = true
+    }
+
+    DisposableEffect(proximityBlackoutEnabled) {
+        if (!proximityBlackoutEnabled) return@DisposableEffect onDispose {}
+        val sensorManager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
+        val proximitySensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+        if (proximitySensor == null) return@DisposableEffect onDispose {}
+
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                val distance = event.values.getOrNull(0) ?: return
+                val maxRange = proximitySensor.maximumRange
+                isCovered = maxRange > 0f && distance <= (maxRange * 0.1f).coerceAtLeast(1.0f)
+            }
+            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+        }
+        sensorManager.registerListener(listener, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
+        onDispose {
+            sensorManager.unregisterListener(listener)
         }
     }
 
     DisposableEffect(shakeToUnlock, isLocked) {
         if (!shakeToUnlock || !isLocked) return@DisposableEffect onDispose {}
-        val sensorManager = (context as? Activity)
-            ?.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
+        val sensorManager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
         val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        var hasBaseline = false
         var lastShakeTime = 0L
         var lastX = 0f; var lastY = 0f; var lastZ = 0f
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 val x = event.values[0]; val y = event.values[1]; val z = event.values[2]
-                val delta = Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ)
+                if (!hasBaseline) {
+                    lastX = x; lastY = y; lastZ = z
+                    hasBaseline = true
+                    return
+                }
+                val delta = abs(x - lastX) + abs(y - lastY) + abs(z - lastZ)
                 lastX = x; lastY = y; lastZ = z
                 val now = System.currentTimeMillis()
                 if (delta > 18f && now - lastShakeTime > 1000L) {
@@ -276,26 +310,28 @@ fun AodPlayerScreen(
         onDispose { sensorManager?.unregisterListener(listener) }
     }
 
-    LaunchedEffect(autoDimming, autoDimTimeout, lastInteractionTime) {
-        if (!autoDimming) return@LaunchedEffect
+    LaunchedEffect(autoDimming, autoDimTimeout, lastInteractionTime, isDimmed) {
+        if (!autoDimming || isDimmed) return@LaunchedEffect
         val timeoutMs = autoDimTimeout.coerceIn(3, 30) * 1000L
         delay(timeoutMs)
         isDimmed = true
     }
 
-    DisposableEffect(isDimmed, isLocked) {
-        val window = (context as? Activity)?.window
+    DisposableEffect(isDimmed, isCovered, aodBrightness, proximityBlackoutEnabled) {
+        val window = (context as? Activity)?.window ?: (context as? android.service.dreams.DreamService)?.window
         window?.let { w ->
             val lp = w.attributes
-            if (isDimmed || isLocked) {
-                lp.screenBrightness = 0.01f
+            if (isCovered && proximityBlackoutEnabled) {
+                lp.screenBrightness = 0.001f
+            } else if (isDimmed) {
+                lp.screenBrightness = aodBrightness.coerceIn(0.01f, 1.0f)
             } else {
                 lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             }
             w.attributes = lp
         }
         onDispose {
-            val window = (context as? Activity)?.window
+            val window = (context as? Activity)?.window ?: (context as? android.service.dreams.DreamService)?.window
             window?.let { w ->
                 val lp = w.attributes
                 lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -303,8 +339,48 @@ fun AodPlayerScreen(
             }
         }
     }
-    val accentColor =
-        if (accentStyle == AodAccentStyle.THEME) MaterialTheme.colorScheme.primary else Color.White
+    var extractedArtworkColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+
+    LaunchedEffect(mediaMetadata.thumbnailUrl) {
+        val url = mediaMetadata.thumbnailUrl ?: return@LaunchedEffect
+        val fallbackColor = 0xFF121212.toInt()
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+            .allowHardware(false)
+            .build()
+        val result = runCatching {
+            withContext(Dispatchers.IO) {
+                context.imageLoader.execute(request)
+            }
+        }.getOrNull()
+
+        if (result != null) {
+            val bitmap = result.image?.toBitmap()
+            if (bitmap != null) {
+                val palette = withContext(Dispatchers.Default) {
+                    Palette.from(bitmap)
+                        .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                        .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                        .generate()
+                }
+                extractedArtworkColors = PlayerColorExtractor.extractGradientColors(
+                    palette = palette,
+                    fallbackColor = fallbackColor,
+                )
+            }
+        }
+    }
+
+    val dominantArtworkColor = extractedArtworkColors.firstOrNull() ?: MaterialTheme.colorScheme.primary
+    val targetAccentColor =
+        if (accentStyle == AodAccentStyle.THEME) dominantArtworkColor else Color.White
+
+    val accentColor by animateColorAsState(
+        targetValue = targetAccentColor,
+        animationSpec = tween(1000),
+        label = "accentColorMorph",
+    )
     val supportsArtworkGlowShadow = thumbnailShapeType.supportsArtworkGlowShadow()
     val thumbnailShape =
         thumbnailShapeType.toComposeShape(
@@ -362,12 +438,27 @@ fun AodPlayerScreen(
                         }
                     )
                 }
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { resetInteraction() },
-                        onVerticalDrag = { _, _ -> }, // consume and discard
-                        onDragEnd = { resetInteraction() },
-                    )
+                .pointerInput(gesturesEnabled, isLocked) {
+                    if (gesturesEnabled && !isLocked) {
+                        var accumVerticalDrag = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                resetInteraction()
+                                accumVerticalDrag = 0f
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                resetInteraction()
+                                accumVerticalDrag += dragAmount
+                                if (kotlin.math.abs(accumVerticalDrag) > 40f) {
+                                    val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+                                    val direction = if (accumVerticalDrag < 0) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER
+                                    audioManager?.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, direction, android.media.AudioManager.FLAG_SHOW_UI)
+                                    accumVerticalDrag = 0f
+                                }
+                            },
+                            onDragEnd = { resetInteraction() },
+                        )
+                    }
                 }
                 .aodBackground(
                     style = backgroundStyle,
@@ -389,7 +480,7 @@ fun AodPlayerScreen(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.aod_mode_exit),
+                    contentDescription = null,
                     tint = White70,
                 )
             }
@@ -444,8 +535,8 @@ fun AodPlayerScreen(
                                 },
                             ).clip(thumbnailShape),
                 )
-                } // end if (showThumbnail)
-            } // end AnimatedVisibility
+                } 
+            } 
 
             Column(
                 horizontalAlignment = textHorizontalAlignment,
@@ -483,6 +574,25 @@ fun AodPlayerScreen(
                     }
                 }
                 AnimatedVisibility(
+                    visible = showFullContent && showLyricTicker && !lyricsText.isNullOrBlank(),
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300)),
+                ) {
+                    if (showLyricTicker && !lyricsText.isNullOrBlank()) {
+                        Text(
+                            text = lyricsText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = accentColor.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            textAlign = textAlign,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .basicMarquee(),
+                        )
+                    }
+                }
+                AnimatedVisibility(
                     visible = showFullContent && showAlbum && mediaMetadata.album?.title?.isNotBlank() == true,
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300)),
@@ -502,11 +612,11 @@ fun AodPlayerScreen(
             }
 
             AnimatedVisibility(
-                visible = showProgress && (!isLocked || !minimalLockedState),
+                visible = showProgress && !isAmbient && (!isLocked || !minimalLockedState),
                 enter = fadeIn(tween(300)),
                 exit = fadeOut(tween(300)),
             ) {
-                if (showProgress && !isLocked) {
+                if (showProgress) {
                     AodSliderSection(
                         position = position,
                         duration = duration,
@@ -525,7 +635,11 @@ fun AodPlayerScreen(
                 }
             }
 
-            if (showControls && !isLocked) {
+            AnimatedVisibility(
+                visible = showControls && !isAmbient && !isLocked,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
                 AodControls(
                     isPlaying = isPlaying,
                     canSkipPrevious = canSkipPrevious,
@@ -548,7 +662,11 @@ fun AodPlayerScreen(
                 )
             }
 
-            if (!isLocked) {
+            AnimatedVisibility(
+                visible = !isLocked && !isAmbient,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
+            ) {
                 AodSlideToLockButton(
                     accentColor = accentColor,
                     onLock = {
@@ -560,15 +678,20 @@ fun AodPlayerScreen(
             }
         }
 
+        if (isCovered && proximityBlackoutEnabled) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .zIndex(999f),
+            )
+        }
+
         AodTouchLockOverlay(
             isLocked = isLocked,
             unlockMethod = unlockMethod,
             accentColor = accentColor,
             onUnlock = {
-                resetInteraction()
-                isLocked = false
-            },
-            onAuthenticateBiometric = {
                 resetInteraction()
                 isLocked = false
             },
@@ -810,7 +933,7 @@ private fun Modifier.aodBackground(
                     Brush.radialGradient(
                         colors =
                             listOf(
-                                accentColor.copy(alpha = 0.22f * alpha),
+                                accentColor.copy(alpha = 0.30f * alpha),
                                 Color.Black,
                             ),
                     )
@@ -820,20 +943,52 @@ private fun Modifier.aodBackground(
                     Brush.verticalGradient(
                         colors =
                             listOf(
-                                accentColor.copy(alpha = 0.18f * alpha),
+                                accentColor.copy(alpha = 0.25f * alpha),
                                 Color.Black,
-                                accentColor.copy(alpha = 0.12f * alpha),
+                                accentColor.copy(alpha = 0.15f * alpha),
                             ),
                     )
                 }
 
                 AodBackgroundStyle.AMBIENT_GLOW -> {
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                accentColor.copy(alpha = 0.35f * alpha),
+                                accentColor.copy(alpha = 0.10f * alpha),
+                                Color.Black,
+                            ),
+                    )
+                }
+
+                AodBackgroundStyle.ADAPTIVE_ART -> {
+                    Brush.verticalGradient(
+                        colors =
+                            listOf(
+                                accentColor.copy(alpha = 0.40f * alpha),
+                                accentColor.copy(alpha = 0.15f * alpha),
+                                Color.Black,
+                            ),
+                    )
+                }
+
+                AodBackgroundStyle.FROSTED_WALLPAPER -> {
                     Brush.linearGradient(
                         colors =
                             listOf(
-                                accentColor.copy(alpha = 0.28f * alpha),
+                                Color(0xFF1E1E24).copy(alpha = 0.60f * alpha),
                                 Color.Black,
-                                Color(0xFF101010),
+                            ),
+                    )
+                }
+
+                AodBackgroundStyle.ADAPTIVE_FROSTED -> {
+                    Brush.linearGradient(
+                        colors =
+                            listOf(
+                                accentColor.copy(alpha = 0.35f * alpha),
+                                Color(0xFF121216),
+                                Color.Black,
                             ),
                     )
                 }

@@ -77,6 +77,10 @@ val AodAutoLockEnabledKey = booleanPreferencesKey("aodAutoLockEnabled")
 val AodAutoLockTimeoutKey = intPreferencesKey("aodAutoLockTimeout")   // seconds
 val AodMarqueeTitlesKey = booleanPreferencesKey("aodMarqueeTitles")
 val AodMinimalLockedStateKey = booleanPreferencesKey("aodMinimalLockedState")
+val AodBrightnessKey = floatPreferencesKey("aodBrightness")
+val AodProximityBlackoutKey = booleanPreferencesKey("aodProximityBlackout")
+val AodTrueAmbientModeKey = booleanPreferencesKey("aodTrueAmbientMode")
+val AodAutoStartScreenOffKey = booleanPreferencesKey("aodAutoStartScreenOff")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val BlurRadiusKey = floatPreferencesKey("blurRadius")
@@ -113,6 +117,9 @@ enum class AodBackgroundStyle {
     SOFT_RADIAL,
     TONAL_EDGE,
     AMBIENT_GLOW,
+    ADAPTIVE_ART,
+    FROSTED_WALLPAPER,
+    ADAPTIVE_FROSTED,
 }
 
 enum class AodAccentStyle {
@@ -140,7 +147,6 @@ enum class AodControlStyle {
 
 enum class AodUnlockMethod {
     SLIDE,
-    FINGERPRINT,
     HOLD,
 }
 
@@ -148,6 +154,7 @@ enum class AodClockStyle {
     BOLD_DIGITAL,
     MINIMAL,
     ELEGANT_THIN,
+    PIXEL_STACKED,
 }
 
 enum class SliderStyle {
