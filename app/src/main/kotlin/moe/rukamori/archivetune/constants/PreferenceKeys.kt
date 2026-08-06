@@ -71,10 +71,9 @@ val AodAutoDimmingKey = booleanPreferencesKey("aodAutoDimming")
 val AodAutoDimTimeoutKey = intPreferencesKey("aodAutoDimTimeout")
 val AodGesturesEnabledKey = booleanPreferencesKey("aodGesturesEnabled")
 
-// New feature keys
 val AodShakeToUnlockKey = booleanPreferencesKey("aodShakeToUnlock")
 val AodAutoLockEnabledKey = booleanPreferencesKey("aodAutoLockEnabled")
-val AodAutoLockTimeoutKey = intPreferencesKey("aodAutoLockTimeout")   // seconds
+val AodAutoLockTimeoutKey = intPreferencesKey("aodAutoLockTimeout")
 val AodMarqueeTitlesKey = booleanPreferencesKey("aodMarqueeTitles")
 val AodMinimalLockedStateKey = booleanPreferencesKey("aodMinimalLockedState")
 val AodBrightnessKey = floatPreferencesKey("aodBrightness")

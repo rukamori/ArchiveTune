@@ -117,10 +117,10 @@ import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
 import moe.rukamori.archivetune.constants.AodShowAlbumKey
 import moe.rukamori.archivetune.constants.AodShowArtistKey
 import moe.rukamori.archivetune.constants.AodShowBatteryKey
-import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
 import moe.rukamori.archivetune.constants.AodShowClockKey
 import moe.rukamori.archivetune.constants.AodShowControlsKey
 import moe.rukamori.archivetune.constants.AodShowExitButtonKey
+import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
 import moe.rukamori.archivetune.constants.AodShowProgressKey
 import moe.rukamori.archivetune.constants.AodShowThumbnailKey
 import moe.rukamori.archivetune.constants.AodShowTimeLabelsKey
@@ -721,14 +721,16 @@ private fun AodSliderSection(
             if (seekEnabled) makeTimeString(duration) else ""
         }
     val sliderColors =
-        SliderDefaults.colors(
-            thumbColor = accentColor,
-            activeTrackColor = accentColor,
-            inactiveTrackColor = White30,
-            disabledThumbColor = White30,
-            disabledActiveTrackColor = White30,
-            disabledInactiveTrackColor = White15,
-        )
+        remember(accentColor) {
+            SliderDefaults.colors(
+                thumbColor = accentColor,
+                activeTrackColor = accentColor,
+                inactiveTrackColor = White30,
+                disabledThumbColor = White30,
+                disabledActiveTrackColor = White30,
+                disabledInactiveTrackColor = White15,
+            )
+        }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Slider(

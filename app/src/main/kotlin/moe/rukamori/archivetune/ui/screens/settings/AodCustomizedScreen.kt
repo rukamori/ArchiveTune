@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kotlin.math.roundToInt
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AodAccentStyle
@@ -75,8 +76,12 @@ import moe.rukamori.archivetune.constants.AodAccentStyleKey
 import moe.rukamori.archivetune.constants.AodAmbientIntensityKey
 import moe.rukamori.archivetune.constants.AodArtworkGlowKey
 import moe.rukamori.archivetune.constants.AodAutoDimmingKey
+import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
+import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
+import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
 import moe.rukamori.archivetune.constants.AodBackgroundStyle
 import moe.rukamori.archivetune.constants.AodBackgroundStyleKey
+import moe.rukamori.archivetune.constants.AodBrightnessKey
 import moe.rukamori.archivetune.constants.AodClockStyle
 import moe.rukamori.archivetune.constants.AodClockStyleKey
 import moe.rukamori.archivetune.constants.AodContentPosition
@@ -86,14 +91,18 @@ import moe.rukamori.archivetune.constants.AodControlStyle
 import moe.rukamori.archivetune.constants.AodControlStyleKey
 import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
 import moe.rukamori.archivetune.constants.AodHorizontalPaddingKey
+import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
+import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
 import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
+import moe.rukamori.archivetune.constants.AodProximityBlackoutKey
+import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
 import moe.rukamori.archivetune.constants.AodShowAlbumKey
 import moe.rukamori.archivetune.constants.AodShowArtistKey
 import moe.rukamori.archivetune.constants.AodShowBatteryKey
-import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
 import moe.rukamori.archivetune.constants.AodShowClockKey
 import moe.rukamori.archivetune.constants.AodShowControlsKey
 import moe.rukamori.archivetune.constants.AodShowExitButtonKey
+import moe.rukamori.archivetune.constants.AodShowLyricTickerKey
 import moe.rukamori.archivetune.constants.AodShowProgressKey
 import moe.rukamori.archivetune.constants.AodShowThumbnailKey
 import moe.rukamori.archivetune.constants.AodShowTimeLabelsKey
@@ -104,17 +113,8 @@ import moe.rukamori.archivetune.constants.AodThumbnailShapeKey
 import moe.rukamori.archivetune.constants.AodThumbnailShapeRotationKey
 import moe.rukamori.archivetune.constants.AodThumbnailSizeKey
 import moe.rukamori.archivetune.constants.AodTitleMaxLinesKey
-import moe.rukamori.archivetune.constants.AodAutoLockEnabledKey
-import moe.rukamori.archivetune.constants.AodAutoLockTimeoutKey
-import moe.rukamori.archivetune.constants.AodAutoDimmingKey
-import moe.rukamori.archivetune.constants.AodBrightnessKey
-import moe.rukamori.archivetune.constants.AodTrueAmbientModeKey
-import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
-import moe.rukamori.archivetune.constants.AodProximityBlackoutKey
-import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
-import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
-import moe.rukamori.archivetune.constants.AodShakeToUnlockKey
 import moe.rukamori.archivetune.constants.AodTouchLockEnabledKey
+import moe.rukamori.archivetune.constants.AodTrueAmbientModeKey
 import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.ui.component.EnumListPreference
@@ -128,7 +128,6 @@ import moe.rukamori.archivetune.ui.utils.supportsArtworkGlowShadow
 import moe.rukamori.archivetune.ui.utils.toComposeShape
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.roundToInt
 
 @Immutable
 private data class AodPreviewSettings(

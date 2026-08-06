@@ -682,4 +682,6 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Donate</string>
+    <string name="aod_mode">AOD Mode</string>
+    <string name="aod_mode_exit">Exit AOD</string>
 </resources>

@@ -458,8 +458,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // Don't unbind MusicService while AOD is active —
-        // the Activity must stay alive on the lockscreen.
         if (!isMusicServiceBound || playerConnection?.aodModeEnabled?.value == true) {
             super.onStop()
             return
@@ -1042,10 +1040,6 @@ class MainActivity : ComponentActivity() {
                             controller.systemBarsBehavior =
                                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                             controller.hide(WindowInsetsCompat.Type.systemBars())
-                            // FLAG_KEEP_SCREEN_ON: keep display on while AOD is active
-                            // FLAG_SHOW_WHEN_LOCKED: render over system keyguard
-                            // FLAG_ALLOW_LOCK_WHILE_SCREEN_ON: let device lock without dismissing AOD
-                            // FLAG_TURN_SCREEN_ON: turn display on when launched from screen-off
                             @Suppress("DEPRECATION")
                             window.addFlags(
                                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or

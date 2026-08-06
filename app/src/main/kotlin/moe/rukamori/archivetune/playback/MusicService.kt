@@ -1142,14 +1142,12 @@ class MusicService :
                     val autoStartAod = dataStore.data.map { it[AodAutoStartScreenOffKey] ?: true }.first()
                     if (!autoStartAod || !player.isPlaying) return@launch
 
-                    // Acquire a short WakeLock so the system lets us launch an Activity
-                    // from a background Service context after screen-off (Android 10+ restriction).
                     val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
                     val aodLaunchWl = pm?.newWakeLock(
                         PowerManager.PARTIAL_WAKE_LOCK,
                         "ArchiveTune:AodAutoStart",
                     )
-                    aodLaunchWl?.acquire(3000L) // 3 s is enough to start the activity
+                    aodLaunchWl?.acquire(3000L)
 
                     val aodIntent = Intent(this@MusicService, MainActivity::class.java).apply {
                         action = ACTION_AOD_MODE
@@ -1166,10 +1164,6 @@ class MusicService :
             }
         }
         aodScreenOffReceiver = screenReceiver
-        // ACTION_SCREEN_OFF is a protected system broadcast delivered to context-registered
-        // receivers on every Android version. The real constraint is Android 10+: starting an
-        // Activity from the background is restricted, and the short WakeLock below does not
-        // grant an exemption, so the AOD launch may be delayed or dropped by the OS.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(screenReceiver, screenOffFilter, Context.RECEIVER_EXPORTED)
         } else {

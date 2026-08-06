@@ -210,8 +210,6 @@
     <string name="removed_n_songs_from_queue">Removed %d songs from queue</string>
     <string name="search_online">Search online</string>
     <string name="tempo_and_pitch">Tempo and Pitch</string>
-    <string name="aod_mode">AOD Mode</string>
-    <string name="aod_mode_exit">Exit AOD</string>
     <string name="tempo">Tempo</string>
     <string name="pitch">Pitch</string>
     <string name="pitch_mode_semitones_short">st</string>
