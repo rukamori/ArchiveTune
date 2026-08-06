@@ -23,11 +23,6 @@ val NavigationBarHorizontalPadding = 12.dp
 val NavigationBarBottomPadding = 10.dp
 val NavigationBarMaxWidth = 420.dp
 val NavigationBarHeight = 78.dp
-
-// FLOATING navigation-bar style: a detached pill with larger margins and a tighter width.
-val FloatingNavigationBarHorizontalPadding = 24.dp
-val FloatingNavigationBarBottomPadding = 16.dp
-val FloatingNavigationBarMaxWidth = 360.dp
 val MiniPlayerHeight = 70.dp
 val MiniPlayerBottomSpacing = 4.dp
 val QueuePeekHeight = 64.dp

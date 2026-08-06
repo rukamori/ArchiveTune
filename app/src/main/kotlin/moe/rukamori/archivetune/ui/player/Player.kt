@@ -375,9 +375,7 @@ fun BottomSheetPlayer(
         defaultValue = PlayerBackgroundStyle.DEFAULT,
     )
     val playerUsesFixedBackground =
-        playerDesignStyle == PlayerDesignStyle.V8 ||
-            playerDesignStyle == PlayerDesignStyle.V9 ||
-            playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC
+        playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9
     val playerBackground =
         if (playerUsesFixedBackground) PlayerBackgroundStyle.DEFAULT else storedPlayerBackground
 
@@ -862,7 +860,7 @@ fun BottomSheetPlayer(
     }
 
     val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
+        if (playerDesignStyle == PlayerDesignStyle.V5) {
             0.dp
         } else if (playerDesignStyle == PlayerDesignStyle.V9) {
             88.dp +
@@ -1153,11 +1151,7 @@ fun BottomSheetPlayer(
                 !aodModeEnabled
         val shouldUseArtworkCanvas =
             archiveTuneCanvasEnabled &&
-                (
-                    playerDesignStyle == PlayerDesignStyle.V8 ||
-                        playerDesignStyle == PlayerDesignStyle.V9 ||
-                        playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC
-                ) &&
+                (playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9) &&
                 !aodModeEnabled
         val shouldFetchV7Canvas = shouldUseV7Canvas && !lowDataModeActive
         val shouldFetchArtworkCanvas = shouldUseArtworkCanvas && !lowDataModeActive
@@ -1300,8 +1294,7 @@ fun BottomSheetPlayer(
             playerDesignStyle != PlayerDesignStyle.V5 &&
             playerDesignStyle != PlayerDesignStyle.V7 &&
             playerDesignStyle != PlayerDesignStyle.V8 &&
-            playerDesignStyle != PlayerDesignStyle.V9 &&
-            playerDesignStyle != PlayerDesignStyle.APPLE_MUSIC
+            playerDesignStyle != PlayerDesignStyle.V9
         ) {
             PlayerBackground(
                 playerBackground = playerBackground,
@@ -1554,39 +1547,6 @@ fun BottomSheetPlayer(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
-                    enrichedMetadata?.let { metadata ->
-                        AppleMusicPlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            position = position,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            bottomSheetPageState = bottomSheetPageState,
-                            currentSongLiked = currentSongLiked,
-                            volume = deviceMusicVolumeController.volumeFraction,
-                            onVolumeChange = onPlayerVolumeChange,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            currentFormat = currentFormat,
-                            contentBottomPadding = queueSheetState.collapsedBound,
-                            onQueueClick = openQueue,
-                            onLyricsClick = { isLyricsScreenVisible = true },
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            landscape = true,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
                 } else {
@@ -1861,40 +1821,6 @@ fun BottomSheetPlayer(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
-                    enrichedMetadata?.let { metadata ->
-                        AppleMusicPlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            position = position,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            bottomSheetPageState = bottomSheetPageState,
-                            currentSongLiked = currentSongLiked,
-                            volume = deviceMusicVolumeController.volumeFraction,
-                            onVolumeChange = onPlayerVolumeChange,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            currentFormat = currentFormat,
-                            contentBottomPadding = queueSheetState.collapsedBound,
-                            onQueueClick = openQueue,
-                            onLyricsClick = { isLyricsScreenVisible = true },
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            // Full-bleed: the artwork runs under the status bar by design, so no
-                            // top inset here (mirrors the reference layout).
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
                 } else {
