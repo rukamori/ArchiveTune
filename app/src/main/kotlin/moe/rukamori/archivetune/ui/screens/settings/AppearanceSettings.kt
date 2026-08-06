@@ -85,16 +85,12 @@ import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
 import moe.rukamori.archivetune.constants.GridItemsSizeKey
-import moe.rukamori.archivetune.constants.HideNavigationBarLabelsKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.LyricsBackgroundStyle
 import moe.rukamori.archivetune.constants.LyricsBackgroundStyleKey
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
-import moe.rukamori.archivetune.constants.NavigationBarFrostedBlurKey
-import moe.rukamori.archivetune.constants.NavigationBarStyle
-import moe.rukamori.archivetune.constants.NavigationBarStyleKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerButtonsStyle
@@ -195,15 +191,6 @@ fun AppearanceSettings(navController: NavController) {
             MiniPlayerBackgroundStyleKey,
             defaultValue = MiniPlayerBackgroundStyle.THEME,
         )
-    val (navigationBarStyle, onNavigationBarStyleChange) =
-        rememberEnumPreference(
-            NavigationBarStyleKey,
-            defaultValue = NavigationBarStyle.DEFAULT,
-        )
-    val (navigationBarFrostedBlur, onNavigationBarFrostedBlurChange) =
-        rememberPreference(NavigationBarFrostedBlurKey, defaultValue = false)
-    val (hideNavigationBarLabels, onHideNavigationBarLabelsChange) =
-        rememberPreference(HideNavigationBarLabelsKey, defaultValue = false)
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
     val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
     val (disableAnimations, onDisableAnimationsChange) =
@@ -340,7 +327,6 @@ fun AppearanceSettings(navController: NavController) {
             PlayerDesignStyle.V7,
             PlayerDesignStyle.V8,
             PlayerDesignStyle.V9,
-            PlayerDesignStyle.APPLE_MUSIC,
             -> false
 
             else -> true
@@ -663,8 +649,6 @@ fun AppearanceSettings(navController: NavController) {
                                 PlayerDesignStyle.V7 -> stringResource(R.string.player_design_v7)
                                 PlayerDesignStyle.V8 -> stringResource(R.string.player_design_v8)
                                 PlayerDesignStyle.V9 -> stringResource(R.string.player_design_v9)
-                                PlayerDesignStyle.APPLE_MUSIC ->
-                                    stringResource(R.string.player_design_apple_music)
                             }
                         },
                     )
@@ -763,7 +747,6 @@ fun AppearanceSettings(navController: NavController) {
                                 MiniPlayerBackgroundStyle.THEME -> stringResource(R.string.follow_theme)
                                 MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                 MiniPlayerBackgroundStyle.GLOW -> stringResource(R.string.glow)
-                                MiniPlayerBackgroundStyle.FROSTED -> stringResource(R.string.frosted_blur)
                             }
                         },
                     )
@@ -948,43 +931,6 @@ fun AppearanceSettings(navController: NavController) {
                                 QuickPicksDisplayMode.LIST -> stringResource(R.string.quick_picks_display_mode_list)
                             }
                         },
-                    )
-                }
-
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.navigation_bar_style)) },
-                        icon = { Icon(painterResource(R.drawable.nav_bar), null) },
-                        selectedValue = navigationBarStyle,
-                        onValueSelected = onNavigationBarStyleChange,
-                        valueText = {
-                            when (it) {
-                                NavigationBarStyle.DEFAULT ->
-                                    stringResource(R.string.navigation_bar_style_default)
-                                NavigationBarStyle.FLOATING ->
-                                    stringResource(R.string.navigation_bar_style_floating)
-                            }
-                        },
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.navigation_bar_frosted_blur)) },
-                        description = stringResource(R.string.navigation_bar_frosted_blur_desc),
-                        icon = { Icon(painterResource(R.drawable.blur_on), null) },
-                        checked = navigationBarFrostedBlur,
-                        onCheckedChange = onNavigationBarFrostedBlurChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.hide_navigation_bar_labels)) },
-                        description = stringResource(R.string.hide_navigation_bar_labels_desc),
-                        icon = { Icon(painterResource(R.drawable.nav_bar), null) },
-                        checked = hideNavigationBarLabels,
-                        onCheckedChange = onHideNavigationBarLabelsChange,
                     )
                 }
 

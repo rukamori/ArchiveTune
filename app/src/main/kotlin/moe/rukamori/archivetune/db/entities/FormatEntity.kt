@@ -27,11 +27,6 @@ data class FormatEntity(
 
 fun FormatEntity.containerLabel(): String = mimeType.substringAfter("/").substringBefore(";").uppercase()
 
-fun FormatEntity.isLossless(): Boolean {
-    val rawCodec = codecs.ifBlank { mimeType.substringAfter("/") }.uppercase()
-    return rawCodec.contains("FLAC") || rawCodec.contains("ALAC")
-}
-
 fun FormatEntity.codecLabel(): String {
     val rawCodec = codecs.ifBlank { mimeType.substringAfter("/") }.uppercase()
     val rawMime = mimeType.substringAfter("/").substringBefore(";").uppercase()
