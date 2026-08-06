@@ -51,6 +51,11 @@
 
 <hr />
 
+> [!WARNING]
+**Forks are not supported in any way.**  
+We do not provide support, maintenance, troubleshooting, or assistance for any forked version of this project.
+If you choose to use a fork, you do so at your own risk.
+
 **ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
 
 ---
