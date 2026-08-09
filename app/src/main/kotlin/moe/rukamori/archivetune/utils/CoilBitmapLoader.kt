@@ -41,8 +41,10 @@ class CoilBitmapLoader(
                     throw IllegalArgumentException("Empty image data")
                 }
 
-                BitmapFactory.decodeByteArray(data, 0, data.size)?.also { bitmap ->
-                    return@future bitmap
+                val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                val mediaSessionBitmap = bitmap?.toOwnedMediaSessionBitmap()
+                if (mediaSessionBitmap != null) {
+                    return@future mediaSessionBitmap
                 }
 
                 throw IllegalStateException("Could not decode image data")
