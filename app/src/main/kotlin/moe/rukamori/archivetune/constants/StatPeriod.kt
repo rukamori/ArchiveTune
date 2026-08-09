@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 enum class StatPeriod {
+    HOURS_48,
     WEEK_1,
     MONTH_1,
     MONTH_3,
@@ -22,6 +23,14 @@ enum class StatPeriod {
 
     fun toTimeMillis(): Long =
         when (this) {
+            HOURS_48 -> {
+                LocalDateTime
+                    .now()
+                    .minusDays(2)
+                    .toInstant(ZoneOffset.UTC)
+                    .toEpochMilli()
+            }
+
             WEEK_1 -> {
                 LocalDateTime
                     .now()
