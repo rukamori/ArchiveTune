@@ -47,7 +47,11 @@ class ExoDownloadService :
                 downloadManager.removeDownload(download.request.id)
             }
         }
-        return super.onStartCommand(intent, flags, startId)
+        return try {
+            super.onStartCommand(intent, flags, startId)
+        } catch (_: Exception) {
+            START_NOT_STICKY
+        }
     }
 
     override fun getDownloadManager() = downloadUtil.downloadManager

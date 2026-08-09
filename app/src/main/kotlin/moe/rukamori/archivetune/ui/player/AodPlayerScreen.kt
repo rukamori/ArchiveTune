@@ -16,6 +16,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -406,11 +407,14 @@ fun AodPlayerScreen(
     val textHorizontalAlignment = textAlignment.toHorizontalAlignment()
     val textAlign = textAlignment.toTextAlign()
 
-    BackHandler(enabled = true) {
-        if (isLocked) {
-            resetInteraction()
-        } else {
-            onExit()
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current
+    if (backDispatcher != null) {
+        BackHandler(enabled = true) {
+            if (isLocked) {
+                resetInteraction()
+            } else {
+                onExit()
+            }
         }
     }
 
