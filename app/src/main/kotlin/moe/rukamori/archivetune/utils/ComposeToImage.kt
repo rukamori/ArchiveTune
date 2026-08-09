@@ -740,6 +740,190 @@ object ComposeToImage {
         canvas.drawText(appName, textX, textY, appNamePaint)
     }
 
+    suspend fun createStoryImage(
+        context: Context,
+        coverArtUrl: String?,
+        title: String,
+        artist: String,
+        statsLabel: String?,
+        isObsession: Boolean,
+        width: Int = 1080,
+        height: Int = 1920,
+    ): Bitmap =
+        withContext(Dispatchers.Default) {
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            // 1. Fetch artwork
+            val coverBitmap: Bitmap? =
+                if (!coverArtUrl.isNullOrBlank()) {
+                    runCatching {
+                        val loader = ImageLoader(context)
+                        val request =
+                            ImageRequest
+                                .Builder(context)
+                                .data(coverArtUrl)
+                                .allowHardware(false)
+                                .build()
+                        loader.execute(request).image?.toBitmap()
+                    }.getOrNull()
+                } else {
+                    null
+                }
+
+            // 2. Draw background
+            if (coverBitmap != null) {
+                val blurred = stackBlur(Bitmap.createScaledBitmap(coverBitmap, 120, 120, true), 24)
+                val bgPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = 130 }
+                val bgRect = Rect(0, 0, width, height)
+                canvas.drawBitmap(blurred, null, bgRect, bgPaint)
+
+                val overlayGradient =
+                    LinearGradient(
+                        0f,
+                        0f,
+                        0f,
+                        height.toFloat(),
+                        intArrayOf(
+                            android.graphics.Color.argb(210, 18, 18, 24),
+                            android.graphics.Color.argb(240, 10, 10, 15),
+                            android.graphics.Color.argb(255, 0, 0, 0),
+                        ),
+                        null,
+                        Shader.TileMode.CLAMP,
+                    )
+                val overlayPaint = Paint().apply { shader = overlayGradient }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+            } else {
+                val gradient =
+                    LinearGradient(
+                        0f,
+                        0f,
+                        0f,
+                        height.toFloat(),
+                        intArrayOf(
+                            android.graphics.Color.rgb(30, 30, 44),
+                            android.graphics.Color.rgb(18, 18, 24),
+                            android.graphics.Color.rgb(0, 0, 0),
+                        ),
+                        null,
+                        Shader.TileMode.CLAMP,
+                    )
+                val bgPaint = Paint().apply { shader = gradient }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+            }
+
+            // 3. Draw Top Branding: ArchiveTune Logo
+            AppLogo(
+                context = context,
+                canvas = canvas,
+                canvasWidth = width,
+                canvasHeight = height,
+                padding = 100f,
+                bottomPadding = 180f,
+                circleColor = android.graphics.Color.argb(50, 255, 255, 255),
+                logoTint = android.graphics.Color.WHITE,
+                textColor = android.graphics.Color.argb(200, 255, 255, 255),
+            )
+
+            // 4. Draw Center Album Artwork Card
+            val artSize = (width * 0.72f).toInt()
+            val artX = (width - artSize) / 2f
+            val artY = (height * 0.26f)
+
+            val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            val artRect = RectF(artX, artY, artX + artSize, artY + artSize)
+            val cornerRadius = 48f
+
+            if (coverBitmap != null) {
+                val shadowPaint =
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(80, 0, 0, 0)
+                        setShadowLayer(32f, 0f, 16f, android.graphics.Color.argb(120, 0, 0, 0))
+                    }
+                canvas.drawRoundRect(artRect, cornerRadius, cornerRadius, shadowPaint)
+
+                val roundedArt = Bitmap.createBitmap(artSize, artSize, Bitmap.Config.ARGB_8888)
+                val artCanvas = Canvas(roundedArt)
+                val clipPath =
+                    Path().apply {
+                        addRoundRect(RectF(0f, 0f, artSize.toFloat(), artSize.toFloat()), cornerRadius, cornerRadius, Path.Direction.CW)
+                    }
+                artCanvas.clipPath(clipPath)
+                artCanvas.drawBitmap(
+                    Bitmap.createScaledBitmap(coverBitmap, artSize, artSize, true),
+                    0f,
+                    0f,
+                    artPaint,
+                )
+                canvas.drawBitmap(roundedArt, artX, artY, null)
+            }
+
+            // 5. Draw Title & Artist Text
+            val textYStart = artY + artSize + 80f
+            val titlePaint =
+                TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = width * 0.052f
+                    typeface = Typeface.create("sans-serif", Typeface.BOLD)
+                    textAlign = Paint.Align.CENTER
+                }
+            canvas.drawText(title, width / 2f, textYStart, titlePaint)
+
+            val artistPaint =
+                TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(190, 255, 255, 255)
+                    textSize = width * 0.036f
+                    typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                    textAlign = Paint.Align.CENTER
+                }
+            canvas.drawText(artist, width / 2f, textYStart + 60f, artistPaint)
+
+            // 6. Draw Listening Stats Badge
+            if (!statsLabel.isNullOrBlank()) {
+                val badgePaint =
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color =
+                            if (isObsession) {
+                                android.graphics.Color.argb(60, 255, 87, 34)
+                            } else {
+                                android.graphics.Color.argb(40, 255, 255, 255)
+                            }
+                        style = Paint.Style.FILL
+                    }
+                val badgeTextPaint =
+                    TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = if (isObsession) android.graphics.Color.rgb(255, 138, 101) else android.graphics.Color.WHITE
+                        textSize = width * 0.034f
+                        typeface = Typeface.create("sans-serif", Typeface.BOLD)
+                        textAlign = Paint.Align.CENTER
+                    }
+
+                val textWidth = badgeTextPaint.measureText(statsLabel)
+                val badgeWidth = textWidth + 80f
+                val badgeHeight = 64f
+                val badgeX = (width - badgeWidth) / 2f
+                val badgeY = textYStart + 120f
+                val badgeRect = RectF(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight)
+
+                canvas.drawRoundRect(badgeRect, 32f, 32f, badgePaint)
+                canvas.drawText(statsLabel, width / 2f, badgeY + 44f, badgeTextPaint)
+            }
+
+            // 7. Bottom Subtitle Watermark
+            val footerPaint =
+                TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(100, 255, 255, 255)
+                    textSize = width * 0.026f
+                    typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                    textAlign = Paint.Align.CENTER
+                    letterSpacing = 0.08f
+                }
+            canvas.drawText("LISTENED ON ARCHIVETUNE", width / 2f, height - 120f, footerPaint)
+
+            bitmap
+        }
+
     fun saveBitmapAsFile(
         context: Context,
         bitmap: Bitmap,

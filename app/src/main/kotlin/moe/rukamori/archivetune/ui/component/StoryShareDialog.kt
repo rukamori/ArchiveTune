@@ -140,7 +140,6 @@ fun StoryShareDialog(
                 }
 
                 // 9:16 Story Card View
-                val cardView = LocalView.current
                 Box(
                     modifier =
                         Modifier
@@ -276,22 +275,16 @@ fun StoryShareDialog(
                             coroutineScope.launch {
                                 try {
                                     val bitmap =
-                                        withContext(Dispatchers.Default) {
-                                            ComposeToImage.captureViewBitmap(cardView, 1080, 1920)
-                                        }
-                                    val cachePath = File(context.cacheDir, "images").apply { mkdirs() }
-                                    val file = File(cachePath, "story_${System.currentTimeMillis()}.png")
-                                    withContext(Dispatchers.IO) {
-                                        FileOutputStream(file).use { out ->
-                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-                                        }
-                                    }
-                                    val contentUri: Uri =
-                                        FileProvider.getUriForFile(
-                                            context,
-                                            "${context.packageName}.FileProvider",
-                                            file,
+                                        ComposeToImage.createStoryImage(
+                                            context = context,
+                                            coverArtUrl = data.thumbnailUrl,
+                                            title = data.title,
+                                            artist = data.artist,
+                                            statsLabel = data.statsLabel,
+                                            isObsession = data.isObsession,
                                         )
+                                    val fileName = "story_${System.currentTimeMillis()}"
+                                    val contentUri = ComposeToImage.saveBitmapAsFile(context, bitmap, fileName)
                                     val shareIntent =
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "image/png"
