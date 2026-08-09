@@ -70,10 +70,15 @@ import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
+import moe.rukamori.archivetune.constants.DefaultLibraryFilterOrderPreference
 import moe.rukamori.archivetune.constants.DisableBlurKey
+import moe.rukamori.archivetune.constants.LibraryChipOrderKey
 import moe.rukamori.archivetune.constants.LibraryFilter
+import moe.rukamori.archivetune.constants.PlaylistTagOrderKey
 import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
+import moe.rukamori.archivetune.constants.toLibraryFilterOrder
+import moe.rukamori.archivetune.constants.toPlaylistTagOrder
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -91,28 +96,26 @@ fun LibraryScreen(navController: NavController) {
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
     val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = false)
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (libraryChipOrderPreference) =
+        rememberPreference(
+            LibraryChipOrderKey,
+            defaultValue = DefaultLibraryFilterOrderPreference,
+        )
+    val (playlistTagOrderPreference) = rememberPreference(PlaylistTagOrderKey, defaultValue = "")
     var showTagsManagementDialog by rememberSaveable { mutableStateOf(false) }
     val activeSelectedTagIds = if (showTagsInLibrary) selectedTagIds else emptySet()
+    val orderedTags =
+        remember(allTags, playlistTagOrderPreference) {
+            val tagsById = allTags.associateBy(TagEntity::id)
+            playlistTagOrderPreference
+                .toPlaylistTagOrder(allTags.map(TagEntity::id))
+                .mapNotNull { tagId -> tagsById[tagId] }
+        }
     val libraryFilters =
-        remember(showSpotifyPlaylists) {
-            if (showSpotifyPlaylists) {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SPOTIFY,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
-            } else {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
-            }
+        remember(showSpotifyPlaylists, libraryChipOrderPreference) {
+            libraryChipOrderPreference
+                .toLibraryFilterOrder()
+                .filter { filter -> showSpotifyPlaylists || filter != LibraryFilter.SPOTIFY }
         }
 
     if (showTagsManagementDialog) {
@@ -217,7 +220,7 @@ fun LibraryScreen(navController: NavController) {
                                 if (showTagsInLibrary) {
                                     {
                                         PlaylistTagFilterRow(
-                                            tags = allTags,
+                                            tags = orderedTags,
                                             selectedTagIds = selectedTagIds,
                                             onSelectedTagIdsChange = onSelectedTagIdsChange,
                                             onManageTagsClick = { showTagsManagementDialog = true },
@@ -243,7 +246,7 @@ fun LibraryScreen(navController: NavController) {
                                 if (showTagsInLibrary) {
                                     {
                                         PlaylistTagFilterRow(
-                                            tags = allTags,
+                                            tags = orderedTags,
                                             selectedTagIds = selectedTagIds,
                                             onSelectedTagIdsChange = onSelectedTagIdsChange,
                                             onManageTagsClick = { showTagsManagementDialog = true },

@@ -304,6 +304,8 @@
     <string name="no_tags_available">No tags available. Create one first.</string>
     <string name="manage_playlist_tags">Playlist Tags</string>
     <string name="manage_playlist_tags_desc">Create and manage tags for organizing playlists</string>
+    <string name="arrange_playlist_tags">Arrange playlist tags</string>
+    <string name="arrange_playlist_tags_desc">Choose the order of tag filters shown in your library</string>
     <string name="like_all">Like all</string>
     <string name="dislike_all">Dislike all</string>
     <string name="sort_by_last_updated">Date updated</string>
@@ -385,6 +387,8 @@
     <string name="general">General</string>
     <string name="proxy">Proxy</string>
     <string name="default_lib_chips">Change default library chip</string>
+    <string name="arrange_library_chips">Arrange library chips</string>
+    <string name="arrange_library_chips_desc">Choose the order of tabs shown in your library</string>
     <string name="set_quick_picks">Set quick picks</string>
     <string name="last_song_listened">Based on last song listened</string>
     <string name="dont_show">Dont Show</string>

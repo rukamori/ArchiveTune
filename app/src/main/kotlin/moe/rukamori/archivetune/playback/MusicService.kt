@@ -273,13 +273,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
-import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToLong
-import kotlin.math.sin
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
@@ -519,6 +516,7 @@ class MusicService :
     private var crossfadeBaseVolume = 1f
     private var crossfadeIncomingBaseVolume = 1f
     private var crossfadeProgress = 0f
+    private var crossfadeHandoffProgress = 0f
     private var crossfadePlaybackRequested = false
     private var lyricsPreloadManager: LyricsPreloadManager? = null
 
@@ -2447,6 +2445,20 @@ class MusicService :
     private fun applyEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
         crossfadeBaseVolume = finalVolume
         val incomingPlayer = secondaryCrossfadePlayer
+        if (crossfadeHandoffInProgress && incomingPlayer != null) {
+            val handoffBaseVolume =
+                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
+                    ?: finalVolume
+            crossfadeIncomingBaseVolume = handoffBaseVolume
+            applyCrossfadeVolumes(
+                crossfadeHandoffProgress,
+                handoffBaseVolume,
+                handoffBaseVolume,
+                incomingPlayer,
+                localPlayer,
+            )
+            return
+        }
         if (isCrossfading && incomingPlayer != null) {
             val incomingBaseVolume =
                 secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
@@ -2505,10 +2517,9 @@ class MusicService :
         outgoingPlayer: ExoPlayer,
         incomingPlayer: ExoPlayer,
     ) {
-        val clampedProgress = progress.coerceIn(0f, 1f)
-        val radians = clampedProgress.toDouble() * (PI / 2.0)
-        outgoingPlayer.volume = (outgoingBaseVolume * cos(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
-        incomingPlayer.volume = (incomingBaseVolume * sin(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
+        val gains = equalPowerGains(progress)
+        outgoingPlayer.volume = (outgoingBaseVolume * gains.outgoing).coerceIn(0f, maxSafeGainFactor)
+        incomingPlayer.volume = (incomingBaseVolume * gains.incoming).coerceIn(0f, maxSafeGainFactor)
     }
 
     fun pauseFromSleepTimer() {
@@ -2815,19 +2826,39 @@ class MusicService :
             localPlayer.pauseAtEndOfMediaItems = false
             player.volume = 0f
             crossfadeHandoffInProgress = true
+            crossfadeHandoffProgress = 0f
             player.seekTo(targetIndex, incomingPosition)
             player.playWhenReady = shouldContinuePlayback
             if (shouldContinuePlayback) {
                 if (awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
-                    val syncedIncomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
-                    player.seekTo(targetIndex, syncedIncomingPosition)
+                    val primaryPosition = player.currentPosition.coerceAtLeast(0L)
+                    val secondaryPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                    val positionAfterLastSeek =
+                        if (needsCorrectiveCrossfadeSeek(
+                                primaryPositionMs = primaryPosition,
+                                secondaryPositionMs = secondaryPosition,
+                                maximumDriftMs = CROSSFADE_HANDOFF_MAX_DRIFT_MS,
+                            )
+                        ) {
+                            player.seekTo(targetIndex, secondaryPosition)
+                            secondaryPosition
+                        } else {
+                            incomingPosition
+                    }
+
+                    if (awaitPrimaryPositionAdvance(targetIndex, positionAfterLastSeek)) {
+                        performCrossfadeHandoff(targetIndex, incomingPlayer)
+                    }
                 }
+            } else {
+                incomingPlayer.pause()
             }
             currentMediaMetadata.value = player.getMediaItemAt(targetIndex).metadata
             handoffCompleted = true
         } finally {
             if (!handoffCompleted) {
                 crossfadeHandoffInProgress = false
+                crossfadeHandoffProgress = 0f
                 isCrossfading = false
                 crossfadeProgress = 0f
                 crossfadePlaybackRequested = false
@@ -2838,6 +2869,7 @@ class MusicService :
 
         isCrossfading = false
         crossfadeHandoffInProgress = false
+        crossfadeHandoffProgress = 0f
         crossfadeProgress = 0f
         crossfadeIncomingBaseVolume = 1f
         crossfadePlaybackRequested = false
@@ -2859,6 +2891,68 @@ class MusicService :
             delay(25L)
         }
         return player.playbackState == Player.STATE_READY && canHandoffWithoutRebuffer(incomingPlayer)
+    }
+
+    private suspend fun awaitPrimaryPositionAdvance(
+        targetIndex: Int,
+        positionAfterSeekMs: Long,
+    ): Boolean {
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_READY_TIMEOUT_MS
+        while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {
+            if (!crossfadePlaybackRequested || !player.playWhenReady) return false
+            if (player.currentMediaItemIndex != targetIndex) return false
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
+            if (player.playbackState == Player.STATE_READY &&
+                player.isPlaying &&
+                hasPlaybackPositionAdvanced(positionAfterSeekMs, player.currentPosition)
+            ) {
+                return true
+            }
+            delay(CROSSFADE_HANDOFF_POLL_MS)
+        }
+        return player.currentMediaItemIndex == targetIndex &&
+            player.playbackState == Player.STATE_READY &&
+            player.isPlaying &&
+            hasPlaybackPositionAdvanced(positionAfterSeekMs, player.currentPosition)
+    }
+
+    private suspend fun performCrossfadeHandoff(
+        targetIndex: Int,
+        incomingPlayer: ExoPlayer,
+    ) {
+        var startedAtMs = android.os.SystemClock.elapsedRealtime()
+        var lastConfirmedPrimaryPositionMs = player.currentPosition.coerceAtLeast(0L)
+        while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+            if (!crossfadePlaybackRequested || !player.playWhenReady) {
+                incomingPlayer.pause()
+                return
+            }
+            if (player.currentMediaItemIndex != targetIndex) return
+            if (player.playbackState != Player.STATE_READY || !player.isPlaying) {
+                crossfadeHandoffProgress = 0f
+                applyEffectiveVolume()
+                if (!awaitPrimaryPositionAdvance(targetIndex, lastConfirmedPrimaryPositionMs)) return
+                lastConfirmedPrimaryPositionMs = player.currentPosition.coerceAtLeast(0L)
+                startedAtMs = android.os.SystemClock.elapsedRealtime()
+                continue
+            }
+
+            val elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAtMs
+            crossfadeHandoffProgress =
+                (elapsedMs.toFloat() / CROSSFADE_HANDOFF_DURATION_MS.toFloat()).coerceIn(0f, 1f)
+            val handoffBaseVolume =
+                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
+                    ?: crossfadeIncomingBaseVolume
+            applyCrossfadeVolumes(
+                crossfadeHandoffProgress,
+                handoffBaseVolume,
+                handoffBaseVolume,
+                incomingPlayer,
+                localPlayer,
+            )
+            if (crossfadeHandoffProgress >= 1f) return
+            delay(CROSSFADE_HANDOFF_FRAME_MS)
+        }
     }
 
     private fun canHandoffWithoutRebuffer(incomingPlayer: ExoPlayer): Boolean {
@@ -2939,6 +3033,7 @@ class MusicService :
         crossfadeJob = null
         isCrossfading = false
         crossfadeHandoffInProgress = false
+        crossfadeHandoffProgress = 0f
         crossfadeProgress = 0f
         crossfadeIncomingBaseVolume = 1f
         crossfadePlaybackRequested = false
@@ -6517,19 +6612,24 @@ class MusicService :
     ) {
         super.onPlayWhenReadyChanged(playWhenReady, reason)
         secondaryCrossfadePlayer?.let { secondaryPlayer ->
-            if (isCrossfading && !crossfadeHandoffInProgress) {
+            if (isCrossfading) {
                 val isEndOfOutgoingItemPause =
                     !playWhenReady &&
                         reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
                         localPlayer.pauseAtEndOfMediaItems
                 if (!isEndOfOutgoingItemPause) {
                     crossfadePlaybackRequested = playWhenReady
-                }
-                secondaryPlayer.playWhenReady = crossfadePlaybackRequested
-                if (crossfadePlaybackRequested) {
-                    secondaryPlayer.play()
-                } else if (!isEndOfOutgoingItemPause) {
-                    secondaryPlayer.pause()
+                    secondaryPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        secondaryPlayer.play()
+                    } else {
+                        secondaryPlayer.pause()
+                    }
+                } else if (!crossfadeHandoffInProgress) {
+                    secondaryPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        secondaryPlayer.play()
+                    }
                 }
             }
         }
@@ -8518,6 +8618,10 @@ class MusicService :
         const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
         const val CROSSFADE_HANDOFF_BUFFER_MS = 5_000L
         const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
+        const val CROSSFADE_HANDOFF_MAX_DRIFT_MS = 75L
+        const val CROSSFADE_HANDOFF_DURATION_MS = 96L
+        const val CROSSFADE_HANDOFF_FRAME_MS = 8L
+        const val CROSSFADE_HANDOFF_POLL_MS = 10L
         const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
         const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = 12_500L
         const val PRIMARY_MIN_BUFFER_MS = 20_000
