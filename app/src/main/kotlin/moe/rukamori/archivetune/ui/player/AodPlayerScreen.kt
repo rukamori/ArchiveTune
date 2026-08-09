@@ -67,9 +67,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -526,36 +528,67 @@ fun AodPlayerScreen(
                 accentColor = accentColor,
             )
 
-            AnimatedVisibility(
-                visible = showThumbnail && (!isLocked || !minimalLockedState),
-                enter = fadeIn(tween(300)),
-                exit = fadeOut(tween(300)),
-            ) {
-                if (showThumbnail) {
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .size(artworkSize)
-                            .then(
-                                if (artworkGlow && supportsArtworkGlowShadow) {
-                                    Modifier.shadow(
-                                        elevation = 28.dp,
-                                        shape = thumbnailShape,
-                                        clip = false,
-                                        ambientColor = accentColor,
-                                        spotColor = accentColor,
-                                    )
-                                } else {
-                                    Modifier
+    val haptic = LocalHapticFeedback.current
+    val keyguardManager = remember(context) {
+        context.getSystemService(android.content.Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+    }
+    val onRequestUnlock = {
+        resetInteraction()
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        val activity = context.findActivity()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && activity != null && keyguardManager?.isKeyguardLocked == true) {
+            keyguardManager.requestDismissKeyguard(
+                activity,
+                object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                    override fun onDismissSucceeded() {
+                        super.onDismissSucceeded()
+                        onExit()
+                    }
+                },
+            )
+        } else {
+            onExit()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = showThumbnail && (!isLocked || !minimalLockedState),
+        enter = fadeIn(tween(300)),
+        exit = fadeOut(tween(300)),
+    ) {
+        if (showThumbnail) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(artworkSize)
+                        .then(
+                            if (artworkGlow && supportsArtworkGlowShadow) {
+                                Modifier.shadow(
+                                    elevation = 28.dp,
+                                    shape = thumbnailShape,
+                                    clip = false,
+                                    ambientColor = accentColor,
+                                    spotColor = accentColor,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .clip(thumbnailShape)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    onRequestUnlock()
                                 },
-                            ).clip(thumbnailShape),
-                )
-                } 
-            } 
+                            )
+                        },
+            )
+        }
+    } 
 
             Column(
                 horizontalAlignment = textHorizontalAlignment,
@@ -1036,4 +1069,11 @@ private fun AodTextAlignment.toHorizontalAlignment(): Alignment.Horizontal =
         AodTextAlignment.START -> Alignment.Start
         AodTextAlignment.CENTER -> Alignment.CenterHorizontally
         AodTextAlignment.END -> Alignment.End
+    }
+
+private tailrec fun android.content.Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is android.content.ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
