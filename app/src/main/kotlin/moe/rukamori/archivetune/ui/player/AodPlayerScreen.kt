@@ -532,22 +532,24 @@ fun AodPlayerScreen(
     val keyguardManager = remember(context) {
         context.getSystemService(android.content.Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
     }
-    val onRequestUnlock = {
-        resetInteraction()
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        val activity = context.findActivity()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && activity != null && keyguardManager?.isKeyguardLocked == true) {
-            keyguardManager.requestDismissKeyguard(
-                activity,
-                object : android.app.KeyguardManager.KeyguardDismissCallback() {
-                    override fun onDismissSucceeded() {
-                        super.onDismissSucceeded()
-                        onExit()
-                    }
-                },
-            )
-        } else {
-            onExit()
+    val onRequestUnlock = remember(context, keyguardManager) {
+        {
+            resetInteraction()
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            val activity = context.findActivity()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && activity != null && keyguardManager?.isKeyguardLocked == true) {
+                keyguardManager.requestDismissKeyguard(
+                    activity,
+                    object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                        override fun onDismissSucceeded() {
+                            super.onDismissSucceeded()
+                            onExit()
+                        }
+                    },
+                )
+            } else {
+                onExit()
+            }
         }
     }
 
