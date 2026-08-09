@@ -740,13 +740,24 @@ object ComposeToImage {
         canvas.drawText(appName, textX, textY, appNamePaint)
     }
 
+    private fun formatStoryTime(ms: Long): String {
+        val totalSeconds = (ms / 1000).coerceAtLeast(0)
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%02d:%02d", minutes, seconds)
+    }
+
     suspend fun createStoryImage(
         context: Context,
         coverArtUrl: String?,
         title: String,
         artist: String,
-        statsLabel: String?,
-        isObsession: Boolean,
+        album: String? = null,
+        statsLabel: String? = null,
+        isObsession: Boolean = false,
+        currentPositionMs: Long? = null,
+        durationMs: Long? = null,
+        isPlaying: Boolean = true,
         width: Int = 1080,
         height: Int = 1920,
     ): Bitmap =
@@ -771,13 +782,14 @@ object ComposeToImage {
                     null
                 }
 
-            // 2. Draw background
+            // 2. Draw background (ambient dynamic blur)
             if (coverBitmap != null) {
-                val blurred = stackBlur(Bitmap.createScaledBitmap(coverBitmap, 120, 120, true), 24)
-                val bgPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = 130 }
+                val blurred = stackBlur(Bitmap.createScaledBitmap(coverBitmap, 140, 140, true), 24)
+                val bgPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = 140 }
                 val bgRect = Rect(0, 0, width, height)
                 canvas.drawBitmap(blurred, null, bgRect, bgPaint)
 
+                // Dark multi-stop gradient overlay
                 val overlayGradient =
                     LinearGradient(
                         0f,
@@ -785,11 +797,11 @@ object ComposeToImage {
                         0f,
                         height.toFloat(),
                         intArrayOf(
-                            android.graphics.Color.argb(210, 18, 18, 24),
-                            android.graphics.Color.argb(240, 10, 10, 15),
+                            android.graphics.Color.argb(200, 15, 15, 22),
+                            android.graphics.Color.argb(235, 10, 10, 15),
                             android.graphics.Color.argb(255, 0, 0, 0),
                         ),
-                        null,
+                        floatArrayOf(0f, 0.6f, 1f),
                         Shader.TileMode.CLAMP,
                     )
                 val overlayPaint = Paint().apply { shader = overlayGradient }
@@ -802,7 +814,7 @@ object ComposeToImage {
                         0f,
                         height.toFloat(),
                         intArrayOf(
-                            android.graphics.Color.rgb(30, 30, 44),
+                            android.graphics.Color.rgb(32, 32, 48),
                             android.graphics.Color.rgb(18, 18, 24),
                             android.graphics.Color.rgb(0, 0, 0),
                         ),
@@ -813,33 +825,44 @@ object ComposeToImage {
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
             }
 
-            // 3. Draw Top Branding: ArchiveTune Logo
+            // 3. Top Branding: ArchiveTune Logo + "NOW PLAYING" badge
             AppLogo(
                 context = context,
                 canvas = canvas,
                 canvasWidth = width,
                 canvasHeight = height,
-                padding = 100f,
+                padding = 90f,
                 bottomPadding = 180f,
                 circleColor = android.graphics.Color.argb(50, 255, 255, 255),
                 logoTint = android.graphics.Color.WHITE,
-                textColor = android.graphics.Color.argb(200, 255, 255, 255),
+                textColor = android.graphics.Color.argb(220, 255, 255, 255),
             )
 
-            // 4. Draw Center Album Artwork Card
-            val artSize = (width * 0.72f).toInt()
+            val tagText = if (isPlaying) "NOW PLAYING" else "ARCHIVETUNE"
+            val tagTextPaint =
+                TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(160, 255, 255, 255)
+                    textSize = width * 0.026f
+                    typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                    letterSpacing = 0.15f
+                    textAlign = Paint.Align.RIGHT
+                }
+            canvas.drawText(tagText, width - 90f, 160f, tagTextPaint)
+
+            // 4. Center Album Artwork Card (with rounded corners & ambient shadow)
+            val artSize = (width * 0.76f).toInt()
             val artX = (width - artSize) / 2f
-            val artY = (height * 0.26f)
+            val artY = (height * 0.22f)
 
             val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
             val artRect = RectF(artX, artY, artX + artSize, artY + artSize)
-            val cornerRadius = 48f
+            val cornerRadius = 52f
 
             if (coverBitmap != null) {
                 val shadowPaint =
                     Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb(80, 0, 0, 0)
-                        setShadowLayer(32f, 0f, 16f, android.graphics.Color.argb(120, 0, 0, 0))
+                        color = android.graphics.Color.argb(90, 0, 0, 0)
+                        setShadowLayer(40f, 0f, 20f, android.graphics.Color.argb(140, 0, 0, 0))
                     }
                 canvas.drawRoundRect(artRect, cornerRadius, cornerRadius, shadowPaint)
 
@@ -857,29 +880,94 @@ object ComposeToImage {
                     artPaint,
                 )
                 canvas.drawBitmap(roundedArt, artX, artY, null)
+            } else {
+                val placeholderPaint =
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(40, 255, 255, 255)
+                    }
+                canvas.drawRoundRect(artRect, cornerRadius, cornerRadius, placeholderPaint)
             }
 
-            // 5. Draw Title & Artist Text
-            val textYStart = artY + artSize + 80f
+            // 5. Song Title & Artist Text
+            val textYStart = artY + artSize + 85f
             val titlePaint =
                 TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = android.graphics.Color.WHITE
-                    textSize = width * 0.052f
+                    textSize = width * 0.054f
                     typeface = Typeface.create("sans-serif", Typeface.BOLD)
                     textAlign = Paint.Align.CENTER
                 }
-            canvas.drawText(title, width / 2f, textYStart, titlePaint)
+            val safeTitle = if (title.length > 32) title.take(30) + "…" else title
+            canvas.drawText(safeTitle, width / 2f, textYStart, titlePaint)
 
+            val artistSubtitle = if (!album.isNullOrBlank()) "$artist • $album" else artist
+            val safeArtist = if (artistSubtitle.length > 40) artistSubtitle.take(38) + "…" else artistSubtitle
             val artistPaint =
                 TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = android.graphics.Color.argb(190, 255, 255, 255)
+                    color = android.graphics.Color.argb(195, 255, 255, 255)
                     textSize = width * 0.036f
                     typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                     textAlign = Paint.Align.CENTER
                 }
-            canvas.drawText(artist, width / 2f, textYStart + 60f, artistPaint)
+            canvas.drawText(safeArtist, width / 2f, textYStart + 60f, artistPaint)
 
-            // 6. Draw Listening Stats Badge
+            // 6. Live Playback Timeline / Progress Bar
+            var currentY = textYStart + 110f
+            if (durationMs != null && durationMs > 0) {
+                val posMs = (currentPositionMs ?: 0L).coerceIn(0L, durationMs)
+                val progressFraction = (posMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+
+                val timelineMargin = width * 0.12f
+                val timelineWidth = width - (timelineMargin * 2)
+                val timelineHeight = 12f
+                val timelineY = currentY + 30f
+
+                // Track Background
+                val trackPaint =
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(45, 255, 255, 255)
+                        style = Paint.Style.FILL
+                    }
+                val trackRect = RectF(timelineMargin, timelineY, timelineMargin + timelineWidth, timelineY + timelineHeight)
+                canvas.drawRoundRect(trackRect, 6f, 6f, trackPaint)
+
+                // Filled Progress with Accent Color
+                val filledWidth = timelineWidth * progressFraction
+                if (filledWidth > 0) {
+                    val progressPaint =
+                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.WHITE
+                            style = Paint.Style.FILL
+                        }
+                    val filledRect = RectF(timelineMargin, timelineY, timelineMargin + filledWidth, timelineY + timelineHeight)
+                    canvas.drawRoundRect(filledRect, 6f, 6f, progressPaint)
+
+                    val thumbPaint =
+                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.WHITE
+                            style = Paint.Style.FILL
+                        }
+                    canvas.drawCircle(timelineMargin + filledWidth, timelineY + (timelineHeight / 2f), 10f, thumbPaint)
+                }
+
+                // Time labels
+                val timePaint =
+                    TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(150, 255, 255, 255)
+                        textSize = width * 0.028f
+                        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    }
+                val posText = formatStoryTime(posMs)
+                val durText = formatStoryTime(durationMs)
+
+                canvas.drawText(posText, timelineMargin, timelineY + 42f, timePaint)
+                timePaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText(durText, width - timelineMargin, timelineY + 42f, timePaint)
+
+                currentY = timelineY + 65f
+            }
+
+            // 7. Stats / Obsession Badge (if present)
             if (!statsLabel.isNullOrBlank()) {
                 val badgePaint =
                     Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -903,23 +991,23 @@ object ComposeToImage {
                 val badgeWidth = textWidth + 80f
                 val badgeHeight = 64f
                 val badgeX = (width - badgeWidth) / 2f
-                val badgeY = textYStart + 120f
+                val badgeY = currentY + 10f
                 val badgeRect = RectF(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight)
 
                 canvas.drawRoundRect(badgeRect, 32f, 32f, badgePaint)
                 canvas.drawText(statsLabel, width / 2f, badgeY + 44f, badgeTextPaint)
             }
 
-            // 7. Bottom Subtitle Watermark
+            // 8. Bottom Watermark
             val footerPaint =
                 TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = android.graphics.Color.argb(100, 255, 255, 255)
                     textSize = width * 0.026f
                     typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                     textAlign = Paint.Align.CENTER
-                    letterSpacing = 0.08f
+                    letterSpacing = 0.12f
                 }
-            canvas.drawText("LISTENED ON ARCHIVETUNE", width / 2f, height - 120f, footerPaint)
+            canvas.drawText("LISTENED ON ARCHIVETUNE", width / 2f, height - 100f, footerPaint)
 
             bitmap
         }

@@ -95,6 +95,8 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.component.StoryShareData
+import moe.rukamori.archivetune.ui.component.StoryShareDialog
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
@@ -327,7 +329,27 @@ fun YouTubeSongMenu(
     val playNextText = stringResource(R.string.play_next)
     val addToQueueText = stringResource(R.string.add_to_queue)
     val addToPlaylistText = stringResource(R.string.add_to_playlist)
+    val shareAsStoryText = stringResource(R.string.share_as_story)
     val shareText = stringResource(R.string.share)
+
+    var showStoryShareDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showStoryShareDialog) {
+        StoryShareDialog(
+            data =
+                StoryShareData(
+                    title = song.title,
+                    artist = song.artists.joinToString(", ") { it.name },
+                    album = song.album?.name,
+                    thumbnailUrl = song.thumbnail,
+                    durationMs = song.duration?.toLong()?.times(1000L),
+                    isPlaying = false,
+                ),
+            onDismiss = { showStoryShareDialog = false },
+        )
+    }
 
     val primaryActions =
         remember(
@@ -336,6 +358,7 @@ fun YouTubeSongMenu(
             playNextText,
             addToQueueText,
             addToPlaylistText,
+            shareAsStoryText,
             shareText,
             onDismiss,
             playerConnection,
@@ -397,6 +420,20 @@ fun YouTubeSongMenu(
                     },
                     text = addToPlaylistText,
                     onClick = { showChoosePlaylistDialog = true },
+                ),
+                NewAction(
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.share),
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    text = shareAsStoryText,
+                    onClick = {
+                        showStoryShareDialog = true
+                    },
                 ),
                 NewAction(
                     icon = {

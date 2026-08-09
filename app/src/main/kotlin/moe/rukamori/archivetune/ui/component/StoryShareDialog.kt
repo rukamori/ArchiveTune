@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,7 +34,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,7 +56,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,19 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.ComposeToImage
-import java.io.File
-import java.io.FileOutputStream
 
 @Immutable
 data class StoryShareData(
@@ -83,9 +79,19 @@ data class StoryShareData(
     val artist: String,
     val album: String? = null,
     val thumbnailUrl: String? = null,
+    val currentPositionMs: Long? = null,
+    val durationMs: Long? = null,
+    val isPlaying: Boolean = true,
     val statsLabel: String? = null,
     val isObsession: Boolean = false,
 )
+
+private fun formatTimeline(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val min = totalSec / 60
+    val sec = totalSec % 60
+    return String.format("%02d:%02d", min, sec)
+}
 
 @Composable
 fun StoryShareDialog(
@@ -104,14 +110,14 @@ fun StoryShareDialog(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.85f)),
+                    .background(Color.Black.copy(alpha = 0.88f)),
             color = Color.Transparent,
         ) {
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -129,7 +135,6 @@ fun StoryShareDialog(
                     )
                     IconButton(
                         onClick = onDismiss,
-                        onLongClick = {},
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.close),
@@ -139,7 +144,7 @@ fun StoryShareDialog(
                     }
                 }
 
-                // 9:16 Story Card View
+                // 9:16 Story Card View Live Preview
                 Box(
                     modifier =
                         Modifier
@@ -150,12 +155,12 @@ fun StoryShareDialog(
                                 Brush.verticalGradient(
                                     colors =
                                         listOf(
-                                            Color(0xFF1E1E2C),
-                                            Color(0xFF121218),
+                                            Color(0xFF222232),
+                                            Color(0xFF14141C),
                                             Color(0xFF000000),
                                         ),
                                 ),
-                            ).padding(24.dp),
+                            ).padding(20.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(
@@ -163,30 +168,50 @@ fun StoryShareDialog(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // App Brand watermark
+                        // Top Branding & Tag
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.music_note),
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(16.dp),
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color.White.copy(alpha = 0.18f),
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.music_note),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.padding(4.dp),
+                                    )
+                                }
+                                Text(
+                                    text = "ArchiveTune",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    letterSpacing = 0.8.sp,
+                                )
+                            }
                             Text(
-                                text = "ArchiveTune",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = if (data.isPlaying) "NOW PLAYING" else "ARCHIVETUNE",
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White.copy(alpha = 0.7f),
-                                letterSpacing = 1.sp,
+                                color = Color.White.copy(alpha = 0.6f),
+                                letterSpacing = 1.2.sp,
                             )
                         }
 
-                        // Artwork & Details
+                        // Center: Artwork, Details & Live Timeline
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             AsyncImage(
                                 model =
@@ -199,27 +224,29 @@ fun StoryShareDialog(
                                 contentScale = ContentScale.Crop,
                                 modifier =
                                     Modifier
-                                        .size(200.dp)
+                                        .size(190.dp)
                                         .clip(RoundedCornerShape(20.dp))
                                         .shadow(16.dp, RoundedCornerShape(20.dp)),
                             )
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                             ) {
                                 Text(
                                     text = data.title,
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                val subtitle = if (!data.album.isNullOrBlank()) "${data.artist} • ${data.album}" else data.artist
                                 Text(
-                                    text = data.artist,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.75f),
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
@@ -227,18 +254,61 @@ fun StoryShareDialog(
                                 )
                             }
 
+                            // Live Playback Timeline Bar
+                            if (data.durationMs != null && data.durationMs > 0) {
+                                val posMs = (data.currentPositionMs ?: 0L).coerceIn(0L, data.durationMs)
+                                val progress = (posMs.toFloat() / data.durationMs.toFloat()).coerceIn(0f, 1f)
+
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(Color.White.copy(alpha = 0.2f)),
+                                    ) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth(progress)
+                                                    .fillMaxHeight()
+                                                    .background(Color.White),
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = formatTimeline(posMs),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.6f),
+                                        )
+                                        Text(
+                                            text = formatTimeline(data.durationMs),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.6f),
+                                        )
+                                    }
+                                }
+                            }
+
                             if (data.statsLabel != null) {
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
                                     color = if (data.isObsession) Color(0xFFFF5722).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
-                                    modifier = Modifier.padding(top = 4.dp),
+                                    modifier = Modifier.padding(top = 2.dp),
                                 ) {
                                     Text(
                                         text = data.statsLabel,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = if (data.isObsession) Color(0xFFFF8A65) else Color.White,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                     )
                                 }
                             }
@@ -246,9 +316,10 @@ fun StoryShareDialog(
 
                         // Bottom watermark note
                         Text(
-                            text = "My Music History",
+                            text = "LISTENED ON ARCHIVETUNE",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White.copy(alpha = 0.4f),
+                            letterSpacing = 1.sp,
                         )
                     }
                 }
@@ -280,8 +351,12 @@ fun StoryShareDialog(
                                             coverArtUrl = data.thumbnailUrl,
                                             title = data.title,
                                             artist = data.artist,
+                                            album = data.album,
                                             statsLabel = data.statsLabel,
                                             isObsession = data.isObsession,
+                                            currentPositionMs = data.currentPositionMs,
+                                            durationMs = data.durationMs,
+                                            isPlaying = data.isPlaying,
                                         )
                                     val fileName = "story_${System.currentTimeMillis()}"
                                     val contentUri = ComposeToImage.saveBitmapAsFile(context, bitmap, fileName)
@@ -308,12 +383,21 @@ fun StoryShareDialog(
                         modifier = Modifier.weight(1.5f),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        enabled = !isSharing,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Icon(painterResource(R.drawable.share), contentDescription = null)
+                            if (isSharing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(painterResource(R.drawable.share), contentDescription = null)
+                            }
                             Text(stringResource(R.string.share_story_card))
                         }
                     }
