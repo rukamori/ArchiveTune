@@ -21,12 +21,19 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 object DiscordAssetRegistrar {
     private const val TAG = "DiscordAssetRegistrar"
     private const val API_BASE = "https://discord.com/api/v10"
 
-    private val client = OkHttpClient()
+    private val client =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
     private val cache = ConcurrentHashMap<String, String>()
     private val mutex = Mutex()
 

@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 object ListenBrainzManager {
@@ -25,7 +26,13 @@ object ListenBrainzManager {
     private var scope: CoroutineScope? = null
     private var job: Job? = null
     private var lifecycleObserver: Any? = null
-    private val httpClient = OkHttpClient()
+    private val httpClient =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
 
     private val _lastSubmitTime = MutableStateFlow<Long?>(null)
     val lastSubmitTimeFlow = _lastSubmitTime.asStateFlow()

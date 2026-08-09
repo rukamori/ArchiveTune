@@ -67,6 +67,7 @@ fun BottomSheet(
     modifier: Modifier = Modifier,
     backgroundColor: Color,
     onDismiss: (() -> Unit)? = null,
+    backHandlerEnabled: Boolean = true,
     collapsedContent: @Composable BoxScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -92,7 +93,7 @@ fun BottomSheet(
                     ),
                 ),
     ) {
-        if (state.isExpandedOrExpanding) {
+        if (state.isExpandedOrExpanding && backHandlerEnabled) {
             BackHandler(onBack = state::collapseSoft)
         }
 

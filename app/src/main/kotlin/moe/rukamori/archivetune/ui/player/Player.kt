@@ -897,15 +897,17 @@ fun BottomSheetPlayer(
             }
         }
 
-    BackHandler(
-        enabled =
-            queueSheetState.isExpandedOrExpanding ||
-                state.isExpandedOrExpanding,
-    ) {
-        when {
-            isLyricsScreenVisible && state.isExpandedOrExpanding -> isLyricsScreenVisible = false
-            queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
-            state.isExpandedOrExpanding -> state.collapseSoft()
+    if (!aodModeEnabled) {
+        BackHandler(
+            enabled =
+                queueSheetState.isExpandedOrExpanding ||
+                    state.isExpandedOrExpanding,
+        ) {
+            when {
+                isLyricsScreenVisible && state.isExpandedOrExpanding -> isLyricsScreenVisible = false
+                queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
+                state.isExpandedOrExpanding -> state.collapseSoft()
+            }
         }
     }
 
@@ -1075,6 +1077,7 @@ fun BottomSheetPlayer(
         onDismiss = {
             playerConnection.service.stopAndClearPlayback(clearPersistentState = true)
         },
+        backHandlerEnabled = !aodModeEnabled,
         collapsedContent = {
             MiniPlayer(
                 position = position,
