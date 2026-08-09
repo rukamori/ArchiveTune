@@ -119,6 +119,7 @@ import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -220,7 +221,10 @@ fun AodCustomizedScreen(navController: NavController) {
     val (marqueeTitles, onMarqueeTitlesChange) = rememberPreference(AodMarqueeTitlesKey, defaultValue = false)
     val (minimalLockedState, onMinimalLockedStateChange) = rememberPreference(AodMinimalLockedStateKey, defaultValue = false)
     val (trueAmbientMode, onTrueAmbientModeChange) = rememberPreference(AodTrueAmbientModeKey, defaultValue = true)
+    val context = androidx.compose.ui.platform.LocalContext.current
     val (autoStartScreenOff, onAutoStartScreenOffChange) = rememberPreference(AodAutoStartScreenOffKey, defaultValue = true)
+    val (onlyWhileCharging, onOnlyWhileChargingChange) = rememberPreference(moe.rukamori.archivetune.constants.AodOnlyWhileChargingKey, defaultValue = false)
+    val (lowBatteryCutoff, onLowBatteryCutoffChange) = rememberPreference(moe.rukamori.archivetune.constants.AodLowBatteryCutoffKey, defaultValue = 0)
     val (proximityBlackout, onProximityBlackoutChange) = rememberPreference(AodProximityBlackoutKey, defaultValue = false)
     val (aodBrightness, onAodBrightnessChange) = rememberPreference(AodBrightnessKey, defaultValue = 0.15f)
 
@@ -620,10 +624,89 @@ fun AodCustomizedScreen(navController: NavController) {
                         )
                     }
                     item {
+                        val isScreenSaverConfigured = remember(context) {
+                            try {
+                                val enabled = android.provider.Settings.Secure.getInt(context.contentResolver, "screensaver_enabled", 0) == 1
+                                val component = android.provider.Settings.Secure.getString(context.contentResolver, "screensaver_components")
+                                enabled && (component?.contains(context.packageName) == true)
+                            } catch (_: Exception) {
+                                false
+                            }
+                        }
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.aod_customize_screensaver_info_title)) },
                             description = stringResource(R.string.aod_customize_screensaver_info_desc),
                             icon = { Icon(painterResource(R.drawable.info), null) },
+                            onClick = {
+                                try {
+                                    context.startActivity(
+                                        android.content.Intent(android.provider.Settings.ACTION_DREAM_SETTINGS).apply {
+                                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                        },
+                                    )
+                                } catch (_: Exception) {
+                                    try {
+                                        context.startActivity(
+                                            android.content.Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).apply {
+                                                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                            },
+                                        )
+                                    } catch (_: Exception) {
+                                        android.widget.Toast.makeText(context, context.getString(R.string.error_unknown), android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Surface(
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                    color = if (isScreenSaverConfigured) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Text(
+                                            text = stringResource(
+                                                if (isScreenSaverConfigured) {
+                                                    R.string.aod_screensaver_status_configured
+                                                } else {
+                                                    R.string.aod_screensaver_status_not_configured
+                                                },
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isScreenSaverConfigured) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                        Icon(
+                                            painter = painterResource(if (isScreenSaverConfigured) R.drawable.check else R.drawable.arrow_forward),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp),
+                                            tint = if (isScreenSaverConfigured) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
+                                }
+                            },
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = { Text(stringResource(R.string.aod_customize_only_while_charging)) },
+                            description = stringResource(R.string.aod_customize_only_while_charging_desc),
+                            icon = { Icon(painterResource(R.drawable.bolt), null) },
+                            checked = onlyWhileCharging,
+                            onCheckedChange = onOnlyWhileChargingChange,
+                        )
+                    }
+                    item {
+                        ListPreference(
+                            title = { Text(stringResource(R.string.aod_customize_low_battery_cutoff)) },
+                            selectedValue = lowBatteryCutoff,
+                            values = listOf(0, 15, 20, 30),
+                            valueText = { value -> if (value == 0) context.getString(R.string.aod_battery_cutoff_disabled) else "$value%" },
+                            onValueSelected = onLowBatteryCutoffChange,
+                            icon = { Icon(painterResource(R.drawable.sliders), null) },
                         )
                     }
                     item {

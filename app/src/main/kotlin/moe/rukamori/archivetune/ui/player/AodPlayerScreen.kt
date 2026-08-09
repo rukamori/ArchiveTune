@@ -430,13 +430,28 @@ fun AodPlayerScreen(
                     )
                 }
                 .pointerInput(gesturesEnabled, isLocked) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { resetInteraction() },
-                        onHorizontalDrag = { _, _ -> },
-                        onDragEnd = {
-                            resetInteraction()
-                        }
-                    )
+                    if (gesturesEnabled && !isLocked) {
+                        var accumHorizontalDrag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                resetInteraction()
+                                accumHorizontalDrag = 0f
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                resetInteraction()
+                                accumHorizontalDrag += dragAmount
+                            },
+                            onDragEnd = {
+                                resetInteraction()
+                                if (accumHorizontalDrag < -60f) {
+                                    onSkipNext()
+                                } else if (accumHorizontalDrag > 60f) {
+                                    onSkipPrevious()
+                                }
+                                accumHorizontalDrag = 0f
+                            },
+                        )
+                    }
                 }
                 .pointerInput(gesturesEnabled, isLocked) {
                     if (gesturesEnabled && !isLocked) {
