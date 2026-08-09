@@ -630,6 +630,13 @@ class MusicService :
         return false
     }
 
+    private fun isNetworkCurrentlyConnected(): Boolean =
+        isNetworkConnected.value ||
+            (::connectivityObserver.isInitialized && connectivityObserver.isCurrentlyConnected())
+
+    private fun Throwable.isTransientNetworkFailure(): Boolean =
+        isRequestTimeout() || isNetworkConnectionFailure()
+
     lateinit var sleepTimer: SleepTimer
 
     @Inject
@@ -3474,6 +3481,25 @@ class MusicService :
             responseException.responseCode,
             requestProfile.variantLabel,
         )
+        player.prepare()
+        return true
+    }
+
+    private fun retryPlaybackAfterNetworkFailure(
+        mediaId: String,
+        isFullyDownloadedMedia: Boolean,
+    ): Boolean {
+        if (isFullyDownloadedMedia) return false
+
+        playbackUrlCache.remove(mediaId)
+        extractorPlaybackUrlCache.remove(mediaId)
+        YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
+
+        if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {
+            return false
+        }
+
+        Timber.tag("MusicService").i("Retrying playback for %s after a transient network failure", mediaId)
         player.prepare()
         return true
     }
@@ -6867,12 +6893,16 @@ class MusicService :
                         playerCache.getCachedSpans(currentMediaId).isNotEmpty()
                 }.getOrDefault(false)
 
-        val isConnectionError =
-            (error.cause?.cause is PlaybackException) &&
-                (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
-
-        if (!isLocalMedia && !isFullyDownloadedMedia && (!isNetworkConnected.value || isConnectionError)) {
+        if (!isLocalMedia && !isFullyDownloadedMedia && !isNetworkCurrentlyConnected()) {
             waitOnNetworkError()
+            return
+        }
+
+        if (!isLocalMedia &&
+            !isFullyDownloadedMedia &&
+            error.isTransientNetworkFailure() &&
+            retryPlaybackAfterNetworkFailure(currentMediaId, isFullyDownloadedMedia)
+        ) {
             return
         }
 
