@@ -2411,7 +2411,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        BackHandler(enabled = playerBottomSheetState.isExpanded) {
+                        BackHandler(enabled = playerBottomSheetState.isExpanded && !aodModeEnabled) {
                             playerBottomSheetState.collapseSoft()
                         }
 

@@ -966,7 +966,7 @@ private fun WebView.configureSpotifyLoginWebView() {
         setSupportZoom(true)
         builtInZoomControls = true
         displayZoomControls = false
-        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         userAgentString = SpotifyLoginUserAgent
     }
 }
