@@ -240,6 +240,8 @@
     <string name="stat_period_48h">48 Hours</string>
     <string name="share_as_story">Share as Story</string>
     <string name="share_story_card">Share Story</string>
+    <string name="lyrics_romanize">Romanize lyrics (Romaji / Pinyin)</string>
+    <string name="lyrics_translate">Translate lyrics</string>
     <string name="retry_button">Retry</string>
     <string name="album_cover_desc">Album cover</string>
     <string name="top_music_videos">Top music videos</string>
