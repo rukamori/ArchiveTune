@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.extensions.getQueueWindows
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.MusicService.MusicBinder
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.player.refetchCanvasArtworkForPlayback
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
@@ -239,6 +240,14 @@ class PlayerConnection(
 
     fun startRadioSeamlessly() {
         service.startRadioSeamlessly()
+    }
+
+    fun startRadio(seed: MediaMetadata) {
+        if (mediaMetadata.value?.id == seed.id) {
+            startRadioSeamlessly()
+        } else {
+            playQueue(YouTubeQueue.radio(seed))
+        }
     }
 
     fun playNext(item: MediaItem) = playNext(listOf(item))

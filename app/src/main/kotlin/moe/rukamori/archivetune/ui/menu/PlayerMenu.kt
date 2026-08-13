@@ -449,7 +449,7 @@ fun PlayerMenu(
                                         },
                                         text = stringResource(R.string.start_radio),
                                         onClick = {
-                                            playerConnection.startRadioSeamlessly()
+                                            playerConnection.startRadio(mediaMetadata)
                                             onDismiss()
                                         },
                                     ),
