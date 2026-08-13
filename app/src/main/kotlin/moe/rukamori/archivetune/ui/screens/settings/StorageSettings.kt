@@ -9,6 +9,11 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +66,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -68,10 +75,13 @@ import coil3.imageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderDisplayNameKey
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxImageCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
@@ -113,6 +123,7 @@ fun StorageSettings(
     val downloadCache = LocalPlayerConnection.current?.service?.downloadCache ?: return
     val screenState by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     val storagePickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(viewModel, context) {
@@ -132,6 +143,10 @@ fun StorageSettings(
     val downloadCacheDir =
         remember(context) {
             StorageLocationRepository.cacheDirectory(context, StorageFolderKind.DOWNLOADS)
+        }
+    val exportedDownloadsDir =
+        remember(context) {
+            StorageLocationRepository.exportedDownloadsDirectory(context)
         }
     val playerCacheDir =
         remember(context) {
@@ -170,6 +185,12 @@ fun StorageSettings(
             key = MaxCanvasCacheSizeKey,
             defaultValue = 256,
         )
+    val downloadedSongsFolderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                viewModel.setDownloadedSongsFolder(uri)
+            }
+        }
     var clearCacheDialog by remember { mutableStateOf(false) }
     var clearDownloads by remember { mutableStateOf(false) }
     var clearImageCacheDialog by remember { mutableStateOf(false) }
@@ -265,13 +286,15 @@ fun StorageSettings(
             delay(StorageRefreshIntervalMillis)
         }
     }
-    LaunchedEffect(downloadCache, downloadCacheDir, isCacheClearInProgress) {
+    LaunchedEffect(downloadCache, downloadCacheDir, exportedDownloadsDir, isCacheClearInProgress) {
         if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
             downloadCacheSize =
                 withContext(Dispatchers.IO) {
                     val cacheSpace = tryOrNull { downloadCache.cacheSpace } ?: 0L
-                    if (cacheSpace == 0L) downloadCacheDir.directorySizeBytes() else cacheSpace
+                    val downloadCacheBytes =
+                        if (cacheSpace == 0L) downloadCacheDir.directorySizeBytes() else cacheSpace
+                    downloadCacheBytes + exportedDownloadsDir.directorySizeBytes()
                 }
             delay(StorageRefreshIntervalMillis)
         }
@@ -336,7 +359,46 @@ fun StorageSettings(
                 onSelectFolder = viewModel::openStorageLocationPicker,
             )
 
+            val successState = screenState as? StorageSettingsScreenState.Success
+            val locationModel = successState?.model?.downloadedSongsLocation
+            val treeUri = locationModel?.treeUri.orEmpty()
+            val displayName = locationModel?.displayName.orEmpty()
+
             PreferenceGroup(title = stringResource(R.string.downloaded_songs)) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.downloaded_songs_location)) },
+                        description =
+                            if (treeUri.isBlank()) {
+                                stringResource(R.string.downloaded_songs_location_default)
+                            } else {
+                                stringResource(
+                                    R.string.downloaded_songs_location_selected,
+                                    displayName.ifBlank { treeUri },
+                                )
+                            },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.snippet_folder),
+                                contentDescription = null,
+                            )
+                        },
+                        trailingContent = if (treeUri.isNotBlank()) {
+                            {
+                                IconButton(
+                                    onClick = { viewModel.resetDownloadedSongsFolder() },
+                                    onLongClick = {},
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = stringResource(R.string.clear),
+                                    )
+                                }
+                            }
+                        } else null,
+                        onClick = { downloadedSongsFolderPicker.launch(null) },
+                    )
+                }
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_all_downloads)) },

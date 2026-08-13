@@ -7,10 +7,17 @@
 
 package moe.rukamori.archivetune.viewmodels
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.compose.runtime.Immutable
+import androidx.core.net.toUri
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -21,12 +28,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderDisplayNameKey
+import moe.rukamori.archivetune.constants.DownloadedSongsFolderTreeUriKey
 import moe.rukamori.archivetune.storage.ClearStorageCacheUseCase
 import moe.rukamori.archivetune.storage.ObserveStorageFoldersUseCase
 import moe.rukamori.archivetune.storage.SetStorageFolderUseCase
@@ -40,6 +50,7 @@ import moe.rukamori.archivetune.storage.StorageLocationOption
 import moe.rukamori.archivetune.storage.StorageLocationOptions
 import moe.rukamori.archivetune.storage.StorageMigrationPhase
 import moe.rukamori.archivetune.storage.StorageMigrationProgress
+import moe.rukamori.archivetune.utils.dataStore
 import javax.inject.Inject
 
 sealed interface StorageSettingsScreenState {
@@ -63,6 +74,13 @@ data class StorageSettingsUiModel(
     val picker: StorageLocationPickerUiModel,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
+    val downloadedSongsLocation: DownloadedSongsLocationUiModel,
+)
+
+@Immutable
+data class DownloadedSongsLocationUiModel(
+    val treeUri: String,
+    val displayName: String,
 )
 
 @Immutable
@@ -137,6 +155,7 @@ data class StorageSettingsEffect(
 class StorageSettingsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         observeStorageFolders: ObserveStorageFoldersUseCase,
         private val setStorageFolder: SetStorageFolderUseCase,
         private val clearStorageCache: ClearStorageCacheUseCase,
@@ -148,13 +167,23 @@ class StorageSettingsViewModel
         private val cacheClearState = MutableStateFlow<StorageCacheClearUiModel?>(null)
         private val activeCacheClearKinds = mutableSetOf<StorageCacheKind>()
 
+        private val downloadedSongsLocation =
+            context.dataStore.data
+                .map { preferences ->
+                    DownloadedSongsLocationUiModel(
+                        treeUri = preferences[DownloadedSongsFolderTreeUriKey].orEmpty(),
+                        displayName = preferences[DownloadedSongsFolderDisplayNameKey].orEmpty(),
+                    )
+                }
+
         val state: StateFlow<StorageSettingsScreenState> =
             combine(
                 observeStorageFolders(),
                 pickerState,
                 migrationState,
                 cacheClearState,
-            ) { selection, picker, migration, cacheClear ->
+                downloadedSongsLocation,
+            ) { selection, picker, migration, cacheClear, location ->
                 val selectedOptionId =
                     picker.selectedOptionId
                         ?.takeIf { optionId ->
@@ -167,6 +196,7 @@ class StorageSettingsViewModel
                     picker = normalizedPicker,
                     migration = migration,
                     cacheClear = cacheClear,
+                    downloadedSongsLocation = location,
                 )
             }.map<StorageSettingsStatePayload, StorageSettingsScreenState> { payload ->
                 StorageSettingsScreenState.Success(
@@ -176,6 +206,7 @@ class StorageSettingsViewModel
                         picker = payload.picker,
                         migration = payload.migration,
                         cacheClear = payload.cacheClear,
+                        downloadedSongsLocation = payload.downloadedSongsLocation,
                     ),
                 )
             }.catch { throwable ->
@@ -236,6 +267,83 @@ class StorageSettingsViewModel
 
         fun clearCanvasCache(showFeedback: Boolean = true) {
             clearCache(StorageCacheKind.CANVAS, showFeedback)
+        }
+
+        fun setDownloadedSongsFolder(uri: Uri) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                val permissionTaken =
+                    runCatching {
+                        context.contentResolver.takePersistableUriPermission(uri, flags)
+                    }.isSuccess
+                if (!permissionTaken) {
+                    _effects.emit(
+                        StorageSettingsEffect(
+                            messageResId = R.string.downloaded_songs_location_permission_failed,
+                            restartApp = false,
+                        )
+                    )
+                    return@launch
+                }
+
+                val selectedUri = uri.toString()
+                try {
+                    val preferencesSnapshot = context.dataStore.data.first()
+                    val previousUri = preferencesSnapshot[DownloadedSongsFolderTreeUriKey]
+                    if (!previousUri.isNullOrBlank() && previousUri != selectedUri) {
+                        runCatching {
+                            context.contentResolver.releasePersistableUriPermission(
+                                previousUri.toUri(),
+                                flags,
+                            )
+                        }
+                    }
+
+                    context.dataStore.edit { preferences ->
+                        preferences[DownloadedSongsFolderTreeUriKey] = selectedUri
+                        preferences[DownloadedSongsFolderDisplayNameKey] = uri.downloadedSongsFolderDisplayName()
+                    }
+                } catch (throwable: Throwable) {
+                    if (throwable is CancellationException) throw throwable
+                    _effects.emit(
+                        StorageSettingsEffect(
+                            messageResId = R.string.error_unknown,
+                            restartApp = false,
+                        )
+                    )
+                }
+            }
+        }
+
+        fun resetDownloadedSongsFolder() {
+            viewModelScope.launch(Dispatchers.IO) {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try {
+                    val preferencesSnapshot = context.dataStore.data.first()
+                    val previousUri = preferencesSnapshot[DownloadedSongsFolderTreeUriKey]
+                    if (!previousUri.isNullOrBlank()) {
+                        runCatching {
+                            context.contentResolver.releasePersistableUriPermission(
+                                previousUri.toUri(),
+                                flags,
+                            )
+                        }
+                    }
+
+                    context.dataStore.edit { preferences ->
+                        preferences.remove(DownloadedSongsFolderTreeUriKey)
+                        preferences.remove(DownloadedSongsFolderDisplayNameKey)
+                    }
+                } catch (throwable: Throwable) {
+                    if (throwable is CancellationException) throw throwable
+                    _effects.emit(
+                        StorageSettingsEffect(
+                            messageResId = R.string.error_unknown,
+                            restartApp = false,
+                        )
+                    )
+                }
+            }
         }
 
         private fun selectStorageLocation(optionId: String) {
@@ -362,6 +470,17 @@ class StorageSettingsViewModel
                 StorageCacheKind.IMAGES -> StorageCacheClearUiKind.IMAGES
                 StorageCacheKind.CANVAS -> StorageCacheClearUiKind.CANVAS
             }
+
+        private fun Uri.downloadedSongsFolderDisplayName(): String =
+            runCatching {
+                val treeDocumentId = DocumentsContract.getTreeDocumentId(this)
+                val folderName =
+                    treeDocumentId
+                        .substringAfter(':', treeDocumentId)
+                        .substringAfterLast('/')
+                        .ifBlank { treeDocumentId.substringBefore(':') }
+                Uri.decode(folderName).takeIf(String::isNotBlank) ?: toString()
+            }.getOrDefault(toString())
     }
 
 private data class StorageSettingsStatePayload(
@@ -369,4 +488,5 @@ private data class StorageSettingsStatePayload(
     val picker: StorageLocationPickerUiModel,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
+    val downloadedSongsLocation: DownloadedSongsLocationUiModel,
 )
