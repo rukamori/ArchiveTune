@@ -1208,23 +1208,59 @@ private fun SyncedLyrics.findLastStartedLineIndex(time: Int): Int {
     return result
 }
 
-private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): List<KaraokeSyllable> =
-    mapIndexed { index, word ->
-        val start = word.startTime.toMilliseconds()
-        val nextStart = getOrNull(index + 1)?.startTime?.toMilliseconds()
-        val rawEnd = word.endTime.toMilliseconds()
+private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): List<KaraokeSyllable> {
+    val syllableGroups = groupTeluguSyllables()
+
+    return syllableGroups.mapIndexed { index, group ->
+        val start = group.first().startTime.toMilliseconds()
+        val nextStart = syllableGroups.getOrNull(index + 1)?.first()?.startTime?.toMilliseconds()
+        val rawEnd = group.last().endTime.toMilliseconds()
+        val phoneticStartIndex = syllableGroups.take(index).sumOf { it.size }
         val end =
             nextStart
                 ?.let { minOf(rawEnd, it) }
                 ?: rawEnd
 
         KaraokeSyllable(
-            content = word.text,
+            content = group.joinToString(separator = "") { it.text },
             start = start,
             end = end.coerceAtLeast(start + MIN_KARAOKE_SYLLABLE_DURATION_MS),
-            phonetic = phonetics.getOrNull(index),
+            phonetic =
+                phonetics
+                    .drop(phoneticStartIndex)
+                    .take(group.size)
+                    .filterNotNull()
+                    .joinToString(" ")
+                    .takeIf(String::isNotEmpty),
         )
     }
+}
+
+/**
+ * Keeps Telugu grapheme clusters in the same text layout node.
+ *
+ * Timed TTML may split a Telugu word into multiple spans. Rendering each span separately breaks
+ * the script's contextual shaping, so merge those spans through the following whitespace.
+ */
+private fun List<WordTimestamp>.groupTeluguSyllables(): List<List<WordTimestamp>> {
+    if (none { it.text.containsTeluguText() }) return map(::listOf)
+
+    val groups = mutableListOf<List<WordTimestamp>>()
+    val currentGroup = mutableListOf<WordTimestamp>()
+
+    for (word in this) {
+        currentGroup += word
+        if (word.text.any(Char::isWhitespace)) {
+            groups += currentGroup.toList()
+            currentGroup.clear()
+        }
+    }
+    if (currentGroup.isNotEmpty()) groups += currentGroup
+
+    return groups
+}
+
+private fun String.containsTeluguText(): Boolean = any { it.code in 0x0C00..0x0C7F }
 
 private fun Double.toMilliseconds(): Int = (this * 1000.0).roundToInt().coerceAtLeast(0)
 
