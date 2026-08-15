@@ -182,6 +182,7 @@ fun AiIntegrationSettings(
                         listOf(
                             AiProvider.GEMINI,
                             AiProvider.CHATGPT,
+                            AiProvider.OPENROUTER,
                             AiProvider.CUSTOM,
                             AiProvider.NONE,
                         ),
@@ -416,6 +417,7 @@ private fun AiProvider.label(): String =
     when (this) {
         AiProvider.CHATGPT -> "OpenAI"
         AiProvider.GEMINI -> "Gemini"
+        AiProvider.OPENROUTER -> stringResource(R.string.ai_provider_openrouter)
         AiProvider.CUSTOM -> stringResource(R.string.custom)
         AiProvider.NONE -> stringResource(R.string.ai_provider_none)
     }

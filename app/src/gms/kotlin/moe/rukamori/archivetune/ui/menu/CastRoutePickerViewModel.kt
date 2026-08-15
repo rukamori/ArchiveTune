@@ -14,6 +14,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
+import com.google.android.gms.cast.CastDevice
 import com.google.android.gms.cast.framework.CastContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -143,11 +144,25 @@ internal class CastRoutePickerViewModel(
 
     private fun refreshRoutes() {
         val castSelector = selector ?: return
+        val selectedRoute = router.selectedRoute
         val routes =
             router.routes
                 .asSequence()
                 .filter { it.isSelectableCastRoute(castSelector) }
-                .map { it.toUiModel(router.selectedRoute == it || it.isSelected) }
+                .toList()
+                .deduplicateRoutes()
+                .asSequence()
+                .mapNotNull { candidates ->
+                    candidates.maxWithOrNull(
+                        compareBy<MediaRouter.RouteInfo> {
+                            it == selectedRoute || it.isSelected
+                        }.thenBy {
+                            it.connectionState == MediaRouter.RouteInfo.CONNECTION_STATE_CONNECTED
+                        }.thenBy {
+                            it.connectionState == MediaRouter.RouteInfo.CONNECTION_STATE_CONNECTING
+                        }.thenBy { it.isEnabled }.thenBy { it.id },
+                    )
+                }.map { it.toUiModel(it == selectedRoute || it.isSelected) }
                 .sortedWith(compareByDescending<CastRouteUiModel> { it.selected }.thenBy { it.name.lowercase() })
                 .toList()
 
@@ -183,6 +198,50 @@ internal class CastRoutePickerViewModel(
             !isDefault &&
             !isBluetooth &&
             matchesSelector(selector)
+    }
+
+    private fun List<MediaRouter.RouteInfo>.deduplicateRoutes(): List<List<MediaRouter.RouteInfo>> {
+        val routeGroups = mutableListOf<MutableList<MediaRouter.RouteInfo>>()
+        val groupKeys = mutableListOf<MutableSet<String>>()
+
+        for (route in this) {
+            val routeKeys = route.deduplicationKeys()
+            val matchingGroupIndexes =
+                groupKeys
+                    .indices
+                    .filter { index -> routeKeys.any(groupKeys[index]::contains) }
+            if (matchingGroupIndexes.isEmpty()) {
+                routeGroups += mutableListOf(route)
+                groupKeys += routeKeys.toMutableSet()
+                continue
+            }
+
+            val firstGroupIndex = matchingGroupIndexes.first()
+            routeGroups[firstGroupIndex] += route
+            groupKeys[firstGroupIndex].addAll(routeKeys)
+            matchingGroupIndexes.drop(1).asReversed().forEach { groupIndex ->
+                routeGroups[firstGroupIndex].addAll(routeGroups.removeAt(groupIndex))
+                groupKeys[firstGroupIndex].addAll(groupKeys.removeAt(groupIndex))
+            }
+        }
+
+        return routeGroups
+    }
+
+    private fun MediaRouter.RouteInfo.deduplicationKeys(): Set<String> {
+        val keys = buildSet {
+            runCatching { extras?.let { CastDevice.getFromBundle(it)?.deviceId } }
+                .getOrNull()
+                ?.takeIf(String::isNotBlank)
+                ?.let { add("cast:$it") }
+            mediaRouteDescriptor
+                ?.deduplicationIds
+                ?.asSequence()
+                ?.map(String::trim)
+                ?.filter(String::isNotBlank)
+                ?.forEach { add("descriptor:$it") }
+        }
+        return keys.ifEmpty { setOf("route:$id") }
     }
 
     private fun MediaRouter.RouteInfo.toUiModel(selected: Boolean) =

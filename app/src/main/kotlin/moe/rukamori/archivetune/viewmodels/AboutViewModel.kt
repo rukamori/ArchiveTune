@@ -494,6 +494,27 @@ class AboutViewModel
                                 ),
                         ),
                         TeamMember(
+                            avatarUrl = "https://avatars.githubusercontent.com/u/195509093?v=4",
+                            name = "Shino",
+                            positionResId = R.string.about_position_developers,
+                            profileUrl = "https://github.com/shinonatsukii",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/shinonatsukii",
+                                    ),
+                                    AboutLinkUiModel(
+                                        id = "telegram",
+                                        iconResId = R.drawable.alternate_email,
+                                        labelResId = R.string.about_content_desc_telegram,
+                                        url = "https://t.me/shinonatsukii",
+                                    ),
+                                ),
+                        ),
+                        TeamMember(
                             avatarUrl = "https://avatars.githubusercontent.com/u/93458424?v=4",
                             name = "WTTexe",
                             positionResId = R.string.about_position_developers,

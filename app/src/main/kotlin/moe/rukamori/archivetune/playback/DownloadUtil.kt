@@ -16,20 +16,26 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.offline.DefaultDownloadIndex
+import androidx.media3.exoplayer.offline.DefaultDownloaderFactory
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import androidx.media3.exoplayer.offline.DownloadProgress
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.constants.AudioQuality
@@ -69,7 +75,7 @@ class DownloadUtil
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
-        private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
+        private val downloadExecutor = Executors.newSingleThreadExecutor()
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
             OkHttpClient
@@ -79,11 +85,11 @@ class DownloadUtil
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(DOWNLOAD_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .dispatcher(
                     okhttp3.Dispatcher().apply {
                         maxRequests = MAX_DOWNLOAD_HTTP_REQUESTS
-                        maxRequestsPerHost = DEFAULT_MAX_PARALLEL_DOWNLOADS
+                        maxRequestsPerHost = MAX_DOWNLOAD_HTTP_REQUESTS
                     },
                 ).connectionPool(
                     ConnectionPool(
@@ -104,13 +110,17 @@ class DownloadUtil
                     if (!isYouTubeMediaHost) return@addInterceptor chain.proceed(request)
 
                     val requestProfile = StreamClientUtils.resolveRequestProfile(request.url)
-                    chain.proceed(
+                    val response = chain.proceed(
                         StreamClientUtils
                             .applyRequestProfile(
                                 request.newBuilder(),
                                 requestProfile,
                             ).build(),
                     )
+                    if (response.code in STREAM_REFRESH_RESPONSE_CODES) {
+                        invalidateResolvedStreamUrl(request.url.toString())
+                    }
+                    response
                 }.build()
         }
 
@@ -118,22 +128,9 @@ class DownloadUtil
 
         private val dataSourceFactory =
             ResolvingDataSource.Factory(
-                CacheDataSource
-                    .Factory()
-                    .setCache(playerCache)
-                    .setUpstreamDataSourceFactory(
-                        OkHttpDataSource.Factory(
-                            mediaOkHttpClient,
-                        ),
-                    ).setCacheWriteDataSinkFactory(
-                        CacheDataSink.Factory().setCache(playerCache).setBufferSize(DOWNLOAD_WRITE_BUFFER_SIZE),
-                    ),
+                OkHttpDataSource.Factory(mediaOkHttpClient),
             ) { dataSpec ->
                 val mediaId = dataSpec.key ?: error("No media id")
-                val length = if (dataSpec.length >= 0) dataSpec.length else 1
-                if (playerCache.isCached(mediaId, dataSpec.position, length)) {
-                    return@Factory dataSpec
-                }
                 val lowDataModeActive = context.isLowDataModeActive()
                 val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
                 val streamCacheKey = buildSongUrlCacheKey(mediaId, requestedAudioQuality)
@@ -177,14 +174,27 @@ class DownloadUtil
         val downloadManager: DownloadManager =
             DownloadManager(
                 context,
-                databaseProvider,
-                downloadCache,
-                dataSourceFactory,
-                downloadExecutor,
+                DefaultDownloadIndex(databaseProvider),
+                DefaultDownloaderFactory(
+                    CacheDataSource
+                        .Factory()
+                        .setCache(downloadCache)
+                        .setUpstreamDataSourceFactory(dataSourceFactory)
+                        .setCacheWriteDataSinkFactory(
+                            CacheDataSink.Factory()
+                                .setCache(downloadCache)
+                                .setBufferSize(DOWNLOAD_WRITE_BUFFER_SIZE),
+                        ).setFlags(FLAG_IGNORE_CACHE_ON_ERROR),
+                    downloadExecutor,
+                ),
             ).apply {
-                maxParallelDownloads = DEFAULT_MAX_PARALLEL_DOWNLOADS
+                maxParallelDownloads = MAX_PARALLEL_DOWNLOADS
                 addListener(
                     object : DownloadManager.Listener {
+                        override fun onInitialized(downloadManager: DownloadManager) {
+                            refreshActiveDownloadSnapshots()
+                        }
+
                         override fun onDownloadChanged(
                             downloadManager: DownloadManager,
                             download: Download,
@@ -192,7 +202,7 @@ class DownloadUtil
                         ) {
                             downloads.update { map ->
                                 map.toMutableMap().apply {
-                                    set(download.request.id, download)
+                                    set(download.request.id, download.toProgressSnapshot())
                                 }
                             }
                         }
@@ -210,11 +220,20 @@ class DownloadUtil
         init {
             downloadScope.launch {
                 val result = mutableMapOf<String, Download>()
-                val cursor = downloadManager.downloadIndex.getDownloads()
-                while (cursor.moveToNext()) {
-                    result[cursor.download.request.id] = cursor.download
+                downloadManager.downloadIndex.getDownloads().use { cursor ->
+                    while (cursor.moveToNext()) {
+                        result[cursor.download.request.id] = cursor.download.toProgressSnapshot()
+                    }
                 }
-                downloads.value = result
+                downloads.update { current ->
+                    result.apply { putAll(current) }
+                }
+            }
+            downloadScope.launch {
+                while (isActive) {
+                    delay(DOWNLOAD_PROGRESS_REFRESH_INTERVAL_MS)
+                    refreshActiveDownloadSnapshots()
+                }
             }
             downloadScope.launch {
                 var previousFingerprint: String? = null
@@ -227,7 +246,45 @@ class DownloadUtil
                         }
                         previousFingerprint = fingerprint
                     }
+                }
+        }
+
+        private fun refreshActiveDownloadSnapshots() {
+            val activeDownloads = downloadManager.currentDownloads
+            if (activeDownloads.isEmpty()) return
+            downloads.update { current ->
+                current.toMutableMap().apply {
+                    activeDownloads.forEach { download ->
+                        set(download.request.id, download.toProgressSnapshot())
+                    }
+                }
             }
+        }
+
+        private fun invalidateResolvedStreamUrl(url: String) {
+            songUrlCache.entries.forEach { (cacheKey, cached) ->
+                if (cached.url == url && songUrlCache.remove(cacheKey, cached)) {
+                    YTPlayerUtils.invalidateCachedStreamUrls(cacheKey.substringBeforeLast(':'))
+                }
+            }
+        }
+
+        private fun Download.toProgressSnapshot(): Download {
+            val progressSnapshot =
+                DownloadProgress().apply {
+                    bytesDownloaded = this@toProgressSnapshot.bytesDownloaded
+                    percentDownloaded = this@toProgressSnapshot.percentDownloaded
+                }
+            return Download(
+                request = request,
+                state = state,
+                startTimeMs = startTimeMs,
+                updateTimeMs = updateTimeMs,
+                contentLength = contentLength,
+                stopReason = stopReason,
+                failureReason = failureReason,
+                progress = progressSnapshot,
+            )
         }
 
         fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
@@ -303,10 +360,13 @@ class DownloadUtil
         }
 
         companion object {
-            private const val DEFAULT_MAX_PARALLEL_DOWNLOADS = 6
+            private const val MAX_PARALLEL_DOWNLOADS = 1
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
-            private const val MAX_DOWNLOAD_HTTP_REQUESTS = 24
+            private const val MAX_DOWNLOAD_HTTP_REQUESTS = 1
+            private const val DOWNLOAD_READ_TIMEOUT_SECONDS = 90L
+            private const val DOWNLOAD_PROGRESS_REFRESH_INTERVAL_MS = 1_000L
             private const val DOWNLOAD_CONNECTION_KEEP_ALIVE_MINUTES = 5L
             private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
+            private val STREAM_REFRESH_RESPONSE_CODES = setOf(403, 404, 410, 416)
         }
     }

@@ -42,6 +42,7 @@ import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondOutputStream
 import io.ktor.server.routing.get
+import io.ktor.server.routing.options
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -302,13 +303,20 @@ private class GmsCastMediaItemConverter(
         }
 
     private fun MediaItem.resolveForReceiver(): MediaItem {
-        val uri = localConfiguration?.uri ?: return this
-        if (uri.isHttpUrl()) return this
+        val localConfiguration = localConfiguration ?: return this
+        val uri = localConfiguration.uri
+        val castMimeType = mediaItemResolver.mimeTypeForCast(this)
+        val receiverItem =
+            castMimeType
+                ?.takeUnless { it == localConfiguration.mimeType }
+                ?.let { mimeType -> buildUpon().setMimeType(mimeType).build() }
+                ?: this
+        if (uri.isHttpUrl()) return receiverItem
         if (uri.isLocalFileUrl()) {
-            localMediaServer.prepare(this)?.let { return it }
+            localMediaServer.prepare(receiverItem)?.let { return it }
         }
-        localMediaServer.prepare(this, mediaItemResolver)?.let { return it }
-        return mediaItemResolver.resolveForCast(this)
+        localMediaServer.prepare(receiverItem, mediaItemResolver)?.let { return it }
+        return mediaItemResolver.resolveForCast(receiverItem)
     }
 
     private fun Uri.isHttpUrl(): Boolean {
@@ -443,9 +451,8 @@ private class LocalCastMediaServer(
         val token = UUID.randomUUID().toString()
         val resolvedMimeType =
             mediaItem.localConfiguration?.mimeType
-                ?.substringBefore(";")
-                ?.takeIf { it.isNotBlank() && !it.endsWith("/*") }
-                ?: mimeType(uri)
+                ?.normalizedMimeType()
+                ?: mimeType(uri)?.normalizedMimeType()
         servedItems[token] =
             ServedItem(
                 mediaItem = mediaItem,
@@ -486,6 +493,9 @@ private class LocalCastMediaServer(
             runCatching {
                 embeddedServer(CIO, port = selectedPort, host = "0.0.0.0") {
                     routing {
+                        options("/cast/local/{token}") {
+                            call.respondCastOptions()
+                        }
                         get("/cast/local/{token}") {
                             val token = call.parameters["token"]
                             val item = token?.let(servedItems::get)
@@ -514,6 +524,9 @@ private class LocalCastMediaServer(
                             }
                             call.respondSource(source)
                         }
+                        options("/cast/artwork/{token}") {
+                            call.respondCastOptions()
+                        }
                     }
                 }.also { it.start(wait = false) }
             }.onFailure {
@@ -541,6 +554,7 @@ private class LocalCastMediaServer(
     }
 
     private suspend fun ApplicationCall.respondSource(source: OpenSource) {
+        addCastCorsHeaders()
         if (source.status == HttpStatusCode.RequestedRangeNotSatisfiable) {
             source.contentRange?.let { response.header(HttpHeaders.ContentRange, it) }
             source.close()
@@ -558,6 +572,21 @@ private class LocalCastMediaServer(
                 nonNullSource.input.copyTo(this)
             }
         }
+    }
+
+    private suspend fun ApplicationCall.respondCastOptions() {
+        addCastCorsHeaders()
+        respond(HttpStatusCode.NoContent)
+    }
+
+    private fun ApplicationCall.addCastCorsHeaders() {
+        response.header("Access-Control-Allow-Origin", "*")
+        response.header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        response.header("Access-Control-Allow-Headers", "Origin, Range, Content-Type")
+        response.header(
+            "Access-Control-Expose-Headers",
+            "Accept-Ranges, Content-Length, Content-Range, Content-Type",
+        )
     }
 
     private fun openSource(
@@ -675,14 +704,13 @@ private class LocalCastMediaServer(
             }
             val responseLength = connection.getHeaderFieldLong(HttpHeaders.ContentLength, -1L).takeIf { it >= 0L }
             val responseMimeType =
-                resolved.localConfiguration?.mimeType
-                    ?.substringBefore(";")
-                    ?.takeIf { it.isNotBlank() && !it.endsWith("/*") }
-                    ?: item.mimeType
-                    ?: connection.contentType
-                        ?.trim()
-                        ?.substringBefore(";")
-                        ?.takeIf(String::isNotEmpty)
+                preferredMimeType(
+                    declared =
+                        resolved.localConfiguration?.mimeType
+                            ?.normalizedMimeType()
+                            ?: item.mimeType?.normalizedMimeType(),
+                    upstream = connection.contentType?.normalizedMimeType(),
+                )
                     ?: FALLBACK_AUDIO_MIME_TYPE
             OpenSource(
                 input = connection.inputStream,
@@ -734,6 +762,35 @@ private class LocalCastMediaServer(
                 ?.takeIf { it.isNotBlank() }
                 ?.lowercase(Locale.US)
                 ?.let(MimeTypeMap.getSingleton()::getMimeTypeFromExtension)
+
+    private fun preferredMimeType(
+        declared: String?,
+        upstream: String?,
+    ): String? {
+        if (declared == null) return upstream
+        if (upstream == null) return declared
+        val declaredBase = declared.substringBefore(';').trim()
+        val upstreamBase = upstream.substringBefore(';').trim()
+        if (upstreamBase.equals("application/octet-stream", ignoreCase = true) ||
+            upstreamBase.equals("binary/octet-stream", ignoreCase = true)
+        ) {
+            return declared
+        }
+        if (!declaredBase.equals(upstreamBase, ignoreCase = true)) return upstream
+        return when {
+            upstream.contains("codecs=", ignoreCase = true) -> upstream
+            declared.contains("codecs=", ignoreCase = true) -> declared
+            else -> upstream
+        }
+    }
+
+    private fun String.normalizedMimeType(): String? {
+        val normalized = trim().takeIf(String::isNotEmpty) ?: return null
+        val baseType = normalized.substringBefore(';').trim()
+        return normalized.takeIf {
+            baseType.contains('/') && !baseType.endsWith("/*")
+        }
+    }
 
     private fun parseRange(
         header: String?,

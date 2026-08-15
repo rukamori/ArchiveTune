@@ -16,7 +16,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.AiProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,6 +29,8 @@ class AiServiceException(
 object AiTextService {
     private const val OpenAiEndpoint = "https://api.openai.com/v1/chat/completions"
     private const val OpenAiModelsEndpoint = "https://api.openai.com/v1/models"
+    private const val OpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
+    private const val OpenRouterModelsEndpoint = "https://openrouter.ai/api/v1/models"
     private const val GeminiBaseEndpoint = "https://generativelanguage.googleapis.com/v1beta"
 
     private val client =
@@ -110,6 +111,18 @@ object AiTextService {
                 )
             }
 
+            AiProvider.OPENROUTER -> {
+                completeOpenAiCompatible(
+                    endpoint = OpenRouterEndpoint,
+                    apiKey = config.apiKey,
+                    model = model,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    temperature = temperature,
+                    maxTokens = maxTokens,
+                )
+            }
+
             AiProvider.CUSTOM -> {
                 completeOpenAiCompatible(
                     endpoint = config.customEndpoint,
@@ -143,7 +156,8 @@ object AiTextService {
     suspend fun fetchModels(config: AiServiceConfig): List<AiModelOption> {
         if (!config.canCallApi) throw AiServiceException("AI provider is not configured")
         return when (config.provider) {
-            AiProvider.CHATGPT -> fetchOpenAiModels(config.apiKey)
+            AiProvider.CHATGPT -> fetchOpenAiModels(OpenAiModelsEndpoint, config.apiKey)
+            AiProvider.OPENROUTER -> fetchOpenAiModels(OpenRouterModelsEndpoint, config.apiKey)
             AiProvider.GEMINI -> fetchGeminiModels(config.apiKey)
             AiProvider.CUSTOM, AiProvider.NONE -> emptyList()
         }
@@ -238,13 +252,17 @@ object AiTextService {
         when (provider) {
             AiProvider.CHATGPT -> "gpt-4o"
             AiProvider.GEMINI -> "gemini-3.5-flash"
+            AiProvider.OPENROUTER -> "~openai/gpt-latest"
             AiProvider.CUSTOM -> throw AiServiceException("No AI model configured")
             AiProvider.NONE -> throw AiServiceException("AI provider is disabled")
         }
 
-    private suspend fun fetchOpenAiModels(apiKey: String): List<AiModelOption> {
+    private suspend fun fetchOpenAiModels(
+        endpoint: String,
+        apiKey: String,
+    ): List<AiModelOption> {
         val response =
-            client.get(OpenAiModelsEndpoint) {
+            client.get(endpoint) {
                 header("Authorization", "Bearer ${apiKey.trim()}")
             }
         val raw = response.bodyAsText()

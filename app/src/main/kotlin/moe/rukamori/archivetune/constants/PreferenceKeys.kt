@@ -246,6 +246,7 @@ val AiCustomModelKey = stringPreferencesKey("ai_custom_model")
 enum class AiProvider {
     CHATGPT,
     GEMINI,
+    OPENROUTER,
     CUSTOM,
     NONE,
 }

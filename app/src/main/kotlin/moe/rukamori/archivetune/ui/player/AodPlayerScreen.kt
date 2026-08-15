@@ -137,11 +137,15 @@ import moe.rukamori.archivetune.constants.AodUnlockMethod
 import moe.rukamori.archivetune.constants.AodUnlockMethodKey
 import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.supportsArtworkGlowShadow
 import moe.rukamori.archivetune.ui.utils.toComposeShape
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -150,6 +154,65 @@ private val White65 = Color.White.copy(alpha = 0.65f)
 private val White35 = Color.White.copy(alpha = 0.35f)
 private val White30 = Color.White.copy(alpha = 0.30f)
 private val White15 = Color.White.copy(alpha = 0.15f)
+private val AodLyricsWhitespaceRegex = "\\s+".toRegex()
+
+private data class AodLyricsTickerData(
+    val lines: List<LyricsEntry>,
+    val isTtml: Boolean,
+    val fallbackText: String?,
+)
+
+private fun parseAodLyricsTickerData(lyrics: String?): AodLyricsTickerData {
+    val normalizedLyrics = lyrics?.let(LyricsUtils::normalizeLyricsText).orEmpty()
+    if (normalizedLyrics.isBlank() || normalizedLyrics == LyricsEntity.LYRICS_NOT_FOUND) {
+        return AodLyricsTickerData(emptyList(), isTtml = false, fallbackText = null)
+    }
+
+    val isTtml = LyricsUtils.isTtml(normalizedLyrics)
+    val isLineSynced = LyricsUtils.isLineSyncedLrc(normalizedLyrics)
+    if (!isTtml && !isLineSynced) {
+        return AodLyricsTickerData(
+            lines = emptyList(),
+            isTtml = false,
+            fallbackText = normalizedLyrics,
+        )
+    }
+
+    val lines =
+        try {
+            if (isTtml) {
+                LyricsUtils.parseTtml(normalizedLyrics)
+            } else {
+                LyricsUtils.parseLyrics(normalizedLyrics)
+            }
+        } catch (exception: Exception) {
+            reportException(exception)
+            emptyList()
+        }
+
+    return AodLyricsTickerData(
+        lines = lines,
+        isTtml = isTtml,
+        fallbackText = null,
+    )
+}
+
+private fun AodLyricsTickerData.textAt(position: Long): String? {
+    if (lines.isEmpty()) return fallbackText?.takeIf { it.isNotBlank() }
+
+    val currentLineIndex =
+        LyricsUtils.findCurrentLineIndex(
+            lines = lines,
+            position = position,
+            leadMs = if (isTtml) 0L else 300L,
+        )
+    return lines
+        .getOrNull(currentLineIndex)
+        ?.text
+        ?.replace(AodLyricsWhitespaceRegex, " ")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+}
 
 @Composable
 fun AodPlayerScreen(
@@ -212,6 +275,12 @@ fun AodPlayerScreen(
     val (trueAmbientModeEnabled) = rememberPreference(AodTrueAmbientModeKey, true)
     val (aodBrightness) = rememberPreference(AodBrightnessKey, 0.15f)
     val (proximityBlackoutEnabled) = rememberPreference(AodProximityBlackoutKey, false)
+
+    val lyricsTickerData = remember(lyricsText) { parseAodLyricsTickerData(lyricsText) }
+    val lyricsTickerText =
+        remember(lyricsTickerData, position, sliderPosition) {
+            lyricsTickerData.textAt(sliderPosition ?: position)
+        }
 
     var isLocked by remember { mutableStateOf(touchLockEnabled) }
     var pixelShiftOffset by remember { mutableStateOf(IntOffset.Zero) }
@@ -574,13 +643,13 @@ fun AodPlayerScreen(
                     }
                 }
                 AnimatedVisibility(
-                    visible = showFullContent && showLyricTicker && !lyricsText.isNullOrBlank(),
+                    visible = showFullContent && showLyricTicker && !lyricsTickerText.isNullOrBlank(),
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300)),
                 ) {
-                    if (showLyricTicker && !lyricsText.isNullOrBlank()) {
+                    if (showLyricTicker && !lyricsTickerText.isNullOrBlank()) {
                         Text(
-                            text = lyricsText,
+                            text = lyricsTickerText,
                             style = MaterialTheme.typography.bodySmall,
                             color = accentColor.copy(alpha = 0.85f),
                             maxLines = 1,

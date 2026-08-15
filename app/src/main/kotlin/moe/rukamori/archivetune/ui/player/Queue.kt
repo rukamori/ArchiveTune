@@ -414,6 +414,7 @@ fun Queue(
         state = state,
         backgroundColor = Color.Unspecified,
         modifier = modifier,
+        onCollapsedContentClick = openQueue,
         collapsedContent = {
             when (playerDesignStyle) {
                 PlayerDesignStyle.V2 -> {

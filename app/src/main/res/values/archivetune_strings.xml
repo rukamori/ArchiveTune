@@ -662,6 +662,7 @@
     <string name="ai_provider">AI provider</string>
     <string name="ai_provider_desc">Choose the AI service.</string>
     <string name="ai_provider_none">None (Disabled)</string>
+    <string name="ai_provider_openrouter">OpenRouter</string>
     <string name="ai_custom_endpoint">Custom endpoint</string>
     <string name="ai_api_key">API key</string>
     <string name="ai_api_key_missing">Required before AI features can run.</string>
