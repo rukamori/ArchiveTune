@@ -1210,12 +1210,18 @@ private fun SyncedLyrics.findLastStartedLineIndex(time: Int): Int {
 
 private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): List<KaraokeSyllable> {
     val syllableGroups = groupTeluguSyllables()
+    val phoneticOffsets = IntArray(syllableGroups.size)
+    var phoneticOffset = 0
+    syllableGroups.forEachIndexed { index, group ->
+        phoneticOffsets[index] = phoneticOffset
+        phoneticOffset += group.size
+    }
 
     return syllableGroups.mapIndexed { index, group ->
         val start = group.first().startTime.toMilliseconds()
         val nextStart = syllableGroups.getOrNull(index + 1)?.first()?.startTime?.toMilliseconds()
         val rawEnd = group.last().endTime.toMilliseconds()
-        val phoneticStartIndex = syllableGroups.take(index).sumOf { it.size }
+        val phoneticStartIndex = phoneticOffsets[index]
         val end =
             nextStart
                 ?.let { minOf(rawEnd, it) }
@@ -1230,7 +1236,7 @@ private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): Li
                     .drop(phoneticStartIndex)
                     .take(group.size)
                     .filterNotNull()
-                    .joinToString(" ")
+                    .joinToString(separator = "")
                     .takeIf(String::isNotEmpty),
         )
     }
