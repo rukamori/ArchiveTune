@@ -5,6 +5,7 @@
     <string name="music_recognition_no_match">ไม่พบเพลงที่ตรงกัน</string>
     <string name="music_recognition_open_shazam">เปิด Shazam</string>
     <string name="music_recognition_lyrics_preview">ตัวอย่างเนื้อเพลง</string>
+<<<<<<< HEAD
     <string name="explore">สำรวจ</string>
     <string name="suggestions">แนะนำ</string>
     <string name="music_recognition_tap_to_listen">กดเพื่อฟัง</string>
@@ -138,4 +139,6 @@
     <string name="aod_customize_controls">การควบคุม</string>
     <string name="aod_customize_control_style">รูปแบบการควบคุม</string>
     <string name="aod_customize_control_size">ขนาดการควบคุม</string>
+=======
+>>>>>>> 22048c0c3 (Translated using Weblate (Thai))
 </resources>
