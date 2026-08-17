@@ -671,6 +671,7 @@
     <string name="import_source_local">Biblioteca Local</string>
     <string name="import_source_youtube">YouTube Music</string>
     <string name="import_source_unresolved">Não encontrada</string>
+<<<<<<< HEAD
     <string name="import_review_title">Análise de Importação</string>
     <string name="import_review_summary">%1$d locais · %2$d do YouTube Music · %3$d não resolvidos</string>
     <string name="import_review_skipped">%1$d ignorados</string>
@@ -699,4 +700,6 @@
     <string name="ai_provider_openrouter">OpenRouter</string>
     <string name="playlist_source_local">Local</string>
     <string name="playlist_source_online">Online</string>
+=======
+>>>>>>> 51ba23983 (Translated using Weblate (Portuguese (Brazil)))
 </resources>
