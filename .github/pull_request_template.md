@@ -2,7 +2,11 @@
 
 Before submitting a pull request, you must attest to the following:
 
+<<<<<<< HEAD
 - [ ] This pull request complies with ArchiveTune's [NO AI / NO LLM POLICY](../blob/main/CONTRIBUTING.md#no-ai--no-llm-policy).
+=======
+- [ ] This pull request complies with ArchiveTune's [NO AI / NO LLM POLICY](../CONTRIBUTING.md#no-ai--no-llm-policy).
+>>>>>>> 1c00d599b (add no llm policy inspired by ytdlp)
 
 ## Summary
 
