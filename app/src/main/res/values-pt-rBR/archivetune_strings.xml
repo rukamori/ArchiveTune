@@ -672,6 +672,9 @@
     <string name="import_source_youtube">YouTube Music</string>
     <string name="import_source_unresolved">Não encontrada</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 960d83159 (Translated using Weblate (Portuguese (Brazil)))
     <string name="import_review_title">Análise de Importação</string>
     <string name="import_review_summary">%1$d locais · %2$d do YouTube Music · %3$d não resolvidos</string>
     <string name="import_review_skipped">%1$d ignorados</string>
@@ -698,8 +701,15 @@
     <string name="import_saving">Salvando a importação…</string>
     <string name="import_saving_progress">Salvando: %1$d/%2$d</string>
     <string name="ai_provider_openrouter">OpenRouter</string>
+<<<<<<< HEAD
     <string name="playlist_source_local">Local</string>
     <string name="playlist_source_online">Online</string>
 =======
 >>>>>>> 51ba23983 (Translated using Weblate (Portuguese (Brazil)))
+=======
+    <string name="aod_mode">Modo AOD</string>
+    <string name="aod_mode_exit">Sair do AOD</string>
+    <string name="playlist_source_local">Local</string>
+    <string name="playlist_source_online">Online</string>
+>>>>>>> 960d83159 (Translated using Weblate (Portuguese (Brazil)))
 </resources>
