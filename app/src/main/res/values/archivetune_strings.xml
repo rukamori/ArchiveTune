@@ -476,6 +476,8 @@
     <string name="audio_crossfade_seconds">%1$s s</string>
     <string name="crossfade_gapless_title">Skip gapless albums</string>
     <string name="crossfade_gapless_description">Do not crossfade consecutive songs from the same album.</string>
+    <string name="smart_dj_transitions_title">Smart DJ transitions</string>
+    <string name="smart_dj_transitions_description">Use a smoother equal-power curve and adapt the overlap for short tracks.</string>
     <string name="player_stream_client">Playback client</string>
     <string name="player_stream_client_desc">Controls which playback source is used to fetch streams</string>
     <string name="player_stream_client_web_remix">Web Remix</string>

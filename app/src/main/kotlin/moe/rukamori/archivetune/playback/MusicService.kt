@@ -186,6 +186,7 @@ import moe.rukamori.archivetune.constants.ScrobbleDelaySecondsKey
 import moe.rukamori.archivetune.constants.ScrobbleMinSongDurationKey
 import moe.rukamori.archivetune.constants.ShowLyricsKey
 import moe.rukamori.archivetune.constants.SkipSilenceKey
+import moe.rukamori.archivetune.constants.SmartDjTransitionsKey
 import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
@@ -513,6 +514,7 @@ class MusicService :
     private var crossfadeEnabled = false
     private var crossfadeDurationMs = 0L
     private var crossfadeGapless = false
+    private var smartDjTransitionsEnabled = false
     private var crossfadeTriggerJob: Job? = null
     private var crossfadeJob: Job? = null
     private var secondaryCrossfadePlayer: ExoPlayer? = null
@@ -541,6 +543,7 @@ class MusicService :
         val enabled: Boolean,
         val durationSeconds: Float,
         val gapless: Boolean,
+        val smartDjTransitions: Boolean,
     )
 
     private data class DiscordSyncRequest(
@@ -1373,10 +1376,12 @@ class MusicService :
             val enabled = prefs[CrossfadeEnabledKey] ?: false
             val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
             val gapless = prefs[CrossfadeGaplessKey] ?: true
+            val smartDjTransitions = prefs[SmartDjTransitionsKey] ?: false
             CrossfadeConfig(
                 enabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle,
                 durationSeconds = durationSeconds,
                 gapless = gapless,
+                smartDjTransitions = smartDjTransitions,
             )
         }.distinctUntilChanged()
             .collectLatest(scope) { config ->
@@ -1389,6 +1394,7 @@ class MusicService :
                         .roundToLong()
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
+                smartDjTransitionsEnabled = config.smartDjTransitions
                 if (crossfadeEnabled && crossfadeDurationMs > 0L) {
                     scheduleCrossfade()
                 } else {
@@ -2531,7 +2537,12 @@ class MusicService :
         outgoingPlayer: ExoPlayer,
         incomingPlayer: ExoPlayer,
     ) {
-        val gains = equalPowerGains(progress)
+        val gains =
+            if (smartDjTransitionsEnabled) {
+                smoothDjEqualPowerGains(progress)
+            } else {
+                equalPowerGains(progress)
+            }
         outgoingPlayer.volume = (outgoingBaseVolume * gains.outgoing).coerceIn(0f, maxSafeGainFactor)
         incomingPlayer.volume = (incomingBaseVolume * gains.incoming).coerceIn(0f, maxSafeGainFactor)
     }
@@ -2645,6 +2656,14 @@ class MusicService :
 
     private fun effectiveCrossfadeDuration(duration: Long): Long? {
         if (duration == C.TIME_UNSET || duration <= 0L) return null
+        if (smartDjTransitionsEnabled) {
+            return adaptiveDjCrossfadeDuration(
+                configuredDurationMs = crossfadeDurationMs,
+                outgoingDurationMs = duration,
+                minimumDurationMs = MIN_CROSSFADE_DURATION_MS,
+                endGuardMs = CROSSFADE_END_GUARD_MS,
+            )
+        }
         val maxDuration = duration - CROSSFADE_END_GUARD_MS
         if (maxDuration < MIN_CROSSFADE_DURATION_MS) return null
         return crossfadeDurationMs

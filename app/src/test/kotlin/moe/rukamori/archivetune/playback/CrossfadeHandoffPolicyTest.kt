@@ -60,4 +60,47 @@ class CrossfadeHandoffPolicyTest {
             0.0001f,
         )
     }
+
+    @Test
+    fun smoothDjHandoff_preservesPowerAndEasesTransitionEdges() {
+        val start = smoothDjEqualPowerGains(0f)
+        val early = smoothDjEqualPowerGains(0.25f)
+        val midpoint = smoothDjEqualPowerGains(0.5f)
+        val late = smoothDjEqualPowerGains(0.75f)
+        val end = smoothDjEqualPowerGains(1f)
+
+        assertEquals(1f, start.outgoing, 0.0001f)
+        assertEquals(0f, start.incoming, 0.0001f)
+        assertEquals(1f, end.incoming, 0.0001f)
+        assertEquals(0f, end.outgoing, 0.0001f)
+        assertTrue(early.incoming < equalPowerGains(0.25f).incoming)
+        assertTrue(late.incoming > equalPowerGains(0.75f).incoming)
+        assertEquals(
+            1f,
+            midpoint.outgoing * midpoint.outgoing + midpoint.incoming * midpoint.incoming,
+            0.0001f,
+        )
+    }
+
+    @Test
+    fun adaptiveDjDuration_limitsOverlapForShortTracks() {
+        assertEquals(
+            1_800L,
+            adaptiveDjCrossfadeDuration(
+                configuredDurationMs = 10_000L,
+                outgoingDurationMs = 30_000L,
+                minimumDurationMs = 500L,
+                endGuardMs = 150L,
+            ),
+        )
+        assertEquals(
+            10_000L,
+            adaptiveDjCrossfadeDuration(
+                configuredDurationMs = 10_000L,
+                outgoingDurationMs = 240_000L,
+                minimumDurationMs = 500L,
+                endGuardMs = 150L,
+            ),
+        )
+    }
 }

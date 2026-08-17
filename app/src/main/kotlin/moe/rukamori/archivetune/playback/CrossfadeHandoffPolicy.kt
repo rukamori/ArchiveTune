@@ -39,3 +39,31 @@ internal fun equalPowerGains(progress: Float): EqualPowerGains {
         incoming = sin(radians).toFloat(),
     )
 }
+
+internal fun smoothDjEqualPowerGains(progress: Float): EqualPowerGains {
+    val clampedProgress = progress.coerceIn(0f, 1f)
+    val smoothProgress = clampedProgress * clampedProgress * (3f - 2f * clampedProgress)
+    return equalPowerGains(smoothProgress)
+}
+
+internal fun adaptiveDjCrossfadeDuration(
+    configuredDurationMs: Long,
+    outgoingDurationMs: Long,
+    minimumDurationMs: Long,
+    endGuardMs: Long,
+): Long? {
+    require(configuredDurationMs >= 0L)
+    require(minimumDurationMs > 0L)
+    require(endGuardMs >= 0L)
+
+    val maximumDurationMs = outgoingDurationMs - endGuardMs
+    if (maximumDurationMs < minimumDurationMs) return null
+
+    val shortTrackLimitMs = (outgoingDurationMs * DJ_MAX_TRACK_OVERLAP_RATIO).toLong()
+    return configuredDurationMs
+        .coerceAtLeast(minimumDurationMs)
+        .coerceAtMost(shortTrackLimitMs.coerceAtLeast(minimumDurationMs))
+        .coerceAtMost(maximumDurationMs)
+}
+
+private const val DJ_MAX_TRACK_OVERLAP_RATIO = 0.06

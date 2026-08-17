@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
+import moe.rukamori.archivetune.constants.SmartDjTransitionsKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
@@ -176,6 +177,11 @@ fun PlayerSettings(navController: NavController) {
         rememberPreference(
             CrossfadeGaplessKey,
             defaultValue = true,
+        )
+    val (smartDjTransitions, onSmartDjTransitionsChange) =
+        rememberPreference(
+            SmartDjTransitionsKey,
+            defaultValue = false,
         )
 
     val (artistSeparators, onArtistSeparatorsChange) =
@@ -400,6 +406,17 @@ fun PlayerSettings(navController: NavController) {
                     CrossfadeSliderPreference(
                         valueSeconds = crossfadeDurationSeconds,
                         onValueChange = onCrossfadeDurationSecondsChange,
+                        isEnabled = crossfadeEnabled,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.smart_dj_transitions_title)) },
+                        description = stringResource(R.string.smart_dj_transitions_description),
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        checked = smartDjTransitions,
+                        onCheckedChange = onSmartDjTransitionsChange,
                         isEnabled = crossfadeEnabled,
                     )
                 }
