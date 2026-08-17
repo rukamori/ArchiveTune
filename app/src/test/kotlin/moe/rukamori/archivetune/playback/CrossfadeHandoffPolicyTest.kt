@@ -127,5 +127,25 @@ class CrossfadeHandoffPolicyTest {
                 maximumTrackOverlapRatio = 0.06,
             ),
         )
+        assertEquals(
+            null,
+            adaptiveDjCrossfadeDuration(
+                configuredDurationMs = 10_000L,
+                outgoingDurationMs = 5_000L,
+                minimumDurationMs = 500L,
+                endGuardMs = 150L,
+                maximumTrackOverlapRatio = 0.06,
+            ),
+        )
+        assertEquals(
+            null,
+            adaptiveDjCrossfadeDuration(
+                configuredDurationMs = 10_000L,
+                outgoingDurationMs = 600L,
+                minimumDurationMs = 500L,
+                endGuardMs = 150L,
+                maximumTrackOverlapRatio = 0.06,
+            ),
+        )
     }
 }

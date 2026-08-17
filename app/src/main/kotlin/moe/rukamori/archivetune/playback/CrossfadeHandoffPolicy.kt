@@ -87,8 +87,10 @@ internal fun adaptiveDjCrossfadeDuration(
     if (maximumDurationMs < minimumDurationMs) return null
 
     val shortTrackLimitMs = (outgoingDurationMs * maximumTrackOverlapRatio).toLong()
-    return configuredDurationMs
+    val durationMs = configuredDurationMs
         .coerceAtLeast(minimumDurationMs)
-        .coerceAtMost(shortTrackLimitMs.coerceAtLeast(minimumDurationMs))
+        .coerceAtMost(shortTrackLimitMs)
         .coerceAtMost(maximumDurationMs)
+
+    return durationMs.takeIf { it >= minimumDurationMs }
 }
