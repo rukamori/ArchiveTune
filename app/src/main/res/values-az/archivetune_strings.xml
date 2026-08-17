@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<<<<<<< HEAD
     <string name="explore">Kəşf et</string>
     <string name="suggestions">Təkliflər</string>
     <string name="music_recognition_tap_to_listen">Dinləmək üçün toxunun</string>
@@ -179,3 +180,6 @@
     <string name="aod_clock_bold_digital">Cəsur rəqəmsal</string>
     <string name="aod_clock_minimal">Minimum</string>
 </resources>
+=======
+</resources>
+>>>>>>> 60ecff243 (Added translation using Weblate (Azerbaijani))
