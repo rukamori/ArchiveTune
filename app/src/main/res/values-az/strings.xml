@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="home">Ev</string>
     <string name="songs">Mahnılar</string>
     <string name="artists">Sənətkar</string>
@@ -36,3 +37,7 @@
 =======
 </resources>
 >>>>>>> 25a59cf42 (Added translation using Weblate (Azerbaijani))
+=======
+    <string name="home">Ev</string>
+</resources>
+>>>>>>> 147eddc78 (Translated using Weblate (Azerbaijani))
