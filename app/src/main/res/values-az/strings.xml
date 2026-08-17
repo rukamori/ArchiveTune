@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<<<<<<< HEAD
     <string name="home">Ev</string>
     <string name="songs">Mahnılar</string>
     <string name="artists">Sənətkar</string>
@@ -32,3 +33,6 @@
     <string name="filter_library">Kitabxana</string>
     <string name="filter_liked">Bəyənilənlər</string>
 </resources>
+=======
+</resources>
+>>>>>>> 25a59cf42 (Added translation using Weblate (Azerbaijani))
