@@ -44,6 +44,8 @@ import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
+import moe.rukamori.archivetune.constants.DjTransitionStyle
+import moe.rukamori.archivetune.constants.DjTransitionStyleKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
@@ -56,7 +58,6 @@ import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
-import moe.rukamori.archivetune.constants.SmartDjTransitionsKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
@@ -178,10 +179,10 @@ fun PlayerSettings(navController: NavController) {
             CrossfadeGaplessKey,
             defaultValue = true,
         )
-    val (smartDjTransitions, onSmartDjTransitionsChange) =
-        rememberPreference(
-            SmartDjTransitionsKey,
-            defaultValue = false,
+    val (djTransitionStyle, onDjTransitionStyleChange) =
+        rememberEnumPreference(
+            DjTransitionStyleKey,
+            defaultValue = DjTransitionStyle.CLASSIC,
         )
 
     val (artistSeparators, onArtistSeparatorsChange) =
@@ -411,13 +412,22 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.smart_dj_transitions_title)) },
-                        description = stringResource(R.string.smart_dj_transitions_description),
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.dj_transition_style_title)) },
+                        description = stringResource(R.string.dj_transition_style_description),
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                        checked = smartDjTransitions,
-                        onCheckedChange = onSmartDjTransitionsChange,
+                        selectedValue = djTransitionStyle,
+                        onValueSelected = onDjTransitionStyleChange,
                         isEnabled = crossfadeEnabled,
+                        valueText = { style ->
+                            stringResource(
+                                when (style) {
+                                    DjTransitionStyle.CLASSIC -> R.string.dj_transition_style_classic
+                                    DjTransitionStyle.SMOOTH -> R.string.dj_transition_style_smooth
+                                    DjTransitionStyle.PUNCHY -> R.string.dj_transition_style_punchy
+                                },
+                            )
+                        },
                     )
                 }
 

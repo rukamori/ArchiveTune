@@ -308,7 +308,13 @@ val AudioOffload = booleanPreferencesKey("audioOffload")
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
-val SmartDjTransitionsKey = booleanPreferencesKey("smartDjTransitions")
+val DjTransitionStyleKey = stringPreferencesKey("djTransitionStyle")
+
+enum class DjTransitionStyle {
+    CLASSIC,
+    SMOOTH,
+    PUNCHY,
+}
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")
 val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")

@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.constants.DjTransitionStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -83,6 +84,28 @@ class CrossfadeHandoffPolicyTest {
     }
 
     @Test
+    fun punchyDjHandoff_preservesPowerAndAcceleratesAroundMidpoint() {
+        val early = punchyDjEqualPowerGains(0.25f)
+        val midpoint = punchyDjEqualPowerGains(0.5f)
+        val late = punchyDjEqualPowerGains(0.75f)
+
+        assertTrue(early.incoming < equalPowerGains(0.25f).incoming)
+        assertTrue(late.incoming > equalPowerGains(0.75f).incoming)
+        assertEquals(
+            1f,
+            midpoint.outgoing * midpoint.outgoing + midpoint.incoming * midpoint.incoming,
+            0.0001f,
+        )
+    }
+
+    @Test
+    fun transitionStyle_selectsExpectedGainCurve() {
+        assertEquals(equalPowerGains(0.25f), djTransitionGains(0.25f, DjTransitionStyle.CLASSIC))
+        assertEquals(smoothDjEqualPowerGains(0.25f), djTransitionGains(0.25f, DjTransitionStyle.SMOOTH))
+        assertEquals(punchyDjEqualPowerGains(0.25f), djTransitionGains(0.25f, DjTransitionStyle.PUNCHY))
+    }
+
+    @Test
     fun adaptiveDjDuration_limitsOverlapForShortTracks() {
         assertEquals(
             1_800L,
@@ -91,6 +114,7 @@ class CrossfadeHandoffPolicyTest {
                 outgoingDurationMs = 30_000L,
                 minimumDurationMs = 500L,
                 endGuardMs = 150L,
+                maximumTrackOverlapRatio = 0.06,
             ),
         )
         assertEquals(
@@ -100,6 +124,7 @@ class CrossfadeHandoffPolicyTest {
                 outgoingDurationMs = 240_000L,
                 minimumDurationMs = 500L,
                 endGuardMs = 150L,
+                maximumTrackOverlapRatio = 0.06,
             ),
         )
     }

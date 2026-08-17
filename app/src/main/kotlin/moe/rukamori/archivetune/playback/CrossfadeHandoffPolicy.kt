@@ -7,9 +7,11 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.constants.DjTransitionStyle
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 
 internal data class EqualPowerGains(
@@ -46,24 +48,47 @@ internal fun smoothDjEqualPowerGains(progress: Float): EqualPowerGains {
     return equalPowerGains(smoothProgress)
 }
 
+internal fun punchyDjEqualPowerGains(progress: Float): EqualPowerGains {
+    val clampedProgress = progress.coerceIn(0f, 1f)
+    val outgoingWeight = (1f - clampedProgress).toDouble().pow(2.0)
+    val incomingWeight = clampedProgress.toDouble().pow(2.0)
+    val shapedProgress =
+        if (outgoingWeight + incomingWeight == 0.0) {
+            clampedProgress
+        } else {
+            (incomingWeight / (outgoingWeight + incomingWeight)).toFloat()
+        }
+    return equalPowerGains(shapedProgress)
+}
+
+internal fun djTransitionGains(
+    progress: Float,
+    style: DjTransitionStyle,
+): EqualPowerGains =
+    when (style) {
+        DjTransitionStyle.CLASSIC -> equalPowerGains(progress)
+        DjTransitionStyle.SMOOTH -> smoothDjEqualPowerGains(progress)
+        DjTransitionStyle.PUNCHY -> punchyDjEqualPowerGains(progress)
+    }
+
 internal fun adaptiveDjCrossfadeDuration(
     configuredDurationMs: Long,
     outgoingDurationMs: Long,
     minimumDurationMs: Long,
     endGuardMs: Long,
+    maximumTrackOverlapRatio: Double,
 ): Long? {
     require(configuredDurationMs >= 0L)
     require(minimumDurationMs > 0L)
     require(endGuardMs >= 0L)
+    require(maximumTrackOverlapRatio > 0.0 && maximumTrackOverlapRatio <= 1.0)
 
     val maximumDurationMs = outgoingDurationMs - endGuardMs
     if (maximumDurationMs < minimumDurationMs) return null
 
-    val shortTrackLimitMs = (outgoingDurationMs * DJ_MAX_TRACK_OVERLAP_RATIO).toLong()
+    val shortTrackLimitMs = (outgoingDurationMs * maximumTrackOverlapRatio).toLong()
     return configuredDurationMs
         .coerceAtLeast(minimumDurationMs)
         .coerceAtMost(shortTrackLimitMs.coerceAtLeast(minimumDurationMs))
         .coerceAtMost(maximumDurationMs)
 }
-
-private const val DJ_MAX_TRACK_OVERLAP_RATIO = 0.06
