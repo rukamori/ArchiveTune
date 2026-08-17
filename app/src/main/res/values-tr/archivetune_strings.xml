@@ -292,6 +292,7 @@
     <string name="aod_customize_show_time_labels">Süre etiketlerini göster</string>
     <string name="aod_customize_show_controls">Kontrolleri göster</string>
     <string name="aod_customize_show_exit_button">Çıkış tuşunu göster</string>
+<<<<<<< HEAD
     <string name="music_recognition_background_description">Etkinleştirildiğinde, Hızlı Ayarlar kutucuğu ArchiveTune\'u açmadan bu cihazda oynatılan sesi tanır.</string>
     <string name="history_remote_loading">Uzak geçmiş senkronize ediliyor</string>
     <string name="history_remote_empty_title">Hiç uzak geçmiş mevcut değil</string>
@@ -687,4 +688,6 @@
     <string name="ai_api_status_success">API hazır</string>
     <string name="ai_api_status_failed">API başarısız. Ayarları güncelledikten sonra tekrar deneyin.</string>
     <string name="ai_model">Model</string>
+=======
+>>>>>>> 5132b947d (Translated using Weblate (Turkish))
 </resources>
