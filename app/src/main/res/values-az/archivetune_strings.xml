@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 438f66962 (Translated using Weblate (Azerbaijani))
     <string name="explore">Kəşf et</string>
     <string name="suggestions">Təkliflər</string>
     <string name="music_recognition_tap_to_listen">Dinləmək üçün toxunun</string>
@@ -72,9 +75,15 @@
     <string name="local_songs_scan_title">Yerli mahnıları skan edin</string>
     <string name="local_songs_scan_subtitle">Bu cihazda saxlanılan mahnıları yeniləyin və yerli kitabxananın metadata məlumatlarını güncəlləyin.</string>
     <string name="local_songs_latest_scan">Ən son skan</string>
+<<<<<<< HEAD
     <string name="local_songs_scan_filters_title">Filtrləri skan et</string>
     <string name="local_songs_scan_filters_note">Cihaz növbəti dəfə skan edildikdə dəyişikliklər tətbiq olunacaq</string>
     <string name="local_songs_scan_duration_title">Etdiyiniz dəyişikliklər bu cihazın növbəti skanı zamanı tətbiq olunacaq</string>
+=======
+    <string name="local_songs_scan_filters_title">Skan filtrləri</string>
+    <string name="local_songs_scan_filters_note">Dəyişikliklər bu cihazı növbəti dəfə skan etdiyiniz zaman tətbiq olunur.</string>
+    <string name="local_songs_scan_duration_title">Qısa mahnıları istisna edin</string>
+>>>>>>> 438f66962 (Translated using Weblate (Azerbaijani))
     <string name="local_songs_scan_duration_desc">Seçilmiş müddətdən daha qısa olan mahnıları keçin.</string>
     <string name="local_songs_scan_included_folders_title">Daxil edilmiş qovluqlar</string>
     <string name="local_songs_scan_included_folders_desc">Yalnız bu yollardan hər hansı birinə uyğun gələn qovluqlarda saxlanılan mahnıları skan edin.</string>
@@ -103,6 +112,7 @@
     <string name="news_no_results_desc">Fərqli bir axtarış ifadəsi sınayın.</string>
     <string name="news_important_badge">Vacib</string>
     <string name="news_tooltip_title">Yeni elanlar</string>
+<<<<<<< HEAD
     <string name="news_tooltip_body">Tərtibatçılardan oxunmamış elanlarınız var.</string>
     <string name="news_author_on_date">%1$s · %2$s</string>
     <plurals name="news_article_count">
@@ -183,3 +193,6 @@
 =======
 </resources>
 >>>>>>> 60ecff243 (Added translation using Weblate (Azerbaijani))
+=======
+</resources>
+>>>>>>> 438f66962 (Translated using Weblate (Azerbaijani))
