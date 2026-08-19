@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<<<<<<< HEAD
     <string name="home">صفحه‌اصلی</string>
     <string name="songs">آهنگ‌ها</string>
     <string name="artists">هنرمندان</string>
@@ -75,3 +76,6 @@
     <string name="sort_descending">مرتب سازی نزولی</string>
     <string name="sort_ascending">مرتب سازی صعودی</string>
 </resources>
+=======
+</resources>
+>>>>>>> 0875b16c4 (Added translation using Weblate (Persian))
