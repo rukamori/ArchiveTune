@@ -24,7 +24,14 @@ object PaxsenixLyricsProvider : LyricsProvider {
         artist: String,
         album: String?,
         duration: Int,
-    ): Result<String> = PaxsenixLyrics.getLyrics(title, artist, duration)
+    ): Result<String> {
+        return PaxsenixLyrics.getLyrics(
+            title = title,
+            artist = artist,
+            duration = duration,
+            apiKey = "Bearer sk-paxsenix-8nsAYxHsUXHZnzZK2Ez_tVmgeGd7OWBs6DjYjFY7ghy2_gS-"
+        )
+    }
 
     override suspend fun getAllLyrics(
         id: String,
@@ -34,6 +41,12 @@ object PaxsenixLyricsProvider : LyricsProvider {
         duration: Int,
         callback: (String) -> Unit,
     ) {
-        PaxsenixLyrics.getAllLyrics(title, artist, duration, callback)
+        PaxsenixLyrics.getAllLyrics(
+            title = title,
+            artist = artist,
+            duration = duration,
+            apiKey = "Bearer sk-paxsenix-8nsAYxHsUXHZnzZK2Ez_tVmgeGd7OWBs6DjYjFY7ghy2_gS-",
+            callback = callback
+        )
     }
 }
