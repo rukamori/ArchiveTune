@@ -342,12 +342,6 @@
     <string name="testing_proxy_connection">Menguji koneksi proksi</string>
     <string name="proxy_connection_success">Koneksi proksi berhasil!</string>
     <string name="proxy_connection_failed">Koneksi proksi gagal: %s</string>
-    <string name="ip_rotation">Rotasi IP</string>
-    <string name="ip_rotation_desc">Rotasikan IP saat ini ketika terjadi masalah pemutaran atau konten.</string>
-    <string name="ip_rotation_active_proxies">%d proksi aktif</string>
-    <string name="ip_rotation_loading">Memuat daftar proksi</string>
-    <string name="ip_rotation_refreshing">Menyegarkan IP</string>
-    <string name="ip_rotation_refresh">Segarkan IP</string>
     <string name="stream_bypass_proxy">Lewati proksi untuk streaming</string>
     <string name="stream_bypass_proxy_desc">Gunakan IP langsung Anda untuk pemutaran streaming guna menghindari ketidakcocokan IP</string>
     <string name="enable_betterlyrics">Aktifkan BetterLyrics</string>

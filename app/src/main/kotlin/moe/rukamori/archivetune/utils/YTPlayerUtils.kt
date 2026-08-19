@@ -633,7 +633,6 @@ object YTPlayerUtils {
                 }.distinct()
 
             var lastError: Throwable? = null
-            var didRefreshIpRotationAfterBotDetection = false
             for (attempt in attempts) {
                 val attemptResult =
                     runCatching {
@@ -649,27 +648,6 @@ object YTPlayerUtils {
                 if (attemptResult.isSuccess) return@runCatching attemptResult.getOrThrow()
                 lastError = attemptResult.exceptionOrNull()
                 if (lastError is CancellationException) throw lastError
-                if (
-                    !didRefreshIpRotationAfterBotDetection &&
-                    lastError is BotDetectionPlaybackException &&
-                    refreshIpRotationForBotDetection(videoId, lastError)
-                ) {
-                    didRefreshIpRotationAfterBotDetection = true
-                    val rotatedAttemptResult =
-                        runCatching {
-                            playerResponseForPlaybackOnce(
-                                videoId = videoId,
-                                playlistId = playlistId,
-                                audioQuality = attempt,
-                                connectivityManager = connectivityManager,
-                                preferredStreamClient = preferredStreamClient,
-                                networkMetered = networkMetered,
-                            )
-                        }
-                    if (rotatedAttemptResult.isSuccess) return@runCatching rotatedAttemptResult.getOrThrow()
-                    lastError = rotatedAttemptResult.exceptionOrNull()
-                    if (lastError is CancellationException) throw lastError
-                }
             }
             throw lastError ?: IllegalStateException("Failed to resolve stream")
         }
@@ -761,27 +739,6 @@ object YTPlayerUtils {
             PlayerStreamClient.TVHTML5,
             PlayerStreamClient.ANDROID_MUSIC,
         )
-
-    private suspend fun refreshIpRotationForBotDetection(
-        videoId: String,
-        failure: BotDetectionPlaybackException?,
-    ): Boolean {
-        if (failure == null) return false
-        if (YouTube.ipRotationActiveCount.value <= 0) return false
-
-        return runCatching {
-            Timber.tag(logTag).w(
-                failure,
-                "Refreshing IP rotation after YouTube bot detection blocked playback for %s",
-                videoId,
-            )
-            YouTube.refreshIpRotation()
-            clearPlaybackAuthCaches()
-        }.onFailure {
-            Timber.tag(logTag).w(it, "Failed to refresh IP rotation after bot detection for %s", videoId)
-            reportException(it)
-        }.isSuccess
-    }
 
     private suspend fun playerResponseForPlaybackOnce(
         videoId: String,

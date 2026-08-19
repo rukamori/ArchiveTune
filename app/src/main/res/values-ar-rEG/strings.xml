@@ -516,12 +516,6 @@
     <string name="proxy_connection_success">اتصال البروكسي نجح!</string>
     <string name="proxy_connection_failed">اتصال البروكسي فشل: %s</string>
     <string name="proxy_connection_invalid_configuration">مضيف أو منفذ البروكسي مش صالح</string>
-    <string name="ip_rotation">تبديل الـ IP</string>
-    <string name="ip_rotation_desc">تبديل الـ IP الحالي لما يحصل مشاكل في التشغيل أو المحتوى.</string>
-    <string name="ip_rotation_active_proxies">%d بروكسي نشط</string>
-    <string name="ip_rotation_loading">جاري تحميل قائمة البروكسي</string>
-    <string name="ip_rotation_refreshing">جاري تحديث الـ IP</string>
-    <string name="ip_rotation_refresh">تحديث الـ IP</string>
     <string name="stream_bypass_proxy">تجاوز البروكسي للبث المباشر</string>
     <string name="stream_bypass_proxy_desc">بيشغل الصوت بـ الـ IP المباشر بتاعك من غير بروكسي عشان الصوت ما يقطعش</string>
     <string name="enable_betterlyrics">تفعيل BetterLyrics</string>

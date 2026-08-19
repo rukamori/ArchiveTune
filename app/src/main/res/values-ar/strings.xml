@@ -749,12 +749,6 @@
     <string name="proxy_connection_success">نجح اتصال البروكسي!</string>
     <string name="proxy_connection_failed">فشل اتصال البروكسي: %s</string>
     <string name="proxy_connection_invalid_configuration">مضيف أو منفذ البروكسي غير صالح</string>
-    <string name="ip_rotation">تدوير IP</string>
-    <string name="ip_rotation_desc">تدوير عنوان IP الحالي عند حدوث مشكلات في التشغيل أو المحتوى.</string>
-    <string name="ip_rotation_active_proxies">%d بروكسي نشط</string>
-    <string name="ip_rotation_loading">جاري تحميل قائمة البروكسي</string>
-    <string name="ip_rotation_refreshing">جاري تحديث IP</string>
-    <string name="ip_rotation_refresh">تحديث IP</string>
     <string name="stream_bypass_proxy">تجاوز البروكسي للبث</string>
     <string name="stream_bypass_proxy_desc">استخدم عنوان IP المباشر لتشغيل البث لتجنب عدم تطابق IP</string>
     <string name="enable_youlyplus_lyrics">تفعيل كلمات YouLyPlus</string>

@@ -796,12 +796,6 @@
     <string name="proxy_connection_success">代理连接成功！</string>
     <string name="proxy_connection_failed">代理连接失败：%s</string>
     <string name="proxy_connection_invalid_configuration">代理主机或端口无效</string>
-    <string name="ip_rotation">IP 轮替</string>
-    <string name="ip_rotation_desc">当遇到播放或内容获取异常时自动更换当前 IP</string>
-    <string name="ip_rotation_active_proxies">%d 个可用代理</string>
-    <string name="ip_rotation_loading">正在加载代理列表</string>
-    <string name="ip_rotation_refreshing">正在刷新 IP</string>
-    <string name="ip_rotation_refresh">刷新 IP</string>
     <string name="enable_youlyplus_lyrics">启用 YouLyPlus 歌词</string>
     <string name="enable_unison_lyrics">启用 Unison 歌词</string>
     <string name="enable_megalobiz_lyrics">启用 Megalobiz 歌词</string>

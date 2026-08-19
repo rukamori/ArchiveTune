@@ -522,12 +522,6 @@
     <string name="proxy_connection_success">Proxy connection successful!</string>
     <string name="proxy_connection_failed">Proxy connection failed: %s</string>
     <string name="proxy_connection_invalid_configuration">Invalid proxy host or port</string>
-    <string name="ip_rotation">IP Rotation</string>
-    <string name="ip_rotation_desc">Rotate the current IP when playback or content issues occur.</string>
-    <string name="ip_rotation_active_proxies">%d active proxies</string>
-    <string name="ip_rotation_loading">Loading proxy list</string>
-    <string name="ip_rotation_refreshing">Refreshing IP</string>
-    <string name="ip_rotation_refresh">Refresh IP</string>
     <string name="stream_bypass_proxy">Bypass proxy for streams</string>
     <string name="stream_bypass_proxy_desc">Use your direct IP for stream playback to avoid IP mismatch</string>
     <string name="enable_betterlyrics">Enable BetterLyrics</string>

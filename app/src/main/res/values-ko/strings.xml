@@ -340,12 +340,6 @@
     <string name="testing_proxy_connection">프록시 서버 연결 유효성을 테스트하는 중</string>
     <string name="proxy_connection_success">프록시 연결에 성공했습니다!</string>
     <string name="proxy_connection_failed">프록시 연결에 실패했습니다: %s</string>
-    <string name="ip_rotation">접속 주소(IP) 자동 변경</string>
-    <string name="ip_rotation_desc">버퍼링이 너무 심하거나 무한 로딩 오류가 자주 일어날 때, 현재 가상 접속 주소를 강제로 변경해 우회하도록 합니다.</string>
-    <string name="ip_rotation_active_proxies">%d개의 활성 프록시 서버 적용됨</string>
-    <string name="ip_rotation_loading">이용 가능한 프록시 목록을 로딩하는 중</string>
-    <string name="ip_rotation_refreshing">가상 IP 주소 변경 중</string>
-    <string name="ip_rotation_refresh">가상 IP 주소 변경</string>
     <string name="stream_bypass_proxy">음악 재생 시 프록시 연결 건너뛰기</string>
     <string name="stream_bypass_proxy_desc">음악 데이터를 직접 다운로드해 재생할 때는 우회 주소를 거치지 않고 직접 연결해 버퍼링을 줄입니다.</string>
     <string name="enable_betterlyrics">BetterLyrics 가사 플러그인 사용</string>

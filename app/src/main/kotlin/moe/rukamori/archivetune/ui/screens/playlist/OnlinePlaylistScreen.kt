@@ -11,7 +11,6 @@ package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,8 +37,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -79,7 +76,6 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
@@ -111,6 +107,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
 import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
+import moe.rukamori.archivetune.ui.component.MediaDetailStatePanel
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
@@ -195,6 +192,7 @@ fun OnlinePlaylistScreen(
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val retry = remember(viewModel) { viewModel::retry }
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var query by
@@ -638,21 +636,12 @@ fun OnlinePlaylistScreen(
 
                     if (songs.isEmpty() && !isLoading && error == null) {
                         item(key = "empty") {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.empty_playlist),
-                                    style = MaterialTheme.typography.titleLarge,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = stringResource(R.string.empty_playlist_desc),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            MediaDetailStatePanel(
+                                title = stringResource(R.string.empty_playlist),
+                                description = stringResource(R.string.empty_playlist_desc),
+                                iconRes = R.drawable.playlist_online,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp),
+                            )
                         }
                     }
 
@@ -740,64 +729,30 @@ fun OnlinePlaylistScreen(
                 } else {
                     val isPrivatePlaylist = error?.contains("PLAYLIST_PRIVATE") == true
                     item(key = "error") {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            if (isPrivatePlaylist) {
-                                Image(
-                                    painter = painterResource(R.drawable.anime_blank),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(120.dp),
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = stringResource(R.string.playlist_private_title),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = stringResource(R.string.playlist_private_desc),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            } else {
-                                Text(
-                                    text =
-                                        if (error != null) {
-                                            stringResource(R.string.error_unknown)
-                                        } else {
-                                            stringResource(R.string.playlist_not_found)
-                                        },
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color =
-                                        if (error != null) {
-                                            MaterialTheme.colorScheme.error
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text =
-                                        if (error != null) {
-                                            error!!
-                                        } else {
-                                            stringResource(R.string.playlist_not_found_desc)
-                                        },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (error != null) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Button(onClick = { viewModel.retry() }, shapes = ButtonDefaults.shapes()) {
-                                        Text(stringResource(R.string.retry))
-                                    }
-                                }
-                            }
-                        }
+                        MediaDetailStatePanel(
+                            title =
+                                stringResource(
+                                    when {
+                                        isPrivatePlaylist -> R.string.playlist_private_title
+                                        error != null -> R.string.error_unknown
+                                        else -> R.string.playlist_not_found
+                                    },
+                                ),
+                            description =
+                                if (isPrivatePlaylist) {
+                                    stringResource(R.string.playlist_private_desc)
+                                } else {
+                                    error ?: stringResource(R.string.playlist_not_found_desc)
+                                },
+                            iconRes = if (isPrivatePlaylist) null else R.drawable.error,
+                            imageRes = if (isPrivatePlaylist) R.drawable.anime_blank else null,
+                            actionLabel = if (error != null && !isPrivatePlaylist) stringResource(R.string.retry) else null,
+                            onAction = if (error != null && !isPrivatePlaylist) retry else null,
+                            modifier =
+                                Modifier
+                                    .fillParentMaxSize()
+                                    .padding(top = systemBarsTopPadding + AppBarHeight),
+                        )
                     }
                 }
             }

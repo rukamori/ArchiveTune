@@ -755,12 +755,6 @@
     <string name="lyrics_mode_enhanced">Mejorado</string>
     <string name="lyrics_animation_style_v2_only">Solo disponible en modo letra V2</string>
     <string name="proxy_connection_invalid_configuration">Host o puerto de proxy no válido</string>
-    <string name="ip_rotation">Rotación de direcciones IP</string>
-    <string name="ip_rotation_desc">Si experimenta problemas de reproducción o de contenido, cambie su dirección IP actual.</string>
-    <string name="ip_rotation_active_proxies">%d proxies activos</string>
-    <string name="ip_rotation_loading">Cargando la lista de proxies</string>
-    <string name="ip_rotation_refreshing">Renovando IP</string>
-    <string name="ip_rotation_refresh">Renovar IP</string>
     <string name="enable_unison_lyrics">Activar la letra de «Unison»</string>
     <string name="low_data_mode_title">Modo de bajo consumo de datos</string>
     <string name="low_data_mode_description">Reduce el consumo de datos móviles utilizando transmisiones de baja calidad y desactivando la caché de reproducción, el elemento «canvas» y la precarga de letras en segundo plano en redes con tarifa de datos limitada</string>

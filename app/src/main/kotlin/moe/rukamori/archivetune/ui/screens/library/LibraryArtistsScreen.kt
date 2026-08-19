@@ -87,6 +87,7 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
+import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryArtistsViewModel
@@ -124,6 +125,7 @@ fun LibraryArtistsScreen(
 
     val artists by viewModel.allArtists.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
 
     val topArtist = artists.firstOrNull()
 
@@ -490,6 +492,20 @@ fun LibraryArtistsScreen(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                }
+            }
+
+            if (artists.isEmpty()) {
+                item(
+                    span = { GridItemSpan(2) },
+                    key = "artists_empty",
+                    contentType = "library_empty_state",
+                ) {
+                    LibraryEmptyState(
+                        iconRes = R.drawable.artist,
+                        actionLabelRes = R.string.search_yt_music,
+                        onAction = openSearch,
+                    )
                 }
             }
 

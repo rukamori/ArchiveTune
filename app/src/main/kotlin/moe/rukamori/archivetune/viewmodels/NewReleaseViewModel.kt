@@ -13,7 +13,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -70,6 +72,7 @@ class NewReleaseViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<NewReleaseUiState>(NewReleaseUiState.Loading)
         val uiState = _uiState.asStateFlow()
+        private var loadJob: Job? = null
 
         init {
             load()
@@ -80,7 +83,8 @@ class NewReleaseViewModel
         }
 
         private fun load() {
-            viewModelScope.launch(Dispatchers.IO) {
+            loadJob?.cancel()
+            loadJob = viewModelScope.launch(Dispatchers.IO) {
                 _uiState.value = NewReleaseUiState.Loading
                 try {
                     val albums = YouTube.newReleaseAlbums().getOrThrow()
@@ -120,8 +124,10 @@ class NewReleaseViewModel
                         } else {
                             NewReleaseUiState.Success(content)
                         }
-                } catch (t: Throwable) {
-                    reportException(t)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (throwable: Throwable) {
+                    reportException(throwable)
                     _uiState.value = NewReleaseUiState.Error
                 }
             }

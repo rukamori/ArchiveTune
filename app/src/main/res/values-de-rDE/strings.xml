@@ -505,7 +505,6 @@
     <string name="proxy_connection_success">Proxy-Verbindung erfolgreich!</string>
     <string name="proxy_connection_failed">Proxy-Verbindung fehlgeschlagen: %s</string>
     <string name="proxy_connection_invalid_configuration">Ungültiger Proxy-Host oder Port</string>
-    <string name="ip_rotation_loading">Lade Proxy-Liste</string>
     <string name="stream_bypass_proxy">Proxy für Streams umgehen</string>
     <string name="stream_bypass_proxy_desc">Verwendt direkte IP-Adresse für die Stream-Wiedergabe, um eine IP-Diskrepanz zu vermeiden</string>
     <string name="remove_account">Konto entfernen</string>
@@ -542,10 +541,6 @@
     <string name="dns_over_https_desc">Nutze DNS über HTTPS (DOH) um Hostnamen aufzulösen</string>
     <string name="dns_provider">DNS-Anbieter</string>
     <string name="dns_custom_url">Benutzerdefinierte DNS DoH Adresse</string>
-    <string name="ip_rotation">IP-Rotation</string>
-    <string name="ip_rotation_desc">Wechselt die aktuelle IP-Adresse, wenn Wiedergabe- oder Inhaltsprobleme auftreten.</string>
-    <string name="ip_rotation_active_proxies">%d aktive Proxies</string>
-    <string name="ip_rotation_refresh">IP erneuern</string>
     <string name="audio_offload">Audio-Auslagerung</string>
     <string name="audio_offload_desc">Lässt unterstützte Geräte Audio mithilfe einer stromsparenden Hardware-Decodierung wiedergeben. Einige Funktionen zur Audioverarbeitung sind deaktiviert.</string>
     <string name="pause_on_device_mute">Pausieren, wenn die Gerätelautstärke 0 ist</string>
@@ -795,7 +790,6 @@
     <string name="font_preference_system">System</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">Nachricht</string>
-    <string name="ip_rotation_refreshing">IP aktualisieren</string>
     <string name="device_mute_recovery_volume_disabled">Deaktiviert</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
     <string name="lastfm_provider_lastfm">Last.fm</string>

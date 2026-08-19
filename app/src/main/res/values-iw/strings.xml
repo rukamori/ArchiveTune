@@ -111,7 +111,6 @@
     <string name="palette_blush">סומק</string>
     <string name="save">שמירה</string>
     <string name="downloaded_songs">שירים שהורדו</string>
-    <string name="ip_rotation_loading">טוען רשימת פרוקסים</string>
     <string name="playback_login_refresh_required">רענון כניסה ל- YouTube Music</string>
     <string name="palette_ocean">אוקיינוס</string>
     <string name="view_album">ראה אלבום</string>
@@ -224,7 +223,6 @@
     <string name="smart_trimmer">גוזם חכם</string>
     <string name="appearance">מראה</string>
     <string name="show_button1_description">הפעלת כפתור 1 ב- Discord Rich Presence</string>
-    <string name="ip_rotation_refresh">רענן כתובת IP</string>
     <string name="dns_provider">ספק DNS</string>
     <string name="auto_start_on_bluetooth">הפעלה אוטומטית בחיבור Bluetooth</string>
     <string name="queue_continue_playing">המשך הפעלה</string>
@@ -293,7 +291,6 @@
     <string name="player_and_audio">נגן ואודיו</string>
     <string name="palette_sand">חול</string>
     <string name="persistent_queue">תור מתמיד</string>
-    <string name="ip_rotation_active_proxies">%d פרוקסים פעילים</string>
     <string name="palette_synthwave">גלי סינת\'</string>
     <string name="low_data_mode_description">מפחית את השימוש בנתונים ניידים על ידי שימוש בסטרימינג באיכות נמוכה והשבתת טעינה מוקדמת של מטמון השמעה, קנבס ומילות רקע ברשתות מדודות</string>
     <string name="eq_profile_name">שם הפרופיל</string>
@@ -326,7 +323,6 @@
     <string name="palette_pastel_blue">כחול פסטל</string>
     <string name="sort_by_create_date">תאריך הוספה</string>
     <string name="palette_emerald_green">אמרלד</string>
-    <string name="ip_rotation_desc">סובב את כתובת ה-IP הנוכחית כאשר מתרחשות בעיות השמעה או תוכן.</string>
     <string name="details">פרטים</string>
     <string name="pure_black">שחור טהור</string>
     <string name="eq_bands">ערוצים</string>
@@ -430,7 +426,6 @@
     <string name="palette_pastel_green">ירוק פסטל</string>
     <string name="sample_rate">קצב דגימה</string>
     <string name="font_preference">גופן</string>
-    <string name="ip_rotation">רוטציית IP</string>
     <string name="play">נגן</string>
     <string name="dark_theme_off">כבוי</string>
     <string name="together_host_left_session">המארח עזב את המפגש</string>
@@ -449,7 +444,6 @@
     </plurals>
     <string name="palette_crimson_red">ארגמן</string>
     <string name="permanent_shuffle">מצב ערבוב קבוע</string>
-    <string name="ip_rotation_refreshing">מרענן כתובת IP</string>
     <string name="delete_playlist_confirm">האם אתה באמת רוצה למחוק את פלייליסט \"%s\"?</string>
     <string name="playback_confirmation_required">נדרש אישור הפעלה</string>
     <string name="palette_royal_purple">סגול מלכותי</string>

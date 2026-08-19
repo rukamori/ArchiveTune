@@ -755,12 +755,6 @@
     <string name="enable_youlyplus_lyrics">Bật lời bài hát YouLyPlus</string>
     <string name="haptics">Rung</string>
     <string name="haptics_desc">Bật phản hồi rung trên các thành phần tương tác</string>
-    <string name="ip_rotation">Xoay IP</string>
-    <string name="ip_rotation_active_proxies">%d proxy đang hoạt động</string>
-    <string name="ip_rotation_desc">Xoay IP hiện tại khi xảy ra sự cố phát lại hoặc nội dung.</string>
-    <string name="ip_rotation_loading">Đang tải danh sách proxy</string>
-    <string name="ip_rotation_refresh">Làm mới IP</string>
-    <string name="ip_rotation_refreshing">Đang làm mới IP</string>
     <string name="low_data_mode_description">Giảm sử dụng dữ liệu di động bằng cách sử dụng luồng chất lượng thấp và tắt bộ nhớ đệm phát lại, canvas và tải trước lời bài hát nền trên mạng có đồng hồ</string>
     <string name="low_data_mode_title">Chế độ dữ liệu thấp</string>
     <string name="lyrics_animation_style_v2_only">Chỉ khả dụng trong chế độ lời bài hát V2</string>

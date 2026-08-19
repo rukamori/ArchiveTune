@@ -522,12 +522,6 @@
     <string name="proxy_connection_success">プロキシ接続に成功しました!</string>
     <string name="proxy_connection_failed">プロキシ接続に失敗しました: %s</string>
     <string name="proxy_connection_invalid_configuration">無効なプロキシ ホストまたはポート</string>
-    <string name="ip_rotation">IPローテーション</string>
-    <string name="ip_rotation_desc">再生またはコンテンツの問題が発生した場合は、現在の IP をローテーションします。</string>
-    <string name="ip_rotation_active_proxies">%d 個のアクティブなプロキシ</string>
-    <string name="ip_rotation_loading">プロキシリストをロードしています</string>
-    <string name="ip_rotation_refreshing">IPをリフレッシュ中</string>
-    <string name="ip_rotation_refresh">IPをリフレッシュ</string>
     <string name="stream_bypass_proxy">ストリームのプロキシをバイパスする</string>
     <string name="stream_bypass_proxy_desc">IP の不一致を避けるためにストリーム再生には直接 IP を使用してください</string>
     <string name="enable_betterlyrics">BetterLyrics を有効にする</string>

@@ -532,12 +532,6 @@
     <string name="proxy_connection_success">Ligação ao proxy bem-sucedida!</string>
     <string name="proxy_connection_failed">Falha de ligação ao proxy: %s</string>
     <string name="proxy_connection_invalid_configuration">Host ou porta do proxy inválido</string>
-    <string name="ip_rotation">Rotação de IP</string>
-    <string name="ip_rotation_desc">Mudar o IP atual quando ocorrerem problemas de reprodução ou conteúdo.</string>
-    <string name="ip_rotation_active_proxies">%d proxies ativos</string>
-    <string name="ip_rotation_loading">A carregar lista de proxies</string>
-    <string name="ip_rotation_refreshing">A atualizar IP</string>
-    <string name="ip_rotation_refresh">Atualizar IP</string>
     <string name="stream_bypass_proxy">Ignorar proxy para streams</string>
     <string name="stream_bypass_proxy_desc">Usar o IP direto para reprodução de streams e evitar incompatibilidades de IP</string>
     <string name="enable_betterlyrics">Ativar letras do BetterLyrics</string>

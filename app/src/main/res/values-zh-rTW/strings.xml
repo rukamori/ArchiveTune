@@ -471,12 +471,6 @@
     <string name="proxy_connection_success">代理連線成功！</string>
     <string name="proxy_connection_failed">代理連線失敗：%s</string>
     <string name="proxy_connection_invalid_configuration">無效的代理主機或端口</string>
-    <string name="ip_rotation">IP 輪換</string>
-    <string name="ip_rotation_desc">當出現播放或內容問題時，請輪換目前 IP。</string>
-    <string name="ip_rotation_active_proxies">%d 活躍代理</string>
-    <string name="ip_rotation_loading">正在載入代理列表</string>
-    <string name="ip_rotation_refreshing">刷新 IP 中</string>
-    <string name="ip_rotation_refresh">刷新 IP</string>
     <string name="stream_bypass_proxy">繞過串流媒體代理</string>
     <string name="stream_bypass_proxy_desc">請使用您的直接 IP 進行串流播放，以避免 IP 不符合</string>
     <string name="enable_betterlyrics">啟用 BetterLyrics 歌詞來源</string>

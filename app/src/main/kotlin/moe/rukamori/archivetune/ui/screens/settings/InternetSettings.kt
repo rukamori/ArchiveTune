@@ -7,11 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,12 +29,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -57,7 +49,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -155,24 +146,11 @@ fun InternetSettings(navController: NavController) {
     val (proxyPassword, onProxyPasswordChange) = rememberPreference(key = ProxyPasswordKey, defaultValue = "")
     val (streamBypassProxy, onStreamBypassProxyChange) = rememberPreference(key = StreamBypassProxyKey, defaultValue = false)
 
-    val (ipRotationEnabled, onIpRotationEnabledChange) = rememberPreference(key = IpRotationEnabledKey, defaultValue = false)
-    var loadingIpRotation by remember { mutableStateOf(false) }
-    var refreshingIpRotation by remember { mutableStateOf(false) }
-    val activeProxyCount by YouTube.ipRotationActiveCount.collectAsStateWithLifecycle()
-
     var testingProxy by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
 
     val dnsProviders = remember { listOf("Cloudflare", "Google", "AdGuard", "Quad9", "Custom") }
     val proxyTypes = remember { listOf(Proxy.Type.HTTP, Proxy.Type.SOCKS) }
-    val ipRotationDescription =
-        when {
-            loadingIpRotation -> stringResource(R.string.ip_rotation_loading)
-            refreshingIpRotation -> stringResource(R.string.ip_rotation_refreshing)
-            ipRotationEnabled -> stringResource(R.string.ip_rotation_active_proxies, activeProxyCount)
-            else -> stringResource(R.string.ip_rotation_desc)
-        }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -385,46 +363,6 @@ fun InternetSettings(navController: NavController) {
                 }
             }
 
-            PreferenceGroup(title = stringResource(R.string.ip_rotation)) {
-                item {
-                    IpRotationPreference(
-                        title = { Text(stringResource(R.string.ip_rotation)) },
-                        description = ipRotationDescription,
-                        icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
-                        checked = ipRotationEnabled,
-                        isBusy = loadingIpRotation || refreshingIpRotation,
-                        onCheckedChange = { enabled ->
-                            onIpRotationEnabledChange(enabled)
-                            if (enabled) {
-                                scope.launch {
-                                    loadingIpRotation = true
-                                    try {
-                                        YouTube.enableIpRotation()
-                                    } catch (_: Exception) {
-                                        onIpRotationEnabledChange(false)
-                                    } finally {
-                                        loadingIpRotation = false
-                                    }
-                                }
-                            } else {
-                                YouTube.disableIpRotation()
-                            }
-                        },
-                        onRefresh = refreshIp@{
-                            if (loadingIpRotation || refreshingIpRotation) return@refreshIp
-                            scope.launch {
-                                refreshingIpRotation = true
-                                try {
-                                    YouTube.refreshIpRotation()
-                                } catch (_: Exception) {
-                                } finally {
-                                    refreshingIpRotation = false
-                                }
-                            }
-                        },
-                    )
-                }
-            }
         }
     }
 
@@ -452,79 +390,4 @@ fun InternetSettings(navController: NavController) {
             },
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun IpRotationPreference(
-    title: @Composable () -> Unit,
-    description: String,
-    icon: @Composable () -> Unit,
-    checked: Boolean,
-    isBusy: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onRefresh: () -> Unit,
-) {
-    PreferenceEntry(
-        title = title,
-        description = description,
-        icon = icon,
-        trailingContent = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (checked) {
-                    if (isBusy) {
-                        CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        FilledTonalIconButton(onClick = onRefresh) {
-                            Icon(
-                                painterResource(R.drawable.sync),
-                                contentDescription = stringResource(R.string.ip_rotation_refresh),
-                            )
-                        }
-                    }
-                }
-                Switch(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    enabled = !isBusy,
-                    thumbContent = {
-                        AnimatedContent(
-                            targetState = checked,
-                            transitionSpec = {
-                                fadeIn(tween(100)) togetherWith fadeOut(tween(100))
-                            },
-                            label = "ipRotationSwitchThumbIcon",
-                        ) { isChecked ->
-                            Icon(
-                                painter =
-                                    painterResource(
-                                        id = if (isChecked) R.drawable.check else R.drawable.close,
-                                    ),
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                            )
-                        }
-                    },
-                    colors =
-                        SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                            checkedIconColor = MaterialTheme.colorScheme.primary,
-                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            uncheckedIconColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
-                )
-            }
-        },
-        onClick =
-            if (isBusy) {
-                null
-            } else {
-                { onCheckedChange(!checked) }
-            },
-    )
 }

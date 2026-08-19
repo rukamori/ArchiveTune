@@ -483,12 +483,6 @@
     <string name="proxy_connection_failed">‫رابطہ پروکسی ناکام: %s</string>
     <string name="proxy_connection_invalid_configuration">پروکسی میزبان یا بندرگاہ غیر مؤثر</string>
     <string name="discord_connection_settings">رابطہ</string>
-    <string name="ip_rotation">IP گھمیری</string>
-    <string name="ip_rotation_desc">موجودہ IP کو گھوما دیں اگر نشر یا مواد کے مسائل پیش آئیں۔</string>
-    <string name="ip_rotation_active_proxies">%d فعال شدہ پروکسیات</string>
-    <string name="ip_rotation_loading">درج کردہ پروکسیات لاد رہے ہیں</string>
-    <string name="ip_rotation_refreshing">IP تازہ کر رہے ہیں</string>
-    <string name="ip_rotation_refresh">IP کو تازہ کریں</string>
     <string name="stream_bypass_proxy">نشریات کے لے پروکسی کو بائ پاس کریں</string>
     <string name="stream_bypass_proxy_desc">‫IP کے بے میل سے بچنے کے لئے اپنی سیدھی IP استعمال کریں</string>
     <string name="enable_betterlyrics">BetterLyrics کو فاعل کریں</string>
