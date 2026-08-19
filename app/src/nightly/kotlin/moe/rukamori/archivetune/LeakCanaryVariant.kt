@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import leakcanary.AppWatcher
 import leakcanary.LeakCanary
+import moe.rukamori.archivetune.utils.dataStore
 
 internal object LeakCanaryVariant {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
