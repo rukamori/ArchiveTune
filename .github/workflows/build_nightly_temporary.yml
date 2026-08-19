@@ -1,0 +1,83 @@
+name: Temporary Nightly Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths-ignore:
+      - ".github/workflows/build_nightly_temporary.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporary-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-nightly:
+    name: Build GMS Mobile Universal Nightly
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+          cache-cleanup: on-success
+
+      - name: Configure build memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's#^org.gradle.jvmargs=.*#org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8 -Djava.awt.headless=true#' gradle.properties
+          sed -i 's#^kotlin.daemon.jvmargs=.*#kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8#' gradle.properties
+          printf '\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\nkotlin.daemon.enabled=false\n' >> gradle.properties
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Nightly
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew spotlessApply app:assembleGmsMobileUniversalNightly \
+            --no-daemon \
+            --no-parallel \
+            --max-workers=1 \
+            --console=plain
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+      - name: Upload Nightly APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: archivetune-nightly-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/gms/mobile/universal/nightly/*.apk
+            app/build/outputs/apk/gmsMobileUniversal/nightly/*.apk
+            app/build/outputs/apk/mobile/universal/nightly/*.apk
+            app/build/outputs/apk/mobileUniversal/nightly/*.apk
