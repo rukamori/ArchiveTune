@@ -57,7 +57,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          NIGHTLY_VERSION_NAME="N$(date -u +%Y%m%d)"
+          echo "Building Nightly version ${NIGHTLY_VERSION_NAME}"
           ./gradlew spotlessApply app:assembleGmsMobileUniversalNightly \
+            -PnightlyVersionName="$NIGHTLY_VERSION_NAME" \
             --no-daemon \
             --no-parallel \
             --max-workers=1 \

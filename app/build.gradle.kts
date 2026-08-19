@@ -112,6 +112,12 @@ android {
                     ?: ""
                 ).trim()
         buildConfigField("String", "NIGHTLY_BUILD_HASH", "\"$nightlyBuildHash\"")
+
+        val nightlyVersionName =
+            providers.gradleProperty("nightlyVersionName").orNull?.trim().orEmpty()
+        if (nightlyVersionName.isNotEmpty()) {
+            versionName = nightlyVersionName
+        }
         buildConfigField("String", "DISTRIBUTION", "\"gms\"")
         buildConfigField("boolean", "UPDATER_AVAILABLE", "true")
     }
@@ -204,7 +210,13 @@ android {
         }
         create("nightly") {
             applicationIdSuffix = ".nightly"
-            isDebuggable = true
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "true")
             matchingFallbacks += listOf("release")
         }
