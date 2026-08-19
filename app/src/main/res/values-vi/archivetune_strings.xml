@@ -407,6 +407,8 @@
     <string name="settings_backup_restore_subtitle">Xuất và khôi phục dữ liệu ứng dụng cá nhân</string>
     <string name="settings_developer_options_title">Tùy chọn nhà phát triển</string>
     <string name="settings_developer_options_subtitle">Tính năng thử nghiệm và gỡ lỗi</string>
+    <string name="enable_leak_canary">Bật LeakCanary</string>
+    <string name="enable_leak_canary_description">Phát hiện rò rỉ bộ nhớ và hiển thị báo cáo. Hãy khởi động lại ứng dụng sau khi thay đổi tùy chọn này.</string>
     <string name="settings_lyrics_subtitle">Nhà cung cấp lời bài hát, tải trước và dịch thuật</string>
     <string name="settings_content_subtitle">Ngôn ngữ, quốc gia và mặc định đề xuất</string>
     <string name="settings_internet_subtitle">Proxy, DNS và hành vi phát mạng</string>

@@ -491,6 +491,8 @@
     <string name="settings_backup_restore_subtitle">Export and recover your personal app data</string>
     <string name="settings_developer_options_title">Developer Options</string>
     <string name="settings_developer_options_subtitle">Experimental features and debugging</string>
+    <string name="enable_leak_canary">Enable LeakCanary</string>
+    <string name="enable_leak_canary_description">Detect memory leaks and show leak reports while the app is running.</string>
     <string name="settings_lyrics_subtitle">Lyrics providers, preloading, and translation</string>
     <string name="settings_content_subtitle">Language, country, and recommendation defaults</string>
     <string name="settings_internet_subtitle">Proxy, DNS, and network playback behavior</string>

@@ -103,6 +103,7 @@ android {
         buildConfigField("String", "DATA_SERVER_URL", dataServerUrl.asBuildConfigString())
         buildConfigField("String", "API_BEARER_TOKEN", apiBearerToken.asBuildConfigString())
         buildConfigField("boolean", "GATEKEEPER_ENABLED", "false")
+        buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "false")
 
         val nightlyBuildHash =
             (
@@ -201,6 +202,12 @@ android {
             applicationIdSuffix = ".debug"
             isDebuggable = true
         }
+        create("nightly") {
+            applicationIdSuffix = ".nightly"
+            isDebuggable = true
+            buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "true")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
@@ -276,6 +283,8 @@ dependencies {
     compileOnly("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.leakcanary.android)
+    add("nightlyImplementation", libs.leakcanary.android)
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.reorderable)
