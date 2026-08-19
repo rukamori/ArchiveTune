@@ -55,12 +55,21 @@
     <string name="scan_device">Zeskanuj urządzenie</string>
     <string name="scanning_device">Skanowanie urządzenia…</string>
     <string name="local_songs_ready_desc">Odtwórz lokalne piosenki na tym urządzeniu.</string>
+<<<<<<< HEAD
     <string name="local_songs_permission_body">Zezwól aplikacji na dostęp do pamięci w celu skanowania plików audio zapisanych na tym urządzeniu.</string>
     <string name="music_recognition_processing">Przetwarzanie…</string>
     <string name="music_recognition_no_match">Nie znaleziono dopasowania</string>
     <string name="music_recognition_lyrics_preview">Podgląd tekstu</string>
     <string name="music_recognition_background_description">Gdy funkcja jest włączona, kafel Szybkich ustawień wykrywa dźwięk odtwarzany na tym urządzeniu bez konieczności otwierania aplikacji ArchiveTune.</string>
     <string name="music_recognition_background_foss_description">Rozpoznawanie w tle jest niedostępne w wariancie FOSS. Kafelek Szybkich ustawień zamiast tego otwiera ekran rozpoznawania.</string>
+=======
+    <string name="local_songs_permission_body">Zezwol na dostęp do skanowania plików audio przetrzymywanych na tym urządzeniu.</string>
+    <string name="music_recognition_processing">przetwarzanie…</string>
+    <string name="music_recognition_no_match">Nie znaleziono dopasowania</string>
+    <string name="music_recognition_lyrics_preview">Podgląd tekstu</string>
+    <string name="music_recognition_background_description">Gdy funkcja jest włączona, kafel Szybkich ustawień wykrywa dźwięk odtwarzany na tym urządzeniu bez konieczności otwierania aplikacji ArchiveTune.</string>
+    <string name="music_recognition_background_foss_description">Rozpoznawanie w tle jest niedostępne w wariancie FOSS. Kafel Szybkich ustawień zamiast tego otwiera ekran rozpoznawania.</string>
+>>>>>>> edd3f0a7a (Translated using Weblate (Polish))
     <string name="music_recognition_notification_recording_failed_title">Nie można przechwycić dźwięku urządzenia</string>
     <string name="music_recognition_notification_recognition_failed_text">Usługa rozpoznawania nie mogła zidentyfikować tego dźwięku. Spróbuj ponownie za chwilę.</string>
     <string name="history_remote_empty_desc">Twoja zsynchronizowana historia odtwarzania pojawi się tutaj po tym, jak posłuchasz czegoś w YouTube Music.</string>
