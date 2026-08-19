@@ -164,7 +164,7 @@ class DownloadedArtworkRepository
         private fun resolveLocalFile(sourceUrl: String): File? {
             val normalizedUrl = normalizeArtworkUrl(sourceUrl) ?: return null
             val fileName = snapshot().fileNameBySourceUrl[normalizedUrl] ?: return null
-            return artworkDirectory().resolve(fileName).takeIf(File::isUsableArtworkFile)
+            return artworkDirectory().resolve(fileName).takeIf { it.isUsableArtworkFile() }
         }
 
         private fun snapshot(): ArtworkSnapshot {
