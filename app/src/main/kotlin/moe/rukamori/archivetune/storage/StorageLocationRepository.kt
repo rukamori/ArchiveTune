@@ -40,6 +40,7 @@ import moe.rukamori.archivetune.constants.StorageFolderPathKey
 import moe.rukamori.archivetune.constants.StorageFolderTreeUriKey
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.ArtworkStorage
@@ -186,6 +187,7 @@ class StorageLocationRepository
         @PlayerCache private val playerCache: Cache,
         @DownloadCache private val downloadCache: Cache,
         private val downloadUtil: DownloadUtil,
+        private val downloadedArtworkRepository: DownloadedArtworkRepository,
     ) {
         val selection: Flow<StorageFolderSelection> =
             context.dataStore.data.map { preferences ->
@@ -435,6 +437,7 @@ class StorageLocationRepository
                     minPercent = 70,
                     maxPercent = 90,
                 )
+            downloadedArtworkRepository.invalidateMemoryIndex()
             val artworkCleared = ArtworkStorage.clear(context)
             onProgress(StorageCacheClearProgress(kind = StorageCacheKind.IMAGES, percent = 95))
             val cacheCleared = diskCacheCleared && artworkCacheCleared && artworkCleared

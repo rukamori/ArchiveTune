@@ -25,9 +25,13 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadProgress
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +49,7 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamClientUtils
@@ -54,6 +59,7 @@ import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import timber.log.Timber
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -65,17 +71,19 @@ import javax.inject.Singleton
 class DownloadUtil
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @ApplicationContext private val context: Context,
         val database: MusicDatabase,
         val databaseProvider: DatabaseProvider,
         @DownloadCache val downloadCache: Cache,
         @PlayerCache val playerCache: Cache,
+        private val downloadedArtworkRepository: DownloadedArtworkRepository,
     ) {
         private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
         private val downloadExecutor = Executors.newSingleThreadExecutor()
+        private val artworkJobs = mutableMapOf<String, Job>()
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
             OkHttpClient
@@ -205,6 +213,9 @@ class DownloadUtil
                                     set(download.request.id, download.toProgressSnapshot())
                                 }
                             }
+                            if (download.state == Download.STATE_COMPLETED) {
+                                scheduleDownloadedArtwork(download.request.id)
+                            }
                         }
 
                         override fun onDownloadRemoved(
@@ -212,6 +223,10 @@ class DownloadUtil
                             download: Download,
                         ) {
                             downloads.update { map -> map - download.request.id }
+                            cancelDownloadedArtworkJob(download.request.id)
+                            downloadScope.launch {
+                                downloadedArtworkRepository.remove(download.request.id)
+                            }
                         }
                     },
                 )
@@ -227,6 +242,12 @@ class DownloadUtil
                 }
                 downloads.update { current ->
                     result.apply { putAll(current) }
+                }
+                downloadedArtworkRepository.retainForDownloads(result.keys)
+                for (download in result.values) {
+                    if (download.state == Download.STATE_COMPLETED) {
+                        scheduleDownloadedArtwork(download.request.id).join()
+                    }
                 }
             }
             downloadScope.launch {
@@ -302,7 +323,7 @@ class DownloadUtil
             playbackData: YTPlayerUtils.PlaybackData,
         ) {
             downloadScope.launch {
-                runCatching {
+                try {
                     val format = playbackData.format
                     val contentLength = format.contentLength ?: 0L
                     val resolvedCodecs =
@@ -311,21 +332,22 @@ class DownloadUtil
                             .removeSurrounding("\"")
                             .substringBefore("\"")
 
-                    database.query {
-                        upsert(
-                            FormatEntity(
-                                id = mediaId,
-                                itag = format.itag,
-                                mimeType = format.mimeType.split(";")[0],
-                                codecs = resolvedCodecs,
-                                bitrate = format.bitrate,
-                                sampleRate = format.audioSampleRate,
-                                contentLength = contentLength,
-                                loudnessDb = playbackData.audioConfig?.loudnessDb,
-                                perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
-                                playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
-                            ),
-                        )
+                    val artworkUrls =
+                        database.withTransaction {
+                            upsert(
+                                FormatEntity(
+                                    id = mediaId,
+                                    itag = format.itag,
+                                    mimeType = format.mimeType.split(";")[0],
+                                    codecs = resolvedCodecs,
+                                    bitrate = format.bitrate,
+                                    sampleRate = format.audioSampleRate,
+                                    contentLength = contentLength,
+                                    loudnessDb = playbackData.audioConfig?.loudnessDb,
+                                    perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
+                                    playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
+                                ),
+                            )
 
                         val now = LocalDateTime.now()
                         val existing = getSongByIdBlocking(mediaId)?.song
@@ -353,9 +375,59 @@ class DownloadUtil
                                 )
                             }
 
-                        upsert(updatedSong)
-                    }
+                            upsert(updatedSong)
+                            listOf(updatedSong.thumbnailUrl, resolvedThumbnailUrl)
+                        }
+                    scheduleDownloadedArtwork(mediaId, artworkUrls)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Timber.w(exception, "Failed to persist download metadata")
                 }
+            }
+        }
+
+        private fun scheduleDownloadedArtwork(
+            mediaId: String,
+            knownSourceUrls: Collection<String?> = emptyList(),
+        ): Job =
+            synchronized(artworkJobs) {
+                val currentJob = artworkJobs[mediaId]
+                if (currentJob?.isActive == true && knownSourceUrls.isEmpty()) return@synchronized currentJob
+                currentJob?.cancel()
+
+                val job =
+                    downloadScope.launch(start = CoroutineStart.LAZY) {
+                        try {
+                            val databaseThumbnailUrl =
+                                database.withTransaction {
+                                    getSongByIdBlocking(mediaId)?.song?.thumbnailUrl
+                                }
+                            downloadedArtworkRepository.cache(
+                                mediaId = mediaId,
+                                sourceUrls = knownSourceUrls + databaseThumbnailUrl,
+                            )
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (exception: Exception) {
+                            Timber.w(exception, "Failed to cache downloaded artwork")
+                        } finally {
+                            val runningJob = currentCoroutineContext()[Job]
+                            synchronized(artworkJobs) {
+                                if (artworkJobs[mediaId] === runningJob) {
+                                    artworkJobs.remove(mediaId)
+                                }
+                            }
+                        }
+                    }
+                artworkJobs[mediaId] = job
+                job.start()
+                job
+            }
+
+        private fun cancelDownloadedArtworkJob(mediaId: String) {
+            synchronized(artworkJobs) {
+                artworkJobs.remove(mediaId)?.cancel()
             }
         }
 

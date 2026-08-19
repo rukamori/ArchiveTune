@@ -35,6 +35,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
+import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.extensions.*
 import moe.rukamori.archivetune.gatekeeper.GatekeeperResult
 import moe.rukamori.archivetune.gatekeeper.RunGatekeeperCheckUseCase
@@ -80,6 +81,9 @@ class App :
     SingletonImageLoader.Factory {
     @Inject
     lateinit var runGatekeeperCheckUseCase: RunGatekeeperCheckUseCase
+
+    @Inject
+    lateinit var downloadedArtworkRepository: DownloadedArtworkRepository
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -357,6 +361,9 @@ class App :
             .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
             .diskCache(diskCache)
             .diskCachePolicy(imageCacheConfig.policy)
+            .components {
+                add(downloadedArtworkRepository.coilMapper())
+            }
             .build()
     }
 

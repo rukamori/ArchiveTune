@@ -428,6 +428,7 @@ val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
 
 val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
 val QuickPicksKey = stringPreferencesKey("discover")
+val QuickPicksLastLeadItemIdKey = stringPreferencesKey("quickPicksLastLeadItemId")
 
 val NewsLastReadTimestampKey = longPreferencesKey("news_last_read_timestamp")
 val SpeedDialSongIdsKey = stringPreferencesKey("speedDialSongIds")

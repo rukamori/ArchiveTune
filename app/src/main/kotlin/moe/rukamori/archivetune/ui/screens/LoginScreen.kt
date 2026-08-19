@@ -52,6 +52,7 @@ fun buildLoginRoute(startUrl: String? = null): String {
 }
 
 private const val DEFAULT_LOGIN_URL = "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
+private const val YOUTUBE_MUSIC_PACKAGE_NAME = "com.google.android.apps.youtube.music"
 private const val LOGIN_CONTEXT_RETRY_DELAY_MS = 1_000L
 private const val LOGIN_CONTEXT_EXTRACTION_ATTEMPTS = 10
 
@@ -269,6 +270,7 @@ private class YouTubeLoginWebViewClient(
         url: String?,
     ): Boolean {
         val targetUrl = url?.takeIf(String::isNotBlank) ?: return false
+        if (targetUrl.isYouTubeMusicStoreListingUrl()) return true
         if (targetUrl.isWebViewLoadableUrl()) return false
 
         targetUrl.intentWebViewUrl()?.let(view::loadUrl)
@@ -289,9 +291,11 @@ private fun String.intentWebViewUrl(): String? {
     val parsedIntent =
         runCatching { Intent.parseUri(this, Intent.URI_INTENT_SCHEME) }.getOrNull()
     return sequenceOf(
-        parsedIntent?.getStringExtra("browser_fallback_url"),
         parsedIntent?.dataString,
         intentUriAsHttpsUrl(),
+        parsedIntent
+            ?.getStringExtra("browser_fallback_url")
+            ?.takeUnless(String::isYouTubeMusicStoreListingUrl),
     ).firstOrNull { it?.isHttpUrl() == true }
 }
 
@@ -308,6 +312,13 @@ private fun String.intentUriAsHttpsUrl(): String? {
 private fun String.isHttpUrl(): Boolean {
     val scheme = runCatching { Uri.parse(this).scheme?.lowercase() }.getOrNull()
     return scheme == "http" || scheme == "https"
+}
+
+private fun String.isYouTubeMusicStoreListingUrl(): Boolean {
+    val uri = runCatching { Uri.parse(this) }.getOrNull() ?: return false
+    return uri.host.equals("play.google.com", ignoreCase = true) &&
+        uri.path.equals("/store/apps/details", ignoreCase = true) &&
+        uri.getQueryParameter("id") == YOUTUBE_MUSIC_PACKAGE_NAME
 }
 
 private fun String?.isYouTubeUrl(): Boolean {

@@ -20,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.supervisorScope
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
@@ -35,6 +37,7 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
+import moe.rukamori.archivetune.constants.QuickPicksLastLeadItemIdKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -194,6 +197,7 @@ class HomeViewModel
         private val isInitialLoadComplete = MutableStateFlow(false)
         private val loadError = MutableStateFlow<Int?>(null)
         private val isLoadingMore = MutableStateFlow(false)
+        private val homeLoadMutex = Mutex()
 
         private val quickPicksMode =
             context.dataStore.data
@@ -327,6 +331,29 @@ class HomeViewModel
             if (quickPicksIndex < 0) return this to null
 
             return copy(sections = sections.toMutableList().apply { removeAt(quickPicksIndex) }) to sections[quickPicksIndex]
+        }
+
+        private suspend fun updateRemoteQuickPicks(section: HomePage.Section?) {
+            val quickPicksSection = section?.takeIf { it.items.isNotEmpty() } ?: return
+            val lastLeadItemId = context.dataStore.get(QuickPicksLastLeadItemIdKey, "")
+            val nextLeadItemIndex = quickPicksSection.items.indexOfFirst { it.id != lastLeadItemId }
+            val refreshedSection =
+                if (nextLeadItemIndex > 0) {
+                    quickPicksSection.copy(
+                        items =
+                            quickPicksSection.items.drop(nextLeadItemIndex) +
+                                quickPicksSection.items.take(nextLeadItemIndex),
+                    )
+                } else {
+                    quickPicksSection
+                }
+
+            remoteQuickPicks.value = refreshedSection
+            refreshedSection.items.firstOrNull()?.id?.let { leadItemId ->
+                context.dataStore.edit { preferences ->
+                    preferences[QuickPicksLastLeadItemIdKey] = leadItemId
+                }
+            }
         }
 
         private fun List<Song>.toQuickPickSample(): List<Song> =
@@ -473,7 +500,12 @@ class HomeViewModel
         }
 
         private suspend fun load() {
-            if (isLoading.value) return
+            homeLoadMutex.withLock {
+                loadInternal()
+            }
+        }
+
+        private suspend fun loadInternal() {
             isLoading.value = true
             loadError.value = null
 
@@ -525,35 +557,32 @@ class HomeViewModel
                     }
 
                     launch {
-                        YouTube
-                            .home()
-                            .onSuccess { page ->
-                                val filteredPage =
-                                    page.copy(
-                                        chips = filterHomeChips(page.chips),
-                                        sections =
-                                            page.sections.map { section ->
-                                                section.copy(
-                                                    items =
-                                                        filterAiContent(
-                                                            section.items
-                                                                .filterExplicit(hideExplicit)
-                                                                .filterVideo(hideVideo)
-                                                                .filterBlockedArtists(blockedArtistIds),
-                                                            aiContentFilterPolicy,
-                                                        ),
-                                                )
-                                            },
-                                    )
-                                val (pageWithoutQuickPicks, quickPicksSection) = filteredPage.extractQuickPicks()
-                                quickPicksSection?.takeIf { it.items.isNotEmpty() }?.let {
-                                    remoteQuickPicks.value = it
-                                }
-                                homePage.value = pageWithoutQuickPicks
-                            }.onFailure {
-                                reportException(it)
+                        val page =
+                            YouTube.home().getOrElse { throwable ->
+                                reportException(throwable)
                                 loadError.value = R.string.error_unknown
+                                return@launch
                             }
+                        val filteredPage =
+                            page.copy(
+                                chips = filterHomeChips(page.chips),
+                                sections =
+                                    page.sections.map { section ->
+                                        section.copy(
+                                            items =
+                                                filterAiContent(
+                                                    section.items
+                                                        .filterExplicit(hideExplicit)
+                                                        .filterVideo(hideVideo)
+                                                        .filterBlockedArtists(blockedArtistIds),
+                                                    aiContentFilterPolicy,
+                                                ),
+                                        )
+                                    },
+                            )
+                        val (pageWithoutQuickPicks, quickPicksSection) = filteredPage.extractQuickPicks()
+                        updateRemoteQuickPicks(quickPicksSection)
+                        homePage.value = pageWithoutQuickPicks
                     }
                 }
 
@@ -795,8 +824,7 @@ class HomeViewModel
                                     )
                                 },
                         )
-                    val (pageWithoutQuickPicks, quickPicksSection) = mergedPage.extractQuickPicks()
-                    quickPicksSection?.let { remoteQuickPicks.value = it }
+                    val (pageWithoutQuickPicks, _) = mergedPage.extractQuickPicks()
                     homePage.value = pageWithoutQuickPicks
                 } finally {
                     isLoadingMore.value = false
@@ -992,6 +1020,8 @@ class HomeViewModel
                                     clearAccountData()
                                     return@collect
                                 }
+
+                                load()
 
                                 val refreshGeneration = beginAccountRefresh()
                                 supervisorScope {
