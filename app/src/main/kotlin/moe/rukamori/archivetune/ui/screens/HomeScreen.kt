@@ -344,7 +344,7 @@ private fun HomeContent(
                             contentType = "section_header",
                         ) {
                             HomeSectionHeader(
-                                title = remoteQuickPicks.title,
+                                title = stringResource(R.string.quick_picks),
                                 modifier = Modifier.animateItem(),
                             )
                         }

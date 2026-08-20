@@ -37,7 +37,6 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
-import moe.rukamori.archivetune.constants.QuickPicksLastLeadItemIdKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -48,6 +47,7 @@ import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomePresentationPreferences
 import moe.rukamori.archivetune.home.HomeScreenState
 import moe.rukamori.archivetune.home.HomeUiState
+import moe.rukamori.archivetune.home.LoadPersonalizedQuickPicksUseCase
 import moe.rukamori.archivetune.home.ObserveHomePresentationPreferencesUseCase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AccountChannel
@@ -191,6 +191,7 @@ class HomeViewModel
         observeAiContentFilter: ObserveAiContentFilterUseCase,
         private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
         private val filterAiContent: FilterAiContentUseCase,
+        private val loadPersonalizedQuickPicksUseCase: LoadPersonalizedQuickPicksUseCase,
     ) : ViewModel() {
         private val isRefreshing = MutableStateFlow(false)
         private val isLoading = MutableStateFlow(false)
@@ -333,27 +334,26 @@ class HomeViewModel
             return copy(sections = sections.toMutableList().apply { removeAt(quickPicksIndex) }) to sections[quickPicksIndex]
         }
 
-        private suspend fun updateRemoteQuickPicks(section: HomePage.Section?) {
-            val quickPicksSection = section?.takeIf { it.items.isNotEmpty() } ?: return
-            val lastLeadItemId = context.dataStore.get(QuickPicksLastLeadItemIdKey, "")
-            val nextLeadItemIndex = quickPicksSection.items.indexOfFirst { it.id != lastLeadItemId }
-            val refreshedSection =
-                if (nextLeadItemIndex > 0) {
-                    quickPicksSection.copy(
-                        items =
-                            quickPicksSection.items.drop(nextLeadItemIndex) +
-                                quickPicksSection.items.take(nextLeadItemIndex),
-                    )
-                } else {
-                    quickPicksSection
+        private suspend fun loadPersonalizedQuickPicks() {
+            if (quickPicksMode.first() != QuickPicks.QUICK_PICKS) return
+            val excludedSongIds = remoteQuickPicks.value?.items.orEmpty().mapTo(mutableSetOf(), YTItem::id)
+            loadPersonalizedQuickPicksUseCase(excludedSongIds)
+                .onSuccess { songs ->
+                    if (songs.isNotEmpty()) {
+                        remoteQuickPicks.value =
+                            HomePage.Section(
+                                title = "",
+                                label = null,
+                                thumbnail = null,
+                                endpoint = null,
+                                items = songs,
+                                numItemsPerColumn = 4,
+                            )
+                    }
+                }.onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    reportException(throwable)
                 }
-
-            remoteQuickPicks.value = refreshedSection
-            refreshedSection.items.firstOrNull()?.id?.let { leadItemId ->
-                context.dataStore.edit { preferences ->
-                    preferences[QuickPicksLastLeadItemIdKey] = leadItemId
-                }
-            }
         }
 
         private fun List<Song>.toQuickPickSample(): List<Song> =
@@ -518,6 +518,7 @@ class HomeViewModel
                     val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
                     launch { loadSpeedDialItems() }
+                    launch { loadPersonalizedQuickPicks() }
                     launch {
                         forgottenFavorites.value =
                             database
@@ -580,8 +581,7 @@ class HomeViewModel
                                         )
                                     },
                             )
-                        val (pageWithoutQuickPicks, quickPicksSection) = filteredPage.extractQuickPicks()
-                        updateRemoteQuickPicks(quickPicksSection)
+                        val (pageWithoutQuickPicks, _) = filteredPage.extractQuickPicks()
                         homePage.value = pageWithoutQuickPicks
                     }
                 }
@@ -872,8 +872,7 @@ class HomeViewModel
                                     )
                                 },
                         )
-                    val (pageWithoutQuickPicks, quickPicksSection) = filteredPage.extractQuickPicks()
-                    remoteQuickPicks.value = quickPicksSection
+                    val (pageWithoutQuickPicks, _) = filteredPage.extractQuickPicks()
                     homePage.value = pageWithoutQuickPicks
                     selectedChip.value = chip
                 }
