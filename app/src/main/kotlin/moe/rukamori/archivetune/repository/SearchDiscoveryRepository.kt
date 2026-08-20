@@ -7,6 +7,8 @@
 
 package moe.rukamori.archivetune.repository
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -24,6 +26,7 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
+import moe.rukamori.archivetune.utils.isLowRamDevice
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,42 +44,59 @@ class SearchDiscoveryRepository
     @Inject
     constructor(
         private val database: MusicDatabase,
+        @ApplicationContext context: Context,
     ) {
+        private val isConstrainedDevice = context.isLowRamDevice()
+
         suspend fun loadDiscovery(): Result<SearchDiscoveryData> =
             withContext(Dispatchers.IO) {
                 try {
-                    coroutineScope {
-                        val explorePageDeferred = async { YouTube.explore().getOrThrow() }
-                        val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
-                        val suggestedSongsDeferred = async { loadSuggestedSongs() }
-                        val searchedAlbumsDeferred =
-                            async {
-                                searchItems<AlbumItem>(
-                                    query = TopAlbumsQuery,
-                                    filter = YouTube.SearchFilter.FILTER_ALBUM,
+                    val data =
+                        if (isConstrainedDevice) {
+                            loadLightweightDiscovery()
+                        } else {
+                            coroutineScope {
+                                val explorePageDeferred = async { YouTube.explore().getOrThrow() }
+                                val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
+                                val suggestedSongsDeferred = async { loadSuggestedSongs() }
+                                val searchedAlbumsDeferred =
+                                    async {
+                                        searchItems<AlbumItem>(
+                                            query = TopAlbumsQuery,
+                                            filter = YouTube.SearchFilter.FILTER_ALBUM,
+                                        )
+                                    }
+                                val suggestedArtistsDeferred = async { loadSuggestedArtists() }
+
+                                val explorePage = explorePageDeferred.await()
+                                val chartsPage = chartsPageDeferred.await()
+
+                                SearchDiscoveryData(
+                                    moodAndGenres = explorePage.moodAndGenres,
+                                    newReleaseAlbums = explorePage.newReleaseAlbums,
+                                    chartSections = chartsPage.sections,
+                                    suggestedSongs = suggestedSongsDeferred.await(),
+                                    searchedAlbums = searchedAlbumsDeferred.await(),
+                                    suggestedArtists = suggestedArtistsDeferred.await(),
                                 )
                             }
-                        val suggestedArtistsDeferred = async { loadSuggestedArtists() }
-
-                        val explorePage = explorePageDeferred.await()
-                        val chartsPage = chartsPageDeferred.await()
-
-                        Result.success(
-                            SearchDiscoveryData(
-                                moodAndGenres = explorePage.moodAndGenres,
-                                newReleaseAlbums = explorePage.newReleaseAlbums,
-                                chartSections = chartsPage.sections,
-                                suggestedSongs = suggestedSongsDeferred.await(),
-                                searchedAlbums = searchedAlbumsDeferred.await(),
-                                suggestedArtists = suggestedArtistsDeferred.await(),
-                            ),
-                        )
-                    }
+                        }
+                    Result.success(data)
                 } catch (throwable: Throwable) {
                     if (throwable is CancellationException) throw throwable
                     Result.failure(throwable)
                 }
             }
+
+        private fun loadLightweightDiscovery(): SearchDiscoveryData =
+            SearchDiscoveryData(
+                moodAndGenres = emptyList(),
+                newReleaseAlbums = emptyList(),
+                chartSections = emptyList(),
+                suggestedSongs = emptyList(),
+                searchedAlbums = emptyList(),
+                suggestedArtists = emptyList(),
+            )
 
         private suspend inline fun <reified T> searchItems(
             query: String,
