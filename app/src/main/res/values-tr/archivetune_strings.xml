@@ -438,6 +438,9 @@
     <string name="lyrics_background_default">Varsayılan</string>
     <string name="mini_player_background_style">Küçük oynatıcı arka plan stili</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f10143dab (Translated using Weblate (Turkish))
     <string name="player_design_v6">Expresif</string>
     <string name="player_design_v7">Sürükleyici</string>
     <string name="player_design_v8">Gelişmiş Sürükleyici</string>
@@ -507,6 +510,7 @@
     <string name="audio_crossfade_dialog_title">Çapraz geçiş süresi</string>
     <string name="audio_crossfade_seconds">%1$s sn</string>
     <string name="crossfade_gapless_title">Boşluk albümleri atla</string>
+<<<<<<< HEAD
     <string name="crossfade_gapless_description">Aynı albümden ardışık şarkılar arasında çapraz geçiş kullanmayın.</string>
     <string name="settings_appearance_subtitle">Temalar, düzen ve görsel stiller</string>
     <string name="settings_playback_title">Playback</string>
@@ -696,4 +700,6 @@
 >>>>>>> 5132b947d (Translated using Weblate (Turkish))
 =======
 >>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
+=======
+>>>>>>> f10143dab (Translated using Weblate (Turkish))
 </resources>
