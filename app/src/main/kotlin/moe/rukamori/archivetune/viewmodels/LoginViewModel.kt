@@ -22,7 +22,9 @@ import moe.rukamori.archivetune.auth.GenerateYouTubePoTokensUseCase
 import moe.rukamori.archivetune.auth.MissingYouTubeDataSyncIdException
 import moe.rukamori.archivetune.auth.SaveYouTubePoTokensUseCase
 import moe.rukamori.archivetune.auth.UpdateYouTubeLoginContextUseCase
+import moe.rukamori.archivetune.auth.UpdateYouTubeLoginSessionChannelUseCase
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
+import moe.rukamori.archivetune.innertube.YouTube
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -31,6 +33,10 @@ sealed interface LoginScreenState {
 
     data class Success(
         val account: LoginAccountUiModel,
+    ) : LoginScreenState
+
+    data class ChannelSelection(
+        val channels: List<AccountChannelUiModel>,
     ) : LoginScreenState
 
     data object Empty : LoginScreenState
@@ -61,6 +67,7 @@ class LoginViewModel
         private val updateYouTubeLoginContext: UpdateYouTubeLoginContextUseCase,
         private val generateYouTubePoTokens: GenerateYouTubePoTokensUseCase,
         private val saveYouTubePoTokens: SaveYouTubePoTokensUseCase,
+        private val updateYouTubeLoginSessionChannel: UpdateYouTubeLoginSessionChannelUseCase,
     ) : ViewModel() {
         private val _screenState = MutableStateFlow<LoginScreenState>(LoginScreenState.Empty)
         val screenState: StateFlow<LoginScreenState> = _screenState.asStateFlow()
@@ -131,15 +138,30 @@ class LoginViewModel
                             sessionId = session.authState.sessionId,
                             visitorData = session.authState.visitorData,
                         )
-                        _screenState.value =
-                            LoginScreenState.Success(
-                                LoginAccountUiModel(
-                                    name = session.accountName,
-                                    email = session.accountEmail,
-                                    channelHandle = session.accountChannelHandle,
-                                    dataSyncId = session.authState.dataSyncId.orEmpty(),
-                                ),
+                        val accountChannels = YouTube.accountChannels().getOrNull()?.map { channel ->
+                            AccountChannelUiModel(
+                                name = channel.name,
+                                byline = channel.byline.orEmpty(),
+                                channelHandle = channel.channelHandle.orEmpty(),
+                                thumbnailUrl = channel.thumbnailUrl.orEmpty(),
+                                dataSyncId = channel.dataSyncId,
+                                isSelected = channel.isSelected,
                             )
+                        }?.takeIf { it.size > 1 }
+
+                        if (accountChannels != null) {
+                            _screenState.value = LoginScreenState.ChannelSelection(accountChannels)
+                        } else {
+                            _screenState.value =
+                                LoginScreenState.Success(
+                                    LoginAccountUiModel(
+                                        name = session.accountName,
+                                        email = session.accountEmail,
+                                        channelHandle = session.accountChannelHandle,
+                                        dataSyncId = session.authState.dataSyncId.orEmpty(),
+                                    ),
+                                )
+                        }
                     }.onFailure { throwable ->
                         Timber.e(throwable, "Failed to complete YouTube login")
                         _screenState.value =
@@ -152,6 +174,26 @@ class LoginViewModel
                             )
                     }
                 }
+        }
+
+        fun selectChannel(channel: AccountChannelUiModel) {
+            viewModelScope.launch {
+                updateYouTubeLoginSessionChannel(
+                    dataSyncId = channel.dataSyncId,
+                    accountName = channel.name,
+                    accountEmail = channel.byline,
+                    accountChannelHandle = channel.channelHandle,
+                )
+                _screenState.value =
+                    LoginScreenState.Success(
+                        LoginAccountUiModel(
+                            name = channel.name,
+                            email = channel.byline,
+                            channelHandle = channel.channelHandle,
+                            dataSyncId = channel.dataSyncId,
+                        ),
+                    )
+            }
         }
 
         private suspend fun persistPoTokens(

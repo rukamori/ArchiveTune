@@ -165,6 +165,24 @@ class YouTubeLoginRepository
             }
         }
 
+        suspend fun updateLoginSessionChannel(
+            dataSyncId: String,
+            accountName: String,
+            accountEmail: String,
+            accountChannelHandle: String,
+        ) {
+            withContext(Dispatchers.IO) {
+                val normalizedDataSyncId = dataSyncId.normalizeDataSyncId() ?: return@withContext
+                context.dataStore.edit { preferences ->
+                    preferences[DataSyncIdKey] = normalizedDataSyncId
+                    preferences[AccountNameKey] = accountName
+                    if (accountEmail.isNotBlank()) preferences[AccountEmailKey] = accountEmail
+                    if (accountChannelHandle.isNotBlank()) preferences[AccountChannelHandleKey] = accountChannelHandle
+                }
+                YouTube.dataSyncId = normalizedDataSyncId
+            }
+        }
+
         suspend fun savePoTokens(
             gvsToken: String?,
             visitorData: String?,
@@ -302,6 +320,24 @@ class SaveYouTubePoTokensUseCase
                 visitorData = visitorData,
             )
         }
+    }
+
+class UpdateYouTubeLoginSessionChannelUseCase
+    @Inject
+    constructor(
+        private val repository: YouTubeLoginRepository,
+    ) {
+        suspend operator fun invoke(
+            dataSyncId: String,
+            accountName: String,
+            accountEmail: String,
+            accountChannelHandle: String,
+        ) = repository.updateLoginSessionChannel(
+            dataSyncId = dataSyncId,
+            accountName = accountName,
+            accountEmail = accountEmail,
+            accountChannelHandle = accountChannelHandle,
+        )
     }
 
 private suspend inline fun <T> runCatchingPreservingCancellation(crossinline block: suspend () -> T): Result<T> =
