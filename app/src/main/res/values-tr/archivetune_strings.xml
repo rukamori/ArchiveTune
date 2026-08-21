@@ -293,6 +293,9 @@
     <string name="aod_customize_show_controls">Kontrolleri göster</string>
     <string name="aod_customize_show_exit_button">Çıkış tuşunu göster</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
     <string name="music_recognition_background_description">Etkinleştirildiğinde, Hızlı Ayarlar kutucuğu ArchiveTune\'u açmadan bu cihazda oynatılan sesi tanır.</string>
     <string name="history_remote_loading">Uzak geçmiş senkronize ediliyor</string>
     <string name="history_remote_empty_title">Hiç uzak geçmiş mevcut değil</string>
@@ -434,6 +437,7 @@
     <string name="lyrics_background_style">Şarkı sözü arka plan stili</string>
     <string name="lyrics_background_default">Varsayılan</string>
     <string name="mini_player_background_style">Küçük oynatıcı arka plan stili</string>
+<<<<<<< HEAD
     <string name="player_design_v6">Expresif</string>
     <string name="player_design_v7">Sürükleyici</string>
     <string name="player_design_v8">Gelişmiş Sürükleyici</string>
@@ -690,4 +694,6 @@
     <string name="ai_model">Model</string>
 =======
 >>>>>>> 5132b947d (Translated using Weblate (Turkish))
+=======
+>>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
 </resources>
