@@ -37,7 +37,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.RedownloadOnRestoreKey
 import moe.rukamori.archivetune.backup.BackupArchiveCategory
 import moe.rukamori.archivetune.backup.BackupArchiveRepository
 import moe.rukamori.archivetune.backup.BackupArchiveStep
@@ -81,7 +80,6 @@ enum class BackupCategory {
     LIBRARY,
     ACCOUNT,
     SETTINGS,
-    DOWNLOADS,
 }
 
 data class BackupValidationResult(
@@ -398,7 +396,6 @@ class BackupRestoreViewModel
                     val includeSettings = BackupCategory.SETTINGS in categories
                     val includeAccount = BackupCategory.ACCOUNT in categories
                     val includeLibrary = BackupCategory.LIBRARY in categories
-                    val includeDownloads = BackupCategory.DOWNLOADS in categories
                     val settingsExcludedKeys = if (includeAccount) emptySet() else ACCOUNT_PREF_KEYS
                     emitProgress(
                         title = title,
@@ -516,15 +513,6 @@ class BackupRestoreViewModel
                         context.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
                     } catch (_: Exception) {
                     }
-
-                    if (includeDownloads) {
-                        runCatching {
-                            context.dataStore.edit { prefs ->
-                                prefs[RedownloadOnRestoreKey] = true
-                            }
-                        }
-                    }
-
                     _backupRestoreProgress.value = null
                     context.startActivity(Intent(context, MainActivity::class.java))
                     exitProcess(0)
@@ -824,7 +812,6 @@ class BackupRestoreViewModel
                         }
                         if (hasDb) {
                             categories.add(BackupCategory.LIBRARY)
-                            categories.add(BackupCategory.DOWNLOADS)
                         }
                         if (categories.isEmpty()) {
                             return@withContext BackupValidationResult(

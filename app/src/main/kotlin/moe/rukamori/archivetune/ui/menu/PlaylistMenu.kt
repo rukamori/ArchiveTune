@@ -595,7 +595,7 @@ public fun PlaylistMenu(
                             Intent().apply {
                                 action = Intent.ACTION_SEND
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${dbPlaylist?.playlist?.browseId}")
+                                putExtra(Intent.EXTRA_TEXT, dbPlaylist?.playlist?.browseId?.let { moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildPlaylistShareUrl(it) }.orEmpty())
                             }
                         context.startActivity(Intent.createChooser(intent, null))
                     },
@@ -1015,7 +1015,7 @@ public fun PlaylistMenu(
                                     Intent().apply {
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, shareLink)
+                                        putExtra(Intent.EXTRA_TEXT, moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.fromYouTubeMusicShareUrl(shareLink))
                                     }
                                 context.startActivity(Intent.createChooser(intent, null))
                                 onDismiss()

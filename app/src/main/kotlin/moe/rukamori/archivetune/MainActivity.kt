@@ -289,6 +289,7 @@ import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
+import moe.rukamori.archivetune.utils.ArchiveTuneShareLinks
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -568,47 +569,6 @@ class MainActivity : ComponentActivity() {
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
             LaunchedEffect(Unit) {
-                while (playerConnection == null) {
-                    delay(100)
-                }
-                delay(500)
-
-                try {
-                    val redownload = withContext(Dispatchers.IO) {
-                        dataStore.data.first()[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] ?: false
-                    }
-                    if (redownload) {
-                        val downloaded = withContext(Dispatchers.IO) {
-                            database.downloadedSongsList()
-                        }
-                        if (downloaded.isNotEmpty()) {
-                            downloaded.forEach { song ->
-                                val downloadRequest = androidx.media3.exoplayer.offline.DownloadRequest
-                                    .Builder(song.id, song.id.toUri())
-                                    .setCustomCacheKey(song.id)
-                                    .setData(song.title.toByteArray())
-                                    .build()
-                                androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
-                                    this@MainActivity,
-                                    moe.rukamori.archivetune.playback.ExoDownloadService::class.java,
-                                    downloadRequest,
-                                    false,
-                                )
-                            }
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Re-downloading ${downloaded.size} offline songs...", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        withContext(Dispatchers.IO) {
-                            dataStore.edit { prefs ->
-                                prefs[moe.rukamori.archivetune.constants.RedownloadOnRestoreKey] = false
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    moe.rukamori.archivetune.utils.reportException(e)
-                }
-
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
@@ -2680,9 +2640,17 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        when (val path = uri.pathSegments.firstOrNull()) {
+        val deepLinkUri =
+            ArchiveTuneShareLinks.toYouTubeMusicUri(uri)
+                ?: if (ArchiveTuneShareLinks.isArchiveTuneShareUri(uri)) {
+                    return
+                } else {
+                    uri
+                }
+
+        when (val path = deepLinkUri.pathSegments.firstOrNull()) {
             "playlist" -> {
-                uri.getQueryParameter("list")?.let { playlistId ->
+                deepLinkUri.getQueryParameter("list")?.let { playlistId ->
                     if (playlistId.startsWith("OLAK5uy_")) {
                         coroutineScope.launch {
                             YouTube
@@ -2700,13 +2668,13 @@ class MainActivity : ComponentActivity() {
             }
 
             "browse" -> {
-                uri.lastPathSegment?.let { browseId ->
+                deepLinkUri.lastPathSegment?.let { browseId ->
                     navController.navigate("album/$browseId")
                 }
             }
 
             "channel", "c" -> {
-                uri.lastPathSegment?.let { artistId ->
+                deepLinkUri.lastPathSegment?.let { artistId ->
                     navController.navigate("artist/$artistId")
                 }
             }
@@ -2714,12 +2682,12 @@ class MainActivity : ComponentActivity() {
             else -> {
                 val videoId =
                     when {
-                        path == "watch" -> uri.getQueryParameter("v")
-                        uri.host == "youtu.be" -> uri.pathSegments.firstOrNull()
+                        path == "watch" -> deepLinkUri.getQueryParameter("v")
+                        deepLinkUri.host == "youtu.be" -> deepLinkUri.pathSegments.firstOrNull()
                         else -> null
                     }
-                val playlistId = uri.getQueryParameter("list")
-                val shouldShufflePlaylist = uri.requestsShuffledPlayback()
+                val playlistId = deepLinkUri.getQueryParameter("list")
+                val shouldShufflePlaylist = deepLinkUri.requestsShuffledPlayback()
 
                 videoId?.let { vid ->
                     coroutineScope.launch {
@@ -2859,14 +2827,12 @@ class MainActivity : ComponentActivity() {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings
-                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads
                             }
                         val descRes =
                             when (category) {
                                 BackupCategory.LIBRARY -> R.string.backup_category_library_desc
                                 BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
                                 BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
-                                BackupCategory.DOWNLOADS -> R.string.backup_category_downloads_desc
                             }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),

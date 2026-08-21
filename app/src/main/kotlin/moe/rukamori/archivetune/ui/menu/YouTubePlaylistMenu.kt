@@ -995,7 +995,7 @@ fun YouTubePlaylistMenu(
                                     Intent().apply {
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, playlist.shareLink)
+                                        putExtra(Intent.EXTRA_TEXT, moe.rukamori.archivetune.utils.ArchiveTuneShareLinks.buildPlaylistShareUrl(playlist.id))
                                     }
                                 context.startActivity(Intent.createChooser(intent, null))
                                 onDismiss()
