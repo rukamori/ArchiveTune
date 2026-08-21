@@ -31,6 +31,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import javax.imageio.ImageIO
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
@@ -103,43 +105,42 @@ abstract class GenerateIconPackTask : DefaultTask() {
                 val analysis = analyzeSvg(sourceFile)
                 val hasIntegratedBackground =
                     when (backgroundMode.lowercase()) {
-                        "" -> {
-                            analysis.hasIntegratedBackground
-                        }
-
-                        IntegratedBackgroundMode -> {
-                            true
-                        }
-
-                        TransparentBackgroundMode -> {
-                            false
-                        }
-
+                        "" -> false
+                        IntegratedBackgroundMode -> true
+                        TransparentBackgroundMode -> false
                         else -> {
                             throw GradleException(
                                 "IconPack BackgroundMode \"$backgroundMode\" for Id \"$id\" must be " +
-                                    "\"$IntegratedBackgroundMode\" or \"$TransparentBackgroundMode\".",
+                                        "\"$IntegratedBackgroundMode\" or \"$TransparentBackgroundMode\".",
                             )
                         }
                     }
+
                 val drawableName = "icon_pack_$hash"
                 val targetFile = File(resourcesDirectory, "drawable-nodpi/$drawableName.png")
                 targetFile.parentFile.mkdirs()
-                rasterizeSvg(sourceFile, targetFile)
+
+                // Treat submitted SVGs as foreground artwork by default.
+                // A full-canvas SVG background is stripped unless the metadata
+                // explicitly opts into BackgroundMode=integrated.
+                rasterizeSvg(
+                    sourceFile = sourceFile,
+                    targetFile = targetFile,
+                    stripFullCanvasBackground = !hasIntegratedBackground,
+                )
+
                 val backgroundColor =
-                    if (configuredBackgroundColor.isEmpty()) {
-                        if (hasIntegratedBackground) {
-                            targetFile.readOpaqueCornerColor()
-                                ?: analysis.recommendedBackgroundColor
-                        } else {
-                            analysis.recommendedBackgroundColor
-                        }
-                    } else {
+                    if (configuredBackgroundColor.isNotEmpty()) {
                         configuredBackgroundColor.toOpaqueColor()
                             ?: throw GradleException(
                                 "IconPack BackgroundColor \"$configuredBackgroundColor\" for Id \"$id\" " +
-                                    "must be a literal hex color.",
+                                        "must be a literal hex color.",
                             )
+                    } else if (hasIntegratedBackground) {
+                        targetFile.readOpaqueCornerColor()
+                            ?: analysis.recommendedBackgroundColor
+                    } else {
+                        DefaultTransparentIconBackground
                     }
 
                 mapOf(
@@ -163,11 +164,11 @@ abstract class GenerateIconPackTask : DefaultTask() {
             val runtimeCatalog =
                 catalog.map { entry ->
                     entry -
-                        setOf(
-                            "adaptiveIconResourceName",
-                            "roundAdaptiveIconResourceName",
-                            "backgroundColor",
-                        )
+                            setOf(
+                                "adaptiveIconResourceName",
+                                "roundAdaptiveIconResourceName",
+                                "backgroundColor",
+                            )
                 }
             writeText(JsonOutput.prettyPrint(JsonOutput.toJson(runtimeCatalog)) + System.lineSeparator())
         }
@@ -204,9 +205,16 @@ abstract class GenerateIconPackTask : DefaultTask() {
     private fun rasterizeSvg(
         sourceFile: File,
         targetFile: File,
+        stripFullCanvasBackground: Boolean,
     ) {
         val output = ByteArrayOutputStream()
         try {
+            val document = parseSvg(sourceFile)
+
+            if (stripFullCanvasBackground) {
+                removeFullCanvasBackgrounds(document, sourceFile)
+            }
+
             val transcoder =
                 PNGTranscoder().apply {
                     addTranscodingHint(SVGAbstractTranscoder.KEY_WIDTH, IconRasterSize.toFloat())
@@ -214,18 +222,18 @@ abstract class GenerateIconPackTask : DefaultTask() {
                     addTranscodingHint(SVGAbstractTranscoder.KEY_EXECUTE_ONLOAD, false)
                     addTranscodingHint(SVGAbstractTranscoder.KEY_ALLOW_EXTERNAL_RESOURCES, false)
                 }
-            sourceFile.inputStream().buffered().use { input ->
-                transcoder.transcode(
-                    TranscoderInput(input),
-                    TranscoderOutput(output),
-                )
-            }
+
+            transcoder.transcode(
+                TranscoderInput(document),
+                TranscoderOutput(output),
+            )
         } catch (error: Exception) {
             throw GradleException(
                 "Unable to rasterize IconPack Source \"${sourceFile.name}\".",
                 error,
             )
         }
+
         val png = output.toByteArray()
         if (png.size < PngSignature.size ||
             PngSignature.indices.any { index -> png[index] != PngSignature[index] }
@@ -234,7 +242,119 @@ abstract class GenerateIconPackTask : DefaultTask() {
                 "IconPack Source \"${sourceFile.name}\" produced an invalid PNG.",
             )
         }
+
         targetFile.writeBytes(png)
+
+        // Only normalize transparent foreground artwork. Integrated icons keep
+        // their original full-canvas composition.
+        if (stripFullCanvasBackground) {
+            normalizeIconRaster(targetFile)
+        }
+    }
+
+    private fun removeFullCanvasBackgrounds(
+        document: Document,
+        sourceFile: File,
+    ) {
+        val root = document.documentElement
+        val viewBox = parseViewBox(root, sourceFile)
+        val nodes = mutableListOf<Element>()
+
+        val paths = document.getElementsByTagNameNS(SvgNamespace, "path")
+        for (index in 0 until paths.length) {
+            (paths.item(index) as? Element)?.let(nodes::add)
+        }
+
+        val rectangles = document.getElementsByTagNameNS(SvgNamespace, "rect")
+        for (index in 0 until rectangles.length) {
+            (rectangles.item(index) as? Element)?.let(nodes::add)
+        }
+
+        nodes.forEach { element ->
+            if (!element.isVisible()) return@forEach
+
+            val coversCanvas =
+                if (element.localName.equals("rect", ignoreCase = true)) {
+                    element.rectangleCoversViewBox(viewBox)
+                } else {
+                    element.pathCoversViewBox(viewBox)
+                }
+
+            if (coversCanvas) {
+                element.parentNode?.removeChild(element)
+            }
+        }
+    }
+
+    private fun normalizeIconRaster(targetFile: File) {
+        val image =
+            ImageIO.read(targetFile)
+                ?: throw GradleException("Generated icon raster \"${targetFile.name}\" is not readable.")
+
+        val alphaThreshold = 8
+        var minX = image.width
+        var minY = image.height
+        var maxX = -1
+        var maxY = -1
+
+        for (y in 0 until image.height) {
+            for (x in 0 until image.width) {
+                val alpha = image.getRGB(x, y) ushr AlphaChannelShift and ColorChannelMask
+                if (alpha > alphaThreshold) {
+                    if (x < minX) minX = x
+                    if (y < minY) minY = y
+                    if (x > maxX) maxX = x
+                    if (y > maxY) maxY = y
+                }
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            throw GradleException("Generated icon raster \"${targetFile.name}\" contains no visible artwork.")
+        }
+
+        val cropWidth = maxX - minX + 1
+        val cropHeight = maxY - minY + 1
+        val crop = image.getSubimage(minX, minY, cropWidth, cropHeight)
+
+        val targetArtworkSize = (IconRasterSize * ForegroundArtworkScale).toInt()
+        val scale = minOf(
+            targetArtworkSize.toDouble() / cropWidth,
+            targetArtworkSize.toDouble() / cropHeight,
+        )
+        val scaledWidth = maxOf(1, (cropWidth * scale).toInt())
+        val scaledHeight = maxOf(1, (cropHeight * scale).toInt())
+
+        val normalized =
+            BufferedImage(
+                IconRasterSize,
+                IconRasterSize,
+                BufferedImage.TYPE_INT_ARGB,
+            )
+
+        val graphics = normalized.createGraphics()
+        try {
+            graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC,
+            )
+            graphics.setRenderingHint(
+                RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY,
+            )
+            graphics.drawImage(
+                crop,
+                (IconRasterSize - scaledWidth) / 2,
+                (IconRasterSize - scaledHeight) / 2,
+                scaledWidth,
+                scaledHeight,
+                null,
+            )
+        } finally {
+            graphics.dispose()
+        }
+
+        ImageIO.write(normalized, "png", targetFile)
     }
 
     private fun analyzeSvg(sourceFile: File): SvgAnalysis {
@@ -274,10 +394,10 @@ abstract class GenerateIconPackTask : DefaultTask() {
 
         val hasIntegratedBackground =
             hasFullCanvasShape ||
-                (
-                    paths.length + rectangles.length >= ComplexArtworkPathThreshold &&
-                        colors.toSet().size >= ComplexArtworkColorThreshold
-                )
+                    (
+                            paths.length + rectangles.length >= ComplexArtworkPathThreshold &&
+                                    colors.toSet().size >= ComplexArtworkColorThreshold
+                            )
         val dominantColor =
             colors
                 .groupingBy { color -> color.uppercase() }
@@ -369,23 +489,53 @@ abstract class GenerateIconPackTask : DefaultTask() {
             .orEmpty()
 
     private fun Element.pathCoversViewBox(viewBox: ViewBox): Boolean {
-        val pathData = getAttribute("d")
+        val pathData = getAttribute("d").trim()
+        val tolerance = maxOf(viewBox.width, viewBox.height) * FullCanvasToleranceRatio
+
+        // Handles the compact rectangle form used by exported SVGs, e.g.
+        // M0 0h512v512H0Z.
+        val compactRectangle =
+            Regex(
+                """(?i)^M\\s*([-+]?\\d*\\.?\\d+)\\s+([-+]?\\d*\\.?\\d+)""" +
+                        """\\s*[hH]\\s*([-+]?\\d*\\.?\\d+)""" +
+                        """\\s*[vV]\\s*([-+]?\\d*\\.?\\d+)""" +
+                        """\\s*[hH]\\s*([-+]?\\d*\\.?\\d+)\\s*[zZ]$""",
+            ).matchEntire(pathData)
+
+        if (compactRectangle != null) {
+            val startX = compactRectangle.groupValues[1].toDoubleOrNull() ?: return false
+            val startY = compactRectangle.groupValues[2].toDoubleOrNull() ?: return false
+            val dx = compactRectangle.groupValues[3].toDoubleOrNull() ?: return false
+            val dy = compactRectangle.groupValues[4].toDoubleOrNull() ?: return false
+            val finalX = compactRectangle.groupValues[5].toDoubleOrNull() ?: return false
+
+            val endX = startX + dx
+            val endY = startY + dy
+
+            return startX.approximatelyEquals(viewBox.minX, tolerance) &&
+                    startY.approximatelyEquals(viewBox.minY, tolerance) &&
+                    endX.approximatelyEquals(viewBox.maxX, tolerance) &&
+                    endY.approximatelyEquals(viewBox.maxY, tolerance) &&
+                    finalX.approximatelyEquals(viewBox.minX, tolerance)
+        }
+
         val coordinates =
             NumberPattern
                 .findAll(pathData)
                 .take(FullCanvasCoordinateCount)
                 .mapNotNull { match -> match.value.toDoubleOrNull() }
                 .toList()
+
         if (coordinates.size != FullCanvasCoordinateCount) return false
-        val tolerance = maxOf(viewBox.width, viewBox.height) * FullCanvasToleranceRatio
+
         return coordinates[0].approximatelyEquals(viewBox.minX, tolerance) &&
-            coordinates[1].approximatelyEquals(viewBox.minY, tolerance) &&
-            coordinates[2].approximatelyEquals(viewBox.maxX, tolerance) &&
-            coordinates[3].approximatelyEquals(viewBox.minY, tolerance) &&
-            coordinates[4].approximatelyEquals(viewBox.maxX, tolerance) &&
-            coordinates[5].approximatelyEquals(viewBox.maxY, tolerance) &&
-            coordinates[6].approximatelyEquals(viewBox.minX, tolerance) &&
-            coordinates[7].approximatelyEquals(viewBox.maxY, tolerance)
+                coordinates[1].approximatelyEquals(viewBox.minY, tolerance) &&
+                coordinates[2].approximatelyEquals(viewBox.maxX, tolerance) &&
+                coordinates[3].approximatelyEquals(viewBox.minY, tolerance) &&
+                coordinates[4].approximatelyEquals(viewBox.maxX, tolerance) &&
+                coordinates[5].approximatelyEquals(viewBox.maxY, tolerance) &&
+                coordinates[6].approximatelyEquals(viewBox.minX, tolerance) &&
+                coordinates[7].approximatelyEquals(viewBox.maxY, tolerance)
     }
 
     private fun Element.rectangleCoversViewBox(viewBox: ViewBox): Boolean {
@@ -395,9 +545,9 @@ abstract class GenerateIconPackTask : DefaultTask() {
         val height = getAttribute("height").toDoubleOrNull() ?: return false
         val tolerance = maxOf(viewBox.width, viewBox.height) * FullCanvasToleranceRatio
         return x <= viewBox.minX + tolerance &&
-            y <= viewBox.minY + tolerance &&
-            x + width >= viewBox.maxX - tolerance &&
-            y + height >= viewBox.maxY - tolerance
+                y <= viewBox.minY + tolerance &&
+                x + width >= viewBox.maxX - tolerance &&
+                y + height >= viewBox.maxY - tolerance
     }
 
     private fun writeAdaptiveIconResources(
@@ -530,7 +680,7 @@ ${aliases.prependIndent("        ")}
                 when (value) {
                     is String,
                     is Number,
-                    -> value.toString()
+                        -> value.toString()
 
                     else -> null
                 }
@@ -580,10 +730,7 @@ ${aliases.prependIndent("        ")}
                 value.matches(ArgbColor) -> value.substring(1)
                 else -> return null
             }
-        if (argb.substring(0, 2).equals("00", ignoreCase = true)) {
-            return null
-        }
-        return "#FF${argb.substring(2).uppercase()}"
+        return "#${argb.uppercase()}"
     }
 
     private fun String?.contrastingBackground(): String {
@@ -593,8 +740,8 @@ ${aliases.prependIndent("        ")}
         val blue = color.substring(7, 9).toInt(16) / ColorChannelMax
         val luminance =
             RedLuminanceWeight * red +
-                GreenLuminanceWeight * green +
-                BlueLuminanceWeight * blue
+                    GreenLuminanceWeight * green +
+                    BlueLuminanceWeight * blue
         return if (luminance < DarkColorLuminanceThreshold) {
             LightContrastingBackground
         } else {
@@ -623,7 +770,7 @@ ${aliases.prependIndent("        ")}
     }
 
     private companion object {
-        const val AdaptiveIconForegroundInset = "18dp"
+        const val AdaptiveIconForegroundInset = "0dp"
         const val AccessExternalDtdProperty = "http://javax.xml.XMLConstants/property/accessExternalDTD"
         const val AccessExternalSchemaProperty = "http://javax.xml.XMLConstants/property/accessExternalSchema"
         const val AndroidNamespace = "http://schemas.android.com/apk/res/android"
@@ -633,12 +780,13 @@ ${aliases.prependIndent("        ")}
         const val IntegratedBackgroundMode = "integrated"
         const val TransparentBackgroundMode = "transparent"
         const val DefaultPathFillColor = "#FF000000"
-        const val DefaultTransparentIconBackground = "#FFFFFFFF"
+        const val DefaultTransparentIconBackground = "#00000000"
         const val LightContrastingBackground = "#FFFFFFFF"
         const val DarkContrastingBackground = "#FF202124"
         const val ComplexArtworkPathThreshold = 32
         const val ComplexArtworkColorThreshold = 4
         const val IconRasterSize = 1024
+        const val ForegroundArtworkScale = 0.82
         const val ViewBoxValueCount = 4
         const val FullCanvasCoordinateCount = 8
         const val FullCanvasToleranceRatio = 0.01
