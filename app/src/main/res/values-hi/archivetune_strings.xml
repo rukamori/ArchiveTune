@@ -53,6 +53,7 @@
     <string name="music_recognition_notification_no_match_text">संगीत को स्पष्ट रूप से बजते रहने दें, फिर पहचान के लिए दोबारा प्रयास करें।</string>
     <string name="music_recognition_notification_recording_failed_title">डिवाइस ऑडियो कैप्चर नहीं किया जा सका</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
+<<<<<<< HEAD
 =======
 >>>>>>> 3fa09335c (Translated using Weblate (Hindi))
 =======
@@ -60,4 +61,6 @@
     <string name="music_recognition_notification_no_match_text">संगीत को स्पष्ट रूप से बजते रहने दें, फिर पहचान के लिए दोबारा प्रयास करें।</string>
     <string name="music_recognition_notification_recording_failed_title">डिवाइस ऑडियो कैप्चर नहीं किया जा सका</string>
 >>>>>>> b379a37de (Translated using Weblate (Hindi))
+=======
+>>>>>>> 32da78b8a (Translated using Weblate (Hindi))
 </resources>
