@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<<<<<<< HEAD
     <string name="explore">अन्वेषण करू</string>
     <string name="suggestions">सुझावसभ</string>
     <string name="music_recognition_tap_to_listen">सुनबाक लेल टैप करू</string>
@@ -38,3 +39,6 @@
     <string name="music_recognition_notification_no_match_text">संगीतकेँ स्पष्ट रूपसँ बजैत रहए दिअ, तकर बाद फेरसँ पहिचानक प्रयास करू।</string>
     <string name="music_recognition_notification_recording_failed_title">डिवाइसक ऑडियो कैप्चर नहि कऽ सकल अछि</string>
 </resources>
+=======
+</resources>
+>>>>>>> ef0333087 (Added translation using Weblate (Maithili))
