@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c72e3d659 (Translated using Weblate (Maithili))
     <string name="explore">अन्वेषण करू</string>
     <string name="suggestions">सुझावसभ</string>
     <string name="music_recognition_tap_to_listen">सुनबाक लेल टैप करू</string>
@@ -28,6 +31,7 @@
     <string name="music_recognition_notification_listening_title">संगीत सुनि रहल अछि</string>
     <string name="music_recognition_notification_listening_text">एहि डिवाइस पर बजि रहल ऑडियो कैप्चर कऽ रहल अछि</string>
     <string name="music_recognition_notification_processing_title">ऑडियो संसाधित कऽ रहल अछि</string>
+<<<<<<< HEAD
     <string name="music_recognition_notification_processing_text">कैप्चर कएल ऑडियो फिंगरप्रिन्टसँ मिलान कऽ रहल अछि</string>
     <string name="music_recognition_notification_artist">कलाकार: %1$s</string>
     <string name="music_recognition_notification_album">एल्बम: %1$s</string>
@@ -42,3 +46,6 @@
 =======
 </resources>
 >>>>>>> ef0333087 (Added translation using Weblate (Maithili))
+=======
+</resources>
+>>>>>>> c72e3d659 (Translated using Weblate (Maithili))
