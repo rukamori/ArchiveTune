@@ -738,4 +738,11 @@
     <string name="aod_mode_exit">Exit AOD</string>
     <string name="playlist_source_local">Local</string>
     <string name="playlist_source_online">Online</string>
+    <string name="discord_live_card_group_title">Live Music Card</string>
+    <string name="discord_live_card_title">GitHub &amp; Portfolio Music Card</string>
+    <string name="discord_live_card_desc">Showcase your live playing music on your GitHub Profile README or website.</string>
+    <string name="discord_live_card_copy_markdown">Copy Markdown</string>
+    <string name="discord_live_card_copied">Markdown copied to clipboard</string>
+    <string name="discord_live_card_open_generator">Open Card Generator</string>
+    <string name="discord_live_card_open_generator_desc">Customize themes and preview live activity in your browser.</string>
 </resources>

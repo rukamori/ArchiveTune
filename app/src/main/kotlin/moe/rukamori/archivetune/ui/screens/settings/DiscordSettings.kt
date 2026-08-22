@@ -29,9 +29,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,10 +91,12 @@ fun DiscordSettings(navController: NavController) {
     val song by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var discordUsername by rememberPreference(DiscordUsernameKey, "")
+    var discordUserId by rememberPreference(DiscordUserIdKey, "")
     var discordName by rememberPreference(DiscordNameKey, "")
     var discordAvatarUrl by rememberPreference(DiscordAvatarUrlKey, "")
     var authorizedToken by rememberSaveable { mutableStateOf("") }
@@ -143,6 +147,9 @@ fun DiscordSettings(navController: NavController) {
                 DiscordOAuthRepository.fetchAccount(token)
             }.onSuccess {
                 discordUsername = it.username
+                if (it.id.isNotBlank()) {
+                    discordUserId = it.id
+                }
                 discordName = it.displayName
                 discordAvatarUrl = it.avatarUrl.orEmpty()
             }.onFailure {
@@ -519,6 +526,48 @@ fun DiscordSettings(navController: NavController) {
                                         Text(stringResource(R.string.refresh))
                                     }
                                 }
+                            },
+                        )
+                    }
+                }
+            }
+
+            item {
+                PreferenceGroup(title = stringResource(R.string.discord_live_card_group_title)) {
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.discord_live_card_title)) },
+                            description = stringResource(R.string.discord_live_card_desc),
+                            icon = { Icon(painterResource(R.drawable.discord), null) },
+                            isEnabled = isLoggedIn && discordUserId.isNotBlank(),
+                            onClick = {
+                                if (discordUserId.isNotBlank()) {
+                                    val markdown =
+                                        "[![Live Music Activity](https://discord-music-nine.vercel.app/api/status/$discordUserId)](https://discord.com/users/$discordUserId)"
+                                    clipboardManager.setText(AnnotatedString(markdown))
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(R.string.discord_live_card_copied),
+                                        )
+                                    }
+                                }
+                            },
+                        )
+                    }
+
+                    item {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.discord_live_card_open_generator)) },
+                            description = stringResource(R.string.discord_live_card_open_generator_desc),
+                            icon = { Icon(painterResource(R.drawable.language), null) },
+                            onClick = {
+                                val url =
+                                    if (discordUserId.isNotBlank()) {
+                                        "https://discord-music-nine.vercel.app?id=$discordUserId"
+                                    } else {
+                                        "https://discord-music-nine.vercel.app"
+                                    }
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                             },
                         )
                     }

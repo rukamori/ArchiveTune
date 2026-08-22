@@ -23,6 +23,7 @@ import moe.rukamori.archivetune.constants.DiscordNameKey
 import moe.rukamori.archivetune.constants.DiscordRefreshTokenKey
 import moe.rukamori.archivetune.constants.DiscordTokenExpiresAtKey
 import moe.rukamori.archivetune.constants.DiscordTokenKey
+import moe.rukamori.archivetune.constants.DiscordUserIdKey
 import moe.rukamori.archivetune.constants.DiscordUsernameKey
 import moe.rukamori.archivetune.utils.dataStore
 import java.io.IOException
@@ -214,6 +215,7 @@ object DiscordOAuthRepository {
                 prefs.remove(DiscordRefreshTokenKey)
                 prefs.remove(DiscordTokenExpiresAtKey)
                 prefs.remove(DiscordUsernameKey)
+                prefs.remove(DiscordUserIdKey)
                 prefs.remove(DiscordNameKey)
                 prefs.remove(DiscordAvatarUrlKey)
             }
@@ -272,6 +274,9 @@ object DiscordOAuthRepository {
             prefs[DiscordTokenExpiresAtKey] = session.expiresAtMillis
             session.account?.let { account ->
                 prefs[DiscordUsernameKey] = account.username
+                if (account.id.isNotBlank()) {
+                    prefs[DiscordUserIdKey] = account.id
+                }
                 prefs[DiscordNameKey] = account.displayName
                 prefs[DiscordAvatarUrlKey] = account.avatarUrl.orEmpty()
             }
