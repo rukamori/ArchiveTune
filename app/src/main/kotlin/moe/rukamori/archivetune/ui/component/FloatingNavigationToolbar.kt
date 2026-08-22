@@ -12,6 +12,7 @@ package moe.rukamori.archivetune.ui.component
 import android.os.SystemClock
 import android.view.ViewConfiguration
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -42,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -92,80 +94,94 @@ fun FloatingNavigationToolbar(
                     .fillMaxWidth()
                     .height(NavigationBarHeight),
             shape = navigationShape,
-            color = navigationContainerColor,
-            tonalElevation = NavigationBarDefaults.Elevation,
-            shadowElevation = NavigationBarDefaults.Elevation,
+            color = navigationContainerColor.copy(alpha = 0.7f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
-            ShortNavigationBar(
-                modifier = Modifier.fillMaxSize(),
-                containerColor = Color.Transparent,
-                contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface,
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                arrangement = ShortNavigationBarArrangement.EqualWeight,
+            // Tambahkan efek blur jika API mendukung
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.Transparent)
+                    .graphicsLayer {
+                        // Secara teknis, Compose tidak memiliki modifier blur sederhana untuk 
+                        // background container di dalam Surface saat ini tanpa library tambahan
+                        // atau skenario khusus. Kita gunakan transparansi tinggi untuk efek glass.
+                        alpha = 1f
+                    },
+                color = Color.Transparent
             ) {
-                Box(
+                ShortNavigationBar(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    containerColor = Color.Transparent,
+                    contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface,
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    arrangement = ShortNavigationBarArrangement.EqualWeight,
                 ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .widthIn(max = NavigationItemsMaxWidth)
-                                .fillMaxWidth()
-                                .fillMaxHeight()
-                                .padding(vertical = NavigationItemVerticalPadding),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        items.forEach { screen ->
-                            val selected = isSelected(screen)
-                            val onDoubleClick =
-                                remember(screen, onSearchItemDoubleClick) {
-                                    if (screen == Screens.Search) onSearchItemDoubleClick else null
-                                }
-                            val lastClickTime = remember(screen) { mutableLongStateOf(0L) }
-                            val onClick =
-                                remember(screen, selected, onItemClick, onDoubleClick) {
-                                    {
-                                        val currentTime = SystemClock.uptimeMillis()
-                                        val isDoubleClick =
-                                            onDoubleClick != null &&
-                                                currentTime - lastClickTime.longValue <= ViewConfiguration.getDoubleTapTimeout()
-                                        lastClickTime.longValue = if (isDoubleClick) 0L else currentTime
-                                        if (isDoubleClick) {
-                                            onDoubleClick?.invoke()
-                                            Unit
-                                        } else {
-                                            onItemClick(screen, selected)
+                        Row(
+                            modifier =
+                                Modifier
+                                    .widthIn(max = NavigationItemsMaxWidth)
+                                    .fillMaxWidth()
+                                    .fillMaxHeight()
+                                    .padding(vertical = NavigationItemVerticalPadding),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            items.forEach { screen ->
+                                val selected = isSelected(screen)
+                                val onDoubleClick =
+                                    remember(screen, onSearchItemDoubleClick) {
+                                        if (screen == Screens.Search) onSearchItemDoubleClick else null
+                                    }
+                                val lastClickTime = remember(screen) { mutableLongStateOf(0L) }
+                                val onClick =
+                                    remember(screen, selected, onItemClick, onDoubleClick) {
+                                        {
+                                            val currentTime = SystemClock.uptimeMillis()
+                                            val isDoubleClick =
+                                                onDoubleClick != null &&
+                                                    currentTime - lastClickTime.longValue <= ViewConfiguration.getDoubleTapTimeout()
+                                            lastClickTime.longValue = if (isDoubleClick) 0L else currentTime
+                                            if (isDoubleClick) {
+                                                onDoubleClick?.invoke()
+                                                Unit
+                                            } else {
+                                                onItemClick(screen, selected)
+                                            }
                                         }
                                     }
-                                }
 
-                            ShortNavigationBarItem(
-                                selected = selected,
-                                onClick = onClick,
-                                modifier = Modifier.weight(1f),
-                                icon = {
-                                    Crossfade(
-                                        targetState = selected,
-                                        animationSpec = motionScheme.fastEffectsSpec(),
-                                        label = "navigationItemIcon",
-                                    ) { isSelected ->
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    if (isSelected) screen.iconIdActive else screen.iconIdInactive,
-                                                ),
-                                            contentDescription = null,
+                                ShortNavigationBarItem(
+                                    selected = selected,
+                                    onClick = onClick,
+                                    modifier = Modifier.weight(1f),
+                                    icon = {
+                                        Crossfade(
+                                            targetState = selected,
+                                            animationSpec = motionScheme.fastEffectsSpec(),
+                                            label = "navigationItemIcon",
+                                        ) { isSelected ->
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        if (isSelected) screen.iconIdActive else screen.iconIdInactive,
+                                                    ),
+                                                contentDescription = null,
+                                            )
+                                        }
+                                    },
+                                    label = {
+                                        Text(
+                                            text = stringResource(screen.titleId),
+                                            maxLines = 1,
                                         )
-                                    }
-                                },
-                                label = {
-                                    Text(
-                                        text = stringResource(screen.titleId),
-                                        maxLines = 1,
-                                    )
-                                },
-                            )
+                                    },
+                                )
+                            }
                         }
                     }
                 }
