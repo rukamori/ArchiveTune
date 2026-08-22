@@ -99,6 +99,8 @@ import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.SongListItem
+import moe.rukamori.archivetune.ui.component.StoryShareData
+import moe.rukamori.archivetune.ui.component.StoryShareDialog
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
@@ -405,6 +407,25 @@ fun SongMenu(
 
     Spacer(modifier = Modifier.height(16.dp))
 
+    var showStoryShareDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showStoryShareDialog) {
+        StoryShareDialog(
+            data =
+                StoryShareData(
+                    title = song.song.title,
+                    artist = song.artists.joinToString(", ") { it.name },
+                    album = song.song.albumName,
+                    thumbnailUrl = song.song.thumbnailUrl,
+                    durationMs = song.song.duration?.toLong()?.times(1000L),
+                    isPlaying = false,
+                ),
+            onDismiss = { showStoryShareDialog = false },
+        )
+    }
+
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val isLocalSong = song.song.isLocal
 
@@ -412,6 +433,7 @@ fun SongMenu(
     val playNextText = stringResource(R.string.play_next)
     val addToQueueText = stringResource(R.string.add_to_queue)
     val addToPlaylistText = stringResource(R.string.add_to_playlist)
+    val shareAsStoryText = stringResource(R.string.share_as_story)
     val shareText = stringResource(R.string.share)
     val editText = stringResource(R.string.edit)
 
@@ -422,6 +444,7 @@ fun SongMenu(
             playNextText,
             addToQueueText,
             addToPlaylistText,
+            shareAsStoryText,
             shareText,
             editText,
             isLocalSong,
@@ -494,6 +517,22 @@ fun SongMenu(
                         },
                         text = addToPlaylistText,
                         onClick = { showChoosePlaylistDialog = true },
+                    ),
+                )
+                add(
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = shareAsStoryText,
+                        onClick = {
+                            showStoryShareDialog = true
+                        },
                     ),
                 )
                 add(

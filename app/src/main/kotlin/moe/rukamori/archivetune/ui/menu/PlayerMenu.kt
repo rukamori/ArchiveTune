@@ -104,6 +104,8 @@ import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.component.StoryShareData
+import moe.rukamori.archivetune.ui.component.StoryShareDialog
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
 import moe.rukamori.archivetune.utils.ExternalDownloaderLaunchResult
 import moe.rukamori.archivetune.utils.SpeedDialPin
@@ -231,6 +233,28 @@ fun PlayerMenu(
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         },
     )
+
+    var showStoryShareDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showStoryShareDialog) {
+        val currentPos = playerConnection.player?.currentPosition ?: 0L
+        val songDuration = playerConnection.player?.duration ?: 0L
+        StoryShareDialog(
+            data =
+                StoryShareData(
+                    title = mediaMetadata.title,
+                    artist = mediaMetadata.artists.joinToString(", ") { it.name },
+                    album = mediaMetadata.album?.title,
+                    thumbnailUrl = mediaMetadata.thumbnailUrl,
+                    currentPositionMs = currentPos,
+                    durationMs = songDuration,
+                    isPlaying = playerConnection.isPlaying.value,
+                ),
+            onDismiss = { showStoryShareDialog = false },
+        )
+    }
 
     var showSelectArtistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -594,6 +618,22 @@ fun PlayerMenu(
                                         },
                                     )
                                 },
+                            )
+                            add(
+                                NewAction(
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.share),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    text = stringResource(R.string.share_as_story),
+                                    onClick = {
+                                        showStoryShareDialog = true
+                                    },
+                                ),
                             )
                             if (!isLocalMedia) {
                                 add(
