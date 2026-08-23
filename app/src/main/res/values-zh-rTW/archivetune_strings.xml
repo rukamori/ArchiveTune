@@ -722,5 +722,11 @@
     <string name="aod_mode_exit">退出 AOD</string>
     <string name="playlist_source_local">本地</string>
     <string name="playlist_source_online">線上</string>
+<<<<<<< HEAD
 >>>>>>> 6268ddb66 (Translated using Weblate (Chinese (Traditional Han script)))
+=======
+    <string name="aod_customize_mode_enabled">啟用 AOD 模式</string>
+    <string name="aod_customize_mode_enabled_desc">允許 ArchiveTune 顯示 AOD 播放器介面</string>
+    <string name="ai_provider_openrouter">開放路由器</string>
+>>>>>>> d8e41d1f4 (Translated using Weblate (Chinese (Traditional Han script)))
 </resources>
