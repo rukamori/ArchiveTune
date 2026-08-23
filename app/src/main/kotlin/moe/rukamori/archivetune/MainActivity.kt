@@ -200,6 +200,7 @@ import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.HasPressedStarKey
+import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.constants.LaunchCountKey
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
@@ -268,6 +269,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
+import moe.rukamori.archivetune.ui.screens.LoginScreen
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.navigationBuilder
@@ -379,6 +381,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestAodMode() {
+        if (!dataStore.get(AodModeEnabledKey, true)) return
         pendingAodModeRequest = true
         startMusicServiceSafely()
         openPendingAodModeIfReady()
@@ -845,8 +848,10 @@ class MainActivity : ComponentActivity() {
                 fontPreference = fontPreference,
                 customFontUri = customFontUri,
             ) {
+                val navController = rememberNavController()
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val onboardingState by onboardingViewModel.screenState.collectAsStateWithLifecycle()
+                var showOnboardingLogin by rememberSaveable { mutableStateOf(false) }
                 val shouldShowOnboarding =
                     when (val state = onboardingState) {
                         OnboardingScreenState.Loading -> true
@@ -856,7 +861,25 @@ class MainActivity : ComponentActivity() {
                     }
 
                 if (shouldShowOnboarding) {
-                    OnboardingRoute(viewModel = onboardingViewModel)
+                    if (showOnboardingLogin) {
+                        CompositionLocalProvider(
+                            LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
+                        ) {
+                            LoginScreen(
+                                navController = navController,
+                                onLoginComplete = {
+                                    onboardingViewModel.onLoginCompleted()
+                                    showOnboardingLogin = false
+                                },
+                                onNavigateBack = { showOnboardingLogin = false },
+                            )
+                        }
+                    } else {
+                        OnboardingRoute(
+                            viewModel = onboardingViewModel,
+                            onLoginRequested = { showOnboardingLogin = true },
+                        )
+                    }
                     return@ArchiveTuneTheme
                 }
 
@@ -882,7 +905,6 @@ class MainActivity : ComponentActivity() {
                                 .windowSizeClass
                                 .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-                    val navController = rememberNavController()
                     DisposableEffect(navController) {
                         this@MainActivity.navController = navController
                         onDispose {}

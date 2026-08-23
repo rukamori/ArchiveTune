@@ -39,6 +39,7 @@ val ArchiveTuneCanvasKey = booleanPreferencesKey("archiveTuneCanvas")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 
+val AodModeEnabledKey = booleanPreferencesKey("aodModeEnabled")
 val AodThumbnailShapeKey = stringPreferencesKey("aodThumbnailShape")
 val AodThumbnailSizeKey = floatPreferencesKey("aodThumbnailSize")
 val AodThumbnailShapeRotationKey = intPreferencesKey("aodThumbnailShapeRotation")
@@ -213,7 +214,6 @@ val ProxyTypeKey = stringPreferencesKey("proxyType")
 val EnableDnsOverHttpsKey = booleanPreferencesKey("enableDnsOverHttps")
 val DnsOverHttpsProviderKey = stringPreferencesKey("dnsOverHttpsProvider")
 val StreamBypassProxyKey = booleanPreferencesKey("streamBypassProxy")
-val IpRotationEnabledKey = booleanPreferencesKey("ipRotationEnabled")
 val YtmSyncKey = booleanPreferencesKey("ytmSync")
 val ForceSyncOnAccountSwitchKey = booleanPreferencesKey("forceSyncOnAccountSwitch")
 val SelectedYtmPlaylistsKey = stringPreferencesKey("ytm_selected_playlists")
@@ -243,10 +243,12 @@ val AiApiKeyKey = stringPreferencesKey("ai_api_key")
 val AiApiValidationStatusKey = stringPreferencesKey("ai_api_validation_status")
 val AiSelectedModelKey = stringPreferencesKey("ai_selected_model")
 val AiCustomModelKey = stringPreferencesKey("ai_custom_model")
+val AiCustomPromptKey = stringPreferencesKey("ai_custom_prompt")
 
 enum class AiProvider {
     CHATGPT,
     GEMINI,
+    OPENROUTER,
     CUSTOM,
     NONE,
 }
@@ -288,12 +290,9 @@ enum class AudioQuality {
     LOW,
 }
 
-val PlayerStreamClientKey = stringPreferencesKey("playerStreamClient")
-
 enum class PlayerStreamClient {
     ANDROID_VR,
     WEB_REMIX,
-    ARCHIVETUNE_EXTRACTOR,
     HI_RES_LOSSLESS,
     IOS,
     TVHTML5,
@@ -897,7 +896,7 @@ val RemindAfterKey = intPreferencesKey("remind_after")
 val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
 val UpdateChannelKey = stringPreferencesKey("updateChannel")
 val LastUpdateCheckKey = longPreferencesKey("lastUpdateCheck")
-val MoriCipherManualRefreshHistoryKey = stringSetPreferencesKey("moriCipherManualRefreshHistory")
+val YtDlpManualUpdateHistoryKey = stringSetPreferencesKey("ytDlpManualUpdateHistory")
 val LastNotifiedVersionKey = stringPreferencesKey("lastNotifiedVersion")
 
 val GitHubContributorsEtagKey = stringPreferencesKey("github_contributors_etag")

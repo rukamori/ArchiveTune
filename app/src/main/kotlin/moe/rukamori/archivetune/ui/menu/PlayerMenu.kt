@@ -107,9 +107,11 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.StoryShareData
 import moe.rukamori.archivetune.ui.component.StoryShareDialog
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
+import moe.rukamori.archivetune.utils.ExternalDownloaderLaunchResult
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.utils.openExternalDownloader
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -129,6 +131,7 @@ fun PlayerMenu(
     navController: NavController,
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
+    onPlayNextFromQueue: (() -> Unit)? = null,
     onRemoveFromQueue: (() -> Unit)? = null,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
@@ -839,30 +842,24 @@ fun PlayerMenu(
                                 Modifier.clickable {
                                     onDismiss()
                                     val url = "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                    if (externalDownloaderPackage.isBlank()) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_configured),
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                        return@clickable
-                                    }
-                                    val intent =
-                                        android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                            setPackage(externalDownloaderPackage)
-                                            data = android.net.Uri.parse(url)
-                                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    when (context.openExternalDownloader(externalDownloaderPackage, url)) {
+                                        ExternalDownloaderLaunchResult.STARTED -> Unit
+                                        ExternalDownloaderLaunchResult.NOT_CONFIGURED -> {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.external_downloader_not_configured),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
                                         }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: android.content.ActivityNotFoundException) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_installed),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        ExternalDownloaderLaunchResult.NOT_INSTALLED -> {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.external_downloader_not_installed),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                        }
                                     }
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -874,6 +871,31 @@ fun PlayerMenu(
         item {
             MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
                 Column {
+                    if (isQueueTrigger == true && onPlayNextFromQueue != null) {
+                        ListItem(
+                            headlineContent = {
+                                Text(text = stringResource(R.string.play_next))
+                            },
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.playlist_play),
+                                    contentDescription = null,
+                                )
+                            },
+                            modifier =
+                                Modifier.clickable {
+                                    onPlayNextFromQueue()
+                                    onDismiss()
+                                },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 56.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+
                     if (isQueueTrigger == true && onRemoveFromQueue != null) {
                         ListItem(
                             headlineContent = {

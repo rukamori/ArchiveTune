@@ -92,6 +92,7 @@ import moe.rukamori.archivetune.constants.AodControlStyleKey
 import moe.rukamori.archivetune.constants.AodGesturesEnabledKey
 import moe.rukamori.archivetune.constants.AodHorizontalPaddingKey
 import moe.rukamori.archivetune.constants.AodMarqueeTitlesKey
+import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.constants.AodMinimalLockedStateKey
 import moe.rukamori.archivetune.constants.AodPixelShiftEnabledKey
 import moe.rukamori.archivetune.constants.AodProximityBlackoutKey
@@ -160,6 +161,7 @@ private data class AodPreviewSettings(
 @Composable
 fun AodCustomizedScreen(navController: NavController) {
     val scrollBehavior = appBarScrollBehavior()
+    val (aodModeEnabled, onAodModeEnabledChange) = rememberPreference(AodModeEnabledKey, defaultValue = true)
     val (thumbnailShape, onThumbnailShapeChange) =
         rememberEnumPreference(
             AodThumbnailShapeKey,
@@ -340,6 +342,19 @@ fun AodCustomizedScreen(navController: NavController) {
                 AodPreviewCard(
                     settings = previewSettings,
                     modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            }
+
+            item(
+                key = "aod_mode",
+                contentType = "preference",
+            ) {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.aod_customize_mode_enabled)) },
+                    description = stringResource(R.string.aod_customize_mode_enabled_desc),
+                    icon = { Icon(painterResource(R.drawable.bedtime), null) },
+                    checked = aodModeEnabled,
+                    onCheckedChange = onAodModeEnabledChange,
                 )
             }
 

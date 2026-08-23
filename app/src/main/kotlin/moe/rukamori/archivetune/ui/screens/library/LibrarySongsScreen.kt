@@ -84,6 +84,7 @@ import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.screens.library.rememberArtworkGradient
+import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -120,6 +121,7 @@ fun LibrarySongsScreen(
 
     var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
     val lazyListState = rememberLazyListState()
+    val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
 
     // Issue 2: player-aware bottom padding so content is never hidden behind nav bar + miniplayer
     val playerAwareBottomPadding =
@@ -408,6 +410,16 @@ fun LibrarySongsScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (filteredSongs.isEmpty()) {
+                    item(key = "songs_empty", contentType = "library_empty_state") {
+                        LibraryEmptyState(
+                            iconRes = R.drawable.music_note,
+                            actionLabelRes = R.string.search_yt_music,
+                            onAction = openSearch,
+                        )
+                    }
                 }
 
                 itemsIndexed(

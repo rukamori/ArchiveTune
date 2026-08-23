@@ -177,8 +177,6 @@ import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
-import moe.rukamori.archivetune.constants.PoTokenGvsKey
-import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.QueuePeekHeight
 import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.SliderStyle
@@ -197,7 +195,6 @@ import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
-import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
@@ -321,15 +318,9 @@ fun BottomSheetPlayer(
     val playerConnection = LocalPlayerConnection.current ?: return
     val playbackError by playerConnection.error.collectAsStateWithLifecycle()
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, defaultValue = "")
-    val (poTokenGvs) = rememberPreference(PoTokenGvsKey, defaultValue = "")
-    val (poTokenPlayer) = rememberPreference(PoTokenPlayerKey, defaultValue = "")
     val isYouTubeLoggedIn =
         remember(innerTubeCookie) {
             hasYouTubeLoginCookie(innerTubeCookie)
-        }
-    val isPoTokenLoggedIn =
-        remember(poTokenGvs, poTokenPlayer) {
-            poTokenGvs.isNotBlank() && poTokenPlayer.isNotBlank()
         }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -352,15 +343,6 @@ fun BottomSheetPlayer(
                 }
             }
         }
-    val navigateToPoTokenLogin =
-        remember(navController) {
-            {
-                navController.navigate(PO_TOKEN_ROUTE) {
-                    launchSingleTop = true
-                }
-            }
-        }
-
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
         defaultValue = PlayerDesignStyle.V4,
@@ -828,7 +810,14 @@ fun BottomSheetPlayer(
                     }
                 } else {
                     position = currentPlayerPosition
-                    duration = currentPlayerDuration
+                    if (currentPlayerDuration > 0L && currentPlayerDuration != C.TIME_UNSET) {
+                        duration = currentPlayerDuration
+                    } else if (duration <= 0L || duration == C.TIME_UNSET) {
+                        mediaMetadata?.let {
+                            val metadataDuration = it.duration.toLong() * 1000
+                            if (metadataDuration > 0L) duration = metadataDuration
+                        }
+                    }
                     if (!isUserSeeking) {
                         sliderPosition?.let { targetPosition ->
                             val clampedTargetPosition =
@@ -1944,7 +1933,7 @@ fun BottomSheetPlayer(
 
     val activePlaybackError = playbackError
     val isRecoveryDestination =
-        currentRoute?.startsWith(LOGIN_ROUTE) == true || currentRoute == PO_TOKEN_ROUTE
+        currentRoute?.startsWith(LOGIN_ROUTE) == true || currentRoute == "settings/account"
     if (activePlaybackError != null && !isRecoveryDestination) {
         val errorInfo = remember(activePlaybackError) { activePlaybackError.toPlaybackErrorInfo() }
         val loginClick =
@@ -1955,11 +1944,9 @@ fun BottomSheetPlayer(
         PlaybackErrorDialog(
             error = activePlaybackError,
             showLoginAction = !isYouTubeLoggedIn,
-            showPoTokenLoginAction = !isPoTokenLoggedIn,
             onRetry = retryPlayback,
             onClose = dismissPlaybackError,
             onLogin = loginClick,
-            onPoTokenLogin = navigateToPoTokenLogin,
         )
     }
 }

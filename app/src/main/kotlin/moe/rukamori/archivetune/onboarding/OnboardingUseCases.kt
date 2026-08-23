@@ -46,6 +46,7 @@ class BuildOnboardingUiStateUseCase
                 versionName = BuildConfig.VERSION_NAME,
                 pages = pages,
                 permissions = ImmutableList.copyOf(data.permissions.map { it.toUiModel() }),
+                loginBenefits = loginBenefits,
                 communityActions = communityActions,
             )
 
@@ -184,10 +185,38 @@ class BuildOnboardingUiStateUseCase
                         iconResId = R.drawable.security,
                     ),
                     OnboardingPageUiModel(
+                        id = OnboardingPageId.LOGIN,
+                        titleResId = R.string.onboarding_login_title,
+                        subtitleResId = R.string.onboarding_login_subtitle,
+                        iconResId = R.drawable.login,
+                    ),
+                    OnboardingPageUiModel(
                         id = OnboardingPageId.COMMUNITY,
                         titleResId = R.string.onboarding_community_title,
                         subtitleResId = R.string.onboarding_community_subtitle,
                         iconResId = R.drawable.star,
+                    ),
+                )
+
+            val loginBenefits =
+                ImmutableList.of(
+                    OnboardingLoginBenefitUiModel(
+                        id = "library",
+                        titleResId = R.string.onboarding_login_library_title,
+                        descriptionResId = R.string.onboarding_login_library_desc,
+                        iconResId = R.drawable.library_music,
+                    ),
+                    OnboardingLoginBenefitUiModel(
+                        id = "history",
+                        titleResId = R.string.onboarding_login_history_title,
+                        descriptionResId = R.string.onboarding_login_history_desc,
+                        iconResId = R.drawable.history,
+                    ),
+                    OnboardingLoginBenefitUiModel(
+                        id = "playback",
+                        titleResId = R.string.onboarding_login_playback_title,
+                        descriptionResId = R.string.onboarding_login_playback_desc,
+                        iconResId = R.drawable.bolt,
                     ),
                 )
 

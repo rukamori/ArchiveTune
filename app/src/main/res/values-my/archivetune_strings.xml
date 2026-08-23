@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suggestions">အကြံပြုချက်များ</string>
+    <string name="music_recognition_tap_to_listen">နားထောင်ရန် နှိပ်ပါ</string>
+    <string name="music_recognition_listening">နားထောင်နေသည်…</string>
+    <string name="music_recognition_processing">လုပ်ဆောင်နေသည်…</string>
+    <string name="music_recognition_listen_again">ထပ်နားထောင်မည်</string>
+    <string name="music_recognition_no_match">ကိုက်ညီမှုမတွေ့ပါ</string>
+    <string name="music_recognition_recognition_failed">ရှာမတွေ့ပါ</string>
+    <string name="music_recognition_open_shazam">Shazam ဖွင့်မည်</string>
+    <string name="music_recognition_lyrics_preview">စားသား အစမ်းကြည့်</string>
+    <string name="music_recognition_permission_title">မိုက်ခရိုဖုန်း ခွင့်ပြုချက်</string>
+    <string name="music_recognition_permission_desc">အနီးနားရှိ သီချင်းကို ရှာရန် မိုက်ခရိုဖုန်း အသုံးပြုခွင့်ပေးပါ</string>
+    <string name="music_recognition_permission_action">ခွင့်ပြုမည်</string>
+    <string name="music_recognition_error">တစ်ခုခုမှား ယွင်းသွားသည်</string>
+    <string name="music_recognition_settings">သီချင်း ရှာဖွေမှု ဆက်တင်များ</string>
+    <string name="music_recognition_background_title">ရှာဖွေမှုကို နောက်ခံတွင် လုပ်နေသည်</string>
+    <string name="music_recognition_background_description">ဖွင့်ထားသည့်အခါ၊ Quick Settings tile သည် Archive Tune ကိုမဖွင့်ဘဲ ဤစက်တွင် ဖွင့်ထားသော သီချင်းကို ရှာနိုင်မည်</string>
+    <string name="music_recognition_background_foss_description">FOSS ဗားရှင်းတွင် နောက်ခံ သီချင်းရှာခြင်းကို မရရှိနိုင်ပါ။ အဲ့ကိုယ်စား Quick Settings tile သည် သီချင်းခြင်းမျက်နှာပြင်ကို ဖွင့်ပေးသည်။</string>
+    <string name="music_recognition_notification_channel_name">သီချင်း ရှာဖွေမှု</string>
+    <string name="music_recognition_notification_channel_description">သီချင်းရှာ‌ဖွေမှု နှင့် ရလဒ်များ</string>
+    <string name="music_recognition_notification_status_listening">နားထောင်နေသည်</string>
+    <string name="music_recognition_notification_status_processing">ရှာဖွေနေသည်</string>
+    <string name="music_recognition_notification_status_result">ရလဒ်</string>
+    <string name="music_recognition_notification_listening_title">သီချင်း နားထောင်နေသည်</string>
+    <string name="music_recognition_notification_listening_text">ဤစက်တွင် ဖွင့်နေသော အသံကို ဖမ်းယူနေသည်</string>
+    <string name="music_recognition_notification_processing_title">အသံဖိုင်ကို လုပ်ဆောင်နေသည်</string>
+    <string name="music_recognition_notification_processing_text">ဖမ်းယူထားသော အသံ နှင့် တက်စစ်နေသည်</string>
+    <string name="music_recognition_notification_artist">အနုပညာရှင်: %1$s</string>
+    <string name="music_recognition_notification_album">အယ်လ်ဘမ်: %1$s</string>
+    <string name="music_recognition_notification_genre">အမျိုးအစား: %1$s</string>
+    <string name="music_recognition_notification_release">ထုတ်ဝေ: %1$s</string>
+    <string name="music_recognition_notification_label">တံဆိပ်: %1$s</string>
+    <string name="music_recognition_notification_no_match_title">သီချင်း ရှာမတွေ့ပါ</string>
+    <string name="music_recognition_notification_no_match_text">သီချင်းကို ရှင်းရှင်းလင်းလင်း ဖွင့်ထားပါ၊ ထို့နောက် ထပ်မံ ပြန်ရှာပါ</string>
+    <string name="music_recognition_notification_recording_failed_title">စက်၏သီချင်းကို ရှာမတွေ့ပါ</string>
+</resources>

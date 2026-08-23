@@ -84,7 +84,7 @@
     <string name="together_ban">Bloquear</string>
     <string name="together_kick_confirm">¿Expulsar a %1$s?</string>
     <string name="together_ban_confirm">¿Bloquear a %1$s?</string>
-    <string name="together_requesting_song_change">Solicitando al anfitrión que cambie la canción…</string>
+    <string name="together_requesting_song_change">Solicitando al anfitrión que cambie la canción 1�7</string>
     <string name="together_song_change_failed">El cambio de canción no se ha aplicado. Inténtalo de nuevo.</string>
     <string name="remove_from_history">Quitar del historial</string>
     <string name="remove_from_playlist">Quitar de la lista de reproducción</string>
@@ -254,7 +254,7 @@
     <string name="palette_neon_blue">Azul Neón</string>
     <string name="palette_neon_orange">Naranja Neón</string>
     <string name="palette_cyberpunk">Ciberpunk</string>
-    <string name="palette_synthwave">Synthwave</string>
+    <string name="palette_synthwave">Retrowave</string>
     <string name="palette_ocean">Océano</string>
     <string name="palette_forest">Bosque Profundo</string>
     <string name="palette_autumn">Otoño</string>
@@ -605,7 +605,7 @@
     <string name="external_downloader_package_desc">Nombre del paquete de la aplicación de descarga externa (por ejemplo, com.deniscerri.ytdl)</string>
     <string name="open_with_downloader">Abrir con Downloader</string>
     <string name="external_downloader_not_installed">No hay ninguna aplicación de descarga externa instalada</string>
-    <string name="external_downloader_not_configured">No hay ningún programa de descarga externo configurado. Configura uno en Ajustes → Reproductor.</string>
+    <string name="external_downloader_not_configured">No hay ningún programa de descarga externo configurado. Configura uno en Ajustes ↄ1�7 Reproductor.</string>
     <string name="preload_queue_lyrics">Cargar previamente la letra de la canción</string>
     <string name="queue_lyrics_preload_count">Número de canciones que se van a precargar</string>
     <string name="po_token_generation">Generación de tokens de autenticación</string>
@@ -669,8 +669,6 @@
     <string name="total_requests">Solicitudes totales</string>
     <string name="success_rate">Tasa de éxito</string>
     <string name="providers">Proveedores</string>
-    <string name="aod_mode">Pantalla siempre encendida</string>
-    <string name="aod_mode_exit">Desactivar pantalla siempre encendida</string>
     <string name="error_malformed_stream">Error en la fuente</string>
     <string name="support_development_title">Apoyar el desarrollo</string>
     <string name="support_development_message">¡Hola! Soy rukamori, el desarrollador de ArchiveTune. Si ArchiveTune se ha ganado un hueco en tu rutina diaria de música, puedes ayudar a que siga adelante haciendo una donación o marcando el proyecto como favorito en GitHub. Gracias por apoyar el trabajo que hay detrás de la aplicación.</string>
@@ -700,8 +698,8 @@
     <string name="all_songs">Todas las canciones</string>
     <string name="newest_first">Más recientes primero</string>
     <string name="oldest_first">Por orden de antigüedad</string>
-    <string name="sort_a_to_z">A → Z</string>
-    <string name="sort_z_to_a">Z → A</string>
+    <string name="sort_a_to_z">A ↄ1�7 Z</string>
+    <string name="sort_z_to_a">Z ↄ1�7 A</string>
     <string name="sort_artist">Artista</string>
     <string name="most_played_sort">Los más escuchados</string>
     <string name="recently_added">Añadido recientemente</string>
@@ -757,12 +755,6 @@
     <string name="lyrics_mode_enhanced">Mejorado</string>
     <string name="lyrics_animation_style_v2_only">Solo disponible en modo letra V2</string>
     <string name="proxy_connection_invalid_configuration">Host o puerto de proxy no válido</string>
-    <string name="ip_rotation">Rotación de direcciones IP</string>
-    <string name="ip_rotation_desc">Si experimenta problemas de reproducción o de contenido, cambie su dirección IP actual.</string>
-    <string name="ip_rotation_active_proxies">%d proxies activos</string>
-    <string name="ip_rotation_loading">Cargando la lista de proxies</string>
-    <string name="ip_rotation_refreshing">Renovando IP</string>
-    <string name="ip_rotation_refresh">Renovar IP</string>
     <string name="enable_unison_lyrics">Activar la letra de «Unison»</string>
     <string name="low_data_mode_title">Modo de bajo consumo de datos</string>
     <string name="low_data_mode_description">Reduce el consumo de datos móviles utilizando transmisiones de baja calidad y desactivando la caché de reproducción, el elemento «canvas» y la precarga de letras en segundo plano en redes con tarifa de datos limitada</string>
@@ -830,7 +822,7 @@
     <string name="widget_no_recent_songs">Aún no hay canciones recientes</string>
     <string name="widget_no_genres">Aún no hay géneros</string>
     <string name="widget_no_recommendations">Sin recomendaciones</string>
-    <string name="library_top_mixes_loading">Preparando tus mezclas de IA…</string>
+    <string name="library_top_mixes_loading">Preparando tus mezclas de IA 1�7</string>
     <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
     <string name="library_top_mixes_configure_ai">Configurar la IA</string>
     <string name="app_icon_change_failed">No he podido cambiar el icono de la aplicación</string>
@@ -1120,4 +1112,5 @@
     <string name="scheduled_backup_update_failed">No se pudieron guardar los ajustes de copia de seguridad programada</string>
     <string name="gatekeeper_connection_blocked">Conexión bloqueada por ArchiveTune Remote. Esta aplicación no se ha podido verificar como una compilación oficial de ArchiveTune. Instale una compilación oficial desde https://github.com/rukamori/ArchiveTune o https://t.me/ArchiveTuneGC .</string>
     <string name="enable_megalobiz_lyrics">Activar las letras de Megalobiz</string>
+    <string name="enable_betterlyrics_portato">Activar BetterLyrics Portato</string>
 </resources>

@@ -1,3 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="explore">دریافت</string>
+    <string name="suggestions">تجویزات</string>
+    <string name="music_recognition_tap_to_listen">سننے کے لئے ضرب لگائیں</string>
+    <string name="music_recognition_listening">‫سننا جاری…</string>
+    <string name="music_recognition_processing">‫عمل میں…</string>
+    <string name="music_recognition_listen_again">دوبارہ سنیے</string>
+    <string name="music_recognition_no_match">کوئ میل نہ ملا</string>
+    <string name="music_recognition_signature_failed">دستخت تولید نہ کر سکا</string>
+    <string name="music_recognition_recognition_failed">شناخت نا کامیاب</string>
+    <string name="music_recognition_open_shazam">شازام کھولیں</string>
+    <string name="music_recognition_lyrics_preview">کلمات پیش نظارہ</string>
+    <string name="music_recognition_permission_title">مائکروفون کی اجازت</string>
+    <string name="music_recognition_permission_desc">قریبی موسیقی کی شناخت کے لئے مائکروفون تک رسائ کی اجازت دیں۔</string>
+    <string name="music_recognition_permission_action">اجازت دیں</string>
+    <string name="music_recognition_error">کچھ غلط ہو گیا</string>
+    <string name="music_recognition_settings">موسیقی کی شناخت کی ترتیبات</string>
+    <string name="music_recognition_background_title">پس منطر میں شناخت</string>
+    <string name="music_recognition_background_description">‫فعل ہونے پر، فوری ترتیبات والا کھپرا اس آلہ پر چلتی ہوئ موسیقی کی ArchiveTune کھولے بغیر شناخت کرتا ہے۔</string>
+    <string name="music_recognition_background_foss_description">‫پس منطر میں شناخت کرنا FOSS والے نحخے میں دستیاب نہیں ہے۔ بلکے فوری ترتیبات والا کھپرا شناخت سکرین کھولتا ہے۔</string>
+    <string name="music_recognition_notification_channel_name">موسیقی شناخت</string>
+    <string name="music_recognition_notification_channel_description">موسیقی کی شناخت کا تقدم اور نتائج</string>
+    <string name="music_recognition_notification_status_listening">سننا جاری</string>
+    <string name="music_recognition_notification_status_processing">‫عمل میں</string>
+    <string name="music_recognition_notification_status_result">نتیجہ</string>
+    <string name="music_recognition_notification_listening_title">موسیقی کے لئے سنا جا رہا ہے</string>
+    <string name="music_recognition_notification_listening_text">آلہ پر چلتی ہوئی سمعی کی تسخیر کی جا رہی ہے</string>
+    <string name="music_recognition_notification_processing_title">سمعی زیر عمل</string>
+    <string name="music_recognition_notification_processing_text">تسخیر کردہ سمعی کے نشان انگوٹھے کا میل کیا جا رہا ہے</string>
+    <string name="music_recognition_notification_artist">کلاکار: ‫%1$s</string>
+    <string name="music_recognition_notification_album">البم: ‫%1$s</string>
+    <string name="music_recognition_notification_genre">رنگ: ‫%1$s</string>
+    <string name="music_recognition_notification_release">شائع: ‫%1$s</string>
+    <string name="music_recognition_notification_label">لیبل: ‫%1$s</string>
+    <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
+    <string name="music_recognition_notification_no_match_title">کوئی گیت نہ ملا</string>
+    <string name="music_recognition_notification_no_match_text">موسیقی کو صاف صاف بجنے دیں، پھر دوبارہ شناخت کی کوشش کریں۔</string>
+    <string name="music_recognition_notification_recording_failed_title">آلہ کے سمعی کی تسخیر نہ ہو سکی</string>
+    <string name="music_recognition_notification_recording_failed_text">چلانے والے ایپ نے سمعی کی تسخیر مسدود کردی، یا نشر رک گئی ہے۔</string>
+    <string name="music_recognition_notification_signature_failed_text">تسخیر کردہ سمعی میں شناخت کے لئے کافی موسیقی موجود نہیں ہے۔</string>
+    <string name="music_recognition_notification_recognition_failed_text">خدمتِ شناخت اس سمعی کی شناخت نہ کر سکی۔ کچھ دیر بعد کوشش کریں۔</string>
+    <string name="music_recognition_history">شناخت کی سرگزشت</string>
+    <string name="music_recognition_history_search">شناخت شدہ گیت تلاش کریں</string>
+    <string name="music_recognition_history_empty_title">ابھی تک کوئی شناخت شدہ گیت نہیں</string>
+    <string name="music_recognition_history_empty_body">شناخت کی کامیابی کے بعد میل شدہ گیت ادھر نمودار ہوں۔</string>
 </resources>

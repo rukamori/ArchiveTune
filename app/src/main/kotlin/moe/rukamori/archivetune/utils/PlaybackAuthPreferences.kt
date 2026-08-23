@@ -22,20 +22,25 @@ import moe.rukamori.archivetune.constants.PoTokenKey
 import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.PoTokenSourceUrlKey
 import moe.rukamori.archivetune.constants.VisitorDataKey
-import moe.rukamori.archivetune.constants.WebClientPoTokenEnabledKey
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 
-fun Preferences.toPlaybackAuthState(): PlaybackAuthState =
-    PlaybackAuthState(
+fun Preferences.toPlaybackAuthState(): PlaybackAuthState {
+    val legacyPoToken =
+        this[PoTokenKey]
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+    return PlaybackAuthState(
         cookie = this[InnerTubeCookieKey],
         visitorData = this[VisitorDataKey],
         dataSyncId = this[DataSyncIdKey],
-        poToken = this[PoTokenKey],
-        poTokenGvs = this[PoTokenGvsKey],
-        poTokenPlayer = this[PoTokenPlayerKey],
-        webClientPoTokenEnabled = this[WebClientPoTokenEnabledKey] ?: false,
+        poToken = legacyPoToken,
+        poTokenGvs = null,
+        poTokenGvsSession = null,
+        poTokenPlayer = null,
+        webClientPoTokenEnabled = legacyPoToken != null,
     ).normalized()
+}
 
 fun MutablePreferences.clearPlaybackAuthSession(clearAccountIdentity: Boolean = true) {
     remove(InnerTubeCookieKey)

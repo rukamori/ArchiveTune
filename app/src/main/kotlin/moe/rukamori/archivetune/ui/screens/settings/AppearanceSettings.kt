@@ -129,6 +129,7 @@ import moe.rukamori.archivetune.ui.component.PlaylistTagOrderDialog
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.ui.component.ThumbnailCornerRadiusSelectorButton
 import moe.rukamori.archivetune.ui.player.StyledPlaybackSlider
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
@@ -402,6 +403,9 @@ fun AppearanceSettings(navController: NavController) {
     var showPlaylistTagOrderDialog by rememberSaveable {
         mutableStateOf(false)
     }
+    var showTagsManagementDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(isPlayerStyleCustomizationEnabled, playerBackground) {
         if (!isPlayerStyleCustomizationEnabled && playerBackground != PlayerBackgroundStyle.DEFAULT) {
@@ -489,6 +493,12 @@ fun AppearanceSettings(navController: NavController) {
                 )
                 showPlaylistTagOrderDialog = false
             },
+        )
+    }
+
+    if (showTagsManagementDialog) {
+        TagsManagementDialog(
+            onDismiss = { showTagsManagementDialog = false },
         )
     }
 
@@ -1056,6 +1066,15 @@ fun AppearanceSettings(navController: NavController) {
                         description = stringResource(R.string.arrange_playlist_tags_desc),
                         icon = { Icon(painterResource(R.drawable.style), null) },
                         onClick = { showPlaylistTagOrderDialog = true },
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.manage_playlist_tags)) },
+                        description = stringResource(R.string.manage_playlist_tags_desc),
+                        icon = { Icon(painterResource(R.drawable.style), null) },
+                        onClick = { showTagsManagementDialog = true },
                     )
                 }
 

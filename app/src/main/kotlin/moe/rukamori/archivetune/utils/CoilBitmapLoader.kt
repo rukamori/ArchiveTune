@@ -27,11 +27,15 @@ import kotlinx.coroutines.guava.future
 import kotlin.math.roundToInt
 
 internal const val NotificationArtworkSizePx = 1080
+private const val LegacyMediaMetadataBitmapMaxSizeDp = 320
 
 class CoilBitmapLoader(
-    private val context: Context,
+    context: Context,
     private val scope: CoroutineScope,
 ) : BitmapLoader {
+    private val context = context.applicationContext
+    private val maximumArtworkDimensionPx = this.context.resolveMaximumArtworkDimensionPx()
+
     override fun supportsMimeType(mimeType: String): Boolean = mimeType.startsWith("image/")
 
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
@@ -41,8 +45,10 @@ class CoilBitmapLoader(
                     throw IllegalArgumentException("Empty image data")
                 }
 
-                val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
-                val mediaSessionBitmap = bitmap?.toOwnedMediaSessionBitmap()
+                val mediaSessionBitmap =
+                    decodeSampledBitmap(data, maximumArtworkDimensionPx)
+                        ?.scaleToNotificationArtwork(maximumArtworkDimensionPx)
+                        ?.toOwnedMediaSessionBitmap()
                 if (mediaSessionBitmap != null) {
                     return@future mediaSessionBitmap
                 }
@@ -64,7 +70,7 @@ class CoilBitmapLoader(
                             .Builder(context)
                             .data(uri)
                             .allowHardware(false)
-                            .size(NotificationArtworkSizePx, NotificationArtworkSizePx)
+                            .size(maximumArtworkDimensionPx, maximumArtworkDimensionPx)
                             .build()
 
                     val result = context.imageLoader.execute(request)
@@ -72,27 +78,11 @@ class CoilBitmapLoader(
                     when (result) {
                         is SuccessResult -> {
                             try {
-                                val bitmap = result.image.toBitmap()
-                                val scaled =
-                                    if (bitmap.width <= 0 || bitmap.height <= 0) {
-                                        null
-                                    } else if (
-                                        bitmap.width <= NotificationArtworkSizePx &&
-                                        bitmap.height <= NotificationArtworkSizePx
-                                    ) {
-                                        bitmap
-                                    } else {
-                                        val scale =
-                                            minOf(
-                                                NotificationArtworkSizePx.toFloat() / bitmap.width.toFloat(),
-                                                NotificationArtworkSizePx.toFloat() / bitmap.height.toFloat(),
-                                            )
-                                        val targetWidth = (bitmap.width * scale).roundToInt().coerceAtLeast(1)
-                                        val targetHeight = (bitmap.height * scale).roundToInt().coerceAtLeast(1)
-                                        Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
-                                    }
-
-                                val mediaSessionBitmap = scaled?.toOwnedMediaSessionBitmap()
+                                val mediaSessionBitmap =
+                                    result.image
+                                        .toBitmap()
+                                        .scaleToNotificationArtwork(maximumArtworkDimensionPx)
+                                        ?.toOwnedMediaSessionBitmap()
                                 if (mediaSessionBitmap == null) {
                                     return@future createBitmap(64, 64)
                                 }
@@ -120,7 +110,63 @@ class CoilBitmapLoader(
         }
 }
 
+private fun decodeSampledBitmap(
+    data: ByteArray,
+    maximumDimensionPx: Int,
+): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sampleSize = 1
+    val largestDimension = maxOf(bounds.outWidth, bounds.outHeight)
+    while (largestDimension / (sampleSize * 2) >= maximumDimensionPx) {
+        sampleSize *= 2
+    }
+
+    return BitmapFactory.decodeByteArray(
+        data,
+        0,
+        data.size,
+        BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        },
+    )
+}
+
+private fun Bitmap.scaleToNotificationArtwork(maximumDimensionPx: Int): Bitmap? {
+    if (isRecycled || width <= 0 || height <= 0) return null
+    if (width <= maximumDimensionPx && height <= maximumDimensionPx) return this
+
+    val scale =
+        minOf(
+            maximumDimensionPx.toFloat() / width.toFloat(),
+            maximumDimensionPx.toFloat() / height.toFloat(),
+        )
+    val targetWidth = (width * scale).roundToInt().coerceAtLeast(1)
+    val targetHeight = (height * scale).roundToInt().coerceAtLeast(1)
+    return Bitmap.createScaledBitmap(this, targetWidth, targetHeight, true)
+}
+
 private fun Bitmap.toOwnedMediaSessionBitmap(): Bitmap? {
     if (isRecycled) return null
     return copy(Bitmap.Config.ARGB_8888, false)?.takeUnless(Bitmap::isRecycled)
+}
+
+@Suppress("DiscouragedApi")
+private fun Context.resolveMaximumArtworkDimensionPx(): Int {
+    val dimensionResourceId =
+        resources.getIdentifier(
+            "config_mediaMetadataBitmapMaxSize",
+            "dimen",
+            "android",
+        )
+    val frameworkLimitPx =
+        if (dimensionResourceId != 0) {
+            resources.getDimensionPixelSize(dimensionResourceId)
+        } else {
+            (LegacyMediaMetadataBitmapMaxSizeDp * resources.displayMetrics.density).roundToInt()
+        }
+    return minOf(NotificationArtworkSizePx, frameworkLimitPx - 1).coerceAtLeast(1)
 }

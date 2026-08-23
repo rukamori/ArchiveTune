@@ -55,6 +55,7 @@ object DiscordImageResolver {
                 .firstOrNull()
                 ?.thumbnailUrl
                 ?.asHttpUrl()
+                ?.takeUnless { it == thumbnailUrl }
 
         getCachedImages(songId)
             ?.takeIf { cached ->
@@ -78,14 +79,13 @@ object DiscordImageResolver {
                 ?.asHttpUrl()
                 ?.takeUnless { it == savedArtwork?.thumbnail?.asHttpUrl() }
         val persistedArtist = artistUrl ?: savedArtistUrl
-        val artist = persistedArtist ?: thumbnail
 
         val images =
             ResolvedDiscordImages(
                 thumbnailOriginalUrl = thumbnailUrl,
                 thumbnailResolvedId = thumbnail,
                 artistOriginalUrl = artistUrl,
-                artistResolvedId = artist,
+                artistResolvedId = persistedArtist,
             )
 
         if (thumbnail != savedArtwork?.thumbnail || persistedArtist != savedArtwork?.artist) {
@@ -124,13 +124,6 @@ object DiscordImageResolver {
             "artist" -> {
                 resolvedImages.artistResolvedId
                     ?: resolvedImages.artistOriginalUrl
-                    ?: song.artists
-                        .firstOrNull()
-                        ?.thumbnailUrl
-                        ?.asHttpUrl()
-                    ?: resolvedImages.thumbnailResolvedId
-                    ?: resolvedImages.thumbnailOriginalUrl
-                    ?: song.song.thumbnailUrl?.asHttpUrl()
             }
 
             "appicon" -> {

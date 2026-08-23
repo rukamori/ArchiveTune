@@ -8,9 +8,11 @@
 package moe.rukamori.archivetune.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -34,7 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
+import moe.rukamori.archivetune.innertube.utils.hasYtDlpYouTubeLoginCookies
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
@@ -50,11 +52,12 @@ fun buildLoginRoute(startUrl: String? = null): String {
 }
 
 private const val DEFAULT_LOGIN_URL = "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
+private const val YOUTUBE_MUSIC_PACKAGE_NAME = "com.google.android.apps.youtube.music"
 private const val LOGIN_CONTEXT_RETRY_DELAY_MS = 1_000L
 private const val LOGIN_CONTEXT_EXTRACTION_ATTEMPTS = 10
 
 private const val LOGIN_CONTEXT_SCRIPT =
-    "(function(){try{var c=window.ytcfg;var y=window.yt&&window.yt.config_;var s=document.querySelectorAll('script');var v=c&&c.get&&c.get('VISITOR_DATA')||y&&y.VISITOR_DATA;var d=c&&c.get&&c.get('DATASYNC_ID')||y&&y.DATASYNC_ID;var t=c&&c.get&&c.get('PO_TOKEN');for(var i=0;i<s.length&&(!v||!d||!t);i++){var x=s[i].textContent;if(!v){var vm=x.match(/\"VISITOR_DATA\":\"([^\"]+)\"/);if(vm)v=vm[1]}if(!d){var dm=x.match(/[\"'](?:DATASYNC_ID|dataSyncId)[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(dm)d=dm[1]}if(!t){var tm=x.match(/\"PO_TOKEN\":\"([^\"]+)\"/);if(tm)t=tm[1]}}if(v)Android.onRetrieveVisitorData(v);if(d)Android.onRetrieveDataSyncId(d);if(t)Android.onRetrievePoToken(t)}catch(e){}})();"
+    "(function(){try{var c=window.ytcfg;var y=window.yt&&window.yt.config_;var s=document.querySelectorAll('script');var v=c&&c.get&&c.get('VISITOR_DATA')||y&&y.VISITOR_DATA;var d=c&&c.get&&c.get('DATASYNC_ID')||y&&y.DATASYNC_ID;for(var i=0;i<s.length&&(!v||!d);i++){var x=s[i].textContent;if(!v){var vm=x.match(/[\"']VISITOR_DATA[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(vm)v=vm[1]}if(!d){var dm=x.match(/[\"'](?:DATASYNC_ID|dataSyncId)[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(dm)d=dm[1]}}if(v)Android.onRetrieveVisitorData(v);if(d)Android.onRetrieveDataSyncId(d)}catch(e){}})();"
 
 private val YOUTUBE_COOKIE_URLS =
     listOf(
@@ -69,6 +72,8 @@ private val YOUTUBE_COOKIE_URLS =
 fun LoginScreen(
     navController: NavController,
     startUrl: String? = null,
+    onLoginComplete: (() -> Unit)? = null,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -80,7 +85,11 @@ fun LoginScreen(
     LaunchedEffect(screenState, loginSuccessMessage) {
         if (screenState is LoginScreenState.Success) {
             Toast.makeText(context, loginSuccessMessage, Toast.LENGTH_SHORT).show()
-            navController.navigateUp()
+            if (onLoginComplete != null) {
+                onLoginComplete()
+            } else {
+                navController.navigateUp()
+            }
         }
     }
 
@@ -120,12 +129,6 @@ fun LoginScreen(
                             }
                         }
 
-                        @JavascriptInterface
-                        fun onRetrievePoToken(newPoToken: String?) {
-                            loginWebView.post {
-                                viewModel.onPoTokenExtracted(newPoToken)
-                            }
-                        }
                     },
                     "Android",
                 )
@@ -150,8 +153,20 @@ fun LoginScreen(
         title = { Text(stringResource(R.string.login)) },
         navigationIcon = {
             IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
+                onClick = {
+                    if (onNavigateBack != null) {
+                        onNavigateBack()
+                    } else {
+                        navController.navigateUp()
+                    }
+                },
+                onLongClick = {
+                    if (onNavigateBack != null) {
+                        onNavigateBack()
+                    } else {
+                        navController.backToMain()
+                    }
+                },
             ) {
                 Icon(
                     painterResource(R.drawable.arrow_back),
@@ -161,8 +176,12 @@ fun LoginScreen(
         },
     )
 
-    BackHandler(enabled = webView?.canGoBack() == true) {
-        webView?.goBack()
+    BackHandler(enabled = onNavigateBack != null || webView?.canGoBack() == true) {
+        if (webView?.canGoBack() == true) {
+            webView?.goBack()
+        } else {
+            onNavigateBack?.invoke()
+        }
     }
 }
 
@@ -172,6 +191,21 @@ private class YouTubeLoginWebViewClient(
 ) : WebViewClient() {
     private var extractionRunnable: Runnable? = null
     private var lastCapturedCookie: String? = null
+
+    override fun shouldOverrideUrlLoading(
+        view: WebView,
+        request: WebResourceRequest,
+    ): Boolean {
+        val targetUrl = request.url.toString()
+        if (!request.isForMainFrame && !targetUrl.isWebViewLoadableUrl()) return true
+        return handleUrlLoading(view, targetUrl)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun shouldOverrideUrlLoading(
+        view: WebView,
+        url: String?,
+    ): Boolean = handleUrlLoading(view, url)
 
     override fun onPageFinished(
         view: WebView,
@@ -225,11 +259,66 @@ private class YouTubeLoginWebViewClient(
 
     private fun captureCookies(currentUrl: String?) {
         val mergedCookie = mergeYouTubeCookies(cookieManager, currentUrl) ?: return
-        if (!hasYouTubeLoginCookie(mergedCookie) || mergedCookie == lastCapturedCookie) return
+        if (!hasYtDlpYouTubeLoginCookies(mergedCookie) || mergedCookie == lastCapturedCookie) return
 
         lastCapturedCookie = mergedCookie
         onCookiesCaptured(mergedCookie)
     }
+
+    private fun handleUrlLoading(
+        view: WebView,
+        url: String?,
+    ): Boolean {
+        val targetUrl = url?.takeIf(String::isNotBlank) ?: return false
+        if (targetUrl.isYouTubeMusicStoreListingUrl()) return true
+        if (targetUrl.isWebViewLoadableUrl()) return false
+
+        targetUrl.intentWebViewUrl()?.let(view::loadUrl)
+        return true
+    }
+}
+
+private fun String.isWebViewLoadableUrl(): Boolean {
+    val scheme = runCatching { Uri.parse(this).scheme?.lowercase() }.getOrNull()
+    return scheme == "http" ||
+        scheme == "https" ||
+        scheme == "javascript" ||
+        scheme == "data" ||
+        scheme == "blob"
+}
+
+private fun String.intentWebViewUrl(): String? {
+    val parsedIntent =
+        runCatching { Intent.parseUri(this, Intent.URI_INTENT_SCHEME) }.getOrNull()
+    return sequenceOf(
+        parsedIntent?.dataString,
+        intentUriAsHttpsUrl(),
+        parsedIntent
+            ?.getStringExtra("browser_fallback_url")
+            ?.takeUnless(String::isYouTubeMusicStoreListingUrl),
+    ).firstOrNull { it?.isHttpUrl() == true }
+}
+
+private fun String.intentUriAsHttpsUrl(): String? {
+    val intentUri = runCatching { Uri.parse(this) }.getOrNull() ?: return null
+    if (!intentUri.scheme.equals("intent", ignoreCase = true)) return null
+
+    val authority = intentUri.encodedAuthority ?: return null
+    val path = intentUri.encodedPath.orEmpty()
+    val query = intentUri.encodedQuery?.let { "?$it" }.orEmpty()
+    return "https://$authority$path$query"
+}
+
+private fun String.isHttpUrl(): Boolean {
+    val scheme = runCatching { Uri.parse(this).scheme?.lowercase() }.getOrNull()
+    return scheme == "http" || scheme == "https"
+}
+
+private fun String.isYouTubeMusicStoreListingUrl(): Boolean {
+    val uri = runCatching { Uri.parse(this) }.getOrNull() ?: return false
+    return uri.host.equals("play.google.com", ignoreCase = true) &&
+        uri.path.equals("/store/apps/details", ignoreCase = true) &&
+        uri.getQueryParameter("id") == YOUTUBE_MUSIC_PACKAGE_NAME
 }
 
 private fun String?.isYouTubeUrl(): Boolean {

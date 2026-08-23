@@ -1,6 +1,6 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home">मुख्य स्क्रीन बटन</string>
+    <string name="home">मुख्य स्क्रीन</string>
     <string name="songs">गानें</string>
     <string name="artists">कलाकार</string>
     <string name="albums">एल्बम</string>
@@ -30,7 +30,7 @@
     <string name="search_yt_music">YouTube संगीत ढुंढे…</string>
     <string name="search_library">लाइब्रेरी खोजें…</string>
     <string name="filter_library">लाइब्रेरी</string>
-    <string name="filter_liked">पसंद किया</string>
+    <string name="filter_liked">पसंद</string>
     <string name="filter_downloaded">अधथभारण</string>
     <string name="filter_all">सभी</string>
     <string name="filter_songs">गीने</string>
@@ -45,4 +45,42 @@
     <string name="album_backdrop_desc">प्लेयर पर कलाकृति को धुंधली पृष्ठभूमि के रूप में दिखाएं</string>
     <string name="backdrop_blur_amount">पृष्ठभूमि धुंधलापन मात्रा</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <string name="top_results">शीर्ष परिणाम</string>
+    <string name="most_played_badge">सर्वाधिक सुने गए</string>
+    <string name="play_all">सभी चलाएँ</string>
+    <string name="offline_shortcut">ऑफ़लाइन</string>
+    <string name="cached">कैश किया गया</string>
+    <string name="local_files">स्थानीय फ़ाइलें</string>
+    <string name="downloaded_desc">डाउनलोड किए गए</string>
+    <string name="instant_playback">तुरंत प्लेबैक</string>
+    <string name="on_device">डिवाइस पर</string>
+    <string name="recently_played">हाल ही में चलाए गए</string>
+    <string name="top_mixes">आपके लिए बेहतरीन मिश्रण</string>
+    <string name="library_top_mixes_loading">आपके AI मिश्रण तैयार हो रहे हैं…</string>
+    <string name="library_top_mixes_refresh">मिश्रण ताज़ा करें</string>
+    <string name="library_top_mixes_configure_ai">कॉन्फ़िगर AI</string>
+    <string name="library_top_mixes_ai_not_configured_title">मिक्स बनाने के लिए AI कॉन्फ़िगर करें</string>
+    <string name="library_top_mixes_ai_not_configured_desc">ArchiveTune के लिए आपके व्यक्तिगत शीर्ष मिक्स बनाने से पहले AI का एकीकरण आवश्यक है।</string>
+    <string name="library_top_mixes_no_recent_history_title">हाल की सुनने की गतिविधि का कोई मिश्रण अभी तक नहीं है।</string>
+    <string name="library_top_mixes_no_recent_history">और गाने सुनें, फिर अपनी हाल की सुनने की गतिविधि से AI मिक्स बनाने के लिए रीफ़्रेश करें।</string>
+    <string name="library_top_mixes_no_valid_mixes">AI आपकी हाल की सुनने की गतिविधि से कोई चलाने योग्य मिक्स नहीं बना सका।</string>
+    <string name="library_top_mixes_failed">Top मिक्स बनाने में विफल</string>
+    <string name="your_playlists">आपकी प्लेलिस्टें</string>
+    <string name="see_all">सभी देखें</string>
+    <string name="your_artists">आपके कलाकार</string>
+    <string name="all_songs">सभी गाने</string>
+    <string name="newest_first">नवीनतम पहले</string>
+    <string name="oldest_first">सबसे पुराने पहले</string>
+    <string name="sort_artist">कलाकार</string>
+    <string name="most_played_sort">सर्वाधिक सुने गए</string>
+    <string name="recently_added">हाल ही में जोड़े गए</string>
+    <string name="sort_descending">अवरोही क्रम में क्रमित करें</string>
+    <string name="sort_ascending">आरोही क्रम में क्रमित करें</string>
+    <string name="your_collection">आपका संग्रह</string>
+    <string name="playing_desc">चल रहा</string>
+    <string name="tracks_label">ट्रैक</string>
+    <string name="song_singular">गाना</string>
+    <string name="more_playlists_desc">और प्लेलिस्ट</string>
+    <string name="more_label">और</string>
+    <string name="tracks_count_label">ट्रैक की संख्या</string>
 </resources>

@@ -33,6 +33,14 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <package android:name="com.google.android.apps.youtube.music" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.projection.gearhead" />
@@ -376,11 +384,6 @@
             android:process=":crash"
             android:theme="@style/Theme.ArchiveTune">
         </activity>
-
-        <activity
-            android:name=".ui.screens.settings.PoTokenExtractionActivity"
-            android:exported="false"
-            android:theme="@style/Theme.ArchiveTune" />
 
         <activity
             android:name=".discord.DiscordOAuthCallbackActivity"

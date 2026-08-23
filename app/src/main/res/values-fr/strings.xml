@@ -668,8 +668,6 @@
     <string name="total_requests">Nombre total de demandes</string>
     <string name="success_rate">Taux de réussite</string>
     <string name="providers">Fournisseurs</string>
-    <string name="aod_mode">Mode AOD</string>
-    <string name="aod_mode_exit">Quitter AOD</string>
     <string name="error_malformed_stream">Erreur source</string>
     <string name="support_development_title">Soutenir le développement</string>
     <string name="support_development_message">Salut ! Je m\'appelle rukamori, je suis le développeur d\'ArchiveTune. Si ArchiveTune fait désormais partie de vos habitudes d\'écoute quotidiennes, vous pouvez contribuer à son développement en faisant un don ou en ajoutant le projet à vos favoris sur GitHub. Merci de soutenir le travail qui se cache derrière cette application.</string>
@@ -697,7 +695,6 @@
     <string name="sort_ascending">Trier par ordre croissant</string>
     <string name="device_volume_zero_playback_paused">La lecture est en pause car le volume de l\'appareil est réglé sur 0. Augmentez le volume pour reprendre la lecture.</string>
     <string name="discord_url_source_album">URL de l\'album</string>
-    <string name="ip_rotation_loading">Chargement de la liste des proxys</string>
     <string name="more_label">Plus</string>
     <string name="all_songs">Tous les Titres</string>
     <string name="paxsenix_status_down">Indisponible</string>
@@ -732,7 +729,6 @@
     <string name="discord_activity_type_streaming_label">Diffusion en continu</string>
     <string name="discord_url_source_song">URL du titre</string>
     <string name="discord_refresh_success">Mise à jour de la présence sur Discord</string>
-    <string name="ip_rotation_refresh">Actualiser l\'adresse IP</string>
     <string name="app_icon">Icône de l\'application</string>
     <string name="display">Affichage</string>
     <string name="youtube_synced">Synchronisé avec YouTube</string>
@@ -758,7 +754,6 @@
     <string name="oldest_year">Année la plus ancienne</string>
     <string name="playing_desc">Lecture</string>
     <string name="options_label">Options</string>
-    <string name="ip_rotation_active_proxies">%d proxys actifs</string>
     <string name="low_data_mode_description">Réduit la consommation de données mobiles en utilisant des flux de faible qualité et en désactivant le cache de lecture, le canvas et le préchargement des paroles en arrière-plan sur les réseaux à volume limité</string>
     <string name="discord_authorization_failed">Échec de l\'autorisation Discord</string>
     <string name="most_tracks">La plupart des titres</string>
@@ -770,7 +765,6 @@
     <string name="tracks_label">titres</string>
     <string name="newest_year">Année en cours</string>
     <string name="recently_updated">Mis à jour récemment</string>
-    <string name="ip_rotation_desc">Changez d\'adresse IP lorsque des problèmes de lecture ou de contenu surviennent.</string>
     <string name="discord_activity_type_competing_label">En compétition</string>
     <string name="discord_platform_embedded">Intégré</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
@@ -804,10 +798,8 @@
     <string name="tracks_count_label">Nombre de titres</string>
     <string name="discord_url_source_artist">URL de l\'artiste</string>
     <string name="font_preference">Police</string>
-    <string name="ip_rotation">Rotation des adresses IP</string>
     <string name="least_tracks">Le moins de titres</string>
     <string name="paxsenix_status_operational">Opérationnel</string>
-    <string name="ip_rotation_refreshing">Actualisation de l\'adresse IP</string>
     <string name="discord_presence_online">En ligne</string>
     <string name="longest_duration">Durée la plus longue</string>
     <string name="discord_platform_ps4">PS4</string>
@@ -1120,4 +1112,5 @@
     <string name="scheduled_backup_update_failed">Impossible d\'enregistrer les paramètres de sauvegarde planifiée</string>
     <string name="gatekeeper_connection_blocked">Connexion bloquée par ArchiveTune Remote. Il n\'a pas été possible de vérifier que cette application correspondait à une version officielle d\'ArchiveTune. Installez une version officielle à partir de https://github.com/rukamori/ArchiveTune ou https://t.me/ArchiveTuneGC.</string>
     <string name="enable_megalobiz_lyrics">Activer les paroles de Megalobiz</string>
+    <string name="enable_betterlyrics_portato">Activer BetterLyrics Portato</string>
 </resources>

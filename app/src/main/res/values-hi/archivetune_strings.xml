@@ -8,4 +8,20 @@
     <string name="music_recognition_no_match">कोई मेल नहीं मिला</string>
     <string name="music_recognition_signature_failed">हस्ताक्षर उत्पन्न नहीं किया जा सका</string>
     <string name="music_recognition_recognition_failed">पहचान विफल रही</string>
+    <string name="suggestions">सुझाव</string>
+    <string name="music_recognition_open_shazam">Shazam खोलें</string>
+    <string name="music_recognition_lyrics_preview">गीत पूर्वावलोकन</string>
+    <string name="music_recognition_permission_title">माइक्रोफ़ोन की अनुमति</string>
+    <string name="music_recognition_permission_desc">आस-पास चल रहे संगीत को पहचानने के लिए माइक्रोफ़ोन की अनुमति दें।</string>
+    <string name="music_recognition_permission_action">अनुमति दें</string>
+    <string name="music_recognition_error">कुछ गड़बड़ हो गई</string>
+    <string name="music_recognition_settings">संगीत पहचान सेटिंग्स</string>
+    <string name="music_recognition_background_title">बैकग्राउंड में पहचान</string>
+    <string name="music_recognition_background_description">सक्षम होने पर, क्विक सेटिंग टाइल ArchiveTune खोले बिना इस डिवाइस पर चल रहे ऑडियो को पहचानती है।</string>
+    <string name="music_recognition_background_foss_description">FOSS वैरिएंट में बैकग्राउंड पहचान उपलब्ध नहीं है। इसके बजाय, क्विक सेटिंग टाइल पहचान स्क्रीन खोलती है।</string>
+    <string name="music_recognition_notification_channel_name">संगीत पहचान</string>
+    <string name="music_recognition_notification_channel_description">संगीत पहचान की प्रगति और परिणाम</string>
+    <string name="music_recognition_notification_status_listening">सुन रहा…</string>
+    <string name="music_recognition_notification_status_processing">संसाधित किया जा रहा…</string>
+    <string name="music_recognition_notification_status_result">परिणाम</string>
 </resources>

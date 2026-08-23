@@ -39,6 +39,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -61,6 +62,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,6 +104,7 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatFileSize
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.viewmodels.DownloadLibraryEvent
+import moe.rukamori.archivetune.viewmodels.DownloadRemovalConfirmation
 import moe.rukamori.archivetune.viewmodels.DownloadLibraryScreenState
 import moe.rukamori.archivetune.viewmodels.DownloadLibraryTab
 import moe.rukamori.archivetune.viewmodels.DownloadLibraryViewModel
@@ -154,9 +157,13 @@ fun DownloadLibraryScreen(
         onPauseEntry = viewModel::pause,
         onResumeEntry = viewModel::resume,
         onRemoveEntry = viewModel::remove,
+        onRequestRemoveEntry = viewModel::requestRemove,
         onPauseSection = viewModel::pause,
         onResumeSection = viewModel::resume,
         onRemoveSection = viewModel::remove,
+        onRequestRemoveSection = viewModel::requestRemove,
+        onConfirmRemove = viewModel::confirmRemove,
+        onDismissRemoveConfirmation = viewModel::dismissRemoveConfirmation,
     )
 }
 
@@ -176,9 +183,13 @@ private fun DownloadLibraryScreenContent(
     onPauseEntry: (DownloadEntryUiModel) -> Unit,
     onResumeEntry: (DownloadEntryUiModel) -> Unit,
     onRemoveEntry: (DownloadEntryUiModel) -> Unit,
+    onRequestRemoveEntry: (DownloadEntryUiModel) -> Unit,
     onPauseSection: (DownloadSectionUiModel) -> Unit,
     onResumeSection: (DownloadSectionUiModel) -> Unit,
     onRemoveSection: (DownloadSectionUiModel) -> Unit,
+    onRequestRemoveSection: (DownloadSectionUiModel) -> Unit,
+    onConfirmRemove: () -> Unit,
+    onDismissRemoveConfirmation: () -> Unit,
 ) {
     val selectedTab = state.selectedTab()
     val query = state.query()
@@ -331,9 +342,11 @@ private fun DownloadLibraryScreenContent(
                     onPauseEntry = onPauseEntry,
                     onResumeEntry = onResumeEntry,
                     onRemoveEntry = onRemoveEntry,
+                    onRequestRemoveEntry = onRequestRemoveEntry,
                     onPauseSection = onPauseSection,
                     onResumeSection = onResumeSection,
                     onRemoveSection = onRemoveSection,
+                    onRequestRemoveSection = onRequestRemoveSection,
                 )
             }
 
@@ -348,12 +361,33 @@ private fun DownloadLibraryScreenContent(
                     onPauseEntry = onPauseEntry,
                     onResumeEntry = onResumeEntry,
                     onRemoveEntry = onRemoveEntry,
+                    onRequestRemoveEntry = onRequestRemoveEntry,
                     onPauseSection = onPauseSection,
                     onResumeSection = onResumeSection,
                     onRemoveSection = onRemoveSection,
+                    onRequestRemoveSection = onRequestRemoveSection,
                 )
             }
         }
+    }
+
+    val pendingRemoval = state.pendingRemoval
+    if (pendingRemoval != null) {
+        AlertDialog(
+            onDismissRequest = onDismissRemoveConfirmation,
+            title = { Text(stringResource(R.string.remove_download)) },
+            text = { Text(stringResource(pendingRemoval.confirmationMessageRes())) },
+            confirmButton = {
+                TextButton(onClick = onConfirmRemove) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRemoveConfirmation) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
     }
 }
 
@@ -411,9 +445,11 @@ private fun DownloadPager(
     onPauseEntry: (DownloadEntryUiModel) -> Unit,
     onResumeEntry: (DownloadEntryUiModel) -> Unit,
     onRemoveEntry: (DownloadEntryUiModel) -> Unit,
+    onRequestRemoveEntry: (DownloadEntryUiModel) -> Unit,
     onPauseSection: (DownloadSectionUiModel) -> Unit,
     onResumeSection: (DownloadSectionUiModel) -> Unit,
     onRemoveSection: (DownloadSectionUiModel) -> Unit,
+    onRequestRemoveSection: (DownloadSectionUiModel) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -430,9 +466,11 @@ private fun DownloadPager(
             onPauseEntry = onPauseEntry,
             onResumeEntry = onResumeEntry,
             onRemoveEntry = onRemoveEntry,
+            onRequestRemoveEntry = onRequestRemoveEntry,
             onPauseSection = onPauseSection,
             onResumeSection = onResumeSection,
             onRemoveSection = onRemoveSection,
+            onRequestRemoveSection = onRequestRemoveSection,
         )
     }
 }
@@ -447,9 +485,11 @@ private fun DownloadSections(
     onPauseEntry: (DownloadEntryUiModel) -> Unit,
     onResumeEntry: (DownloadEntryUiModel) -> Unit,
     onRemoveEntry: (DownloadEntryUiModel) -> Unit,
+    onRequestRemoveEntry: (DownloadEntryUiModel) -> Unit,
     onPauseSection: (DownloadSectionUiModel) -> Unit,
     onResumeSection: (DownloadSectionUiModel) -> Unit,
     onRemoveSection: (DownloadSectionUiModel) -> Unit,
+    onRequestRemoveSection: (DownloadSectionUiModel) -> Unit,
 ) {
     var expandedItemIds by remember { mutableStateOf(emptySet<String>()) }
     if (sections.isEmpty()) {
@@ -498,7 +538,16 @@ private fun DownloadSections(
             ) {
                 val pauseAction = remember(section, onPauseSection) { { onPauseSection(section) } }
                 val resumeAction = remember(section, onResumeSection) { { onResumeSection(section) } }
-                val removeAction = remember(section, onRemoveSection) { { onRemoveSection(section) } }
+                val removeAction =
+                    remember(section, inProgress, onRemoveSection, onRequestRemoveSection) {
+                        {
+                            if (inProgress) {
+                                onRemoveSection(section)
+                            } else {
+                                onRequestRemoveSection(section)
+                            }
+                        }
+                    }
                 DownloadSectionHeader(
                     section = section,
                     inProgress = inProgress,
@@ -516,7 +565,16 @@ private fun DownloadSections(
                 val openAction = remember(entry, onOpenEntry) { { onOpenEntry(entry) } }
                 val pauseAction = remember(entry, onPauseEntry) { { onPauseEntry(entry) } }
                 val resumeAction = remember(entry, onResumeEntry) { { onResumeEntry(entry) } }
-                val removeAction = remember(entry, onRemoveEntry) { { onRemoveEntry(entry) } }
+                val removeAction =
+                    remember(entry, inProgress, onRemoveEntry, onRequestRemoveEntry) {
+                        {
+                            if (inProgress) {
+                                onRemoveEntry(entry)
+                            } else {
+                                onRequestRemoveEntry(entry)
+                            }
+                        }
+                    }
                 val isExpanded = entry.id in expandedItemIds
                 val toggleExpand = {
                     expandedItemIds = if (isExpanded) {
@@ -534,7 +592,7 @@ private fun DownloadSections(
                     onRemove = removeAction,
                     isExpanded = isExpanded,
                     onExpandToggle = toggleExpand,
-                    onRemoveChild = onRemoveEntry,
+                    onRemoveChild = if (inProgress) onRemoveEntry else onRequestRemoveEntry,
                     modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
                 )
             }
@@ -896,6 +954,12 @@ private fun DownloadLibraryScreenState.isSearchActive(): Boolean =
         is DownloadLibraryScreenState.Success -> isSearchActive
         is DownloadLibraryScreenState.Empty -> isSearchActive
         is DownloadLibraryScreenState.Error -> isSearchActive
+    }
+
+private fun DownloadRemovalConfirmation.confirmationMessageRes(): Int =
+    when (this) {
+        is DownloadRemovalConfirmation.Entry -> R.string.remove_download_confirm
+        is DownloadRemovalConfirmation.Section -> R.string.remove_download_section_confirm
     }
 
 private const val CONTENT_TYPE_SECTION_HEADER = "download_section_header"

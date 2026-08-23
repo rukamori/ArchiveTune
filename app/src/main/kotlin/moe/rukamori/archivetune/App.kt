@@ -35,6 +35,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.constants.*
+import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.extensions.*
 import moe.rukamori.archivetune.gatekeeper.GatekeeperResult
 import moe.rukamori.archivetune.gatekeeper.RunGatekeeperCheckUseCase
@@ -42,8 +43,8 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
-import moe.rukamori.archivetune.morideobfuscator.MoriCipherConfig
-import moe.rukamori.archivetune.morideobfuscator.MoriCipherRuntime
+import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeStore
+import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpUpdateScheduler
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
@@ -52,7 +53,6 @@ import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
-import moe.rukamori.archivetune.utils.MoriCipherUpdateScheduler
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -65,7 +65,6 @@ import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.toPlaybackAuthState
 import okhttp3.Dns
 import timber.log.Timber
-import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.net.Proxy
@@ -80,6 +79,9 @@ class App :
     SingletonImageLoader.Factory {
     @Inject
     lateinit var runGatekeeperCheckUseCase: RunGatekeeperCheckUseCase
+
+    @Inject
+    lateinit var downloadedArtworkRepository: DownloadedArtworkRepository
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -108,6 +110,7 @@ class App :
         }
         BotGuardTokenGenerator.initialize(this)
         PreferenceStore.start(this)
+        LeakCanaryController.initialize(this)
         Timber.plant(Timber.DebugTree())
         try {
             Timber.plant(
@@ -142,13 +145,8 @@ class App :
     }
 
     private fun initializeCriticalSync() {
-        MoriCipherRuntime.initialize(
-            MoriCipherConfig(
-                cacheDirectory = File(noBackupFilesDir, "mori_cipher"),
-                proxyProvider = { YouTube.streamProxy },
-            ),
-        )
-        MoriCipherUpdateScheduler.schedule(this)
+        YtDlpRuntimeStore.initializeForProcess(this)
+        YtDlpUpdateScheduler.schedule(this)
         CanvasArtworkPlaybackCache.init(this)
         ArchiveTuneCanvas.initialize(BuildConfig.CANVAS_BEARER_TOKEN)
         PaxsenixLyrics.setUserAgent("ArchiveTune", BuildConfig.VERSION_NAME)
@@ -174,11 +172,6 @@ class App :
 
     private fun initializeDeferredAsync() {
         applicationScope.launch(Dispatchers.IO) {
-            MoriCipherRuntime
-                .refresh(force = false)
-                .onFailure { Timber.w(it, "Mori cipher background initialization failed") }
-        }
-        applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = dataStore.data.first()
 
@@ -200,14 +193,6 @@ class App :
                     password = prefs[ProxyPasswordKey],
                 )
                 YouTube.streamBypassProxy = YouTube.proxy != null && prefs[StreamBypassProxyKey] == true
-
-                if (prefs[IpRotationEnabledKey] == true) {
-                    try {
-                        YouTube.enableIpRotation()
-                    } catch (e: Exception) {
-                        reportException(e)
-                    }
-                }
 
                 if (prefs[UseLoginForBrowse] != false) {
                     YouTube.useLoginForBrowse = true
@@ -364,6 +349,9 @@ class App :
             .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
             .diskCache(diskCache)
             .diskCachePolicy(imageCacheConfig.policy)
+            .components {
+                add(downloadedArtworkRepository.coilMapper())
+            }
             .build()
     }
 

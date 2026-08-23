@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -71,6 +72,9 @@ import androidx.media3.common.Player
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.LeakCanaryController
+import moe.rukamori.archivetune.LeakCanaryToggle
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -103,6 +107,17 @@ fun DebugSettings(navController: NavController) {
             key = booleanPreferencesKey("show_codec_on_player"),
             defaultValue = false,
         )
+
+    val leakCanaryPreference =
+        if (BuildConfig.LEAK_CANARY_TOGGLE_AVAILABLE) {
+            rememberPreference(
+                key = booleanPreferencesKey(LeakCanaryToggle.PREFERENCE_KEY),
+                defaultValue = false,
+            )
+        } else {
+            null
+        }
+    val context = LocalContext.current
 
     val playerConnection = LocalPlayerConnection.current
 
@@ -169,6 +184,21 @@ fun DebugSettings(navController: NavController) {
                         checked = showCodecOnPlayer,
                         onCheckedChange = onShowCodecOnPlayerChange,
                     )
+                }
+
+                leakCanaryPreference?.let { preference ->
+                    item {
+                        SwitchPreference(
+                            title = { Text(stringResource(R.string.enable_leak_canary)) },
+                            description = stringResource(R.string.enable_leak_canary_description),
+                            icon = { Icon(painterResource(R.drawable.experiment), null) },
+                            checked = preference.value,
+                            onCheckedChange = { enabled ->
+                                preference.value = enabled
+                                LeakCanaryController.setEnabled(context, enabled)
+                            },
+                        )
+                    }
                 }
 
                 item {

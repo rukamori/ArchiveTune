@@ -344,27 +344,30 @@ private fun HomeContent(
                             contentType = "section_header",
                         ) {
                             HomeSectionHeader(
-                                title = remoteQuickPicks.title,
+                                title = stringResource(R.string.quick_picks),
                                 modifier = Modifier.animateItem(),
                             )
                         }
                         item(
                             key = "home_remote_quick_picks",
-                            contentType = "media_shelf",
+                            contentType = "quick_picks",
                         ) {
-                            HomePageSectionContent(
+                            RemoteQuickPicksSection(
                                 section = remoteQuickPicks,
                                 mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
+                                displayMode = uiState.quickPicksDisplayMode,
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
                                 haptic = haptic,
-                                scope = scope,
                                 modifier = Modifier.animateItem(),
                             )
                         }
-                    } else if (uiState.quickPicks.isNotEmpty()) {
+                    } else if (
+                        uiState.quickPicksMode == QuickPicks.LAST_LISTEN &&
+                            uiState.quickPicks.isNotEmpty()
+                    ) {
                         item(
                             key = "home_quick_picks_header",
                             contentType = "section_header",

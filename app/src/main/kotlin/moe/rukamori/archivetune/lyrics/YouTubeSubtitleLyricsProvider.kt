@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.lyrics
 
 import android.content.Context
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.utils.YTPlayerUtils
 
 object YouTubeSubtitleLyricsProvider : LyricsProvider {
     override val name = "YouTube Subtitle"
@@ -21,7 +22,10 @@ object YouTubeSubtitleLyricsProvider : LyricsProvider {
         artist: String,
         album: String?,
         duration: Int,
-    ): Result<String> = YouTube.transcript(id)
+    ): Result<String> {
+        val authState = YTPlayerUtils.ensureWebPoTokensForSubtitles(id)
+        return YouTube.transcript(id, authState)
+    }
 
     override suspend fun getAllLyrics(
         id: String,
@@ -31,6 +35,7 @@ object YouTubeSubtitleLyricsProvider : LyricsProvider {
         duration: Int,
         callback: (String) -> Unit,
     ) {
-        YouTube.transcript(id).onSuccess(callback)
+        val authState = YTPlayerUtils.ensureWebPoTokensForSubtitles(id)
+        YouTube.transcript(id, authState).onSuccess(callback)
     }
 }

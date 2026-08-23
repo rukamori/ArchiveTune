@@ -8,6 +8,13 @@
 package moe.rukamori.archivetune.utils
 
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ORIGIN_YOUTUBE
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ORIGIN_YOUTUBE_MOBILE
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.ORIGIN_YOUTUBE_MUSIC
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.REFERER_YOUTUBE
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.REFERER_YOUTUBE_MOBILE
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.REFERER_YOUTUBE_MUSIC
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.REFERER_YOUTUBE_TV
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
@@ -58,8 +65,8 @@ object StreamClientUtils {
 
     /**
      * Determine the correct Origin and Referer for a YouTube media request.
-     * Web-type clients need YouTube Music origin; TV clients need YouTube origin.
-     * Other clients (native app clients) do not need these headers.
+     * Web, mobile web, YouTube Music, and TV clients use their corresponding
+     * YouTube origin; native app clients do not need these headers.
      *
      * @param clientParam  the value of the `c` query parameter
      * @return [OriginReferer] with appropriate values, or null fields if not needed
@@ -132,22 +139,6 @@ object StreamClientUtils {
             .orEmpty()
 
     /**
-     * Patch the `cver` (client version) parameter in a stream URL to match the actual
-     * client version we used, preventing version mismatch 403 errors.
-     *
-     * @param url           the original stream URL
-     * @param clientVersion the client version string that was used for the player request
-     * @return the patched URL, or the original URL if no patching was needed
-     */
-    fun patchClientVersion(
-        url: String,
-        clientVersion: String,
-    ): String {
-        if (!url.contains("cver=")) return url
-        return url.replace(Regex("cver=[^&]+"), "cver=$clientVersion")
-    }
-
-    /**
      * Append a poToken to a stream URL as the `pot` query parameter.
      *
      * @param url      the stream URL
@@ -190,10 +181,18 @@ object StreamClientUtils {
             }
 
             clientName == "TVHTML5" -> {
-                YouTubeClient.TVHTML5
+                if (requestedClientVersion == YouTubeClient.TVHTML5_DOWNGRADED.clientVersion) {
+                    YouTubeClient.TVHTML5_DOWNGRADED
+                } else {
+                    YouTubeClient.TVHTML5
+                }
             }
 
-            clientName == "TVHTML5_SIMPLY_EMBEDDED_PLAYER" || clientName == "TVHTML5_SIMPLY" -> {
+            clientName == "TVHTML5_SIMPLY" -> {
+                YouTubeClient.TVHTML5_SIMPLY
+            }
+
+            clientName == "TVHTML5_SIMPLY_EMBEDDED_PLAYER" -> {
                 YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER
             }
 
@@ -227,6 +226,7 @@ object StreamClientUtils {
 
             clientName.startsWith("ANDROID_VR") -> {
                 when (requestedClientVersion) {
+                    YouTubeClient.ANDROID_VR_NO_AUTH.clientVersion -> YouTubeClient.ANDROID_VR_NO_AUTH
                     YouTubeClient.ANDROID_VR_1_65_10.clientVersion -> YouTubeClient.ANDROID_VR_1_65_10
                     YouTubeClient.ANDROID_VR_1_61_48.clientVersion -> YouTubeClient.ANDROID_VR_1_61_48
                     YouTubeClient.ANDROID_VR_1_43_32.clientVersion -> YouTubeClient.ANDROID_VR_1_43_32
@@ -251,11 +251,19 @@ object StreamClientUtils {
     private fun resolveOriginReferer(client: YouTubeClient): OriginReferer =
         when {
             isTvClient(client) -> {
-                OriginReferer(YouTubeClient.ORIGIN_YOUTUBE, YouTubeClient.REFERER_YOUTUBE_TV)
+                OriginReferer(ORIGIN_YOUTUBE, REFERER_YOUTUBE_TV)
             }
 
-            isWebMusicClient(client) -> {
-                OriginReferer(YouTubeClient.ORIGIN_YOUTUBE_MUSIC, YouTubeClient.REFERER_YOUTUBE_MUSIC)
+            isMobileWebClient(client) -> {
+                OriginReferer(ORIGIN_YOUTUBE_MOBILE, REFERER_YOUTUBE_MOBILE)
+            }
+
+            isMusicWebClient(client) -> {
+                OriginReferer(ORIGIN_YOUTUBE_MUSIC, REFERER_YOUTUBE_MUSIC)
+            }
+
+            isYouTubeWebClient(client) -> {
+                OriginReferer(ORIGIN_YOUTUBE, REFERER_YOUTUBE)
             }
 
             else -> {
@@ -263,19 +271,27 @@ object StreamClientUtils {
             }
         }
 
-    private fun isWebLikeClient(client: YouTubeClient): Boolean = isTvClient(client) || isWebMusicClient(client)
+    private fun isWebLikeClient(client: YouTubeClient): Boolean =
+        isTvClient(client) ||
+            isMobileWebClient(client) ||
+            isMusicWebClient(client) ||
+            isYouTubeWebClient(client)
 
     private fun isTvClient(client: YouTubeClient): Boolean {
         val clientName = client.clientName.uppercase(Locale.US)
         return clientName == "TVHTML5" || clientName == "TVHTML5_SIMPLY_EMBEDDED_PLAYER" || clientName == "TVHTML5_SIMPLY"
     }
 
-    private fun isWebMusicClient(client: YouTubeClient): Boolean {
+    private fun isMusicWebClient(client: YouTubeClient): Boolean =
+        client.clientName.equals("WEB_REMIX", ignoreCase = true)
+
+    private fun isMobileWebClient(client: YouTubeClient): Boolean =
+        client.clientName.equals("MWEB", ignoreCase = true)
+
+    private fun isYouTubeWebClient(client: YouTubeClient): Boolean {
         val clientName = client.clientName.uppercase(Locale.US)
         return clientName == "WEB" ||
-            clientName == "WEB_REMIX" ||
             clientName == "WEB_CREATOR" ||
-            clientName == "MWEB" ||
             clientName == "WEB_EMBEDDED_PLAYER"
     }
 

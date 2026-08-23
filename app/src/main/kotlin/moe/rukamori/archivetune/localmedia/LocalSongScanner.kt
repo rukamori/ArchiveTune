@@ -175,7 +175,8 @@ class LocalSongScanner
                         upsert(
                             SongEntity(
                                 id = track.id,
-                                title = track.title,
+                                title = if (existingSong?.titleOverride == true) existingSong.title else track.title,
+                                titleOverride = existingSong?.titleOverride ?: false,
                                 duration = track.durationSeconds,
                                 thumbnailUrl = track.thumbnailUrl,
                                 albumId = track.albumId,

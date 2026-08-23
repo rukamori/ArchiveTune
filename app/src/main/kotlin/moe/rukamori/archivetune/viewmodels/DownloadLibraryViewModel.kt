@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.viewmodels
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,10 +41,13 @@ enum class DownloadLibraryTab {
 }
 
 sealed interface DownloadLibraryScreenState {
+    val pendingRemoval: DownloadRemovalConfirmation?
+
     data class Loading(
         val selectedTab: DownloadLibraryTab,
         val query: String,
         val isSearchActive: Boolean,
+        override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
     data class Success(
@@ -51,12 +55,14 @@ sealed interface DownloadLibraryScreenState {
         val library: DownloadLibraryUiModel,
         val query: String,
         val isSearchActive: Boolean,
+        override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
     data class Empty(
         val selectedTab: DownloadLibraryTab,
         val query: String,
         val isSearchActive: Boolean,
+        override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
     data class Error(
@@ -64,7 +70,19 @@ sealed interface DownloadLibraryScreenState {
         @StringRes val messageRes: Int,
         val query: String,
         val isSearchActive: Boolean,
+        override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
+}
+
+@Immutable
+sealed interface DownloadRemovalConfirmation {
+    data class Entry(
+        val entry: DownloadEntryUiModel,
+    ) : DownloadRemovalConfirmation
+
+    data class Section(
+        val section: DownloadSectionUiModel,
+    ) : DownloadRemovalConfirmation
 }
 
 sealed interface DownloadLibraryEvent {
@@ -100,6 +118,7 @@ class DownloadLibraryViewModel
             )
         private val query = MutableStateFlow("")
         private val isSearchActive = MutableStateFlow(false)
+        private val pendingRemoval = MutableStateFlow<DownloadRemovalConfirmation?>(null)
         private val actionJobs = ConcurrentHashMap<String, Job>()
         private val eventChannel = Channel<DownloadLibraryEvent>(Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
@@ -115,17 +134,24 @@ class DownloadLibraryViewModel
                 selectedTab,
                 query,
                 isSearchActive,
-            ) { result, tab, currentQuery, searchActive ->
+                pendingRemoval,
+            ) { result, tab, currentQuery, searchActive, removalConfirmation ->
                 when (result) {
                     is DownloadLibraryResult.Data -> {
                         if (result.library.isEmpty) {
-                            DownloadLibraryScreenState.Empty(tab, currentQuery, searchActive)
+                            DownloadLibraryScreenState.Empty(
+                                selectedTab = tab,
+                                query = currentQuery,
+                                isSearchActive = searchActive,
+                                pendingRemoval = removalConfirmation,
+                            )
                         } else {
                             DownloadLibraryScreenState.Success(
                                 selectedTab = tab,
                                 library = result.library.filteredBy(currentQuery),
                                 query = currentQuery,
                                 isSearchActive = searchActive,
+                                pendingRemoval = removalConfirmation,
                             )
                         }
                     }
@@ -136,6 +162,7 @@ class DownloadLibraryViewModel
                             messageRes = R.string.downloads_load_failed,
                             query = currentQuery,
                             isSearchActive = searchActive,
+                            pendingRemoval = removalConfirmation,
                         )
                     }
                 }
@@ -227,6 +254,27 @@ class DownloadLibraryViewModel
         fun resume(section: DownloadSectionUiModel) = runAction("section:${section.mediaType}") { manageDownloads.resume(section.songIds) }
 
         fun remove(section: DownloadSectionUiModel) = runAction("section:${section.mediaType}") { manageDownloads.remove(section.songIds) }
+
+        fun requestRemove(entry: DownloadEntryUiModel) {
+            pendingRemoval.value = DownloadRemovalConfirmation.Entry(entry)
+        }
+
+        fun requestRemove(section: DownloadSectionUiModel) {
+            pendingRemoval.value = DownloadRemovalConfirmation.Section(section)
+        }
+
+        fun dismissRemoveConfirmation() {
+            pendingRemoval.value = null
+        }
+
+        fun confirmRemove() {
+            val confirmation = pendingRemoval.value ?: return
+            pendingRemoval.value = null
+            when (confirmation) {
+                is DownloadRemovalConfirmation.Entry -> remove(confirmation.entry)
+                is DownloadRemovalConfirmation.Section -> remove(confirmation.section)
+            }
+        }
 
         private fun runAction(
             key: String,

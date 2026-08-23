@@ -120,6 +120,19 @@ class SyncUtils
                 }
             }
 
+        suspend fun clearRemoteLibraryState() =
+            withContext(Dispatchers.IO) {
+                syncGeneration.incrementAndGet()
+                syncMutex.withLock {
+                    database.withTransaction {
+                        clearRemoteSongLibraryState()
+                        clearRemoteAlbumLibraryState()
+                        clearRemoteArtistLibraryState()
+                        clearRemotePlaylistLibraryState()
+                    }
+                }
+            }
+
         suspend fun cleanupDuplicatePlaylists() =
             withContext(Dispatchers.IO) {
                 try {

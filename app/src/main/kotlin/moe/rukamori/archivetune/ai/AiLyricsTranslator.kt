@@ -12,6 +12,7 @@ class AiLyricsTranslator {
         config: AiServiceConfig,
         lyrics: String,
         targetLanguage: String,
+        customPrompt: String,
     ): String {
         val document = AiLyricsDocumentParser.parse(lyrics)
         if (document.segments.isEmpty()) return lyrics
@@ -23,6 +24,7 @@ class AiLyricsTranslator {
                     targetLanguage = normalizeTargetLanguage(targetLanguage),
                     lines = batch.map { it.text },
                     formatName = document.formatName,
+                    customPrompt = customPrompt,
                 )
             batch.forEachIndexed { index, segment ->
                 translated[segment.id] = batchTranslations[index]

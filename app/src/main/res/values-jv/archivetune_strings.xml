@@ -340,10 +340,6 @@
     <string name="audio_crossfade_seconds">%1$s dtk</string>
     <string name="crossfade_gapless_title">Lewati album tanpa jeda</string>
     <string name="crossfade_gapless_description">Jangan gunakan crossfade untuk lagu berurutan dari album yang sama.</string>
-    <string name="player_stream_client">Klien pemutaran</string>
-    <string name="player_stream_client_desc">Mengontrol klien YouTube mana yang digunakan untuk mengambil streaming</string>
-    <string name="player_stream_client_web_remix">Campuran Web</string>
-    <string name="player_stream_client_web_remix_desc">Dukungan format yang diperluas dengan mengorbankan kecepatan. Dekripsi tanda tangan JavaScript menyebabkan penundaan startup ~5–10 detik.</string>
     <string name="settings_section_player_content">Pemutar &amp; Konten</string>
     <string name="settings_appearance_subtitle">Tema, tata letak, dan gaya visual</string>
     <string name="settings_playback_title">Pemutaran</string>

@@ -35,8 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -66,7 +64,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
@@ -90,6 +87,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
 import moe.rukamori.archivetune.ui.component.MediaDetailHero
+import moe.rukamori.archivetune.ui.component.MediaDetailStatePanel
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
@@ -128,6 +126,7 @@ fun AlbumScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
 
     val scope = rememberCoroutineScope()
+    val retry = remember(viewModel) { viewModel::retry }
 
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
@@ -581,72 +580,37 @@ fun AlbumScreen(
 
                     AlbumUiState.Empty -> {
                         item(key = "empty") {
-                            Column(
+                            MediaDetailStatePanel(
+                                title = stringResource(R.string.empty_album),
+                                description = stringResource(R.string.empty_album_desc),
+                                iconRes = R.drawable.album,
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = systemBarsTopPadding + AppBarHeight)
-                                        .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.empty_album),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = stringResource(R.string.empty_album_desc),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
+                                        .fillParentMaxSize()
+                                        .padding(top = systemBarsTopPadding + AppBarHeight),
+                            )
                         }
                     }
 
                     is AlbumUiState.Error -> {
                         item(key = "error") {
-                            Column(
+                            MediaDetailStatePanel(
+                                title =
+                                    stringResource(
+                                        if (state.isNotFound) R.string.album_not_found else R.string.error_unknown,
+                                    ),
+                                description =
+                                    stringResource(
+                                        if (state.isNotFound) R.string.album_not_found_desc else R.string.error_unknown,
+                                    ),
+                                iconRes = R.drawable.error,
+                                actionLabel = stringResource(R.string.retry),
+                                onAction = retry,
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = systemBarsTopPadding + AppBarHeight)
-                                        .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(
-                                    text =
-                                        if (state.isNotFound) {
-                                            stringResource(
-                                                R.string.album_not_found,
-                                            )
-                                        } else {
-                                            stringResource(R.string.error_unknown)
-                                        },
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = if (state.isNotFound) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text =
-                                        if (state.isNotFound) {
-                                            stringResource(
-                                                R.string.album_not_found_desc,
-                                            )
-                                        } else {
-                                            stringResource(R.string.error_unknown)
-                                        },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = { viewModel.retry() }, shapes = ButtonDefaults.shapes()) {
-                                    Text(stringResource(R.string.retry))
-                                }
-                            }
+                                        .fillParentMaxSize()
+                                        .padding(top = systemBarsTopPadding + AppBarHeight),
+                            )
                         }
                     }
                 }

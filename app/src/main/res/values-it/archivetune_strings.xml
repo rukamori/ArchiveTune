@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">Esplora</string>
     <string name="local_history">Locale</string>
@@ -155,10 +155,6 @@
         <item quantity="many">%d secondi</item>
         <item quantity="other">%d secondi</item>
     </plurals>
-    <string name="player_stream_client">Client di riproduzione</string>
-    <string name="player_stream_client_desc">Controlla quale client YouTube viene utilizzato per recuperare gli stream</string>
-    <string name="player_stream_client_web_remix">Web Remix</string>
-    <string name="player_stream_client_web_remix_desc">Supporto di formati esteso a scapito della velocità. La decrittografia della firma JavaScript introduce un ritardo di avvio di circa 5-10 secondi.</string>
     <string name="settings_section_player_content">Player e contenuto</string>
     <string name="similar_content">Contenuti simili</string>
     <string name="year_in_music">Il tuo anno in Music</string>
@@ -284,4 +280,61 @@
     <string name="suggestions">Suggerimenti</string>
     <string name="stats_unique_songs">Canzoni che potrebbero piacerti</string>
     <string name="stats_unique_artists">Artisti che potrebbero piacerti</string>
+    <string name="music_recognition_settings">Impostazioni per il riconoscimento della musica</string>
+    <string name="music_recognition_background_foss_description">Il riconoscimento in background non è disponibile nella versione FOSS. Il tasto di impostazioni rapide aprirà invece la scremata di riconoscimento.</string>
+    <string name="music_recognition_notification_channel_name">Riconoscimento musicale</string>
+    <string name="music_recognition_notification_status_listening">IN ASCOLTO</string>
+    <string name="music_recognition_notification_status_processing">CARICAMENTO</string>
+    <string name="music_recognition_notification_status_result">RISULTATO</string>
+    <string name="music_recognition_notification_listening_title">In ascolto</string>
+    <string name="music_recognition_notification_processing_title">Processando l\'audio</string>
+    <string name="music_recognition_notification_artist">Artista: %1$s</string>
+    <string name="music_recognition_notification_album">Album: %1$s</string>
+    <string name="music_recognition_notification_genre">Genere: %1$s</string>
+    <string name="music_recognition_notification_release">Rilasciato: %1$s</string>
+    <string name="music_recognition_notification_label">Etichetta: %1$s</string>
+    <string name="music_recognition_notification_no_match_title">Nessuna canzone trovata</string>
+    <string name="music_recognition_notification_recording_failed_title">Non è stato possibile registrare l\'audio del dispositivo</string>
+    <string name="music_recognition_notification_signature_failed_text">L\'audio registrato non conteneva abbastanza musica per identificare la canzone.</string>
+    <string name="music_recognition_notification_recognition_failed_text">Il servizio di identificazione non è riuscito a identificare questa canzone. Prova di nuovo tra poco.</string>
+    <string name="music_recognition_history">Cronologia di riconoscimento</string>
+    <string name="music_recognition_history_empty_title">Nessuna canzone ancora riconosciuta</string>
+    <string name="music_recognition_history_no_results_body">Prova un\'alta canzone, artista, album o codice.</string>
+    <string name="music_recognition_history_recognized_at">Riconosciuto %1$s</string>
+    <string name="local_songs_scan_included_folders_title">Cartelle incluse</string>
+    <string name="local_songs_scan_included_folders_desc">Scansiona solo le canzoni mele cartelle che corrispondono a una di questi indirzzi</string>
+    <string name="local_songs_scan_included_folders_empty">Tutte le cartelle sono incluse.</string>
+    <string name="local_songs_scan_included_folders_add">Includi cartella</string>
+    <string name="news">News Dagli Sviluppatori</string>
+    <string name="news_loading">Caricando le notizie…</string>
+    <string name="news_empty_title">Ancora nulla qui</string>
+    <string name="news_empty_desc">Nessun annuncio al momento. Controlla di nuovo tra poco.</string>
+    <string name="news_error_title">Non è stato possibile caricare le notizie</string>
+    <string name="news_error_desc">Controlla la tua connessione internet e prova di nuovo.</string>
+    <string name="news_retry">Riprova</string>
+    <string name="news_search_placeholder">Cerca le notizie…</string>
+    <string name="news_search_results_title">Risultati della ricerca</string>
+    <string name="news_no_results_title">Non ci sono articoli che corrispondono alla ricerca</string>
+    <string name="news_no_results_desc">Prova un nuovo termine di ricerca.</string>
+    <string name="news_important_badge">Importante</string>
+    <string name="news_tooltip_title">Novità</string>
+    <string name="news_tooltip_body">Hai dei messaggi non letti dagli sviluppatori.</string>
+    <string name="news_author_on_date">%1$s · %2$s</string>
+    <plurals name="news_article_count">
+        <item quantity="one">%d articolo</item>
+        <item quantity="many">%d articoli</item>
+        <item quantity="other">%d articoli</item>
+    </plurals>
+    <string name="aod_customize_title">Personalizzazione dell\' AOD</string>
+    <string name="aod_customize_subtitle">Forma, layout, controlli e stile generale</string>
+    <string name="aod_customize_preview">Preview live</string>
+    <string name="aod_customize_visibility">Visibilità</string>
+    <string name="aod_customize_show_thumbnail">Mostra thumbnail</string>
+    <string name="aod_customize_show_artist">Mostra l\'artista</string>
+    <string name="aod_customize_show_album">Mostra l\'album</string>
+    <string name="aod_customize_show_progress">Mostra il progresso</string>
+    <string name="aod_customize_show_controls">Mostra i controlli</string>
+    <string name="aod_customize_show_exit_button">Mostra il tasto esci</string>
+    <string name="aod_customize_show_lyric_ticker">Mostra il testo in tempo reale</string>
+    <string name="aod_customize_thumbnail_shape">Mostra la thumbnail</string>
 </resources>

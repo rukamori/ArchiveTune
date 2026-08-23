@@ -31,6 +31,8 @@ import java.time.LocalDateTime
 data class SongEntity(
     @PrimaryKey val id: String,
     val title: String,
+    @ColumnInfo(defaultValue = "0")
+    val titleOverride: Boolean = false,
     val duration: Int = -1, // in seconds
     val thumbnailUrl: String? = null,
     val albumId: String? = null,

@@ -19,19 +19,23 @@ import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
+import moe.rukamori.archivetune.constants.PoTokenGvsKey
+import moe.rukamori.archivetune.constants.PoTokenKey
+import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.SavedAccountsKey
 import moe.rukamori.archivetune.constants.SelectedYtmPlaylistsKey
 import moe.rukamori.archivetune.constants.VisitorDataKey
+import moe.rukamori.archivetune.constants.WebClientPoTokenEnabledKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AccountInfo
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
+import moe.rukamori.archivetune.innertube.utils.hasYtDlpYouTubeLoginCookies
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.decodeSavedAccounts
 import moe.rukamori.archivetune.utils.encodeSavedAccounts
-import moe.rukamori.archivetune.utils.putLegacyPoToken
 import moe.rukamori.archivetune.utils.toPlaybackAuthState
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,6 +64,7 @@ class YouTubeLoginRepository
                 runCatchingPreservingCancellation {
                     val normalizedCookie = cookie.trim()
                     check(hasYouTubeLoginCookie(normalizedCookie)) { "YouTube login cookie is missing" }
+                    check(hasYtDlpYouTubeLoginCookies(normalizedCookie)) { "YouTube login cookies are incomplete" }
 
                     val initialAuthState =
                         PlaybackAuthState(
@@ -94,6 +99,9 @@ class YouTubeLoginRepository
             withContext(Dispatchers.IO) {
                 runCatchingPreservingCancellation {
                     check(hasYouTubeLoginCookie(account.innerTubeCookie)) { "Saved account login cookie is missing" }
+                    check(hasYtDlpYouTubeLoginCookies(account.innerTubeCookie)) {
+                        "Saved account login cookies are incomplete"
+                    }
 
                     val initialAuthState =
                         PlaybackAuthState(
@@ -117,6 +125,10 @@ class YouTubeLoginRepository
                         preferences[AccountNameKey] = account.name
                         preferences[AccountEmailKey] = account.email
                         preferences[AccountChannelHandleKey] = account.channelHandle
+                        preferences.remove(PoTokenKey)
+                        preferences.remove(PoTokenGvsKey)
+                        preferences.remove(PoTokenPlayerKey)
+                        preferences[WebClientPoTokenEnabledKey] = false
                         preferences[YtmSyncKey] = account.ytmSync
                         preferences[SelectedYtmPlaylistsKey] = account.selectedYtmPlaylists
 
@@ -159,14 +171,6 @@ class YouTubeLoginRepository
             }
         }
 
-        suspend fun savePoToken(value: String?) {
-            withContext(Dispatchers.IO) {
-                context.dataStore.edit { preferences ->
-                    preferences.putLegacyPoToken(value)
-                }
-            }
-        }
-
         private suspend fun persistLoginSession(
             authState: PlaybackAuthState,
             accountInfo: AccountInfo,
@@ -181,6 +185,10 @@ class YouTubeLoginRepository
                 preferences[AccountNameKey] = accountInfo.name
                 preferences[AccountEmailKey] = accountInfo.email.orEmpty()
                 preferences[AccountChannelHandleKey] = accountInfo.channelHandle.orEmpty()
+                preferences.remove(PoTokenKey)
+                preferences.remove(PoTokenGvsKey)
+                preferences.remove(PoTokenPlayerKey)
+                preferences[WebClientPoTokenEnabledKey] = false
             }
         }
 
@@ -235,16 +243,6 @@ class UpdateYouTubeLoginContextUseCase
                 visitorData = visitorData,
                 dataSyncId = dataSyncId,
             )
-        }
-    }
-
-class SaveYouTubePoTokenUseCase
-    @Inject
-    constructor(
-        private val repository: YouTubeLoginRepository,
-    ) {
-        suspend operator fun invoke(value: String?) {
-            repository.savePoToken(value)
         }
     }
 

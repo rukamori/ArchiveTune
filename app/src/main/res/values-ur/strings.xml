@@ -465,7 +465,7 @@
     <string name="enable_proxy">پروکسی کو فاعل کریں</string>
     <string name="internet">انٹرنیٹ</string>
     <string name="internet_warning_title">تنبیہ حفاظت و استعمال</string>
-    <string name="internet_warning_doh">HTTPS پر DNS اس ہی صورت کام کرے گا جب آپکا ملک یوٹیوب پر پابندی رائج کرتا ہو، پروکسی یا VPN استعمال کرنے کی کوشش کریں۔</string>
+    <string name="internet_warning_doh">‫HTTPS پر DNS اس ہی صورت کام کرے گا جب آپکا ملک یوٹیوب پر پابندی رائج کرتا ہو، پروکسی یا VPN استعمال کرنے کی کوشش کریں۔</string>
     <string name="internet_warning_proxy">براہ مہربانی صرف ان ہی پروکسیات کا استعمال کریں جو مامون ہیں۔ مفت پروکسیات کا استعمال بہ آسان تو ہے، مامون نہیں۔ آپکو آگہ کردیا ہے، اور ہم آپکی حفاظت کے زمہ دار نہیں۔</string>
     <string name="dns_over_https">HTTPS پر DNS</string>
     <string name="dns_over_https_desc">HTTPS (DoH) پر DNS کی مدد سے ہوسٹنیمز کا تجزیہ کریں</string>
@@ -483,14 +483,8 @@
     <string name="proxy_connection_failed">‫رابطہ پروکسی ناکام: %s</string>
     <string name="proxy_connection_invalid_configuration">پروکسی میزبان یا بندرگاہ غیر مؤثر</string>
     <string name="discord_connection_settings">رابطہ</string>
-    <string name="ip_rotation">IP گھمیری</string>
-    <string name="ip_rotation_desc">موجودہ IP کو گھوما دیں اگر نشر یا مواد کے مسائل پیش آئیں۔</string>
-    <string name="ip_rotation_active_proxies">%d فعال شدہ پروکسیات</string>
-    <string name="ip_rotation_loading">درج کردہ پروکسیات لاد رہے ہیں</string>
-    <string name="ip_rotation_refreshing">IP تازہ کر رہے ہیں</string>
-    <string name="ip_rotation_refresh">IP کو تازہ کریں</string>
     <string name="stream_bypass_proxy">نشریات کے لے پروکسی کو بائ پاس کریں</string>
-    <string name="stream_bypass_proxy_desc">IP کے بے میل سے بچنے کے لئے اپنی سیدھی IP استعمال کریں</string>
+    <string name="stream_bypass_proxy_desc">‫IP کے بے میل سے بچنے کے لئے اپنی سیدھی IP استعمال کریں</string>
     <string name="enable_betterlyrics">BetterLyrics کو فاعل کریں</string>
     <string name="enable_unison_lyrics">Unison کے بول کو فاعل کریں</string>
     <string name="enable_simpmusic_lyrics">SimpMusic کے بول کو فاعل کریں</string>
@@ -510,7 +504,7 @@
     <string name="skip_silence">خاموشی کو آگے بڑھائیں</string>
     <string name="audio_normalization">خودکار نورمالائزیشن</string>
     <string name="audio_offload">سمعی آفلوڈ</string>
-    <string name="audio_offload_desc">حمایت یافتہ آلاؤں کو کم طاقت ہارڈ وئیر سے غیر مرموز کرکے گیت بجانے کی اجازت دیں۔ کچھ عملیاتی سمعی صفتیں غیر فعال کردی جائیں گی۔</string>
+    <string name="audio_offload_desc">حمایت یافتہ آلات کو کم طاقت ہارڈ وئیر سے غیر مرموز کرکے گیت بجانے کی اجازت دیں۔ کچھ عملیاتی سمعی صفتیں غیر فعل کردی جائیں گی۔</string>
     <string name="pause_on_device_mute">آلہ کی مقدارِ آواز 0 ہونے پر روک دیں</string>
     <string name="pause_on_device_mute_desc">مقدارِ آواز صفر ہونے پر سننا روک دیں، سننے کی کوششوں پر وضاحت دیں، اور جب مقدارِ آواز بڑھے تو سننا شروع کریں</string>
     <string name="device_mute_recovery_volume">آواز کی مقدار 0 سے بڑھائیں</string>
@@ -952,7 +946,7 @@
     <string name="onboarding_permission_notifications_title">اطلاعات</string>
     <string name="onboarding_permission_notifications_desc">اطلاعات کے چھاؤ میں نشر کی ترتیبات اور موسیقی کی سرگرمی دکھائ جائے۔</string>
     <string name="onboarding_permission_device_audio_capture_title">الہ پر موجود سمعی شناخت</string>
-    <string name="onboarding_permission_device_audio_capture_desc">‫مائکروفون استعمال کئے بغیر دوسرے ایپوں چلنے والی موسیقی کی شناخت کی جائے۔ Android سکرین اور سمعی کی تسخیر کی منضوری ہر دفعہ مانگتا ہے، ArchiveTune صرف سمعی کا استعمال کرتا ہے۔</string>
+    <string name="onboarding_permission_device_audio_capture_desc">‫مائکروفون استعمال کئے بغیر دوسرے ایپوں میں چلنے والی موسیقی کی شناخت کی جائے۔ Android سکرین اور سمعی کی تسخیر کی منضوری ہر دفعہ مانگتا ہے، ArchiveTune صرف سمعی کا استعمال کرتا ہے۔</string>
     <string name="onboarding_permission_bluetooth_connect_title">بلوٹوتھ سمعی کا رابطہ</string>
     <string name="onboarding_permission_bluetooth_connect_desc">نشر کے لئے قریبی بلوٹوتھ کے سمعی آلہ پر جڑا جائے۔</string>
     <string name="onboarding_permission_network_title">نیٹورک تک رسائ</string>

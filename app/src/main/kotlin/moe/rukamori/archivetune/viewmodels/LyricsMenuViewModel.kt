@@ -35,6 +35,7 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiCustomModelKey
+import moe.rukamori.archivetune.constants.AiCustomPromptKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
@@ -224,8 +225,10 @@ class LyricsMenuViewModel
                         -> LyricsUtils.lyricsOrNotFound(lyrics)
 
                         LyricsEntity.Source.USER_EDIT,
-                        LyricsEntity.Source.AI_TRANSLATION,
                         -> lyrics
+
+                        LyricsEntity.Source.AI_TRANSLATION ->
+                            usableTranslatedLyrics(lyrics) ?: return@launch
                     }
                 database.query {
                     replaceLyrics(
@@ -264,11 +267,17 @@ class LyricsMenuViewModel
                                     ),
                                 lyrics = lyrics,
                                 targetLanguage = targetLanguage.ifBlank { "ENGLISH" },
+                                customPrompt = prefs[AiCustomPromptKey].orEmpty(),
                             )
+                        val usableLyrics = usableTranslatedLyrics(translatedLyrics)
+                        if (usableLyrics == null) {
+                            _aiTranslationEvents.emit(context.getString(R.string.translation_failed))
+                            return@launch
+                        }
                         database.query {
                             replaceLyrics(
                                 id = mediaMetadata.id,
-                                lyrics = translatedLyrics,
+                                lyrics = usableLyrics,
                                 source = LyricsEntity.Source.AI_TRANSLATION.value,
                             )
                         }
@@ -285,6 +294,11 @@ class LyricsMenuViewModel
                     }
                 }
         }
+
+        private fun usableTranslatedLyrics(lyrics: String): String? =
+            LyricsUtils
+                .normalizeLyricsText(lyrics)
+                .takeIf(LyricsUtils::hasMeaningfulLyricsContent)
 
         fun cancelAiTranslation() {
             aiTranslationJob?.cancel()

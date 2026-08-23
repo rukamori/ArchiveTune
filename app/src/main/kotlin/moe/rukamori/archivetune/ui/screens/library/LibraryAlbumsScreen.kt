@@ -89,6 +89,7 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
+import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryAlbumsViewModel
@@ -139,6 +140,7 @@ fun LibraryAlbumsScreen(
         } else {
             albums
         }
+    val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
 
     // Issue 2: player-aware bottom padding
     val playerAwareBottomPadding =
@@ -493,6 +495,20 @@ fun LibraryAlbumsScreen(
                         }
                     }
 
+                    if (filteredAlbums.isEmpty()) {
+                        item(
+                            span = { GridItemSpan(4) },
+                            key = "albums_empty",
+                            contentType = "library_empty_state",
+                        ) {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.album,
+                                actionLabelRes = R.string.search_yt_music,
+                                onAction = openSearch,
+                            )
+                        }
+                    }
+
                     // 4-column albums list
                     items(filteredAlbums, key = { it.id }) { album ->
                         Column(
@@ -579,6 +595,16 @@ fun LibraryAlbumsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    if (filteredAlbums.isEmpty()) {
+                        item(key = "albums_empty", contentType = "library_empty_state") {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.album,
+                                actionLabelRes = R.string.search_yt_music,
+                                onAction = openSearch,
+                            )
+                        }
+                    }
+
                     items(filteredAlbums, key = { it.id }) { album ->
                         Row(
                             modifier =

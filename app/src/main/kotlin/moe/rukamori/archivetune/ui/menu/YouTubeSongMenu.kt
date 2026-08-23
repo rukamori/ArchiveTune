@@ -98,10 +98,12 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.StoryShareData
 import moe.rukamori.archivetune.ui.component.StoryShareDialog
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.utils.ExternalDownloaderLaunchResult
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.openExternalDownloader
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
@@ -530,7 +532,10 @@ fun YouTubeSongMenu(
 
                                 val now = LocalDateTime.now()
                                 database.withTransaction {
-                                    val base = librarySong?.song ?: song.toMediaMetadata().toSongEntity()
+                                    val base =
+                                        librarySong?.song
+                                            ?: database.getSongByIdBlocking(song.id)?.song
+                                            ?: song.toMediaMetadata().toSongEntity()
                                     if (librarySong == null) {
                                         insert(song.toMediaMetadata())
                                     }
@@ -702,30 +707,24 @@ fun YouTubeSongMenu(
                                 Modifier.clickable {
                                     onDismiss()
                                     val url = "https://music.youtube.com/watch?v=${song.id}"
-                                    if (externalDownloaderPackage.isBlank()) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_configured),
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                        return@clickable
-                                    }
-                                    val intent =
-                                        Intent(Intent.ACTION_VIEW).apply {
-                                            setPackage(externalDownloaderPackage)
-                                            data = android.net.Uri.parse(url)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    when (context.openExternalDownloader(externalDownloaderPackage, url)) {
+                                        ExternalDownloaderLaunchResult.STARTED -> Unit
+                                        ExternalDownloaderLaunchResult.NOT_CONFIGURED -> {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.external_downloader_not_configured),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
                                         }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: android.content.ActivityNotFoundException) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_installed),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        ExternalDownloaderLaunchResult.NOT_INSTALLED -> {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.external_downloader_not_installed),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                        }
                                     }
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),

@@ -10,6 +10,14 @@ body:
         Before submitting, verify the bug on the latest nightly build whenever possible. Stable releases may already contain bugs fixed in nightly builds, so stable-only reports need a clear reason and may be closed if they cannot be reproduced on nightly.
 
   - type: checkboxes
+    id: no-ai-policy
+    attributes:
+      label: NO AI / NO LLM POLICY
+      options:
+        - label: I've read the [NO AI / NO LLM POLICY](../../CONTRIBUTING.md#no-ai--no-llm-policy) and understand I may be blocked from the repository if it is violated.
+          required: true
+
+  - type: checkboxes
     id: pre-submission-checklist
     attributes:
       label: Required pre-submission checklist

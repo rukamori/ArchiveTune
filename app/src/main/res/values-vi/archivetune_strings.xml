@@ -176,10 +176,6 @@
     <string name="theme_presets_title">Cài đặt sẵn</string>
     <string name="copy">Sao chép</string>
     <string name="player_design_v5">Little</string>
-    <string name="player_stream_client">Client phát nhạc</string>
-    <string name="player_stream_client_desc">Tùy chọn điều khiển nguồn phát lại được sử dụng để tải luồng dữ liệu</string>
-    <string name="player_stream_client_web_remix">Web Remix</string>
-    <string name="player_stream_client_web_remix_desc">Hỗ trợ định dạng mở rộng với chi phí là tốc độ. Giải mã chữ ký JavaScript gây ra độ trễ khởi động ~5–10 giây.</string>
     <string name="backup_in_progress">Đang tiến hành sao lưu</string>
     <string name="restore_in_progress">Đang tiến hành khôi phục</string>
     <string name="backup_step_export_settings">Đang sao lưu cài đặt</string>
@@ -407,6 +403,8 @@
     <string name="settings_backup_restore_subtitle">Xuất và khôi phục dữ liệu ứng dụng cá nhân</string>
     <string name="settings_developer_options_title">Tùy chọn nhà phát triển</string>
     <string name="settings_developer_options_subtitle">Tính năng thử nghiệm và gỡ lỗi</string>
+    <string name="enable_leak_canary">Bật LeakCanary</string>
+    <string name="enable_leak_canary_description">Phát hiện rò rỉ bộ nhớ và hiển thị báo cáo. Hãy khởi động lại ứng dụng sau khi thay đổi tùy chọn này.</string>
     <string name="settings_lyrics_subtitle">Nhà cung cấp lời bài hát, tải trước và dịch thuật</string>
     <string name="settings_content_subtitle">Ngôn ngữ, quốc gia và mặc định đề xuất</string>
     <string name="settings_internet_subtitle">Proxy, DNS và hành vi phát mạng</string>
@@ -556,8 +554,6 @@
     <string name="theme_export_success">Đã xuất giao diện</string>
     <string name="theme_export_failed">Xuất thất bại</string>
     <string name="theme_import_failed_title">Không thể nhập giao diện</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
-    <string name="player_stream_client_archivetune_extractor_desc">Sử dụng trình trích xuất phụ trợ của ArchiveTune cho các luồng phát lại. Ưu tiên Âm thanh Chất lượng Cao Tự động.</string>
     <string name="top_albums">Album hàng đầu</string>
     <string name="about_position_developers">Nhà phát triển | Nhóm</string>
     <string name="about_position_yuki">Chỉ để Trang trí 😂 | Quản trị viên</string>

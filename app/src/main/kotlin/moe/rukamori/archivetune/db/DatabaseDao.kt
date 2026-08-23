@@ -82,6 +82,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
 
+    @Query("SELECT id FROM song WHERE inLibrary IS NOT NULL")
+    suspend fun librarySongIds(): List<String>
+
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY inLibrary")
     fun songsByCreateDateAsc(): Flow<List<Song>>
@@ -762,6 +765,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM format WHERE id = :id")
     fun format(id: String?): Flow<FormatEntity?>
 
+    @Query("SELECT * FROM format WHERE id = :id LIMIT 1")
+    fun getFormatByIdBlocking(id: String): FormatEntity?
+
     @Transaction
     @Query("SELECT * FROM lyrics WHERE id = :id")
     fun lyrics(id: String?): Flow<LyricsEntity?>
@@ -1240,6 +1246,22 @@ interface DatabaseDao {
         playlistId: String,
         customOrder: Int?,
     )
+
+    @Query(
+        "UPDATE song SET liked = 0, likedDate = NULL, inLibrary = NULL WHERE isLocal = 0 AND (liked = 1 OR inLibrary IS NOT NULL)",
+    )
+    fun clearRemoteSongLibraryState()
+
+    @Query(
+        "UPDATE album SET bookmarkedAt = NULL, likedDate = NULL, inLibrary = NULL WHERE isLocal = 0 AND (bookmarkedAt IS NOT NULL OR likedDate IS NOT NULL OR inLibrary IS NOT NULL)",
+    )
+    fun clearRemoteAlbumLibraryState()
+
+    @Query("UPDATE artist SET bookmarkedAt = NULL WHERE isLocal = 0 AND bookmarkedAt IS NOT NULL")
+    fun clearRemoteArtistLibraryState()
+
+    @Query("UPDATE playlist SET bookmarkedAt = NULL WHERE browseId IS NOT NULL AND bookmarkedAt IS NOT NULL")
+    fun clearRemotePlaylistLibraryState()
 
     @Query("UPDATE playlist SET songSortType = :sortType, songSortDescending = :descending WHERE id = :playlistId")
     fun updatePlaylistSortPreference(
@@ -1741,7 +1763,7 @@ interface DatabaseDao {
     ) {
         update(
             song.song.copy(
-                title = mediaMetadata.title,
+                title = if (song.song.titleOverride) song.song.title else mediaMetadata.title,
                 duration = mediaMetadata.duration,
                 thumbnailUrl = mediaMetadata.thumbnailUrl,
                 albumId = mediaMetadata.album?.id,

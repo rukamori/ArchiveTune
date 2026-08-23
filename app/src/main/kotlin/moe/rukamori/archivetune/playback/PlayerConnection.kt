@@ -16,7 +16,6 @@ import androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM
 import androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM
 import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
 import androidx.media3.common.Player.REPEAT_MODE_OFF
-import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -26,15 +25,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
@@ -74,16 +70,9 @@ class PlayerConnection(
     val localPlayer = service.localPlayer
 
     val playbackState = MutableStateFlow(player.playbackState)
-    private val playWhenReady = MutableStateFlow(player.playWhenReady)
+    private val _isPlaying = MutableStateFlow(player.isPlaying)
+    val isPlaying = _isPlaying.asStateFlow()
     val playbackParameters = MutableStateFlow(player.playbackParameters)
-    val isPlaying =
-        combine(playbackState, playWhenReady) { playbackState, playWhenReady ->
-            playWhenReady && playbackState != STATE_ENDED
-        }.stateIn(
-            scope,
-            SharingStarted.Lazily,
-            player.playWhenReady && player.playbackState != STATE_ENDED,
-        )
     val mediaMetadata = service.currentMediaMetadata
     val currentSong =
         mediaMetadata.flatMapLatest {
@@ -115,7 +104,6 @@ class PlayerConnection(
     private var dismissedPlaybackError: PlaybackException? = null
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
-    val extractorAuthenticationEvents = service.extractorAuthenticationEvents
 
     private val canvasArtworkRefetchMutex = Mutex()
     private val _isCanvasArtworkRefetching = MutableStateFlow(false)
@@ -129,7 +117,7 @@ class PlayerConnection(
         player.addListener(this)
 
         playbackState.value = player.playbackState
-        playWhenReady.value = player.playWhenReady
+        _isPlaying.value = player.isPlaying
         playbackParameters.value = player.playbackParameters
         queueTitle.value = service.queueTitle
         queueWindows.value = player.getQueueWindows()
@@ -258,6 +246,10 @@ class PlayerConnection(
         service.playNext(items)
     }
 
+    fun moveQueueItemToNext(mediaItemIndex: Int) {
+        service.moveQueueItemToNext(mediaItemIndex)
+    }
+
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
 
     fun addToQueue(items: List<MediaItem>) {
@@ -314,10 +306,6 @@ class PlayerConnection(
         error.value = null
     }
 
-    fun updateExtractorBearerToken(token: String) {
-        service.updateExtractorBearerToken(token)
-    }
-
     fun seekToNext() {
         val state = service.togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (state?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -345,11 +333,8 @@ class PlayerConnection(
         updatePlaybackError(player.playerError)
     }
 
-    override fun onPlayWhenReadyChanged(
-        newPlayWhenReady: Boolean,
-        reason: Int,
-    ) {
-        playWhenReady.value = newPlayWhenReady
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        _isPlaying.value = isPlaying
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {

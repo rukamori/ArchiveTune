@@ -16,7 +16,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.AiProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,6 +29,8 @@ class AiServiceException(
 object AiTextService {
     private const val OpenAiEndpoint = "https://api.openai.com/v1/chat/completions"
     private const val OpenAiModelsEndpoint = "https://api.openai.com/v1/models"
+    private const val OpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
+    private const val OpenRouterModelsEndpoint = "https://openrouter.ai/api/v1/models"
     private const val GeminiBaseEndpoint = "https://generativelanguage.googleapis.com/v1beta"
 
     private val client =
@@ -63,22 +64,24 @@ object AiTextService {
         targetLanguage: String,
         lines: List<String>,
         formatName: String,
+        customPrompt: String,
     ): List<String> {
         if (lines.isEmpty()) return emptyList()
         val payload = JSONArray()
         lines.forEach { payload.put(it) }
+        val defaultSystemPrompt =
+            """
+            You are an expert song lyrics translator.
+            Translate each input string into $targetLanguage with natural, accurate lyric phrasing.
+            Preserve meaning, tone, profanity level, names, repeated hooks, and line-level intent.
+            Do not add timestamps, IDs, XML, markdown, explanations, or extra lines.
+            Return only a JSON array of strings with exactly ${lines.size} items in the same order.
+            The caller will reconstruct the $formatName lyrics container separately.
+            """.trimIndent()
         val response =
             complete(
                 config = config,
-                systemPrompt =
-                    """
-                    You are an expert song lyrics translator.
-                    Translate each input string into $targetLanguage with natural, accurate lyric phrasing.
-                    Preserve meaning, tone, profanity level, names, repeated hooks, and line-level intent.
-                    Do not add timestamps, IDs, XML, markdown, explanations, or extra lines.
-                    Return only a JSON array of strings with exactly ${lines.size} items in the same order.
-                    The caller will reconstruct the $formatName lyrics container separately.
-                    """.trimIndent(),
+                systemPrompt = defaultSystemPrompt.appendCustomPrompt(customPrompt),
                 userPrompt = payload.toString(),
                 temperature = 0.15,
                 maxTokens = 8192,
@@ -86,6 +89,11 @@ object AiTextService {
         val array = extractJsonArray(response)
         require(array.length() == lines.size) { "AI response changed the lyric segment count" }
         return List(array.length()) { index -> array.optString(index) }
+    }
+
+    private fun String.appendCustomPrompt(customPrompt: String): String {
+        val normalizedPrompt = customPrompt.trim()
+        return if (normalizedPrompt.isEmpty()) this else "$this\n\n$normalizedPrompt"
     }
 
     suspend fun complete(
@@ -101,6 +109,18 @@ object AiTextService {
             AiProvider.CHATGPT -> {
                 completeOpenAiCompatible(
                     endpoint = OpenAiEndpoint,
+                    apiKey = config.apiKey,
+                    model = model,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    temperature = temperature,
+                    maxTokens = maxTokens,
+                )
+            }
+
+            AiProvider.OPENROUTER -> {
+                completeOpenAiCompatible(
+                    endpoint = OpenRouterEndpoint,
                     apiKey = config.apiKey,
                     model = model,
                     systemPrompt = systemPrompt,
@@ -143,7 +163,8 @@ object AiTextService {
     suspend fun fetchModels(config: AiServiceConfig): List<AiModelOption> {
         if (!config.canCallApi) throw AiServiceException("AI provider is not configured")
         return when (config.provider) {
-            AiProvider.CHATGPT -> fetchOpenAiModels(config.apiKey)
+            AiProvider.CHATGPT -> fetchOpenAiModels(OpenAiModelsEndpoint, config.apiKey)
+            AiProvider.OPENROUTER -> fetchOpenAiModels(OpenRouterModelsEndpoint, config.apiKey)
             AiProvider.GEMINI -> fetchGeminiModels(config.apiKey)
             AiProvider.CUSTOM, AiProvider.NONE -> emptyList()
         }
@@ -238,13 +259,17 @@ object AiTextService {
         when (provider) {
             AiProvider.CHATGPT -> "gpt-4o"
             AiProvider.GEMINI -> "gemini-3.5-flash"
+            AiProvider.OPENROUTER -> "~openai/gpt-latest"
             AiProvider.CUSTOM -> throw AiServiceException("No AI model configured")
             AiProvider.NONE -> throw AiServiceException("AI provider is disabled")
         }
 
-    private suspend fun fetchOpenAiModels(apiKey: String): List<AiModelOption> {
+    private suspend fun fetchOpenAiModels(
+        endpoint: String,
+        apiKey: String,
+    ): List<AiModelOption> {
         val response =
-            client.get(OpenAiModelsEndpoint) {
+            client.get(endpoint) {
                 header("Authorization", "Bearer ${apiKey.trim()}")
             }
         val raw = response.bodyAsText()

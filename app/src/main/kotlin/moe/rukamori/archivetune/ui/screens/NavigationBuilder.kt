@@ -55,7 +55,7 @@ import moe.rukamori.archivetune.ui.screens.settings.AodCustomizedScreen
 import moe.rukamori.archivetune.ui.screens.settings.AppearanceSettings
 import moe.rukamori.archivetune.ui.screens.settings.BackupAndRestore
 import moe.rukamori.archivetune.ui.screens.settings.ChangelogScreen
-import moe.rukamori.archivetune.ui.screens.settings.ChiperSettings
+import moe.rukamori.archivetune.ui.screens.settings.YtDlpSettings
 import moe.rukamori.archivetune.ui.screens.settings.ContentSettings
 import moe.rukamori.archivetune.ui.screens.settings.CustomizeBackground
 import moe.rukamori.archivetune.ui.screens.settings.DebugSettings
@@ -69,10 +69,8 @@ import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
 import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
-import moe.rukamori.archivetune.ui.screens.settings.PO_TOKEN_ROUTE
 import moe.rukamori.archivetune.ui.screens.settings.PalettePickerScreen
 import moe.rukamori.archivetune.ui.screens.settings.PlayerSettings
-import moe.rukamori.archivetune.ui.screens.settings.PoTokenScreen
 import moe.rukamori.archivetune.ui.screens.settings.PrivacySettings
 import moe.rukamori.archivetune.ui.screens.settings.SettingsScreen
 import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
@@ -415,8 +413,8 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/player") {
         PlayerSettings(navController)
     }
-    composable("settings/player/chiper") {
-        ChiperSettings(navController)
+    composable("settings/player/ytdlp") {
+        YtDlpSettings(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController)
@@ -474,9 +472,6 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/about") {
         AboutScreen(navController)
-    }
-    composable(PO_TOKEN_ROUTE) {
-        PoTokenScreen(navController)
     }
     composable("customize_background") {
         CustomizeBackground(navController)

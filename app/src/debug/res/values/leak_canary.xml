@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LeakCanary remains enabled in Debug, but does not expose a separate launcher icon. -->
+    <bool name="leak_canary_add_launcher_icon">false</bool>
+    <bool name="leak_canary_add_dynamic_shortcut">true</bool>
+</resources>

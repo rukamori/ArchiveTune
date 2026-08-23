@@ -490,12 +490,6 @@
     <string name="proxy_connection_success">Conexão do proxy bem-sucedida!</string>
     <string name="proxy_connection_failed">Falha na conexão do proxy: %s</string>
     <string name="proxy_connection_invalid_configuration">Host ou porta do proxy inválido</string>
-    <string name="ip_rotation">Rotação de IP</string>
-    <string name="ip_rotation_desc">Rotacionar o IP atual quando ocorrerem problemas de reprodução ou conteúdo.</string>
-    <string name="ip_rotation_active_proxies">%d proxies ativos</string>
-    <string name="ip_rotation_loading">Carregando lista de proxies</string>
-    <string name="ip_rotation_refreshing">Atualizando IP</string>
-    <string name="ip_rotation_refresh">Atualizar IP</string>
     <string name="stream_bypass_proxy">Ignorar proxy para streams</string>
     <string name="stream_bypass_proxy_desc">Usar seu IP direto para reprodução de streams e evitar incompatibilidade de IP</string>
     <string name="enable_betterlyrics">Ativar BetterLyrics</string>
@@ -1120,4 +1114,5 @@
     <string name="scheduled_backup_load_failed">Não foi possível carregar as configurações de backup programado</string>
     <string name="scheduled_backup_update_failed">Não foi possível salvar as configurações do backup programado</string>
     <string name="gatekeeper_connection_blocked">Conexão bloqueada pelo ArchiveTune Remote. Não foi possível verificar se este aplicativo é uma versão oficial do ArchiveTune. Instale uma versão oficial em https://github.com/rukamori/ArchiveTune ou https://t.me/ArchiveTuneGC.</string>
+    <string name="enable_betterlyrics_portato">Ativar BetterLyrics Portato</string>
 </resources>

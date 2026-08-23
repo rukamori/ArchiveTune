@@ -13,6 +13,9 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.service.dreams.DreamService
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -38,6 +41,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -46,18 +50,26 @@ import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.player.AodPlayerScreen
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.get
 
 @AndroidEntryPoint
-class AodDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
+class AodDreamService :
+    DreamService(),
+    LifecycleOwner,
+    SavedStateRegistryOwner,
+    OnBackPressedDispatcherOwner {
     @Inject
     lateinit var database: MusicDatabase
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val backPressedDispatcher = OnBackPressedDispatcher { finish() }
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
+    override val onBackPressedDispatcher: OnBackPressedDispatcher get() = backPressedDispatcher
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private val serviceConnection = object : ServiceConnection {
@@ -88,6 +100,11 @@ class AodDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner 
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
+        if (!dataStore.get(AodModeEnabledKey, true)) {
+            finish()
+            return
+        }
+
         isInteractive = true
         isFullscreen = true
         isScreenBright = false
@@ -95,6 +112,7 @@ class AodDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner 
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@AodDreamService)
             setViewTreeSavedStateRegistryOwner(this@AodDreamService)
+            setViewTreeOnBackPressedDispatcherOwner(this@AodDreamService)
             setContent {
                 ArchiveTuneTheme {
                     val conn = playerConnection

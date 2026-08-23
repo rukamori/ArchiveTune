@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.aboutlibraries.android)
+    alias(libs.plugins.chaquopy)
 }
 
 val localProperties = Properties()
@@ -94,15 +95,10 @@ android {
                 ?: ""
         buildConfigField("String", "CANVAS_BEARER_TOKEN", "\"$canvasBearerToken\"")
 
-        val extractorBearer =
-            localProperties.getProperty("EXTRACTOR_BEARER")
-                ?: System.getenv("EXTRACTOR_BEARER")
-                ?: ""
-        buildConfigField("String", "EXTRACTOR_BEARER", "\"$extractorBearer\"")
-
         buildConfigField("String", "DATA_SERVER_URL", dataServerUrl.asBuildConfigString())
         buildConfigField("String", "API_BEARER_TOKEN", apiBearerToken.asBuildConfigString())
         buildConfigField("boolean", "GATEKEEPER_ENABLED", "false")
+        buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "false")
 
         val nightlyBuildHash =
             (
@@ -111,6 +107,12 @@ android {
                     ?: ""
                 ).trim()
         buildConfigField("String", "NIGHTLY_BUILD_HASH", "\"$nightlyBuildHash\"")
+
+        val nightlyVersionName =
+            providers.gradleProperty("nightlyVersionName").orNull?.trim().orEmpty()
+        if (nightlyVersionName.isNotEmpty()) {
+            versionName = nightlyVersionName
+        }
         buildConfigField("String", "DISTRIBUTION", "\"gms\"")
         buildConfigField("boolean", "UPDATER_AVAILABLE", "true")
     }
@@ -201,6 +203,18 @@ android {
             applicationIdSuffix = ".debug"
             isDebuggable = true
         }
+        create("nightly") {
+            applicationIdSuffix = ".nightly"
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "true")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
@@ -249,6 +263,16 @@ android {
 
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pip {
+            install("yt-dlp==2026.8.19")
+            install("yt-dlp-ejs==0.8.0")
+        }
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 }
@@ -276,6 +300,8 @@ dependencies {
     compileOnly("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.leakcanary.android)
+    add("nightlyImplementation", libs.leakcanary.android)
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.reorderable)
@@ -344,7 +370,6 @@ dependencies {
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
-    implementation(project(":moriextractor"))
     implementation(project(":morideobfuscator"))
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
 
@@ -367,8 +392,6 @@ dependencies {
     implementation("androidx.compose.material3.adaptive:adaptive:1.3.0-rc01")
     implementation(libs.accompanist.lyrics.ui)
     implementation(libs.accompanist.lyrics.core)
-
-    implementation("org.json:json:20240303")
 }
 
 androidComponents {
