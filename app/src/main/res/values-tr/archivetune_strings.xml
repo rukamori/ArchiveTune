@@ -511,7 +511,12 @@
     <string name="audio_crossfade_seconds">%1$s sn</string>
     <string name="crossfade_gapless_title">Boşluk albümleri atla</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="crossfade_gapless_description">Aynı albümden ardışık şarkılar arasında çapraz geçiş kullanmayın.</string>
+=======
+    <string name="crossfade_gapless_description">Aynı albümden ardışık şarkılar arasında çapraz geçiş kullanmayın.</string>
+    <string name="player_stream_client_archivetune_extractor">ArchiveTune Çıkarıcı</string>
+>>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
     <string name="settings_appearance_subtitle">Temalar, düzen ve görsel stiller</string>
     <string name="settings_playback_title">Playback</string>
     <string name="settings_playback_subtitle">Ses davranışı, çapraz geçiş ve arkaplan oynatması</string>
@@ -524,11 +529,16 @@
     <string name="settings_lyrics_subtitle">Şarkı sözü sağlayıcıları, önyükleme ve çeviri</string>
     <string name="settings_content_subtitle">Dil, ülke ve öneri varsayılanları</string>
     <string name="settings_internet_subtitle">Proxy, DNS ve ağ oynatma davranışı</string>
+<<<<<<< HEAD
+=======
+    <string name="settings_po_token_subtitle">Oynatma doğrulaması ve ziyaretçi verileri</string>
+>>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
     <string name="settings_storage_subtitle">Önbellek, indirilenler ve çevrimdışı depolama</string>
     <string name="settings_updates_subtitle">Sürüm, sürüm notları ve güncelleme kanalı</string>
     <string name="settings_about_subtitle">Uygulama bilgisi, lisanlar ve katkıda bulunanlar</string>
     <string name="settings_account_subtitle">Giriş yapın ve hesap senkronizasyonunu yönetin</string>
     <string name="settings_stats_title">Dinlenme İstatistikleri</string>
+<<<<<<< HEAD
     <string name="settings_stats_subtitle">En çok dinlediğiniz şarkılar, sanatçılar ve çalma geçmişiniz</string>
     <string name="top_songs">En çok dinlediğiniz şarkılar</string>
     <string name="top_albums">En çok dinlediğiniz Şarkılar</string>
@@ -702,4 +712,6 @@
 >>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
 =======
 >>>>>>> f10143dab (Translated using Weblate (Turkish))
+=======
+>>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
 </resources>
