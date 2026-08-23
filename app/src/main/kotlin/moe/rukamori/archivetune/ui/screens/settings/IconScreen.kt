@@ -38,7 +38,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -68,6 +67,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -99,6 +100,7 @@ import moe.rukamori.archivetune.viewmodels.IconScreenEffect
 import moe.rukamori.archivetune.viewmodels.IconScreenState
 import moe.rukamori.archivetune.viewmodels.IconScreenUiModel
 import moe.rukamori.archivetune.viewmodels.IconViewModel
+import kotlin.collections.get
 import androidx.compose.material3.IconButton as MaterialIconButton
 
 @Composable
@@ -855,16 +857,24 @@ private fun AppIconPreview(
     Surface(
         modifier = Modifier.size(size),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        tonalElevation = 1.dp,
+        color = if (icon.isDefault) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            Color.Transparent
+        },
+        tonalElevation = if (icon.isDefault) 1.dp else 0.dp,
     ) {
         AsyncImage(
             model = icon.previewDrawableResId,
             contentDescription = null,
-            contentScale = ContentScale.Fit,
+            contentScale = ContentScale.Crop,
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = if (icon.isDefault) 1f else 1.22f,
+                        scaleY = if (icon.isDefault) 1f else 1.22f,
+                    )
                     .padding(imagePadding),
         )
     }
