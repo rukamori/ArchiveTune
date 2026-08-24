@@ -7,7 +7,10 @@
 
 package moe.rukamori.archivetune.ui.theme
 
+import android.app.WallpaperManager
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.util.Base64
 import androidx.compose.animation.animateColorAsState
@@ -448,6 +451,31 @@ fun Bitmap.extractGradientColors(): List<Color> {
 
     return listOf(first.rgb.toComposeColor(), second.rgb.toComposeColor())
         .sortedByDescending { it.luminance() }
+}
+
+fun extractWallpaperThemeColor(context: Context): Color? {
+    return try {
+        val wallpaperManager = WallpaperManager.getInstance(context)
+        val drawable = wallpaperManager.drawable ?: return null
+        val bitmap =
+            if (drawable is BitmapDrawable) {
+                drawable.bitmap
+            } else {
+                val bmp =
+                    Bitmap.createBitmap(
+                        drawable.intrinsicWidth.coerceAtLeast(1),
+                        drawable.intrinsicHeight.coerceAtLeast(1),
+                        Bitmap.Config.ARGB_8888,
+                    )
+                val canvas = android.graphics.Canvas(bmp)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+                bmp
+            }
+        bitmap.extractThemeColor()
+    } catch (e: Exception) {
+        null
+    }
 }
 
 fun ColorScheme.pureBlack(apply: Boolean) =
