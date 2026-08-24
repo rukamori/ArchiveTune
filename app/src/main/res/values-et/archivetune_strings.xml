@@ -162,9 +162,6 @@
     <string name="audio_crossfade_title">Ristsulatus</string>
     <string name="audio_crossfade_description">Lugude vahetamisek kasutaja sujuvat üleminekut ühelt loolt teisele.</string>
     <string name="audio_crossfade_dialog_title">Ristsulatuse kestus</string>
-    <string name="player_stream_client">Taasesituse klient</string>
-    <string name="player_stream_client_desc">Saad hallata missugune YouTube\'i klient laadib voogedfastust alla</string>
-    <string name="player_stream_client_web_remix_desc">Täiendavate vormingute tugi, aga seda kiiruse arvel JavaScripti-põhine allkirjade dekrüptimine lisab algusele umbes 5-10 sekundilise viivituse.</string>
     <string name="year_in_music">Aasta muusikas</string>
     <string name="total_listening_time">Kuulamisaeg kokku</string>
     <string name="top_artists">Populaarsemad esitajad</string>
@@ -199,7 +196,6 @@
     <string name="restore_step_restoring_settings">Taastan seadistusi</string>
     <string name="restore_step_restoring_file">Taastan: %1$s</string>
     <string name="restore_step_restarting">Käivitan rakendust uuesti</string>
-    <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="playlist_add_local_to_synced_note">Kohalike lugude lisamine sünkroonitud või serveri esitusloendisse pole toetatud. Kõik muud kombinatsioonid on lubatud</string>
     <string name="token_adv_login_description">See on sisselogimismeetud oskuskasutajatele. Veebivaate asemel võid tunnusloa lisada otse siia ja samas seda ka uuendada. Ja see võib näiteks see kiirendab sisselogimise mitmes seadmes. Palun arvesta, et kui tunnusloa vorming on vigane ja selle töötlemine ei õnnestu, siis rakendus seda ei kasuta.</string>
 </resources>

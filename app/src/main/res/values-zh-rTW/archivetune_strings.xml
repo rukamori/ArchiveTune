@@ -416,11 +416,6 @@
     <string name="audio_crossfade_seconds">%1$s秒</string>
     <string name="crossfade_gapless_title">無縫專輯不套用交錯淡入淡出</string>
     <string name="crossfade_gapless_description">不對同一張專輯中的連續歌曲進行交錯淡入淡出處理。</string>
-    <string name="player_stream_client">播放後端</string>
-    <string name="player_stream_client_desc">控制用於取得串流的播放來源</string>
-    <string name="player_stream_client_web_remix">Web Remix</string>
-    <string name="player_stream_client_web_remix_desc">提供了更廣泛的格式支援，但速度較慢，基於 JavaScript 的簽章解密會導致約 5 到 10 秒的啟動延遲。</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune 擷取器</string>
     <string name="settings_section_player_content">播放器與內容</string>
     <string name="settings_appearance_subtitle">主題、版面與視覺風格</string>
     <string name="settings_playback_title">播放器</string>

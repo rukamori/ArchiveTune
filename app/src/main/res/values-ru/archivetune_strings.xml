@@ -159,10 +159,6 @@
     <string name="playlist_not_found_desc">Запрошенный плейлист не может быть загружен</string>
     <string name="empty_playlist">Пустой Плейлист</string>
     <string name="empty_playlist_desc">Этот плейлист не содержит никаких песен</string>
-    <string name="player_stream_client">Клиент воспроизведения</string>
-    <string name="player_stream_client_desc">Определяет, какой клиент YouTube используется для загрузки потоков</string>
-    <string name="player_stream_client_web_remix">Веб-ремикс</string>
-    <string name="player_stream_client_web_remix_desc">Расширенная поддержка форматов за счет увеличения скорости. Расшифровка подписи JavaScript приводит к задержке запуска на 5-10 секунд.</string>
     <string name="settings_section_player_content">Плеер и контент</string>
     <string name="similar_content">Похожий контент</string>
     <string name="year_in_music">Год в Музыке</string>

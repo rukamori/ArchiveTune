@@ -765,6 +765,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM format WHERE id = :id")
     fun format(id: String?): Flow<FormatEntity?>
 
+    @Query("SELECT * FROM format WHERE id = :id LIMIT 1")
+    fun getFormatByIdBlocking(id: String): FormatEntity?
+
     @Transaction
     @Query("SELECT * FROM lyrics WHERE id = :id")
     fun lyrics(id: String?): Flow<LyricsEntity?>

@@ -5,41 +5,41 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-package moe.rukamori.archivetune.cipher
+package moe.rukamori.archivetune.ytdlp
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
-import moe.rukamori.archivetune.morideobfuscator.CipherSnapshot
+import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeSnapshot
 import javax.inject.Inject
 
-data class CipherSettingsDomainState(
-    val runtime: CipherSnapshot,
+data class YtDlpSettingsDomainState(
+    val runtime: YtDlpRuntimeSnapshot,
     val nowMillis: Long,
-    val remainingRefreshes: Int,
+    val remainingUpdates: Int,
     val rateLimitResetsAtMillis: Long?,
 )
 
-class ObserveCipherSettingsUseCase
+class ObserveYtDlpSettingsUseCase
     @Inject
     constructor(
-        private val repository: CipherSettingsRepository,
+        private val repository: YtDlpSettingsRepository,
     ) {
-        operator fun invoke(): Flow<CipherSettingsDomainState> =
+        operator fun invoke(): Flow<YtDlpSettingsDomainState> =
             combine(
                 repository.runtimeSnapshot,
-                repository.manualRefreshHistory,
+                repository.manualUpdateHistory,
                 ticker(),
             ) { runtime, history, now ->
-                val validHistory = history.activeManualRefreshWindow(now)
-                CipherSettingsDomainState(
+                val validHistory = history.activeManualUpdateWindow(now)
+                YtDlpSettingsDomainState(
                     runtime = runtime,
                     nowMillis = now,
-                    remainingRefreshes = (MAX_MANUAL_REFRESHES - validHistory.size).coerceAtLeast(0),
+                    remainingUpdates = (MAX_MANUAL_UPDATES - validHistory.size).coerceAtLeast(0),
                     rateLimitResetsAtMillis =
                         validHistory
-                            .takeIf { it.size >= MAX_MANUAL_REFRESHES }
+                            .takeIf { it.size >= MAX_MANUAL_UPDATES }
                             ?.firstOrNull()
                             ?.plus(RATE_LIMIT_WINDOW_MILLIS),
                 )
@@ -54,56 +54,63 @@ class ObserveCipherSettingsUseCase
             }
     }
 
-sealed interface ManualCipherRefreshResult {
-    data object Updated : ManualCipherRefreshResult
+sealed interface ManualYtDlpUpdateResult {
+    data class Updated(
+        val version: String,
+    ) : ManualYtDlpUpdateResult
+
+    data object UpToDate : ManualYtDlpUpdateResult
 
     data class RateLimited(
         val resetsAtMillis: Long,
-    ) : ManualCipherRefreshResult
+    ) : ManualYtDlpUpdateResult
 
     data class Failed(
         val cause: Throwable,
-    ) : ManualCipherRefreshResult
+    ) : ManualYtDlpUpdateResult
 }
 
-class RefreshCipherUseCase
+class CheckForYtDlpUpdateUseCase
     @Inject
     constructor(
-        private val repository: CipherSettingsRepository,
+        private val repository: YtDlpSettingsRepository,
     ) {
-        suspend operator fun invoke(): ManualCipherRefreshResult {
+        suspend operator fun invoke(): ManualYtDlpUpdateResult {
             val nowMillis = System.currentTimeMillis()
             val activeHistory =
                 repository
-                    .getManualRefreshHistory()
-                    .activeManualRefreshWindow(nowMillis)
-            if (activeHistory.size >= MAX_MANUAL_REFRESHES) {
-                return ManualCipherRefreshResult.RateLimited(
+                    .getManualUpdateHistory()
+                    .activeManualUpdateWindow(nowMillis)
+            if (activeHistory.size >= MAX_MANUAL_UPDATES) {
+                return ManualYtDlpUpdateResult.RateLimited(
                     resetsAtMillis = activeHistory.first().rateLimitWindowEnd(),
                 )
             }
-            val completedAtMillis =
+            val updateResult =
                 repository
-                    .refresh()
+                    .updateRuntime()
                     .getOrElse {
-                        return ManualCipherRefreshResult.Failed(it)
-                    }.refreshedAtMillis
+                        return ManualYtDlpUpdateResult.Failed(it)
+                    }
+            val completedAtMillis = updateResult.checkedAtMillis
             val completedHistory =
                 repository
-                    .getManualRefreshHistory()
-                    .activeManualRefreshWindow(completedAtMillis)
+                    .getManualUpdateHistory()
+                    .activeManualUpdateWindow(completedAtMillis)
             val windowStartsAtMillis = completedHistory.firstOrNull() ?: completedAtMillis
-            repository.recordSuccessfulManualRefresh(
+            repository.recordSuccessfulManualUpdate(
                 timestampMillis = completedAtMillis,
                 windowStartsAtMillis = windowStartsAtMillis,
                 windowEndsAtMillis = windowStartsAtMillis.rateLimitWindowEnd(),
-                maximumEntries = MAX_MANUAL_REFRESHES,
+                maximumEntries = MAX_MANUAL_UPDATES,
             )
-            return ManualCipherRefreshResult.Updated
+            return updateResult.installedVersion
+                ?.let(ManualYtDlpUpdateResult::Updated)
+                ?: ManualYtDlpUpdateResult.UpToDate
         }
     }
 
-private fun List<Long>.activeManualRefreshWindow(nowMillis: Long): List<Long> {
+private fun List<Long>.activeManualUpdateWindow(nowMillis: Long): List<Long> {
     val chronological =
         asSequence()
             .filter { it in 0..nowMillis }
@@ -121,5 +128,5 @@ private fun Long.rateLimitWindowEnd(): Long =
         this + RATE_LIMIT_WINDOW_MILLIS
     }
 
-internal const val MAX_MANUAL_REFRESHES = 3
-internal const val RATE_LIMIT_WINDOW_MILLIS = 24L * 60L * 60L * 1000L
+private const val MAX_MANUAL_UPDATES = 3
+private const val RATE_LIMIT_WINDOW_MILLIS = 24L * 60L * 60L * 1000L

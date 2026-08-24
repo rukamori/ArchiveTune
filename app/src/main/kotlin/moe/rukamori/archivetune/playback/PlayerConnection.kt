@@ -104,7 +104,6 @@ class PlayerConnection(
     private var dismissedPlaybackError: PlaybackException? = null
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
-    val extractorAuthenticationEvents = service.extractorAuthenticationEvents
 
     private val canvasArtworkRefetchMutex = Mutex()
     private val _isCanvasArtworkRefetching = MutableStateFlow(false)
@@ -305,10 +304,6 @@ class PlayerConnection(
     fun dismissPlaybackError() {
         dismissedPlaybackError = error.value ?: player.playerError
         error.value = null
-    }
-
-    fun updateExtractorBearerToken(token: String) {
-        service.updateExtractorBearerToken(token)
     }
 
     fun seekToNext() {

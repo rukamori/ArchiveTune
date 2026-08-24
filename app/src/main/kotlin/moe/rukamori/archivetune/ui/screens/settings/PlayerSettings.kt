@@ -20,7 +20,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,8 +51,6 @@ import moe.rukamori.archivetune.constants.LowDataModeKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
-import moe.rukamori.archivetune.constants.PlayerStreamClient
-import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
@@ -62,7 +59,6 @@ import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
 import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.NumberPickerPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -80,11 +76,6 @@ fun PlayerSettings(navController: NavController) {
         rememberEnumPreference(
             AudioQualityKey,
             defaultValue = AudioQuality.AUTO,
-        )
-    val (playerStreamClient, onPlayerStreamClientChange) =
-        rememberEnumPreference(
-            PlayerStreamClientKey,
-            defaultValue = PlayerStreamClient.WEB_REMIX,
         )
     val (lowDataMode, onLowDataModeChange) =
         rememberPreference(
@@ -199,43 +190,8 @@ fun PlayerSettings(navController: NavController) {
             WakelockKey,
             defaultValue = false,
         )
-    val isArchiveTuneExtractorEnabled = false
-    val playerStreamClients =
-        remember {
-            listOf(
-                PlayerStreamClient.WEB_REMIX,
-                PlayerStreamClient.ARCHIVETUNE_EXTRACTOR,
-            )
-        }
-    val selectedPlayerStreamClient =
-        if (playerStreamClient in playerStreamClients) {
-            playerStreamClient
-        } else {
-            PlayerStreamClient.WEB_REMIX
-        }
-    val audioQualityEnabled = selectedPlayerStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
-    val isPlayerStreamClientEnabled =
-        remember(isArchiveTuneExtractorEnabled) {
-            { client: PlayerStreamClient ->
-                client != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR ||
-                    isArchiveTuneExtractorEnabled
-            }
-        }
-
     var showArtistSeparatorsDialog by remember { mutableStateOf(false) }
     var showExternalDownloaderPackageDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled) {
-        if (
-            playerStreamClient !in playerStreamClients ||
-            (
-                playerStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR &&
-                    !isArchiveTuneExtractorEnabled
-            )
-        ) {
-            onPlayerStreamClientChange(PlayerStreamClient.WEB_REMIX)
-        }
-    }
 
     if (showArtistSeparatorsDialog) {
         ArtistSeparatorsDialog(
@@ -297,7 +253,6 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         selectedValue = audioQuality,
                         onValueSelected = onAudioQualityChange,
-                        isEnabled = audioQualityEnabled,
                         valueText = {
                             when (it) {
                                 AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_max)
@@ -310,55 +265,11 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
-                    ListPreference(
-                        title = { Text(stringResource(R.string.player_stream_client)) },
-                        description = stringResource(R.string.player_stream_client_desc),
-                        icon = { Icon(painterResource(R.drawable.integration), null) },
-                        selectedValue = selectedPlayerStreamClient,
-                        values = playerStreamClients,
-                        onValueSelected = onPlayerStreamClientChange,
-                        isValueEnabled = isPlayerStreamClientEnabled,
-                        valueText = {
-                            when (it) {
-                                PlayerStreamClient.WEB_REMIX -> {
-                                    stringResource(R.string.player_stream_client_web_remix)
-                                }
-
-                                PlayerStreamClient.ARCHIVETUNE_EXTRACTOR -> {
-                                    stringResource(
-                                        R.string.player_stream_client_archivetune_extractor,
-                                    )
-                                }
-
-                                else -> {
-                                    stringResource(R.string.player_stream_client_web_remix)
-                                }
-                            }
-                        },
-                        valueDescription = {
-                            when (it) {
-                                PlayerStreamClient.WEB_REMIX -> {
-                                    stringResource(R.string.player_stream_client_web_remix_desc)
-                                }
-
-                                PlayerStreamClient.ARCHIVETUNE_EXTRACTOR -> {
-                                    "This is not available yet"
-                                }
-
-                                else -> {
-                                    stringResource(R.string.player_stream_client_web_remix_desc)
-                                }
-                            }
-                        },
-                    )
-                }
-
-                item {
                     PreferenceEntry(
-                        title = { Text(stringResource(R.string.mori_cipher_settings_title)) },
-                        description = stringResource(R.string.mori_cipher_settings_description),
-                        icon = { Icon(painterResource(R.drawable.security), null) },
-                        onClick = { navController.navigate("settings/player/chiper") },
+                        title = { Text(stringResource(R.string.ytdlp_settings_title)) },
+                        description = stringResource(R.string.ytdlp_settings_description),
+                        icon = { Icon(painterResource(R.drawable.integration), null) },
+                        onClick = { navController.navigate("settings/player/ytdlp") },
                     )
                 }
 

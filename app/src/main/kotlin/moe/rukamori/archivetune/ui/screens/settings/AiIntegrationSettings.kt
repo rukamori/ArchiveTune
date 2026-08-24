@@ -23,14 +23,15 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
@@ -61,13 +62,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,38 +73,43 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
+import com.google.common.collect.ImmutableList
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ai.AiModelOption
-import moe.rukamori.archivetune.constants.AiApiKeyKey
 import moe.rukamori.archivetune.constants.AiApiValidationStatus
-import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
-import moe.rukamori.archivetune.constants.AiCustomEndpointKey
-import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiProvider
-import moe.rukamori.archivetune.constants.AiProviderKey
-import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.ui.component.DefaultDialog
-import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.rememberEnumPreference
-import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.AiIntegrationSettingsScreenState
+import moe.rukamori.archivetune.viewmodels.AiIntegrationSettingsUiModel
 import moe.rukamori.archivetune.viewmodels.AiIntegrationSettingsViewModel
+import moe.rukamori.archivetune.viewmodels.AiSettingsEditorField
+import moe.rukamori.archivetune.viewmodels.AiSettingsEditorUiModel
 
 private enum class TestApiVisualState { Idle, Testing, Success, Failed }
+
+private val AiProviderOptions =
+    ImmutableList.of(
+        AiProvider.GEMINI,
+        AiProvider.CHATGPT,
+        AiProvider.OPENROUTER,
+        AiProvider.CUSTOM,
+        AiProvider.NONE,
+    )
 
 @Composable
 fun AiIntegrationSettings(
@@ -116,46 +117,60 @@ fun AiIntegrationSettings(
     viewModel: AiIntegrationSettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val actionState by viewModel.actionState.collectAsStateWithLifecycle()
-    val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
-    val (provider, setProvider) = rememberEnumPreference(AiProviderKey, AiProvider.NONE)
-    val (apiKey, setApiKey) = rememberPreference(AiApiKeyKey, "")
-    val (customEndpoint, setCustomEndpoint) = rememberPreference(AiCustomEndpointKey, "")
-    val (validationStatus, setValidationStatus) =
-        rememberEnumPreference(AiApiValidationStatusKey, AiApiValidationStatus.UNKNOWN)
-    val (selectedModel, setSelectedModel) = rememberPreference(AiSelectedModelKey, "")
-    val (customModel, setCustomModel) = rememberPreference(AiCustomModelKey, "")
-    var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    val screenState by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    LaunchedEffect(viewModel, context) {
+        viewModel.events.collect { messageResId ->
+            Toast.makeText(context, context.getString(messageResId), Toast.LENGTH_SHORT).show()
         }
     }
 
-    val hasCustomEndpoint = provider != AiProvider.CUSTOM || customEndpoint.isNotBlank()
-    val hasApiConfiguration = provider != AiProvider.NONE && apiKey.isNotBlank() && hasCustomEndpoint
-    val hasModelConfiguration =
-        when (provider) {
-            AiProvider.CUSTOM -> customModel.isNotBlank()
-            AiProvider.NONE -> false
-            else -> selectedModel.isNotBlank()
+    when (val state = screenState) {
+        AiIntegrationSettingsScreenState.Loading -> AiIntegrationLoadingState()
+        AiIntegrationSettingsScreenState.Empty -> Unit
+        is AiIntegrationSettingsScreenState.Error -> AiIntegrationErrorState(state.messageResId)
+        is AiIntegrationSettingsScreenState.Success -> {
+            AiIntegrationSettingsContent(
+                model = state.model,
+                onProviderSelected = viewModel::selectProvider,
+                onOpenEditor = viewModel::openEditor,
+                onEditorValueChange = viewModel::updateEditorValue,
+                onDismissEditor = viewModel::dismissEditor,
+                onSaveEditor = viewModel::saveEditor,
+                onOpenModelPicker = viewModel::openModelPicker,
+                onDismissModelPicker = viewModel::dismissModelPicker,
+                onModelSearchQueryChange = viewModel::updateModelSearchQuery,
+                onModelSelected = viewModel::selectModel,
+                onFetchModels = viewModel::fetchModels,
+                onTestApi = viewModel::testApi,
+            )
         }
-    val canUseModelPicker =
-        provider != AiProvider.NONE &&
-            provider != AiProvider.CUSTOM &&
-            apiKey.isNotBlank()
-    val canTestApi = hasApiConfiguration && hasModelConfiguration && !actionState.isTesting
+    }
 
-    if (showApiKeyDialog) {
-        ApiKeyDialog(
-            value = apiKey,
-            onDismiss = { showApiKeyDialog = false },
-            onSave = { value ->
-                setApiKey(value.trim())
-                setValidationStatus(AiApiValidationStatus.UNKNOWN)
-                viewModel.clearAvailableModels()
-            },
+    AiIntegrationTopAppBar(navController)
+}
+
+@Composable
+private fun AiIntegrationSettingsContent(
+    model: AiIntegrationSettingsUiModel,
+    onProviderSelected: (AiProvider) -> Unit,
+    onOpenEditor: (AiSettingsEditorField) -> Unit,
+    onEditorValueChange: (String) -> Unit,
+    onDismissEditor: () -> Unit,
+    onSaveEditor: () -> Unit,
+    onOpenModelPicker: () -> Unit,
+    onDismissModelPicker: () -> Unit,
+    onModelSearchQueryChange: (String) -> Unit,
+    onModelSelected: (String) -> Unit,
+    onFetchModels: () -> Unit,
+    onTestApi: () -> Unit,
+) {
+    if (model.editor.visible) {
+        AiSettingsEditorDialog(
+            editor = model.editor,
+            onValueChange = onEditorValueChange,
+            onDismiss = onDismissEditor,
+            onSave = onSaveEditor,
         )
     }
 
@@ -177,38 +192,19 @@ fun AiIntegrationSettings(
                     title = { Text(stringResource(R.string.ai_provider)) },
                     description = stringResource(R.string.ai_provider_desc),
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
-                    selectedValue = provider,
-                    values =
-                        listOf(
-                            AiProvider.GEMINI,
-                            AiProvider.CHATGPT,
-                            AiProvider.OPENROUTER,
-                            AiProvider.CUSTOM,
-                            AiProvider.NONE,
-                        ),
+                    selectedValue = model.provider,
+                    values = AiProviderOptions,
                     valueText = { it.label() },
-                    onValueSelected = { selectedProvider ->
-                        if (provider != selectedProvider) {
-                            setSelectedModel("")
-                            viewModel.clearAvailableModels()
-                        }
-                        setProvider(selectedProvider)
-                        setValidationStatus(AiApiValidationStatus.UNKNOWN)
-                    },
+                    onValueSelected = onProviderSelected,
                 )
             }
 
-            item(visible = provider == AiProvider.CUSTOM) {
-                EditTextPreference(
+            item(visible = model.provider == AiProvider.CUSTOM) {
+                PreferenceEntry(
                     title = { Text(stringResource(R.string.ai_custom_endpoint)) },
+                    description = model.customEndpoint,
                     icon = { Icon(painterResource(R.drawable.website), null) },
-                    value = customEndpoint,
-                    onValueChange = {
-                        setCustomEndpoint(it.trim())
-                        setValidationStatus(AiApiValidationStatus.UNKNOWN)
-                        viewModel.clearError()
-                    },
-                    isInputValid = { it.startsWith("https://") || it.startsWith("http://") },
+                    onClick = { onOpenEditor(AiSettingsEditorField.CUSTOM_ENDPOINT) },
                 )
             }
 
@@ -216,52 +212,50 @@ fun AiIntegrationSettings(
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.ai_api_key)) },
                     description =
-                        if (apiKey.isBlank()) {
+                        if (model.apiKey.isBlank()) {
                             stringResource(R.string.ai_api_key_missing)
                         } else {
                             stringResource(R.string.ai_api_key_configured)
                         },
                     icon = { Icon(painterResource(R.drawable.token), null) },
-                    onClick = { showApiKeyDialog = true },
-                    isEnabled = provider != AiProvider.NONE,
+                    onClick = { onOpenEditor(AiSettingsEditorField.API_KEY) },
+                    isEnabled = model.provider != AiProvider.NONE,
                 )
             }
 
-            item(visible = provider != AiProvider.NONE && provider != AiProvider.CUSTOM) {
+            item(visible = model.provider != AiProvider.NONE && model.provider != AiProvider.CUSTOM) {
                 ModelPickerPreference(
-                    selectedModel = selectedModel,
-                    availableModels = availableModels,
-                    isFetching = actionState.isFetchingModels,
-                    isEnabled = canUseModelPicker,
-                    canFetch = apiKey.isNotBlank() && !actionState.isFetchingModels,
-                    onModelSelected = {
-                        setSelectedModel(it)
-                        setValidationStatus(AiApiValidationStatus.UNKNOWN)
-                        viewModel.clearError()
-                    },
-                    onFetch = { viewModel.fetchModels(provider, apiKey, customEndpoint) },
+                    selectedModel = model.selectedModel,
+                    availableModels = model.availableModels,
+                    filteredModels = model.modelPicker.filteredModels,
+                    searchQuery = model.modelPicker.searchQuery,
+                    showSheet = model.modelPicker.visible,
+                    isFetching = model.isFetchingModels,
+                    isEnabled = model.canUseModelPicker,
+                    canFetch = model.canFetchModels,
+                    onShowSheet = onOpenModelPicker,
+                    onDismissSheet = onDismissModelPicker,
+                    onSearchQueryChange = onModelSearchQueryChange,
+                    onModelSelected = onModelSelected,
+                    onFetch = onFetchModels,
                 )
             }
 
-            item(visible = provider == AiProvider.CUSTOM) {
-                EditTextPreference(
+            item(visible = model.provider == AiProvider.CUSTOM) {
+                PreferenceEntry(
                     title = { Text(stringResource(R.string.ai_model)) },
+                    description = model.customModel,
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
-                    value = customModel,
-                    onValueChange = {
-                        setCustomModel(it)
-                        setValidationStatus(AiApiValidationStatus.UNKNOWN)
-                        viewModel.clearError()
-                    },
+                    onClick = { onOpenEditor(AiSettingsEditorField.CUSTOM_MODEL) },
                 )
             }
 
             item {
                 val testVisualState =
                     when {
-                        actionState.isTesting -> TestApiVisualState.Testing
-                        validationStatus == AiApiValidationStatus.SUCCESS -> TestApiVisualState.Success
-                        validationStatus == AiApiValidationStatus.FAILED -> TestApiVisualState.Failed
+                        model.isTesting -> TestApiVisualState.Testing
+                        model.validationStatus == AiApiValidationStatus.SUCCESS -> TestApiVisualState.Success
+                        model.validationStatus == AiApiValidationStatus.FAILED -> TestApiVisualState.Failed
                         else -> TestApiVisualState.Idle
                     }
                 PreferenceEntry(
@@ -307,7 +301,7 @@ fun AiIntegrationSettings(
                                 text =
                                     when (state) {
                                         TestApiVisualState.Testing -> stringResource(R.string.ai_api_testing)
-                                        else -> validationStatus.label()
+                                        else -> model.validationStatus.label()
                                     },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color =
@@ -318,14 +312,14 @@ fun AiIntegrationSettings(
                                     },
                             )
                         }
-                        actionState.errorMessage?.let { message ->
+                        model.errorMessage?.let { message ->
                             Spacer(Modifier.height(10.dp))
                             AiErrorHintRow(message = message)
                         }
                     },
                     trailingContent = {
                         AnimatedContent(
-                            targetState = actionState.isTesting,
+                            targetState = model.isTesting,
                             transitionSpec = {
                                 (scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(200))) togetherWith
                                     (scaleOut(tween(150)) + fadeOut(tween(150)))
@@ -337,13 +331,32 @@ fun AiIntegrationSettings(
                             }
                         }
                     },
-                    onClick = viewModel::testApi,
-                    isEnabled = canTestApi,
+                    onClick = onTestApi,
+                    isEnabled = model.canTestApi,
+                )
+            }
+        }
+
+        PreferenceGroup(title = stringResource(R.string.ai_translation_settings)) {
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.ai_custom_prompt)) },
+                    description =
+                        if (model.customPrompt.isBlank()) {
+                            stringResource(R.string.ai_custom_prompt_desc)
+                        } else {
+                            stringResource(R.string.ai_api_key_configured)
+                        },
+                    icon = { Icon(painterResource(R.drawable.edit), null) },
+                    onClick = { onOpenEditor(AiSettingsEditorField.CUSTOM_PROMPT) },
                 )
             }
         }
     }
+}
 
+@Composable
+private fun AiIntegrationTopAppBar(navController: NavController) {
     TopAppBar(
         title = { Text(stringResource(R.string.ai_integration)) },
         navigationIcon = {
@@ -361,62 +374,123 @@ fun AiIntegrationSettings(
 }
 
 @Composable
-private fun ApiKeyDialog(
-    value: String,
+private fun AiSettingsEditorDialog(
+    editor: AiSettingsEditorUiModel,
+    onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
+    onSave: () -> Unit,
 ) {
-    var field by remember { mutableStateOf(TextFieldValue(value)) }
+    val field = editor.field ?: return
+    val isCustomPrompt = field == AiSettingsEditorField.CUSTOM_PROMPT
+    val titleResId =
+        when (field) {
+            AiSettingsEditorField.API_KEY -> R.string.ai_api_key
+            AiSettingsEditorField.CUSTOM_ENDPOINT -> R.string.ai_custom_endpoint
+            AiSettingsEditorField.CUSTOM_MODEL -> R.string.ai_model
+            AiSettingsEditorField.CUSTOM_PROMPT -> R.string.ai_custom_prompt
+        }
+    val iconResId =
+        when (field) {
+            AiSettingsEditorField.API_KEY -> R.drawable.token
+            AiSettingsEditorField.CUSTOM_ENDPOINT -> R.drawable.website
+            AiSettingsEditorField.CUSTOM_MODEL -> R.drawable.auto_awesome
+            AiSettingsEditorField.CUSTOM_PROMPT -> R.drawable.edit
+        }
+    val visualTransformation =
+        remember(field) {
+            if (field == AiSettingsEditorField.API_KEY) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            }
+        }
+    val keyboardOptions =
+        remember(field) {
+            KeyboardOptions(
+                capitalization =
+                    if (isCustomPrompt) {
+                        KeyboardCapitalization.Sentences
+                    } else {
+                        KeyboardCapitalization.None
+                    },
+                imeAction = if (isCustomPrompt) ImeAction.Default else ImeAction.Done,
+            )
+        }
 
     DefaultDialog(
         onDismiss = onDismiss,
-        icon = { Icon(painterResource(R.drawable.token), contentDescription = null) },
-        title = { Text(stringResource(R.string.ai_api_key)) },
+        icon = { Icon(painterResource(iconResId), contentDescription = null) },
+        title = { Text(stringResource(titleResId)) },
         buttons = {
-            ApiKeyDialogButtons(
-                canSave = field.text.isNotBlank(),
-                onDismiss = onDismiss,
-                onSave = {
-                    onSave(field.text)
-                    onDismiss()
-                },
-            )
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(android.R.string.cancel))
+            }
+            TextButton(
+                enabled = editor.canSave,
+                onClick = onSave,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(stringResource(R.string.save))
+            }
         },
     ) {
         OutlinedTextField(
-            value = field,
-            onValueChange = { field = it },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            label = { Text(stringResource(R.string.ai_api_key)) },
+            value = editor.value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = !isCustomPrompt,
+            minLines = if (isCustomPrompt) 4 else 1,
+            maxLines = if (isCustomPrompt) 8 else 1,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            label = { Text(stringResource(titleResId)) },
+            supportingText =
+                if (isCustomPrompt) {
+                    { Text(stringResource(R.string.ai_custom_prompt_desc)) }
+                } else {
+                    null
+                },
         )
     }
 }
 
 @Composable
-private fun RowScope.ApiKeyDialogButtons(
-    canSave: Boolean,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit,
-) {
-    TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
-        Text(stringResource(android.R.string.cancel))
-    }
-    TextButton(
-        enabled = canSave,
-        onClick = onSave,
-        shapes = ButtonDefaults.shapes(),
+private fun AiIntegrationLoadingState() {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(stringResource(R.string.save))
+        CircularWavyProgressIndicator()
+    }
+}
+
+@Composable
+private fun AiIntegrationErrorState(messageResId: Int) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                .padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(messageResId),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Composable
 private fun AiProvider.label(): String =
     when (this) {
-        AiProvider.CHATGPT -> "OpenAI"
-        AiProvider.GEMINI -> "Gemini"
+        AiProvider.CHATGPT -> stringResource(R.string.ai_provider_openai)
+        AiProvider.GEMINI -> stringResource(R.string.ai_provider_gemini)
         AiProvider.OPENROUTER -> stringResource(R.string.ai_provider_openrouter)
         AiProvider.CUSTOM -> stringResource(R.string.custom)
         AiProvider.NONE -> stringResource(R.string.ai_provider_none)
@@ -462,30 +536,20 @@ private fun AiErrorHintRow(message: String) {
 @Composable
 private fun ModelPickerPreference(
     selectedModel: String,
-    availableModels: List<AiModelOption>,
+    availableModels: ImmutableList<AiModelOption>,
+    filteredModels: ImmutableList<AiModelOption>,
+    searchQuery: String,
+    showSheet: Boolean,
     isFetching: Boolean,
     isEnabled: Boolean,
     canFetch: Boolean,
+    onShowSheet: () -> Unit,
+    onDismissSheet: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onFetch: () -> Unit,
 ) {
-    var showSheet by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope()
-    val filteredModels by remember(availableModels) {
-        derivedStateOf {
-            val query = searchQuery.trim()
-            if (query.isBlank()) {
-                availableModels
-            } else {
-                availableModels.filter { model ->
-                    model.displayName.contains(query, ignoreCase = true) ||
-                        model.id.contains(query, ignoreCase = true)
-                }
-            }
-        }
-    }
 
     val description =
         when {
@@ -496,21 +560,9 @@ private fun ModelPickerPreference(
             else -> availableModels.firstOrNull { it.id == selectedModel }?.displayName ?: selectedModel
         }
 
-    LaunchedEffect(showSheet) {
-        if (!showSheet) {
-            searchQuery = ""
-        }
-    }
-
-    LaunchedEffect(isEnabled) {
-        if (!isEnabled) {
-            showSheet = false
-        }
-    }
-
     if (showSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showSheet = false },
+            onDismissRequest = onDismissSheet,
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
             containerColor = MaterialTheme.colorScheme.surface,
@@ -528,7 +580,7 @@ private fun ModelPickerPreference(
                 inputField = {
                     SearchBarDefaults.InputField(
                         query = searchQuery,
-                        onQueryChange = { searchQuery = it },
+                        onQueryChange = onSearchQueryChange,
                         onSearch = {},
                         expanded = false,
                         onExpandedChange = {},
@@ -543,7 +595,7 @@ private fun ModelPickerPreference(
                             if (searchQuery.isNotBlank()) {
                                 {
                                     androidx.compose.material3.IconButton(
-                                        onClick = { searchQuery = "" },
+                                        onClick = { onSearchQueryChange("") },
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.close),
@@ -609,15 +661,7 @@ private fun ModelPickerPreference(
                                 ).selectable(
                                     selected = selected,
                                     role = Role.RadioButton,
-                                    onClick = {
-                                        onModelSelected(id)
-                                        coroutineScope
-                                            .launch {
-                                                sheetState.hide()
-                                            }.invokeOnCompletion {
-                                                showSheet = false
-                                            }
-                                    },
+                                    onClick = { onModelSelected(id) },
                                 ).padding(horizontal = 24.dp, vertical = 20.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -677,7 +721,7 @@ private fun ModelPickerPreference(
                 }
             }
         },
-        onClick = if (isEnabled && availableModels.isNotEmpty()) ({ showSheet = true }) else null,
+        onClick = if (isEnabled && availableModels.isNotEmpty()) onShowSheet else null,
         isEnabled = isEnabled,
     )
 }

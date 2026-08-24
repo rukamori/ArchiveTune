@@ -31,8 +31,6 @@ import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_CRE
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_PRIMARY
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
-import moe.rukamori.archivetune.morideobfuscator.CipherRuntimeStatus
-import moe.rukamori.archivetune.morideobfuscator.MoriCipherRuntime
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import moe.rukamori.archivetune.utils.potoken.PoTokenResult
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -343,6 +341,46 @@ object YTPlayerUtils {
         return mintWebPlaybackPoTokens(videoId, authState)
     }
 
+    suspend fun ensureWebPoTokensForPlayback(
+        videoId: String,
+        authState: PlaybackAuthState = YouTube.currentPlaybackAuthState(),
+    ): PlaybackAuthState {
+        var resolvedAuthState = authState
+        val hasPlayerToken =
+            !resolvedAuthState
+                .resolvePlayerPoToken(
+                    client = WEB_REMIX,
+                    videoId = videoId,
+                ).isNullOrBlank()
+        if (hasPlayerToken && hasWebGvsPoToken(resolvedAuthState, videoId)) {
+            return resolvedAuthState
+        }
+
+        if (resolvedAuthState.sessionId.isNullOrBlank()) {
+            resolvedAuthState =
+                ensureVisitorDataReady(
+                    videoId = videoId,
+                    authState = resolvedAuthState,
+                    reason = "yt-dlp playback authentication",
+                )
+        }
+        if (resolvedAuthState.sessionId.isNullOrBlank()) return resolvedAuthState
+
+        return mintWebPlaybackPoTokens(videoId, resolvedAuthState)
+    }
+
+    suspend fun ensureYtDlpPoTokensForPlayback(
+        videoId: String,
+        authState: PlaybackAuthState = YouTube.currentPlaybackAuthState(),
+    ): PlaybackAuthState {
+        val contentBinding = authState.ytDlpContentBinding() ?: return authState
+        val tokenResult =
+            BotGuardTokenGenerator.mintToken(videoId, contentBinding) ?: return authState
+        return authState
+            .withGeneratedPoTokens(videoId, tokenResult)
+            .copy(dataSyncId = contentBinding)
+    }
+
     private fun PlaybackAuthState.withGeneratedPoTokens(
         videoId: String,
         tokenResult: PoTokenResult,
@@ -380,6 +418,18 @@ object YTPlayerUtils {
         cookie == other.cookie &&
             visitorData == other.visitorData &&
             dataSyncId == other.dataSyncId
+
+    private fun PlaybackAuthState.ytDlpContentBinding(): String? {
+        val normalizedDataSyncId = dataSyncId?.trim()?.takeIf(String::isNotBlank)
+        if (normalizedDataSyncId != null) {
+            return if ("||" in normalizedDataSyncId) {
+                normalizedDataSyncId
+            } else {
+                "$normalizedDataSyncId||"
+            }
+        }
+        return sessionId
+    }
 
     private fun PlaybackAuthState.withoutAccountBoundPlaybackState(): PlaybackAuthState =
         copy(
@@ -482,7 +532,6 @@ object YTPlayerUtils {
 
     internal fun resolvePreferredPlaybackClient(
         preferredStreamClient: PlayerStreamClient,
-        authState: PlaybackAuthState,
     ): YouTubeClient =
         when (preferredStreamClient) {
             PlayerStreamClient.ANDROID_VR -> {
@@ -491,10 +540,6 @@ object YTPlayerUtils {
 
             PlayerStreamClient.WEB_REMIX -> {
                 WEB_REMIX
-            }
-
-            PlayerStreamClient.ARCHIVETUNE_EXTRACTOR -> {
-                if (authState.hasPlaybackLoginContext) ANDROID_MUSIC else WEB_REMIX
             }
 
             PlayerStreamClient.HI_RES_LOSSLESS -> {
@@ -522,7 +567,7 @@ object YTPlayerUtils {
         preferredStreamClient: PlayerStreamClient,
         authState: PlaybackAuthState,
     ): List<YouTubeClient> {
-        val preferredYouTubeClient = resolvePreferredPlaybackClient(preferredStreamClient, authState)
+        val preferredYouTubeClient = resolvePreferredPlaybackClient(preferredStreamClient)
         val lastSuccessfulClient =
             lastSuccessfulClientKey?.let { key ->
                 STREAM_FALLBACK_CLIENTS.find { StreamClientUtils.buildClientKey(it) == key }
@@ -1420,14 +1465,6 @@ object YTPlayerUtils {
         authState: PlaybackAuthState,
     ): Boolean {
         val isCiphered = isCipheredFormat(format)
-        if (isCiphered && MoriCipherRuntime.snapshot.value.status == CipherRuntimeStatus.DEGRADED) {
-            Timber.tag(logTag).w(
-                "Skipping ciphered %s stream candidate because the JavaScript cipher runtime is degraded",
-                client.clientName,
-            )
-            return true
-        }
-
         val isWebClient = PlaybackAuthState.supportsGvsPoToken(client)
         val hasGvsPoToken = !authState.resolveGvsPoToken(client, videoId).isNullOrBlank()
         if (

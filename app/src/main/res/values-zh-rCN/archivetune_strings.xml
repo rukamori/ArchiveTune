@@ -123,10 +123,6 @@
     <string name="playlist_not_found_desc">请求的播放列表无法加载</string>
     <string name="empty_playlist">空播放列表</string>
     <string name="empty_playlist_desc">此播放列表暂无歌曲</string>
-    <string name="player_stream_client">播放客户端</string>
-    <string name="player_stream_client_desc">控制哪个YouTube客户端用于获取流</string>
-    <string name="player_stream_client_web_remix">网络混音</string>
-    <string name="player_stream_client_web_remix_desc">支持更多格式，但会降低启动速度，JavaScript 签名解密会导致约 5–10 秒的加载延迟.</string>
     <string name="settings_section_player_content">播放器与内容</string>
     <string name="similar_content">类似内容</string>
     <string name="year_in_music">一年里的音乐</string>
@@ -459,7 +455,6 @@
     <string name="audio_crossfade_seconds">%1$s 秒</string>
     <string name="crossfade_gapless_title">保持无缝专辑原样播放</string>
     <string name="crossfade_gapless_description">同一专辑下的连续歌曲不应用交叉淡入淡出</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune 专属解析器</string>
     <string name="settings_appearance_subtitle">主题、布局与外观样式</string>
     <string name="settings_playback_title">播放设置</string>
     <string name="settings_playback_subtitle">音频行为、淡入淡出及后台播放控制</string>

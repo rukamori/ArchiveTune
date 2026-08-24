@@ -4,9 +4,6 @@
 [submodule "lyrics"]
 	path = lyrics
 	url = https://github.com/rukamori/lyrics.git
-[submodule "moriextractor"]
-	path = moriextractor
-	url = https://github.com/rukamori/moriextractor
 [submodule "IconPack"]
 	path = IconPack
 	url = https://github.com/rukamori/IconPack

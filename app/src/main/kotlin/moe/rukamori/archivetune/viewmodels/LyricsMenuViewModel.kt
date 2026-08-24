@@ -35,6 +35,7 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiCustomModelKey
+import moe.rukamori.archivetune.constants.AiCustomPromptKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
@@ -266,6 +267,7 @@ class LyricsMenuViewModel
                                     ),
                                 lyrics = lyrics,
                                 targetLanguage = targetLanguage.ifBlank { "ENGLISH" },
+                                customPrompt = prefs[AiCustomPromptKey].orEmpty(),
                             )
                         val usableLyrics = usableTranslatedLyrics(translatedLyrics)
                         if (usableLyrics == null) {

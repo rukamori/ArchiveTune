@@ -64,22 +64,24 @@ object AiTextService {
         targetLanguage: String,
         lines: List<String>,
         formatName: String,
+        customPrompt: String,
     ): List<String> {
         if (lines.isEmpty()) return emptyList()
         val payload = JSONArray()
         lines.forEach { payload.put(it) }
+        val defaultSystemPrompt =
+            """
+            You are an expert song lyrics translator.
+            Translate each input string into $targetLanguage with natural, accurate lyric phrasing.
+            Preserve meaning, tone, profanity level, names, repeated hooks, and line-level intent.
+            Do not add timestamps, IDs, XML, markdown, explanations, or extra lines.
+            Return only a JSON array of strings with exactly ${lines.size} items in the same order.
+            The caller will reconstruct the $formatName lyrics container separately.
+            """.trimIndent()
         val response =
             complete(
                 config = config,
-                systemPrompt =
-                    """
-                    You are an expert song lyrics translator.
-                    Translate each input string into $targetLanguage with natural, accurate lyric phrasing.
-                    Preserve meaning, tone, profanity level, names, repeated hooks, and line-level intent.
-                    Do not add timestamps, IDs, XML, markdown, explanations, or extra lines.
-                    Return only a JSON array of strings with exactly ${lines.size} items in the same order.
-                    The caller will reconstruct the $formatName lyrics container separately.
-                    """.trimIndent(),
+                systemPrompt = defaultSystemPrompt.appendCustomPrompt(customPrompt),
                 userPrompt = payload.toString(),
                 temperature = 0.15,
                 maxTokens = 8192,
@@ -87,6 +89,11 @@ object AiTextService {
         val array = extractJsonArray(response)
         require(array.length() == lines.size) { "AI response changed the lyric segment count" }
         return List(array.length()) { index -> array.optString(index) }
+    }
+
+    private fun String.appendCustomPrompt(customPrompt: String): String {
+        val normalizedPrompt = customPrompt.trim()
+        return if (normalizedPrompt.isEmpty()) this else "$this\n\n$normalizedPrompt"
     }
 
     suspend fun complete(

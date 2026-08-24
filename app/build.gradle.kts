@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.aboutlibraries.android)
+    alias(libs.plugins.chaquopy)
 }
 
 val localProperties = Properties()
@@ -93,12 +94,6 @@ android {
                 ?: System.getenv("CANVAS_BEARER_TOKEN")
                 ?: ""
         buildConfigField("String", "CANVAS_BEARER_TOKEN", "\"$canvasBearerToken\"")
-
-        val extractorBearer =
-            localProperties.getProperty("EXTRACTOR_BEARER")
-                ?: System.getenv("EXTRACTOR_BEARER")
-                ?: ""
-        buildConfigField("String", "EXTRACTOR_BEARER", "\"$extractorBearer\"")
 
         buildConfigField("String", "DATA_SERVER_URL", dataServerUrl.asBuildConfigString())
         buildConfigField("String", "API_BEARER_TOKEN", apiBearerToken.asBuildConfigString())
@@ -268,6 +263,16 @@ android {
 
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pip {
+            install("yt-dlp==2026.8.19")
+            install("yt-dlp-ejs==0.8.0")
+        }
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 }
@@ -365,7 +370,6 @@ dependencies {
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
-    implementation(project(":moriextractor"))
     implementation(project(":morideobfuscator"))
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
 
@@ -388,8 +392,6 @@ dependencies {
     implementation("androidx.compose.material3.adaptive:adaptive:1.3.0-rc01")
     implementation(libs.accompanist.lyrics.ui)
     implementation(libs.accompanist.lyrics.core)
-
-    implementation("org.json:json:20240303")
 }
 
 androidComponents {
