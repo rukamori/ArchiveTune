@@ -76,6 +76,7 @@
     <string name="local_songs_scan_subtitle">Bu cihazda saxlanılan mahnıları yeniləyin və yerli kitabxananın metadata məlumatlarını güncəlləyin.</string>
     <string name="local_songs_latest_scan">Ən son skan</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="local_songs_scan_filters_title">Filtrləri skan et</string>
     <string name="local_songs_scan_filters_note">Cihaz növbəti dəfə skan edildikdə dəyişikliklər tətbiq olunacaq</string>
     <string name="local_songs_scan_duration_title">Etdiyiniz dəyişikliklər bu cihazın növbəti skanı zamanı tətbiq olunacaq</string>
@@ -84,6 +85,11 @@
     <string name="local_songs_scan_filters_note">Dəyişikliklər bu cihazı növbəti dəfə skan etdiyiniz zaman tətbiq olunur.</string>
     <string name="local_songs_scan_duration_title">Qısa mahnıları istisna edin</string>
 >>>>>>> 438f66962 (Translated using Weblate (Azerbaijani))
+=======
+    <string name="local_songs_scan_filters_title">Filtrləri skan et</string>
+    <string name="local_songs_scan_filters_note">Cihaz növbəti dəfə skan edildikdə dəyişikliklər tətbiq olunacaq</string>
+    <string name="local_songs_scan_duration_title">Etdiyiniz dəyişikliklər bu cihazın növbəti skanı zamanı tətbiq olunacaq</string>
+>>>>>>> 0cee876bf (Translated using Weblate (Azerbaijani))
     <string name="local_songs_scan_duration_desc">Seçilmiş müddətdən daha qısa olan mahnıları keçin.</string>
     <string name="local_songs_scan_included_folders_title">Daxil edilmiş qovluqlar</string>
     <string name="local_songs_scan_included_folders_desc">Yalnız bu yollardan hər hansı birinə uyğun gələn qovluqlarda saxlanılan mahnıları skan edin.</string>
