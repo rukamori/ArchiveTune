@@ -43,9 +43,11 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
+import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpJavaScriptRuntime
 import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeStore
 import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpUpdateScheduler
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
+import moe.rukamori.archivetune.playback.stream.YtDlpRuntime
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
@@ -83,6 +85,9 @@ class App :
     @Inject
     lateinit var downloadedArtworkRepository: DownloadedArtworkRepository
 
+    @Inject
+    lateinit var ytDlpRuntime: YtDlpRuntime
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile private var isInitialized = false
@@ -108,6 +113,7 @@ class App :
             Timber.plant(Timber.DebugTree())
             return
         }
+        YtDlpJavaScriptRuntime.initialize(this)
         BotGuardTokenGenerator.initialize(this)
         PreferenceStore.start(this)
         LeakCanaryController.initialize(this)
@@ -171,6 +177,11 @@ class App :
     }
 
     private fun initializeDeferredAsync() {
+        applicationScope.launch(Dispatchers.IO) {
+            ytDlpRuntime.preWarm()
+            YtDlpJavaScriptRuntime.preWarm()
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = dataStore.data.first()
