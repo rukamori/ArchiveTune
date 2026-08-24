@@ -539,6 +539,22 @@ fun AppearanceSettings(navController: NavController) {
                     )
                 }
 
+                item(visible = dynamicTheme && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.wallpaper_permission)) },
+                        description = stringResource(R.string.wallpaper_permission_desc),
+                        icon = { Icon(painterResource(R.drawable.storage), null) },
+                        onClick = {
+                            val intent =
+                                android.content.Intent(
+                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    android.net.Uri.fromParts("package", context.packageName),
+                                )
+                            context.startActivity(intent)
+                        },
+                    )
+                }
+
                 item(visible = !dynamicTheme) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.random_theme_on_startup)) },

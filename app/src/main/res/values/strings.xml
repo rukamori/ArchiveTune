@@ -339,6 +339,8 @@
     <string name="app_icon_change_failed">Couldn\'t change the app icon</string>
     <string name="theme">Theme</string>
     <string name="enable_dynamic_theme">Enable dynamic theme</string>
+    <string name="wallpaper_permission">Wallpaper color permission</string>
+    <string name="wallpaper_permission_desc">Grant storage permission to extract colors from your wallpaper on older devices</string>
     <string name="random_theme_on_startup">Random theme on startup</string>
     <string name="random_theme_on_startup_desc">Apply a random color palette every time the app starts</string>
     <string name="font_preference">Font</string>
