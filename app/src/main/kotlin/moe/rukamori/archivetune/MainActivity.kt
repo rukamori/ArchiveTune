@@ -192,6 +192,7 @@ import moe.rukamori.archivetune.constants.AppLanguageKey
 import moe.rukamori.archivetune.constants.UseSystemLanguageKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.CustomThemeColorKey
+import moe.rukamori.archivetune.constants.WallpaperExtractionFailedKey
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
@@ -834,9 +835,11 @@ class MainActivity : ComponentActivity() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             themeColor = DefaultThemeColor
                         } else {
-                            themeColor =
-                                extractWallpaperThemeColor(this@MainActivity)
-                                    ?: customThemeColor
+                            val wallpaperColor = extractWallpaperThemeColor(this@MainActivity)
+                            themeColor = wallpaperColor ?: customThemeColor
+                            dataStore.edit { prefs ->
+                                prefs[WallpaperExtractionFailedKey] = wallpaperColor == null
+                            }
                         }
                     }
                 }

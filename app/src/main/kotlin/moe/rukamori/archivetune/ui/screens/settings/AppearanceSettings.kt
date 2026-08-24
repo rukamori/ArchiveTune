@@ -116,6 +116,7 @@ import moe.rukamori.archivetune.constants.SwipeSensitivityKey
 import moe.rukamori.archivetune.constants.SwipeThumbnailKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
+import moe.rukamori.archivetune.constants.WallpaperExtractionFailedKey
 import moe.rukamori.archivetune.constants.toLibraryFilterOrder
 import moe.rukamori.archivetune.constants.toLibraryFilterPreference
 import moe.rukamori.archivetune.constants.toPlaylistTagOrder
@@ -153,6 +154,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             DynamicThemeKey,
             defaultValue = true,
+        )
+    val (wallpaperExtractionFailed) =
+        rememberPreference(
+            WallpaperExtractionFailedKey,
+            defaultValue = false,
         )
     val (randomThemeOnStartup, onRandomThemeOnStartupChange) =
         rememberPreference(
@@ -539,7 +545,7 @@ fun AppearanceSettings(navController: NavController) {
                     )
                 }
 
-                item(visible = dynamicTheme && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                item(visible = dynamicTheme && Build.VERSION.SDK_INT < Build.VERSION_CODES.S && wallpaperExtractionFailed) {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.wallpaper_permission)) },
                         description = stringResource(R.string.wallpaper_permission_desc),
