@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<<<<<<< HEAD
     <string name="home">Uy</string>
     <string name="songs">Qo\'shiqlar</string>
     <string name="artists">San\'atkorlar</string>
@@ -46,3 +47,6 @@
     <string name="play_all">Hammasini o\'ynang</string>
     <string name="offline_shortcut">Oflayn</string>
 </resources>
+=======
+</resources>
+>>>>>>> 8246c7a0a (Added translation using Weblate (Uzbek))
