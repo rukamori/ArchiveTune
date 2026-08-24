@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1e54b61be (Translated using Weblate (Uzbek))
     <string name="local_songs_scan_included_folders_desc">Faqat ushbu yo\'llarga mos keladigan papkalardagi qo\'shiqlarni skanerlash</string>
     <string name="local_songs_scan_included_folders_empty">Barcha papkalar kiritilgan</string>
     <string name="local_songs_scan_included_folders_add">Papkani kiritish</string>
 </resources>
+<<<<<<< HEAD
 =======
 </resources>
 >>>>>>> 3f6c57665 (Added translation using Weblate (Uzbek))
+=======
+>>>>>>> 1e54b61be (Translated using Weblate (Uzbek))
