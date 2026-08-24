@@ -554,7 +554,7 @@ fun AppearanceSettings(navController: NavController) {
                             val intent =
                                 android.content.Intent(
                                     android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    android.net.Uri.fromParts("package", context.packageName),
+                                    android.net.Uri.fromParts("package", context.packageName, null),
                                 )
                             context.startActivity(intent)
                         },
