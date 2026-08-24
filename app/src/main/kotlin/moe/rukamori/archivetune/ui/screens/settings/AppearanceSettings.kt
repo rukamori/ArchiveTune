@@ -539,7 +539,7 @@ fun AppearanceSettings(navController: NavController) {
                     )
                 }
 
-                item(visible = !dynamicTheme || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                item(visible = !dynamicTheme) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.random_theme_on_startup)) },
                         description = stringResource(R.string.random_theme_on_startup_desc),
