@@ -6,6 +6,9 @@
     <string name="music_recognition_open_shazam">เปิด Shazam</string>
     <string name="music_recognition_lyrics_preview">ตัวอย่างเนื้อเพลง</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 049a00762 (Translated using Weblate (Thai))
     <string name="explore">สำรวจ</string>
     <string name="suggestions">แนะนำ</string>
     <string name="music_recognition_tap_to_listen">กดเพื่อฟัง</string>
@@ -53,6 +56,7 @@
     <string name="local_songs_latest_scan">สแกน ล่าสุด</string>
     <string name="local_songs_scan_filters_title">ฟิลเตอร์ในการสแกน</string>
     <string name="local_songs_scan_folders_add">เพิ่มโฟลเดอร์</string>
+<<<<<<< HEAD
     <string name="music_recognition_history_search">ค้นหาเพลงที่ระบบรู้จัก</string>
     <string name="music_recognition_history_empty_title">ยังไม่มีเพลงที่ระบุได้</string>
     <string name="music_recognition_history_empty_body">หลังจากระบบจดจำสำเร็จ เพลงที่ตรงกันจะปรากฏที่นี่</string>
@@ -141,4 +145,6 @@
     <string name="aod_customize_control_size">ขนาดการควบคุม</string>
 =======
 >>>>>>> 22048c0c3 (Translated using Weblate (Thai))
+=======
+>>>>>>> 049a00762 (Translated using Weblate (Thai))
 </resources>
