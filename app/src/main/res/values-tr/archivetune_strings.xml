@@ -152,6 +152,13 @@
         <item quantity="one">1 saniye</item>
         <item quantity="other">%d saniye</item>
     </plurals>
+<<<<<<< HEAD
+=======
+    <string name="player_stream_client">Oynatma istemcisi</string>
+    <string name="player_stream_client_desc">Akışları almak için hangi oynatma kaynağının kullanılacağını belirler</string>
+    <string name="player_stream_client_web_remix">Web Remiksi</string>
+    <string name="player_stream_client_web_remix_desc">Hız pahasına genişletilmiş format desteği. JavaScript imza şifre çözme işlemi ~5-10 saniyelik bir başlatma gecikmesine neden olur.</string>
+>>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
     <string name="settings_section_player_content">Oyuncu &amp; İçeriği</string>
     <string name="similar_content">Benzer içerik</string>
     <string name="year_in_music">Müzik Yılı</string>
@@ -539,6 +546,9 @@
     <string name="settings_account_subtitle">Giriş yapın ve hesap senkronizasyonunu yönetin</string>
     <string name="settings_stats_title">Dinlenme İstatistikleri</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
     <string name="settings_stats_subtitle">En çok dinlediğiniz şarkılar, sanatçılar ve çalma geçmişiniz</string>
     <string name="top_songs">En çok dinlediğiniz şarkılar</string>
     <string name="top_albums">En çok dinlediğiniz Şarkılar</string>
@@ -593,6 +603,7 @@
     <string name="backup_step_export_settings">Ayarlar yedekleniyor</string>
     <string name="backup_step_checkpoint_database">Veritabanı hazırlanıyor</string>
     <string name="backup_step_copying_file">Kopyalanıyor%1$s</string>
+<<<<<<< HEAD
     <string name="restore_step_verifying">Yedekleme doğrulanıyor</string>
     <string name="restore_step_stopping_playback">Oynatma durduruluyor</string>
     <string name="restore_step_restoring_settings">Ayarlar geri yükleniyor</string>
@@ -714,4 +725,6 @@
 >>>>>>> f10143dab (Translated using Weblate (Turkish))
 =======
 >>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
+=======
+>>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
 </resources>
