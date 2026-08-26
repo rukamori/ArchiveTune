@@ -639,6 +639,9 @@
     <string name="import_priority_youtube_only">Sadece YouTube Music</string>
     <string name="import_priority_youtube_only_desc">Yerel kütüphane eşleşmesini geçin ve doğrudan YouTube Music\'de arayın.</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c4ab03acc (Translated using Weblate (Turkish))
     <string name="spotify_not_connected">Spotify bağlı değil</string>
     <string name="spotify_login_title">Spotify\'da giriş yap</string>
     <string name="spotify_loading_library">Spotify kütüphanesi yükleniyor</string>
@@ -658,9 +661,29 @@
     <string name="ai_provider">YZ sağlayıcı</string>
     <string name="ai_provider_desc">YZ servisi seçin.</string>
     <string name="ai_provider_none">Hiçbiri (Devre dışı)</string>
+<<<<<<< HEAD
     <string name="ai_custom_endpoint">Özel uç nokta</string>
     <string name="ai_api_key">API anahtarı</string>
     <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
+=======
+    <string name="ai_provider_openrouter"></string>
+    <string name="ai_custom_endpoint">Özel uç nokta</string>
+    <string name="ai_api_key">API anahtarı</string>
+    <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
+    <string name="mori_cipher_status_refreshing">Yenileniyor</string>
+    <string name="mori_cipher_status_degraded">Önbelleğe alınmış konfigürasyon kullanılıyor</string>
+    <string name="mori_cipher_status_uninitialized">Başlatılamadı</string>
+    <string name="mori_cipher_player_id">Oynatıcı konfigürasyonu</string>
+    <string name="mori_cipher_last_updated">En son güncellenen</string>
+    <string name="mori_cipher_refresh">Konfigürasyonu yenile</string>
+    <string name="mori_cipher_refresh_remaining">%1$d elle yenileme kaldı</string>
+    <string name="mori_cipher_rate_limit_countdown">%1$s\'de tekrardan mevcut olacak</string>
+    <string name="mori_cipher_automatic_updates">Otomatik güncellemeler</string>
+    <string name="mori_cipher_automatic_updates_description">ArchiveTune mevcut YouTube oynatıcı konfigürasyonunu her 6 saatte bir ve şifre çözme sorunlarının ardından yeniler.</string>
+    <string name="mori_cipher_refresh_success">Oynatıcı konfigürasyonu güncellendi</string>
+    <string name="mori_cipher_refresh_failed">Oynatıcı konfigürasyonu güncellenemez</string>
+    <string name="mori_cipher_rate_limited">Elle yenileme limiti doldu</string>
+>>>>>>> c4ab03acc (Translated using Weblate (Turkish))
     <string name="ai_translation_menu">YZ Çeviri</string>
     <string name="about_lead_developer">Baş Geliştirici</string>
     <string name="about_archive_tune_team">Ekip</string>
@@ -670,6 +693,7 @@
     <string name="about_license">LİSANLAR</string>
     <string name="about_license_unknown">Bilinmeyen lisans</string>
     <string name="about_position_lead_dev">Ha?</string>
+<<<<<<< HEAD
     <string name="about_position_developers">Geliştirici | Ekip</string>
     <string name="about_position_yuki">dummy reze | Yönetici</string>
     <string name="about_position_mo_agamy">Ana Taban | Metrolist</string>
@@ -733,4 +757,6 @@
 >>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
 =======
 >>>>>>> d670b9738 (Translated using Weblate (Turkish))
+=======
+>>>>>>> c4ab03acc (Translated using Weblate (Turkish))
 </resources>
