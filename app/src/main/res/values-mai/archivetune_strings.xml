@@ -32,6 +32,9 @@
     <string name="music_recognition_notification_listening_text">एहि डिवाइस पर बजि रहल ऑडियो कैप्चर कऽ रहल अछि</string>
     <string name="music_recognition_notification_processing_title">ऑडियो संसाधित कऽ रहल अछि</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ed57c96f1 (Translated using Weblate (Maithili))
     <string name="music_recognition_notification_processing_text">कैप्चर कएल ऑडियो फिंगरप्रिन्टसँ मिलान कऽ रहल अछि</string>
     <string name="music_recognition_notification_artist">कलाकार: %1$s</string>
     <string name="music_recognition_notification_album">एल्बम: %1$s</string>
