@@ -116,7 +116,7 @@ fun ArchiveTuneTheme(
         }
     val motionScheme =
         remember(disableAnimations) {
-            if (disableAnimations) DisabledMotionScheme else MotionScheme.expressive()
+            if (disableAnimations) DisabledMotionScheme else MotionScheme.standard()
         }
     val paletteStyle =
         remember(themeColor, seedPalette) {
