@@ -129,7 +129,7 @@ object UpdateNotificationManager {
 
                 val versionResult =
                     when (updateChannel) {
-                        UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
+                        UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
                         UpdateChannel.STABLE -> Updater.getLatestVersionName()
                     }
 
@@ -186,7 +186,7 @@ object UpdateNotificationManager {
 
         val downloadUrl =
             when (updateChannel) {
-                UpdateChannel.CANARY -> Updater.getLatestCanaryDownloadUrl()
+                UpdateChannel.ARTIFACT -> Updater.getLatestCanaryDownloadUrl()
                 UpdateChannel.STABLE -> Updater.getLatestDownloadUrl()
             }
         val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))

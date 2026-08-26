@@ -1051,11 +1051,11 @@
     <string name="jump_to_latest_log">الانتقال لآخر سجل</string>
     <string name="copy_log_entry">نسخ السجل</string>
     <string name="export_logs_failed">معرفناش نصدر السجلات</string>
-    <string name="updates_subtitle_canary">نسخ Canary وأحدث التعديلات</string>
+    <string name="updates_subtitle_artifact">نسخ Canary وأحدث التعديلات</string>
     <string name="enable_update_notification_channel_desc">هيجيلك إشعار لما يتوفر إصدار جديد على القناة المحددة</string>
-    <string name="channel_canary">Canary</string>
-    <string name="updates_canary_hosting_description">إصدارات Canary بتتنشر تلقائياً من أحدث فرع تطويري.</string>
-    <string name="updates_channel_warning_canary_title">نسخ Canary</string>
+    <string name="channel_artifact">Canary</string>
+    <string name="updates_artifact_hosting_description">إصدارات Canary بتتنشر تلقائياً من أحدث فرع تطويري.</string>
+    <string name="updates_channel_warning_artifact_title">نسخ Canary</string>
     <string name="downloads">التنزيلات</string>
     <string name="download_in_progress">جاري التنزيل</string>
     <string name="no_downloads">مفيش مزيكا متنزلة لسه</string>
@@ -1096,9 +1096,9 @@
     <string name="eq_tone_description">اضبط توازن الترددات المنخفضة، المتوسطة، والعالية</string>
     <string name="ai_content_filter_hide_summary">فلترة الأغاني، الفيديوهات، الألبومات، الفنانين، والبلاي ليستات من قنوات الذكاء الاصطناعي المؤكدة في الرئيسية والبحث</string>
     <string name="ai_content_filter_moderate_summary">إخفاء القنوات اللي احتمال بتستخدم ذكاء اصطناعي حتى لو مش مؤكدة</string>
-    <string name="updates_channel_warning_canary_risk">نسخ Canary ممكن يكون فيها ميزات تجريبية، تغييرات مش مكتملة، أو مشاكل مؤقتة.</string>
-    <string name="updates_channel_warning_canary_unstable">إصدارات Canary مخصصة للاختبار والوصول المبكر بس.\nالاستقرار والتوافق والوظائف مش مضمونين.</string>
-    <string name="updates_channel_warning_canary_acknowledgement">ملاحظة: التنزيل المباشر من GitHub بيتجاوز أي فحص إضافي للمتجر اللي انت ممكن تكون حملت منه التطبيق.\nبمتابعتك، انت معترف إن نسخ Canary ممكن تكون مش مستقرة وعلى مسئوليتك الكاملة.</string>
-    <string name="updates_canary_channel_confirmation">حول لقناة Canary عشان تجيلك الإصدارات التطويرية.\n\nإصدارات Canary بتتنشر تلقائياً من أحدث فرع تطويري.\nملاحظة: التنزيل المباشر من GitHub بيتجاوز أي فحص إضافي للمتجر اللي انت ممكن تكون حملت منه التطبيق.</string>
+    <string name="updates_channel_warning_artifact_risk">نسخ Canary ممكن يكون فيها ميزات تجريبية، تغييرات مش مكتملة، أو مشاكل مؤقتة.</string>
+    <string name="updates_channel_warning_artifact_unstable">إصدارات Canary مخصصة للاختبار والوصول المبكر بس.\nالاستقرار والتوافق والوظائف مش مضمونين.</string>
+    <string name="updates_channel_warning_artifact_acknowledgement">ملاحظة: التنزيل المباشر من GitHub بيتجاوز أي فحص إضافي للمتجر اللي انت ممكن تكون حملت منه التطبيق.\nبمتابعتك، انت معترف إن نسخ Canary ممكن تكون مش مستقرة وعلى مسئوليتك الكاملة.</string>
+    <string name="updates_artifact_channel_confirmation">حول لقناة Canary عشان تجيلك الإصدارات التطويرية.\n\nإصدارات Canary بتتنشر تلقائياً من أحدث فرع تطويري.\nملاحظة: التنزيل المباشر من GitHub بيتجاوز أي فحص إضافي للمتجر اللي انت ممكن تكون حملت منه التطبيق.</string>
     <string name="onboarding_permission_device_audio_capture_desc">بيتعرف على المزيكا اللي شغالة في التطبيقات التانية من غير ما يستخدم المايك. أندرويد هيطلب منك إذن الشاشة والصوت، بس ArchiveTune بياخد الصوت بس.</string>
 </resources>

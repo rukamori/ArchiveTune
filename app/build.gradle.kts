@@ -115,6 +115,18 @@ android {
         }
         buildConfigField("String", "DISTRIBUTION", "\"gms\"")
         buildConfigField("boolean", "UPDATER_AVAILABLE", "true")
+
+        val githubOwner =
+            System.getenv("GITHUB_OWNER")?.trim()
+                ?: localProperties.getProperty("GITHUB_OWNER")?.trim()
+                ?: "rukamori"
+        val githubRepo =
+            System.getenv("GITHUB_REPO")?.trim()
+                ?: localProperties.getProperty("GITHUB_REPO")?.trim()
+                ?: "ArchiveTune"
+        buildConfigField("String", "GITHUB_OWNER", githubOwner.asBuildConfigString())
+        buildConfigField("String", "GITHUB_REPO", githubRepo.asBuildConfigString())
+        buildConfigField("boolean", "IS_NIGHTLY_BUILD", "false")
     }
 
     flavorDimensions += listOf("distribution", "device", "abi")
@@ -213,6 +225,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "true")
+            buildConfigField("boolean", "IS_NIGHTLY_BUILD", "true")
             matchingFallbacks += listOf("release")
         }
     }

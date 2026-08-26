@@ -39,7 +39,7 @@ class UpdateCheckWorker(
                     .first()
 
             when (updateChannel) {
-                UpdateChannel.CANARY -> {
+                UpdateChannel.ARTIFACT -> {
                     Updater.getLatestCanaryVersionName().onSuccess { latestVersion ->
                         if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
                             UpdateNotificationManager.notifyIfNewVersion(

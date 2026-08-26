@@ -14,8 +14,14 @@ private val CanaryVersionRegex = Regex("""^N\d{8}$""")
 internal val isCanaryBuild: Boolean
     get() = CanaryVersionRegex.matches(BuildConfig.VERSION_NAME)
 
+internal val isNightlyBuild: Boolean
+    get() = BuildConfig.IS_NIGHTLY_BUILD
+
 internal val defaultUpdateChannel: UpdateChannel
-    get() = if (isCanaryBuild) UpdateChannel.CANARY else UpdateChannel.STABLE
+    get() = if (isCanaryBuild) UpdateChannel.ARTIFACT else UpdateChannel.STABLE
+
+internal val channelTitle: String
+    get() = if (isNightlyBuild) "Nightly" else "Stable"
 
 internal val currentBuildHash: String?
     get() = BuildConfig.NIGHTLY_BUILD_HASH.takeIf { it.isNotBlank() }

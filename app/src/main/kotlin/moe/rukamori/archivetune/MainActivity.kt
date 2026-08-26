@@ -617,7 +617,7 @@ class MainActivity : ComponentActivity() {
                     val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
                     val versionResult =
                         when (actualChannel) {
-                            UpdateChannel.CANARY -> Updater.getLatestCanaryVersionName()
+                            UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
                             UpdateChannel.STABLE -> Updater.getLatestVersionName()
                         }
                     versionResult.onSuccess {
@@ -721,7 +721,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val releaseNotesResult =
                         when (latestUpdateChannel) {
-                            UpdateChannel.CANARY -> Updater.getLatestCanaryReleaseNotes()
+                            UpdateChannel.ARTIFACT -> Updater.getLatestCanaryReleaseNotes()
                             UpdateChannel.STABLE -> Updater.getLatestReleaseNotes()
                         }
                     releaseNotesResult

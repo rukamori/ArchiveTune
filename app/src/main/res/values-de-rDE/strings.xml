@@ -861,7 +861,7 @@
     <string name="onboarding_gms_variant">GMS-Edition</string>
     <string name="onboarding_foss_variant">FOSS-Edition</string>
     <string name="onboarding_permission_device_audio_capture_title">Musikerkennung auf dem Gerät</string>
-    <string name="channel_canary">Canary</string>
+    <string name="channel_artifact">Canary</string>
     <string name="library_top_mixes_no_recent_history_title">Noch kein aktueller Hör-Mix</string>
     <string name="widget_listening_time_empty">Noch keine Hörzeit</string>
     <string name="widget_no_recent_songs">Noch keine aktuellen Songs</string>
@@ -1035,12 +1035,12 @@
     <string name="no_downloads_in_progress">Keine Downloads aktiv</string>
     <string name="download_in_progress">Aktiv</string>
     <string name="no_releases">Keine Veröffentlichungen gefunden</string>
-    <string name="updates_channel_warning_canary_title">Canary-Veröffentlichungen</string>
-    <string name="updates_subtitle_canary">Canary-Veröffentlichungen und aktuelle Entwicklungscommits</string>
-    <string name="updates_canary_hosting_description">Canary-Veröffentlichungen werden automatisch vom aktuellsten Entwicklungszweig ausgehend veröffentlicht.</string>
-    <string name="updates_channel_warning_canary_unstable">Canary-Veröffentlichungen werden nur zum Testen und für frühen Zugriff bereitgestellt.\nStabilität, Kompatibilität und Funktionalität sind nicht garantiert.</string>
-    <string name="updates_canary_channel_confirmation">Wechsle zum Canary-Kanal, um Entwicklungsveröffentlichungen zu erhalten.\n\nCanary-Veröffentlichungen werden automatisch vom aktuellsten Entwicklungszweig ausgehend veröffentlicht.\nHinweis: Das direkte Herunterladen von GitHub umgeht alle zusätzlichen Überprüfungen des Stores, über den du die App möglicherweise ursprünglich installiert hast.</string>
-    <string name="updates_channel_warning_canary_acknowledgement">Hinweis: Das direkte Herunterladen von GitHub umgeht alle zusätzlichen Überprüfungen des Stores, über den du die App möglicherweise ursprünglich installiert hast.\nWenn du fortfährst erkennst du an, dass Canary-Veröffentlichungen instabil sein können und dass du sie auf eigene Gefahr nutzst.</string>
+    <string name="updates_channel_warning_artifact_title">Canary-Veröffentlichungen</string>
+    <string name="updates_subtitle_artifact">Canary-Veröffentlichungen und aktuelle Entwicklungscommits</string>
+    <string name="updates_artifact_hosting_description">Canary-Veröffentlichungen werden automatisch vom aktuellsten Entwicklungszweig ausgehend veröffentlicht.</string>
+    <string name="updates_channel_warning_artifact_unstable">Canary-Veröffentlichungen werden nur zum Testen und für frühen Zugriff bereitgestellt.\nStabilität, Kompatibilität und Funktionalität sind nicht garantiert.</string>
+    <string name="updates_artifact_channel_confirmation">Wechsle zum Canary-Kanal, um Entwicklungsveröffentlichungen zu erhalten.\n\nCanary-Veröffentlichungen werden automatisch vom aktuellsten Entwicklungszweig ausgehend veröffentlicht.\nHinweis: Das direkte Herunterladen von GitHub umgeht alle zusätzlichen Überprüfungen des Stores, über den du die App möglicherweise ursprünglich installiert hast.</string>
+    <string name="updates_channel_warning_artifact_acknowledgement">Hinweis: Das direkte Herunterladen von GitHub umgeht alle zusätzlichen Überprüfungen des Stores, über den du die App möglicherweise ursprünglich installiert hast.\nWenn du fortfährst erkennst du an, dass Canary-Veröffentlichungen instabil sein können und dass du sie auf eigene Gefahr nutzst.</string>
     <string name="discord_image_album_artwork">Albumcover</string>
     <string name="discord_image_artist_artwork">Künstlerbild</string>
     <string name="player_volume_bar_v7_v8_only">Nur mit V7- oder V8-Playerstilen verfügbar</string>

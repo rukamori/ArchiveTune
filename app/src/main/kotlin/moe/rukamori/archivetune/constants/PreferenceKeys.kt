@@ -916,7 +916,7 @@ val RedownloadOnRestoreKey = booleanPreferencesKey("redownloadOnRestore")
 
 enum class UpdateChannel {
     STABLE,
-    CANARY,
+    ARTIFACT,
     ;
 
     companion object {
@@ -925,7 +925,7 @@ enum class UpdateChannel {
             defaultValue: UpdateChannel,
         ): UpdateChannel =
             when (value) {
-                "NIGHTLY", "DAILY_NIGHTLY" -> CANARY
+                "NIGHTLY", "DAILY_NIGHTLY", "CANARY" -> ARTIFACT
                 else -> entries.firstOrNull { it.name == value } ?: defaultValue
             }
     }

@@ -65,13 +65,13 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
             object : DataMigration<Preferences> {
                 override suspend fun shouldMigrate(currentData: Preferences): Boolean =
                     when (currentData[UpdateChannelKey]) {
-                        "NIGHTLY", "DAILY_NIGHTLY" -> true
+                        "NIGHTLY", "DAILY_NIGHTLY", "CANARY" -> true
                         else -> false
                     }
 
                 override suspend fun migrate(currentData: Preferences): Preferences =
                     currentData.toMutablePreferences().apply {
-                        this[UpdateChannelKey] = UpdateChannel.CANARY.name
+                        this[UpdateChannelKey] = UpdateChannel.ARTIFACT.name
                     }
 
                 override suspend fun cleanUp() {}
