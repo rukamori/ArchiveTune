@@ -604,6 +604,9 @@
     <string name="backup_step_checkpoint_database">Veritabanı hazırlanıyor</string>
     <string name="backup_step_copying_file">Kopyalanıyor%1$s</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d670b9738 (Translated using Weblate (Turkish))
     <string name="restore_step_verifying">Yedekleme doğrulanıyor</string>
     <string name="restore_step_stopping_playback">Oynatma durduruluyor</string>
     <string name="restore_step_restoring_settings">Ayarlar geri yükleniyor</string>
@@ -635,6 +638,7 @@
     <string name="import_priority_local_first_desc">Öncelikle yerel kütüphaneyi ara, eşleşme bulunamadığında ise YouTube Music\'i tara.</string>
     <string name="import_priority_youtube_only">Sadece YouTube Music</string>
     <string name="import_priority_youtube_only_desc">Yerel kütüphane eşleşmesini geçin ve doğrudan YouTube Music\'de arayın.</string>
+<<<<<<< HEAD
     <string name="spotify_not_connected">Spotify bağlı değil</string>
     <string name="spotify_login_title">Spotify\'da giriş yap</string>
     <string name="spotify_loading_library">Spotify kütüphanesi yükleniyor</string>
@@ -727,4 +731,6 @@
 >>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
 =======
 >>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
+=======
+>>>>>>> d670b9738 (Translated using Weblate (Turkish))
 </resources>
