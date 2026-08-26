@@ -699,9 +699,13 @@
     <string name="arrange_library_chips_desc">Ordenar pestañas de la biblioteca</string>
     <string name="aod_customize_mode_enabled">Activar el modo AOD</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="aod_customize_mode_enabled_desc">Permitir que ArchiveTune muestre la pantalla del reproductor siempre activo</string>
 =======
     <string name="aod_customize_mode_enabled_desc">Activar pantalla del reproductor siempre encendida en ArchiveTune</string>
 >>>>>>> 4f76e6ba0 (Translated using Weblate (Spanish))
+=======
+    <string name="aod_customize_mode_enabled_desc">Permitir que ArchiveTune muestre la pantalla del reproductor siempre activo</string>
+>>>>>>> c316ab7c2 (Translated using Weblate (Spanish))
     <string name="ai_provider_openrouter">OpenRouter</string>
 </resources>
