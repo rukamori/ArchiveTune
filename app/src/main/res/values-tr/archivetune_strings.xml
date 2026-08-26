@@ -662,11 +662,14 @@
     <string name="ai_provider_desc">YZ servisi seçin.</string>
     <string name="ai_provider_none">Hiçbiri (Devre dışı)</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="ai_custom_endpoint">Özel uç nokta</string>
     <string name="ai_api_key">API anahtarı</string>
     <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
 =======
     <string name="ai_provider_openrouter"></string>
+=======
+>>>>>>> b71d10e92 (Update translation files)
     <string name="ai_custom_endpoint">Özel uç nokta</string>
     <string name="ai_api_key">API anahtarı</string>
     <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
