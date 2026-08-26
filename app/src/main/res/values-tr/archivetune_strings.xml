@@ -697,6 +697,9 @@
     <string name="about_license_unknown">Bilinmeyen lisans</string>
     <string name="about_position_lead_dev">Ha?</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
     <string name="about_position_developers">Geliştirici | Ekip</string>
     <string name="about_position_yuki">dummy reze | Yönetici</string>
     <string name="about_position_mo_agamy">Ana Taban | Metrolist</string>
@@ -707,6 +710,10 @@
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Bağış yapın</string>
     <string name="aod_mode">Her zaman açık ekran modu</string>
+<<<<<<< HEAD
+=======
+    <string name="aod_mode_exit">Her zaman açık ekrandan çık</string>
+>>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
     <string name="playlist_source_local">Yerel</string>
     <string name="playlist_source_online">Çevrimiçi</string>
     <string name="import_source_local">Yerel Kütüphane</string>
@@ -748,6 +755,7 @@
     <string name="ai_api_status_success">API hazır</string>
     <string name="ai_api_status_failed">API başarısız. Ayarları güncelledikten sonra tekrar deneyin.</string>
     <string name="ai_model">Model</string>
+<<<<<<< HEAD
 =======
 >>>>>>> 5132b947d (Translated using Weblate (Turkish))
 =======
@@ -762,4 +770,6 @@
 >>>>>>> d670b9738 (Translated using Weblate (Turkish))
 =======
 >>>>>>> c4ab03acc (Translated using Weblate (Turkish))
+=======
+>>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
 </resources>
