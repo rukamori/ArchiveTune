@@ -1210,7 +1210,7 @@ class MusicService :
                 if (intent?.action != Intent.ACTION_SCREEN_OFF) return
                 scope.launch {
                     val preferences = dataStore.data.first()
-                    val aodEnabled = preferences[AodModeEnabledKey] ?: true
+                    val aodEnabled = preferences[AodModeEnabledKey] ?: false
                     val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
                     if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
 

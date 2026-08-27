@@ -46,6 +46,7 @@ aboutLibraries = "15.0.3"
 leakCanary = "2.14"
 spotless = "8.10.0"
 chaquopy = "17.0.0"
+graphicsShapes = "1.0.1"
 quickjsKt = "1.0.10"
 bouncyCastle = "1.85"
 
@@ -127,6 +128,7 @@ brotli = { module = "org.brotli:dec", version.ref = "brotli" }
 rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 
 desugaring = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugaring" }
+androidx-graphics-shapes = { group = "androidx.graphics", name = "graphics-shapes", version.ref = "graphicsShapes" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }

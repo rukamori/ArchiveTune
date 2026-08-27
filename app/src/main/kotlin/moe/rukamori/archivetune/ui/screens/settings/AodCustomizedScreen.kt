@@ -160,7 +160,7 @@ private data class AodPreviewSettings(
 @Composable
 fun AodCustomizedScreen(navController: NavController) {
     val scrollBehavior = appBarScrollBehavior()
-    val (aodModeEnabled, onAodModeEnabledChange) = rememberPreference(AodModeEnabledKey, defaultValue = true)
+    val (aodModeEnabled, onAodModeEnabledChange) = rememberPreference(AodModeEnabledKey, defaultValue = false)
     val (thumbnailShape, onThumbnailShapeChange) =
         rememberEnumPreference(
             AodThumbnailShapeKey,

@@ -381,7 +381,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestAodMode() {
-        if (!dataStore.get(AodModeEnabledKey, true)) return
+        if (!dataStore.get(AodModeEnabledKey, false)) return
         pendingAodModeRequest = true
         startMusicServiceSafely()
         openPendingAodModeIfReady()
@@ -1164,7 +1164,8 @@ class MainActivity : ComponentActivity() {
 
                     val shouldHideStatusBars =
                         isYearInMusicScreen ||
-                            (playerBottomSheetState.isExpandedOrExpanding && playerDesignStyle == PlayerDesignStyle.V7)
+                            (playerBottomSheetState.isExpandedOrExpanding &&
+                                playerDesignStyle == PlayerDesignStyle.V7)
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect

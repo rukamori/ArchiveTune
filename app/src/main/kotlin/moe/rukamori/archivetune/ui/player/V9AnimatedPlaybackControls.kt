@@ -84,7 +84,7 @@ fun V9AnimatedPlaybackControls(
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    val motionScheme = remember { MotionScheme.expressive() }
+    val motionScheme = remember { MotionScheme.standard() }
     val defaultSpatialDpSpec = remember { motionScheme.defaultSpatialSpec<Dp>() }
 
     LaunchedEffect(lastClicked, clickTrigger) {
