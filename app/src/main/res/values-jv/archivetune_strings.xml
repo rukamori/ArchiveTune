@@ -350,7 +350,7 @@
     <string name="settings_backup_restore_subtitle">Ekspor dan pulihkan data aplikasi pribadi Kowe</string>
     <string name="settings_developer_options_title">Opsi Pengembang</string>
     <string name="settings_developer_options_subtitle">Fitur eksperimental dan debugging</string>
-    <string name="settings_lyrics_subtitle">Penyedia lirik, pramuat, dan terjemahan</string>
+    <string name="settings_lyrics_subtitle">Penyedia lirik dan terjemahan</string>
     <string name="settings_content_subtitle">Bahasa, negara, dan rekomendasi default</string>
     <string name="settings_internet_subtitle">Proksi, DNS, dan perilaku pemutaran jaringan</string>
     <string name="settings_po_token_subtitle">Verifikasi pemutaran dan data pengunjung</string>

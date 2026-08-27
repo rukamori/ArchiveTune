@@ -273,7 +273,7 @@
     <string name="settings_backup_restore_subtitle">앱 개인 데이터 백업 및 복구</string>
     <string name="settings_developer_options_title">개발자 옵션</string>
     <string name="settings_developer_options_subtitle">실험적인 기능 활성화 및 디버깅 툴 제공</string>
-    <string name="settings_lyrics_subtitle">가사 출처, 사전 로드 및 번역 설정</string>
+    <string name="settings_lyrics_subtitle">가사 출처 및 번역 설정</string>
     <string name="settings_content_subtitle">언어, 국가 및 기본 추천 영역 설정</string>
     <string name="settings_internet_subtitle">프록시, DNS 및 network 재생 동작 설정</string>
     <string name="settings_po_token_subtitle">재생 확인 검증 및 방문자 데이터 관리</string>

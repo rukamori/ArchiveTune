@@ -584,8 +584,6 @@
     <string name="pause_on_device_mute_desc">Mettre en pause lorsque le volume est à zéro, expliquer les tentatives de lecture, puis reprendre lorsque le volume augmente</string>
     <string name="auto_start_on_bluetooth">Démarrage automatique lors de la connexion Bluetooth</string>
     <string name="auto_start_on_bluetooth_desc">Reprendre automatiquement la lecture lorsqu\'un périphérique audio Bluetooth se connecte</string>
-    <string name="preload_queue_lyrics">Précharger les paroles de la file d\'attente</string>
-    <string name="queue_lyrics_preload_count">Nombre de titres à précharger</string>
     <string name="po_token_generation">Génération de jetons PO</string>
     <string name="web_client_po_token">Jeton PO du client Web</string>
     <string name="web_client_po_token_desc">Activer la génération de jetons PO pour les clients du lecteur Web</string>
@@ -754,7 +752,7 @@
     <string name="oldest_year">Année la plus ancienne</string>
     <string name="playing_desc">Lecture</string>
     <string name="options_label">Options</string>
-    <string name="low_data_mode_description">Réduit la consommation de données mobiles en utilisant des flux de faible qualité et en désactivant le cache de lecture, le canvas et le préchargement des paroles en arrière-plan sur les réseaux à volume limité</string>
+    <string name="low_data_mode_description">Réduit la consommation de données mobiles en utilisant des flux de faible qualité et en désactivant le cache de lecture et le canvas sur les réseaux à volume limité</string>
     <string name="discord_authorization_failed">Échec de l\'autorisation Discord</string>
     <string name="most_tracks">La plupart des titres</string>
     <string name="remove_account">Supprimer le compte</string>

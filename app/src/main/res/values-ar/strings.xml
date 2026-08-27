@@ -472,8 +472,6 @@
     <string name="content_length_label">مدة المحتوى</string>
     <string name="auto_start_on_bluetooth">التشغيل التلقائي عند الاتصال عبر البلوتوث</string>
     <string name="auto_start_on_bluetooth_desc">استئناف التشغيل تلقائيًا عند توصيل جهاز صوت عبر البلوتوث</string>
-    <string name="preload_queue_lyrics">تحميل كلمات الأغاني في قائمة الانتظار مسبقًا</string>
-    <string name="queue_lyrics_preload_count">عدد الأغاني المطلوب تحميلها مسبقًا</string>
     <string name="po_token_generation">إنشاء توكن PO</string>
     <string name="web_client_po_token">توكن PO لعميل الويب</string>
     <string name="web_client_po_token_desc">تفعيل إنشاء توكن PO لعملاء مشغّل الويب</string>
@@ -756,7 +754,7 @@
     <string name="enable_megalobiz_lyrics">تفعيل كلمات Megalobiz</string>
     <string name="enable_paxsenix_lyrics">تفعيل كلمات Paxsenix</string>
     <string name="low_data_mode_title">وضع توفير البيانات</string>
-    <string name="low_data_mode_description">يقلل استخدام بيانات الجوال باستخدام بث منخفض الجودة وتعطيل ذاكرة التشغيل والشاشة التفاعلية والتحميل المسبق للكلمات في الخلفية على شبكات الهاتف</string>
+    <string name="low_data_mode_description">يقلل استخدام بيانات الجوال باستخدام بث منخفض الجودة وتعطيل ذاكرة التشغيل والشاشة التفاعلية على شبكات الهاتف</string>
     <string name="permanent_shuffle">وضع التشغيل العشوائي الدائم</string>
     <string name="permanent_shuffle_desc">الإبقاء على التبديل العشوائي مفعلاً عند بدء أغنية جديدة</string>
     <string name="audio_offload">تفريغ المعالجة الصوتية</string>

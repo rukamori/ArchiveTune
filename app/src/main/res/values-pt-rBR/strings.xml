@@ -502,7 +502,7 @@
     <string name="audio_quality_high">Alta</string>
     <string name="audio_quality_low">Baixa</string>
     <string name="low_data_mode_title">Modo de baixo consumo de dados</string>
-    <string name="low_data_mode_description">Reduz o uso de dados móveis usando streams de baixa qualidade e desativando cache de reprodução, canvas e pré-carregamento de letras em segundo plano em redes limitadas</string>
+    <string name="low_data_mode_description">Reduz o uso de dados móveis usando streams de baixa qualidade e desativando o cache de reprodução e o canvas em redes limitadas</string>
     <string name="queue">Fila</string>
     <string name="persistent_queue">Fila persistente</string>
     <string name="persistent_queue_desc">Restaurar sua última fila quando o app iniciar</string>
@@ -593,8 +593,6 @@
     <string name="disable_screenshot_desc">Quando esta opção está ativada, capturas de tela e a visualização do app em Recentes são desativadas.</string>
     <string name="enable_lrclib">Ativar provedor de letras LrcLib</string>
     <string name="enable_kugou">Ativar provedor de letras KuGou</string>
-    <string name="preload_queue_lyrics">Pré-carregar letras da fila</string>
-    <string name="queue_lyrics_preload_count">Número de músicas para pré-carregar</string>
     <string name="display">Exibição</string>
     <string name="romanization">Romanização</string>
     <string name="hide_explicit">Ocultar conteúdo explícito</string>

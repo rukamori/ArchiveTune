@@ -93,8 +93,6 @@ import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
 import moe.rukamori.archivetune.constants.LyricsScrollKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
-import moe.rukamori.archivetune.constants.PreloadQueueLyricsEnabledKey
-import moe.rukamori.archivetune.constants.QueueLyricsPreloadCountKey
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
 import moe.rukamori.archivetune.paxsenix.models.PaxsenixStats
 import moe.rukamori.archivetune.paxsenix.models.ProviderStats
@@ -102,7 +100,6 @@ import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.component.NumberPickerPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -211,12 +208,6 @@ fun LyricsSettings(
             LyricsRomanizeOtherLanguagesKey,
             defaultValue = true,
         )
-    val (preloadQueueLyricsEnabled, onPreloadQueueLyricsEnabledChange) =
-        rememberPreference(
-            PreloadQueueLyricsEnabledKey,
-            defaultValue = true,
-        )
-    val (queueLyricsPreloadCount, onQueueLyricsPreloadCountChange) = rememberPreference(QueueLyricsPreloadCountKey, defaultValue = 1)
 
     var showProviderOrderDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -637,28 +628,6 @@ fun LyricsSettings(
             }
         }
 
-        PreferenceGroup(title = stringResource(R.string.queue)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.preload_queue_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = preloadQueueLyricsEnabled,
-                    onCheckedChange = onPreloadQueueLyricsEnabledChange,
-                )
-            }
-
-            item(visible = preloadQueueLyricsEnabled) {
-                NumberPickerPreference(
-                    title = { Text(stringResource(R.string.queue_lyrics_preload_count)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    value = queueLyricsPreloadCount,
-                    onValueChange = onQueueLyricsPreloadCountChange,
-                    minValue = 0,
-                    maxValue = 10,
-                    valueText = { if (it == 0) "Off" else it.toString() },
-                )
-            }
-        }
 
         PreferenceGroup(title = stringResource(R.string.cache)) {
             item {

@@ -484,7 +484,7 @@
     <string name="audio_quality_high">高</string>
     <string name="audio_quality_low">低</string>
     <string name="low_data_mode_title">計量數據模式</string>
-    <string name="low_data_mode_description">在按流量計費的網路上，透過使用低畫質/低音質串流媒體並停用播放快取、Canvas 渲染及後台歌詞預先加載，來減少行動資料消耗</string>
+    <string name="low_data_mode_description">在按流量計費的網路上，透過使用低畫質/低音質串流媒體並停用播放快取及 Canvas 渲染，來減少行動資料消耗</string>
     <string name="queue">佇列</string>
     <string name="persistent_queue">持久佇列</string>
     <string name="persistent_queue_desc">應用程式啟動時恢復上一次的佇列</string>
@@ -575,8 +575,6 @@
     <string name="disable_screenshot_desc">啟用此選項後，將停用螢幕截圖以及「最近任務」檢視中的應用畫面。</string>
     <string name="enable_lrclib">啟用 LrcLib 歌詞來源</string>
     <string name="enable_kugou">啟用酷狗歌詞來源</string>
-    <string name="preload_queue_lyrics">預先載入佇列歌詞</string>
-    <string name="queue_lyrics_preload_count">預先載入歌曲數量</string>
     <string name="display">顯示</string>
     <string name="romanization">羅馬化</string>
     <string name="hide_explicit">隱藏露骨內容</string>

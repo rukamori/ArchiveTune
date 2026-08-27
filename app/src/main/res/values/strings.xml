@@ -452,7 +452,7 @@
     <string name="custom_value">Custom value</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animate album artwork while playing (Powered by BetterLyrics)</string>
-    <string name="player_background_style_v8_v9_desc">Unavailable with V8 and V9 player styles</string>
+    <string name="player_background_style_v8_v9_desc">Unavailable with V8, V9, and V10 player styles</string>
     <string name="show_button1_description">Toggle visibility of button 1 in Discord Rich Presence</string>
     <string name="show_button2_description">Toggle visibility of button 2 in Discord Rich Presence</string>
     <string name="discord_activity_type">Activity type</string>
@@ -539,7 +539,9 @@
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
     <string name="low_data_mode_title">Low Data Mode</string>
-    <string name="low_data_mode_description">Reduces mobile data usage by using low-quality streams and disabling playback cache, canvas, and background lyrics preloading on metered networks</string>
+    <string name="low_data_mode_description">Reduces mobile data usage by using low-quality streams and disabling playback cache and canvas on metered networks</string>
+    <string name="preload_next_song_title">Preload next song</string>
+    <string name="preload_next_song_warning">Uses additional data, battery, and processing in the background. Automatically turns off with Low Data Mode.</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
@@ -664,8 +666,6 @@
     <string name="disable_screenshot_desc">When this option is on, screenshots and the app\'s view in Recents are disabled.</string>
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
-    <string name="preload_queue_lyrics">Preload queue lyrics</string>
-    <string name="queue_lyrics_preload_count">Number of songs to preload</string>
     <string name="display">Display</string>
     <string name="romanization">Romanization</string>
     <string name="hide_explicit">Hide explicit content</string>

@@ -509,8 +509,6 @@
     <string name="pause_on_device_mute_desc">跟随静音状态自动暂停或恢复</string>
     <string name="auto_start_on_bluetooth">连接蓝牙时自动播放</string>
     <string name="auto_start_on_bluetooth_desc">连接蓝牙音频设备时自动恢复播放</string>
-    <string name="preload_queue_lyrics">预加载队列歌词</string>
-    <string name="queue_lyrics_preload_count">预加载歌曲数量</string>
     <string name="changelog">更新日志</string>
     <string name="view_changelog">查看更新日志</string>
     <string name="error_loading_changelog">错误加载更新日志</string>
@@ -801,7 +799,7 @@
     <string name="enable_megalobiz_lyrics">启用 Megalobiz 歌词</string>
     <string name="enable_paxsenix_lyrics">启用 Paxsenix 歌词</string>
     <string name="low_data_mode_title">省流量模式 / 低数据模式</string>
-    <string name="low_data_mode_description">在按流量计费的网络下，通过降低音质并禁用播放缓存、动态封面及后台歌词预加载，以减少移动数据消耗</string>
+    <string name="low_data_mode_description">在按流量计费的网络下，通过降低音质并禁用播放缓存和动态封面，以减少移动数据消耗</string>
     <string name="device_mute_recovery_volume">恢复音量（从 0 调高）</string>
     <string name="device_mute_recovery_volume_disabled">已禁用</string>
     <string name="device_volume_zero_playback_paused">设备音量为 0，播放将暂停。调高音量即可继续播放</string>

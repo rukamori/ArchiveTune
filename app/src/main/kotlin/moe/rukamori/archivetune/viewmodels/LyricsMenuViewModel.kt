@@ -316,7 +316,7 @@ class LyricsMenuViewModel
                 } else {
                     emptyList()
                 }
-            val isWordSynced = ttmlEntries.any { !it.words.isNullOrEmpty() }
+            val isWordSynced = LyricsUtils.hasWordSyncedLyrics(lyrics)
 
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
@@ -326,10 +326,10 @@ class LyricsMenuViewModel
                 lineCount = lineCount,
                 characterCount = preview.length,
                 isLineSynced =
-                    if (isTtmlLyrics) {
-                        ttmlEntries.isNotEmpty() && !isWordSynced
-                    } else {
-                        isLineSyncedLrc(lyrics)
+                    when {
+                        isWordSynced -> false
+                        isTtmlLyrics -> ttmlEntries.isNotEmpty()
+                        else -> isLineSyncedLrc(lyrics)
                     },
                 isWordSynced = isWordSynced,
             )

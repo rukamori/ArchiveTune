@@ -438,8 +438,6 @@
     <string name="disable_screenshot_desc">이 옵션을 활성화하면 보안 상의 이유로 앱 내부 스크린샷을 찍을 수 없게 되며 안드로이드 최근 실행 목록에서도 앱 화면이 투명하게 가려 보호됩니다.</string>
     <string name="enable_lrclib">LrcLib 오픈 가사 데이터베이스 활성화</string>
     <string name="enable_kugou">KuGou 다국어 가사 연동 서비스 활성화</string>
-    <string name="preload_queue_lyrics">대기열 가사 미리 로드</string>
-    <string name="queue_lyrics_preload_count">미리 로드할 노래 수</string>
     <string name="display">화면 표시 설정</string>
     <string name="romanization">가사 다국어 로마자 표기법</string>
     <string name="hide_explicit">성인 콘텐츠 필터링</string>
@@ -740,7 +738,7 @@
     <string name="oldest_year">오래된 연도순</string>
     <string name="playing_desc">재생 중</string>
     <string name="options_label">옵션</string>
-    <string name="low_data_mode_description">모바일 데이터 소모를 적극적으로 방지하기 위해 가사 미리 읽기, 앨범 아트 캐싱, 움직이는 캔버스 비디오 기능을 끄고 상대적으로 낮은 음질로 스트리밍을 수행합니다.</string>
+    <string name="low_data_mode_description">모바일 데이터 사용량을 줄이기 위해 종량제 네트워크에서 낮은 음질로 스트리밍하고 재생 캐시와 움직이는 캔버스 비디오를 비활성화합니다.</string>
     <string name="discord_authorization_failed">Discord 프로필 연동 인증 단계에 실패했습니다.</string>
     <string name="most_tracks">곡 수 많은 순</string>
     <string name="featured_album_badge">추천 앨범</string>

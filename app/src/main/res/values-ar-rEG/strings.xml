@@ -529,7 +529,7 @@
     <string name="audio_quality_high">عالية</string>
     <string name="audio_quality_low">منخفضة</string>
     <string name="low_data_mode_title">وضع توفير البيانات</string>
-    <string name="low_data_mode_description">بيقلل استهلاك باقة الموبايل عن طريق تشغيل الصوت بجودة منخفضة وتوقيف التحميل المسبق والخلفيات المتحركة</string>
+    <string name="low_data_mode_description">بيقلل استهلاك باقة الموبايل عن طريق تشغيل الصوت بجودة منخفضة وتوقيف كاش التشغيل والخلفيات المتحركة</string>
     <string name="queue">طابور التشغيل</string>
     <string name="persistent_queue">حفظ طابور التشغيل</string>
     <string name="persistent_queue_desc">بيرجعلك طابور التشغيل الأخير أول ما تفتح التطبيق</string>
@@ -620,8 +620,6 @@
     <string name="disable_screenshot_desc">لما تفعل الخيار ده، لقطات الشاشة ومعاينة التطبيق في التطبيقات الأخيرة هتتعطل.</string>
     <string name="enable_lrclib">تفعيل موفر كلمات LrcLib</string>
     <string name="enable_kugou">تفعيل موفر كلمات KuGou</string>
-    <string name="preload_queue_lyrics">تحميل كلمات أغاني الطابور مسبقاً</string>
-    <string name="queue_lyrics_preload_count">عدد الأغاني لتحميل كلماتها مسبقاً</string>
     <string name="display">العرض</string>
     <string name="romanization">الكتابة اللاتينية (Romanization)</string>
     <string name="hide_explicit">إخفاء المحتوى الفاضح</string>

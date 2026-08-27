@@ -594,8 +594,6 @@
     <string name="pause_on_device_mute_desc">Автоматически ставить музыку на паузу когда звук отключён, и снова воспроизводить когда звук включён</string>
     <string name="auto_start_on_bluetooth">Автозапуск при подключении Bluetooth</string>
     <string name="auto_start_on_bluetooth_desc">Автоматически возобновлять воспроизведение при подключении Bluetooth аудио-устройства</string>
-    <string name="preload_queue_lyrics">Предварительная загрузка текста песен в очереди</string>
-    <string name="queue_lyrics_preload_count">Количество песен для предварительной загрузки</string>
     <string name="po_token_generation">Генерация PO токена</string>
     <string name="web_client_po_token">Веб-клиент PO токен</string>
     <string name="web_client_po_token_desc">Включить генерацию PO токена для веб-клиентов плеера</string>

@@ -426,7 +426,7 @@
     <string name="settings_backup_restore_subtitle">導出或導入您的應用程式數據</string>
     <string name="settings_developer_options_title">開發者選項</string>
     <string name="settings_developer_options_subtitle">實驗性功能與除錯</string>
-    <string name="settings_lyrics_subtitle">歌詞提供者、預先載入與翻譯</string>
+    <string name="settings_lyrics_subtitle">歌詞提供者與翻譯</string>
     <string name="settings_content_subtitle">語言、國家和推薦的預設設置</string>
     <string name="settings_internet_subtitle">代理、DNS 和網路播放行為</string>
     <string name="settings_po_token_subtitle">播放驗證與訪客數據</string>

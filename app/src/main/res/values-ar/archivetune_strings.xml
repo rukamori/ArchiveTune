@@ -482,7 +482,7 @@
     <string name="settings_backup_restore_subtitle">تصدير واستعادة بيانات تطبيقك الشخصية</string>
     <string name="settings_developer_options_title">خيارات المطور</string>
     <string name="settings_developer_options_subtitle">الميزات التجريبية وتصحيح الأخطاء</string>
-    <string name="settings_lyrics_subtitle">مزودو الكلمات، التحميل المسبق، والترجمة</string>
+    <string name="settings_lyrics_subtitle">مزودو الكلمات والترجمة</string>
     <string name="settings_content_subtitle">اللغة، البلد، وإعدادات التوصيات الافتراضية</string>
     <string name="settings_internet_subtitle">البروكسي، DNS، وسلوك تشغيل الشبكة</string>
     <string name="settings_po_token_subtitle">التحقق من التشغيل وبيانات الزائر</string>

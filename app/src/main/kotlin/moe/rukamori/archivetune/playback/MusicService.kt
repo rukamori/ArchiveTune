@@ -17,7 +17,6 @@ import android.app.PendingIntent
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -87,11 +86,8 @@ import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.CommandButton
-import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionToken
-import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -218,11 +214,13 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.lyrics.LyricsHelper
-import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
+import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
+import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.playback.stream.ResolvedAudioStream
@@ -304,6 +302,14 @@ class MusicService :
 
     @Inject
     lateinit var resolveAudioStream: ResolveAudioStreamUseCase
+
+    @Inject
+    lateinit var observePlaybackPreloadConfiguration: ObservePlaybackPreloadConfigurationUseCase
+
+    @Inject
+    lateinit var nextStreamPreloader: NextStreamPreloader
+
+    private var playbackPreloadConfiguration: PlaybackPreloadConfiguration? = null
 
     private lateinit var audioManager: AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -498,8 +504,6 @@ class MusicService :
     private var crossfadeHandoffProgress = 0f
     private var crossfadePlaybackRequested = false
     private var crossfadeSuppressedMediaId: String? = null
-    private var lyricsPreloadManager: LyricsPreloadManager? = null
-
     private val secondaryCrossfadeListener =
         object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
@@ -1154,6 +1158,11 @@ class MusicService :
                     addListener(sleepTimer)
                 }
         playerInitialized.value = true
+        observePlaybackPreloadConfiguration()
+            .collect(scope) { configuration ->
+                playbackPreloadConfiguration = configuration
+                updateNextStreamPreload()
+            }
         database
             .blockedArtistIds()
             .map { ids -> ids.toSet() }
@@ -1201,7 +1210,7 @@ class MusicService :
                 if (intent?.action != Intent.ACTION_SCREEN_OFF) return
                 scope.launch {
                     val preferences = dataStore.data.first()
-                    val aodEnabled = preferences[AodModeEnabledKey] ?: true
+                    val aodEnabled = preferences[AodModeEnabledKey] ?: false
                     val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
                     if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
 
@@ -1256,13 +1265,11 @@ class MusicService :
                 smallIconResId = R.drawable.small_icon,
             ),
         )
+        addSession(mediaSession)
 
         updateNotification()
         player.repeatMode = REPEAT_MODE_OFF
 
-        val sessionToken = SessionToken(this, ComponentName(this, MusicService::class.java))
-        val controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
-        controllerFuture.addListener({ controllerFuture.get() }, MoreExecutors.directExecutor())
         scope.launch(Dispatchers.IO) {
             val prefs = dataStore.data.first()
             val repeatMode = prefs[RepeatModeKey] ?: REPEAT_MODE_OFF
@@ -1435,15 +1442,6 @@ class MusicService :
                 wakelockEnabled = enabled
                 updateWakeLock()
             }
-
-        // Initialize lyrics pre-load manager
-        lyricsPreloadManager =
-            LyricsPreloadManager(
-                context = this,
-                database = database,
-                networkConnectivity = connectivityObserver,
-                lyricsHelper = lyricsHelper,
-            )
 
         dataStore.data
             .map(::readEqSettingsFromPrefs)
@@ -6629,12 +6627,6 @@ class MusicService :
 
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
-        val currentIndex = player.currentMediaItemIndex
-        val queue = player.mediaItems.map { it.metadata }
-        if (queue.any { it != null }) {
-            lyricsPreloadManager?.onSongChanged(currentIndex, queue)
-        }
-
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&
             reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
@@ -6846,10 +6838,72 @@ class MusicService :
         widgetUpdater.updateProgressTracking()
     }
 
+    private fun updateNextStreamPreload() {
+        val configuration = playbackPreloadConfiguration
+        if (configuration == null || !configuration.enabled || player.playbackState != Player.STATE_READY) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        val nextMediaItemIndex = player.nextMediaItemIndex
+        if (nextMediaItemIndex == C.INDEX_UNSET ||
+            nextMediaItemIndex == player.currentMediaItemIndex ||
+            nextMediaItemIndex !in 0 until player.mediaItemCount
+        ) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        val nextMediaItem = player.getMediaItemAt(nextMediaItemIndex)
+        val nextMediaId =
+            (nextMediaItem.localConfiguration?.customCacheKey ?: nextMediaItem.mediaId)
+                .trim()
+                .takeIf(String::isNotEmpty)
+        val currentMediaId =
+            player.currentMediaItem
+                ?.let { mediaItem -> mediaItem.localConfiguration?.customCacheKey ?: mediaItem.mediaId }
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+        val nextUri = nextMediaItem.localConfiguration?.uri
+        if (nextMediaId == null ||
+            nextMediaId == currentMediaId ||
+            nextMediaId.isLocalMediaId() ||
+            nextUri == null ||
+            nextUri.shouldBypassYouTubeResolver()
+        ) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        nextStreamPreloader.updateTarget(
+            request =
+                AudioStreamRequest(
+                    mediaId = nextMediaId,
+                    playlistId = null,
+                    quality = configuration.quality,
+                    networkMetered = false,
+                    purpose = StreamPurpose.PLAYBACK,
+                    authState = configuration.authState,
+                    pinnedFormatId = null,
+                ),
+            runtimeRevision = configuration.runtimeRevision,
+        )
+    }
+
     override fun onEvents(
         player: Player,
         events: Player.Events,
     ) {
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED,
+            )
+        ) {
+            updateNextStreamPreload()
+        }
         val currentMediaId = player.currentMediaItem?.mediaId
         if (currentMediaId == null && currentHistoryMediaId != null) {
             beginHistorySession(null, forceNew = true)
@@ -8333,8 +8387,6 @@ class MusicService :
             connectivityObserver.unregister()
         } catch (_: Exception) {
         }
-        lyricsPreloadManager?.destroy()
-        lyricsPreloadManager = null
         abandonAudioFocus()
         try {
             releaseAudioEffects()
@@ -8363,6 +8415,7 @@ class MusicService :
             player.release()
         } catch (_: Exception) {
         }
+        nextStreamPreloader.cancel()
         scopeJob.cancel()
     }
 

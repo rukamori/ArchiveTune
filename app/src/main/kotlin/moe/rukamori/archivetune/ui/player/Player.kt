@@ -102,6 +102,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
@@ -191,11 +192,18 @@ import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
+import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import android.widget.Toast
+import androidx.compose.foundation.gestures.detectDragGestures
+import com.materialkolor.hct.Hct
+import com.materialkolor.ktx.toHct
+import com.materialkolor.ktx.toColor
+import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
@@ -357,7 +365,7 @@ fun BottomSheetPlayer(
         defaultValue = PlayerBackgroundStyle.DEFAULT,
     )
     val playerUsesFixedBackground =
-        playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9
+        playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10
     val playerBackground =
         if (playerUsesFixedBackground) PlayerBackgroundStyle.DEFAULT else storedPlayerBackground
 
@@ -447,6 +455,13 @@ fun BottomSheetPlayer(
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 8f)
     val archiveTuneCanvasEnabled by rememberPreference(ArchiveTuneCanvasKey, false)
     val lowDataModeActive = rememberLowDataModeActive()
+    val playerSwapState =
+        rememberThumbnailSwapState(
+            videoId = mediaMetadata?.id,
+            ytmUrl = mediaMetadata?.thumbnailUrl?.highRes(),
+            lowDataMode = lowDataModeActive,
+            isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
+        )
     val (maxCanvasCacheSize, _) =
         rememberPreference(
             key = MaxCanvasCacheSizeKey,
@@ -482,6 +497,12 @@ fun BottomSheetPlayer(
         mutableStateOf<List<Color>>(emptyList())
     }
 
+    // Exact seeds from artwork color scheme
+    var v10ArtworkSeeds by remember {
+        mutableStateOf<Pair<Color, Color>?>(null)
+    }
+    val v10ArtworkSeedsCache = remember { mutableMapOf<String, Pair<Color, Color>>() }
+
     // Previous background states for smooth transitions
     var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
     var previousGradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
@@ -502,27 +523,30 @@ fun BottomSheetPlayer(
         }
     }
 
-    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl, playerBackground, playerDesignStyle) {
+    LaunchedEffect(mediaMetadata?.id, playerSwapState.displayUrl, playerBackground, playerDesignStyle) {
         if (aodModeEnabled) return@LaunchedEffect
-        if (playerDesignStyle == PlayerDesignStyle.V9 ||
+        if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10 ||
             playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
             playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
             playerBackground == PlayerBackgroundStyle.GLOW ||
             playerBackground == PlayerBackgroundStyle.GLOW_ANIMATED
         ) {
             val currentMetadata = mediaMetadata
-            if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
+            val displayThumbnail = playerSwapState.displayUrl
+            if (currentMetadata != null && displayThumbnail != null) {
                 // Check cache first
                 val cachedColors = gradientColorsCache[currentMetadata.id]
-                if (cachedColors != null) {
+                val cachedV10Seeds = v10ArtworkSeedsCache[currentMetadata.id]
+                if (cachedColors != null && cachedV10Seeds != null) {
                     gradientColors = cachedColors
+                    v10ArtworkSeeds = cachedV10Seeds
                 } else {
                     val request =
                         ImageRequest
                             .Builder(context)
-                            .data(currentMetadata.thumbnailUrl)
-                            .memoryCacheKey(currentMetadata.thumbnailUrl)
-                            .diskCacheKey(currentMetadata.thumbnailUrl)
+                            .data(displayThumbnail)
+                            .memoryCacheKey(displayThumbnail)
+                            .diskCacheKey(displayThumbnail)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .networkCachePolicy(CachePolicy.ENABLED)
                             .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
@@ -554,8 +578,28 @@ fun BottomSheetPlayer(
                                     fallbackColor = fallbackColor,
                                 )
 
+                            // EXACT artwork seeds extraction
+                            val primarySeed = palette.vibrantSwatch
+                                ?: palette.lightVibrantSwatch
+                                ?: palette.darkVibrantSwatch
+                                ?: palette.dominantSwatch
+                            val secondarySeed = palette.mutedSwatch
+                                ?: palette.lightMutedSwatch
+                                ?: palette.darkMutedSwatch
+                                ?: primarySeed
+
+                            val seeds = if (primarySeed != null && secondarySeed != null) {
+                                Pair(Color(primarySeed.rgb), Color(secondarySeed.rgb))
+                            } else {
+                                null
+                            }
+
                             gradientColorsCache[currentMetadata.id] = extractedColors
                             gradientColors = extractedColors
+                            if (seeds != null) {
+                                v10ArtworkSeedsCache[currentMetadata.id] = seeds
+                                v10ArtworkSeeds = seeds
+                            }
                         } else {
                             gradientColors = defaultGradientColors
                         }
@@ -564,7 +608,7 @@ fun BottomSheetPlayer(
                     }
                 }
             } else {
-                gradientColors = emptyList()
+                gradientColors = defaultGradientColors
             }
         } else {
             gradientColors = emptyList()
@@ -599,6 +643,51 @@ fun BottomSheetPlayer(
         label = "dynamicAccentColor"
     )
 
+    // EXACT artwork accents using HCT (Hue-Chroma-Tone) for correct toning
+    val targetV10FieldColor = remember(v10ArtworkSeeds, useDarkTheme) {
+        val seeds = v10ArtworkSeeds
+        if (seeds == null) {
+            dominantColor
+        } else {
+            val hct = seeds.first.toHct()
+            if (useDarkTheme) {
+                // primaryContainer = primarySeed tone 30
+                hct.withTone(30.0).toColor()
+            } else {
+                // primaryContainer = primarySeed tone 90
+                hct.withTone(90.0).toColor()
+            }
+        }
+    }
+
+    val dynamicV10FieldColor by animateColorAsState(
+        targetValue = targetV10FieldColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicV10FieldColor"
+    )
+
+    val targetV10AccentColor = remember(v10ArtworkSeeds, useDarkTheme) {
+        val seeds = v10ArtworkSeeds
+        if (seeds == null) {
+            dominantColor
+        } else {
+            val hct = seeds.first.toHct()
+            if (useDarkTheme) {
+                // onPrimaryContainer = primarySeed tone 90
+                hct.withTone(90.0).toColor()
+            } else {
+                // onPrimaryContainer = primarySeed tone 10
+                hct.withTone(10.0).toColor()
+            }
+        }
+    }
+
+    val dynamicV10AccentColor by animateColorAsState(
+        targetValue = targetV10AccentColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "dynamicV10AccentColor"
+    )
+
     val targetTextColor = remember(dominantColor, useDarkTheme) {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(dominantColor.toArgb(), hsv)
@@ -628,7 +717,7 @@ fun BottomSheetPlayer(
     )
 
     val TextBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
+        if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
             dynamicTextColor
         } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.White
@@ -646,7 +735,7 @@ fun BottomSheetPlayer(
         }
 
     val icBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
+        if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
             dynamicBgColor
         } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.Black
@@ -727,70 +816,42 @@ fun BottomSheetPlayer(
         mutableFloatStateOf(30f)
     }
     if (showSleepTimerDialog) {
-        AlertDialog(
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-            onDismissRequest = { showSleepTimerDialog = false },
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.bedtime),
-                    contentDescription = null,
-                )
+        SleepTimerDialog(
+            onDismiss = { showSleepTimerDialog = false },
+            onConfirm = { mins ->
+                showSleepTimerDialog = false
+                sleepTimerValue = mins.toFloat()
+                playerConnection.service.sleepTimer.start(mins)
             },
-            title = { Text(stringResource(R.string.sleep_timer)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSleepTimerDialog = false
-                        playerConnection.service.sleepTimer.start(sleepTimerValue.roundToInt())
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
+            onEndOfSong = {
+                showSleepTimerDialog = false
+                playerConnection.service.sleepTimer.start(-1)
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showSleepTimerDialog = false },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text =
-                            pluralStringResource(
-                                R.plurals.minute,
-                                sleepTimerValue.roundToInt(),
-                                sleepTimerValue.roundToInt(),
-                            ),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-
-                    Slider(
-                        value = sleepTimerValue,
-                        onValueChange = { sleepTimerValue = it },
-                        valueRange = 5f..120f,
-                        steps = (120 - 5) / 5 - 1,
-                    )
-
-                    OutlinedIconButton(
-                        onClick = {
-                            showSleepTimerDialog = false
-                            playerConnection.service.sleepTimer.start(-1)
-                        },
-                    ) {
-                        Text(stringResource(R.string.end_of_song))
-                    }
-                }
-            },
+            initialValue = sleepTimerValue
         )
     }
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
     }
+
+    AddToPlaylistDialog(
+        isVisible = showChoosePlaylistDialog,
+        onGetSong = {
+            mediaMetadata?.let { listOf(it.id) } ?: emptyList()
+        },
+        onDismiss = { showChoosePlaylistDialog = false },
+        onAddComplete = { songCount, playlistNames ->
+            val message =
+                if (songCount == 1 && playlistNames.size == 1) {
+                    context.getString(R.string.added_to_playlist, playlistNames.first())
+                } else {
+                    context.getString(R.string.added_to_n_playlists, playlistNames.size)
+                }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            showChoosePlaylistDialog = false
+        },
+    )
 
     LaunchedEffect(mediaMetadata?.id, playbackState, aodModeEnabled) {
         val startTime = SystemClock.elapsedRealtime()
@@ -850,7 +911,7 @@ fun BottomSheetPlayer(
     }
 
     val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5) {
+        if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.V10) {
             0.dp
         } else if (playerDesignStyle == PlayerDesignStyle.V9) {
             88.dp +
@@ -1008,6 +1069,17 @@ fun BottomSheetPlayer(
                         0f
                     }
                 dynamicBgColor.copy(alpha = 1f - fadeProgress)
+            } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                val progress =
+                    ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
+                        .coerceIn(0f, 1f)
+                val fadeProgress =
+                    if (progress < 0.2f) {
+                        ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                dynamicV10FieldColor.copy(alpha = 1f - fadeProgress)
             } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
                 val progress =
                     ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
@@ -1287,7 +1359,8 @@ fun BottomSheetPlayer(
             playerDesignStyle != PlayerDesignStyle.V5 &&
             playerDesignStyle != PlayerDesignStyle.V7 &&
             playerDesignStyle != PlayerDesignStyle.V8 &&
-            playerDesignStyle != PlayerDesignStyle.V9
+            playerDesignStyle != PlayerDesignStyle.V9 &&
+            playerDesignStyle != PlayerDesignStyle.V10
         ) {
             PlayerBackground(
                 playerBackground = playerBackground,
@@ -1540,6 +1613,69 @@ fun BottomSheetPlayer(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    enrichedMetadata?.let { metadata ->
+                        V10PlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            textBackgroundColor = dynamicV10AccentColor,
+                            textButtonColor = dynamicV10FieldColor,
+                            iconButtonColor = iconButtonColor,
+                            onCollapseClick = { state.collapseSoft() },
+                            onQueueClick = openQueue,
+                            onLyricsClick = { isLyricsScreenVisible = true },
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            onSleepTimerClick = {
+                                if (sleepTimerEnabled) {
+                                    playerConnection.service.sleepTimer.clear()
+                                } else {
+                                    showSleepTimerDialog = true
+                                }
+                            },
+                            sleepTimerEnabled = sleepTimerEnabled,
+                            sleepTimerTimeLeft = sleepTimerTimeLeft,
+                            onMenuClick = {
+                                menuState.show {
+                                    PlayerMenu(
+                                        mediaMetadata = metadata,
+                                        navController = navController,
+                                        playerBottomSheetState = state,
+                                        onShowDetailsDialog = {
+                                            bottomSheetPageState.show {
+                                                ShowMediaInfo(metadata.id)
+                                            }
+                                        },
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                            onAddToPlaylistClick = {
+                                showChoosePlaylistDialog = true
+                            },
+                            landscape = true,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(
+                                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                                        ),
+                                    )
+                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
                 } else {
@@ -1814,6 +1950,69 @@ fun BottomSheetPlayer(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    enrichedMetadata?.let { metadata ->
+                        V10PlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            textBackgroundColor = dynamicV10AccentColor,
+                            textButtonColor = dynamicV10FieldColor,
+                            iconButtonColor = iconButtonColor,
+                            onCollapseClick = { state.collapseSoft() },
+                            onQueueClick = openQueue,
+                            onLyricsClick = { isLyricsScreenVisible = true },
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            onSleepTimerClick = {
+                                if (sleepTimerEnabled) {
+                                    playerConnection.service.sleepTimer.clear()
+                                } else {
+                                    showSleepTimerDialog = true
+                                }
+                            },
+                            sleepTimerEnabled = sleepTimerEnabled,
+                            sleepTimerTimeLeft = sleepTimerTimeLeft,
+                            onMenuClick = {
+                                menuState.show {
+                                    PlayerMenu(
+                                        mediaMetadata = metadata,
+                                        navController = navController,
+                                        playerBottomSheetState = state,
+                                        onShowDetailsDialog = {
+                                            bottomSheetPageState.show {
+                                                ShowMediaInfo(metadata.id)
+                                            }
+                                        },
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                            onAddToPlaylistClick = {
+                                showChoosePlaylistDialog = true
+                            },
+                            landscape = false,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(
+                                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                                        ),
+                                    )
+                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
                 } else {

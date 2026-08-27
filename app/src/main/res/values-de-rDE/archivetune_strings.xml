@@ -342,7 +342,7 @@
     <string name="settings_backup_restore_subtitle">Exportieren und wiederherstellenpersönlicher App-Daten</string>
     <string name="settings_developer_options_title">Entwickleroptionen</string>
     <string name="settings_developer_options_subtitle">Experimentelle Funktionen und Fehlerbehebung</string>
-    <string name="settings_lyrics_subtitle">Anbieter von Songtexten, Vorausladen und Übersetzung</string>
+    <string name="settings_lyrics_subtitle">Anbieter von Songtexten und Übersetzung</string>
     <string name="settings_content_subtitle">Standardeinstellungen für Sprache, Land und Empfehlungen</string>
     <string name="settings_po_token_subtitle">Wiedergabeüberprüfung und Besucherdaten</string>
     <string name="settings_storage_subtitle">Cache, Downloads und Offline-Speicher</string>

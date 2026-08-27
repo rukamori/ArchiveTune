@@ -78,7 +78,7 @@ class DownloadUtil
     ) {
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        private val downloadExecutor = Executors.newSingleThreadExecutor()
+        private val downloadExecutor = Executors.newFixedThreadPool(MAX_PARALLEL_DOWNLOADS)
         private val artworkJobs = mutableMapOf<String, Job>()
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
@@ -411,9 +411,9 @@ class DownloadUtil
 
         companion object {
             private const val DOWNLOAD_FORMAT_ID_METADATA_KEY = "archivetune_download_format_id"
-            private const val MAX_PARALLEL_DOWNLOADS = 1
+            private const val MAX_PARALLEL_DOWNLOADS = 3
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
-            private const val MAX_DOWNLOAD_HTTP_REQUESTS = 1
+            private const val MAX_DOWNLOAD_HTTP_REQUESTS = MAX_PARALLEL_DOWNLOADS
             private const val DOWNLOAD_READ_TIMEOUT_SECONDS = 90L
             private const val DOWNLOAD_PROGRESS_REFRESH_INTERVAL_MS = 1_000L
             private const val DOWNLOAD_CONNECTION_KEEP_ALIVE_MINUTES = 5L

@@ -90,6 +90,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
@@ -160,6 +161,7 @@ fun PlayerMenu(
     // Artist separators for splitting artist names
     val (artistSeparators) = rememberPreference(ArtistSeparatorsKey, defaultValue = ",;/&")
     val (externalDownloaderEnabled) = rememberPreference(ExternalDownloaderEnabledKey, defaultValue = false)
+    val (aodFeatureEnabled, onAodFeatureEnabledChange) = rememberPreference(AodModeEnabledKey, defaultValue = false)
     val (externalDownloaderPackage) = rememberPreference(ExternalDownloaderPackageKey, defaultValue = "")
     val (archiveTuneCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
     val playerDesignStyle by rememberEnumPreference(PlayerDesignStyleKey, defaultValue = PlayerDesignStyle.V4)
@@ -616,6 +618,8 @@ fun PlayerMenu(
                                 )
                             }
                             if (isQueueTrigger != true) {
+                                val aodBgColor = if (aodFeatureEnabled) MaterialTheme.colorScheme.primary else Color.Unspecified
+                                val aodContentColor = if (aodFeatureEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 add(
                                     NewAction(
                                         icon = {
@@ -623,14 +627,15 @@ fun PlayerMenu(
                                                 painter = painterResource(R.drawable.bedtime),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(28.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                tint = aodContentColor,
                                             )
                                         },
                                         text = stringResource(R.string.aod_mode),
                                         onClick = {
-                                            playerConnection.aodModeEnabled.value = true
-                                            onDismiss()
+                                            onAodFeatureEnabledChange(!aodFeatureEnabled)
                                         },
+                                        backgroundColor = aodBgColor,
+                                        contentColor = aodContentColor,
                                     ),
                                 )
                             }

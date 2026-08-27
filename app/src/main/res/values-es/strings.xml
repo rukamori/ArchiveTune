@@ -606,8 +606,6 @@
     <string name="open_with_downloader">Abrir con Downloader</string>
     <string name="external_downloader_not_installed">No hay ninguna aplicación de descarga externa instalada</string>
     <string name="external_downloader_not_configured">No hay ningún programa de descarga externo configurado. Configura uno en Ajustes ↄ1�7 Reproductor.</string>
-    <string name="preload_queue_lyrics">Cargar previamente la letra de la canción</string>
-    <string name="queue_lyrics_preload_count">Número de canciones que se van a precargar</string>
     <string name="po_token_generation">Generación de tokens de autenticación</string>
     <string name="web_client_po_token">Token de verificación basado en web</string>
     <string name="web_client_po_token_desc">Habilitar la generación de tokens de verificación para el reproductor multimedia basado en la web</string>
@@ -757,7 +755,7 @@
     <string name="proxy_connection_invalid_configuration">Host o puerto de proxy no válido</string>
     <string name="enable_unison_lyrics">Activar la letra de «Unison»</string>
     <string name="low_data_mode_title">Modo de bajo consumo de datos</string>
-    <string name="low_data_mode_description">Reduce el consumo de datos móviles utilizando transmisiones de baja calidad y desactivando la caché de reproducción, el elemento «canvas» y la precarga de letras en segundo plano en redes con tarifa de datos limitada</string>
+    <string name="low_data_mode_description">Reduce el consumo de datos móviles utilizando transmisiones de baja calidad y desactivando la caché de reproducción y el elemento «canvas» en redes con tarifa de datos limitada</string>
     <string name="device_mute_recovery_volume">Subir el volumen desde 0</string>
     <string name="device_mute_recovery_volume_disabled">Desactivado</string>
     <string name="device_volume_zero_playback_paused">La reproducción se ha detenido porque el volumen del dispositivo está en 0. Sube el volumen para reanudarla.</string>

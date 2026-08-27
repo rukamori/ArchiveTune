@@ -373,11 +373,17 @@ class _DiagnosticYtDlpLogger:
         return "; ".join(diagnostics)
 
 
-def _extract_info(youtube_dl, url, extractor_args, cookie_file=None):
+def _extract_info(
+    youtube_dl,
+    url,
+    extractor_args,
+    cookie_file=None,
+    diagnostics=True,
+):
     logger = _DiagnosticYtDlpLogger(expect_authentication=cookie_file is not None)
     options = {
         "quiet": True,
-        "verbose": True,
+        "verbose": diagnostics,
         "noplaylist": True,
         "skip_download": True,
         "socket_timeout": 15,
@@ -421,10 +427,12 @@ def _normalize_po_token(value):
     return base64.urlsafe_b64encode(decoded).decode("ascii")
 
 
-def _build_extractor_args(request, authenticated):
+def _build_extractor_args(request, authenticated, skip_initial_data=False):
     youtube_args = {
         "skip": ["hls", "dash", "translated_subs"],
     }
+    if skip_initial_data:
+        youtube_args["player_skip"] = ["initial_data"]
     extractor_args = {"youtube": youtube_args}
     if not authenticated:
         return extractor_args
@@ -452,6 +460,61 @@ def _build_extractor_args(request, authenticated):
     return extractor_args
 
 
+def _has_required_song_metadata(info):
+    return bool(
+        info.get("title")
+        and info.get("duration")
+        and info.get("thumbnail")
+    )
+
+
+def _extract_audio_info(youtube_dl, url, request, cookie_file):
+    from yt_dlp.utils import DownloadError
+
+    authenticated = cookie_file is not None
+    fast_extractor_args = _build_extractor_args(
+        request,
+        authenticated=authenticated,
+        skip_initial_data=True,
+    )
+    try:
+        info = _extract_info(
+            youtube_dl,
+            url,
+            fast_extractor_args,
+            cookie_file,
+            diagnostics=False,
+        )
+        selected = _choose_format(
+            info.get("formats"),
+            request["quality"],
+            bool(request.get("network_metered")),
+            request.get("pinned_format_id"),
+        )
+        if _has_required_song_metadata(info):
+            return info, selected
+    except (DownloadError, RuntimeError):
+        pass
+
+    extractor_args = _build_extractor_args(
+        request,
+        authenticated=authenticated,
+    )
+    info = _extract_info(
+        youtube_dl,
+        url,
+        extractor_args,
+        cookie_file,
+    )
+    selected = _choose_format(
+        info.get("formats"),
+        request["quality"],
+        bool(request.get("network_metered")),
+        request.get("pinned_format_id"),
+    )
+    return info, selected
+
+
 def resolve_audio(request_json, runtime_path, cookie_directory):
     _ensure_runtime(runtime_path)
     from yt_dlp import YoutubeDL
@@ -459,20 +522,12 @@ def resolve_audio(request_json, runtime_path, cookie_directory):
     request = json.loads(request_json)
     cookie_file = _write_cookie_file(request.get("cookie"), cookie_directory)
     try:
-        extractor_args = _build_extractor_args(request, authenticated=bool(cookie_file))
         url = "https://www.youtube.com/watch?v=" + request["media_id"]
-        info = _extract_info(
+        info, selected = _extract_audio_info(
             YoutubeDL,
             url,
-            extractor_args,
+            request,
             cookie_file,
-        )
-
-        selected = _choose_format(
-            info.get("formats"),
-            request["quality"],
-            bool(request.get("network_metered")),
-            request.get("pinned_format_id"),
         )
         stream_url = selected["url"]
         content_length = selected.get("filesize") or 0

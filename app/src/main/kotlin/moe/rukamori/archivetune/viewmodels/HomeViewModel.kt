@@ -146,11 +146,15 @@ private data class HomeStateInputs(
         isRefreshing: Boolean,
         isLoadingMore: Boolean,
     ): HomeScreenState {
+        if (!isInitialLoadComplete) {
+            return HomeScreenState.Loading
+        }
+
         if (!content.hasContent) {
-            if (loadError != null && isInitialLoadComplete) {
+            if (loadError != null) {
                 return HomeScreenState.Error(loadError)
             }
-            if (isLoading || !isInitialLoadComplete) {
+            if (isLoading) {
                 return HomeScreenState.Loading
             }
             return HomeScreenState.Empty

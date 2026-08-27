@@ -338,6 +338,7 @@
     <string name="player_design_v7">Immersive</string>
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
+    <string name="player_design_v10">Editorial</string>
     <string name="player_background_blur">Blur</string>
     <string name="coloring">Coloring</string>
     <string name="blur_gradient">Blur Gradient</string>
@@ -488,7 +489,7 @@
     <string name="settings_developer_options_subtitle">Experimental features and debugging</string>
     <string name="enable_leak_canary">Enable LeakCanary</string>
     <string name="enable_leak_canary_description">Detect memory leaks and show leak reports while the app is running.</string>
-    <string name="settings_lyrics_subtitle">Lyrics providers, preloading, and translation</string>
+    <string name="settings_lyrics_subtitle">Lyrics providers and translation</string>
     <string name="settings_content_subtitle">Language, country, and recommendation defaults</string>
     <string name="settings_internet_subtitle">Proxy, DNS, and network playback behavior</string>
     <string name="settings_po_token_subtitle">Playback verification and visitor data</string>

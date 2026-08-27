@@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.getSystemService
 import moe.rukamori.archivetune.constants.LowDataModeKey
 
-fun Context.isLowDataModeActive(): Boolean = isLowDataModeActive(dataStore.get(LowDataModeKey, true))
+fun Context.isLowDataModeActive(): Boolean = isLowDataModeActive(dataStore.get(LowDataModeKey, false))
 
 fun Context.isLowDataModeActive(enabled: Boolean): Boolean {
     if (!enabled) return false
@@ -35,7 +35,7 @@ fun Context.isLowDataModeActive(enabled: Boolean): Boolean {
 
 @Composable
 fun rememberLowDataModeActive(): Boolean {
-    val enabled by rememberPreference(LowDataModeKey, true)
+    val enabled by rememberPreference(LowDataModeKey, false)
     return rememberLowDataModeActive(enabled)
 }
 

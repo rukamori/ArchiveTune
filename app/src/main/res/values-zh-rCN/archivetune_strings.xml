@@ -464,7 +464,7 @@
     <string name="settings_backup_restore_subtitle">导出与恢复个人应用数据</string>
     <string name="settings_developer_options_title">开发者选项</string>
     <string name="settings_developer_options_subtitle">实验性功能与调试日志</string>
-    <string name="settings_lyrics_subtitle">歌词源、预加载与翻译设置</string>
+    <string name="settings_lyrics_subtitle">歌词源和翻译设置</string>
     <string name="settings_content_subtitle">语言、地区与推荐内容偏好</string>
     <string name="settings_internet_subtitle">代理、DNS 及网络播放配置</string>
     <string name="settings_po_token_subtitle">播放验证与访客数据设置</string>

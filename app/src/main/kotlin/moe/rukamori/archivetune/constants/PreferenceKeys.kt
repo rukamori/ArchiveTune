@@ -299,6 +299,7 @@ enum class PlayerStreamClient {
 }
 
 val PersistentQueueKey = booleanPreferencesKey("persistentQueue")
+val PreloadNextSongKey = booleanPreferencesKey("preloadNextSong")
 val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
@@ -664,6 +665,7 @@ enum class PlayerDesignStyle {
     V7,
     V8,
     V9,
+    V10,
 }
 
 enum class PlayerBackgroundStyle {
@@ -753,10 +755,6 @@ val LyricsV2BounceFactorKey = floatPreferencesKey("lyricsV2BounceFactor")
 val LyricsV2GlowFactorKey = floatPreferencesKey("lyricsV2GlowFactor")
 val LyricsV2FillTransitionWidthKey = floatPreferencesKey("lyricsV2FillTransitionWidth")
 val LyricsV2LrcBounceEnabledKey = booleanPreferencesKey("lyricsV2LrcBounceEnabled")
-
-// Queue lyrics pre-load settings
-val PreloadQueueLyricsEnabledKey = booleanPreferencesKey("preload_queue_lyrics_enabled")
-val QueueLyricsPreloadCountKey = intPreferencesKey("queue_lyrics_preload_count")
 
 val PlayerVolumeKey = floatPreferencesKey("playerVolume")
 val RepeatModeKey = intPreferencesKey("repeatMode")

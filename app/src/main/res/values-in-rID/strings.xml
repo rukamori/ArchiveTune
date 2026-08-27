@@ -354,7 +354,7 @@
     <string name="audio_quality_high">Tinggi</string>
     <string name="audio_quality_low">Rendah</string>
     <string name="low_data_mode_title">Mode Hemat Data</string>
-    <string name="low_data_mode_description">Mengurangi penggunaan data seluler dengan menggunakan streaming berkualitas rendah dan menonaktifkan cache pemutaran, kanvas, serta pramuat lirik latar belakang pada jaringan terukur</string>
+    <string name="low_data_mode_description">Mengurangi penggunaan data seluler dengan menggunakan streaming berkualitas rendah serta menonaktifkan cache pemutaran dan kanvas pada jaringan terukur</string>
     <string name="queue">Antrean</string>
     <string name="persistent_queue">Antrean persisten</string>
     <string name="persistent_queue_desc">Pulihkan antrean terakhir Anda saat aplikasi dimulai</string>
@@ -442,8 +442,6 @@
     <string name="disable_screenshot_desc">Jika opsi ini aktif, tangkapan layar dan tampilan aplikasi di Terbaru akan dinonaktifkan.</string>
     <string name="enable_lrclib">Aktifkan penyedia lirik LrcLib</string>
     <string name="enable_kugou">Aktifkan penyedia lirik KuGou</string>
-    <string name="preload_queue_lyrics">Pramuat lirik di antrian</string>
-    <string name="queue_lyrics_preload_count">Jumlah lagu yang akan dimuat sebelumnya</string>
     <string name="display">Tampilan</string>
     <string name="romanization">Romanisasi</string>
     <string name="hide_explicit">Sembunyikan konten eksplisit</string>

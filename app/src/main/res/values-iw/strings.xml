@@ -292,7 +292,7 @@
     <string name="palette_sand">חול</string>
     <string name="persistent_queue">תור מתמיד</string>
     <string name="palette_synthwave">גלי סינת\'</string>
-    <string name="low_data_mode_description">מפחית את השימוש בנתונים ניידים על ידי שימוש בסטרימינג באיכות נמוכה והשבתת טעינה מוקדמת של מטמון השמעה, קנבס ומילות רקע ברשתות מדודות</string>
+    <string name="low_data_mode_description">מפחית את השימוש בנתונים ניידים באמצעות סטרימינג באיכות נמוכה והשבתת מטמון ההפעלה והקנבס ברשתות מדודות</string>
     <string name="eq_profile_name">שם הפרופיל</string>
     <string name="eq_import_failed">נתוני פרופיל לא תקינים</string>
     <string name="sleep_timer">טיימר שינה</string>
@@ -550,8 +550,6 @@
     <string name="disable_screenshot_desc">כאשר אפשרות זו מופעלת, צילומי מסך ותצוגת האפליקציה תחת \'אחרונים\' מושבתות.</string>
     <string name="enable_lrclib">הפעלת ספק מילות השיר LrcLib</string>
     <string name="enable_kugou">הפעלת ספק מילות השיר KuGou</string>
-    <string name="preload_queue_lyrics">טעינה מוקדמת של מילות השירים בתור</string>
-    <string name="queue_lyrics_preload_count">מספר שירים לטעינה מראש</string>
     <string name="display">תצוגה</string>
     <string name="romanization">רומניזציה</string>
     <string name="hide_explicit">הסתרת תוכן בוטה</string>

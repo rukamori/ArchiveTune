@@ -430,8 +430,6 @@
     <string name="disable_screenshot_desc">Khi tùy chọn này được bật, chụp màn hình và chế độ xem ứng dụng trong Ứng dụng gần đây sẽ bị tắt.</string>
     <string name="enable_lrclib">Bật nhà cung cấp lời bài hát LrcLib</string>
     <string name="enable_kugou">Bật nhà cung cấp lời bài hát KuGou</string>
-    <string name="preload_queue_lyrics">Tải trước lời Queue</string>
-    <string name="queue_lyrics_preload_count">Số lượng bài hát được tải trước</string>
     <string name="hide_explicit">Ẩn nội dung nhạy cảm</string>
     <string name="hide_video">Ẩn video âm nhạc</string>
     <string name="backup_restore">Sao lưu và khôi phục</string>
@@ -755,7 +753,7 @@
     <string name="enable_youlyplus_lyrics">Bật lời bài hát YouLyPlus</string>
     <string name="haptics">Rung</string>
     <string name="haptics_desc">Bật phản hồi rung trên các thành phần tương tác</string>
-    <string name="low_data_mode_description">Giảm sử dụng dữ liệu di động bằng cách sử dụng luồng chất lượng thấp và tắt bộ nhớ đệm phát lại, canvas và tải trước lời bài hát nền trên mạng có đồng hồ</string>
+    <string name="low_data_mode_description">Giảm sử dụng dữ liệu di động bằng cách sử dụng luồng chất lượng thấp và tắt bộ nhớ đệm phát lại cùng canvas trên mạng có đồng hồ</string>
     <string name="low_data_mode_title">Chế độ dữ liệu thấp</string>
     <string name="lyrics_animation_style_v2_only">Chỉ khả dụng trong chế độ lời bài hát V2</string>
     <string name="lyrics_mode">Chế độ lời bài hát</string>

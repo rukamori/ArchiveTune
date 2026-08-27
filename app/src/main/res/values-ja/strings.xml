@@ -537,7 +537,7 @@
     <string name="audio_quality_high">高</string>
     <string name="audio_quality_low">低い</string>
     <string name="low_data_mode_title">低データモード</string>
-    <string name="low_data_mode_description">低品質のストリームを使用し、従量制ネットワークでの再生キャッシュ、キャンバス、およびバックグラウンドの歌詞のプリロードを無効にすることで、モバイル データの使用量を削減します。</string>
+    <string name="low_data_mode_description">低品質のストリームを使用し、従量制ネットワークでの再生キャッシュとキャンバスを無効にすることで、モバイルデータの使用量を削減します。</string>
     <string name="queue">キュー</string>
     <string name="persistent_queue">永続的なキュー</string>
     <string name="persistent_queue_desc">アプリの起動時に最後のキューを復元する</string>
@@ -662,8 +662,6 @@
     <string name="disable_screenshot_desc">このオプションがオンの場合、スクリーンショットと最近のアプリの表示が無効になります。</string>
     <string name="enable_lrclib">LrcLib 歌詞プロバイダーを有効にする</string>
     <string name="enable_kugou">KuGou 歌詞プロバイダーを有効にする</string>
-    <string name="preload_queue_lyrics">キューの歌詞をプリロードする</string>
-    <string name="queue_lyrics_preload_count">プリロードする曲の数</string>
     <string name="display">ディスプレイ</string>
     <string name="romanization">ローマ字化</string>
     <string name="hide_explicit">露骨なコンテンツを非表示にする</string>

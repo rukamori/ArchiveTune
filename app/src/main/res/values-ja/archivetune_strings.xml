@@ -486,7 +486,7 @@
     <string name="settings_backup_restore_subtitle">個人のアプリデータをエクスポートして復元する</string>
     <string name="settings_developer_options_title">開発者向けオプション</string>
     <string name="settings_developer_options_subtitle">実験的な機能とデバッグ</string>
-    <string name="settings_lyrics_subtitle">歌詞プロバイダー、プリロード、翻訳</string>
+    <string name="settings_lyrics_subtitle">歌詞プロバイダーと翻訳</string>
     <string name="settings_content_subtitle">言語、国、推奨事項のデフォルト</string>
     <string name="settings_internet_subtitle">プロキシ、DNS、およびネットワーク再生動作</string>
     <string name="settings_po_token_subtitle">再生検証と訪問者データ</string>

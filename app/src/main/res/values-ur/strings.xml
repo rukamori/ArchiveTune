@@ -495,7 +495,7 @@
     <string name="audio_quality_auto">خودکار</string>
     <string name="audio_quality_high">اعلیٰ</string>
     <string name="audio_quality_low">کم</string>
-    <string name="low_data_mode_description">میٹرڈ نیٹورکس پر نشر کیش، تصویر، اور بول کو پس منظر میں لادنے سے منسوخ کرکے اور نشر کے معیار کو کم کرکے موبائل ڈیٹا کے استعمال کو کم کرتا ہے</string>
+    <string name="low_data_mode_description">میٹرڈ نیٹ ورکس پر پلے بیک کیش اور کینوس کو غیر فعال کرکے اور اسٹریمنگ کے معیار کو کم کرکے موبائل ڈیٹا کے استعمال کو کم کرتا ہے</string>
     <string name="queue">قطار</string>
     <string name="persistent_queue">مستقل قطار</string>
     <string name="persistent_queue_desc">ایپ کے کھلنے پر اپنی آخری قطار کو بحال کریں</string>
@@ -603,8 +603,6 @@
     <string name="disable_screenshot_desc">جب یہ فعال ہوتا ہے تو سکرین شاٹون کو اور ایپ کو حالیہ ایپس کی فہرست میں دکھانا ممنوع کردیتا ہے۔</string>
     <string name="enable_lrclib">LrcLib کے بول کے مہیاکار کو فعال کریں</string>
     <string name="enable_kugou">KuGou کے بول کے مہیاکار کو فعال کریں</string>
-    <string name="preload_queue_lyrics">قطار کے بول کو پہلے سے لادیں</string>
-    <string name="queue_lyrics_preload_count">پہلے سے لادے جانے والے گیت کی تعداد</string>
     <string name="display">ڈسپلے</string>
     <string name="romanization">رومنائز کرنا</string>
     <string name="hide_explicit">غیر چھنے مواد کو چھپائیں</string>

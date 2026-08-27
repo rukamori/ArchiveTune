@@ -418,8 +418,6 @@
     <string name="disable_screenshot_desc">Якщо ця опція увімкнена, створення знімків екрана та відображення програми у списку «Нещодавно використовувані» буде вимкнено.</string>
     <string name="enable_lrclib">Увімкнути постачальник текстів пісень LrcLib</string>
     <string name="enable_kugou">Увімкнути постачальника текстів пісень KuGou</string>
-    <string name="preload_queue_lyrics">Завантажувати тексти пісень у черзі завчасно</string>
-    <string name="queue_lyrics_preload_count">Кількість пісень для попереднього завантаження</string>
     <string name="hide_explicit">Приховати вміст для дорослих</string>
     <string name="hide_video">Приховувати музичні кліпи</string>
     <string name="backup_restore">Резервне копіювання та відновлення</string>

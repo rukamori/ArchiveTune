@@ -403,7 +403,7 @@
     <string name="settings_backup_restore_subtitle">تصدير واستعادة بياناتك الشخصية في التطبيق</string>
     <string name="settings_developer_options_title">خيارات المطورين</string>
     <string name="settings_developer_options_subtitle">الميزات التجريبية وتصحيح الأخطاء</string>
-    <string name="settings_lyrics_subtitle">موفرو الكلمات، التحميل المسبق، والترجمة</string>
+    <string name="settings_lyrics_subtitle">موفرو الكلمات والترجمة</string>
     <string name="settings_content_subtitle">اللغة، البلد، وافتراضيات الترشيحات</string>
     <string name="settings_internet_subtitle">البروكسي، الـ DNS، وسلوك تشغيل الشبكة</string>
     <string name="settings_po_token_subtitle">تأكيد التشغيل وبيانات الزائر</string>

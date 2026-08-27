@@ -451,7 +451,7 @@
     <string name="enable_simpmusic_lyrics">SimpMusic-Songtexte aktivieren</string>
     <string name="enable_paxsenix_lyrics">Paxsenix-Songtexte aktivieren</string>
     <string name="low_data_mode_title">Datensparmodus</string>
-    <string name="low_data_mode_description">Reduziert den mobilen Datenverbrauch, indem in Netzwerken mit Datenvolumenbegrenzung Streams in niedriger Qualität verwendet und die Wiedergabecache-Funktion, Canvas sowie das Vorladen von Songtexten im Hintergrund deaktiviert werden</string>
+    <string name="low_data_mode_description">Reduziert den mobilen Datenverbrauch, indem in Netzwerken mit Datenvolumenbegrenzung Streams in niedriger Qualität verwendet und die Wiedergabecache-Funktion sowie Canvas deaktiviert werden</string>
     <string name="permanent_shuffle">Permanenter Shuffle-Modus</string>
     <string name="permanent_shuffle_desc">Lässt Schuffle aktiviert, wenn du einen neuen Song startest</string>
     <string name="library_top_mixes_configure_ai">KI konfigurieren</string>
@@ -581,8 +581,6 @@
     <string name="paxsenix_stats_failed">Laden der API-Statistiken fehlgeschlagen</string>
     <string name="visit_website">Webseite besuchen</string>
     <string name="recent_requests">Letzte Anfragen</string>
-    <string name="preload_queue_lyrics">Songtexte in der Warteschlange laden</string>
-    <string name="queue_lyrics_preload_count">Anzahl der Songs zum Vorausladen</string>
     <string name="display">Anzeige</string>
     <string name="romanization">Romanisierung</string>
     <string name="hide_video">Musikvideos verstecken</string>

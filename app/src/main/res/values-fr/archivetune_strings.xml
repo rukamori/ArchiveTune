@@ -326,7 +326,7 @@
     <string name="music_recognition_history_no_results_body">Essayez un autre morceau, un autre artiste, un autre album ou un autre code.</string>
     <string name="about_lead_developer">Développeur principal</string>
     <string name="aod_customize_text_alignment">Alignement du texte</string>
-    <string name="settings_lyrics_subtitle">Fournisseurs de paroles, préchargement et traduction</string>
+    <string name="settings_lyrics_subtitle">Fournisseurs de paroles et traduction</string>
     <string name="aod_customize_sample_artist">Koiverse Ensemble</string>
     <string name="ai_integration">Intégration de l\'IA</string>
     <plurals name="news_article_count">

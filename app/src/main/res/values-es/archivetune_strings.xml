@@ -358,7 +358,7 @@
     <string name="settings_backup_restore_subtitle">Exporta y recupera los datos de tus aplicaciones personales</string>
     <string name="settings_developer_options_title">Opciones de desarrollador</string>
     <string name="settings_developer_options_subtitle">Funciones experimentales y depuración</string>
-    <string name="settings_lyrics_subtitle">Proveedores de letras, precarga y traducción</string>
+    <string name="settings_lyrics_subtitle">Proveedores de letras y traducción</string>
     <string name="settings_content_subtitle">Idioma, país y valores predeterminados de recomendación</string>
     <string name="settings_internet_subtitle">Comportamiento de la reproducción en redes, DNS y servidores proxy</string>
     <string name="settings_po_token_subtitle">Verificación de la reproducción y datos de los visitantes</string>
