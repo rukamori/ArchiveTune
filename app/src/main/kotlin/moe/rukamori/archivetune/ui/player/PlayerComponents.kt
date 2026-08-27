@@ -82,6 +82,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberCoroutineScope
@@ -4591,19 +4594,18 @@ fun V10PlayerContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onTitleClick,
+                    )
             )
 
-            val artistName = remember(mediaMetadata.artists) {
-                mediaMetadata.artists.joinToString(", ") { it.name }
-            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        mediaMetadata.artists.firstOrNull()?.id?.let(onArtistClick)
-                    }
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
@@ -4618,15 +4620,15 @@ fun V10PlayerContent(
                             .size(16.dp)
                     )
                 }
-                Text(
-                    text = artistName.uppercase(),
+                ClickableArtists(
+                    artists = mediaMetadata.artists,
+                    onArtistClick = onArtistClick,
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
                     color = accent.copy(alpha = 0.8f),
-                    maxLines = 1,
                     modifier = Modifier.basicMarquee(
                         iterations = Int.MAX_VALUE,
                         initialDelayMillis = 2000
-                    )
+                    ),
                 )
             }
         }
@@ -4993,14 +4995,20 @@ internal fun EditorialChip(
     field: Color,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = if (checked) accent else Color.Transparent,
-        contentColor = if (checked) field else accent,
-        modifier = Modifier.size(48.dp)
+    val backgroundColor by animateColorAsState(
+        targetValue = if (checked) accent else Color.Transparent,
+        label = "EditorialChipBg"
+    )
+    val contentColor = if (checked) field else accent
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
             content()
         }
     }

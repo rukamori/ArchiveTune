@@ -220,7 +220,7 @@ private fun ToggleSegmentButtonContainer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(RoundedCornerShape(cornerRadius.coerceAtLeast(0.dp)))
             .background(bgColor)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center

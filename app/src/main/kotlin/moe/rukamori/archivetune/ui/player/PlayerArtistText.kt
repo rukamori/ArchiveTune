@@ -47,17 +47,16 @@ fun ClickableArtists(
     textAlign: TextAlign? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val annotatedString =
-        remember(artists) {
-            buildAnnotatedString {
-                artists.forEachIndexed { index, artist ->
-                    pushStringAnnotation(tag = "artist_${artist.id.orEmpty()}", annotation = artist.id.orEmpty())
-                    append(artist.name)
-                    pop()
-                    if (index != artists.lastIndex) append(", ")
-                }
+    val annotatedString = remember(artists) {
+        buildAnnotatedString {
+            artists.forEachIndexed { index, artist ->
+                pushStringAnnotation(tag = "artist_${artist.id.orEmpty()}", annotation = artist.id.orEmpty())
+                append(artist.name)
+                pop()
+                if (index != artists.lastIndex) append(", ")
             }
         }
+    }
 
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
@@ -69,19 +68,17 @@ fun ClickableArtists(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         onTextLayout = { layoutResult = it },
-        modifier =
-            modifier.pointerInput(annotatedString) {
-                detectTapGestures(
-                    onTap = { offset ->
-                        val layout = layoutResult ?: return@detectTapGestures
-                        val position = layout.getOffsetForPosition(offset)
-                        annotatedString
-                            .getStringAnnotations(position, position)
-                            .firstOrNull()
-                            ?.let { onArtistClick(it.item) }
-                    },
-                    onLongPress = onLongClick?.let { handler -> { handler() } },
-                )
-            },
+        modifier = modifier.pointerInput(annotatedString) {
+            detectTapGestures(
+                onTap = { offset ->
+                    val layout = layoutResult ?: return@detectTapGestures
+                    val position = layout.getOffsetForPosition(offset)
+                    annotatedString.getStringAnnotations(position, position)
+                        .firstOrNull()
+                        ?.let { onArtistClick(it.item) }
+                },
+                onLongPress = onLongClick?.let { handler -> { handler() } },
+            )
+        },
     )
 }
