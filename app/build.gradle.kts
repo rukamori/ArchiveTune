@@ -58,11 +58,11 @@ val hasReleaseSigningConfig =
         releaseKeyAlias != null &&
         releaseKeyPassword != null
 android {
-    namespace = "moe.rukamori.archivetune"
+    namespace = "com.auroramusic.app"
     compileSdk = 37
 
     defaultConfig {
-    applicationId = "moe.rukamori.archivetune"
+        applicationId = "com.auroramusic.app"
         minSdk = 26
         targetSdk = 37
         versionCode = 140
@@ -303,7 +303,6 @@ dependencies {
 
     implementation(libs.shimmer)
 
-    // Glance Widget support
     implementation("androidx.glance:glance:1.1.1")
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
@@ -317,7 +316,6 @@ dependencies {
     add("gmsImplementation", libs.media3.cast)
     add("gmsImplementation", libs.mediarouter)
     implementation(libs.squigglyslider)
-
 
     implementation(libs.room.runtime)
     implementation(libs.kuromoji.ipadic)
@@ -382,7 +380,7 @@ androidComponents {
                 metadataFile.set(rootProject.layout.projectDirectory.file("IconPack/metadata.json"))
                 svgDirectory.set(rootProject.layout.projectDirectory.dir("IconPack/svg"))
                 applicationId.set(variant.applicationId)
-                targetActivityClassName.set("moe.rukamori.archivetune.MainActivity")
+                targetActivityClassName.set("com.auroramusic.app.MainActivity")
                 resourceOutputDirectory.set(
                     layout.buildDirectory.dir("generated/iconPack/${variant.name}/res"),
                 )
@@ -419,19 +417,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         freeCompilerArgs.addAll(
             "-opt-in=kotlin.RequiresOptIn"
         )
-        // Suppress warnings
-        suppressWarnings.set(true)
+        suppressWarnings = true
     }
-}
-
-configurations.configureEach {
-    resolutionStrategy.force(
-        "androidx.compose.runtime:runtime:${libs.versions.compose.get()}",
-        "androidx.compose.foundation:foundation:${libs.versions.compose.get()}",
-        "androidx.compose.ui:ui:${libs.versions.compose.get()}",
-        "androidx.compose.ui:ui-util:${libs.versions.compose.get()}",
-        "androidx.compose.ui:ui-tooling:${libs.versions.compose.get()}",
-        "androidx.compose.animation:animation-graphics:${libs.versions.compose.get()}",
-        "org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlinMetadata.get()}",
-    )
 }
