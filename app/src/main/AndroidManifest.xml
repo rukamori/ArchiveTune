@@ -10,33 +10,21 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
-        <intent>
-            <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.SEND" />
-            <data android:mimeType="text/plain" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
+        <intent><action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" /></intent>
+        <intent><action android:name="android.intent.action.SEND" /><data android:mimeType="text/plain" /></intent>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
         <package android:name="com.google.android.apps.youtube.music" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.projection.gearhead" />
@@ -55,320 +43,52 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="false"
-        android:theme="@style/Theme.ArchiveTune"
+        android:theme="@style/Theme.AuroraMusic"
         tools:targetApi="tiramisu">
-        <uses-library
-            android:name="org.apache.http.legacy"
-            android:required="false" />
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
 
-        <activity
-            android:name=".MainActivity"
-            android:configChanges="uiMode"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.ArchiveTune"
-            android:windowSoftInputMode="adjustResize">
+        <activity android:name=".MainActivity" android:configChanges="uiMode" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.AuroraMusic" android:windowSoftInputMode="adjustResize">
+            <intent-filter><action android:name="android.intent.action.VIEW" /><action android:name="android.intent.action.MUSIC_PLAYER" /><category android:name="android.intent.category.APP_MUSIC" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:host="together" android:scheme="auroramusic" /></intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.intent.action.MUSIC_PLAYER" />
-
-                <category android:name="android.intent.category.APP_MUSIC" />
-                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.action.VIEW" /><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /><action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" /><data android:scheme="https" /><data android:host="youtube.com" /><data android:host="m.youtube.com" /><data android:host="www.youtube.com" /><data android:host="music.youtube.com" />
+                <data android:pathPrefix="/v/" /><data android:pathPrefix="/embed/" /><data android:pathPrefix="/watch" /><data android:pathPrefix="/channel/" /><data android:pathPrefix="/user/" /><data android:pathPrefix="/c/" /><data android:pathPrefix="/playlist" /><data android:pathPrefix="/browse/" /><data android:pathPrefix="/search" />
             </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="together"
-                    android:scheme="auroramusic" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
-                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="youtube.com" />
-                <data android:host="m.youtube.com" />
-                <data android:host="www.youtube.com" />
-                <data android:host="music.youtube.com" />
-                <data android:pathPrefix="/v/" />
-                <data android:pathPrefix="/embed/" />
-                <data android:pathPrefix="/watch" />
-                <data android:pathPrefix="/channel/" />
-                <data android:pathPrefix="/user/" />
-                <data android:pathPrefix="/c/" />
-                <data android:pathPrefix="/playlist" />
-                <data android:pathPrefix="/browse/" />
-                <data android:pathPrefix="/search" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
-                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="youtu.be" />
-                <data android:pathPrefix="/" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
-                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="vnd.youtube" />
-                <data android:scheme="vnd.youtube.launch" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="audio/*" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="audio/*" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
+            <intent-filter><action android:name="android.intent.action.VIEW" /><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /><action android:name="android.nfc.action.NDEF_DISCOVERED" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="http" /><data android:scheme="https" /><data android:host="youtu.be" /><data android:pathPrefix="/" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /><action android:name="android.nfc.action.NDEF_DISCOVERED" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="vnd.youtube" /><data android:scheme="vnd.youtube.launch" /></intent-filter>
+            <intent-filter><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="audio/*" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.SEND" /><action android:name="android.intent.action.SEND_MULTIPLE" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="audio/*" /></intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
-        <activity
-            android:name=".musicrecognition.MusicRecognitionTileActionActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:theme="@style/Theme.ArchiveTune.Transparent" />
-
-        <activity
-            android:name=".RestoreBackupFileActivity"
-            android:exported="true"
-            android:theme="@style/Theme.ArchiveTune"
-            android:noHistory="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:mimeType="application/octet-stream" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="file" />
-                <data android:mimeType="application/octet-stream" />
-            </intent-filter>
+        <activity android:name=".musicrecognition.MusicRecognitionTileActionActivity" android:excludeFromRecents="true" android:exported="false" android:theme="@style/Theme.AuroraMusic.Transparent" />
+        <activity android:name=".RestoreBackupFileActivity" android:exported="true" android:theme="@style/Theme.AuroraMusic" android:noHistory="true">
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:mimeType="application/octet-stream" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="file" /><data android:mimeType="application/octet-stream" /></intent-filter>
         </activity>
 
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.FileProvider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/provider_paths" />
-        </provider>
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.FileProvider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths" /></provider>
+        <service android:name=".playback.MusicService" android:exported="true" android:foregroundServiceType="mediaPlayback" tools:ignore="ExportedService"><intent-filter><action android:name="androidx.media3.session.MediaSessionService" /><action android:name="androidx.media3.session.MediaLibraryService" /><action android:name="android.media.browse.MediaBrowserService" /></intent-filter></service>
+        <service android:name=".playback.ExoDownloadService" android:exported="false" android:foregroundServiceType="dataSync"><intent-filter><action android:name="androidx.media3.exoplayer.downloadService.action.RESTART" /><category android:name="android.intent.category.DEFAULT" /></intent-filter></service>
+        <service android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".musicrecognition.MusicRecognitionTileService" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true" android:icon="@drawable/mic" android:label="@string/music_recognition"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter></service>
+        <service android:name=".aod.AodModeTileService" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true" android:icon="@drawable/bedtime" android:label="@string/aod_mode"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter></service>
+        <service android:name=".aod.AodDreamService" android:permission="android.permission.BIND_DREAM_SERVICE" android:exported="true" android:icon="@drawable/bedtime" android:label="@string/aod_mode"><intent-filter><action android:name="android.service.dreams.DreamService" /><category android:name="android.intent.category.DEFAULT" /></intent-filter></service>
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true"><intent-filter><action android:name="android.intent.action.MEDIA_BUTTON" /></intent-filter></receiver>
 
-        <service
-            android:name=".playback.MusicService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback"
-            tools:ignore="ExportedService">
-            <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
-                <action android:name="androidx.media3.session.MediaLibraryService" />
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".playback.ExoDownloadService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync">
-            <intent-filter>
-                <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService"
-            android:exported="true"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
-
-        <service
-            android:name=".musicrecognition.MusicRecognitionTileService"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-            android:exported="true"
-            android:icon="@drawable/mic"
-            android:label="@string/music_recognition">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".aod.AodModeTileService"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-            android:exported="true"
-            android:icon="@drawable/bedtime"
-            android:label="@string/aod_mode">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".aod.AodDreamService"
-            android:permission="android.permission.BIND_DREAM_SERVICE"
-            android:exported="true"
-            android:icon="@drawable/bedtime"
-            android:label="@string/aod_mode">
-            <intent-filter>
-                <action android:name="android.service.dreams.DreamService" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </service>
-
-        <receiver
-            android:name="androidx.media3.session.MediaButtonReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".widget.MusicWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_music_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.AlbumArtWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_album_art_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.NowPlayingCardWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_now_playing_card_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.PlaybackDeckWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_playback_deck_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.PlaybackCapsuleWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_playback_capsule_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.PlaybackSpotlightWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_playback_spotlight_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.PlaybackCommandWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_playback_command_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.ListeningInsightsWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_listening_insights_info" />
-        </receiver>
-
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
-
-        <activity
-            android:name=".DebugActivity"
-            android:exported="true"
-            android:process=":crash"
-            android:theme="@style/Theme.ArchiveTune" />
-
+        <receiver android:name=".widget.MusicWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_music_info" /></receiver>
+        <receiver android:name=".widget.AlbumArtWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_album_art_info" /></receiver>
+        <receiver android:name=".widget.NowPlayingCardWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_now_playing_card_info" /></receiver>
+        <receiver android:name=".widget.PlaybackDeckWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_playback_deck_info" /></receiver>
+        <receiver android:name=".widget.PlaybackCapsuleWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_playback_capsule_info" /></receiver>
+        <receiver android:name=".widget.PlaybackSpotlightWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_playback_spotlight_info" /></receiver>
+        <receiver android:name=".widget.PlaybackCommandWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_playback_command_info" /></receiver>
+        <receiver android:name=".widget.ListeningInsightsWidgetReceiver" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_listening_insights_info" /></receiver>
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <activity android:name=".DebugActivity" android:exported="true" android:process=":crash" android:theme="@style/Theme.AuroraMusic" />
     </application>
-
 </manifest>
