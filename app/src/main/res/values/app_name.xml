@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">ArchiveTune</string>
+    <string name="app_name" translatable="false">Aurora Music</string>
     <string name="widget_description">Shows currently playing track with playback controls</string>
     <string name="widget_album_art_description">Album art widget with floating playback controls</string>
     <string name="widget_now_playing_card_description">Now playing card with artwork, progress, and playback controls</string>
