@@ -23,6 +23,7 @@ val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
 val DisableAnimationsKey = booleanPreferencesKey("disableAnimations")
 val ForceHighRefreshRateKey = booleanPreferencesKey("forceHighRefreshRate")
+val WallpaperExtractionFailedKey = booleanPreferencesKey("wallpaperExtractionFailed")
 val EnableHapticFeedbackKey = booleanPreferencesKey("enableHapticFeedback")
 val UseSystemFontKey = booleanPreferencesKey("useSystemFont")
 val FontPreferenceKey = stringPreferencesKey("fontPreference")
@@ -298,6 +299,7 @@ enum class PlayerStreamClient {
 }
 
 val PersistentQueueKey = booleanPreferencesKey("persistentQueue")
+val PreloadNextSongKey = booleanPreferencesKey("preloadNextSong")
 val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
@@ -663,6 +665,7 @@ enum class PlayerDesignStyle {
     V7,
     V8,
     V9,
+    V10,
 }
 
 enum class PlayerBackgroundStyle {

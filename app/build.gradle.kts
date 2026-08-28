@@ -324,6 +324,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
 
     implementation(libs.material3)
+    implementation(libs.androidx.graphics.shapes)
     implementation(libs.palette)
     implementation(libs.androidsvg)
     implementation(libs.aboutlibraries.core)

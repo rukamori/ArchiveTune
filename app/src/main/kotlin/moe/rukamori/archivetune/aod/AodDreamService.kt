@@ -100,7 +100,7 @@ class AodDreamService :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
-        if (!dataStore.get(AodModeEnabledKey, true)) {
+        if (!dataStore.get(AodModeEnabledKey, false)) {
             finish()
             return
         }

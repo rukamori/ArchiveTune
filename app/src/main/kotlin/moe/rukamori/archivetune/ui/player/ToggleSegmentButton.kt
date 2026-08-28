@@ -213,7 +213,7 @@ private fun ToggleSegmentButtonContainer(
     )
     val cornerRadius by animateDpAsState(
         targetValue = if (active) activeCornerRadius else 8.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        animationSpec = tween(durationMillis = 200),
         label = ""
     )
 

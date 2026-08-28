@@ -52,10 +52,9 @@ fun rememberPlayerTitleActions(
     val context = LocalContext.current
     val clipboardManager =
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val artistLine =
-        remember(mediaMetadata.artists) {
-            mediaMetadata.artists.joinToString(", ") { it.name }
-        }
+    val artistLine = remember(mediaMetadata.artists) {
+        mediaMetadata.artists.joinToString(", ") { it.name }
+    }
 
     return remember(mediaMetadata, navController, state, artistLine) {
         PlayerTitleActions(
@@ -77,13 +76,13 @@ fun rememberPlayerTitleActions(
             },
             onCopyTitle = {
                 clipboardManager.setPrimaryClip(
-                    ClipData.newPlainText("Copied Title", mediaMetadata.title),
+                    ClipData.newPlainText("Copied Title", mediaMetadata.title)
                 )
                 Toast.makeText(context, "Copied Title", Toast.LENGTH_SHORT).show()
             },
             onCopyArtists = {
                 clipboardManager.setPrimaryClip(
-                    ClipData.newPlainText("Copied Artist", artistLine),
+                    ClipData.newPlainText("Copied Artist", artistLine)
                 )
                 Toast.makeText(context, "Copied Artist", Toast.LENGTH_SHORT).show()
             },

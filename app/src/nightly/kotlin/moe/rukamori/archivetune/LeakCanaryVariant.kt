@@ -26,12 +26,11 @@ internal object LeakCanaryVariant {
   private val watchersInstalled = AtomicBoolean(false)
   private val trackingEnabled = AtomicBoolean(false)
   private val leakCanaryEnabledKey = booleanPreferencesKey(LeakCanaryToggle.PREFERENCE_KEY)
-  private val gatedReachabilityWatcher =
-    ReachabilityWatcher { watchedObject, description ->
-      if (trackingEnabled.get()) {
-        AppWatcher.objectWatcher.expectWeaklyReachable(watchedObject, description)
-      }
+  private val gatedReachabilityWatcher = ReachabilityWatcher { watchedObject, description ->
+    if (trackingEnabled.get()) {
+      AppWatcher.objectWatcher.expectWeaklyReachable(watchedObject, description)
     }
+  }
 
   @JvmStatic
   fun initialize(application: Application) {
@@ -41,9 +40,7 @@ internal object LeakCanaryVariant {
       application.dataStore.data
         .map { preferences -> preferences[leakCanaryEnabledKey] ?: false }
         .distinctUntilChanged()
-        .collect { enabled ->
-          application.mainExecutor.execute { applyTrackingEnabled(enabled) }
-        }
+        .collect { enabled -> application.mainExecutor.execute { applyTrackingEnabled(enabled) } }
     }
   }
 

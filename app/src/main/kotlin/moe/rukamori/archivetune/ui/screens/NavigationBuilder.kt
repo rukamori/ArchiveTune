@@ -76,12 +76,14 @@ import moe.rukamori.archivetune.ui.screens.settings.SettingsScreen
 import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
+import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
     navController: NavHostController,
     scrollBehavior: TopAppBarScrollBehavior,
+    homeViewModel: HomeViewModel,
     latestVersionName: () -> String,
     disableAnimations: Boolean = false,
     onClearUpdateBadge: () -> Unit = {},
@@ -90,7 +92,11 @@ fun NavGraphBuilder.navigationBuilder(
     onlineSearchSort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
 ) {
     composable(Screens.Home.route) {
-        HomeScreen(navController, headerScrollConnection = homeScrollConnection)
+        HomeScreen(
+            navController = navController,
+            viewModel = homeViewModel,
+            headerScrollConnection = homeScrollConnection,
+        )
     }
     composable(
         Screens.Library.route,
@@ -378,7 +384,11 @@ fun NavGraphBuilder.navigationBuilder(
         SettingsScreen(navController, latestVersionName())
     }
     composable("settings/account") {
-        AccountSettings(navController, latestVersionName())
+        AccountSettings(
+            navController = navController,
+            latestVersionName = latestVersionName(),
+            viewModel = homeViewModel,
+        )
     }
     composable("settings/hidden_playlists") {
         HiddenPlaylistsScreen(navController)

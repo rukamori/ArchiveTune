@@ -273,10 +273,7 @@ class App :
                     YouTube.authState = authState
                     if (previousFingerprint != authState.fingerprint) {
                         YTPlayerUtils.clearPlaybackAuthCaches()
-                        val sessionId = authState.sessionId
-                        if (!sessionId.isNullOrBlank()) {
-                            BotGuardTokenGenerator.preWarm(sessionId)
-                        }
+                        YTPlayerUtils.preWarmYtDlpPoTokens(authState)
                     }
                 }
         }

@@ -81,6 +81,7 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+/.worktrees/
 
 .DS_Store
 /app/release/output-metadata.json

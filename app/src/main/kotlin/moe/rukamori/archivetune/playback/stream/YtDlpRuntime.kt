@@ -88,6 +88,7 @@ class YtDlpRuntime
                             .put("quality", request.quality.name)
                             .put("network_metered", request.networkMetered)
                             .put("pinned_format_id", request.pinnedFormatId)
+                            .put("requires_song_metadata", request.requiresSongMetadata)
                             .put("cookie", authState.cookie)
                             .put("data_sync_id", authState.dataSyncId)
                             .put(

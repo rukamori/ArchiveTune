@@ -124,6 +124,7 @@ import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FO
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.lyrics.LyricsUtils.findCurrentLineIndex
+import moe.rukamori.archivetune.lyrics.LyricsUtils.hasWordSyncedLyrics
 import moe.rukamori.archivetune.lyrics.LyricsUtils.insertInstrumentalBreaks
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
@@ -151,8 +152,8 @@ import kotlin.math.abs
 /** Lead time offset for LRC-style line-synced lyrics (ms). */
 private const val LRC_LEAD_MS = 300L
 
-/** Lead time offset for TTML word-synced lyrics (ms). */
-private const val TTML_LEAD_MS = 0L
+/** Lead time offset for word-synced lyrics (ms). */
+private const val WORD_SYNC_LEAD_MS = 0L
 
 private const val LYRIC_VISUAL_TUNING_OFFSET_MS = 150L
 
@@ -265,7 +266,7 @@ fun LyricsV2(
 
     // ── Parse lyrics into entries ──
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!)) }
-    val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
+    val isWordSyncedFormat = remember(lyrics) { lyrics != null && hasWordSyncedLyrics(lyrics!!) }
 
     val lyricsEntries: List<LyricsEntry> =
         remember(lyrics) {
@@ -342,14 +343,14 @@ fun LyricsV2(
     }
 
     // ── Playback position tracking ──
-    val leadMs = if (isTtmlFormat) TTML_LEAD_MS else LRC_LEAD_MS
+    val leadMs = if (isWordSyncedFormat) WORD_SYNC_LEAD_MS else LRC_LEAD_MS
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var playbackPositionMs by remember { mutableLongStateOf(0L) }
     var currentLineIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(entriesWithWords, isSynced, leadMs, lyricsSyncOffset) {
         if (!isSynced || entriesWithWords.isEmpty()) return@LaunchedEffect
-        val pollIntervalMs = if (isTtmlFormat) 16L else 50L
+        val pollIntervalMs = if (isWordSyncedFormat) 16L else 50L
         while (isActive) {
             val sliderPos = sliderPositionProvider()
             val pos = sliderPos ?: player.currentPosition

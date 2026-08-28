@@ -80,6 +80,10 @@ class DownloadUtil
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val downloadExecutor = Executors.newFixedThreadPool(MAX_PARALLEL_DOWNLOADS)
         private val artworkJobs = mutableMapOf<String, Job>()
+        private val downloadPreloadLock = Any()
+
+        private var downloadPreloadTargetId: String? = null
+        private var downloadPreloadJob: Job? = null
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
             OkHttpClient
@@ -139,31 +143,10 @@ class DownloadUtil
                 OkHttpDataSource.Factory(mediaOkHttpClient),
             ) { dataSpec ->
                 val mediaId = dataSpec.key ?: error("No media id")
-                val lowDataModeActive = context.isLowDataModeActive()
-                val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
-                val hasCachedContent = downloadCache.getCachedSpans(mediaId).isNotEmpty()
-                val pinnedFormatId =
-                    downloadCache
-                        .getContentMetadata(mediaId)
-                        .get(DOWNLOAD_FORMAT_ID_METADATA_KEY, -1L)
-                        .takeIf { it > 0L }
-                        ?.toInt()
-                        ?: if (hasCachedContent) {
-                            database.getFormatByIdBlocking(mediaId)?.itag?.takeIf { it > 0 }
-                        } else {
-                            null
-                        }
+                val request = createDownloadStreamRequest(mediaId)
+                val pinnedFormatId = request.pinnedFormatId
                 val resolved =
-                    resolveAudioStream.resolveBlocking(
-                        AudioStreamRequest(
-                            mediaId = mediaId,
-                            quality = requestedAudioQuality,
-                            networkMetered = lowDataModeActive,
-                            purpose = StreamPurpose.DOWNLOAD,
-                            authState = YouTube.currentPlaybackAuthState(),
-                            pinnedFormatId = pinnedFormatId,
-                        ),
-                    )
+                    resolveAudioStream.resolveBlocking(request)
                 if (pinnedFormatId != null && resolved.formatId > 0 && resolved.formatId != pinnedFormatId) {
                     downloadCache.removeResource(mediaId)
                 }
@@ -202,6 +185,7 @@ class DownloadUtil
                     object : DownloadManager.Listener {
                         override fun onInitialized(downloadManager: DownloadManager) {
                             refreshActiveDownloadSnapshots()
+                            updateNextDownloadPreload(downloadManager)
                         }
 
                         override fun onDownloadChanged(
@@ -217,6 +201,7 @@ class DownloadUtil
                             if (download.state == Download.STATE_COMPLETED) {
                                 scheduleDownloadedArtwork(download.request.id)
                             }
+                            updateNextDownloadPreload(downloadManager)
                         }
 
                         override fun onDownloadRemoved(
@@ -228,6 +213,7 @@ class DownloadUtil
                             downloadScope.launch {
                                 downloadedArtworkRepository.remove(download.request.id)
                             }
+                            updateNextDownloadPreload(downloadManager)
                         }
                     },
                 )
@@ -297,6 +283,84 @@ class DownloadUtil
 
         private fun resolveDownloadAudioQuality(lowDataModeActive: Boolean): AudioQuality =
             if (lowDataModeActive) AudioQuality.LOW else audioQuality
+
+        private fun createDownloadStreamRequest(mediaId: String): AudioStreamRequest {
+            val lowDataModeActive = context.isLowDataModeActive()
+            val hasCachedContent = downloadCache.getCachedSpans(mediaId).isNotEmpty()
+            val requiresSongMetadata = database.getSongByIdBlocking(mediaId) == null
+            val pinnedFormatId =
+                downloadCache
+                    .getContentMetadata(mediaId)
+                    .get(DOWNLOAD_FORMAT_ID_METADATA_KEY, -1L)
+                    .takeIf { it > 0L }
+                    ?.toInt()
+                    ?: if (hasCachedContent) {
+                        database.getFormatByIdBlocking(mediaId)?.itag?.takeIf { it > 0 }
+                    } else {
+                        null
+                    }
+            return AudioStreamRequest(
+                mediaId = mediaId,
+                quality = resolveDownloadAudioQuality(lowDataModeActive),
+                networkMetered = lowDataModeActive,
+                purpose = StreamPurpose.DOWNLOAD,
+                authState = YouTube.currentPlaybackAuthState(),
+                pinnedFormatId = pinnedFormatId,
+                requiresSongMetadata = requiresSongMetadata,
+            )
+        }
+
+        private fun updateNextDownloadPreload(downloadManager: DownloadManager) {
+            val currentDownloads = downloadManager.currentDownloads
+            val activeDownloadCount =
+                currentDownloads.count { download ->
+                    download.state == Download.STATE_DOWNLOADING ||
+                        download.state == Download.STATE_RESTARTING
+                }
+            val nextTargetId =
+                if (activeDownloadCount >= MAX_PARALLEL_DOWNLOADS) {
+                    currentDownloads
+                        .firstOrNull { download -> download.state == Download.STATE_QUEUED }
+                        ?.request
+                        ?.id
+                } else {
+                    null
+                }
+            val jobs =
+                synchronized(downloadPreloadLock) {
+                    if (downloadPreloadTargetId == nextTargetId) return
+
+                    val previousJob = downloadPreloadJob
+                    val nextJob =
+                        nextTargetId?.let { mediaId ->
+                            downloadScope.launch(start = CoroutineStart.LAZY) {
+                                try {
+                                    val request = createDownloadStreamRequest(mediaId)
+                                    if (resolveAudioStream.peek(request) == null) {
+                                        resolveAudioStream.preload(request)
+                                    }
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (exception: Exception) {
+                                    Timber.w(exception, "Failed to preload queued download stream for %s", mediaId)
+                                } finally {
+                                    val runningJob = currentCoroutineContext()[Job]
+                                    synchronized(downloadPreloadLock) {
+                                        if (downloadPreloadJob === runningJob) {
+                                            downloadPreloadJob = null
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    downloadPreloadTargetId = nextTargetId
+                    downloadPreloadJob = nextJob
+                    previousJob to nextJob
+                }
+            jobs.first?.cancel()
+            jobs.second?.start()
+        }
 
         private fun persistPlaybackMetadata(
             mediaId: String,

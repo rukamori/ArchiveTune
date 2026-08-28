@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object YTPlayerUtils {
     private const val logTag = "YTPlayerUtils"
+    private const val YT_DLP_PO_TOKEN_RESOLUTION_BUDGET_MS = 5_000L
     private const val FAILED_CLIENT_BACKOFF_MS = 10 * 60 * 1000L
     private const val DEFAULT_STREAM_EXPIRE_SECONDS = 300
     private const val MAX_PLAYBACK_DATA_CACHE_ENTRIES = 128
@@ -375,10 +376,19 @@ object YTPlayerUtils {
     ): PlaybackAuthState {
         val contentBinding = authState.ytDlpContentBinding() ?: return authState
         val tokenResult =
-            BotGuardTokenGenerator.mintToken(videoId, contentBinding) ?: return authState
+            BotGuardTokenGenerator.mintToken(
+                videoId = videoId,
+                sessionId = contentBinding,
+                maximumWaitMillis = YT_DLP_PO_TOKEN_RESOLUTION_BUDGET_MS,
+            ) ?: return authState
         return authState
             .withGeneratedPoTokens(videoId, tokenResult)
             .copy(dataSyncId = contentBinding)
+    }
+
+    suspend fun preWarmYtDlpPoTokens(authState: PlaybackAuthState) {
+        val contentBinding = authState.ytDlpContentBinding() ?: return
+        BotGuardTokenGenerator.preWarm(contentBinding)
     }
 
     private fun PlaybackAuthState.withGeneratedPoTokens(

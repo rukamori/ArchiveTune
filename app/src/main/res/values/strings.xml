@@ -339,6 +339,8 @@
     <string name="app_icon_change_failed">Couldn\'t change the app icon</string>
     <string name="theme">Theme</string>
     <string name="enable_dynamic_theme">Enable dynamic theme</string>
+    <string name="wallpaper_permission">Wallpaper color permission</string>
+    <string name="wallpaper_permission_desc">Grant storage permission to extract colors from your wallpaper on older devices</string>
     <string name="random_theme_on_startup">Random theme on startup</string>
     <string name="random_theme_on_startup_desc">Apply a random color palette every time the app starts</string>
     <string name="font_preference">Font</string>
@@ -450,7 +452,7 @@
     <string name="custom_value">Custom value</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animate album artwork while playing (Powered by BetterLyrics)</string>
-    <string name="player_background_style_v8_v9_desc">Unavailable with V8 and V9 player styles</string>
+    <string name="player_background_style_v8_v9_desc">Unavailable with V8, V9, and V10 player styles</string>
     <string name="show_button1_description">Toggle visibility of button 1 in Discord Rich Presence</string>
     <string name="show_button2_description">Toggle visibility of button 2 in Discord Rich Presence</string>
     <string name="discord_activity_type">Activity type</string>
@@ -538,6 +540,8 @@
     <string name="audio_quality_low">Low</string>
     <string name="low_data_mode_title">Low Data Mode</string>
     <string name="low_data_mode_description">Reduces mobile data usage by using low-quality streams and disabling playback cache and canvas on metered networks</string>
+    <string name="preload_next_song_title">Preload Mode</string>
+    <string name="preload_next_song_warning">Uses additional data, battery, and processing in the background.</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>

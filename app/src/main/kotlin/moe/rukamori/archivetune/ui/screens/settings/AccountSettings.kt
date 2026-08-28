@@ -86,7 +86,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -139,6 +138,7 @@ private data class SavedAccountCollection(
 fun AccountSettings(
     navController: NavController,
     latestVersionName: String,
+    viewModel: HomeViewModel,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -183,7 +183,6 @@ fun AccountSettings(
         YouTube.useLoginForBrowse = useLoginForBrowse
     }
 
-    val viewModel: HomeViewModel = hiltViewModel()
     val accountNameFromViewModel by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val accountChannelsState by viewModel.accountChannelsState.collectAsStateWithLifecycle()

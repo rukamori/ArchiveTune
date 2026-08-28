@@ -320,7 +320,7 @@ class HomeViewModel
                 initialValue = HomeScreenState.Loading,
             )
 
-        private var wasLoggedIn = false
+        private var previousLoginState: Boolean? = null
         private var chipLoadJob: Job? = null
 
         private fun filterHomeChips(chips: List<HomePage.Chip>?): List<HomePage.Chip>? =
@@ -1024,8 +1024,8 @@ class HomeViewModel
                     .collect { cookie ->
                         try {
                             val isLoggedIn = hasYouTubeLoginCookie(cookie)
-                            val loginTransition = isLoggedIn && !wasLoggedIn
-                            wasLoggedIn = isLoggedIn
+                            val loginTransition = previousLoginState == false && isLoggedIn
+                            previousLoginState = isLoggedIn
 
                             if (isLoggedIn && cookie != null && cookie.isNotEmpty()) {
                                 if (!prepareYouTubeAccount(cookie)) {

@@ -28,6 +28,7 @@ data class AudioStreamRequest(
     val purpose: StreamPurpose,
     val authState: PlaybackAuthState,
     val pinnedFormatId: Int? = null,
+    val requiresSongMetadata: Boolean = false,
 )
 
 data class ResolvedAudioStream(

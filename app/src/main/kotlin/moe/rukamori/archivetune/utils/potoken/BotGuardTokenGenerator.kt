@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.utils.potoken
 
 import android.content.Context
+import android.os.SystemClock
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -29,6 +30,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -169,50 +171,57 @@ object BotGuardTokenGenerator {
         if (permanentlyBroken) return null
 
         return mutex.withLock {
-            if (isEngineReadyForSession(sessionId)) {
-                val cachedPlayer = playerTokenCache[videoId]
-                val sessionToken = cachedSessionToken
-                if (cachedPlayer != null && sessionToken != null) {
-                    Timber.tag(TAG).d("Cache hit for $videoId")
-                    return@withLock PoTokenResult(
-                        playerToken = cachedPlayer,
-                        sessionToken = sessionToken,
-                    )
-                }
-            }
+            mintTokenLocked(
+                ctx = ctx,
+                videoId = videoId,
+                sessionId = sessionId,
+            )
+        }
+    }
 
-            val timeout =
-                if (isEngineReadyForSession(sessionId)) {
-                    WARM_TIMEOUT_MS
-                } else {
-                    COLD_START_TIMEOUT_MS
-                }
-
-            try {
-                withTimeout(timeout) {
-                    mintTokenInternalLocked(
-                        ctx = ctx,
-                        videoId = videoId,
-                        sessionId = sessionId,
-                        forceNewEngine = false,
-                    ).also { result ->
-                        playerTokenCache[videoId] = result.playerToken
-                    }
-                }
-            } catch (e: TimeoutCancellationException) {
-                Timber.tag(TAG).w("Timed out after ${timeout}ms — proceeding without PoToken")
-                destroyEngineLocked()
-                null
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (e: BrokenWebViewException) {
-                Timber.tag(TAG).e(e, "Permanently broken WebView")
-                permanentlyBroken = true
-                null
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "mintToken failed: ${e.message}")
-                null
+    suspend fun mintToken(
+        videoId: String,
+        sessionId: String,
+        maximumWaitMillis: Long,
+    ): PoTokenResult? {
+        if (maximumWaitMillis <= 0L) return null
+        val ctx =
+            appContext ?: run {
+                Timber.tag(TAG).w("initialize() not called")
+                return null
             }
+        if (permanentlyBroken) return null
+
+        val deadline = SystemClock.elapsedRealtime() + maximumWaitMillis
+        val acquired =
+            withTimeoutOrNull(maximumWaitMillis) {
+                mutex.lock()
+                true
+            } ?: false
+        if (!acquired) {
+            Timber.tag(TAG).w(
+                "Token generation exceeded ${maximumWaitMillis}ms while waiting for the engine",
+            )
+            return null
+        }
+
+        return try {
+            val remainingMillis = deadline - SystemClock.elapsedRealtime()
+            if (remainingMillis <= 0L) {
+                Timber.tag(TAG).w(
+                    "Token generation exceeded ${maximumWaitMillis}ms stream resolution budget",
+                )
+                null
+            } else {
+                mintTokenLocked(
+                    ctx = ctx,
+                    videoId = videoId,
+                    sessionId = sessionId,
+                    maximumOperationMillis = remainingMillis,
+                )
+            }
+        } finally {
+            mutex.unlock()
         }
     }
 
@@ -297,6 +306,72 @@ object BotGuardTokenGenerator {
             }
 
         return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
+    }
+
+    private suspend fun mintTokenLocked(
+        ctx: Context,
+        videoId: String,
+        sessionId: String,
+        maximumOperationMillis: Long? = null,
+    ): PoTokenResult? {
+        if (isEngineReadyForSession(sessionId)) {
+            val cachedPlayer = playerTokenCache[videoId]
+            val sessionToken = cachedSessionToken
+            if (cachedPlayer != null && sessionToken != null) {
+                Timber.tag(TAG).d("Cache hit for $videoId")
+                return PoTokenResult(
+                    playerToken = cachedPlayer,
+                    sessionToken = sessionToken,
+                )
+            }
+        }
+
+        val defaultTimeout =
+            if (isEngineReadyForSession(sessionId)) {
+                WARM_TIMEOUT_MS
+            } else {
+                COLD_START_TIMEOUT_MS
+            }
+        val timeout =
+            maximumOperationMillis?.let { minOf(defaultTimeout, it) }
+                ?: defaultTimeout
+        var operationStarted = false
+
+        return try {
+            withTimeoutOrNull(timeout) {
+                operationStarted = true
+                mintTokenInternalLocked(
+                    ctx = ctx,
+                    videoId = videoId,
+                    sessionId = sessionId,
+                    forceNewEngine = false,
+                ).also { result ->
+                    playerTokenCache[videoId] = result.playerToken
+                }
+            } ?: run {
+                Timber.tag(TAG).w("Timed out after ${timeout}ms — proceeding without PoToken")
+                resetEngineAfterInterruptedMint()
+                null
+            }
+        } catch (cancellation: CancellationException) {
+            if (operationStarted) {
+                resetEngineAfterInterruptedMint()
+            }
+            throw cancellation
+        } catch (e: BrokenWebViewException) {
+            Timber.tag(TAG).e(e, "Permanently broken WebView")
+            permanentlyBroken = true
+            null
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "mintToken failed: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun resetEngineAfterInterruptedMint() {
+        withContext(NonCancellable) {
+            destroyEngineLocked()
+        }
     }
 
     private suspend fun getOrCreateEngine(

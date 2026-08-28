@@ -16,6 +16,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.guava.future
 import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeStore
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.coroutineContext
 
 @Singleton
 class ResolveAudioStreamUseCase
@@ -42,32 +44,141 @@ class ResolveAudioStreamUseCase
             val purpose: StreamPurpose,
             val authFingerprint: String,
             val pinnedFormatId: Int?,
+            val requiresSongMetadata: Boolean,
             val runtimeRevision: String,
         )
 
+        private enum class ResolutionConsumer {
+            PLAYBACK,
+            PRELOAD,
+        }
+
+        private class InFlightResolution(
+            val deferred: Deferred<ResolvedAudioStream>,
+            var playbackOwners: Int = 0,
+            var preloadOwners: Int = 0,
+        )
+
+        private sealed interface ResolutionLease {
+            data class Cached(val stream: ResolvedAudioStream) : ResolutionLease
+
+            data class Active(val resolution: InFlightResolution) : ResolutionLease
+        }
+
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val cache = ConcurrentHashMap<CacheKey, ResolvedAudioStream>()
-        private val inFlight = ConcurrentHashMap<CacheKey, Deferred<ResolvedAudioStream>>()
+        private val inFlightLock = Any()
+        private val inFlight = mutableMapOf<CacheKey, InFlightResolution>()
 
-        suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream {
+        suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
+            resolve(request, ResolutionConsumer.PLAYBACK)
+
+        suspend fun preload(request: AudioStreamRequest) {
+            resolve(request, ResolutionConsumer.PRELOAD)
+        }
+
+        private suspend fun resolve(
+            request: AudioStreamRequest,
+            consumer: ResolutionConsumer,
+        ): ResolvedAudioStream {
             val key = request.cacheKey()
-            cache[key]?.takeIf(::isFresh)?.let { return it }
-            cache.remove(key)
+            val lease = acquireResolution(key, request, consumer)
+            if (lease is ResolutionLease.Cached) return lease.stream
 
-            val candidate =
-                scope.async(start = CoroutineStart.LAZY) {
-                    resolveUncached(request).also { resolved ->
-                        storeResolvedStream(key, resolved)
+            val resolution = (lease as ResolutionLease.Active).resolution
+            return try {
+                resolution.deferred.start()
+                resolution.deferred.await()
+            } finally {
+                releaseResolution(key, resolution, consumer)
+            }
+        }
+
+        private fun acquireResolution(
+            key: CacheKey,
+            request: AudioStreamRequest,
+            consumer: ResolutionConsumer,
+        ): ResolutionLease =
+            synchronized(inFlightLock) {
+                cache[key]?.let { cached ->
+                    if (isFresh(cached)) return@synchronized ResolutionLease.Cached(cached)
+                    cache.remove(key, cached)
+                }
+
+                inFlight[key]?.let { resolution ->
+                    resolution.addOwner(consumer)
+                    return@synchronized ResolutionLease.Active(resolution)
+                }
+
+                lateinit var resolution: InFlightResolution
+                val deferred =
+                    scope.async(start = CoroutineStart.LAZY) {
+                        val resolved = resolveUncached(request)
+                        val resolutionContext = coroutineContext
+                        resolutionContext.ensureActive()
+                        synchronized(inFlightLock) {
+                            resolutionContext.ensureActive()
+                            if (inFlight[key] !== resolution || !resolution.hasOwners()) {
+                                throw CancellationException(
+                                    "Audio stream resolution no longer has active consumers",
+                                )
+                            }
+                            storeResolvedStream(key, resolved)
+                        }
+                        resolved
+                    }
+
+                resolution = InFlightResolution(deferred)
+                resolution.addOwner(consumer)
+                deferred.invokeOnCompletion {
+                    synchronized(inFlightLock) {
+                        if (inFlight[key] === resolution) {
+                            inFlight.remove(key)
+                        }
                     }
                 }
-            val active = inFlight.putIfAbsent(key, candidate)
-            if (active == null) {
-                candidate.invokeOnCompletion { inFlight.remove(key, candidate) }
-                candidate.start()
-                return candidate.await()
+                inFlight[key] = resolution
+                ResolutionLease.Active(resolution)
             }
-            candidate.cancel()
-            return active.await()
+
+        private fun releaseResolution(
+            key: CacheKey,
+            resolution: InFlightResolution,
+            consumer: ResolutionConsumer,
+        ) {
+            val deferredToCancel =
+                synchronized(inFlightLock) {
+                    resolution.removeOwner(consumer)
+                    if (
+                        resolution.playbackOwners == 0 &&
+                        resolution.preloadOwners == 0 &&
+                        !resolution.deferred.isCompleted &&
+                        inFlight[key] === resolution
+                    ) {
+                        inFlight.remove(key)
+                        resolution.deferred
+                    } else {
+                        null
+                    }
+                }
+            deferredToCancel?.cancel()
+        }
+
+        private fun InFlightResolution.addOwner(consumer: ResolutionConsumer) {
+            when (consumer) {
+                ResolutionConsumer.PLAYBACK -> playbackOwners += 1
+                ResolutionConsumer.PRELOAD -> preloadOwners += 1
+            }
+        }
+
+        private fun InFlightResolution.hasOwners(): Boolean =
+            playbackOwners > 0 || preloadOwners > 0
+
+        private fun InFlightResolution.removeOwner(consumer: ResolutionConsumer) {
+            when (consumer) {
+                ResolutionConsumer.PLAYBACK -> playbackOwners -= 1
+                ResolutionConsumer.PRELOAD -> preloadOwners -= 1
+            }
         }
 
         @WorkerThread
@@ -97,12 +208,14 @@ class ResolveAudioStreamUseCase
         }
 
         fun invalidate(mediaId: String) {
-            cache.keys.removeIf { it.mediaId == mediaId }
-            inFlight.entries.forEach { (key, resolution) ->
-                if (key.mediaId == mediaId && inFlight.remove(key, resolution)) {
-                    resolution.cancel()
+            val deferredsToCancel =
+                synchronized(inFlightLock) {
+                    cache.keys.removeIf { it.mediaId == mediaId }
+                    inFlight.keys
+                        .filter { it.mediaId == mediaId }
+                        .mapNotNull { inFlight.remove(it)?.deferred }
                 }
-            }
+            deferredsToCancel.forEach { it.cancel() }
         }
 
         fun invalidateUrl(url: String) {
@@ -118,9 +231,12 @@ class ResolveAudioStreamUseCase
         }
 
         fun clear() {
-            cache.clear()
-            inFlight.values.forEach { it.cancel() }
-            inFlight.clear()
+            val deferredsToCancel =
+                synchronized(inFlightLock) {
+                    cache.clear()
+                    inFlight.values.map(InFlightResolution::deferred).also { inFlight.clear() }
+                }
+            deferredsToCancel.forEach { it.cancel() }
         }
 
         private suspend fun resolveUncached(request: AudioStreamRequest): ResolvedAudioStream {
@@ -171,6 +287,7 @@ class ResolveAudioStreamUseCase
                 purpose = purpose,
                 authFingerprint = authState.streamCacheFingerprint,
                 pinnedFormatId = pinnedFormatId,
+                requiresSongMetadata = requiresSongMetadata,
                 runtimeRevision = YtDlpRuntimeStore.revision,
             )
 
@@ -185,7 +302,13 @@ class ResolveAudioStreamUseCase
                         StreamPurpose.PLAYBACK -> StreamPurpose.DOWNLOAD
                         StreamPurpose.DOWNLOAD -> StreamPurpose.PLAYBACK
                     }
-                putResolvedStream(key.copy(purpose = alternatePurpose), resolved)
+                putResolvedStream(
+                    key.copy(
+                        purpose = alternatePurpose,
+                        requiresSongMetadata = false,
+                    ),
+                    resolved,
+                )
             }
             Timber.tag(TAG).d(
                 "Resolved %s via %s (%s)",
@@ -211,7 +334,6 @@ class ResolveAudioStreamUseCase
             cache[
                 key.copy(
                     authFingerprint = resolved.authFingerprint,
-                    runtimeRevision = YtDlpRuntimeStore.revision,
                 ),
             ] = resolved
         }
