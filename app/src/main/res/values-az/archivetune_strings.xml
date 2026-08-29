@@ -119,6 +119,9 @@
     <string name="news_important_badge">Vacib</string>
     <string name="news_tooltip_title">Yeni elanlar</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 52b709446 (Translated using Weblate (Azerbaijani))
     <string name="news_tooltip_body">Tərtibatçılardan oxunmamış elanlarınız var.</string>
     <string name="news_author_on_date">%1$s · %2$s</string>
     <plurals name="news_article_count">
@@ -147,6 +150,7 @@
     <string name="aod_customize_layout">Düzən</string>
     <string name="aod_customize_background_style">Fon tərzi</string>
     <string name="aod_customize_accent_style">Aksent tərzi</string>
+<<<<<<< HEAD
     <string name="aod_customize_content_position">Məzmunun mövqeyi</string>
     <string name="aod_customize_text_alignment">Mətnin düzləndirilməsi</string>
     <string name="aod_customize_title_max_lines">Başlıq üçün maksimum sətir sayı</string>
@@ -195,6 +199,8 @@
     <string name="aod_background_adaptive_frosted">Adaptiv buzlu</string>
     <string name="aod_clock_bold_digital">Cəsur rəqəmsal</string>
     <string name="aod_clock_minimal">Minimum</string>
+=======
+>>>>>>> 52b709446 (Translated using Weblate (Azerbaijani))
 </resources>
 =======
 </resources>
