@@ -761,5 +761,22 @@
     <string name="aod_customize_clock_style">Tema Jam</string>
     <string name="aod_customize_proximity_blackout_desc">Matikan layar saat sensor proksimitas mendeteksi penempatan di saku atau menghadap ke bawah</string>
     <string name="aod_slide_to_lock">Geser untuk Mengunci &gt;&gt;&gt;</string>
+<<<<<<< HEAD
 >>>>>>> be2445cbb (Translated using Weblate (Indonesian))
+=======
+    <string name="aod_customize_mode_enabled">Aktifkan Mode AOD</string>
+    <string name="aod_customize_mode_enabled_desc">Izinkan ArchiveTune menampilkan pemutar musik Always-On.</string>
+    <string name="aod_customize_marquee_titles_desc">Gulir judul lagu yang panjang daripada memotongnya</string>
+    <string name="aod_customize_minimal_locked_view">Tampilan Terkunci Minimal</string>
+    <string name="aod_customize_minimal_locked_view_desc">Saat terkunci, hanya tampilkan jam dan judul lagu — sembunyikan sampul dan kontrol</string>
+    <string name="aod_customize_touch_lock">Kunci Sentuh Diaktifkan</string>
+    <string name="aod_customize_touch_lock_desc">Mencegah sentuhan yang tidak disengaja pada layar AOD</string>
+    <string name="aod_customize_show_clock">Tampilkan Jam Digital</string>
+    <string name="aod_customize_show_battery">Tampilkan Status Baterai</string>
+    <string name="aod_customize_pixel_shift">Perlindungan Burn-in OLED</string>
+    <string name="aod_customize_pixel_shift_desc">Menggeser posisi tampilan secara berkala setiap 60 detik</string>
+    <string name="aod_customize_auto_dimming">Mode Hemat Daya dengan Peredupan Otomatis</string>
+    <string name="aod_customize_gestures">Kontrol Gestur</string>
+    <string name="aod_customize_gestures_desc">Ketuk dua kali untuk putar/jeda, geser kiri/kanan untuk mengganti lagu</string>
+>>>>>>> 3fbe4f04c (Translated using Weblate (Indonesian))
 </resources>
