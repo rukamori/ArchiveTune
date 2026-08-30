@@ -1,27 +1,31 @@
-The Cutest Material 3 Music Player With Local & YouTube Support for Android.
+A cute and modern music player for YouTube Music and local music.
 
-Features:
+Listen to <b>YouTube Music</b> and music stored on your device, with live synced lyrics, music recognition, dynamic themes, listening statistics, extensive customization, Discord Rich Presence, widgets, and more.
 
-- Ad-free playback with background listening
-- Your playlists, liked songs, and subscriptions after sign-in
-- Support Local File Playback
-- Fast startup and lightweight performance
-- Private, uninterrupted listening experience
-- EBU R128 loudness normalization
-- Tempo, pitch, and playback speed controls
-- Crossfade between tracks
-- System equalizer and spatial audio integration
-- Live synced lyrics
-- Lyrics translation and romanization
-- Music recognition for songs around you
-- Listening statistics
-- YouTube Music account integration
-- Last.fm scrobbling
-- ListenBrainz history sync
-- Discord rich presence support
-- Material 3 design language
-- Album-art powered dynamic colors
-- Responsive layouts for different screen sizes
-- Deep playback and interface settings
-- Gesture customization
-- Animation and layout tuning
+
+<big><b>Features:</b></big>
+<ul>
+<li>Ad-free playback with background listening</li>
+<li>Play local music files stored on your device</li>
+<li>Access your YouTube playlists, liked songs, and subscriptions</li>
+<li>Connect with your YouTube Music account</li>
+<li>Fast startup and lightweight performance</li>
+<li>Private and uninterrupted listening</li>
+<li>Automatically balance loudness between songs with EBU R128 normalization</li>
+<li>Adjust tempo, pitch, and playback speed</li>
+<li>Smoothly crossfade between tracks</li>
+<li>Use your device's system equalizer and spatial audio</li>
+<li>View live synced lyrics while listening</li>
+<li>Translate and romanize lyrics</li>
+<li>Recognize songs playing around you</li>
+<li>Track your listening statistics</li>
+<li>Scrobble music to Last.fm</li>
+<li>Sync your listening history with ListenBrainz</li>
+<li>Show your currently playing music through Discord Rich Presence</li>
+<li>Add music controls and information to your home screen with widgets</li>
+<li>Enjoy a Material 3 interface with dynamic album-art colors</li>
+<li>Responsive layouts for phones, tablets, and different screen sizes</li>
+<li>Customize playback and interface behavior</li>
+<li>Personalize gestures</li>
+<li>Fine-tune animations and layouts</li>
+</ul>
