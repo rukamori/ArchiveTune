@@ -43,9 +43,15 @@
     <string name="local_history">Lokalne</string>
     <string name="history_local_summary">Odtworzono na tym urządzeniu</string>
     <string name="history_remote_summary">Synchronizowane z YouTube Music</string>
+<<<<<<< HEAD
     <string name="history_local_empty_title">Na razie brak lokalnej historii</string>
     <string name="history_local_empty_desc">Utwory odtwarzane na tym urządzeniu pojawią się tutaj.</string>
     <string name="history_remote_loading">Synchronizowanie zdalnej historii</string>
+=======
+    <string name="history_local_empty_title">Brak lokalnej historii jeszcze</string>
+    <string name="history_local_empty_desc">Utwory odtwarzane na tym urządzeniu pojawią się tutaj.</string>
+    <string name="history_remote_loading">Synchronizowane zdalnej histori</string>
+>>>>>>> 64bea6ba1 (Translated using Weblate (Polish))
     <string name="history_remote_empty_title">Brak dostępnej zdalnej histori</string>
     <string name="history_remote_error_title">Nie udało załadować zdalnej historii</string>
     <string name="history_remote_error_desc">Spróbuj ponownie za chwilę.</string>
