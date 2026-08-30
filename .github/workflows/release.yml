@@ -60,7 +60,7 @@ jobs:
           submodules: true
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -184,7 +184,7 @@ jobs:
           submodules: true
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -233,12 +233,12 @@ jobs:
         env:
           PULL_REQUEST: 'false'
           GITHUB_EVENT_NAME: ${{ github.event_name }}
-          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
-          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
-          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
-          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
-          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+          LASTFM_API_KEY: ${{ matrix.distribution != 'foss' && secrets.LASTFM_API_KEY || '' }}
+          LASTFM_SECRET: ${{ matrix.distribution != 'foss' && secrets.LASTFM_SECRET || '' }}
+          API_BEARER_TOKEN: ${{ matrix.distribution != 'foss' && secrets.API_BEARER_TOKEN || '' }}
+          TOGETHER_BEARER_TOKEN: ${{ matrix.distribution != 'foss' && secrets.TOGETHER_BEARER_TOKEN || '' }}
+          CANVAS_BEARER_TOKEN: ${{ matrix.distribution != 'foss' && secrets.CANVAS_BEARER_TOKEN || '' }}
+          EXTRACTOR_BEARER: ${{ matrix.distribution != 'foss' && secrets.EXTRACTOR_BEARER || '' }}
 
       - name: Resolve release output directory
         id: release_dir
@@ -309,7 +309,7 @@ jobs:
           keyAlias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: 35.0.0
+          buildToolsVersion: 37.0.0
 
       - name: Move and rename APK
         shell: bash
