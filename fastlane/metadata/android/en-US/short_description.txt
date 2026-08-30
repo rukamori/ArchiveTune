@@ -1,1 +1,1 @@
-The cutest Material 3 music player with local and YouTube support.
+The cutest Modern music player with local and YouTube support.
