@@ -151,6 +151,9 @@
     <string name="aod_customize_background_style">Fon tərzi</string>
     <string name="aod_customize_accent_style">Aksent tərzi</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 844dc0ca1 (Translated using Weblate (Azerbaijani))
     <string name="aod_customize_content_position">Məzmunun mövqeyi</string>
     <string name="aod_customize_text_alignment">Mətnin düzləndirilməsi</string>
     <string name="aod_customize_title_max_lines">Başlıq üçün maksimum sətir sayı</string>
@@ -199,8 +202,11 @@
     <string name="aod_background_adaptive_frosted">Adaptiv buzlu</string>
     <string name="aod_clock_bold_digital">Cəsur rəqəmsal</string>
     <string name="aod_clock_minimal">Minimum</string>
+<<<<<<< HEAD
 =======
 >>>>>>> 52b709446 (Translated using Weblate (Azerbaijani))
+=======
+>>>>>>> 844dc0ca1 (Translated using Weblate (Azerbaijani))
 </resources>
 =======
 </resources>
