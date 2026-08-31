@@ -57,6 +57,9 @@
     <string name="local_songs_scan_filters_title">ฟิลเตอร์ในการสแกน</string>
     <string name="local_songs_scan_folders_add">เพิ่มโฟลเดอร์</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16bbfa2ad (Translated using Weblate (Thai))
     <string name="music_recognition_history_search">ค้นหาเพลงที่ระบบรู้จัก</string>
     <string name="music_recognition_history_empty_title">ยังไม่มีเพลงที่ระบุได้</string>
     <string name="music_recognition_history_empty_body">หลังจากระบบจดจำสำเร็จ เพลงที่ตรงกันจะปรากฏที่นี่</string>
@@ -65,6 +68,7 @@
     <string name="history_remote_loading">กำลังซิงค์ประวัติระยะไกล</string>
     <string name="history_remote_empty_title">ไม่มีประวัติการใช้งานจากระยะไกล</string>
     <string name="history_remote_empty_desc">ประวัติการรับชมที่ซิงค์ไว้ของคุณจะปรากฏที่นี่หลังจากที่คุณฟังเพลงบน YouTube Music แล้ว</string>
+<<<<<<< HEAD
     <string name="music_recognition_notification_processing_text">การจับคู่ลายนิ้วมือที่ใช้ในการบันทึกเสียง</string>
     <string name="music_recognition_notification_release">ปล่อยแล้ว: %1$s</string>
     <string name="music_recognition_notification_no_match_text">โปรดเปิดเพลงให้ชัดเจน จากนั้นจึงลองระบุเพลงอีกครั้ง</string>
@@ -147,4 +151,6 @@
 >>>>>>> 22048c0c3 (Translated using Weblate (Thai))
 =======
 >>>>>>> 049a00762 (Translated using Weblate (Thai))
+=======
+>>>>>>> 16bbfa2ad (Translated using Weblate (Thai))
 </resources>
