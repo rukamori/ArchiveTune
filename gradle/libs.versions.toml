@@ -15,7 +15,7 @@ jsoup = "1.22.2"
 re2j = "1.8"
 coil = "3.5.0"
 guava = "33.6.0-jre"
-coroutinesGuava = "1.11.0"
+coroutines = "1.11.0"
 materialiconsextended = "1.7.8"
 concurrentFutures = "1.3.0"
 activity = "1.13.0"
@@ -45,16 +45,15 @@ androidsvg = "1.4"
 aboutLibraries = "15.0.3"
 leakCanary = "2.14"
 spotless = "8.10.0"
-chaquopy = "17.0.0"
 graphicsShapes = "1.0.1"
-quickjsKt = "1.0.10"
-bouncyCastle = "1.85"
+quickjsKt = "1.0.14"
 
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutinesGuava" }
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutines" }
 concurrent-futures = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrentFutures" }
 
 gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
@@ -155,7 +154,6 @@ androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakCanary" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjsKt" }
-bcpg = { module = "org.bouncycastle:bcpg-jdk18on", version.ref = "bouncyCastle" }
 
 
 
@@ -170,4 +168,3 @@ kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 aboutlibraries-android = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
-chaquopy = { id = "com.chaquo.python", version.ref = "chaquopy" }

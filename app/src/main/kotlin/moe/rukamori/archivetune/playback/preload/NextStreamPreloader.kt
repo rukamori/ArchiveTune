@@ -33,10 +33,7 @@ class NextStreamPreloader
         @PlayerCache private val playerCache: Cache,
         @DownloadCache private val downloadCache: Cache,
     ) {
-        private data class Target(
-            val request: AudioStreamRequest,
-            val runtimeRevision: String,
-        )
+        private data class Target(val request: AudioStreamRequest)
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val lock = Any()
@@ -44,11 +41,8 @@ class NextStreamPreloader
         private var target: Target? = null
         private var job: Job? = null
 
-        fun updateTarget(
-            request: AudioStreamRequest,
-            runtimeRevision: String,
-        ) {
-            val nextTarget = Target(request, runtimeRevision)
+        fun updateTarget(request: AudioStreamRequest) {
+            val nextTarget = Target(request)
             lateinit var preloadFailure: AtomicReference<Throwable?>
             val jobToStart =
                 synchronized(lock) {

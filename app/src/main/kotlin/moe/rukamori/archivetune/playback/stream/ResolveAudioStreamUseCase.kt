@@ -18,7 +18,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.guava.future
-import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeStore
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import timber.log.Timber
 import java.net.SocketTimeoutException
@@ -34,8 +33,7 @@ import kotlin.coroutines.coroutineContext
 class ResolveAudioStreamUseCase
     @Inject
     constructor(
-        private val ytDlpRepository: YtDlpStreamRepository,
-        private val nativeRepository: NativeStreamRepository,
+        private val youtubeiRepository: YoutubeiStreamRepository,
     ) {
         private data class CacheKey(
             val mediaId: String,
@@ -45,7 +43,11 @@ class ResolveAudioStreamUseCase
             val authFingerprint: String,
             val pinnedFormatId: Int?,
             val requiresSongMetadata: Boolean,
-            val runtimeRevision: String,
+        )
+
+        private data class InFlightKey(
+            val cacheKey: CacheKey,
+            val priority: StreamResolutionPriority,
         )
 
         private enum class ResolutionConsumer {
@@ -62,13 +64,16 @@ class ResolveAudioStreamUseCase
         private sealed interface ResolutionLease {
             data class Cached(val stream: ResolvedAudioStream) : ResolutionLease
 
-            data class Active(val resolution: InFlightResolution) : ResolutionLease
+            data class Active(
+                val key: InFlightKey,
+                val resolution: InFlightResolution,
+            ) : ResolutionLease
         }
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val cache = ConcurrentHashMap<CacheKey, ResolvedAudioStream>()
         private val inFlightLock = Any()
-        private val inFlight = mutableMapOf<CacheKey, InFlightResolution>()
+        private val inFlight = mutableMapOf<InFlightKey, InFlightResolution>()
 
         suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(request, ResolutionConsumer.PLAYBACK)
@@ -82,15 +87,17 @@ class ResolveAudioStreamUseCase
             consumer: ResolutionConsumer,
         ): ResolvedAudioStream {
             val key = request.cacheKey()
-            val lease = acquireResolution(key, request, consumer)
+            val priority = request.resolutionPriority(consumer)
+            val lease = acquireResolution(key, request, consumer, priority)
             if (lease is ResolutionLease.Cached) return lease.stream
 
-            val resolution = (lease as ResolutionLease.Active).resolution
+            val activeLease = lease as ResolutionLease.Active
+            val resolution = activeLease.resolution
             return try {
                 resolution.deferred.start()
                 resolution.deferred.await()
             } finally {
-                releaseResolution(key, resolution, consumer)
+                releaseResolution(activeLease.key, resolution, consumer)
             }
         }
 
@@ -98,6 +105,7 @@ class ResolveAudioStreamUseCase
             key: CacheKey,
             request: AudioStreamRequest,
             consumer: ResolutionConsumer,
+            priority: StreamResolutionPriority,
         ): ResolutionLease =
             synchronized(inFlightLock) {
                 cache[key]?.let { cached ->
@@ -105,20 +113,36 @@ class ResolveAudioStreamUseCase
                     cache.remove(key, cached)
                 }
 
-                inFlight[key]?.let { resolution ->
+                val requestedInFlightKey = InFlightKey(key, priority)
+                val reusableInFlightKey =
+                    if (priority == StreamResolutionPriority.BACKGROUND) {
+                        InFlightKey(key, StreamResolutionPriority.FOREGROUND)
+                            .takeIf(inFlight::containsKey)
+                            ?: requestedInFlightKey
+                    } else {
+                        requestedInFlightKey
+                    }
+                inFlight[reusableInFlightKey]?.let { resolution ->
                     resolution.addOwner(consumer)
-                    return@synchronized ResolutionLease.Active(resolution)
+                    return@synchronized ResolutionLease.Active(reusableInFlightKey, resolution)
                 }
 
                 lateinit var resolution: InFlightResolution
                 val deferred =
                     scope.async(start = CoroutineStart.LAZY) {
-                        val resolved = resolveUncached(request)
+                        val resolved =
+                            resolveUncached(
+                                request = request,
+                                priority = request.resolutionPriority(consumer),
+                            )
                         val resolutionContext = coroutineContext
                         resolutionContext.ensureActive()
                         synchronized(inFlightLock) {
                             resolutionContext.ensureActive()
-                            if (inFlight[key] !== resolution || !resolution.hasOwners()) {
+                            if (
+                                inFlight[requestedInFlightKey] !== resolution ||
+                                !resolution.hasOwners()
+                            ) {
                                 throw CancellationException(
                                     "Audio stream resolution no longer has active consumers",
                                 )
@@ -132,17 +156,17 @@ class ResolveAudioStreamUseCase
                 resolution.addOwner(consumer)
                 deferred.invokeOnCompletion {
                     synchronized(inFlightLock) {
-                        if (inFlight[key] === resolution) {
-                            inFlight.remove(key)
+                        if (inFlight[requestedInFlightKey] === resolution) {
+                            inFlight.remove(requestedInFlightKey)
                         }
                     }
                 }
-                inFlight[key] = resolution
-                ResolutionLease.Active(resolution)
+                inFlight[requestedInFlightKey] = resolution
+                ResolutionLease.Active(requestedInFlightKey, resolution)
             }
 
         private fun releaseResolution(
-            key: CacheKey,
+            key: InFlightKey,
             resolution: InFlightResolution,
             consumer: ResolutionConsumer,
         ) {
@@ -212,7 +236,7 @@ class ResolveAudioStreamUseCase
                 synchronized(inFlightLock) {
                     cache.keys.removeIf { it.mediaId == mediaId }
                     inFlight.keys
-                        .filter { it.mediaId == mediaId }
+                        .filter { it.cacheKey.mediaId == mediaId }
                         .mapNotNull { inFlight.remove(it)?.deferred }
                 }
             deferredsToCancel.forEach { it.cancel() }
@@ -239,45 +263,33 @@ class ResolveAudioStreamUseCase
             deferredsToCancel.forEach { it.cancel() }
         }
 
-        private suspend fun resolveUncached(request: AudioStreamRequest): ResolvedAudioStream {
-            val ytDlpFailure =
-                try {
-                    val resolvedAuthState =
-                        if (request.authState.hasLoginCookie) {
-                            YTPlayerUtils.ensureYtDlpPoTokensForPlayback(
-                                videoId = request.mediaId,
-                                authState = request.authState,
-                            )
-                        } else {
-                            request.authState
-                        }
-                    return ytDlpRepository.resolve(request.copy(authState = resolvedAuthState))
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (loginRequired: YTPlayerUtils.LoginRequiredForPlaybackException) {
-                    throw loginRequired
-                } catch (invalidLogin: YTPlayerUtils.InvalidPlaybackLoginContextException) {
-                    throw invalidLogin
-                } catch (ytDlpFailure: YtDlpExtractionException) {
-                    throw ytDlpFailure
-                } catch (throwable: Throwable) {
-                    Timber.tag(TAG).w(
-                        throwable,
-                        "Local yt-dlp resolution failed for %s; using native fallback",
-                        request.mediaId,
+        private suspend fun resolveUncached(
+            request: AudioStreamRequest,
+            priority: StreamResolutionPriority,
+        ): ResolvedAudioStream {
+            val resolvedAuthState =
+                if (request.authState.hasLoginCookie) {
+                    YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
+                        videoId = request.mediaId,
+                        authState = request.authState,
                     )
-                    throwable
+                } else {
+                    request.authState
                 }
-
-            return try {
-                nativeRepository.resolve(request)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (nativeFailure: Throwable) {
-                nativeFailure.addSuppressed(ytDlpFailure)
-                throw nativeFailure
-            }
+            return youtubeiRepository.resolve(
+                request = request.copy(authState = resolvedAuthState),
+                priority = priority,
+            )
         }
+
+        private fun AudioStreamRequest.resolutionPriority(
+            consumer: ResolutionConsumer,
+        ): StreamResolutionPriority =
+            if (consumer == ResolutionConsumer.PLAYBACK && purpose == StreamPurpose.PLAYBACK) {
+                StreamResolutionPriority.FOREGROUND
+            } else {
+                StreamResolutionPriority.BACKGROUND
+            }
 
         private fun AudioStreamRequest.cacheKey(): CacheKey =
             CacheKey(
@@ -288,7 +300,6 @@ class ResolveAudioStreamUseCase
                 authFingerprint = authState.streamCacheFingerprint,
                 pinnedFormatId = pinnedFormatId,
                 requiresSongMetadata = requiresSongMetadata,
-                runtimeRevision = YtDlpRuntimeStore.revision,
             )
 
         private fun storeResolvedStream(
@@ -296,7 +307,7 @@ class ResolveAudioStreamUseCase
             resolved: ResolvedAudioStream,
         ) {
             putResolvedStream(key, resolved)
-            if (resolved.source == StreamSource.YT_DLP) {
+            if (resolved.source == StreamSource.YOUTUBEI) {
                 val alternatePurpose =
                     when (key.purpose) {
                         StreamPurpose.PLAYBACK -> StreamPurpose.DOWNLOAD
@@ -345,7 +356,7 @@ class ResolveAudioStreamUseCase
             const val TAG = "AudioStreamResolver"
             const val STREAM_EXPIRY_SAFETY_MS = 60_000L
             const val MAX_CACHE_ENTRIES = 256
-            const val PLAYBACK_RESOLUTION_TIMEOUT_SECONDS = 120L
+            const val PLAYBACK_RESOLUTION_TIMEOUT_SECONDS = 30L
             const val DOWNLOAD_RESOLUTION_TIMEOUT_SECONDS = 180L
         }
     }

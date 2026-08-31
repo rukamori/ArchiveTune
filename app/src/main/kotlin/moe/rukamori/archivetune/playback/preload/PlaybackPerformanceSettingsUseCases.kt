@@ -10,7 +10,6 @@ package moe.rukamori.archivetune.playback.preload
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import moe.rukamori.archivetune.ytdlp.YtDlpSettingsRepository
 import javax.inject.Inject
 
 class ObservePlaybackPerformanceSettingsUseCase
@@ -54,20 +53,17 @@ class ObservePlaybackPreloadConfigurationUseCase
     @Inject
     constructor(
         private val repository: PlaybackPerformanceSettingsRepository,
-        private val ytDlpSettingsRepository: YtDlpSettingsRepository,
     ) {
         operator fun invoke(): Flow<PlaybackPreloadConfiguration> =
             combine(
                 repository.settings,
                 repository.audioQuality,
                 repository.playbackAuthState,
-                ytDlpSettingsRepository.runtimeSnapshot,
-            ) { settings, quality, authState, runtime ->
+            ) { settings, quality, authState ->
                 PlaybackPreloadConfiguration(
                     enabled = settings.preloadNextSongEnabled && !settings.lowDataModeEnabled,
                     quality = quality,
                     authState = authState,
-                    runtimeRevision = runtime.activeVersion,
                 )
             }.distinctUntilChanged()
     }

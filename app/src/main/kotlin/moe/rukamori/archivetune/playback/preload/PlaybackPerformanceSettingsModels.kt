@@ -20,5 +20,4 @@ data class PlaybackPreloadConfiguration(
     val enabled: Boolean,
     val quality: AudioQuality,
     val authState: PlaybackAuthState,
-    val runtimeRevision: String,
 )

@@ -36,7 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.innertube.utils.hasYtDlpYouTubeLoginCookies
+import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
@@ -259,7 +259,7 @@ private class YouTubeLoginWebViewClient(
 
     private fun captureCookies(currentUrl: String?) {
         val mergedCookie = mergeYouTubeCookies(cookieManager, currentUrl) ?: return
-        if (!hasYtDlpYouTubeLoginCookies(mergedCookie) || mergedCookie == lastCapturedCookie) return
+        if (!hasCompleteYouTubeLoginCookies(mergedCookie) || mergedCookie == lastCapturedCookie) return
 
         lastCapturedCookie = mergedCookie
         onCookiesCaptured(mergedCookie)

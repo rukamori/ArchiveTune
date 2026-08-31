@@ -31,7 +31,7 @@ import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AccountInfo
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
-import moe.rukamori.archivetune.innertube.utils.hasYtDlpYouTubeLoginCookies
+import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.decodeSavedAccounts
@@ -64,7 +64,7 @@ class YouTubeLoginRepository
                 runCatchingPreservingCancellation {
                     val normalizedCookie = cookie.trim()
                     check(hasYouTubeLoginCookie(normalizedCookie)) { "YouTube login cookie is missing" }
-                    check(hasYtDlpYouTubeLoginCookies(normalizedCookie)) { "YouTube login cookies are incomplete" }
+                    check(hasCompleteYouTubeLoginCookies(normalizedCookie)) { "YouTube login cookies are incomplete" }
 
                     val initialAuthState =
                         PlaybackAuthState(
@@ -99,7 +99,7 @@ class YouTubeLoginRepository
             withContext(Dispatchers.IO) {
                 runCatchingPreservingCancellation {
                     check(hasYouTubeLoginCookie(account.innerTubeCookie)) { "Saved account login cookie is missing" }
-                    check(hasYtDlpYouTubeLoginCookies(account.innerTubeCookie)) {
+                    check(hasCompleteYouTubeLoginCookies(account.innerTubeCookie)) {
                         "Saved account login cookies are incomplete"
                     }
 

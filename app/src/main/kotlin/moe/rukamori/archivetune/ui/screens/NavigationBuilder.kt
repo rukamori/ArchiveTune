@@ -55,7 +55,6 @@ import moe.rukamori.archivetune.ui.screens.settings.AodCustomizedScreen
 import moe.rukamori.archivetune.ui.screens.settings.AppearanceSettings
 import moe.rukamori.archivetune.ui.screens.settings.BackupAndRestore
 import moe.rukamori.archivetune.ui.screens.settings.ChangelogScreen
-import moe.rukamori.archivetune.ui.screens.settings.YtDlpSettings
 import moe.rukamori.archivetune.ui.screens.settings.ContentSettings
 import moe.rukamori.archivetune.ui.screens.settings.CustomizeBackground
 import moe.rukamori.archivetune.ui.screens.settings.DebugSettings
@@ -422,9 +421,6 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/player") {
         PlayerSettings(navController)
-    }
-    composable("settings/player/ytdlp") {
-        YtDlpSettings(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController)

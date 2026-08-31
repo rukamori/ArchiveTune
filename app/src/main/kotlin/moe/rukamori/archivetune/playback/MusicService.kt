@@ -6886,7 +6886,6 @@ class MusicService :
                     authState = configuration.authState,
                     pinnedFormatId = null,
                 ),
-            runtimeRevision = configuration.runtimeRevision,
         )
     }
 

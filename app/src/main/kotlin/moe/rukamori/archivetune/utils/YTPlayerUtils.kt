@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object YTPlayerUtils {
     private const val logTag = "YTPlayerUtils"
-    private const val YT_DLP_PO_TOKEN_RESOLUTION_BUDGET_MS = 5_000L
+    private const val YOUTUBEI_PO_TOKEN_RESOLUTION_BUDGET_MS = 5_000L
     private const val FAILED_CLIENT_BACKOFF_MS = 10 * 60 * 1000L
     private const val DEFAULT_STREAM_EXPIRE_SECONDS = 300
     private const val MAX_PLAYBACK_DATA_CACHE_ENTRIES = 128
@@ -362,7 +362,7 @@ object YTPlayerUtils {
                 ensureVisitorDataReady(
                     videoId = videoId,
                     authState = resolvedAuthState,
-                    reason = "yt-dlp playback authentication",
+                    reason = "youtubei.js playback authentication",
                 )
         }
         if (resolvedAuthState.sessionId.isNullOrBlank()) return resolvedAuthState
@@ -370,24 +370,24 @@ object YTPlayerUtils {
         return mintWebPlaybackPoTokens(videoId, resolvedAuthState)
     }
 
-    suspend fun ensureYtDlpPoTokensForPlayback(
+    suspend fun ensureYoutubeiPoTokensForPlayback(
         videoId: String,
         authState: PlaybackAuthState = YouTube.currentPlaybackAuthState(),
     ): PlaybackAuthState {
-        val contentBinding = authState.ytDlpContentBinding() ?: return authState
+        val contentBinding = authState.youtubeiContentBinding() ?: return authState
         val tokenResult =
             BotGuardTokenGenerator.mintToken(
                 videoId = videoId,
                 sessionId = contentBinding,
-                maximumWaitMillis = YT_DLP_PO_TOKEN_RESOLUTION_BUDGET_MS,
+                maximumWaitMillis = YOUTUBEI_PO_TOKEN_RESOLUTION_BUDGET_MS,
             ) ?: return authState
         return authState
             .withGeneratedPoTokens(videoId, tokenResult)
             .copy(dataSyncId = contentBinding)
     }
 
-    suspend fun preWarmYtDlpPoTokens(authState: PlaybackAuthState) {
-        val contentBinding = authState.ytDlpContentBinding() ?: return
+    suspend fun preWarmYoutubeiPoTokens(authState: PlaybackAuthState) {
+        val contentBinding = authState.youtubeiContentBinding() ?: return
         BotGuardTokenGenerator.preWarm(contentBinding)
     }
 
@@ -429,7 +429,7 @@ object YTPlayerUtils {
             visitorData == other.visitorData &&
             dataSyncId == other.dataSyncId
 
-    private fun PlaybackAuthState.ytDlpContentBinding(): String? {
+    private fun PlaybackAuthState.youtubeiContentBinding(): String? {
         val normalizedDataSyncId = dataSyncId?.trim()?.takeIf(String::isNotBlank)
         if (normalizedDataSyncId != null) {
             return if ("||" in normalizedDataSyncId) {

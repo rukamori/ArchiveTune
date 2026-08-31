@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.aboutlibraries.android)
-    alias(libs.plugins.chaquopy)
 }
 
 val localProperties = Properties()
@@ -274,16 +273,6 @@ android {
         }
     }
 
-}
-
-chaquopy {
-    defaultConfig {
-        version = "3.11"
-        pip {
-            install("yt-dlp==2026.8.19")
-            install("yt-dlp-ejs==0.8.0")
-        }
-    }
 }
 
 kotlin {

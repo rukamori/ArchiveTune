@@ -24,6 +24,7 @@ import coil3.request.allowHardware
 import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,11 +44,8 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
-import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpJavaScriptRuntime
-import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpRuntimeStore
-import moe.rukamori.archivetune.morideobfuscator.ytdlp.YtDlpUpdateScheduler
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
-import moe.rukamori.archivetune.playback.stream.YtDlpRuntime
+import moe.rukamori.archivetune.playback.stream.YoutubeiStreamRepository
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
@@ -86,7 +84,7 @@ class App :
     lateinit var downloadedArtworkRepository: DownloadedArtworkRepository
 
     @Inject
-    lateinit var ytDlpRuntime: YtDlpRuntime
+    lateinit var youtubeiStreamRepository: YoutubeiStreamRepository
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -113,7 +111,6 @@ class App :
             Timber.plant(Timber.DebugTree())
             return
         }
-        YtDlpJavaScriptRuntime.initialize(this)
         BotGuardTokenGenerator.initialize(this)
         PreferenceStore.start(this)
         LeakCanaryController.initialize(this)
@@ -147,12 +144,10 @@ class App :
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // WebView cleanup happens automatically on process death
+        youtubeiStreamRepository.trimMemory(level)
     }
 
     private fun initializeCriticalSync() {
-        YtDlpRuntimeStore.initializeForProcess(this)
-        YtDlpUpdateScheduler.schedule(this)
         CanvasArtworkPlaybackCache.init(this)
         ArchiveTuneCanvas.initialize(BuildConfig.CANVAS_BEARER_TOKEN)
         PaxsenixLyrics.setUserAgent("ArchiveTune", BuildConfig.VERSION_NAME)
@@ -178,8 +173,13 @@ class App :
 
     private fun initializeDeferredAsync() {
         applicationScope.launch(Dispatchers.IO) {
-            ytDlpRuntime.preWarm()
-            YtDlpJavaScriptRuntime.preWarm()
+            try {
+                youtubeiStreamRepository.preWarm()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Timber.tag("YoutubeiResolver").w(throwable, "youtubei.js runtime prewarm failed")
+            }
         }
 
         applicationScope.launch(Dispatchers.IO) {
@@ -273,7 +273,8 @@ class App :
                     YouTube.authState = authState
                     if (previousFingerprint != authState.fingerprint) {
                         YTPlayerUtils.clearPlaybackAuthCaches()
-                        YTPlayerUtils.preWarmYtDlpPoTokens(authState)
+                        youtubeiStreamRepository.invalidateSessions()
+                        YTPlayerUtils.preWarmYoutubeiPoTokens(authState)
                     }
                 }
         }
