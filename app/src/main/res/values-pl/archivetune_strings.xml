@@ -44,6 +44,7 @@
     <string name="history_local_summary">Odtworzono na tym urządzeniu</string>
     <string name="history_remote_summary">Synchronizowane z YouTube Music</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="history_local_empty_title">Na razie brak lokalnej historii</string>
     <string name="history_local_empty_desc">Utwory odtwarzane na tym urządzeniu pojawią się tutaj.</string>
     <string name="history_remote_loading">Synchronizowanie zdalnej historii</string>
@@ -52,6 +53,11 @@
     <string name="history_local_empty_desc">Utwory odtwarzane na tym urządzeniu pojawią się tutaj.</string>
     <string name="history_remote_loading">Synchronizowane zdalnej histori</string>
 >>>>>>> 64bea6ba1 (Translated using Weblate (Polish))
+=======
+    <string name="history_local_empty_title">Na razie brak lokalnej historii</string>
+    <string name="history_local_empty_desc">Utwory odtwarzane na tym urządzeniu pojawią się tutaj.</string>
+    <string name="history_remote_loading">Synchronizowanie zdalnej historii</string>
+>>>>>>> 65f94fc8e (Translated using Weblate (Polish))
     <string name="history_remote_empty_title">Brak dostępnej zdalnej histori</string>
     <string name="history_remote_error_title">Nie udało załadować zdalnej historii</string>
     <string name="history_remote_error_desc">Spróbuj ponownie za chwilę.</string>
@@ -62,6 +68,7 @@
     <string name="scanning_device">Skanowanie urządzenia…</string>
     <string name="local_songs_ready_desc">Odtwórz lokalne piosenki na tym urządzeniu.</string>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <string name="local_songs_permission_body">Zezwól aplikacji na dostęp do pamięci w celu skanowania plików audio zapisanych na tym urządzeniu.</string>
     <string name="music_recognition_processing">Przetwarzanie…</string>
     <string name="music_recognition_no_match">Nie znaleziono dopasowania</string>
@@ -71,6 +78,10 @@
 =======
     <string name="local_songs_permission_body">Zezwol na dostęp do skanowania plików audio przetrzymywanych na tym urządzeniu.</string>
     <string name="music_recognition_processing">przetwarzanie…</string>
+=======
+    <string name="local_songs_permission_body">Zezwól aplikacji na dostęp do pamięci w celu skanowania plików audio zapisanych na tym urządzeniu.</string>
+    <string name="music_recognition_processing">Przetwarzanie…</string>
+>>>>>>> 65f94fc8e (Translated using Weblate (Polish))
     <string name="music_recognition_no_match">Nie znaleziono dopasowania</string>
     <string name="music_recognition_lyrics_preview">Podgląd tekstu</string>
     <string name="music_recognition_background_description">Gdy funkcja jest włączona, kafel Szybkich ustawień wykrywa dźwięk odtwarzany na tym urządzeniu bez konieczności otwierania aplikacji ArchiveTune.</string>
