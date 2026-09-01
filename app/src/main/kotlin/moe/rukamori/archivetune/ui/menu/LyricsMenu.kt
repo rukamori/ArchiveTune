@@ -69,7 +69,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -89,16 +88,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.bush.translator.Language
-import me.bush.translator.Translator
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ai.AiLyricsDocumentParser
-import moe.rukamori.archivetune.ai.AiLyricsSegment
 import moe.rukamori.archivetune.constants.AiApiKeyKey
 import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
@@ -121,8 +113,9 @@ import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LyricsMenuViewModel
 import moe.rukamori.archivetune.viewmodels.LyricsSearchResultUiModel
 import moe.rukamori.archivetune.viewmodels.LyricsSearchScreenState
+import moe.rukamori.archivetune.viewmodels.LyricsTranslationError
+import moe.rukamori.archivetune.viewmodels.LyricsTranslationScreenState
 import java.util.Locale
-import java.util.UUID
 import kotlin.math.roundToInt
 
 private enum class LyricsTranslationSource {
@@ -152,7 +145,6 @@ fun LyricsMenu(
     var showTranslateDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
     val isRefetching by viewModel.isRefetching.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(viewModel) {
         viewModel.refetchCompletionEvents.collect {
@@ -203,6 +195,7 @@ fun LyricsMenu(
 
     val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsStateWithLifecycle()
     val lyricsSearchState by viewModel.lyricsSearchState.collectAsStateWithLifecycle()
+    val lyricsTranslationState by viewModel.lyricsTranslationState.collectAsStateWithLifecycle()
     val isAiTranslating by viewModel.isAiTranslating.collectAsStateWithLifecycle()
     val (aiProvider) = rememberEnumPreference(AiProviderKey, AiProvider.NONE)
     val (aiApiKey) = rememberPreference(AiApiKeyKey, "")
@@ -222,13 +215,36 @@ fun LyricsMenu(
             (aiProvider != AiProvider.CUSTOM || aiCustomEndpoint.isNotBlank()) &&
             aiValidationStatus != AiApiValidationStatus.FAILED
 
-    var translationJob by remember { mutableStateOf<Job?>(null) }
-    var isStandardTranslating by remember { mutableStateOf(false) }
+    val isStandardTranslating = lyricsTranslationState is LyricsTranslationScreenState.Loading
     var isDialogAiTranslationRunning by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.aiTranslationEvents.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(lyricsTranslationState) {
+        when (val state = lyricsTranslationState) {
+            LyricsTranslationScreenState.Success -> {
+                showTranslateDialog = false
+                viewModel.clearLyricsTranslationResult()
+            }
+
+            is LyricsTranslationScreenState.Error -> {
+                val message =
+                    when (val error = state.error) {
+                        LyricsTranslationError.Failed -> context.getString(R.string.translation_failed)
+                        is LyricsTranslationError.UnsupportedLanguage ->
+                            context.getString(R.string.unsupported_language, error.languageName)
+                    }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                viewModel.clearLyricsTranslationResult()
+            }
+
+            LyricsTranslationScreenState.Empty,
+            LyricsTranslationScreenState.Loading,
+            -> Unit
         }
     }
 
@@ -595,9 +611,7 @@ fun LyricsMenu(
                     ) {
                         TextButton(
                             onClick = {
-                                translationJob?.cancel()
-                                translationJob = null
-                                isStandardTranslating = false
+                                viewModel.cancelLyricsTranslation()
                                 if (isAiTranslating) {
                                     viewModel.cancelAiTranslation()
                                 }
@@ -628,53 +642,12 @@ fun LyricsMenu(
                                     }
 
                                     LyricsTranslationSource.TRANSLATION -> {
-                                        isStandardTranslating = true
-                                        translationJob =
-                                            coroutineScope.launch {
-                                                try {
-                                                    val lang =
-                                                        try {
-                                                            Language(languageCode)
-                                                        } catch (e: Exception) {
-                                                            try {
-                                                                Language(languageName)
-                                                            } catch (_: Exception) {
-                                                                null
-                                                            }
-                                                        }
-
-                                                    if (lang == null) {
-                                                        Toast
-                                                            .makeText(
-                                                                context,
-                                                                context.getString(R.string.unsupported_language, languageName),
-                                                                Toast.LENGTH_SHORT,
-                                                            ).show()
-                                                        return@launch
-                                                    }
-
-                                                    val translatedLyrics = translateLyricsWithTranslator(inputText, lang)
-                                                    viewModel.updateLyrics(
-                                                        mediaMetadata = mediaMetadataProvider(),
-                                                        lyrics = translatedLyrics,
-                                                        source = LyricsEntity.Source.AI_TRANSLATION,
-                                                    )
-                                                    showTranslateDialog = false
-                                                } catch (e: CancellationException) {
-                                                    throw e
-                                                } catch (e: Exception) {
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            context.getString(R.string.translation_failed) + ": " +
-                                                                (e.localizedMessage ?: e.toString()),
-                                                            Toast.LENGTH_SHORT,
-                                                        ).show()
-                                                } finally {
-                                                    isStandardTranslating = false
-                                                    translationJob = null
-                                                }
-                                            }
+                                        viewModel.translateLyrics(
+                                            mediaMetadata = mediaMetadataProvider(),
+                                            lyrics = inputText,
+                                            targetLanguage = languageCode,
+                                            targetLanguageName = languageName,
+                                        )
                                     }
                                 }
                             },
@@ -1337,67 +1310,6 @@ private fun LyricsSearchMessageContent(
 }
 
 private fun formatLyricsSyncOffset(offsetMs: Int): String = if (offsetMs > 0) "+$offsetMs ms" else "$offsetMs ms"
-
-private suspend fun translateLyricsWithTranslator(
-    lyrics: String,
-    language: Language,
-): String =
-    withContext(Dispatchers.IO) {
-        val document = AiLyricsDocumentParser.parse(lyrics)
-        if (document.segments.isEmpty()) return@withContext lyrics
-
-        val translator = Translator()
-        val translatedSegments = mutableMapOf<Int, String>()
-        document.segments.chunkedForTranslator().forEach { batch ->
-            val separator = uniqueTranslationSeparator(batch)
-            val joined = batch.joinToString(separator = separator) { segment -> segment.text }
-            val translatedJoined = translator.translateBlocking(joined, language).translatedText
-            val parts = translatedJoined.split(separator)
-
-            if (parts.size == batch.size) {
-                batch.forEachIndexed { index, segment ->
-                    translatedSegments[segment.id] = parts[index]
-                }
-            } else {
-                batch.forEach { segment ->
-                    translatedSegments[segment.id] = translator.translateBlocking(segment.text, language).translatedText
-                }
-            }
-        }
-
-        document.rebuild(translatedSegments)
-    }
-
-private fun List<AiLyricsSegment>.chunkedForTranslator(): List<List<AiLyricsSegment>> {
-    val chunks = ArrayList<List<AiLyricsSegment>>()
-    val current = ArrayList<AiLyricsSegment>()
-    var currentChars = 0
-
-    forEach { segment ->
-        val nextSize = currentChars + segment.text.length
-        if (current.isNotEmpty() && (current.size >= MaxTranslatorItemsPerBatch || nextSize > MaxTranslatorCharsPerBatch)) {
-            chunks.add(current.toList())
-            current.clear()
-            currentChars = 0
-        }
-        current.add(segment)
-        currentChars += segment.text.length
-    }
-
-    if (current.isNotEmpty()) chunks.add(current.toList())
-    return chunks
-}
-
-private fun uniqueTranslationSeparator(segments: List<AiLyricsSegment>): String {
-    var separator = "<<<SEP-${UUID.randomUUID()}>>>"
-    while (segments.any { segment -> segment.text.contains(separator) }) {
-        separator = "<<<SEP-${UUID.randomUUID()}>>>"
-    }
-    return separator
-}
-
-private const val MaxTranslatorItemsPerBatch = 50
-private const val MaxTranslatorCharsPerBatch = 4000
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

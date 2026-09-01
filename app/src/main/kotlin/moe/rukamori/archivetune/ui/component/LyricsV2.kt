@@ -261,7 +261,7 @@ fun LyricsV2(
     val lyrics = currentLyrics?.lyrics
     val showTranslations =
         remember(currentLyrics?.source) {
-            currentLyrics?.source == LyricsEntity.Source.AI_TRANSLATION.value
+            currentLyrics?.hasTranslationSource() == true
         }
 
     // ── Parse lyrics into entries ──

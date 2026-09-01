@@ -25,6 +25,10 @@ data class LyricsEntity(
             source == Source.USER_SELECTION.value ||
             source == Source.EMBEDDED.value
 
+    fun hasTranslationSource(): Boolean =
+        source == Source.TRANSLATION.value ||
+            source == Source.AI_TRANSLATION.value
+
     companion object {
         const val LYRICS_NOT_FOUND = "LYRICS_NOT_FOUND"
     }
@@ -36,6 +40,7 @@ data class LyricsEntity(
         EMBEDDED("EMBEDDED"),
         USER_SELECTION("USER_SELECTION"),
         USER_EDIT("USER_EDIT"),
+        TRANSLATION("TRANSLATION"),
         AI_TRANSLATION("AI_TRANSLATION"),
     }
 }

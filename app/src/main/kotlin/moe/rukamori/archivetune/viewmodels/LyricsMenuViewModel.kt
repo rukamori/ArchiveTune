@@ -48,6 +48,8 @@ import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.lyrics.LyricsUtils.displayLyricsText
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
+import moe.rukamori.archivetune.lyrics.translation.TranslateLyricsResult
+import moe.rukamori.archivetune.lyrics.translation.TranslateLyricsUseCase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
@@ -83,6 +85,28 @@ data class LyricsSearchResultUiModel(
     val isWordSynced: Boolean,
 )
 
+@Immutable
+sealed interface LyricsTranslationError {
+    data object Failed : LyricsTranslationError
+
+    data class UnsupportedLanguage(
+        val languageName: String,
+    ) : LyricsTranslationError
+}
+
+@Immutable
+sealed interface LyricsTranslationScreenState {
+    data object Loading : LyricsTranslationScreenState
+
+    data object Success : LyricsTranslationScreenState
+
+    data object Empty : LyricsTranslationScreenState
+
+    data class Error(
+        val error: LyricsTranslationError,
+    ) : LyricsTranslationScreenState
+}
+
 @HiltViewModel
 class LyricsMenuViewModel
     @Inject
@@ -91,8 +115,10 @@ class LyricsMenuViewModel
         private val lyricsHelper: LyricsHelper,
         val database: MusicDatabase,
         private val networkConnectivity: NetworkConnectivityObserver,
+        private val translateLyricsUseCase: TranslateLyricsUseCase,
     ) : ViewModel() {
         private var job: Job? = null
+        private var translationJob: Job? = null
         private var aiTranslationJob: Job? = null
         private val searchGeneration = AtomicLong(0L)
         private val _lyricsSearchState = MutableStateFlow<LyricsSearchScreenState>(LyricsSearchScreenState.Empty)
@@ -102,6 +128,10 @@ class LyricsMenuViewModel
         private val _refetchCompletionEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val refetchCompletionEvents: SharedFlow<Unit> = _refetchCompletionEvents.asSharedFlow()
         val isAiTranslating = MutableStateFlow(false)
+
+        private val _lyricsTranslationState =
+            MutableStateFlow<LyricsTranslationScreenState>(LyricsTranslationScreenState.Empty)
+        val lyricsTranslationState: StateFlow<LyricsTranslationScreenState> = _lyricsTranslationState.asStateFlow()
 
         private val _aiTranslationEvents = MutableSharedFlow<String>()
         val aiTranslationEvents: SharedFlow<String> = _aiTranslationEvents.asSharedFlow()
@@ -227,6 +257,7 @@ class LyricsMenuViewModel
                         LyricsEntity.Source.USER_EDIT,
                         -> lyrics
 
+                        LyricsEntity.Source.TRANSLATION,
                         LyricsEntity.Source.AI_TRANSLATION ->
                             usableTranslatedLyrics(lyrics) ?: return@launch
                     }
@@ -237,6 +268,65 @@ class LyricsMenuViewModel
                         source = source.value,
                     )
                 }
+            }
+        }
+
+        fun translateLyrics(
+            mediaMetadata: MediaMetadata,
+            lyrics: String,
+            targetLanguage: String,
+            targetLanguageName: String,
+        ) {
+            if (translationJob?.isActive == true) return
+            if (lyrics.isBlank()) {
+                _lyricsTranslationState.value =
+                    LyricsTranslationScreenState.Error(LyricsTranslationError.Failed)
+                return
+            }
+
+            _lyricsTranslationState.value = LyricsTranslationScreenState.Loading
+            translationJob =
+                viewModelScope.launch {
+                    val runningJob = coroutineContext[Job]
+                    try {
+                        _lyricsTranslationState.value =
+                            when (
+                                translateLyricsUseCase(
+                                    mediaId = mediaMetadata.id,
+                                    lyrics = lyrics,
+                                    targetLanguage = targetLanguage,
+                                )
+                            ) {
+                                TranslateLyricsResult.Success -> LyricsTranslationScreenState.Success
+                                TranslateLyricsResult.Empty ->
+                                    LyricsTranslationScreenState.Error(LyricsTranslationError.Failed)
+                                TranslateLyricsResult.UnsupportedLanguage ->
+                                    LyricsTranslationScreenState.Error(
+                                        LyricsTranslationError.UnsupportedLanguage(targetLanguageName),
+                                    )
+                            }
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (_: Exception) {
+                        _lyricsTranslationState.value =
+                            LyricsTranslationScreenState.Error(LyricsTranslationError.Failed)
+                    } finally {
+                        if (translationJob === runningJob) {
+                            translationJob = null
+                        }
+                    }
+                }
+        }
+
+        fun cancelLyricsTranslation() {
+            translationJob?.cancel()
+            translationJob = null
+            _lyricsTranslationState.value = LyricsTranslationScreenState.Empty
+        }
+
+        fun clearLyricsTranslationResult() {
+            if (_lyricsTranslationState.value !is LyricsTranslationScreenState.Loading) {
+                _lyricsTranslationState.value = LyricsTranslationScreenState.Empty
             }
         }
 
