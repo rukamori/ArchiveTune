@@ -176,6 +176,13 @@
     <string name="theme_presets_title">Cài đặt sẵn</string>
     <string name="copy">Sao chép</string>
     <string name="player_design_v5">Nhỏ nhắn</string>
+<<<<<<< HEAD
+=======
+    <string name="player_stream_client">Ứng dụng phát trực tuyến</string>
+    <string name="player_stream_client_desc">Chọn nguồn phát để lấy luồng âm thanh</string>
+    <string name="player_stream_client_web_remix">Web Remix</string>
+    <string name="player_stream_client_web_remix_desc">Hỗ trợ nhiều định dạng hơn nhưng chậm hơn. Giải mã chữ ký JavaScript gây trễ ~5–10 giây khi khởi động.</string>
+>>>>>>> 6b269c557 (Translated using Weblate (Vietnamese))
     <string name="backup_in_progress">Đang sao lưu</string>
     <string name="restore_in_progress">Đang khôi phục</string>
     <string name="backup_step_export_settings">Đang sao lưu cài đặt</string>
@@ -403,12 +410,20 @@
     <string name="settings_backup_restore_subtitle">Xuất và khôi phục dữ liệu cá nhân</string>
     <string name="settings_developer_options_title">Tùy chọn nhà phát triển</string>
     <string name="settings_developer_options_subtitle">Tính năng thử nghiệm và gỡ lỗi</string>
+<<<<<<< HEAD
     <string name="enable_leak_canary">Bật LeakCanary</string>
     <string name="enable_leak_canary_description">Phát hiện rò rỉ bộ nhớ và hiển thị báo cáo. Hãy khởi động lại ứng dụng sau khi thay đổi tùy chọn này.</string>
     <string name="settings_lyrics_subtitle">Nhà cung cấp lời bài hát và dịch thuật</string>
     <string name="settings_content_subtitle">Ngôn ngữ, quốc gia và mặc định đề xuất</string>
     <string name="settings_internet_subtitle">Proxy, DNS và hành vi phát mạng</string>
     <string name="settings_storage_subtitle">Cache, tải xuống và lưu trữ ngoại tuyến</string>
+=======
+    <string name="settings_lyrics_subtitle">Nhà cung cấp lời bài hát, tải trước và dịch thuật</string>
+    <string name="settings_content_subtitle">Ngôn ngữ, quốc gia và gợi ý mặc định</string>
+    <string name="settings_internet_subtitle">Proxy, DNS và hành vi phát lại mạng</string>
+    <string name="settings_po_token_subtitle">Xác minh phát lại và dữ liệu khách truy cập</string>
+    <string name="settings_storage_subtitle">Bộ đệm, tải xuống và lưu trữ ngoại tuyến</string>
+>>>>>>> 6b269c557 (Translated using Weblate (Vietnamese))
     <string name="settings_updates_subtitle">Phiên bản, ghi chú phát hành và kênh cập nhật</string>
     <string name="settings_about_subtitle">Thông tin ứng dụng, giấy phép và người đóng góp</string>
     <string name="settings_account_subtitle">Đăng nhập và quản lý đồng bộ tài khoản</string>
@@ -552,7 +567,12 @@
     <string name="theme_applied">Đã áp dụng chủ đề</string>
     <string name="theme_export_success">Đã xuất chủ đề</string>
     <string name="theme_export_failed">Xuất thất bại</string>
+<<<<<<< HEAD
     <string name="theme_import_failed_title">Không thể nhập giao diện</string>
+=======
+    <string name="theme_import_failed_title">Không thể nhập chủ đề</string>
+    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
+>>>>>>> 6b269c557 (Translated using Weblate (Vietnamese))
     <string name="top_albums">Album hàng đầu</string>
     <string name="about_position_developers">Nhà phát triển | Nhóm</string>
     <string name="about_position_yuki">dummy reze | Quản trị</string>
@@ -637,6 +657,14 @@
     <string name="arrange_library_chips">Sắp xếp chip thư viện</string>
     <string name="arrange_library_chips_desc">Chọn thứ tự hiển thị các tab trong thư viện</string>
     <string name="use_system_language">Sử dụng ngôn ngữ hệ thống</string>
+<<<<<<< HEAD
+=======
+    <string name="storage_clear_song_cache_progress">Đang xóa bộ đệm bài hát...%1$d%%</string>
+    <string name="storage_clear_downloads_progress">Đang xóa tải xuống...%1$d%%</string>
+    <string name="storage_clear_image_cache_progress">Đang xóa bộ đệm ảnh...%1$d%%</string>
+    <string name="storage_clear_canvas_cache_progress">Đang xóa bộ đệm canvas...%1$d%%</string>
+    <string name="storage_cache_clear_warning">Giữ ArchiveTune mở trong khi đang xóa tệp bộ đệm.</string>
+>>>>>>> 6b269c557 (Translated using Weblate (Vietnamese))
     <string name="latest_release">Phát hành mới nhất</string>
     <string name="release_type_album">Album</string>
     <string name="release_type_single">Đĩa đơn</string>
@@ -686,6 +714,36 @@
     <string name="import_saving">Đang lưu nhập…</string>
     <string name="import_saving_progress">Đang lưu: %1$d/%2$d</string>
     <string name="ai_provider_openrouter">OpenRouter</string>
+<<<<<<< HEAD
+=======
+    <string name="mori_cipher_settings_title">Giải mã YouTube</string>
+    <string name="mori_cipher_settings_description">Quản lý cập nhật giải mã trình phát tự động</string>
+    <string name="mori_cipher_loading_configuration">Đang chuẩn bị cấu hình trình phát hiện tại…%1$d%%</string>
+    <string name="mori_cipher_next_refresh">Làm mới tự động tiếp theo</string>
+    <string name="mori_cipher_runtime_section">Trạng thái giải mã</string>
+    <string name="mori_cipher_update_section">Cập nhật</string>
+    <string name="mori_cipher_status">Trạng thái động cơ</string>
+    <string name="mori_cipher_status_ready">Sẵn sàng</string>
+    <string name="mori_cipher_status_refreshing">Đang làm mới</string>
+    <string name="mori_cipher_status_degraded">Đang sử dụng cấu hình được lưu trong bộ đệm</string>
+    <string name="mori_cipher_status_uninitialized">Chưa khởi tạo</string>
+    <string name="mori_cipher_player_id">Cấu hình trình phát</string>
+    <string name="mori_cipher_last_updated">Cập nhật lần cuối</string>
+    <string name="mori_cipher_refresh">Làm mới cấu hình</string>
+    <string name="mori_cipher_refresh_remaining">Còn %1$d lần làm mới thủ công</string>
+    <string name="mori_cipher_rate_limit_countdown">Có thể dùng lại sau %1$s</string>
+    <string name="mori_cipher_automatic_updates">Cập nhật tự động</string>
+    <string name="mori_cipher_automatic_updates_description">ArchiveTune làm mới cấu hình trình phát YouTube hiện tại mỗi sáu giờ và sau khi giải mã thất bại.</string>
+    <string name="mori_cipher_refresh_success">Đã cập nhật cấu hình trình phát</string>
+    <string name="mori_cipher_refresh_failed">Không thể cập nhật cấu hình trình phát</string>
+    <string name="mori_cipher_rate_limited">Đã đạt giới hạn làm mới thủ công</string>
+    <string name="mori_cipher_empty_title">Không có cấu hình trình phát</string>
+    <string name="mori_cipher_empty_description">Kết nối Internet để tải cấu hình trình phát YouTube hiện tại.</string>
+    <string name="mori_cipher_error_title">Giải mã không khả dụng</string>
+    <string name="mori_cipher_load_failed">Không thể tải cấu hình trình phát hiện tại. Các phương án dự phòng phát lại vẫn có sẵn.</string>
+    <string name="aod_mode">Chế độ AOD</string>
+    <string name="aod_mode_exit">Thoát AOD</string>
+>>>>>>> 6b269c557 (Translated using Weblate (Vietnamese))
     <string name="playlist_source_local">Cục bộ</string>
     <string name="playlist_source_online">Trực tuyến</string>
 </resources>
