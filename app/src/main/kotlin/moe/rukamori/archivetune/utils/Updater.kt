@@ -55,15 +55,20 @@ private data class ReleasesNetworkResult(
 object Updater {
     private val client = HttpClient()
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
-    private const val CommitHistoryBaseUrl = "https://api.github.com/repos/rukamori/ArchiveTune"
 
     private val githubOwner: String
         get() = BuildConfig.GITHUB_OWNER
     private val githubRepo: String
         get() = BuildConfig.GITHUB_REPO
+    private val releaseOwner: String
+        get() = BuildConfig.RELEASE_GITHUB_OWNER
+    private val releaseRepo: String
+        get() = BuildConfig.RELEASE_GITHUB_REPO
+
+    private const val CommitHistoryBaseUrl = "https://api.github.com/repos/rukamori/ArchiveTune"
 
     private val stableReleaseBaseUrl: String
-        get() = "https://github.com/$githubOwner/$githubRepo/releases"
+        get() = "https://github.com/$releaseOwner/$releaseRepo/releases"
     private val artifactWorkflowRunsUrl: String
         get() = "https://api.github.com/repos/$githubOwner/$githubRepo/actions/workflows/build.yml/runs" +
             "?branch=dev&status=success&per_page=1&exclude_pull_requests=true"
@@ -93,7 +98,11 @@ object Updater {
             }
 
     private fun stableReleaseArtifactName(): String =
-        "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
+        if (BuildConfig.IS_NIGHTLY_BUILD) {
+            "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-nightly.apk"
+        } else {
+            "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
+        }
 
     private fun artifactReleaseArtifactName(): String =
         "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release"
@@ -245,10 +254,10 @@ object Updater {
 
     internal fun findLatestCanaryRelease(releases: List<ReleaseInfo>): ReleaseInfo? {
         if (releases.isEmpty()) return null
-        return releases.maxByOrNull { release ->
+        return releases.maxWithOrNull(compareByDescending<ReleaseInfo> { release ->
             val dateTag = release.tagName.removePrefix("N").takeWhile { it.isDigit() }
             dateTag.toLongOrNull() ?: 0L
-        }
+        }.thenByDescending { it.publishedAt })
     }
 
     private fun preferredReleaseVersionNameOrNull(release: ReleaseInfo): String? =
@@ -327,7 +336,7 @@ object Updater {
         cachedEtag: String?,
     ): ReleasesNetworkResult {
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/$githubOwner/$githubRepo/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/$releaseOwner/$releaseRepo/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "ArchiveTune")
@@ -559,13 +568,12 @@ object Updater {
             workflowRun
                 .optString("run_started_at")
                 .ifBlank { workflowRun.optString("created_at") }
-        val date = publishedAt.take(10).filter(Char::isDigit)
-        if (date.length != 8) return null
+        val headSha = workflowRun.optString("head_sha", "").take(7)
+        if (headSha.isBlank()) return null
 
-        val tagName = "N$date"
         return ReleaseInfo(
-            tagName = tagName,
-            name = tagName,
+            tagName = headSha,
+            name = headSha,
             body = null,
             publishedAt = publishedAt,
             htmlUrl = workflowRun.optString("html_url"),

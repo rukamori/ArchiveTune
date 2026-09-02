@@ -324,6 +324,9 @@ fun UpdateScreen(
                             if (updateSheetIsSameVersion) {
                                 showUpdateUpToDateDialog = true
                                 onUpToDate()
+                            } else if (updateChannel == UpdateChannel.ARTIFACT) {
+                                val downloadUrl = Updater.getLatestCanaryDownloadUrl()
+                                installUpdate(downloadUrl)
                             } else {
                                 updateSheetState.show(updateSheetContent)
                             }
