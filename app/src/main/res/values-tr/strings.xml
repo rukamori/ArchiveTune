@@ -386,7 +386,6 @@
     <string name="small_image">Küçük Resim</string>
     <string name="small_image_custom_url">Küçük resim özel URL\'si</string>
     <string name="activity_status">Etkinlik Durumu</string>
-    <string name="platform_status">platformu</string>
     <string name="translator_options">Çevirmen Seçenekleri</string>
     <string name="enable_translator">Çevirmeni Etkinleştir</string>
     <string name="enable_translator_desc">Seçilen alanları Discord RPC\'ye göndermeden önce çevirin</string>

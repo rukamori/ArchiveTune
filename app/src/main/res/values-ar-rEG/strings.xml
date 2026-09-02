@@ -712,14 +712,6 @@
     <string name="discord_presence_do_not_disturb">الرجاء عدم الإزعاج</string>
     <string name="discord_presence_idle">خامل</string>
     <string name="discord_presence_streaming">بث مباشر</string>
-    <string name="discord_platform_desktop">كمبيوتر</string>
-    <string name="discord_platform_xbox">إكس بوكس</string>
-    <string name="discord_platform_samsung">سامسونج</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">أندرويد</string>
-    <string name="discord_platform_embedded">مدمج</string>
-    <string name="discord_platform_ps4">بلاي ستيشن 4</string>
-    <string name="discord_platform_ps5">بلاي ستيشن 5</string>
     <string name="discord_activity_type_playing_label">شغال دلوقتي</string>
     <string name="discord_activity_type_streaming_label">بث مباشر</string>
     <string name="discord_activity_type_listening_label">يستمع</string>
@@ -728,7 +720,6 @@
     <string name="discord_image_album_artwork">غلاف الألبوم</string>
     <string name="discord_image_artist_artwork">صورة الفنان</string>
     <string name="activity_status">حالة النشاط</string>
-    <string name="platform_status">المنصة</string>
     <string name="translator_options">خيارات المترجم</string>
     <string name="enable_translator">تفعيل المترجم</string>
     <string name="enable_translator_desc">ترجمة الحقول المحددة قبل إرسالها لـ Discord Rich Presence</string>

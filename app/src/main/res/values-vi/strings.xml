@@ -474,7 +474,6 @@
     <string name="small_image">Hình ảnh nhỏ</string>
     <string name="small_image_custom_url">URL hình ảnh nhỏ tùy chỉnh</string>
     <string name="activity_status">Trạng thái hoạt động</string>
-    <string name="platform_status">Nền tảng</string>
     <string name="translator_options">Tùy chọn Dịch thuật</string>
     <string name="enable_translator">Bật Dịch thuật</string>
     <string name="enable_translator_desc">Dịch các trường đã chọn trước khi gửi đến Discord RPC</string>
@@ -729,14 +728,6 @@
     <string name="discord_image_artist_artwork">Ảnh nghệ sĩ</string>
     <string name="discord_login_description">Kết nối tài khoản Discord của bạn với OAuth để ArchiveTune có thể xuất bản Rich Presence.</string>
     <string name="discord_open_authorization">Mở ủy quyền Discord</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_desktop">Desktop</string>
-    <string name="discord_platform_embedded">Nhúng</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
-    <string name="discord_platform_samsung">Samsung</string>
-    <string name="discord_platform_xbox">Xbox</string>
     <string name="discord_presence_do_not_disturb">Không làm phiền</string>
     <string name="discord_presence_idle">Rảnh rỗi</string>
     <string name="discord_presence_online">Trực tuyến</string>

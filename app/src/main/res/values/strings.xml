@@ -769,14 +769,6 @@
     <string name="discord_presence_do_not_disturb">Do Not Disturb</string>
     <string name="discord_presence_idle">Idle</string>
     <string name="discord_presence_streaming">Streaming</string>
-    <string name="discord_platform_desktop">Desktop</string>
-    <string name="discord_platform_xbox">Xbox</string>
-    <string name="discord_platform_samsung">Samsung</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_embedded">Embedded</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="discord_activity_type_playing_label">Playing</string>
     <string name="discord_activity_type_streaming_label">Streaming</string>
     <string name="discord_activity_type_listening_label">Listening</string>
@@ -785,7 +777,6 @@
     <string name="discord_image_album_artwork">Album artwork</string>
     <string name="discord_image_artist_artwork">Artist artwork</string>
     <string name="activity_status">Activity Status</string>
-    <string name="platform_status">Platform</string>
     <string name="translator_options">Translator Options</string>
     <string name="enable_translator">Enable Translator</string>
     <string name="enable_translator_desc">Translate selected fields before sending to Discord RPC</string>

@@ -22,7 +22,6 @@ import moe.rukamori.archivetune.constants.DiscordActivityButton2LabelKey
 import moe.rukamori.archivetune.constants.DiscordActivityButton2UrlSourceKey
 import moe.rukamori.archivetune.constants.DiscordActivityDetailsKey
 import moe.rukamori.archivetune.constants.DiscordActivityNameKey
-import moe.rukamori.archivetune.constants.DiscordActivityPlatformKey
 import moe.rukamori.archivetune.constants.DiscordActivityStateKey
 import moe.rukamori.archivetune.constants.DiscordActivityTypeKey
 import moe.rukamori.archivetune.constants.DiscordLargeImageCustomUrlKey
@@ -36,7 +35,6 @@ import moe.rukamori.archivetune.constants.EnableTranslatorKey
 import moe.rukamori.archivetune.constants.TranslatorContextsKey
 import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.discord.DiscordActivityPlatform
 import moe.rukamori.archivetune.discord.DiscordActivityType
 import moe.rukamori.archivetune.discord.DiscordOnlineStatus
 import moe.rukamori.archivetune.discord.DiscordPresenceActivity
@@ -173,10 +171,6 @@ class DiscordRPC(
             DiscordActivityType.fromPreference(
                 context.dataStore[DiscordActivityTypeKey] ?: "LISTENING",
             )
-        val platform =
-            DiscordActivityPlatform.fromPreference(
-                context.dataStore[DiscordActivityPlatformKey] ?: "android",
-            )
         val status =
             DiscordOnlineStatus.fromPreference(
                 context.dataStore[DiscordPresenceStatusKey] ?: "online",
@@ -209,7 +203,6 @@ class DiscordRPC(
                 buttons = buttons,
                 timestamps = timestamps,
                 statusDisplayType = DiscordStatusDisplayType.State,
-                supportedPlatforms = platform,
                 onlineStatus = status,
             )
 

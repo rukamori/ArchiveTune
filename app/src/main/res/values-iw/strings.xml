@@ -639,14 +639,6 @@
     <string name="discord_presence_do_not_disturb">נא לא להפריע</string>
     <string name="discord_presence_idle">ללא פעילות</string>
     <string name="discord_presence_streaming">סטרימינג</string>
-    <string name="discord_platform_desktop">שולחן עבודה</string>
-    <string name="discord_platform_xbox">אקסבוקס</string>
-    <string name="discord_platform_samsung">סמסונג</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_embedded">מוטמע</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="discord_activity_type_playing_label">מנגן</string>
     <string name="discord_activity_type_streaming_label">סטרימינג</string>
     <string name="discord_activity_type_listening_label">האזנה</string>
@@ -655,7 +647,6 @@
     <string name="discord_image_album_artwork">יצירת האמנות של האלבום</string>
     <string name="discord_image_artist_artwork">יצירות אמנות של אמן</string>
     <string name="activity_status">סטטוס פעילות</string>
-    <string name="platform_status">פלטפורמה</string>
     <string name="translator_options">אפשרויות מתרגם</string>
     <string name="enable_translator">הפעלת מתרגם</string>
     <string name="enable_translator_desc">תרגם שדות נבחרים לפני שליחה ל-Discord RPC</string>

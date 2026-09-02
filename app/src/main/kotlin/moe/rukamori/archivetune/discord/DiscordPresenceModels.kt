@@ -44,7 +44,6 @@ data class DiscordPresenceActivity(
     val buttons: List<DiscordPresenceButton> = emptyList(),
     val timestamps: DiscordPresenceTimestamps = DiscordPresenceTimestamps(),
     val statusDisplayType: DiscordStatusDisplayType = DiscordStatusDisplayType.State,
-    val supportedPlatforms: Int = DiscordActivityPlatform.Android.bit,
     val onlineStatus: DiscordOnlineStatus = DiscordOnlineStatus.Online,
 )
 
@@ -100,37 +99,3 @@ enum class DiscordOnlineStatus(
     }
 }
 
-enum class DiscordActivityPlatform(
-    val bit: Int,
-    val wireValue: String,
-) {
-    Desktop(1, "desktop"),
-    Xbox(2, "xbox"),
-    Samsung(4, "samsung"),
-    Ios(8, "ios"),
-    Android(16, "android"),
-    Embedded(32, "embedded"),
-    Ps4(64, "ps4"),
-    Ps5(128, "ps5"),
-    ;
-
-    companion object {
-        fun fromPreference(value: String): Int =
-            when (value.lowercase()) {
-                "desktop" -> Desktop.bit
-                "xbox" -> Xbox.bit
-                "samsung" -> Samsung.bit
-                "ios" -> Ios.bit
-                "web", "embedded" -> Embedded.bit
-                "ps4" -> Ps4.bit
-                "ps5" -> Ps5.bit
-                else -> Android.bit
-            }
-
-        fun wireValueFromBit(bit: Int): String =
-            entries
-                .firstOrNull { platform -> platform.bit == bit }
-                ?.wireValue
-                ?: Android.wireValue
-    }
-}
