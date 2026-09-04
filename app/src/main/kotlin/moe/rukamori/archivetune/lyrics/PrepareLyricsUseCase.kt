@@ -106,7 +106,7 @@ class PrepareLyricsUseCase
             romanizationPreferences: LyricsRomanizationPreferences,
         ): PreparedLyricsLine {
             val mainTrack = main.toPreparedTrack()
-            val backgroundTracks = backgrounds.map(TtmlTrack::toPreparedTrack)
+            val backgroundTracks = backgrounds.map { track -> track.toPreparedTrack() }
             val romanizationTrack = chooseRomanization(romanizations)
             val providerRomanization =
                 romanizationTrack
@@ -254,6 +254,7 @@ class PrepareLyricsUseCase
                 source.lineSequence()
                     .map(String::trim)
                     .filter(String::isNotEmpty)
+                    .toList()
                     .mapIndexed { index, text ->
                         val romanization = LyricsUtils.romanizeLyricsLine(text, preferences.romanization)
                         PreparedLyricsLine(
@@ -270,7 +271,7 @@ class PrepareLyricsUseCase
                             phonetics = ImmutableList.of(),
                             isInstrumental = false,
                         )
-                    }.toList()
+                    }
             return PreparedLyrics(
                 sourceFormat = LyricsSourceFormat.PLAIN,
                 syncType = LyricsSyncType.PLAIN,
