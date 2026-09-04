@@ -106,64 +106,93 @@ class ResolveAudioStreamUseCase
             request: AudioStreamRequest,
             consumer: ResolutionConsumer,
             priority: StreamResolutionPriority,
-        ): ResolutionLease =
-            synchronized(inFlightLock) {
-                cache[key]?.let { cached ->
-                    if (isFresh(cached)) return@synchronized ResolutionLease.Cached(cached)
-                    cache.remove(key, cached)
-                }
-
-                val requestedInFlightKey = InFlightKey(key, priority)
-                val reusableInFlightKey =
-                    if (priority == StreamResolutionPriority.BACKGROUND) {
-                        InFlightKey(key, StreamResolutionPriority.FOREGROUND)
-                            .takeIf(inFlight::containsKey)
-                            ?: requestedInFlightKey
-                    } else {
-                        requestedInFlightKey
+        ): ResolutionLease {
+            var preloadsToCancel: List<Deferred<ResolvedAudioStream>> = emptyList()
+            val lease =
+                synchronized(inFlightLock) {
+                    cache[key]?.let { cached ->
+                        if (isFresh(cached)) return@synchronized ResolutionLease.Cached(cached)
+                        cache.remove(key, cached)
                     }
-                inFlight[reusableInFlightKey]?.let { resolution ->
-                    resolution.addOwner(consumer)
-                    return@synchronized ResolutionLease.Active(reusableInFlightKey, resolution)
-                }
 
-                lateinit var resolution: InFlightResolution
-                val deferred =
-                    scope.async(start = CoroutineStart.LAZY) {
-                        val resolved =
-                            resolveUncached(
-                                request = request,
-                                priority = request.resolutionPriority(consumer),
-                            )
-                        val resolutionContext = coroutineContext
-                        resolutionContext.ensureActive()
-                        synchronized(inFlightLock) {
-                            resolutionContext.ensureActive()
-                            if (
-                                inFlight[requestedInFlightKey] !== resolution ||
-                                !resolution.hasOwners()
-                            ) {
-                                throw CancellationException(
-                                    "Audio stream resolution no longer has active consumers",
-                                )
+                    val requestedInFlightKey = InFlightKey(key, priority)
+                    val alternateInFlightKey =
+                        InFlightKey(
+                            cacheKey = key,
+                            priority =
+                                when (priority) {
+                                    StreamResolutionPriority.FOREGROUND -> StreamResolutionPriority.BACKGROUND
+                                    StreamResolutionPriority.BACKGROUND -> StreamResolutionPriority.FOREGROUND
+                                },
+                        )
+                    val reusableInFlightKey =
+                        requestedInFlightKey.takeIf(inFlight::containsKey)
+                            ?: alternateInFlightKey.takeIf(inFlight::containsKey)
+                    if (reusableInFlightKey != null) {
+                        inFlight[reusableInFlightKey]?.let { resolution ->
+                            resolution.addOwner(consumer)
+                            return@synchronized ResolutionLease.Active(reusableInFlightKey, resolution)
+                        }
+                    }
+
+                    if (priority == StreamResolutionPriority.FOREGROUND) {
+                        val obsoletePreloads =
+                            inFlight.entries
+                                .filter { (inFlightKey, resolution) ->
+                                    inFlightKey.priority == StreamResolutionPriority.BACKGROUND &&
+                                        resolution.hasOnlyPreloadOwners() &&
+                                        !resolution.deferred.isCompleted
+                                }.map { (inFlightKey, resolution) -> inFlightKey to resolution }
+                        preloadsToCancel =
+                            obsoletePreloads.mapNotNull { (inFlightKey, resolution) ->
+                                if (inFlight.remove(inFlightKey, resolution)) {
+                                    resolution.deferred
+                                } else {
+                                    null
+                                }
                             }
-                            storeResolvedStream(key, resolved)
-                        }
-                        resolved
                     }
 
-                resolution = InFlightResolution(deferred)
-                resolution.addOwner(consumer)
-                deferred.invokeOnCompletion {
-                    synchronized(inFlightLock) {
-                        if (inFlight[requestedInFlightKey] === resolution) {
-                            inFlight.remove(requestedInFlightKey)
+                    lateinit var resolution: InFlightResolution
+                    val deferred =
+                        scope.async(start = CoroutineStart.LAZY) {
+                            val resolved =
+                                resolveUncached(
+                                    request = request,
+                                    priority = priority,
+                                )
+                            val resolutionContext = coroutineContext
+                            resolutionContext.ensureActive()
+                            synchronized(inFlightLock) {
+                                resolutionContext.ensureActive()
+                                if (
+                                    inFlight[requestedInFlightKey] !== resolution ||
+                                    !resolution.hasOwners()
+                                ) {
+                                    throw CancellationException(
+                                        "Audio stream resolution no longer has active consumers",
+                                    )
+                                }
+                                storeResolvedStream(key, resolved)
+                            }
+                            resolved
+                        }
+
+                    resolution = InFlightResolution(deferred)
+                    resolution.addOwner(consumer)
+                    deferred.invokeOnCompletion {
+                        synchronized(inFlightLock) {
+                            if (inFlight[requestedInFlightKey] === resolution) {
+                                inFlight.remove(requestedInFlightKey)
+                            }
                         }
                     }
+                    inFlight[requestedInFlightKey] = resolution
+                    ResolutionLease.Active(requestedInFlightKey, resolution)
                 }
-                inFlight[requestedInFlightKey] = resolution
-                ResolutionLease.Active(requestedInFlightKey, resolution)
-            }
+            preloadsToCancel.forEach { deferred -> deferred.cancel() }
+            return lease
+        }
 
         private fun releaseResolution(
             key: InFlightKey,
@@ -197,6 +226,9 @@ class ResolveAudioStreamUseCase
 
         private fun InFlightResolution.hasOwners(): Boolean =
             playbackOwners > 0 || preloadOwners > 0
+
+        private fun InFlightResolution.hasOnlyPreloadOwners(): Boolean =
+            playbackOwners == 0 && preloadOwners > 0
 
         private fun InFlightResolution.removeOwner(consumer: ResolutionConsumer) {
             when (consumer) {
@@ -356,7 +388,7 @@ class ResolveAudioStreamUseCase
             const val TAG = "AudioStreamResolver"
             const val STREAM_EXPIRY_SAFETY_MS = 60_000L
             const val MAX_CACHE_ENTRIES = 256
-            const val PLAYBACK_RESOLUTION_TIMEOUT_SECONDS = 30L
+            const val PLAYBACK_RESOLUTION_TIMEOUT_SECONDS = 45L
             const val DOWNLOAD_RESOLUTION_TIMEOUT_SECONDS = 180L
         }
     }
