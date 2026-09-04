@@ -42,6 +42,19 @@ private const val LOGCAT_ENTRY_LIMIT = 1_000
 private const val LOGCAT_CHUNK_LENGTH = 4_000
 private const val DUPLICATE_WINDOW_MILLIS = 1_000L
 
+private val LOGCAT_FILTER_SPECS =
+    listOf(
+        "AndroidRuntime:E",
+        "LeakCanaryController:W",
+        "MusicDatabase:V",
+        "MusicWidgetActions:E",
+        "RLog:I",
+        "System.err:V",
+        "System.out:V",
+        "libc:F",
+        "*:S",
+    )
+
 @Singleton
 class LogcatRepository
     @Inject
@@ -121,12 +134,15 @@ class LogcatRepository
                 )
             val logcatProcess =
                 ProcessBuilder(
-                    "logcat",
-                    "--pid=$processId",
-                    "-v",
-                    "time",
-                    "-t",
-                    LOGCAT_ENTRY_LIMIT.toString(),
+                    buildList {
+                        add("logcat")
+                        add("--pid=$processId")
+                        add("-v")
+                        add("time")
+                        add("-t")
+                        add(LOGCAT_ENTRY_LIMIT.toString())
+                        addAll(LOGCAT_FILTER_SPECS)
+                    },
                 ).redirectErrorStream(true)
                     .start()
 
@@ -145,6 +161,10 @@ class LogcatRepository
                                 "E", "F" -> Log.ERROR
                                 else -> return@forEachLine
                             }
+                        val normalizedTag = tag.trim()
+                        if (!isRelevantLogcatEntry(level, normalizedTag, message)) {
+                            return@forEachLine
+                        }
                         val parsedTimestamp = timestampFormat.parse(timestamp) ?: return@forEachLine
                         val calendar =
                             Calendar.getInstance().apply {
@@ -155,7 +175,7 @@ class LogcatRepository
                             LogEntry(
                                 time = calendar.timeInMillis,
                                 level = level,
-                                tag = tag.trim(),
+                                tag = normalizedTag,
                                 message = message,
                             )
                     }
@@ -171,6 +191,23 @@ class LogcatRepository
                 logcatProcess.destroy()
             }
         }
+    }
+
+private fun isRelevantLogcatEntry(
+    level: Int,
+    tag: String,
+    message: String,
+): Boolean =
+    when (tag) {
+        "AndroidRuntime", "libc" -> level >= Log.ERROR
+        "LeakCanaryController", "MusicDatabase", "MusicWidgetActions", "RLog" -> true
+        "System.err" -> message.startsWith("PaxsenixLyrics:")
+        "System.out" ->
+            message.startsWith("AppleMusicCanvas:") ||
+                message.startsWith("Error converting chart item:") ||
+                message.startsWith("Error converting two row item:")
+
+        else -> false
     }
 
 private fun mergeCapturedAndLogcatEntries(
