@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.C
 import androidx.media3.common.Player.STATE_BUFFERING
 import androidx.media3.common.Player.STATE_READY
@@ -123,6 +124,8 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
+import moe.rukamori.archivetune.viewmodels.LyricsRenderViewModel
 import kotlin.coroutines.cancellation.CancellationException
 
 private val AppleMusicFallbackGradient =
@@ -143,6 +146,7 @@ fun LyricsScreen(
     onQueueClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     backHandlerEnabled: Boolean = true,
+    lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
@@ -161,6 +165,7 @@ fun LyricsScreen(
             }
         }
     val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+    val lyricsRenderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
@@ -241,6 +246,11 @@ fun LyricsScreen(
     val durationState = remember(mediaMetadata.id) { mutableLongStateOf(C.TIME_UNSET) }
     var sliderPosition by remember(mediaMetadata.id) { mutableStateOf<Long?>(null) }
     var gradientColors by remember(mediaMetadata.thumbnailUrl) { mutableStateOf(AppleMusicFallbackGradient) }
+
+    val lyricsDurationMs = durationState.longValue.takeIf { it != C.TIME_UNSET } ?: 0L
+    LaunchedEffect(mediaMetadata.id, lyricsDurationMs) {
+        lyricsRenderViewModel.bind(mediaMetadata.id, lyricsDurationMs)
+    }
 
     val gradientColorsCache =
         remember {
@@ -390,6 +400,7 @@ fun LyricsScreen(
                 ) {
                     AppleMusicLyricsPane(
                         lyricsMode = lyricsMode,
+                        lyricsState = lyricsRenderState,
                         foregroundColor = foregroundColor,
                         sliderPositionProvider = { sliderPosition },
                         lyricsSyncOffset = lyricsSyncOffset,
@@ -443,6 +454,7 @@ fun LyricsScreen(
             } else {
                 AppleMusicLyricsPane(
                     lyricsMode = lyricsMode,
+                    lyricsState = lyricsRenderState,
                     foregroundColor = foregroundColor,
                     sliderPositionProvider = { sliderPosition },
                     lyricsSyncOffset = lyricsSyncOffset,
@@ -768,6 +780,7 @@ private fun AppleMusicHeaderIconButton(
 @Composable
 private fun AppleMusicLyricsPane(
     lyricsMode: LyricsMode,
+    lyricsState: LyricsRenderScreenState,
     foregroundColor: Color,
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
@@ -775,6 +788,7 @@ private fun AppleMusicLyricsPane(
 ) {
     LyricsContent(
         lyricsMode = lyricsMode,
+        lyricsState = lyricsState,
         sliderPositionProvider = sliderPositionProvider,
         lyricsSyncOffset = lyricsSyncOffset,
         modifier =
@@ -995,6 +1009,7 @@ private fun AppleMusicSlider(
 @Composable
 private fun LyricsContent(
     lyricsMode: LyricsMode,
+    lyricsState: LyricsRenderScreenState,
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
     textColor: Color,
@@ -1003,6 +1018,7 @@ private fun LyricsContent(
     when (lyricsMode) {
         LyricsMode.V2 -> {
             LyricsV2(
+                lyricsState = lyricsState,
                 sliderPositionProvider = sliderPositionProvider,
                 lyricsSyncOffset = lyricsSyncOffset,
                 modifier = modifier,
@@ -1012,6 +1028,7 @@ private fun LyricsContent(
 
         LyricsMode.ENHANCED -> {
             LyricsEnhanced(
+                lyricsState = lyricsState,
                 sliderPositionProvider = sliderPositionProvider,
                 lyricsSyncOffset = lyricsSyncOffset,
                 modifier = modifier,

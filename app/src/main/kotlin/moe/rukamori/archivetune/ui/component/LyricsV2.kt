@@ -103,47 +103,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.LyricsClickKey
-import moe.rukamori.archivetune.constants.LyricsLineBlurKey
-import moe.rukamori.archivetune.constants.LyricsLineSpacingKey
-import moe.rukamori.archivetune.constants.LyricsRomanizeChineseKey
-import moe.rukamori.archivetune.constants.LyricsRomanizeHindiKey
-import moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey
-import moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey
-import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
-import moe.rukamori.archivetune.constants.LyricsScrollKey
-import moe.rukamori.archivetune.constants.LyricsTextSizeKey
-import moe.rukamori.archivetune.constants.LyricsV2BounceFactorKey
-import moe.rukamori.archivetune.constants.LyricsV2FillTransitionWidthKey
-import moe.rukamori.archivetune.constants.LyricsV2GlowFactorKey
-import moe.rukamori.archivetune.constants.LyricsV2LrcBounceEnabledKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
-import moe.rukamori.archivetune.db.entities.LyricsEntity
-import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.lyrics.LyricsSourceFormat
+import moe.rukamori.archivetune.lyrics.LyricsSyncType
 import moe.rukamori.archivetune.lyrics.LyricsUtils.findCurrentLineIndex
-import moe.rukamori.archivetune.lyrics.LyricsUtils.hasWordSyncedLyrics
-import moe.rukamori.archivetune.lyrics.LyricsUtils.insertInstrumentalBreaks
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
-import moe.rukamori.archivetune.lyrics.LyricsUtils.parseLyrics
-import moe.rukamori.archivetune.lyrics.LyricsUtils.parseTtml
-import moe.rukamori.archivetune.lyrics.LyricsUtils.providedRomanizedTextForEntry
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedTranslationTextForEntry
-import moe.rukamori.archivetune.lyrics.LyricsUtils.romanizeLyricsLine
-import moe.rukamori.archivetune.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import moe.rukamori.archivetune.lyrics.WordTimestamp
+import moe.rukamori.archivetune.lyrics.toLyricsEntries
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.ui.utils.smoothFadingEdge
 import moe.rukamori.archivetune.utils.rememberEnumPreference
-import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.utils.reportException
-import kotlin.coroutines.cancellation.CancellationException
+import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
 import kotlin.math.abs
+import kotlin.math.roundToLong
 
 // ──────────────────────────────────────────────────────────────────────
 // Constants
@@ -154,8 +130,6 @@ private const val LRC_LEAD_MS = 300L
 
 /** Lead time offset for word-synced lyrics (ms). */
 private const val WORD_SYNC_LEAD_MS = 0L
-
-private const val LYRIC_VISUAL_TUNING_OFFSET_MS = 150L
 
 /** Seconds to wait before auto-scroll resumes after manual scroll. */
 private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
@@ -188,6 +162,7 @@ private fun isRtlText(text: String): Boolean {
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsV2(
+    lyricsState: LyricsRenderScreenState,
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
@@ -202,37 +177,17 @@ fun LyricsV2(
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    // ── Preferences ──
-    val (lyricsClick) = rememberPreference(LyricsClickKey, defaultValue = true)
-    val (lyricsScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
-    val (lyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
-    val (lyricsLineSpacing) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
-    val (lyricsLineBlurPreference) = rememberPreference(LyricsLineBlurKey, defaultValue = true)
-    val (bounceFactor) = rememberPreference(LyricsV2BounceFactorKey, defaultValue = 1f)
-    val (glowFactor) = rememberPreference(LyricsV2GlowFactorKey, defaultValue = 1f)
-    val (fillTransitionWidth) = rememberPreference(LyricsV2FillTransitionWidthKey, defaultValue = 8f)
-    val (lrcBounceEnabled) = rememberPreference(LyricsV2LrcBounceEnabledKey, defaultValue = true)
-    val (romanizeChinese) = rememberPreference(LyricsRomanizeChineseKey, defaultValue = true)
-    val (romanizeHindi) = rememberPreference(LyricsRomanizeHindiKey, defaultValue = true)
-    val (romanizeJapanese) = rememberPreference(LyricsRomanizeJapaneseKey, defaultValue = true)
-    val (romanizeKorean) = rememberPreference(LyricsRomanizeKoreanKey, defaultValue = true)
-    val (romanizeOtherLanguages) = rememberPreference(LyricsRomanizeOtherLanguagesKey, defaultValue = true)
-    val romanizationPreferences =
-        remember(
-            romanizeJapanese,
-            romanizeKorean,
-            romanizeChinese,
-            romanizeHindi,
-            romanizeOtherLanguages,
-        ) {
-            LyricsRomanizationPreferences(
-                romanizeJapanese = romanizeJapanese,
-                romanizeKorean = romanizeKorean,
-                romanizeChinese = romanizeChinese,
-                romanizeHindi = romanizeHindi,
-                romanizeOther = romanizeOtherLanguages,
-            )
-        }
+    val preparedLyrics = (lyricsState as? LyricsRenderScreenState.Success)?.lyrics
+    val preferences = preparedLyrics?.preferences
+    val lyricsClick = preferences?.clickEnabled ?: true
+    val lyricsScroll = preferences?.scrollEnabled ?: true
+    val lyricsTextSize = preferences?.textSizeSp ?: 26f
+    val lyricsLineSpacing = preferences?.lineSpacing ?: 1.3f
+    val lyricsLineBlurPreference = preferences?.lineBlurEnabled ?: true
+    val bounceFactor = preferences?.v2BounceFactor ?: 1f
+    val glowFactor = preferences?.v2GlowFactor ?: 1f
+    val fillTransitionWidth = preferences?.v2FillTransitionWidthDp ?: 8f
+    val lrcBounceEnabled = preferences?.v2LrcBounceEnabled ?: true
     val lyricsFontFamily = rememberArchiveTuneLyricsFontFamily()
     val playerBackground by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
 
@@ -256,41 +211,13 @@ fun LyricsV2(
     var shareDialogData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var showShareImageDialog by remember { mutableStateOf(false) }
 
-    // ── Lyrics data ──
-    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
-    val lyrics = currentLyrics?.lyrics
-    val showTranslations =
-        remember(currentLyrics?.source) {
-            currentLyrics?.hasTranslationSource() == true
-        }
-
-    // ── Parse lyrics into entries ──
-    val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!)) }
-    val isWordSyncedFormat = remember(lyrics) { lyrics != null && hasWordSyncedLyrics(lyrics!!) }
+    val showTranslations = preparedLyrics?.lines?.any { line -> line.translation != null } == true
+    val isSynced = preparedLyrics?.syncType != null && preparedLyrics.syncType != LyricsSyncType.PLAIN
+    val isWordSyncedFormat = preparedLyrics?.syncType == LyricsSyncType.WORD
 
     val lyricsEntries: List<LyricsEntry> =
-        remember(lyrics) {
-            if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
-            val parsed =
-                when {
-                    isTtml(lyrics!!) -> {
-                        parseTtml(lyrics!!)
-                    }
-
-                    isLineSyncedLrc(lyrics!!) -> {
-                        val dur = player.duration.takeIf { it > 0L } ?: 0L
-                        insertInstrumentalBreaks(parseLyrics(lyrics!!), dur)
-                    }
-
-                    else -> {
-                        lyrics!!
-                            .lines()
-                            .filter { it.isNotBlank() }
-                            .mapIndexed { index, line ->
-                                LyricsEntry(time = -1L, text = line.trim())
-                            }
-                    }
-                }
+        remember(preparedLyrics) {
+            val parsed = preparedLyrics?.toLyricsEntries().orEmpty()
             if (parsed.isNotEmpty() && parsed.first().time >= 0) {
                 listOf(HEAD_LYRICS_ENTRY) + parsed
             } else {
@@ -300,50 +227,13 @@ fun LyricsV2(
 
     val entriesWithWords: List<LyricsEntry> = lyricsEntries
 
-    // ── Romanization ──
-    LaunchedEffect(entriesWithWords, romanizationPreferences) {
-        if (!romanizationPreferences.isEnabled) {
-            entriesWithWords.forEach { entry ->
-                if (entry.romanizedTextFlow.value != null) {
-                    entry.romanizedTextFlow.value = null
-                }
-            }
-            return@LaunchedEffect
-        }
-
-        entriesWithWords.forEach { entry ->
-            val providerRomanized = providedRomanizedTextForEntry(entry, romanizationPreferences)
-            if (providerRomanized != null) {
-                if (entry.romanizedTextFlow.value != providerRomanized) {
-                    entry.romanizedTextFlow.value = providerRomanized
-                }
-                return@forEach
-            }
-
-            if (!shouldRomanizeLyricsLine(entry.text, romanizationPreferences)) {
-                if (entry.romanizedTextFlow.value != null) {
-                    entry.romanizedTextFlow.value = null
-                }
-                return@forEach
-            }
-
-            launch {
-                val romanized =
-                    try {
-                        romanizeLyricsLine(entry.text, romanizationPreferences)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        reportException(e)
-                        null
-                    }
-                entry.romanizedTextFlow.value = romanized
-            }
-        }
-    }
-
     // ── Playback position tracking ──
-    val leadMs = if (isWordSyncedFormat) WORD_SYNC_LEAD_MS else LRC_LEAD_MS
+    val leadMs =
+        when {
+            preparedLyrics?.sourceFormat == LyricsSourceFormat.TTML -> WORD_SYNC_LEAD_MS
+            isWordSyncedFormat -> WORD_SYNC_LEAD_MS
+            else -> LRC_LEAD_MS
+        }
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var playbackPositionMs by remember { mutableLongStateOf(0L) }
     var currentLineIndex by remember { mutableIntStateOf(0) }
@@ -356,7 +246,7 @@ fun LyricsV2(
             val pos = sliderPos ?: player.currentPosition
 
             playbackPositionMs = (pos + lyricsSyncOffset.toLong()).coerceAtLeast(0L)
-            currentPositionMs = (playbackPositionMs + leadMs + LYRIC_VISUAL_TUNING_OFFSET_MS).coerceAtLeast(0L)
+            currentPositionMs = (playbackPositionMs + leadMs).coerceAtLeast(0L)
 
             currentLineIndex = findCurrentLineIndex(entriesWithWords, currentPositionMs, 0L)
             delay(pollIntervalMs)
@@ -450,7 +340,16 @@ fun LyricsV2(
                 .fillMaxSize()
                 .padding(bottom = 12.dp),
     ) {
-        if (lyrics == LYRICS_NOT_FOUND) {
+        if (lyricsState is LyricsRenderScreenState.Loading) {
+            ShimmerHost {
+                repeat(6) {
+                    TextPlaceholder()
+                }
+            }
+            return@BoxWithConstraints
+        }
+
+        if (lyricsState !is LyricsRenderScreenState.Success) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -461,15 +360,6 @@ fun LyricsV2(
                     color = textColor.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                 )
-            }
-            return@BoxWithConstraints
-        }
-
-        if (lyrics == null) {
-            ShimmerHost {
-                repeat(6) {
-                    TextPlaceholder()
-                }
             }
             return@BoxWithConstraints
         }
@@ -756,7 +646,7 @@ fun LyricsV2(
                             ?.takeIf { it.isNotBlank() }
                             ?: item.text
                     }
-                val lineIsRtl = remember(lineText) { isRtlText(lineText) }
+                val lineIsRtl = remember(item.isRtl, lineText) { item.isRtl ?: isRtlText(lineText) }
                 val lineLayoutDirection =
                     remember(lineIsRtl, baseLayoutDirection) {
                         if (lineIsRtl) LayoutDirection.Rtl else baseLayoutDirection
@@ -835,13 +725,7 @@ fun LyricsV2(
                                 ),
                         horizontalAlignment = horizontalAlignment,
                     ) {
-                        val romanizedText =
-                            if (romanizationPreferences.isEnabled) {
-                                val value by item.romanizedTextFlow.collectAsState()
-                                value
-                            } else {
-                                null
-                            }
+                        val romanizedText = item.providerRomanizedText
                         val translationText =
                             remember(showTranslations, item.providerTranslationText, item.text) {
                                 if (showTranslations) providedTranslationTextForEntry(item) else null
@@ -1302,8 +1186,8 @@ private fun AnimatedWordV2(
     glowFactor: Float,
     fillTransitionWidth: Float,
 ) {
-    val wordStartMs = (word.startTime * 1000).toLong()
-    val wordEndMs = (word.endTime * 1000).toLong()
+    val wordStartMs = (word.startTime * 1000).roundToLong()
+    val wordEndMs = (word.endTime * 1000).roundToLong()
     val wordDuration = (wordEndMs - wordStartMs).coerceAtLeast(1L)
 
     val isWordComplete = currentPositionMs >= wordEndMs
