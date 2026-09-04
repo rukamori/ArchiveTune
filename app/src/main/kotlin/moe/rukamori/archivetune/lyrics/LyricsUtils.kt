@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.lyrics
 
 import android.icu.text.Transliterator
 import android.text.format.DateUtils
+import androidx.compose.runtime.Immutable
 import com.atilika.kuromoji.ipadic.Tokenizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +18,7 @@ import moe.rukamori.archivetune.betterlyrics.TTMLParser
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import java.lang.Character.UnicodeScript
 
+@Immutable
 data class LyricsRomanizationPreferences(
     val romanizeJapanese: Boolean,
     val romanizeKorean: Boolean,
