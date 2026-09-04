@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.ui.player
 import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.HttpDataSource
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import java.io.EOFException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -56,7 +57,8 @@ internal fun PlaybackException.toPlaybackErrorInfo(): PlaybackErrorInfo {
 
             httpCode in setOf(403, 404, 410, 416) -> PlaybackErrorKind.NoStream
 
-            errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> PlaybackErrorKind.MalformedStream
+            errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+                findCause<EOFException>() != null -> PlaybackErrorKind.MalformedStream
 
             errorCode in
                 setOf(
