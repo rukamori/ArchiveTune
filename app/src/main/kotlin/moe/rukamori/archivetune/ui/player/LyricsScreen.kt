@@ -665,6 +665,17 @@ private fun AppleMusicTrackHeader(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val (translateLyrics, onTranslateLyricsChange) =
+        rememberPreference(moe.rukamori.archivetune.constants.TranslateLyricsKey, defaultValue = false)
+    val (romanizeJapanese, onRomanizeJapaneseChange) =
+        rememberPreference(moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey, defaultValue = true)
+    val (romanizeChinese, onRomanizeChineseChange) =
+        rememberPreference(moe.rukamori.archivetune.constants.LyricsRomanizeChineseKey, defaultValue = true)
+    val (romanizeKorean, onRomanizeKoreanChange) =
+        rememberPreference(moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey, defaultValue = true)
+
+    val isRomanizeActive = romanizeJapanese || romanizeChinese || romanizeKorean
+
     val artistText =
         remember(mediaMetadata.id, mediaMetadata.artists) {
             mediaMetadata.artists.joinToString { it.name }
@@ -720,7 +731,36 @@ private fun AppleMusicTrackHeader(
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // 1-Tap Romanize Toggle (Romaji / Pinyin)
+        AppleMusicHeaderIconButton(
+            iconRes = R.drawable.language,
+            contentDescription = stringResource(R.string.lyrics_romanize),
+            foregroundColor = foregroundColor,
+            isActive = isRomanizeActive,
+            onClick = {
+                val nextState = !isRomanizeActive
+                onRomanizeJapaneseChange(nextState)
+                onRomanizeChineseChange(nextState)
+                onRomanizeKoreanChange(nextState)
+            },
+        )
+
+        Spacer(modifier = Modifier.width(2.dp))
+
+        // 1-Tap Translate Toggle
+        AppleMusicHeaderIconButton(
+            iconRes = R.drawable.translate,
+            contentDescription = stringResource(R.string.lyrics_translate),
+            foregroundColor = foregroundColor,
+            isActive = translateLyrics,
+            onClick = {
+                onTranslateLyricsChange(!translateLyrics)
+            },
+        )
+
+        Spacer(modifier = Modifier.width(2.dp))
 
         AppleMusicHeaderIconButton(
             iconRes = R.drawable.close,
@@ -729,7 +769,7 @@ private fun AppleMusicTrackHeader(
             onClick = onDismissClick,
         )
 
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(2.dp))
 
         AppleMusicHeaderIconButton(
             iconRes = R.drawable.more_horiz,
@@ -745,15 +785,16 @@ private fun AppleMusicHeaderIconButton(
     iconRes: Int,
     contentDescription: String,
     foregroundColor: Color,
+    isActive: Boolean = false,
     onClick: () -> Unit,
 ) {
     Box(
         modifier =
             Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(bounded = false, radius = 24.dp),
+                    indication = ripple(bounded = false, radius = 22.dp),
                     role = Role.Button,
                     onClick = onClick,
                 ),
@@ -762,16 +803,18 @@ private fun AppleMusicHeaderIconButton(
         Box(
             modifier =
                 Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(foregroundColor.copy(alpha = 0.18f)),
+                    .background(
+                        if (isActive) MaterialTheme.colorScheme.primary else foregroundColor.copy(alpha = 0.18f),
+                    ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = contentDescription,
-                tint = foregroundColor,
-                modifier = Modifier.size(22.dp),
+                tint = if (isActive) MaterialTheme.colorScheme.onPrimary else foregroundColor,
+                modifier = Modifier.size(20.dp),
             )
         }
     }

@@ -1219,6 +1219,23 @@ class MusicService :
                     val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
                     if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
 
+                    val onlyWhileCharging = dataStore.data.map { it[moe.rukamori.archivetune.constants.AodOnlyWhileChargingKey] ?: false }.first()
+                    if (onlyWhileCharging) {
+                        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                        val status = batteryIntent?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
+                        val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING || status == android.os.BatteryManager.BATTERY_STATUS_FULL
+                        if (!isCharging) return@launch
+                    }
+
+                    val lowBatteryCutoff = dataStore.data.map { it[moe.rukamori.archivetune.constants.AodLowBatteryCutoffKey] ?: 0 }.first()
+                    if (lowBatteryCutoff > 0) {
+                        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                        val level = batteryIntent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                        val scale = batteryIntent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+                        val percent = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+                        if (percent <= lowBatteryCutoff) return@launch
+                    }
+
                     val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
                     val aodLaunchWl = pm?.newWakeLock(
                         PowerManager.PARTIAL_WAKE_LOCK,

@@ -7,7 +7,9 @@
 
 package moe.rukamori.archivetune.ui.screens
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -58,8 +60,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -238,7 +242,16 @@ fun StatsScreen(
                 .toList()
         }
 
+    var storyShareData by remember { mutableStateOf<moe.rukamori.archivetune.ui.component.StoryShareData?>(null) }
+
     val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    storyShareData?.let { data ->
+        moe.rukamori.archivetune.ui.component.StoryShareDialog(
+            data = data,
+            onDismiss = { storyShareData = null },
+        )
+    }
 
     Scaffold(
         modifier =
@@ -270,6 +283,29 @@ fun StatsScreen(
                     }
                 },
                 actions = {
+                    val topRankedSong = mostPlayedSongsStats.firstOrNull()
+                    if (topRankedSong != null) {
+                        val topSongEntity = mostPlayedSongs.firstOrNull { it.id == topRankedSong.id }
+                        IconButton(
+                            onClick = {
+                                storyShareData =
+                                    moe.rukamori.archivetune.ui.component.StoryShareData(
+                                        title = topRankedSong.title,
+                                        artist = topSongEntity?.artists?.joinToString { it.name } ?: "Top Track",
+                                        album = topSongEntity?.song?.albumName,
+                                        thumbnailUrl = topRankedSong.thumbnailUrl,
+                                        statsLabel = "${topRankedSong.songCountListened} plays • ${makeTimeString(topRankedSong.timeListened)}",
+                                        isObsession = topRankedSong.songCountListened >= 5,
+                                    )
+                            },
+                            onLongClick = {},
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                contentDescription = stringResource(R.string.share_as_story),
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = viewModel::showYearPicker,
                         onLongClick = {},
@@ -317,6 +353,7 @@ fun StatsScreen(
 
                                     OptionStats.CONTINUOUS -> {
                                         listOf(
+                                            StatPeriod.HOURS_48.ordinal to stringResource(R.string.stat_period_48h),
                                             StatPeriod.WEEK_1.ordinal to pluralStringResource(R.plurals.n_week, 1, 1),
                                             StatPeriod.MONTH_1.ordinal to pluralStringResource(R.plurals.n_month, 1, 1),
                                             StatPeriod.MONTH_3.ordinal to pluralStringResource(R.plurals.n_month, 3, 3),
@@ -1079,107 +1116,6 @@ private fun StatMetricCard(
 }
 
 @Composable
-private fun StatsHighlightsSection(
-    topArtist: Artist?,
-    topSong: SongWithStats?,
-    topSongEntity: Song?,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    if (topArtist == null && topSong == null) return
-
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (topArtist != null) {
-            StatsHighlightCard(
-                title = stringResource(R.string.stats_favourite_artist),
-                mainText = topArtist.artist.name,
-                subText = "${topArtist.songCount} ${stringResource(
-                    R.string.songs,
-                ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
-                imageUrl = topArtist.artist.thumbnailUrl,
-                useCircleShape = true,
-                onClick = { navController.navigate("artist/${topArtist.id}") },
-            )
-        }
-        if (topSong != null && topSongEntity != null) {
-            StatsHighlightCard(
-                title = stringResource(R.string.stats_favourite_song),
-                mainText = topSong.title,
-                subText = "${pluralStringResource(
-                    R.plurals.n_time,
-                    topSong.songCountListened,
-                    topSong.songCountListened,
-                )} • ${makeTimeString(topSong.timeListened)}",
-                imageUrl = topSong.thumbnailUrl,
-                useCircleShape = false,
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatsHighlightCard(
-    title: String,
-    mainText: String,
-    subText: String,
-    imageUrl: String?,
-    useCircleShape: Boolean,
-    onClick: () -> Unit,
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(80.dp)
-                        .clip(if (useCircleShape) CircleShape else MaterialTheme.shapes.medium),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = mainText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SegmentedArtistChart(
     artists: List<Artist>,
     totalTimeListened: Long,
@@ -1353,11 +1289,139 @@ private fun createDistinctArtistColors(
 }
 
 @Composable
+private fun StatsHighlightsSection(
+    topArtist: Artist?,
+    topSong: SongWithStats?,
+    topSongEntity: Song?,
+    navController: NavController,
+    modifier: Modifier = Modifier,
+) {
+    if (topArtist == null && topSong == null) return
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (topArtist != null) {
+            StatsHighlightCard(
+                title = stringResource(R.string.stats_favourite_artist),
+                mainText = topArtist.artist.name,
+                subText = "${topArtist.songCount} ${stringResource(
+                    R.string.songs,
+                ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
+                imageUrl = topArtist.artist.thumbnailUrl,
+                useCircleShape = true,
+                onClick = { navController.navigate("artist/${topArtist.id}") },
+            )
+        }
+        if (topSong != null && topSongEntity != null) {
+            val isObsession = topSong.songCountListened >= 5
+            StatsHighlightCard(
+                title = stringResource(R.string.stats_favourite_song),
+                mainText = topSong.title,
+                subText = "${pluralStringResource(
+                    R.plurals.n_time,
+                    topSong.songCountListened,
+                    topSong.songCountListened,
+                )} • ${makeTimeString(topSong.timeListened)}",
+                imageUrl = topSong.thumbnailUrl,
+                useCircleShape = false,
+                isObsession = isObsession,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsHighlightCard(
+    title: String,
+    mainText: String,
+    subText: String,
+    imageUrl: String?,
+    useCircleShape: Boolean,
+    isObsession: Boolean = false,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.elevatedCardColors(),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .size(80.dp)
+                        .clip(if (useCircleShape) CircleShape else MaterialTheme.shapes.medium),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    if (isObsession) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.stats_obsession_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = mainText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ListeningByDayChart(
     slots: List<ListeningBySlot>,
     currentDayOfWeek: Int,
     modifier: Modifier = Modifier,
 ) {
+    val haptic = LocalHapticFeedback.current
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
     val dayLabels =
         listOf(
             R.string.day_sun,
@@ -1379,11 +1443,33 @@ private fun ListeningByDayChart(
         colors = CardDefaults.elevatedCardColors(),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.stats_listening_by_day),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.secondary,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.stats_listening_by_day),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                val sel = selectedDay
+                if (sel != null) {
+                    val selTime = slotMap[sel]?.timeListened ?: 0L
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Text(
+                            text = "${stringResource(dayLabels[sel])}: ${makeTimeString(selTime) ?: "0m"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1393,16 +1479,29 @@ private fun ListeningByDayChart(
                 for (day in 0..6) {
                     val time = slotMap[day]?.timeListened ?: 0L
                     val fraction = time.toFloat() / maxTime
-                    val barColor = if (day == currentDayOfWeek) primaryColor else containerColor
+                    val isSelected = selectedDay == day
+                    val barColor =
+                        when {
+                            isSelected -> primaryColor
+                            day == currentDayOfWeek -> primaryColor.copy(alpha = 0.85f)
+                            else -> containerColor
+                        }
                     val animatedFraction by animateFloatAsState(
                         targetValue = fraction,
-                        animationSpec = tween(400),
+                        animationSpec = spring(stiffness = Spring.StiffnessLow),
                         label = "bar_$day",
                     )
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.weight(1f),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    selectedDay = if (selectedDay == day) null else day
+                                }.padding(vertical = 2.dp),
                     ) {
                         Box(
                             modifier =
@@ -1423,8 +1522,8 @@ private fun ListeningByDayChart(
                         Text(
                             text = stringResource(dayLabels[day]),
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (day == currentDayOfWeek) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (day == currentDayOfWeek) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected || day == currentDayOfWeek) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isSelected || day == currentDayOfWeek) FontWeight.Bold else FontWeight.Normal,
                         )
                     }
                 }
@@ -1438,6 +1537,8 @@ private fun ListeningByHourChart(
     slots: List<ListeningBySlot>,
     modifier: Modifier = Modifier,
 ) {
+    val haptic = LocalHapticFeedback.current
+    var selectedHour by remember { mutableStateOf<Int?>(null) }
     val slotMap = remember(slots) { slots.associateBy { it.slot } }
     val maxTime = remember(slots) { slots.maxOfOrNull { it.timeListened } ?: 1L }
     val peakSlot = remember(slots) { slots.maxByOrNull { it.timeListened }?.slot }
@@ -1448,13 +1549,6 @@ private fun ListeningByHourChart(
         remember(peakSlot) {
             val formatter = DateTimeFormatter.ofPattern("ha")
             peakSlot?.let { LocalTime.of(it, 0).format(formatter) }
-        }
-    val timeLabels =
-        remember {
-            val formatter = DateTimeFormatter.ofPattern("ha")
-            listOf(0, 6, 12, 18, 0).map { hour ->
-                LocalTime.of(hour, 0).format(formatter)
-            }
         }
 
     ElevatedCard(
@@ -1473,7 +1567,24 @@ private fun ListeningByHourChart(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.secondary,
                 )
-                if (peakLabel != null) {
+                val sel = selectedHour
+                if (sel != null) {
+                    val selTime = slotMap[sel]?.timeListened ?: 0L
+                    val formatter = DateTimeFormatter.ofPattern("ha")
+                    val hourStr = LocalTime.of(sel, 0).format(formatter)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Text(
+                            text = "$hourStr: ${makeTimeString(selTime) ?: "0m"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                } else if (peakLabel != null) {
                     Text(
                         text = stringResource(R.string.stats_peak_hour, peakLabel),
                         style = MaterialTheme.typography.labelSmall,
@@ -1491,17 +1602,28 @@ private fun ListeningByHourChart(
                     val time = slotMap[hour]?.timeListened ?: 0L
                     val fraction = time.toFloat() / maxTime
                     val isPeak = hour == peakSlot
-                    val barColor = if (isPeak) primaryColor else containerColor.copy(alpha = 0.6f + fraction * 0.4f)
+                    val isSelected = selectedHour == hour
+                    val barColor =
+                        when {
+                            isSelected -> primaryColor
+                            isPeak -> primaryColor.copy(alpha = 0.9f)
+                            else -> containerColor.copy(alpha = 0.6f + fraction * 0.4f)
+                        }
                     val animatedFraction by animateFloatAsState(
                         targetValue = fraction,
-                        animationSpec = tween(400),
+                        animationSpec = spring(stiffness = Spring.StiffnessLow),
                         label = "hour_$hour",
                     )
                     Box(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .height(48.dp),
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    selectedHour = if (selectedHour == hour) null else hour
+                                },
                         contentAlignment = Alignment.BottomCenter,
                     ) {
                         Box(
@@ -1520,6 +1642,13 @@ private fun ListeningByHourChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                val timeLabels =
+                    remember {
+                        val formatter = DateTimeFormatter.ofPattern("ha")
+                        listOf(0, 6, 12, 18, 0).map { hour ->
+                            LocalTime.of(hour, 0).format(formatter)
+                        }
+                    }
                 timeLabels.forEach { label ->
                     Text(
                         text = label,
