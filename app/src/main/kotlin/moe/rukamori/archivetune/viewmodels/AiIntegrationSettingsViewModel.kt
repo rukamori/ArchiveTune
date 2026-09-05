@@ -96,6 +96,7 @@ data class AiIntegrationSettingsUiModel(
     val errorMessage: String?,
     val editor: AiSettingsEditorUiModel,
     val modelPicker: AiModelPickerUiModel,
+    val apiTestError: String? = null,
 ) {
     val canUseModelPicker: Boolean
         get() =
@@ -129,6 +130,7 @@ private data class AiIntegrationTransientState(
     val isTesting: Boolean = false,
     val isFetchingModels: Boolean = false,
     val errorMessage: String? = null,
+    val apiTestError: String? = null,
     val editor: AiSettingsEditorUiModel = AiSettingsEditorUiModel(),
     val modelPickerVisible: Boolean = false,
     val modelSearchQuery: String = "",
@@ -299,23 +301,30 @@ class AiIntegrationSettingsViewModel
 
         fun testApi() {
             if (testApiJob?.isActive == true || currentModel()?.canTestApi != true) return
+            transientState.update {
+                it.copy(isTesting = true, errorMessage = null, apiTestError = null)
+            }
             testApiJob =
                 viewModelScope.launch(Dispatchers.IO) {
-                    transientState.update { it.copy(isTesting = true, errorMessage = null) }
                     try {
                         testAiIntegration()
                         _events.emit(R.string.ai_api_connected)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        val details = e.apiTestErrorDetails()
                         transientState.update {
-                            it.copy(errorMessage = e.shortMessage(R.string.ai_api_test_failed))
+                            it.copy(apiTestError = details)
                         }
                     } finally {
                         transientState.update { it.copy(isTesting = false) }
                         testApiJob = null
                     }
                 }
+        }
+
+        fun dismissApiTestError() {
+            transientState.update { it.copy(apiTestError = null) }
         }
 
         private fun clearAvailableModels() {
@@ -390,6 +399,17 @@ class AiIntegrationSettingsViewModel
                 message.take(MaxInlineErrorLength).trimEnd() + "..."
             }
         }
+
+        private fun Throwable.apiTestErrorDetails(): String =
+            generateSequence(this) { it.cause }
+                .take(10)
+                .distinct()
+                .joinToString(separator = "\n\n") { throwable ->
+                    val name = throwable.javaClass.simpleName.ifBlank { throwable.javaClass.name }
+                    val message = throwable.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.ai_api_test_failed)
+                    "$name: $message"
+                }
     }
 
 private fun AiIntegrationSettingsData.toUiModel(
@@ -419,6 +439,7 @@ private fun AiIntegrationSettingsData.toUiModel(
         isTesting = transient.isTesting,
         isFetchingModels = transient.isFetchingModels,
         errorMessage = transient.errorMessage,
+        apiTestError = transient.apiTestError,
         editor = transient.editor,
         modelPicker =
             AiModelPickerUiModel(
