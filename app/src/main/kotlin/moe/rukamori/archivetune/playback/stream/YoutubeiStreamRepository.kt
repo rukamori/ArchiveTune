@@ -22,6 +22,7 @@ import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolutionPrio
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiStreamRequest
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import timber.log.Timber
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +34,10 @@ class YoutubeiStreamRepository
         @ApplicationContext context: Context,
     ) : AudioStreamRepository {
         private val resolver =
-            YoutubeiResolver(context) {
+            YoutubeiResolver(
+                context = context,
+                diagnostics = { message -> Timber.tag("YoutubeiResolver").d(message) },
+            ) {
                 YoutubeiNetworkConfiguration(
                     proxy = YouTube.proxy,
                     proxyUsername = YouTube.proxyUsername,
