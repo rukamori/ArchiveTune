@@ -619,15 +619,16 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val channelString = withContext(Dispatchers.IO) { dataStore.data.first()[UpdateChannelKey] }
                     val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
-                    val versionResult =
-                        when (actualChannel) {
-                            UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
-                            UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                        }
-                    versionResult.onSuccess {
-                        if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                            latestUpdateChannel = actualChannel
-                            latestVersionName = it
+                    if (actualChannel != UpdateChannel.ARTIFACT) {
+                        val versionResult =
+                            when (actualChannel) {
+                                UpdateChannel.STABLE -> Updater.getLatestVersionName()
+                            }
+                        versionResult.onSuccess {
+                            if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
+                                latestUpdateChannel = actualChannel
+                                latestVersionName = it
+                            }
                         }
                     }
                 }
@@ -721,12 +722,13 @@ class MainActivity : ComponentActivity() {
                 if (
                     BuildConfig.UPDATER_AVAILABLE &&
                     latestUpdateChannel == updateChannel &&
+                    latestUpdateChannel != UpdateChannel.ARTIFACT &&
                     Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
                 ) {
                     val releaseNotesResult =
                         when (latestUpdateChannel) {
-                            UpdateChannel.ARTIFACT -> Updater.getLatestCanaryReleaseNotes()
                             UpdateChannel.STABLE -> Updater.getLatestReleaseNotes()
+                            else -> return@LaunchedEffect
                         }
                     releaseNotesResult
                         .onSuccess {
@@ -1879,6 +1881,7 @@ class MainActivity : ComponentActivity() {
                                                             if (
                                                                 BuildConfig.UPDATER_AVAILABLE &&
                                                                 latestUpdateChannel == updateChannel &&
+                                                                latestUpdateChannel != UpdateChannel.ARTIFACT &&
                                                                 Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
                                                             ) {
                                                                 Badge()
