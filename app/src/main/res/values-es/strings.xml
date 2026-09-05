@@ -423,7 +423,6 @@
     <string name="small_image">Imagen pequeña</string>
     <string name="small_image_custom_url">URL personalizada para imágenes pequeñas</string>
     <string name="activity_status">Estado de actividad</string>
-    <string name="platform_status">Plataforma</string>
     <string name="translator_options">Opciones de traducción</string>
     <string name="enable_translator">Activar traductor</string>
     <string name="enable_translator_desc">Traduce los campos seleccionados antes de enviarlos al RPC de Discord</string>
@@ -767,14 +766,6 @@
     <string name="discord_presence_do_not_disturb">No molestar</string>
     <string name="discord_presence_idle">Inactivo</string>
     <string name="discord_presence_streaming">En directo</string>
-    <string name="discord_platform_desktop">Escritorio</string>
-    <string name="discord_platform_xbox">Xbox</string>
-    <string name="discord_platform_samsung">Samsung</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_embedded">Incorporado</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="discord_activity_type_playing_label">Reproduciendo</string>
     <string name="discord_activity_type_streaming_label">En directo</string>
     <string name="discord_activity_type_listening_label">Escuchando</string>

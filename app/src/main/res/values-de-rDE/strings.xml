@@ -356,7 +356,6 @@
     <string name="small_image">Kleines Bild</string>
     <string name="small_image_custom_url">Benutzerdefinierte URL für kleines Bild</string>
     <string name="activity_status">Aktivitätsstatus</string>
-    <string name="platform_status">Plattform</string>
     <string name="translator_options">Übersetzeroptionen</string>
     <string name="enable_translator">Übersetzer aktivieren</string>
     <string name="enable_translator_desc">Ausgewählte Felder vor dem Senden an Discord RPC übersetzen</string>
@@ -601,14 +600,6 @@
     <string name="discord_presence_do_not_disturb">Nicht stören</string>
     <string name="discord_presence_idle">Inaktiv</string>
     <string name="discord_presence_streaming">Streamt</string>
-    <string name="discord_platform_desktop">Desktop</string>
-    <string name="discord_platform_xbox">Xbox</string>
-    <string name="discord_platform_samsung">Samsung</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_embedded">Eingebettet</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="discord_activity_type_playing_label">Spielt</string>
     <string name="discord_activity_type_streaming_label">Streamt</string>
     <string name="support_development_title">Entwicklung unterstützen</string>

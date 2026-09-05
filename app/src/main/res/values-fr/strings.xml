@@ -365,7 +365,6 @@
     <string name="small_image">Petite image</string>
     <string name="small_image_custom_url">URL personnalisée de la petite image</string>
     <string name="activity_status">État de l\'activité</string>
-    <string name="platform_status">Plate-forme</string>
     <string name="translator_options">Options du traducteur</string>
     <string name="enable_translator">Activer le traducteur</string>
     <string name="enable_translator_desc">Traduire les champs sélectionnés avant l\'envoi à Discord RPC</string>
@@ -677,9 +676,7 @@
     <string name="paxsenix_status_down">Indisponible</string>
     <string name="visit_website">Visitez le site web</string>
     <string name="discord_activity_content">Contenu de l\'activité</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="save_current_account">Enregistrer le compte courant</string>
-    <string name="discord_platform_samsung">Samsung</string>
     <string name="check_for_update">Rechercher les mises à jour</string>
     <string name="shortest_duration">Durée la plus courte</string>
     <string name="discord_activity_type_listening_label">Écouter</string>
@@ -713,7 +710,6 @@
     <string name="discord_login_description">Connectez votre compte Discord via OAuth afin qu\'ArchiveTune puisse publier des informations de présence enrichies.</string>
     <string name="personal_label">Personnel</string>
     <string name="lyrics_animation_style_v2_only">Disponible uniquement en mode paroles V2</string>
-    <string name="discord_platform_ios">iOS</string>
     <string name="font_preference_custom">Personnalisé</string>
     <string name="custom_font_invalid">Choisissez un fichier de police au format .ttf</string>
     <string name="romanization">Romanisation</string>
@@ -743,7 +739,6 @@
     <string name="newest_year">Année en cours</string>
     <string name="recently_updated">Mis à jour récemment</string>
     <string name="discord_activity_type_competing_label">En compétition</string>
-    <string name="discord_platform_embedded">Intégré</string>
     <string name="lyrics_mode_v2">V2 Legacy</string>
     <string name="saved_accounts">Comptes enregistrés</string>
     <string name="widget_tap_to_open">Appuyez pour ouvrir ArchiveTune</string>
@@ -766,11 +761,8 @@
     <string name="device_mute_recovery_volume">Augmenter le volume à partir de 0</string>
     <string name="discord_waiting_for_authorization">En attente de l\'autorisation Discord...</string>
     <string name="recently_added">Ajoutés récemment</string>
-    <string name="discord_platform_xbox">Xbox</string>
     <string name="top_mixes">Les Meilleurs Mixages pour Vous</string>
-    <string name="discord_platform_android">Android</string>
     <string name="sort_a_to_z">A → Z</string>
-    <string name="discord_platform_desktop">Bureau</string>
     <string name="more_playlists_desc">Plus de Playlists</string>
     <string name="tracks_count_label">Nombre de titres</string>
     <string name="discord_url_source_artist">URL de l\'artiste</string>
@@ -779,7 +771,6 @@
     <string name="paxsenix_status_operational">Opérationnel</string>
     <string name="discord_presence_online">En ligne</string>
     <string name="longest_duration">Durée la plus longue</string>
-    <string name="discord_platform_ps4">PS4</string>
     <string name="sort_descending">Trier par ordre décroissant</string>
     <string name="device_mute_recovery_volume_disabled">Désactivé</string>
     <string name="your_artists">Vos Artistes</string>

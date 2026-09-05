@@ -461,7 +461,6 @@
     <string name="small_image">Мале зображення</string>
     <string name="small_image_custom_url">Власний URL малого зображення</string>
     <string name="activity_status">Статус активності</string>
-    <string name="platform_status">Платформа</string>
     <string name="translator_options">Параметри перекладача</string>
     <string name="enable_translator">Увімкнути перекладач</string>
     <string name="enable_translator_desc">Перекладати вибрані поля перед відправкою до Discord RPC</string>

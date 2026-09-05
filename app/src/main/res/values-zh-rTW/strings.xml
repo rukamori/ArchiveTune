@@ -665,14 +665,6 @@
     <string name="discord_presence_do_not_disturb">請勿打擾</string>
     <string name="discord_presence_idle">閒置</string>
     <string name="discord_presence_streaming">正在直播</string>
-    <string name="discord_platform_desktop">電腦版</string>
-    <string name="discord_platform_xbox">Xbox</string>
-    <string name="discord_platform_samsung">Samsung</string>
-    <string name="discord_platform_ios">iOS</string>
-    <string name="discord_platform_android">Android</string>
-    <string name="discord_platform_embedded">內嵌應用</string>
-    <string name="discord_platform_ps4">PS4</string>
-    <string name="discord_platform_ps5">PS5</string>
     <string name="discord_activity_type_playing_label">正在播放</string>
     <string name="discord_activity_type_streaming_label">正在直播</string>
     <string name="discord_activity_type_listening_label">正在聆聽</string>
@@ -681,7 +673,6 @@
     <string name="discord_image_album_artwork">專輯封面</string>
     <string name="discord_image_artist_artwork">藝人圖片</string>
     <string name="activity_status">活動狀態</string>
-    <string name="platform_status">平台</string>
     <string name="translator_options">翻譯選項</string>
     <string name="enable_translator">啟用翻譯功能</string>
     <string name="enable_translator_desc">在發送至 Discord RPC 之前翻譯選定字段</string>

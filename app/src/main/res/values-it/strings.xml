@@ -384,7 +384,6 @@
     <string name="small_image">Piccola immagine</string>
     <string name="small_image_custom_url">URL personalizzato di piccola immagine</string>
     <string name="activity_status">Stato dell\'attività</string>
-    <string name="platform_status">Piattaforma</string>
     <string name="translator_options">Opzioni del traduttore</string>
     <string name="enable_translator">Abilita traduttore</string>
     <string name="enable_translator_desc">Traduci i campi selezionati prima di inviarli a Discord RPC</string>
