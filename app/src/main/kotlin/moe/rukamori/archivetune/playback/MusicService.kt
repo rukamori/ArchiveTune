@@ -379,6 +379,7 @@ class MusicService :
             .proxy(YouTube.streamOkHttpProxy)
             .followRedirects(true)
             .followSslRedirects(true)
+            .retryOnConnectionFailure(true)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor { chain ->
@@ -7318,16 +7319,42 @@ class MusicService :
             scope.launch(Dispatchers.IO) {
                 // Always purge the streaming/player cache.
                 runCatching { playerCache.removeResource(currentMediaId) }
-                // Keep a complete offline download in place; deleting a user's saved download
-                // to recover from a read error is surprising. Only purge partial entries.
                 if (!isFullyDownloadedMedia) {
                     runCatching { downloadCache.removeResource(currentMediaId) }
                 } else {
                     Timber.tag("MusicService").w(
-                        "Keeping offline download for %s; corruption may require manual re-download",
+                        "Corrupted offline download detected for %s; purging corrupted cache and triggering re-download if online",
                         currentMediaId,
                     )
+                    runCatching { downloadCache.removeResource(currentMediaId) }
+
+                    if (isNetworkCurrentlyConnected()) {
+                        runCatching {
+                            val song = database.song(currentMediaId).first()
+                            val songTitle =
+                                song?.song?.title ?: player.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty()
+                            val downloadRequest =
+                                androidx.media3.exoplayer.offline.DownloadRequest
+                                    .Builder(currentMediaId, currentMediaId.toUri())
+                                    .setCustomCacheKey(currentMediaId)
+                                    .setData(songTitle.toByteArray())
+                                    .build()
+                            androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                                this@MusicService,
+                                ExoDownloadService::class.java,
+                                downloadRequest,
+                                false,
+                            )
+                            Timber.tag("MusicService").i(
+                                "Triggered background re-download for corrupted song %s",
+                                currentMediaId,
+                            )
+                        }
+                    }
                 }
+
+                // Small delay to allow filesystem handles and cache mutations to settle
+                kotlinx.coroutines.delay(300L)
 
                 // Re-prepare ONLY after the purge completes, back on the Main thread, so the
                 // fresh prepare cannot re-read the spans we just deleted.
