@@ -10,9 +10,11 @@
 package moe.rukamori.archivetune
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -175,6 +177,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -186,6 +189,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
+import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
@@ -333,8 +337,10 @@ class MainActivity : ComponentActivity() {
     private var pendingDeepLinkQueue: Queue? = null
     private var pendingVoiceSearchQuery: String? = null
     private var pendingAodModeRequest = false
+    private var aodPreferenceReadJob: Job? = null
     private var pendingAodModeJob: Job? = null
     private var aodModeLaunchRequestCount by mutableIntStateOf(0)
+    private var isAodScreenOffReceiverRegistered = false
     private var pendingTogetherJoinLink: String? = null
     private var pendingBackupRestoreUri by mutableStateOf<Uri?>(null)
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -343,6 +349,18 @@ class MainActivity : ComponentActivity() {
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var isMusicServiceBound = false
     private var immersiveStatusBarsHidden = false
+
+    private val aodScreenOffReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
+                if (playerConnection?.player?.isPlaying != true) return
+                requestAodMode(requireAutoStart = true)
+            }
+        }
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -384,11 +402,43 @@ class MainActivity : ComponentActivity() {
         connection.playFromVoiceSearch(query)
     }
 
-    private fun requestAodMode() {
-        if (!dataStore.get(AodModeEnabledKey, false)) return
-        pendingAodModeRequest = true
-        startMusicServiceSafely()
-        openPendingAodModeIfReady()
+    private fun requestAodMode(requireAutoStart: Boolean = false) {
+        aodPreferenceReadJob?.cancel()
+        aodPreferenceReadJob =
+            lifecycleScope.launch {
+                try {
+                    val preferences = dataStore.data.first()
+                    val isAodEnabled = preferences[AodModeEnabledKey] ?: false
+                    val shouldAutoStart = preferences[AodAutoStartScreenOffKey] ?: true
+                    if (!isAodEnabled || (requireAutoStart && !shouldAutoStart)) return@launch
+
+                    pendingAodModeRequest = true
+                    startMusicServiceSafely()
+                    openPendingAodModeIfReady()
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    pendingAodModeRequest = false
+                    reportException(throwable)
+                }
+            }
+    }
+
+    private fun registerAodScreenOffReceiver() {
+        if (isAodScreenOffReceiverRegistered) return
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(aodScreenOffReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(aodScreenOffReceiver, filter)
+        }
+        isAodScreenOffReceiverRegistered = true
+    }
+
+    private fun unregisterAodScreenOffReceiver() {
+        if (!isAodScreenOffReceiverRegistered) return
+        unregisterReceiver(aodScreenOffReceiver)
+        isAodScreenOffReceiverRegistered = false
     }
 
     private fun openPendingAodModeIfReady() {
@@ -399,7 +449,7 @@ class MainActivity : ComponentActivity() {
         pendingAodModeJob =
             lifecycleScope.launch {
                 connection.queueRestoreCompleted.first { it }
-                if (awaitRestorablePlayback(connection)) {
+                if (hasRestorablePlayback(connection)) {
                     aodModeLaunchRequestCount++
                 }
             }
@@ -422,27 +472,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun awaitRestorablePlayback(connection: PlayerConnection): Boolean {
-        repeat(15) {
-            if (
-                connection.player.currentMediaItem != null ||
-                connection.player.mediaItemCount > 0 ||
-                connection.mediaMetadata.value != null
-            ) {
-                return true
-            }
-            delay(100)
-        }
-
-        return (
+    private fun hasRestorablePlayback(connection: PlayerConnection): Boolean =
+        (
             connection.player.currentMediaItem != null ||
                 connection.player.mediaItemCount > 0 ||
                 connection.mediaMetadata.value != null
         )
+
+    private suspend fun awaitRestorablePlayback(connection: PlayerConnection): Boolean {
+        repeat(15) {
+            if (hasRestorablePlayback(connection)) return true
+            delay(100)
+        }
+
+        return hasRestorablePlayback(connection)
     }
 
     override fun onStart() {
         super.onStart()
+        registerAodScreenOffReceiver()
         isMusicServiceBound =
             bindService(
                 Intent(this, MusicService::class.java),
@@ -466,6 +514,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        unregisterAodScreenOffReceiver()
         if (!isMusicServiceBound || playerConnection?.aodModeEnabled?.value == true) {
             super.onStop()
             return
@@ -475,6 +524,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        aodPreferenceReadJob?.cancel()
+        aodPreferenceReadJob = null
         super.onDestroy()
 
         val shouldStopOnTaskClear =
@@ -1093,7 +1144,7 @@ class MainActivity : ComponentActivity() {
                         val launchRequestCount = aodModeLaunchRequestCount
                         if (launchRequestCount == 0) return@LaunchedEffect
                         val connection = playerConnection ?: return@LaunchedEffect
-                        if (!awaitRestorablePlayback(connection)) return@LaunchedEffect
+                        if (!hasRestorablePlayback(connection)) return@LaunchedEffect
                         if (!playerBottomSheetState.isExpandedOrExpanding) {
                             playerBottomSheetState.expandSoft()
                         }

@@ -122,6 +122,13 @@ class YoutubeiStreamRepository
                     if (failure.kind == YoutubeiFailureKind.LOGIN_REQUIRED ||
                         failure.kind == YoutubeiFailureKind.HTTP && failure.httpStatus == 401
                     ) {
+                        if (!failure.requiresContentConfirmation()) {
+                            throw YTPlayerUtils.InvalidPlaybackLoginContextException(
+                                videoId = request.mediaId,
+                                targetUrl = request.mediaUrl,
+                                cause = failure,
+                            )
+                        }
                         throw YTPlayerUtils.LoginRequiredForPlaybackException(
                             videoId = request.mediaId,
                             targetUrl = request.mediaUrl,
@@ -182,6 +189,28 @@ class YoutubeiStreamRepository
 
         private val AudioStreamRequest.mediaUrl: String
             get() = "https://music.youtube.com/watch?v=$mediaId"
+
+        private fun YoutubeiException.requiresContentConfirmation(): Boolean {
+            if (httpStatus == 401) return false
+            val reason = message.orEmpty()
+            return CONTENT_CONFIRMATION_REASONS.any { reason.contains(it, ignoreCase = true) }
+        }
+
+        private companion object {
+            val CONTENT_CONFIRMATION_REASONS =
+                listOf(
+                    "confirm your age",
+                    "verify your age",
+                    "age-restricted",
+                    "age restricted",
+                    "age verification",
+                    "AGE_CHECK_REQUIRED",
+                    "AGE_VERIFICATION_REQUIRED",
+                    "CONTENT_CHECK_REQUIRED",
+                    "inappropriate for some users",
+                    "mature audiences",
+                )
+        }
     }
 
 internal enum class StreamResolutionPriority {

@@ -240,16 +240,6 @@ object BotGuardTokenGenerator {
     }
 
     /**
-     * Invalidate the player token cache for a specific video.
-     * Useful when the user's auth state changes.
-     */
-    suspend fun invalidatePlayerToken(videoId: String) {
-        mutex.withLock {
-            playerTokenCache.remove(videoId)
-        }
-    }
-
-    /**
      * Invalidate all cached tokens.
      * Call when the user logs out or auth state changes.
      */

@@ -242,6 +242,7 @@
     <string name="sync_playlist">Sync playlist</string>
     <string name="playlist_sync_progress_step">%1$d/%2$d Songs</string>
     <string name="playlist_sync_failed">Playlist sync failed: %1$s</string>
+    <string name="library_sync_failed">Couldn’t sync your YouTube Music library</string>
     <string name="sync_disabled">Sync disabled</string>
     <string name="allows_for_sync_witch_youtube">Note: This allows for syncing with YouTube Music. This is NOT changeable later.</string>
     <string name="generating_image">Generating image</string>

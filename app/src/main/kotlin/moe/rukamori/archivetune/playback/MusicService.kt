@@ -63,6 +63,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
@@ -122,9 +123,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
-import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
-import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
@@ -219,6 +217,8 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
 import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
 import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
 import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
@@ -338,8 +338,6 @@ class MusicService :
     private var audiblePlaybackRecoveryJob: Job? = null
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
-    private var aodScreenOffReceiver: BroadcastReceiver? = null
-
     private lateinit var audioOutputResolver: AudioOutputResolver
 
     val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
@@ -360,7 +358,7 @@ class MusicService :
     private var scopeJob = SupervisorJob()
     private var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     private var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
-    private val binder = MusicBinder()
+    private val binder = MusicBinder(this)
     private var hasBoundClients = false
     private var idleStopJob: Job? = null
 
@@ -670,6 +668,7 @@ class MusicService :
         var current: Throwable? = this
         while (current != null) {
             if (current is SocketTimeoutException) return true
+            if (current is YoutubeiException && current.kind == YoutubeiFailureKind.TIMEOUT) return true
             if (current.message?.contains("Request timeout has expired", ignoreCase = true) == true) return true
             current = current.cause
         }
@@ -1213,44 +1212,6 @@ class MusicService :
         audioDeviceCallbackRegistered = true
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
         audioOutputResolver.refresh()
-
-        val screenOffFilter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        val screenReceiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
-                scope.launch {
-                    val preferences = dataStore.data.first()
-                    val aodEnabled = preferences[AodModeEnabledKey] ?: false
-                    val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
-                    if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
-
-                    val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
-                    val aodLaunchWl = pm?.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK,
-                        "ArchiveTune:AodAutoStart",
-                    )
-                    aodLaunchWl?.acquire(3000L)
-
-                    val aodIntent = Intent(this@MusicService, MainActivity::class.java).apply {
-                        action = ACTION_AOD_MODE
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    }
-                    try {
-                        startActivity(aodIntent)
-                    } finally {
-                        if (aodLaunchWl?.isHeld == true) aodLaunchWl.release()
-                    }
-                }
-            }
-        }
-        aodScreenOffReceiver = screenReceiver
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(screenReceiver, screenOffFilter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(screenReceiver, screenOffFilter)
-        }
 
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
@@ -7610,19 +7571,23 @@ class MusicService :
                     }
 
                     throwable is YTPlayerUtils.BadStreamPlayerResponseException -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.error_no_stream),
                             throwable,
-                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                         )
                     }
 
                     throwable is PlaybackException -> {
-                        throw throwable
+                        throw DataSourceException(
+                            throwable.message,
+                            throwable,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                        )
                     }
 
                     throwable.isNetworkConnectionFailure() -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.playback_error_no_internet),
                             throwable,
                             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
@@ -7630,18 +7595,20 @@ class MusicService :
                     }
 
                     throwable.isRequestTimeout() -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.error_timeout),
                             throwable,
                             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
                         )
                     }
 
+                    throwable is IOException -> throw throwable
+
                     else -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.playback_error_unknown),
                             throwable,
-                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                         )
                     }
                 }
@@ -8287,6 +8254,7 @@ class MusicService :
     }
 
     override fun onDestroy() {
+        binder.release()
         equalizerPlaybackController.detach(this)
         sponsorBlockPlaybackController.detach()
         discordServiceStopping = true
@@ -8306,13 +8274,6 @@ class MusicService :
         }
         unregisterBluetoothReceiver()
         unregisterMuteRecoveryObserver()
-        if (aodScreenOffReceiver != null) {
-            try {
-                unregisterReceiver(aodScreenOffReceiver)
-            } catch (_: Exception) {
-            }
-            aodScreenOffReceiver = null
-        }
         try {
             scope.launch { stopTogetherInternal() }
         } catch (_: Exception) {
@@ -8520,9 +8481,16 @@ class MusicService :
         widgetUpdater.updateProgressTracking()
     }
 
-    inner class MusicBinder : Binder() {
+    class MusicBinder internal constructor(service: MusicService) : Binder() {
+        @Volatile
+        private var serviceReference: MusicService? = service
+
         val service: MusicService
-            get() = this@MusicService
+            get() = checkNotNull(serviceReference) { "MusicService has been destroyed" }
+
+        internal fun release() {
+            serviceReference = null
+        }
     }
 
     companion object {

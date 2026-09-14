@@ -101,7 +101,6 @@ import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
-import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
@@ -157,7 +156,9 @@ fun LibraryPlaylistsScreen(
 
     var isGridView by rememberSaveable { mutableStateOf(false) }
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val refreshState by viewModel.refreshState.collectAsStateWithLifecycle()
+    val refreshLibrary = remember(viewModel) { { viewModel.sync() } }
+    val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
     val lazyListState = rememberLazyListState()
     var pendingPlaylistOrderUpdate by remember { mutableStateOf(false) }
     val reorderableState =
@@ -202,9 +203,10 @@ fun LibraryPlaylistsScreen(
             .asPaddingValues()
             .calculateBottomPadding() + 12.dp
 
-    ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.sync() },
+    LibraryRefreshContainer(
+        state = refreshState,
+        onRefresh = refreshLibrary,
+        onErrorShown = onRefreshErrorShown,
         modifier = Modifier.fillMaxSize(),
         indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {

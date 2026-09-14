@@ -958,7 +958,6 @@ class HomeViewModel
                     val authState = switchSavedYouTubeAccount(account).getOrThrow()
 
                     if (forceSyncOnSwitch && account.ytmSync && authState.hasLoginCookie) {
-                        syncUtils.clearRemoteLibraryState()
                         syncUtils.performFullSync(authoritative = true)
                     }
                 } catch (e: CancellationException) {
@@ -1002,7 +1001,6 @@ class HomeViewModel
                     }
 
                     if (forceSyncOnSwitch && context.dataStore.get(YtmSyncKey, true) && authState.hasLoginCookie) {
-                        syncUtils.clearRemoteLibraryState()
                         syncUtils.performFullSync(authoritative = true)
                     }
                 } catch (e: CancellationException) {
@@ -1053,12 +1051,15 @@ class HomeViewModel
                     .collect { cookie ->
                         try {
                             val isLoggedIn = hasYouTubeLoginCookie(cookie)
-                            val loginTransition = previousLoginState == false && isLoggedIn
+                            val shouldSynchronize =
+                                shouldSynchronizeAuthenticatedSession(
+                                    previousLoginState = previousLoginState,
+                                    isLoggedIn = isLoggedIn,
+                                )
                             previousLoginState = isLoggedIn
 
                             if (isLoggedIn && cookie != null && cookie.isNotEmpty()) {
                                 if (!prepareYouTubeAccount(cookie)) {
-                                    syncUtils.clearRemoteLibraryState()
                                     clearAccountData()
                                     return@collect
                                 }
@@ -1072,7 +1073,7 @@ class HomeViewModel
                                     launch { refreshAccountPlaylistsInternal(refreshGeneration) }
                                 }
 
-                                if (loginTransition) {
+                                if (shouldSynchronize) {
                                     launch {
                                         try {
                                             if (context.dataStore.get(YtmSyncKey, true)) {
@@ -1085,7 +1086,6 @@ class HomeViewModel
                                     }
                                 }
                             } else {
-                                syncUtils.clearRemoteLibraryState()
                                 clearAccountData()
                             }
                         } catch (e: CancellationException) {

@@ -24,7 +24,6 @@ class AodModeTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-
         val launchIntent =
             Intent(this, MainActivity::class.java).apply {
                 action = ACTION_AOD_MODE

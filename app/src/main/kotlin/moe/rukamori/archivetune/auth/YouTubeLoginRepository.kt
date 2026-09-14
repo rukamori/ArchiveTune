@@ -196,6 +196,7 @@ class YouTubeLoginRepository
             val networkDataSyncId =
                 YouTube
                     .accountDataSyncId()
+                    .onFailure { if (it is CancellationException) throw it }
                     .getOrNull()
                     .normalizeDataSyncId()
 

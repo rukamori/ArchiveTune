@@ -634,7 +634,11 @@ fun PlayerMenu(
                                         },
                                         text = stringResource(R.string.aod_mode),
                                         onClick = {
-                                            onAodFeatureEnabledChange(!aodFeatureEnabled)
+                                            if (!aodFeatureEnabled) {
+                                                onAodFeatureEnabledChange(true)
+                                            }
+                                            playerConnection.aodModeEnabled.value = true
+                                            onDismiss()
                                         },
                                         backgroundColor = aodBgColor,
                                         contentColor = aodContentColor,

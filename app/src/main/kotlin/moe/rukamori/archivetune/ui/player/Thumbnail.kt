@@ -76,6 +76,7 @@ import androidx.compose.ui.util.fastForEach
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.ui.AspectRatioFrameLayout
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.CachePolicy
@@ -524,6 +525,7 @@ fun Thumbnail(
                                             primaryUrl = primaryCanvasUrl,
                                             fallbackUrl = fallbackCanvasUrl,
                                             isPlaying = isPlaying,
+                                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                                             modifier = Modifier.fillMaxSize(),
                                         )
                                     }

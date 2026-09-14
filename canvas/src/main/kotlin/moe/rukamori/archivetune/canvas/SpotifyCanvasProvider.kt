@@ -15,11 +15,12 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -33,6 +34,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
+import moe.rukamori.archivetune.spotify.SpotifyHashProvider
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URI
@@ -41,6 +43,8 @@ import java.util.UUID
 
 object SpotifyCanvasProvider {
     private const val CANVAS_URL = "https://spclient.wg.spotify.com/canvaz-cache/v0/canvases"
+    private const val SEARCH_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
+    private const val SEARCH_OPERATION = "searchDesktop"
     private const val WEB_USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
     private const val APP_USER_AGENT = "Spotify/9.0.34.593 iOS/18.4 (iPhone15,3)"
     private val trackUriPattern = Regex("spotify:track:[A-Za-z0-9]{22}")
@@ -66,7 +70,6 @@ object SpotifyCanvasProvider {
 
     suspend fun getBySongArtist(song: String, artist: String, accessToken: String, clientId: String): CanvasArtwork? {
         CanvasRequestPolicy.check(CanvasSource.SPOTIFY)
-        val token = clientToken(clientId)
         val query = "$song $artist"
         val variables = buildJsonObject {
             put("searchTerm", query)
@@ -74,44 +77,13 @@ object SpotifyCanvasProvider {
             put("limit", 10)
             put("numberOfTopResults", 5)
             put("includeAudiobooks", false)
+            put("includeArtistHasConcertsField", false)
             put("includePreReleases", false)
+            put("includeLocalConcertsField", false)
+            put("includeAuthors", false)
         }
-        val extensions = buildJsonObject {
-            putJsonObject("persistedQuery") {
-                put("version", 1)
-                put("sha256Hash", "bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428")
-            }
-        }
-        val search = client.get("https://api-partner.spotify.com/pathfinder/v1/query") {
-            header("Authorization", "Bearer $accessToken")
-            header("Client-Token", token)
-            header("App-Platform", "WebPlayer")
-            header("User-Agent", WEB_USER_AGENT)
-            parameter("operationName", "searchTracks")
-            parameter("variables", variables.toString())
-            parameter("extensions", extensions.toString())
-        }
-        if (search.status.value == 401 || search.status.value == 429) throw RequestException(search.status.value)
-        val root = if (search.status == HttpStatusCode.OK) json.parseToJsonElement(search.bodyAsText()) as? JsonObject else null
-        val items = root.obj("data").obj("searchV2").obj("tracksV2").array("items")
-        var candidates = items.mapNotNull { item ->
-            parseTrack((item as? JsonObject).obj("item").obj("data"), true)
-        }.filter { it.second.matchesSongIdentity(song, artist) }
-        if (candidates.isEmpty()) {
-            CanvasRequestPolicy.check(CanvasSource.SPOTIFY)
-            val response = client.get("https://api.spotify.com/v1/search") {
-                header("Authorization", "Bearer $accessToken")
-                header("Client-Token", token)
-                header("User-Agent", WEB_USER_AGENT)
-                parameter("q", query)
-                parameter("type", "track")
-                parameter("limit", 10)
-            }
-            if (response.status != HttpStatusCode.OK) throw RequestException(response.status.value)
-            val rest = json.parseToJsonElement(response.bodyAsText()) as? JsonObject
-            candidates = rest.obj("tracks").array("items").mapNotNull { parseTrack(it as? JsonObject, false) }
-                .filter { it.second.matchesSongIdentity(song, artist) }
-        }
+        val candidates = searchTracks(variables, accessToken)
+            .filter { it.second.matchesSongIdentity(song, artist) }
         if (candidates.isEmpty()) return null
         val urls = getCanvases(candidates.map { it.first }.distinct().take(10), accessToken, clientId)
         return candidates.firstNotNullOfOrNull { (uri, artwork) ->
@@ -119,17 +91,73 @@ object SpotifyCanvasProvider {
         }
     }
 
-    private fun parseTrack(track: JsonObject?, graphQl: Boolean): Pair<String, CanvasArtwork>? {
-        val uri = track.string("uri") ?: track.string("id")?.let { "spotify:track:$it" } ?: return null
+    private suspend fun searchTracks(variables: JsonObject, accessToken: String): List<Pair<String, CanvasArtwork>> {
+        val hashes = listOfNotNull(
+            SpotifyHashProvider.getHash(SEARCH_OPERATION),
+            SpotifyHashProvider.getPreviousHash(SEARCH_OPERATION),
+        ).distinct()
+        for (hash in hashes) {
+            CanvasRequestPolicy.check(CanvasSource.SPOTIFY)
+            val body = buildJsonObject {
+                put("variables", variables)
+                put("operationName", SEARCH_OPERATION)
+                putJsonObject("extensions") {
+                    putJsonObject("persistedQuery") {
+                        put("version", 1)
+                        put("sha256Hash", hash)
+                    }
+                }
+            }
+            val response = client.post(SEARCH_URL) {
+                header("Authorization", "Bearer $accessToken")
+                header("App-Platform", "WebPlayer")
+                header("User-Agent", WEB_USER_AGENT)
+                header("Origin", "https://open.spotify.com")
+                header("Referer", "https://open.spotify.com/")
+                header("Accept", "application/json")
+                setBody(
+                    TextContent(
+                        body.toString(),
+                        ContentType.Application.Json.withParameter("charset", "UTF-8"),
+                    ),
+                )
+            }
+            if (response.status.value == 401 || response.status.value == 429) {
+                throw RequestException(response.status.value)
+            }
+            val responseBody = response.bodyAsText()
+            if (response.status == HttpStatusCode.PreconditionFailed ||
+                responseBody.contains("PersistedQueryNotFound", ignoreCase = true)
+            ) {
+                continue
+            }
+            if (response.status != HttpStatusCode.OK) throw RequestException(response.status.value)
+            val root = json.parseToJsonElement(responseBody) as? JsonObject
+                ?: throw IOException("Spotify search response is invalid")
+            val errors = root.array("errors")
+            if (errors.isNotEmpty()) throw IOException("Spotify search returned an error")
+            return root.obj("data").obj("searchV2").obj("tracksV2").array("items").mapNotNull { item ->
+                val wrapper = (item as? JsonObject).obj("item")
+                parseTrack(
+                    track = wrapper.obj("data"),
+                    uriOverride = wrapper.string("_uri") ?: wrapper.string("uri"),
+                )
+            }
+        }
+        throw RequestException(HttpStatusCode.PreconditionFailed.value)
+    }
+
+    private fun parseTrack(track: JsonObject?, uriOverride: String? = null): Pair<String, CanvasArtwork>? {
+        val uri = uriOverride ?: track.string("uri") ?: track.string("id")?.let { "spotify:track:$it" } ?: return null
         if (!trackUriPattern.matches(uri)) return null
         val title = track.string("name") ?: return null
-        val artists = if (graphQl) track.obj("artists").array("items") else track.array("artists")
+        val artists = track.obj("artists").array("items")
         val credits = artists.mapNotNull {
             val value = it as? JsonObject
-            if (graphQl) value.obj("profile").string("name") else value.string("name")
+            value.obj("profile").string("name")
         }
-        val album = track.obj(if (graphQl) "albumOfTrack" else "album")
-        val images = if (graphQl) album.obj("coverArt").array("sources") else album.array("images")
+        val album = track.obj("albumOfTrack")
+        val images = album.obj("coverArt").array("sources")
         val image = images.mapNotNull { it as? JsonObject }.minByOrNull {
             kotlin.math.abs(((it["width"] as? JsonPrimitive)?.longOrNull ?: 640) - 640)
         }.string("url")
@@ -168,7 +196,8 @@ object SpotifyCanvasProvider {
     }
 
     suspend fun isHealthy(accessToken: String, clientId: String): Boolean {
-        getCanvases(listOf("spotify:track:0VjIjW4GlUZAMYd2vXMi3b"), accessToken, clientId)
+        val trackUri = "spotify:track:0VjIjW4GlUZAMYd2vXMi3b"
+        getCanvases(listOf(trackUri), accessToken, clientId)
         return true
     }
 

@@ -46,6 +46,11 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.OkHttpClient
 import timber.log.Timber
+import java.io.IOException
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.URI
+import java.net.SocketAddress
 import java.util.Locale
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
@@ -80,19 +85,15 @@ internal fun CanvasArtworkPlayer(
 
     val okHttpClient =
         remember(provider) {
+            val streamProxy = YouTube.streamOkHttpProxy
             OkHttpClient
                 .Builder()
-                .proxy(YouTube.streamOkHttpProxy)
+                .proxySelector(CanvasPlaybackProxySelector(streamProxy))
                 .addInterceptor { chain -> CanvasNetworkAccess.intercept(chain, provider) }
                 .addInterceptor { chain ->
                     val request = chain.request()
                     val host = request.url.host
-                    val isYouTubeMediaHost =
-                        host.endsWith("googlevideo.com") ||
-                            host.endsWith("googleusercontent.com") ||
-                            host.endsWith("youtube.com") ||
-                            host.endsWith("youtube-nocookie.com") ||
-                            host.endsWith("ytimg.com")
+                    val isYouTubeMediaHost = host.isYouTubeMediaHost()
 
                     if (!isYouTubeMediaHost) {
                         return@addInterceptor chain.proceed(
@@ -337,6 +338,27 @@ private fun ExoPlayer.setCanvasPlayback(isPlaying: Boolean) {
         pause()
     }
 }
+
+private class CanvasPlaybackProxySelector(streamProxy: Proxy) : ProxySelector() {
+    private val directRoute = listOf(Proxy.NO_PROXY)
+    private val streamRoute = listOf(streamProxy)
+
+    override fun select(uri: URI): List<Proxy> =
+        if (uri.host.orEmpty().isYouTubeMediaHost()) streamRoute else directRoute
+
+    override fun connectFailed(uri: URI, socketAddress: SocketAddress, error: IOException) {
+        Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas proxy connection failed for %s", uri.host)
+    }
+}
+
+private fun String.isYouTubeMediaHost(): Boolean =
+    isHostOrSubdomainOf("googlevideo.com") ||
+        isHostOrSubdomainOf("googleusercontent.com") ||
+        isHostOrSubdomainOf("youtube.com") ||
+        isHostOrSubdomainOf("youtube-nocookie.com") ||
+        isHostOrSubdomainOf("ytimg.com")
+
+private fun String.isHostOrSubdomainOf(domain: String): Boolean = this == domain || endsWith(".$domain")
 
 private const val CanvasPlaybackLogTag = "CanvasPlayback"
 private const val CanvasPlaybackUserAgent =

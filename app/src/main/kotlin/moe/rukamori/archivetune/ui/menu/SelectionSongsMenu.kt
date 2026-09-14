@@ -409,7 +409,6 @@ fun SelectionSongMenu(
                         },
                         modifier =
                             Modifier.clickable {
-                                onDismiss()
                                 val shouldUnlikeAll = songSelection.all { it.song.liked }
                                 val updatedSongs =
                                     songSelection
@@ -424,8 +423,11 @@ fun SelectionSongMenu(
 
                                 coroutineScope.launch(Dispatchers.IO) {
                                     val failedSongIds = syncUtils.likeSongs(updatedSongs)
-                                    if (failedSongIds.isNotEmpty()) {
-                                        withContext(Dispatchers.Main) {
+
+                                    withContext(Dispatchers.Main) {
+                                        onDismiss()
+                                        clearAction()
+                                        if (failedSongIds.isNotEmpty()) {
                                             Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -969,7 +971,6 @@ fun SelectionMediaMetadataMenu(
                         },
                         modifier =
                             Modifier.clickable {
-                                onDismiss()
                                 val updatedSongs =
                                     songSelection
                                         .asSequence()
@@ -982,8 +983,11 @@ fun SelectionMediaMetadataMenu(
 
                                 coroutineScope.launch(Dispatchers.IO) {
                                     val failedSongIds = syncUtils.likeSongs(updatedSongs)
-                                    if (failedSongIds.isNotEmpty()) {
-                                        withContext(Dispatchers.Main) {
+
+                                    withContext(Dispatchers.Main) {
+                                        onDismiss()
+                                        clearAction()
+                                        if (failedSongIds.isNotEmpty()) {
                                             Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
                                         }
                                     }

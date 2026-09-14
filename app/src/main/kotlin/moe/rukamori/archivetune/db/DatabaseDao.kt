@@ -1312,22 +1312,6 @@ interface DatabaseDao {
         thumbnailUrl: String,
     )
 
-    @Query(
-        "UPDATE song SET liked = 0, likedDate = NULL, inLibrary = NULL WHERE isLocal = 0 AND (liked = 1 OR inLibrary IS NOT NULL)",
-    )
-    fun clearRemoteSongLibraryState()
-
-    @Query(
-        "UPDATE album SET bookmarkedAt = NULL, likedDate = NULL, inLibrary = NULL WHERE isLocal = 0 AND (bookmarkedAt IS NOT NULL OR likedDate IS NOT NULL OR inLibrary IS NOT NULL)",
-    )
-    fun clearRemoteAlbumLibraryState()
-
-    @Query("UPDATE artist SET bookmarkedAt = NULL WHERE isLocal = 0 AND bookmarkedAt IS NOT NULL")
-    fun clearRemoteArtistLibraryState()
-
-    @Query("UPDATE playlist SET bookmarkedAt = NULL WHERE browseId IS NOT NULL AND bookmarkedAt IS NOT NULL")
-    fun clearRemotePlaylistLibraryState()
-
     @Query("UPDATE playlist SET songSortType = :sortType, songSortDescending = :descending WHERE id = :playlistId")
     fun updatePlaylistSortPreference(
         playlistId: String,
