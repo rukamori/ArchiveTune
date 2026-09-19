@@ -18,6 +18,7 @@ import java.time.ZoneOffset
 
 val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")
 val GlassEffectEnabledKey = booleanPreferencesKey("glassEffectEnabled")
+val GlassEffectStyleKey = stringPreferencesKey("glassEffectStyle")
 val CustomThemeColorKey = stringPreferencesKey("customThemeColor")
 val RandomThemeOnStartupKey = booleanPreferencesKey("randomThemeOnStartup")
 val DarkModeKey = stringPreferencesKey("darkMode")
@@ -662,6 +663,11 @@ enum class PlayerDesignStyle {
     V8,
     V9,
     V10,
+}
+
+enum class GlassEffectStyle {
+    FROSTED,
+    LIQUID,
 }
 
 enum class PlayerBackgroundStyle {

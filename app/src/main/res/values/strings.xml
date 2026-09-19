@@ -1123,4 +1123,7 @@
     <string name="gatekeeper_connection_blocked">Connection blocked by ArchiveTune Remote. This app could not be verified as an official ArchiveTune build. Install an official build from https://github.com/rukamori/ArchiveTune or https://t.me/ArchiveTuneGC.</string>
     <string name="glass_effect">Glass effect</string>
     <string name="glass_effect_summary">Enable frosted-glass surfaces</string>
+    <string name="glass_effect_style">Glass style</string>
+    <string name="glass_effect_style_frosted">Frosted</string>
+    <string name="glass_effect_style_liquid">Liquid</string>
 </resources>

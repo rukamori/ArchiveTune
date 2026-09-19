@@ -85,6 +85,8 @@ import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.GlassEffectEnabledKey
+import moe.rukamori.archivetune.constants.GlassEffectStyle
+import moe.rukamori.archivetune.constants.GlassEffectStyleKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
@@ -159,6 +161,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             GlassEffectEnabledKey,
             defaultValue = false,
+        )
+    val (glassEffectStyle, onGlassEffectStyleChange) =
+        rememberEnumPreference(
+            GlassEffectStyleKey,
+            defaultValue = GlassEffectStyle.FROSTED,
         )
     val (wallpaperExtractionFailed) =
         rememberPreference(
@@ -554,6 +561,23 @@ fun AppearanceSettings(navController: NavController) {
                         onCheckedChange = onGlassEffectEnabledChange,
                     )
                 }
+
+            if (glassEffectEnabled) {
+                item {
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.glass_effect_style)) },
+                        icon = { Icon(painterResource(R.drawable.palette), null) },
+                        selectedValue = glassEffectStyle,
+                        onValueSelected = onGlassEffectStyleChange,
+                        valueText = {
+                            when (it) {
+                                GlassEffectStyle.FROSTED -> stringResource(R.string.glass_effect_style_frosted)
+                                GlassEffectStyle.LIQUID -> stringResource(R.string.glass_effect_style_liquid)
+                            }
+                        },
+                    )
+                }
+            }
 
                 item(visible = dynamicTheme && Build.VERSION.SDK_INT < Build.VERSION_CODES.S && wallpaperExtractionFailed) {
                     PreferenceEntry(
