@@ -6656,6 +6656,33 @@ class MusicService :
 
         crossfadeSuppressedMediaId = null
 
+        // Handle natural track end (AUTO) and repeat (REPEAT):
+        // Clean up lingering crossfade state, restore volume, and re-arm
+        // crossfade scheduling so the next transition is also smooth.
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+            reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+        ) {
+            crossfadeTriggerJob?.cancel()
+            crossfadeTriggerJob = null
+            if (isCrossfading) {
+                crossfadeJob?.cancel()
+                crossfadeJob = null
+                isCrossfading = false
+                crossfadeHandoffInProgress = false
+                crossfadeProgress = 0f
+                crossfadeHandoffProgress = 0f
+                crossfadePlaybackRequested = false
+            }
+            releaseSecondaryCrossfadePlayer()
+            if (::player.isInitialized) {
+                localPlayer.pauseAtEndOfMediaItems = false
+                applyEffectiveVolumeImmediately()
+            }
+            if (crossfadeEnabled && crossfadeDurationMs > 0L) {
+                scheduleCrossfade()
+            }
+        }
+
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
