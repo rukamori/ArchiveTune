@@ -9,6 +9,10 @@
 
 package moe.rukamori.archivetune.ui.player
 
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -749,6 +753,57 @@ fun PlayerTopActions(
     }
 }
 
+@Composable
+fun RelativeDragSlider(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    sliderContent: @Composable () -> Unit,
+) {
+    var trackWidthPx by remember { mutableFloatStateOf(1f) }
+    val currentValue by rememberUpdatedState(value)
+    val currentRange by rememberUpdatedState(valueRange)
+    val currentOnChange by rememberUpdatedState(onValueChange)
+    val currentOnFinished by rememberUpdatedState(onValueChangeFinished)
+
+    Box(modifier = modifier) {
+        sliderContent()
+        if (enabled) {
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .onSizeChanged { trackWidthPx = it.width.toFloat().coerceAtLeast(1f) }
+                        .pointerInput(Unit) {
+                            var startValue = 0f
+                            var accumulatedPx = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = {
+                                    startValue = currentValue
+                                    accumulatedPx = 0f
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    accumulatedPx += dragAmount
+                                    val range = currentRange.endInclusive - currentRange.start
+                                    val valuePerPx = range / trackWidthPx
+                                    val newValue =
+                                        (startValue + accumulatedPx * valuePerPx)
+                                            .coerceIn(currentRange.start, currentRange.endInclusive)
+                                    currentOnChange(newValue)
+                                },
+                                onDragEnd = { currentOnFinished() },
+                                onDragCancel = { currentOnFinished() },
+                            )
+                        },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSlider(
@@ -764,16 +819,23 @@ fun PlayerSlider(
     val safeDuration = if (duration <= 0L) 0f else duration.toFloat()
     val safeValue = (sliderPosition ?: position).toFloat().coerceIn(0f, maxOf(0f, safeDuration))
 
-    StyledPlaybackSlider(
-        sliderStyle = sliderStyle,
+    RelativeDragSlider(
         value = safeValue,
         valueRange = 0f..maxOf(1f, safeDuration),
         onValueChange = { onValueChange(it.toLong()) },
         onValueChangeFinished = onValueChangeFinished,
-        activeColor = textButtonColor,
-        isPlaying = isPlaying,
         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
-    )
+    ) {
+        StyledPlaybackSlider(
+            sliderStyle = sliderStyle,
+            value = safeValue,
+            valueRange = 0f..maxOf(1f, safeDuration),
+            onValueChange = {},
+            onValueChangeFinished = {},
+            activeColor = textButtonColor,
+            isPlaying = isPlaying,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

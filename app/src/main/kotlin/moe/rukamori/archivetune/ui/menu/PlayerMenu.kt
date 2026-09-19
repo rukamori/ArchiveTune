@@ -9,6 +9,7 @@
 
 package moe.rukamori.archivetune.ui.menu
 
+import moe.rukamori.archivetune.ui.player.RelativeDragSlider
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.widget.Toast
@@ -1039,42 +1040,38 @@ private fun VolumeSliderL(
     modifier: Modifier = Modifier,
 ) {
     val safeValue = value.coerceIn(0f, 1f)
-    var sliderValue by remember { mutableFloatStateOf(safeValue) }
-    var isDragging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(safeValue) {
-        if (!isDragging) sliderValue = safeValue
-    }
-
-    Slider(
-        value = sliderValue,
-        onValueChange = { updated ->
-            isDragging = true
-            val coerced = updated.coerceIn(0f, 1f)
-            sliderValue = coerced
-            onValueChange(coerced)
-        },
-        onValueChangeFinished = { isDragging = false },
+    RelativeDragSlider(
+        value = safeValue,
         valueRange = 0f..1f,
-        modifier = modifier.height(36.dp),
-        thumb = {
-            Box(
-                modifier =
-                    Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-            )
-        },
-        colors =
-            SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent,
-            ),
-    )
+        onValueChange = { onValueChange(it.coerceIn(0f, 1f)) },
+        onValueChangeFinished = {},
+        modifier = modifier.height(48.dp),
+    ) {
+        Slider(
+            value = safeValue,
+            onValueChange = {},
+            valueRange = 0f..1f,
+            modifier = Modifier.height(36.dp),
+            thumb = {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(14.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                )
+            },
+            colors =
+                SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent,
+                ),
+        )
+    }
 }
 
 @Composable
