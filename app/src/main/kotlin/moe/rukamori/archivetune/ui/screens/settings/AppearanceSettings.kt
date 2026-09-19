@@ -84,6 +84,7 @@ import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
+import moe.rukamori.archivetune.constants.GlassEffectEnabledKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
@@ -153,6 +154,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             DynamicThemeKey,
             defaultValue = true,
+        )
+    val (glassEffectEnabled, onGlassEffectEnabledChange) =
+        rememberPreference(
+            GlassEffectEnabledKey,
+            defaultValue = false,
         )
     val (wallpaperExtractionFailed) =
         rememberPreference(
@@ -537,6 +543,15 @@ fun AppearanceSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.palette), null) },
                         checked = dynamicTheme,
                         onCheckedChange = onDynamicThemeChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.glass_effect)) },
+                        description = stringResource(R.string.glass_effect_summary),
+                        icon = { Icon(painterResource(R.drawable.palette), null) },
+                        checked = glassEffectEnabled,
+                        onCheckedChange = onGlassEffectEnabledChange,
                     )
                 }
 
