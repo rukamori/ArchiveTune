@@ -744,4 +744,36 @@
     <string name="media_info_empty">No information available</string>
     <string name="media_info_load_error">Couldn’t load this information</string>
     <string name="media_info_itag" translatable="false">Itag</string>
+    <string name="android_auto">Android Auto</string>
+    <string name="android_auto_settings_subtitle">Driving playback, browsing and data</string>
+    <string name="android_auto_connection">Connection</string>
+    <string name="android_auto_disconnected">Not connected</string>
+    <string name="android_auto_projection">Connected to Android Auto</string>
+    <string name="android_auto_native">Running on Android Automotive</string>
+    <string name="android_auto_content">Content</string>
+    <string name="android_auto_online_recommendations">Online recommendations</string>
+    <string name="android_auto_online_recommendations_desc">Show suggested songs, mixes and radio while driving</string>
+    <string name="android_auto_online_voice_search">Online voice search</string>
+    <string name="android_auto_online_voice_search_desc">Include online results when you ask for music</string>
+    <string name="android_auto_local_songs">Device songs</string>
+    <string name="android_auto_local_songs_desc">Include audio stored on this device</string>
+    <string name="android_auto_audio_permission_missing">Audio permission is required to browse device songs</string>
+    <string name="android_auto_data">Mobile data</string>
+    <string name="android_auto_metered_playback">Stream on metered networks</string>
+    <string name="android_auto_metered_playback_desc">Allow online playback over mobile or metered data</string>
+    <string name="android_auto_metered_artwork">Load artwork on metered networks</string>
+    <string name="android_auto_metered_artwork_desc">Artwork may use additional mobile data</string>
+    <string name="android_auto_controls">Playback controls</string>
+    <string name="android_auto_primary_action">Primary action</string>
+    <string name="android_auto_secondary_action">Secondary action</string>
+    <string name="android_auto_action_like">Like</string>
+    <string name="android_auto_action_radio">Start radio</string>
+    <string name="android_auto_action_shuffle">Shuffle</string>
+    <string name="android_auto_action_repeat">Repeat</string>
+    <string name="android_auto_action_none">None</string>
+    <string name="android_auto_app_permissions">App permissions</string>
+    <string name="android_auto_settings_load_failed">Could not load Android Auto settings</string>
+    <string name="android_auto_settings_update_failed">Could not update Android Auto settings</string>
+    <string name="android_auto_for_you">For You</string>
+    <string name="android_auto_library">Library</string>
 </resources>

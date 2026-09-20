@@ -82,6 +82,7 @@ public fun MediaDetailHero(
     metadata: String? = null,
     description: String? = null,
     additionalPrimaryActions: (@Composable RowScope.(Color) -> Unit)? = null,
+    isToggleAddEnabled: Boolean = true,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     val menuState = LocalMenuState.current
@@ -239,6 +240,7 @@ public fun MediaDetailHero(
                         }
                     },
                 additionalActions = additionalPrimaryActions,
+                isToggleAddEnabled = isToggleAddEnabled,
                 modifier = Modifier.padding(top = 12.dp),
             )
         }
@@ -295,6 +297,7 @@ public fun MediaDetailPrimaryActions(
     onToggleAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
     additionalActions: (@Composable RowScope.(Color) -> Unit)? = null,
+    isToggleAddEnabled: Boolean = true,
 ) {
     val secondaryButtonColors =
         IconButtonDefaults.filledTonalIconButtonColors(
@@ -386,6 +389,7 @@ public fun MediaDetailPrimaryActions(
                 onToggleAdd?.let { toggleAdd ->
                     FilledTonalIconButton(
                         onClick = toggleAdd,
+                        enabled = isToggleAddEnabled,
                         shape = CircleShape,
                         colors = secondaryButtonColors,
                         modifier =

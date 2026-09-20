@@ -189,6 +189,7 @@ fun LibraryScreen(navController: NavController) {
                     when (targetFilter) {
                         LibraryFilter.LIBRARY -> 116.dp
                         LibraryFilter.PLAYLISTS -> 132.dp
+                        LibraryFilter.PODCASTS -> 126.dp
                         LibraryFilter.SPOTIFY -> 168.dp
                         LibraryFilter.SONGS -> 102.dp
                         LibraryFilter.ARTISTS -> 116.dp
@@ -263,6 +264,10 @@ fun LibraryScreen(navController: NavController) {
                         LibrarySpotifyPlaylistsScreen(navController = navController)
                     }
 
+                    LibraryFilter.PODCASTS -> {
+                        LibraryPodcastsScreen(navController = navController)
+                    }
+
                     LibraryFilter.SONGS -> {
                         LibrarySongsScreen(
                             navController = navController,
@@ -318,6 +323,7 @@ fun LibraryScreen(navController: NavController) {
                             when (filter) {
                                 LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
                                 LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
+                                LibraryFilter.PODCASTS -> stringResource(R.string.podcast)
                                 LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
                                 LibraryFilter.SONGS -> stringResource(R.string.songs)
                                 LibraryFilter.ARTISTS -> stringResource(R.string.artists)
@@ -327,6 +333,7 @@ fun LibraryScreen(navController: NavController) {
                             when (filter) {
                                 LibraryFilter.LIBRARY -> R.drawable.graphic_eq
                                 LibraryFilter.PLAYLISTS -> R.drawable.queue_music
+                                LibraryFilter.PODCASTS -> R.drawable.mic
                                 LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
                                 LibraryFilter.SONGS -> R.drawable.music_note
                                 LibraryFilter.ARTISTS -> R.drawable.person

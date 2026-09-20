@@ -5,6 +5,9 @@
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>
     <string name="podcast">Podcast</string>
+    <string name="your_shows">Your shows</string>
+    <string name="browse_empty_description">There’s nothing to show here yet.</string>
+    <string name="browse_load_failed">Couldn’t load this page</string>
     <string name="episodes">Episodes</string>
     <string name="podcast_has_no_episodes">This podcast has no available episodes.</string>
     <plurals name="n_episode">
@@ -477,6 +480,8 @@
     <string name="backdrop_blur_amount">Backdrop blur amount</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
     <string name="player">Player</string>
+    <string name="playing_from">Playing from %1$s</string>
+    <string name="remaining_time">-%1$s</string>
     <string name="player_slider_style">Player slider style</string>
     <string name="slider_style_standard">Standard</string>
     <string name="slider_style_wavy">Wavy</string>
@@ -904,6 +909,8 @@
     <string name="latest_version_format">Latest: %s</string>
     <string name="updates_status_checking">Checking for the latest release</string>
     <string name="updates_status_current">You are on the latest available release</string>
+    <string name="automatic_update_checks">Automatic Updates Check</string>
+    <string name="automatic_update_checks_desc">Check the selected channel automatically for new releases</string>
     <string name="enable_update_notification">Enable Update Notification</string>
     <string name="enable_update_notification_channel_desc">Get notified when a new release is available on the selected channel</string>
     <string name="update_channel">Update Channel</string>

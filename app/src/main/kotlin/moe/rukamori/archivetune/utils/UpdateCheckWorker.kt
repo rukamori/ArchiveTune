@@ -10,10 +10,10 @@ package moe.rukamori.archivetune.utils
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.BuildConfig
-import moe.rukamori.archivetune.constants.EnableUpdateNotificationKey
+import moe.rukamori.archivetune.constants.AutomaticUpdateCheckKey
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.defaultUpdateChannel
@@ -30,38 +30,32 @@ class UpdateCheckWorker(
         return try {
             val dataStore = applicationContext.dataStore
 
-            val isEnabled = dataStore.data.map { it[EnableUpdateNotificationKey] ?: false }.first()
-            if (!isEnabled) return Result.success()
+            val preferences = dataStore.data.first()
+            val automaticChecksEnabled = preferences[AutomaticUpdateCheckKey] ?: true
+            if (!automaticChecksEnabled) return Result.success()
 
             val updateChannel =
-                dataStore.data
-                    .map { UpdateChannel.fromStoredName(it[UpdateChannelKey], defaultUpdateChannel) }
-                    .first()
+                UpdateChannel.fromStoredName(preferences[UpdateChannelKey], defaultUpdateChannel)
 
-            when (updateChannel) {
-                UpdateChannel.ARTIFACT -> {
-                    Updater.getLatestCanaryVersionName().onSuccess { latestVersion ->
-                        if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
-                            UpdateNotificationManager.notifyIfNewVersion(
-                                applicationContext,
-                                latestVersion,
-                                updateChannel,
-                            )
-                        }
-                    }
-                }
+            val latestVersion =
+                when (updateChannel) {
+                    UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
+                    UpdateChannel.STABLE -> Updater.getLatestVersionName()
+                }.getOrElse { throw it }
 
-                UpdateChannel.STABLE -> {
-                    Updater.getLatestVersionName().onSuccess { latestVersion ->
-                        if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
-                            UpdateNotificationManager.notifyIfNewVersion(applicationContext, latestVersion)
-                        }
-                    }
-                }
+            if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
+                UpdateNotificationManager.notifyIfNewVersion(
+                    applicationContext,
+                    latestVersion,
+                    updateChannel,
+                )
             }
 
             Result.success()
-        } catch (e: Exception) {
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            reportException(exception)
             Result.retry()
         }
     }

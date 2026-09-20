@@ -50,13 +50,16 @@ import moe.rukamori.archivetune.home.HomeEvent
 import moe.rukamori.archivetune.home.HomePresentationPreferences
 import moe.rukamori.archivetune.home.HomeScreenState
 import moe.rukamori.archivetune.home.HomeUiState
+import moe.rukamori.archivetune.home.LoadCommunityPlaylistPreviewsUseCase
 import moe.rukamori.archivetune.home.LoadPersonalizedQuickPicksUseCase
 import moe.rukamori.archivetune.home.ObserveHomePresentationPreferencesUseCase
+import moe.rukamori.archivetune.home.PrepareCommunityHomePageUseCase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AccountChannel
 import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.PodcastItem
+import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -118,6 +121,7 @@ private data class HomeLocalContent(
 private data class HomeRemoteContent(
     val homePage: HomePage?,
     val remoteQuickPicks: HomePage.Section?,
+    val communitySection: HomePage.Section?,
     val similarRecommendations: List<SimilarRecommendation>,
     val accountPlaylists: List<PlaylistItem>,
     val accountName: String,
@@ -136,6 +140,7 @@ private data class HomeContent(
                 local.forgottenFavorites.isNotEmpty() ||
                 local.keepListening.isNotEmpty() ||
                 remote.remoteQuickPicks?.items?.isNotEmpty() == true ||
+                remote.communitySection?.featuredCards?.isNotEmpty() == true ||
                 remote.similarRecommendations.isNotEmpty() ||
                 remote.accountPlaylists.isNotEmpty() ||
                 remote.homePage?.sections?.any { it.items.isNotEmpty() } == true
@@ -176,6 +181,7 @@ private data class HomeStateInputs(
                 accountPlaylists = ImmutableList.copyOf(content.remote.accountPlaylists),
                 homePage = content.remote.homePage,
                 remoteQuickPicks = content.remote.remoteQuickPicks,
+                communitySection = content.remote.communitySection,
                 selectedChip = content.selectedChip,
                 accountName = content.remote.accountName,
                 accountImageUrl = content.remote.accountImageUrl,
@@ -203,6 +209,8 @@ class HomeViewModel
         private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
         private val filterAiContent: FilterAiContentUseCase,
         private val loadPersonalizedQuickPicksUseCase: LoadPersonalizedQuickPicksUseCase,
+        private val prepareCommunityHomePageUseCase: PrepareCommunityHomePageUseCase,
+        private val loadCommunityPlaylistPreviewsUseCase: LoadCommunityPlaylistPreviewsUseCase,
     ) : ViewModel() {
         private val isRefreshing = MutableStateFlow(false)
         private val isLoading = MutableStateFlow(false)
@@ -225,10 +233,14 @@ class HomeViewModel
         private val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
         private val homePage = MutableStateFlow<HomePage?>(null)
         private val remoteQuickPicks = MutableStateFlow<HomePage.Section?>(null)
+        private val communitySection = MutableStateFlow<HomePage.Section?>(null)
         private val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
         private val previousHomePage = MutableStateFlow<HomePage?>(null)
         private val previousRemoteQuickPicks = MutableStateFlow<HomePage.Section?>(null)
+        private val previousCommunitySection = MutableStateFlow<HomePage.Section?>(null)
         private val accountRefreshGeneration = AtomicLong(0L)
+        private val communityPreviewGeneration = AtomicLong(0L)
+        private var communityPreviewJob: Job? = null
 
         private val _allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
         val allLocalItems: StateFlow<List<LocalItem>> = _allLocalItems.asStateFlow()
@@ -276,6 +288,7 @@ class HomeViewModel
                 HomeRemoteContent(
                     homePage = homePage,
                     remoteQuickPicks = remoteQuickPicks,
+                    communitySection = null,
                     similarRecommendations = similarRecommendations.orEmpty(),
                     accountPlaylists = accountPlaylists.orEmpty(),
                     accountName = accountName,
@@ -283,6 +296,8 @@ class HomeViewModel
                 )
             }.combine(accountImageUrl) { content, accountImageUrl ->
                 content.copy(accountImageUrl = accountImageUrl)
+            }.combine(communitySection) { content, communitySection ->
+                content.copy(communitySection = communitySection)
             }
 
         private val homeContent =
@@ -342,6 +357,72 @@ class HomeViewModel
             return copy(sections = sections.toMutableList().apply { removeAt(quickPicksIndex) }) to sections[quickPicksIndex]
         }
 
+        private fun applyRemoteHomePage(
+            page: HomePage,
+            replaceCommunitySection: Boolean,
+        ) {
+            val prepared =
+                prepareCommunityHomePageUseCase(
+                    homePage = page,
+                    allowStructuralFallback = replaceCommunitySection || communitySection.value == null,
+                )
+            homePage.value = prepared.homePage
+            val newCommunitySection = prepared.communitySection
+            if (newCommunitySection != null) {
+                updateCommunitySection(newCommunitySection)
+            } else if (replaceCommunitySection) {
+                updateCommunitySection(null)
+            }
+        }
+
+        private fun updateCommunitySection(section: HomePage.Section?) {
+            val generation = communityPreviewGeneration.incrementAndGet()
+            communityPreviewJob?.cancel()
+            communityPreviewJob = null
+            communitySection.value = section
+            if (section == null || section.featuredCards.all { card -> card.itemIds.isNotEmpty() }) return
+
+            communityPreviewJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        val enrichedSection =
+                            filterCommunityPreviewSection(
+                                loadCommunityPlaylistPreviewsUseCase(section),
+                            )
+                        if (communityPreviewGeneration.get() == generation) {
+                            communitySection.value = enrichedSection
+                            updateAllYtItems()
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
+                    }
+                }
+        }
+
+        private suspend fun filterCommunityPreviewSection(section: HomePage.Section): HomePage.Section {
+            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val blockedArtistIds = database.getBlockedArtistIds().toSet()
+            val filteredItems =
+                filterAiContent(
+                    section.items
+                        .filterExplicit(hideExplicit)
+                        .filterVideo(hideVideo)
+                        .filterBlockedArtists(blockedArtistIds),
+                    loadAiContentFilterPolicy(),
+                )
+            val visibleSongIds = filteredItems.filterIsInstance<SongItem>().mapTo(mutableSetOf(), SongItem::id)
+            return section.copy(
+                items = filteredItems,
+                featuredCards =
+                    section.featuredCards.map { card ->
+                        card.copy(itemIds = card.itemIds.filter(visibleSongIds::contains))
+                    },
+            )
+        }
+
         private suspend fun loadPersonalizedQuickPicks(): Boolean {
             if (quickPicksMode.first() != QuickPicks.QUICK_PICKS) return false
             val excludedSongIds = remoteQuickPicks.value?.items.orEmpty().mapTo(mutableSetOf(), YTItem::id)
@@ -397,6 +478,7 @@ class HomeViewModel
             _allYtItems.value =
                 similarRecommendations.value?.flatMap { it.items }.orEmpty() +
                     remoteQuickPicks.value?.items.orEmpty() +
+                    communitySection.value?.items.orEmpty() +
                     homePage.value?.sections?.flatMap { it.items }.orEmpty()
         }
 
@@ -606,7 +688,10 @@ class HomeViewModel
                                 remoteQuickPicks.value = fallback
                             }
                         }
-                        homePage.value = pageWithoutQuickPicks
+                        applyRemoteHomePage(
+                            page = pageWithoutQuickPicks,
+                            replaceCommunitySection = true,
+                        )
                     }
                 }
 
@@ -839,7 +924,10 @@ class HomeViewModel
                                 },
                         )
                     val (pageWithoutQuickPicks, _) = mergedPage.extractQuickPicks()
-                    homePage.value = pageWithoutQuickPicks
+                    applyRemoteHomePage(
+                        page = pageWithoutQuickPicks,
+                        replaceCommunitySection = false,
+                    )
                     updateAllYtItems()
                 } finally {
                     isLoadingMore.value = false
@@ -852,8 +940,10 @@ class HomeViewModel
             if (chip == null || chip == selectedChip.value && previousHomePage.value != null) {
                 homePage.value = previousHomePage.value
                 remoteQuickPicks.value = previousRemoteQuickPicks.value
+                updateCommunitySection(previousCommunitySection.value)
                 previousHomePage.value = null
                 previousRemoteQuickPicks.value = null
+                previousCommunitySection.value = null
                 selectedChip.value = null
                 updateAllYtItems()
                 return
@@ -862,6 +952,7 @@ class HomeViewModel
             if (selectedChip.value == null) {
                 previousHomePage.value = homePage.value
                 previousRemoteQuickPicks.value = remoteQuickPicks.value
+                previousCommunitySection.value = communitySection.value
             }
 
             chipLoadJob =
@@ -895,7 +986,10 @@ class HomeViewModel
                         )
                     val (pageWithoutQuickPicks, selectedQuickPicks) = filteredPage.extractQuickPicks()
                     remoteQuickPicks.value = selectedQuickPicks?.takeIf { it.items.isNotEmpty() }
-                    homePage.value = pageWithoutQuickPicks
+                    applyRemoteHomePage(
+                        page = pageWithoutQuickPicks,
+                        replaceCommunitySection = true,
+                    )
                     selectedChip.value = chip
                     updateAllYtItems()
                 }

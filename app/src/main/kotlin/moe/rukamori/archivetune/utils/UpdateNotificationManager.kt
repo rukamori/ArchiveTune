@@ -17,35 +17,26 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.preferences.core.edit
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AutomaticUpdateCheckKey
 import moe.rukamori.archivetune.constants.EnableUpdateNotificationKey
 import moe.rukamori.archivetune.constants.LastNotifiedVersionKey
 import moe.rukamori.archivetune.constants.LastUpdateCheckKey
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.defaultUpdateChannel
-import java.util.concurrent.TimeUnit
+import moe.rukamori.archivetune.updates.UpdateCheckScheduler
 
 object UpdateNotificationManager {
     private const val CHANNEL_ID = "update_notification_channel"
     private const val NOTIFICATION_ID = 9999
-    private const val WORK_NAME = "update_check_work"
     private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun createNotificationChannel(context: Context) {
         if (!BuildConfig.UPDATER_AVAILABLE) return
@@ -64,82 +55,59 @@ object UpdateNotificationManager {
     }
 
     fun schedulePeriodicUpdateCheck(context: Context) {
-        if (!BuildConfig.UPDATER_AVAILABLE) {
-            cancelPeriodicUpdateCheck(context)
-            return
-        }
-
-        val constraints =
-            Constraints
-                .Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build()
-
-        val updateCheckRequest =
-            PeriodicWorkRequestBuilder<UpdateCheckWorker>(
-                6,
-                TimeUnit.HOURS,
-                30,
-                TimeUnit.MINUTES,
-            ).setConstraints(constraints)
-                .build()
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
-            updateCheckRequest,
-        )
+        UpdateCheckScheduler.schedule(context)
     }
 
     fun cancelPeriodicUpdateCheck(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+        UpdateCheckScheduler.cancel(context)
     }
 
-    fun checkForUpdates(context: Context) {
+    suspend fun checkForUpdates(context: Context) {
         if (!BuildConfig.UPDATER_AVAILABLE) {
             cancelPeriodicUpdateCheck(context)
             cancelUpdateNotification(context)
             return
         }
 
-        scope.launch {
+        withContext(Dispatchers.IO) {
             try {
                 val dataStore = context.dataStore
 
-                val isEnabled = dataStore.data.map { it[EnableUpdateNotificationKey] ?: false }.first()
-                if (!isEnabled) {
+                val preferences = dataStore.data.first()
+                val automaticChecksEnabled = preferences[AutomaticUpdateCheckKey] ?: true
+                if (!automaticChecksEnabled) {
                     cancelPeriodicUpdateCheck(context)
-                    return@launch
+                    return@withContext
                 }
 
                 schedulePeriodicUpdateCheck(context)
 
-                val updateChannel =
-                    dataStore.data
-                        .map { UpdateChannel.fromStoredName(it[UpdateChannelKey], defaultUpdateChannel) }
-                        .first()
+                val notificationsEnabled = preferences[EnableUpdateNotificationKey] ?: false
+                if (!notificationsEnabled) return@withContext
 
-                val lastCheck = dataStore.data.map { it[LastUpdateCheckKey] ?: 0L }.first()
+                val updateChannel =
+                    UpdateChannel.fromStoredName(preferences[UpdateChannelKey], defaultUpdateChannel)
+
+                val lastCheck = preferences[LastUpdateCheckKey] ?: 0L
                 val now = System.currentTimeMillis()
 
-                if (now - lastCheck < CHECK_INTERVAL_MS) return@launch
+                if (now - lastCheck < CHECK_INTERVAL_MS) return@withContext
 
                 dataStore.edit { it[LastUpdateCheckKey] = now }
 
-                val versionResult =
+                val latestVersion =
                     when (updateChannel) {
                         UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
                         UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                    }
+                    }.getOrElse { throw it }
 
-                versionResult.onSuccess { latestVersion ->
-                    if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
-                        notifyIfNewVersion(context, latestVersion, updateChannel)
-                    }
+                if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
+                    notifyIfNewVersion(context, latestVersion, updateChannel)
                 }
-            } catch (e: Exception) {
-                // Silently fail
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                reportException(exception)
             }
         }
     }
@@ -153,14 +121,19 @@ object UpdateNotificationManager {
 
         try {
             val dataStore = context.dataStore
-            val lastNotified = dataStore.data.map { it[LastNotifiedVersionKey] ?: "" }.first()
+            val preferences = dataStore.data.first()
+            val automaticChecksEnabled = preferences[AutomaticUpdateCheckKey] ?: true
+            if (!automaticChecksEnabled || preferences[EnableUpdateNotificationKey] != true) return
+            val lastNotified = preferences[LastNotifiedVersionKey].orEmpty()
 
             if (latestVersion != lastNotified && Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
                 showUpdateNotification(context, latestVersion, updateChannel)
                 dataStore.edit { it[LastNotifiedVersionKey] = latestVersion }
             }
-        } catch (e: Exception) {
-            // Silently fail
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            reportException(exception)
         }
     }
 

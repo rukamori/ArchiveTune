@@ -21,6 +21,7 @@ enum class LibrarySyncTarget {
     Artists,
     Albums,
     Playlists,
+    Podcasts,
 }
 
 enum class LibrarySyncFailure {
@@ -53,6 +54,7 @@ class RefreshLibraryUseCase
                         repository.syncSavedPlaylists(propagateFailures = true)
                         repository.syncAutoSyncPlaylists(propagateFailures = true)
                     }
+                    LibrarySyncTarget.Podcasts -> repository.syncSavedPodcasts(propagateFailures = true)
                 }
                 RefreshLibraryResult.Success
             } catch (e: Exception) {

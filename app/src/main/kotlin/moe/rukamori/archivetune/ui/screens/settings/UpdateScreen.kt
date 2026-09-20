@@ -96,6 +96,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
@@ -104,7 +106,6 @@ import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.channelTitle
-import moe.rukamori.archivetune.constants.EnableUpdateNotificationKey
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.defaultUpdateChannel
@@ -116,10 +117,11 @@ import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.AppUpdateInstaller
 import moe.rukamori.archivetune.utils.GitCommit
-import moe.rukamori.archivetune.utils.UpdateNotificationManager
 import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.rememberEnumPreference
-import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.UpdateSettingsAction
+import moe.rukamori.archivetune.viewmodels.UpdateSettingsScreenState
+import moe.rukamori.archivetune.viewmodels.UpdateSettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -130,6 +132,7 @@ import kotlin.math.roundToInt
 fun UpdateScreen(
     navController: NavController,
     onUpToDate: () -> Unit = {},
+    viewModel: UpdateSettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -141,11 +144,20 @@ fun UpdateScreen(
             WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND,
         )
     val maximumContentWidth = if (useWideLayout) 1_040.dp else 680.dp
-    val (enableUpdateNotification, onEnableUpdateNotificationChange) =
-        rememberPreference(
-            EnableUpdateNotificationKey,
-            defaultValue = false,
-        )
+    val updateSettingsState by viewModel.state.collectAsStateWithLifecycle()
+    val updateSettingsModel =
+        when (val state = updateSettingsState) {
+            is UpdateSettingsScreenState.Success -> state.model
+            is UpdateSettingsScreenState.Error -> state.lastKnownModel
+            UpdateSettingsScreenState.Loading,
+            UpdateSettingsScreenState.Empty,
+            -> null
+        }
+    val automaticUpdateChecksEnabled = updateSettingsModel?.automaticChecksEnabled ?: true
+    val enableUpdateNotification = updateSettingsModel?.notificationsEnabled ?: false
+    val updateSettingsControlsEnabled = updateSettingsState is UpdateSettingsScreenState.Success
+    val updateSettingsErrorRes = (updateSettingsState as? UpdateSettingsScreenState.Error)?.messageRes
+    val onUpdateSettingsAction = remember(viewModel) { viewModel::onAction }
     val (updateChannel, onUpdateChannelChange) =
         rememberEnumPreference(
             UpdateChannelKey,
@@ -190,6 +202,12 @@ fun UpdateScreen(
     var showUpdateDownloadDialog by remember { mutableStateOf(false) }
     val useInAppUpdateInstaller = BuildConfig.DISTRIBUTION == "gms"
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(updateSettingsErrorRes) {
+        val messageRes = updateSettingsErrorRes ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(context.getString(messageRes))
+        onUpdateSettingsAction(UpdateSettingsAction.DismissError)
+    }
 
     val openUpdateUrl: (String) -> Unit = { url ->
         try {
@@ -344,8 +362,7 @@ fun UpdateScreen(
         ) { isGranted ->
             hasNotificationPermission = isGranted
             if (isGranted) {
-                onEnableUpdateNotificationChange(true)
-                UpdateNotificationManager.schedulePeriodicUpdateCheck(context)
+                onUpdateSettingsAction(UpdateSettingsAction.SetNotificationsEnabled(true))
             }
         }
 
@@ -412,8 +429,7 @@ fun UpdateScreen(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else {
-                            onEnableUpdateNotificationChange(true)
-                            UpdateNotificationManager.schedulePeriodicUpdateCheck(context)
+                            onUpdateSettingsAction(UpdateSettingsAction.SetNotificationsEnabled(true))
                         }
                     },
                 ) {
@@ -564,7 +580,9 @@ fun UpdateScreen(
                     latestVersion = latestVersion,
                     updateChannel = updateChannel,
                     isUpdateAvailable = isUpdateAvailable,
+                    automaticUpdateChecksEnabled = automaticUpdateChecksEnabled,
                     enableUpdateNotification = enableUpdateNotification,
+                    updateSettingsControlsEnabled = updateSettingsControlsEnabled,
                     useWideLayout = useWideLayout,
                     onCheckForUpdate = onCheckForUpdate,
                     onOpenChangelog = {
@@ -574,9 +592,11 @@ fun UpdateScreen(
                         if (enabled) {
                             showEnableUpdateNotificationConfirmDialog = true
                         } else {
-                            onEnableUpdateNotificationChange(false)
-                            UpdateNotificationManager.cancelPeriodicUpdateCheck(context)
+                            onUpdateSettingsAction(UpdateSettingsAction.SetNotificationsEnabled(false))
                         }
+                    },
+                    onAutomaticUpdateChecksChange = { enabled ->
+                        onUpdateSettingsAction(UpdateSettingsAction.SetAutomaticChecksEnabled(enabled))
                     },
                     onStableSelected = { onUpdateChannelChange(UpdateChannel.STABLE) },
                     onArtifactSelected = {
@@ -804,11 +824,14 @@ private fun UpdateDashboard(
     latestVersion: String?,
     updateChannel: UpdateChannel,
     isUpdateAvailable: Boolean,
+    automaticUpdateChecksEnabled: Boolean,
     enableUpdateNotification: Boolean,
+    updateSettingsControlsEnabled: Boolean,
     useWideLayout: Boolean,
     modifier: Modifier = Modifier,
     onCheckForUpdate: () -> Unit,
     onOpenChangelog: () -> Unit,
+    onAutomaticUpdateChecksChange: (Boolean) -> Unit,
     onUpdateNotificationChange: (Boolean) -> Unit,
     onStableSelected: () -> Unit,
     onArtifactSelected: () -> Unit,
@@ -829,8 +852,11 @@ private fun UpdateDashboard(
                 modifier = Modifier.weight(1f),
             )
             UpdatePreferencesPanel(
+                automaticUpdateChecksEnabled = automaticUpdateChecksEnabled,
                 enableUpdateNotification = enableUpdateNotification,
+                controlsEnabled = updateSettingsControlsEnabled,
                 updateChannel = updateChannel,
+                onAutomaticUpdateChecksChange = onAutomaticUpdateChecksChange,
                 onUpdateNotificationChange = onUpdateNotificationChange,
                 onStableSelected = onStableSelected,
                 onArtifactSelected = onArtifactSelected,
@@ -851,8 +877,11 @@ private fun UpdateDashboard(
                 onOpenChangelog = onOpenChangelog,
             )
             UpdatePreferencesPanel(
+                automaticUpdateChecksEnabled = automaticUpdateChecksEnabled,
                 enableUpdateNotification = enableUpdateNotification,
+                controlsEnabled = updateSettingsControlsEnabled,
                 updateChannel = updateChannel,
+                onAutomaticUpdateChecksChange = onAutomaticUpdateChecksChange,
                 onUpdateNotificationChange = onUpdateNotificationChange,
                 onStableSelected = onStableSelected,
                 onArtifactSelected = onArtifactSelected,
@@ -1026,9 +1055,12 @@ private fun UpdateStatusPanel(
 
 @Composable
 private fun UpdatePreferencesPanel(
+    automaticUpdateChecksEnabled: Boolean,
     enableUpdateNotification: Boolean,
+    controlsEnabled: Boolean,
     updateChannel: UpdateChannel,
     modifier: Modifier = Modifier,
+    onAutomaticUpdateChecksChange: (Boolean) -> Unit,
     onUpdateNotificationChange: (Boolean) -> Unit,
     onStableSelected: () -> Unit,
     onArtifactSelected: () -> Unit,
@@ -1037,37 +1069,69 @@ private fun UpdatePreferencesPanel(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SegmentedListItem(
-            onClick = { onUpdateNotificationChange(!enableUpdateNotification) },
-            shapes =
-                ListItemDefaults.shapes(
-                    shape = MaterialTheme.shapes.extraLarge,
-                ),
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                ListItemDefaults.segmentedColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            leadingContent = {
-                FeatureIcon(
-                    iconRes = R.drawable.new_release,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            },
-            trailingContent = {
-                Switch(
-                    checked = enableUpdateNotification,
-                    onCheckedChange = null,
-                )
-            },
-            supportingContent = {
-                Text(text = stringResource(R.string.enable_update_notification_channel_desc))
-            },
-            content = {
-                Text(text = stringResource(R.string.enable_update_notification))
-            },
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            SegmentedListItem(
+                onClick = { onAutomaticUpdateChecksChange(!automaticUpdateChecksEnabled) },
+                enabled = controlsEnabled,
+                shapes = ListItemDefaults.segmentedShapes(index = 0, count = 2),
+                modifier = Modifier.fillMaxWidth(),
+                colors =
+                    ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ),
+                leadingContent = {
+                    FeatureIcon(
+                        iconRes = R.drawable.sync,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = automaticUpdateChecksEnabled,
+                        onCheckedChange = null,
+                        enabled = controlsEnabled,
+                    )
+                },
+                supportingContent = {
+                    Text(text = stringResource(R.string.automatic_update_checks_desc))
+                },
+                content = {
+                    Text(text = stringResource(R.string.automatic_update_checks))
+                },
+            )
+
+            SegmentedListItem(
+                onClick = { onUpdateNotificationChange(!enableUpdateNotification) },
+                enabled = controlsEnabled,
+                shapes = ListItemDefaults.segmentedShapes(index = 1, count = 2),
+                modifier = Modifier.fillMaxWidth(),
+                colors =
+                    ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ),
+                leadingContent = {
+                    FeatureIcon(
+                        iconRes = R.drawable.new_release,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = enableUpdateNotification,
+                        onCheckedChange = null,
+                        enabled = controlsEnabled,
+                    )
+                },
+                supportingContent = {
+                    Text(text = stringResource(R.string.enable_update_notification_channel_desc))
+                },
+                content = {
+                    Text(text = stringResource(R.string.enable_update_notification))
+                },
+            )
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),

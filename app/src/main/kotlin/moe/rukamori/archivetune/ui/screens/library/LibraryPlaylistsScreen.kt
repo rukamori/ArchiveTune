@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -742,160 +743,65 @@ fun PlaylistListCard(
     showDragHandle: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
 ) {
-    val cardBgColor =
-        rememberArtworkCardColor(
-            thumbnailUrl = playlist.thumbnails.getOrNull(0),
-            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    val sourceLabel =
+        stringResource(
+            if (playlist.playlist.isEditable) {
+                R.string.personal_label
+            } else {
+                R.string.youtube_synced
+            },
         )
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "PlaylistListCardScale",
-    )
-
-    val hiddenAlpha = if (playlist.playlist.isHidden) 0.45f else 1f
-
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = hiddenAlpha
-                }.clip(RoundedCornerShape(32.dp))
-                .background(cardBgColor)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick,
-                ).padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Thumbnail
-        ItemThumbnail(
-            thumbnailUrl = playlist.thumbnails.getOrNull(0),
-            isActive = false,
-            isPlaying = false,
-            shape = RoundedCornerShape(24.dp),
-            contentScale = ContentScale.Crop,
-            showPlaceholder = true,
-            modifier =
-                Modifier
-                    .size(72.dp),
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Text & details
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = playlist.playlist.name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                // Tag pill
-                val tagText =
-                    if (playlist.playlist.isEditable) {
-                        stringResource(
-                            R.string.personal_label,
-                        )
-                    } else {
-                        stringResource(R.string.youtube_synced)
-                    }
-                val tagColor = if (playlist.playlist.isEditable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                Box(
-                    modifier =
-                        Modifier
-                            .clip(CircleShape)
-                            .background(tagColor.copy(alpha = 0.12f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = tagText,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = tagColor,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                if (playlist.playlist.isHidden) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        painter = painterResource(id = R.drawable.visibility_off),
-                        contentDescription = stringResource(R.string.hide_playlist),
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                    )
-                }
-            }
+    val sourceColor =
+        if (playlist.playlist.isEditable) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.secondary
         }
-
-        // Play Button
-        IconButton(
-            onClick = onPlay,
-            colors =
-                IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ),
-            modifier = Modifier.size(36.dp),
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.play),
-                contentDescription = stringResource(R.string.play),
-                modifier = Modifier.size(16.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        // Options Button
-        IconButton(
-            onClick = onMenuClick,
-            modifier = Modifier.size(36.dp),
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.more_vert),
-                contentDescription = stringResource(R.string.options_label),
-            )
-        }
-
+    val additionalAction: (@Composable RowScope.() -> Unit)? =
         if (showDragHandle) {
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(
-                onClick = {},
-                modifier = dragHandleModifier.size(36.dp),
-            ) {
+            {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = {},
+                    modifier = dragHandleModifier.size(36.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.drag_handle),
+                        contentDescription = null,
+                    )
+                }
+            }
+        } else {
+            null
+        }
+    val metadataTrailingContent: (@Composable RowScope.() -> Unit)? =
+        if (playlist.playlist.isHidden) {
+            {
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    painter = painterResource(id = R.drawable.drag_handle),
-                    contentDescription = null,
+                    painter = painterResource(R.drawable.visibility_off),
+                    contentDescription = stringResource(R.string.hide_playlist),
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                 )
             }
+        } else {
+            null
         }
-    }
+
+    LibraryMediaListCard(
+        title = playlist.playlist.name,
+        subtitle = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+        thumbnailUrl = playlist.thumbnails.getOrNull(0),
+        sourceLabel = sourceLabel,
+        sourceColor = sourceColor,
+        onClick = onClick,
+        onPlay = onPlay,
+        onMenuClick = onMenuClick,
+        contentAlpha = if (playlist.playlist.isHidden) 0.45f else 1f,
+        metadataTrailingContent = metadataTrailingContent,
+        additionalAction = additionalAction,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

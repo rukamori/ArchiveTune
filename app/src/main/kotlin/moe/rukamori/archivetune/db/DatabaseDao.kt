@@ -49,6 +49,7 @@ import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.PlaylistTagMap
+import moe.rukamori.archivetune.db.entities.PodcastEntity
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
@@ -745,6 +746,28 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM song WHERE id IN (:songIds)")
     suspend fun getSongsByIds(songIds: List<String>): List<Song>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE id IN (:songIds)")
+    fun songsByIds(songIds: List<String>): Flow<List<Song>>
+
+    @Query("SELECT * FROM podcast WHERE browseId = :browseId LIMIT 1")
+    fun podcast(browseId: String): Flow<PodcastEntity?>
+
+    @Query("SELECT * FROM podcast WHERE browseId = :browseId LIMIT 1")
+    suspend fun getPodcast(browseId: String): PodcastEntity?
+
+    @Query(
+        """
+        SELECT * FROM podcast
+        WHERE localSavedAt IS NOT NULL OR remoteSavedAt IS NOT NULL
+        ORDER BY COALESCE(localSavedAt, remoteSavedAt) DESC
+        """,
+    )
+    fun podcasts(): Flow<List<PodcastEntity>>
+
+    @Query("SELECT * FROM podcast")
+    suspend fun getAllPodcasts(): List<PodcastEntity>
 
     @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")
@@ -2073,6 +2096,9 @@ interface DatabaseDao {
 
     @Upsert
     fun upsert(song: SongEntity)
+
+    @Upsert
+    fun upsert(podcast: PodcastEntity)
 
     @Query("DELETE FROM song WHERE id IN (:songIds)")
     fun deleteSongsByIds(songIds: List<String>)

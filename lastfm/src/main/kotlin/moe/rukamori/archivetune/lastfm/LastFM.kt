@@ -32,6 +32,11 @@ object LastFM {
     const val FALLBACK_COMPAT_API_KEY = "archivetune"
     const val FALLBACK_COMPAT_SECRET = "archivetune"
 
+    enum class MobileSessionAuthMode {
+        PASSWORD,
+        LEGACY_AUTH_TOKEN,
+    }
+
     data class RuntimeConfig(
         val endpoint: String,
         val apiKey: String,
@@ -69,11 +74,15 @@ object LastFM {
         }
     }
 
+    private fun String.md5(): String {
+        val digest = MessageDigest.getInstance("MD5").digest(toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
+    }
+
     private fun Map<String, String>.apiSig(secret: String): String {
         val sorted = toSortedMap()
         val toHash = sorted.entries.joinToString("") { it.key + it.value } + secret
-        val digest = MessageDigest.getInstance("MD5").digest(toHash.toByteArray())
-        return digest.joinToString("") { "%02x".format(it) }
+        return toHash.md5()
     }
 
     private fun HttpRequestBuilder.lastfmParams(
@@ -133,10 +142,19 @@ object LastFM {
     suspend fun getMobileSession(
         username: String,
         password: String,
+        authMode: MobileSessionAuthMode = MobileSessionAuthMode.PASSWORD,
     ) = runCatching {
+        val credentials =
+            when (authMode) {
+                MobileSessionAuthMode.PASSWORD -> mapOf("password" to password)
+                MobileSessionAuthMode.LEGACY_AUTH_TOKEN -> {
+                    val authToken = (username.lowercase() + password.md5()).md5()
+                    mapOf("authToken" to authToken)
+                }
+            }
         postAndDecode<Authentication>(
             method = "auth.getMobileSession",
-            extra = mapOf("username" to username, "password" to password),
+            extra = mapOf("username" to username) + credentials,
         )
     }
 

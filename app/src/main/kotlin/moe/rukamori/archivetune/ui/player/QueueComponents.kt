@@ -1227,6 +1227,90 @@ fun QueueCollapsedContentV4(
 
 @Composable
 fun QueueCollapsedContentV7(
+    textBackgroundColor: Color,
+    onExpandQueue: () -> Unit,
+    onShowLyrics: () -> Unit,
+    onDeviceClick: () -> Unit,
+    onMusicTogetherClick: () -> Unit,
+    device: ActiveOutputDevice,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(
+                    WindowInsets.systemBars.only(
+                        WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+                    ),
+                ).padding(horizontal = 24.dp, vertical = 2.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            IconButton(onClick = onShowLyrics, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.lyrics),
+                    contentDescription = stringResource(R.string.lyrics),
+                    tint = textBackgroundColor,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = textBackgroundColor.copy(alpha = 0.12f),
+                modifier = Modifier.height(46.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDeviceClick, modifier = Modifier.size(46.dp)) {
+                        Icon(
+                            imageVector = device.type.imageVector,
+                            contentDescription = device.name,
+                            tint = textBackgroundColor,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Box(
+                        modifier =
+                            Modifier
+                                .height(24.dp)
+                                .width(1.dp)
+                                .background(textBackgroundColor.copy(alpha = 0.22f)),
+                    )
+                    IconButton(onClick = onMusicTogetherClick, modifier = Modifier.size(46.dp)) {
+                        Icon(
+                            painter = painterResource(R.drawable.person),
+                            contentDescription = stringResource(R.string.music_together),
+                            tint = textBackgroundColor,
+                            modifier = Modifier.size(23.dp),
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = onExpandQueue, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.queue_music),
+                    contentDescription = stringResource(R.string.queue),
+                    tint = textBackgroundColor,
+                    modifier = Modifier.size(25.dp),
+                )
+            }
+        }
+        Text(
+            text = device.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = textBackgroundColor.copy(alpha = 0.72f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+fun QueueCollapsedContentV8(
     showCodecOnPlayer: Boolean,
     currentFormat: FormatEntity?,
     textBackgroundColor: Color,

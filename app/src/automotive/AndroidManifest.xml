@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
+
+    <application>
+        <meta-data
+            android:name="com.android.automotive"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="com.android.automotive.notification.SMALL_ICON"
+            android:resource="@drawable/small_icon" />
+
+        <activity
+            android:name=".automotive.AutomotiveSettingsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ArchiveTune">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".MainActivity" tools:node="remove" />
+        <activity android:name=".DebugActivity" tools:node="remove" />
+        <activity android:name=".RestoreBackupFileActivity" tools:node="remove" />
+        <activity android:name=".discord.DiscordOAuthCallbackActivity" tools:node="remove" />
+        <activity android:name=".musicrecognition.MusicRecognitionTileActionActivity" tools:node="remove" />
+        <activity android:name=".musicrecognition.MusicRecognitionCaptureActivity" tools:node="remove" />
+
+        <service android:name=".musicrecognition.MusicRecognitionTileService" tools:node="remove" />
+        <service android:name=".musicrecognition.BackgroundMusicRecognitionService" tools:node="remove" />
+        <service android:name=".aod.AodModeTileService" tools:node="remove" />
+        <service android:name=".aod.AodDreamService" tools:node="remove" />
+
+        <receiver android:name=".widget.MusicWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.AlbumArtWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.NowPlayingCardWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.PlaybackDeckWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.PlaybackCapsuleWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.PlaybackSpotlightWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.PlaybackCommandWidgetReceiver" tools:node="remove" />
+        <receiver android:name=".widget.ListeningInsightsWidgetReceiver" tools:node="remove" />
+
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            tools:node="remove" />
+    </application>
+</manifest>

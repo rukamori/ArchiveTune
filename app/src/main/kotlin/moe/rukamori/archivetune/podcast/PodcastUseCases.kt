@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.podcast
 
 import com.google.common.collect.ImmutableList
+import kotlinx.coroutines.flow.Flow
 import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
@@ -51,6 +52,8 @@ class LoadPodcastUseCase
                             description = page.description,
                             thumbnailUrl = page.podcast.thumbnail,
                             episodes = ImmutableList.copyOf(episodes),
+                            isSaved = page.isSaved,
+                            isSavePending = false,
                             isLoadingMore = false,
                             canLoadMore = !page.continuation.isNullOrBlank(),
                         ),
@@ -116,5 +119,40 @@ private fun EpisodeItem.toUiModel(
         durationText = durationText,
         thumbnailUrl = thumbnail,
         playbackMetadata = metadata,
+        isInLibrary = false,
+        isLibraryPending = false,
     )
 }
+
+class ObservePodcastLibraryMembershipUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        operator fun invoke(
+            browseId: String,
+            episodeIds: List<String>,
+        ): Flow<PodcastLibraryMembership> = repository.observeLibraryMembership(browseId, episodeIds)
+    }
+
+class TogglePodcastSaveUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        suspend operator fun invoke(
+            browseId: String,
+            save: Boolean,
+        ): Result<Unit> = repository.setPodcastSaved(browseId, save)
+    }
+
+class ToggleEpisodeLibraryUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        suspend operator fun invoke(
+            metadata: MediaMetadata,
+            addToLibrary: Boolean,
+        ): Result<Unit> = repository.setEpisodeInLibrary(metadata, addToLibrary)
+    }

@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 annotation = "1.10.0"
 kotlin = "2.4.10"
 kotlinMetadata = "2.4.0"
@@ -7,6 +7,7 @@ compose = "1.12.0-beta02"
 lifecycle = "2.11.0"
 material3 = "1.5.0-alpha23"
 media3 = "1.10.1"
+carApp = "1.7.0"
 room = "2.8.4"
 hilt = "2.60.1"
 ktor = "3.5.1"
@@ -49,6 +50,7 @@ graphicsShapes = "1.0.1"
 quickjsKt = "1.0.14"
 protobuf = "4.36.1"
 webkit = "1.17.0"
+haze = "2.0.0-rc01"
 
 
 [libraries]
@@ -96,6 +98,7 @@ media3 = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3" }
 media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 media3-cast = { module = "androidx.media3:media3-cast", version.ref = "media3" }
+car-app = { module = "androidx.car.app:app", version.ref = "carApp" }
 mediarouter = { module = "androidx.mediarouter:mediarouter", version = "1.8.1" }
 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -158,6 +161,8 @@ androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakCanary" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjsKt" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 
 
 

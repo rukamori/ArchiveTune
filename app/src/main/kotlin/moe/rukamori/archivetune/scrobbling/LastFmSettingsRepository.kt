@@ -61,6 +61,15 @@ data class LastFmServiceConfig(
     val initialized: Boolean
         get() = endpointValid && apiKey.isNotBlank() && secret.isNotBlank()
 
+    val mobileSessionAuthMode: LastFM.MobileSessionAuthMode
+        get() =
+            when (provider) {
+                LastFmProvider.LIBREFM -> LastFM.MobileSessionAuthMode.LEGACY_AUTH_TOKEN
+                LastFmProvider.LASTFM,
+                LastFmProvider.CUSTOM,
+                -> LastFM.MobileSessionAuthMode.PASSWORD
+            }
+
     fun apply(sessionKey: String?) {
         LastFM.configure(
             endpoint = endpoint,
@@ -160,7 +169,11 @@ class LastFmSettingsRepository
 
             settings.serviceConfig.apply(sessionKey = null)
             return LastFM
-                .getMobileSession(username.trim(), password)
+                .getMobileSession(
+                    username = username.trim(),
+                    password = password,
+                    authMode = settings.serviceConfig.mobileSessionAuthMode,
+                )
                 .onSuccess { authentication ->
                     context.dataStore.edit { preferences ->
                         preferences[LastFMUsernameKey] = authentication.session.name

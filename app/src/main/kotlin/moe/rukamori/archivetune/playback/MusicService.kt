@@ -123,6 +123,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.androidauto.AndroidAutoConfiguration
+import moe.rukamori.archivetune.androidauto.AndroidAutoCustomAction
+import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsUseCases
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
@@ -298,6 +302,9 @@ class MusicService :
 
     @Inject
     lateinit var mediaLibrarySessionCallback: MediaLibrarySessionCallback
+
+    @Inject
+    lateinit var androidAutoSettings: AndroidAutoSettingsUseCases
 
     @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
@@ -1217,19 +1224,21 @@ class MusicService :
             toggleLike = ::toggleLike
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
+            carMediaButtonPreferences = ::buildAndroidAutoButtons
         }
-        mediaSession =
-            MediaLibrarySession
-                .Builder(this, player, mediaLibrarySessionCallback)
-                .setSessionActivity(
+        val mediaSessionBuilder = MediaLibrarySession.Builder(this, player, mediaLibrarySessionCallback)
+            .setBitmapLoader(CoilBitmapLoader(this, scope))
+        if (BuildConfig.DEVICE != "automotive") {
+            mediaSessionBuilder.setSessionActivity(
                     PendingIntent.getActivity(
                         this,
                         0,
                         Intent(this, MainActivity::class.java),
                         PendingIntent.FLAG_IMMUTABLE,
                     ),
-                ).setBitmapLoader(CoilBitmapLoader(this, scope))
-                .build()
+                )
+        }
+        mediaSession = mediaSessionBuilder.build()
         setMediaNotificationProvider(
             ArchiveTuneMediaNotificationProvider(
                 context = this,
@@ -1239,6 +1248,23 @@ class MusicService :
         addSession(mediaSession)
 
         updateNotification()
+        scope.launch {
+            combine(
+                androidAutoSettings.configuration,
+                androidAutoSettings.networkState,
+            ) { configuration, networkState -> configuration to networkState }
+                .collect { (configuration, networkState) ->
+                    updateAndroidAutoButtons(configuration)
+                    mediaSession.notifyChildrenChanged(ROOT, 4, null)
+                    val homeItemCount = if (
+                        configuration.onlineRecommendations &&
+                        networkState.online &&
+                        (configuration.meteredPlayback || !networkState.metered)
+                    ) 5 else 4
+                    mediaSession.notifyChildrenChanged(HOME, homeItemCount, null)
+                    mediaSession.notifyChildrenChanged(LIBRARY, 5, null)
+                }
+        }
         player.repeatMode = REPEAT_MODE_OFF
 
         scope.launch(Dispatchers.IO) {
@@ -3829,10 +3855,75 @@ class MusicService :
                         .build(),
                 )
             mediaSession.setCustomLayout(customLayout)
+            updateAndroidAutoButtons()
         } catch (e: Exception) {
             reportException(e)
         }
     }
+
+    private fun updateAndroidAutoButtons(
+        configuration: AndroidAutoConfiguration = androidAutoSettings.currentConfiguration(),
+    ) {
+        val buttons = buildAndroidAutoButtons(configuration)
+        mediaSession.connectedControllers
+            .filter { mediaLibrarySessionCallback.isCarController(mediaSession, it) }
+            .forEach { controller ->
+                mediaSession.setMediaButtonPreferences(controller, buttons)
+                mediaSession.setCustomLayout(controller, buttons)
+            }
+    }
+
+    private fun buildAndroidAutoButtons(configuration: AndroidAutoConfiguration): List<CommandButton> =
+        listOf(configuration.primaryAction, configuration.secondaryAction)
+            .filter { it != AndroidAutoCustomAction.NONE }
+            .distinct()
+            .map { action ->
+                when (action) {
+                    AndroidAutoCustomAction.LIKE -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(if (currentSong.value?.song?.liked == true) R.string.action_remove_like else R.string.action_like),
+                        )
+                        .setIconResId(
+                            if (currentSong.value?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border,
+                        )
+                        .setSessionCommand(CommandToggleLike)
+                        .setEnabled(currentSong.value != null)
+                        .build()
+                    AndroidAutoCustomAction.START_RADIO -> CommandButton.Builder()
+                        .setDisplayName(getString(R.string.start_radio))
+                        .setIconResId(R.drawable.radio)
+                        .setSessionCommand(CommandToggleStartRadio)
+                        .setEnabled(currentSong.value != null && currentMediaMetadata.value?.isPodcast != true)
+                        .build()
+                    AndroidAutoCustomAction.SHUFFLE -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
+                        )
+                        .setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
+                        .setSessionCommand(CommandToggleShuffle)
+                        .build()
+                    AndroidAutoCustomAction.REPEAT -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(
+                                when (player.repeatMode) {
+                                    REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                                    REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                                    else -> R.string.repeat_mode_off
+                                },
+                            ),
+                        )
+                        .setIconResId(
+                            when (player.repeatMode) {
+                                REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                                REPEAT_MODE_ALL -> R.drawable.repeat_on
+                                else -> R.drawable.repeat
+                            },
+                        )
+                        .setSessionCommand(CommandToggleRepeatMode)
+                        .build()
+                    AndroidAutoCustomAction.NONE -> error("None is not a media button")
+                }
+            }
 
     fun refreshPlaybackNotification() {
         updateNotification()
@@ -8295,6 +8386,7 @@ class MusicService :
             }
         } catch (_: Exception) {
         }
+        mediaLibrarySessionCallback.release()
         try {
             mediaSession.release()
         } catch (_: Exception) {
@@ -8507,6 +8599,7 @@ class MusicService :
 
         const val ROOT = "root"
         const val HOME = "home"
+        const val LIBRARY = "library"
         const val HOME_QUICK_PICKS = "home_quick_picks"
         const val HOME_FORGOTTEN_FAVORITES = "home_forgotten_favorites"
         const val HOME_KEEP_LISTENING = "home_keep_listening"

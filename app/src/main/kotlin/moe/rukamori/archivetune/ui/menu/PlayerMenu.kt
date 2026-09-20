@@ -130,6 +130,8 @@ fun PlayerMenu(
     navController: NavController,
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
+    sleepTimerEnabled: Boolean = false,
+    onSleepTimerClick: (() -> Unit)? = null,
     onPlayNextFromQueue: (() -> Unit)? = null,
     onRemoveFromQueue: (() -> Unit)? = null,
     onShowDetailsDialog: () -> Unit,
@@ -439,6 +441,42 @@ fun PlayerMenu(
                     actions =
                         buildList {
                             castPlayerMenuAction?.let(::add)
+                            onSleepTimerClick?.let { onClick ->
+                                add(
+                                    NewAction(
+                                        icon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.bedtime),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(28.dp),
+                                                tint =
+                                                    if (sleepTimerEnabled) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    },
+                                            )
+                                        },
+                                        text = stringResource(R.string.sleep_timer),
+                                        onClick = {
+                                            onDismiss()
+                                            onClick()
+                                        },
+                                        backgroundColor =
+                                            if (sleepTimerEnabled) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                Color.Unspecified
+                                            },
+                                        contentColor =
+                                            if (sleepTimerEnabled) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    ),
+                                )
+                            }
                             if (!isLocalMedia && !mediaMetadata.isPodcast) {
                                 add(
                                     NewAction(

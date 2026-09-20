@@ -297,6 +297,7 @@ import moe.rukamori.archivetune.ui.theme.extractWallpaperThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
+import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -331,6 +332,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var syncUtils: SyncUtils
+
+    @Inject
+    lateinit var observeUpdateSettings: ObserveUpdateSettingsUseCase
 
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
@@ -621,6 +625,11 @@ class MainActivity : ComponentActivity() {
             }
 
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
+            val updateSettingsFlow = remember(observeUpdateSettings) { observeUpdateSettings() }
+            val updateSettings by
+                updateSettingsFlow.collectAsStateWithLifecycle(
+                    initialValue = null,
+                )
 
             LaunchedEffect(Unit) {
                 while (playerConnection == null) {
@@ -664,25 +673,28 @@ class MainActivity : ComponentActivity() {
                     moe.rukamori.archivetune.utils.reportException(e)
                 }
 
+            }
+
+            LaunchedEffect(
+                updateSettings?.automaticChecksEnabled,
+                updateSettings?.notificationsEnabled,
+                updateChannel,
+            ) {
+                val currentUpdateSettings = updateSettings ?: return@LaunchedEffect
                 if (
+                    currentUpdateSettings.automaticChecksEnabled &&
                     BuildConfig.UPDATER_AVAILABLE &&
+                    updateChannel != UpdateChannel.ARTIFACT &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
                 ) {
-                    val channelString = withContext(Dispatchers.IO) { dataStore.data.first()[UpdateChannelKey] }
-                    val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
-                    if (actualChannel != UpdateChannel.ARTIFACT) {
-                        val versionResult =
-                            when (actualChannel) {
-                                UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                            }
-                        versionResult.onSuccess {
-                            if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                                latestUpdateChannel = actualChannel
-                                latestVersionName = it
-                            }
+                    Updater.getLatestVersionName().onSuccess { latestVersion ->
+                        if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
+                            latestUpdateChannel = UpdateChannel.STABLE
+                            latestVersionName = latestVersion
                         }
                     }
                 }
+
                 moe.rukamori.archivetune.utils.UpdateNotificationManager
                     .checkForUpdates(this@MainActivity)
             }

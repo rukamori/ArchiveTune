@@ -37,11 +37,14 @@ import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
+import moe.rukamori.archivetune.db.entities.PodcastEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PodcastItem
+import moe.rukamori.archivetune.innertube.models.PODCAST_LIBRARY_BROWSE_ID
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.utils.completed
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
@@ -81,6 +84,7 @@ class SyncUtils
         private val syncMutex = Mutex()
         private val likedSongsSyncMutex = Mutex()
         private val playlistSyncMutex = Mutex()
+        private val podcastSyncMutex = Mutex()
         private val dbWriteSemaphore = Semaphore(2)
         private val songLikeMutationMutexes = Array(SONG_LIKE_MUTATION_STRIPE_COUNT) { Mutex() }
         private val pendingSongLikes = ConcurrentHashMap<String, PendingSongLike>()
@@ -132,6 +136,7 @@ class SyncUtils
                             async { captureSyncFailure { syncLikedAlbums(authoritative, propagateFailures = true) } },
                             async { captureSyncFailure { syncArtistsSubscriptions(authoritative, propagateFailures = true) } },
                             async { captureSyncFailure { syncSavedPlaylists(authoritative, propagateFailures = true) } },
+                            async { captureSyncFailure { syncSavedPodcasts(propagateFailures = true) } },
                         ).awaitAll()
                         results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
                         if (!authoritative) syncAutoSyncPlaylists(propagateFailures)
@@ -859,6 +864,61 @@ class SyncUtils
                         if (e is CancellationException || propagateFailures) throw e
                         Timber.e(e, "syncSavedPlaylists: Failed to fetch playlists from YouTube")
                     }
+            }
+
+        suspend fun syncSavedPodcasts(propagateFailures: Boolean = false) =
+            podcastSyncMutex.withLock {
+                if (!isLoggedIn()) {
+                    if (propagateFailures) throw LibraryLoginRequiredException()
+                    return@withLock
+                }
+                if (!isYtmSyncEnabled()) {
+                    if (propagateFailures) throw LibrarySyncDisabledException()
+                    return@withLock
+                }
+
+                try {
+                    val remotePodcasts =
+                        YouTube
+                            .library(PODCAST_LIBRARY_BROWSE_ID)
+                            .completed()
+                            .getOrThrow()
+                            .items
+                            .filterIsInstance<PodcastItem>()
+                            .distinctBy(PodcastItem::browseId)
+                    val remoteIds = remotePodcasts.mapTo(HashSet()) { podcast -> podcast.browseId }
+                    val now = LocalDateTime.now()
+
+                    database.withTransaction {
+                        getAllPodcasts()
+                            .asSequence()
+                            .filter { podcast -> podcast.remoteSavedAt != null && podcast.browseId !in remoteIds }
+                            .forEach { podcast ->
+                                upsert(podcast.copy(remoteSavedAt = null, lastUpdateTime = now))
+                            }
+                        remotePodcasts.forEach { podcast ->
+                            val existing = getPodcast(podcast.browseId)
+                            upsert(
+                                PodcastEntity(
+                                    browseId = podcast.browseId,
+                                    playlistId = podcast.playlistId,
+                                    title = podcast.title,
+                                    authorName = podcast.author?.name,
+                                    authorId = podcast.author?.id,
+                                    thumbnailUrl = podcast.thumbnail,
+                                    localSavedAt = existing?.localSavedAt,
+                                    remoteSavedAt = existing?.remoteSavedAt ?: now,
+                                    lastUpdateTime = now,
+                                ),
+                            )
+                        }
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.e(error, "syncSavedPodcasts: Failed to sync saved podcasts")
+                    if (propagateFailures) throw error
+                }
             }
 
         suspend fun syncAutoSyncPlaylists(propagateFailures: Boolean = false) =

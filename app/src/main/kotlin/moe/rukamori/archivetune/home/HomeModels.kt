@@ -45,6 +45,7 @@ data class HomeUiState(
     val accountPlaylists: ImmutableList<PlaylistItem>,
     val homePage: HomePage?,
     val remoteQuickPicks: HomePage.Section?,
+    val communitySection: HomePage.Section?,
     val selectedChip: HomePage.Chip?,
     val accountName: String,
     val accountImageUrl: String?,

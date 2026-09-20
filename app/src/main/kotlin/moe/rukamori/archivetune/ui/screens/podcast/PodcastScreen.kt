@@ -84,13 +84,18 @@ fun PodcastScreen(
     val playerConnection = LocalPlayerConnection.current
     val snackbarHostState = remember { SnackbarHostState() }
     val unknownErrorMessage = stringResource(R.string.error_unknown)
+    val loginRequiredMessage = stringResource(R.string.not_logged_in_youtube)
+    val syncDisabledMessage = stringResource(R.string.sync_disabled)
     val onRetry = remember(viewModel) { { viewModel.onAction(PodcastAction.Retry) } }
     val onLoadMore = remember(viewModel) { { viewModel.onAction(PodcastAction.LoadMore) } }
     val onPlayAll = remember(viewModel) { { viewModel.onAction(PodcastAction.PlayAll) } }
+    val onTogglePodcastSave = remember(viewModel) { { viewModel.onAction(PodcastAction.TogglePodcastSave) } }
     val onPlayEpisode = remember(viewModel) { { id: String -> viewModel.onAction(PodcastAction.PlayEpisode(id)) } }
+    val onToggleEpisodeLibrary =
+        remember(viewModel) { { id: String -> viewModel.onAction(PodcastAction.ToggleEpisodeLibrary(id)) } }
     val onBack: () -> Unit = remember(navController) { { navController.navigateUp() } }
 
-    LaunchedEffect(viewModel, playerConnection, unknownErrorMessage) {
+    LaunchedEffect(viewModel, playerConnection, unknownErrorMessage, loginRequiredMessage, syncDisabledMessage) {
         viewModel.events.collect { event ->
             when (event) {
                 is PodcastEvent.Play -> {
@@ -107,6 +112,8 @@ fun PodcastScreen(
                     val message =
                         when (event.messageResId) {
                             R.string.error_unknown -> unknownErrorMessage
+                            R.string.not_logged_in_youtube -> loginRequiredMessage
+                            R.string.sync_disabled -> syncDisabledMessage
                             else -> unknownErrorMessage
                         }
                     snackbarHostState.showSnackbar(message)
@@ -123,6 +130,8 @@ fun PodcastScreen(
         onLoadMore = onLoadMore,
         onPlayAll = onPlayAll,
         onPlayEpisode = onPlayEpisode,
+        onTogglePodcastSave = onTogglePodcastSave,
+        onToggleEpisodeLibrary = onToggleEpisodeLibrary,
     )
 }
 
@@ -135,6 +144,8 @@ private fun PodcastScreenContent(
     onLoadMore: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayEpisode: (String) -> Unit,
+    onTogglePodcastSave: () -> Unit,
+    onToggleEpisodeLibrary: (String) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (state) {
@@ -168,6 +179,8 @@ private fun PodcastScreenContent(
                     onLoadMore = onLoadMore,
                     onPlayAll = onPlayAll,
                     onPlayEpisode = onPlayEpisode,
+                    onTogglePodcastSave = onTogglePodcastSave,
+                    onToggleEpisodeLibrary = onToggleEpisodeLibrary,
                 )
             }
         }
@@ -193,6 +206,8 @@ private fun PodcastSuccessContent(
     onLoadMore: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayEpisode: (String) -> Unit,
+    onTogglePodcastSave: () -> Unit,
+    onToggleEpisodeLibrary: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
@@ -223,12 +238,13 @@ private fun PodcastSuccessContent(
                 subtitle = subtitle,
                 metadata = stringResource(R.string.episodes),
                 description = null,
-                isAdded = false,
+                isAdded = uiState.isSaved,
                 addContentDescription = R.string.add_to_library,
                 removeContentDescription = R.string.remove_from_library,
                 onShuffle = null,
                 onPlay = onPlayAll,
-                onToggleAdd = null,
+                onToggleAdd = onTogglePodcastSave,
+                isToggleAddEnabled = !uiState.isSavePending,
             )
         }
 
@@ -254,6 +270,10 @@ private fun PodcastSuccessContent(
             PodcastEpisodeRow(
                 episode = episode,
                 onClick = remember(episode.id, onPlayEpisode) { { onPlayEpisode(episode.id) } },
+                onToggleLibrary =
+                    remember(episode.id, onToggleEpisodeLibrary) {
+                        { onToggleEpisodeLibrary(episode.id) }
+                    },
             )
             HorizontalDivider(modifier = Modifier.padding(start = 120.dp))
         }
@@ -278,6 +298,7 @@ private fun PodcastSuccessContent(
 private fun PodcastEpisodeRow(
     episode: PodcastEpisodeUiModel,
     onClick: () -> Unit,
+    onToggleLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val supportingText =
@@ -337,11 +358,31 @@ private fun PodcastEpisodeRow(
             )
         },
         trailingContent = {
-            Icon(
-                painter = painterResource(R.drawable.play),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            if (episode.isLibraryPending) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else {
+                IconButton(onClick = onToggleLibrary) {
+                    Icon(
+                        painter =
+                            painterResource(
+                                if (episode.isInLibrary) {
+                                    R.drawable.library_add_check
+                                } else {
+                                    R.drawable.library_add
+                                },
+                            ),
+                        contentDescription =
+                            stringResource(
+                                if (episode.isInLibrary) {
+                                    R.string.remove_from_library
+                                } else {
+                                    R.string.add_to_library
+                                },
+                            ),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier =

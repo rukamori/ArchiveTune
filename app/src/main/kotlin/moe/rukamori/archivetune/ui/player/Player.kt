@@ -68,7 +68,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
@@ -113,7 +112,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -129,7 +127,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player.STATE_BUFFERING
 import androidx.media3.common.Player.STATE_READY
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.animation.animateColorAsState
@@ -150,10 +147,10 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.canvas.CanvasPlaybackRequest
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackViewModel
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackState
+import moe.rukamori.archivetune.viewmodels.ImmersivePlayerViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -188,6 +185,8 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
+import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
+import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerScreen
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
@@ -211,16 +210,6 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 private const val SeekbarSettleToleranceMs = 1_500L
-private const val V7BackdropMinArtworkSizePx = 1_024
-private const val V7BackdropMaxArtworkSizePx = 2_048
-private const val V7BackdropBlurDp = 44
-private const val V7BackdropBlurScale = 1.18f
-private const val V7BackdropArtworkOverscanFactor = 1.15f
-private const val V7SharpStagePortraitFraction = 0.62f
-private const val V7SharpStageLandscapeFraction = 0.58f
-private const val V7BackdropOverlapDp = 72
-private const val V7SharpStageBottomScrimStartFraction = 0.40f
-private const val V7BackdropFloorBlackStartFraction = 0.88f
 private const val V8BackdropArtworkSizePx = 1_024
 
 @Stable
@@ -310,6 +299,7 @@ fun BottomSheetPlayer(
     pureBlack: Boolean,
     navigationProximityProvider: () -> Float = { 0f },
     canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
+    immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -317,6 +307,11 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
 
     val playerConnection = LocalPlayerConnection.current ?: return
+    val immersivePlayerState by immersivePlayerViewModel.state.collectAsStateWithLifecycle()
+    DisposableEffect(immersivePlayerViewModel, playerConnection) {
+        immersivePlayerViewModel.bind(playerConnection)
+        onDispose { immersivePlayerViewModel.unbind(playerConnection) }
+    }
     val playbackError by playerConnection.error.collectAsStateWithLifecycle()
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, defaultValue = "")
     val isYouTubeLoggedIn =
@@ -458,7 +453,9 @@ fun BottomSheetPlayer(
     val canvasState by canvasViewModel.state.collectAsStateWithLifecycle()
     val canvasRequest = remember(mediaMetadata, playerDesignStyle, aodModeEnabled) {
         mediaMetadata?.takeIf {
-            !aodModeEnabled && playerDesignStyle != PlayerDesignStyle.V5
+            !aodModeEnabled &&
+                playerDesignStyle != PlayerDesignStyle.V5 &&
+                playerDesignStyle != PlayerDesignStyle.V7
         }?.let { metadata ->
             val country = Locale.getDefault().country
             CanvasPlaybackRequest(
@@ -466,7 +463,7 @@ fun BottomSheetPlayer(
                 title = metadata.title,
                 artist = metadata.artists.firstOrNull()?.name.orEmpty(),
                 storefront = if (country.length == 2) country.lowercase(Locale.ROOT) else "us",
-                requireVertical = playerDesignStyle == PlayerDesignStyle.V7,
+                requireVertical = false,
             )
         }
     }
@@ -834,6 +831,43 @@ fun BottomSheetPlayer(
         )
     }
 
+    LaunchedEffect(immersivePlayerViewModel, navController, mediaMetadata, sleepTimerEnabled) {
+        immersivePlayerViewModel.events.collect { event ->
+            when (event) {
+                is ImmersivePlayerEvent.OpenAlbum -> {
+                    state.collapseSoft()
+                    navController.navigate("album/${event.id}")
+                }
+                is ImmersivePlayerEvent.OpenArtist -> {
+                    state.collapseSoft()
+                    navController.navigate("artist/${event.id}")
+                }
+                ImmersivePlayerEvent.OpenMenu -> {
+                    val metadata = mediaMetadata ?: return@collect
+                    menuState.show {
+                        PlayerMenu(
+                            mediaMetadata = metadata,
+                            navController = navController,
+                            playerBottomSheetState = state,
+                            sleepTimerEnabled = sleepTimerEnabled,
+                            onSleepTimerClick = {
+                                if (sleepTimerEnabled) {
+                                    playerConnection.service.sleepTimer.clear()
+                                } else {
+                                    showSleepTimerDialog = true
+                                }
+                            },
+                            onShowDetailsDialog = {
+                                bottomSheetPageState.show { ShowMediaInfo(metadata.id) }
+                            },
+                            onDismiss = menuState::dismiss,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
     }
@@ -920,6 +954,8 @@ fun BottomSheetPlayer(
             88.dp +
                 (if (showCodecOnPlayer) 24.dp else 0.dp) +
                 (if (sleepTimerEnabled) 42.dp else 0.dp)
+        } else if (playerDesignStyle == PlayerDesignStyle.V7) {
+            72.dp
         } else if (showCodecOnPlayer) {
             88.dp
         } else {
@@ -1211,8 +1247,7 @@ fun BottomSheetPlayer(
         val resolvedCanvas = (canvasState as? CanvasPlaybackState.Success)
             ?.takeIf { it.request == canvasRequest }
             ?.video
-        val v7CanvasArtwork = resolvedCanvas.takeIf { playerDesignStyle == PlayerDesignStyle.V7 }
-        val artworkCanvas = resolvedCanvas.takeIf { playerDesignStyle != PlayerDesignStyle.V7 }
+        val artworkCanvas = resolvedCanvas
 
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
             PlayerControlsContent(
@@ -1348,71 +1383,19 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V7) {
-                    Box(
+                    ImmersivePlayerScreen(
+                        state = immersivePlayerState,
+                        disableBlur = disableBlur,
+                        backdropBlurAmount = backdropBlurAmount,
+                        showVolumeBar = showPlayerVolumeBar,
+                        showCodecOnPlayer = showCodecOnPlayer,
+                        contentBottomPadding = queueSheetState.collapsedBound,
+                        onAction = immersivePlayerViewModel::onAction,
                         modifier =
                             Modifier
-                                .fillMaxSize(),
-                    ) {
-                        val v7SwapState =
-                            rememberThumbnailSwapState(
-                                videoId = mediaMetadata?.id,
-                                ytmUrl = mediaMetadata?.thumbnailUrl,
-                                lowDataMode = lowDataModeActive,
-                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
-                            )
-                        V7PlayerBackdrop(
-                            thumbnailUrl = v7SwapState.displayUrl,
-                            canvasStaticUrl = v7CanvasArtwork?.static,
-                            canvasSource = v7CanvasArtwork?.source,
-                            canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
-                            canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
-                            isPlaying = isPlaying,
-                            disableBlur = disableBlur,
-                            backdropBlurAmount = backdropBlurAmount,
-                            label = "v7BackdropLandscape",
-                        )
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = queueSheetState.collapsedBound)
-                                    .windowInsetsPadding(
-                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        ) {
-                            enrichedMetadata?.let { metadata ->
-                                V8PlayerControlsContent(
-                                    mediaMetadata = metadata,
-                                    queueTitle = "",
-                                    playbackState = playbackState,
-                                    isPlaying = isPlaying,
-                                    isLoading = isLoading,
-                                    canSkipPrevious = canSkipPrevious,
-                                    canSkipNext = canSkipNext,
-                                    currentSongLiked = currentSongLiked,
-                                    sliderPosition = sliderPosition,
-                                    position = position,
-                                    duration = duration,
-                                    volume = deviceMusicVolumeController.volumeFraction,
-                                    showVolumeBar = showPlayerVolumeBar,
-                                    currentFormat = currentFormat,
-                                    playerConnection = playerConnection,
-                                    navController = navController,
-                                    state = state,
-                                    menuState = menuState,
-                                    bottomSheetPageState = bottomSheetPageState,
-                                    onSliderValueChange = onSliderValueChange,
-                                    onSliderValueChangeFinished = onSliderValueChangeFinished,
-                                    onVolumeChange = onPlayerVolumeChange,
-                                    landscape = true,
-                                )
-                            }
-
-                            Spacer(Modifier.height(16.dp))
-                        }
-                    }
+                                .fillMaxSize()
+                                .nestedScroll(state.preUpPostDownNestedScrollConnection),
+                    )
                 } else if (playerDesignStyle == PlayerDesignStyle.V8) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -1693,69 +1676,19 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V7) {
-                    Box(
+                    ImmersivePlayerScreen(
+                        state = immersivePlayerState,
+                        disableBlur = disableBlur,
+                        backdropBlurAmount = backdropBlurAmount,
+                        showVolumeBar = showPlayerVolumeBar,
+                        showCodecOnPlayer = showCodecOnPlayer,
+                        contentBottomPadding = queueSheetState.collapsedBound,
+                        onAction = immersivePlayerViewModel::onAction,
                         modifier =
                             Modifier
-                                .fillMaxSize(),
-                    ) {
-                        val v7SwapState =
-                            rememberThumbnailSwapState(
-                                videoId = mediaMetadata?.id,
-                                ytmUrl = mediaMetadata?.thumbnailUrl,
-                                lowDataMode = lowDataModeActive,
-                                isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
-                            )
-                        V7PlayerBackdrop(
-                            thumbnailUrl = v7SwapState.displayUrl,
-                            canvasStaticUrl = v7CanvasArtwork?.static,
-                            canvasSource = v7CanvasArtwork?.source,
-                            canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
-                            canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
-                            isPlaying = isPlaying,
-                            disableBlur = disableBlur,
-                            backdropBlurAmount = backdropBlurAmount,
-                            label = "v7BackdropPortrait",
-                        )
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = queueSheetState.collapsedBound)
-                                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        ) {
-                            enrichedMetadata?.let { metadata ->
-                                V8PlayerControlsContent(
-                                    mediaMetadata = metadata,
-                                    queueTitle = "",
-                                    playbackState = playbackState,
-                                    isPlaying = isPlaying,
-                                    isLoading = isLoading,
-                                    canSkipPrevious = canSkipPrevious,
-                                    canSkipNext = canSkipNext,
-                                    currentSongLiked = currentSongLiked,
-                                    sliderPosition = sliderPosition,
-                                    position = position,
-                                    duration = duration,
-                                    volume = deviceMusicVolumeController.volumeFraction,
-                                    showVolumeBar = showPlayerVolumeBar,
-                                    currentFormat = currentFormat,
-                                    playerConnection = playerConnection,
-                                    navController = navController,
-                                    state = state,
-                                    menuState = menuState,
-                                    bottomSheetPageState = bottomSheetPageState,
-                                    onSliderValueChange = onSliderValueChange,
-                                    onSliderValueChangeFinished = onSliderValueChangeFinished,
-                                    onVolumeChange = onPlayerVolumeChange,
-                                )
-                            }
-
-                            Spacer(Modifier.height(24.dp))
-                        }
-                    }
+                                .fillMaxSize()
+                                .nestedScroll(state.preUpPostDownNestedScrollConnection),
+                    )
                 } else if (playerDesignStyle == PlayerDesignStyle.V8) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -2284,378 +2217,6 @@ private fun BackdropBlurApi30(
         )
     }
 }
-
-@Composable
-private fun V7PlayerBackdrop(
-    thumbnailUrl: String?,
-    canvasStaticUrl: String?,
-    canvasSource: CanvasSource?,
-    canvasPrimaryUrl: String?,
-    canvasFallbackUrl: String?,
-    isPlaying: Boolean,
-    disableBlur: Boolean,
-    backdropBlurAmount: Int,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    val configuration = LocalConfiguration.current
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    val fallbackColor = Color.Black.toArgb()
-    val backdropArtworkSizePx =
-        remember(
-            configuration.screenWidthDp,
-            configuration.screenHeightDp,
-            density.density,
-        ) {
-            with(density) {
-                (
-                    maxOf(configuration.screenWidthDp, configuration.screenHeightDp).dp.toPx() *
-                        V7BackdropArtworkOverscanFactor
-                ).roundToInt()
-                    .coerceIn(V7BackdropMinArtworkSizePx, V7BackdropMaxArtworkSizePx)
-            }
-        }
-
-    val canvasPrimary = canvasPrimaryUrl?.takeIf { it.isNotBlank() }
-    val canvasFallback = canvasFallbackUrl?.takeIf { it.isNotBlank() }
-    val canvasStatic = canvasStaticUrl?.takeIf { it.isNotBlank() }
-    val coverArtworkUrl = thumbnailUrl?.takeIf { it.isNotBlank() }
-    val hasCanvas = !canvasPrimary.isNullOrBlank() || !canvasFallback.isNullOrBlank()
-    // When canvas is available, prefer its static image as the sharp-stage placeholder.
-    // This prevents the jarring YTM thumbnail → canvas video flash on expand.
-    val sharpArtworkUrl = if (hasCanvas) (canvasStatic ?: coverArtworkUrl) else (coverArtworkUrl ?: canvasStatic)
-    val backdropArtworkUrl = coverArtworkUrl ?: canvasStatic
-    // For palette extraction, use canvas static when canvas is active so the scrim
-    // gradient is derived from the canvas colors rather than the YTM thumbnail.
-    val paletteSourceUrl = if (hasCanvas && canvasStatic != null) canvasStatic else backdropArtworkUrl
-    var backdropPalette by remember(paletteSourceUrl, fallbackColor) {
-        mutableStateOf(V7BackdropPalette.fromColors(emptyList(), fallbackColor))
-    }
-
-    LaunchedEffect(paletteSourceUrl, hasCanvas, fallbackColor) {
-        backdropPalette = V7BackdropPalette.fromColors(emptyList(), fallbackColor)
-        if (paletteSourceUrl == null) return@LaunchedEffect
-
-        val request =
-            ImageRequest
-                .Builder(context)
-                .data(paletteSourceUrl)
-                .memoryCacheKey(paletteSourceUrl)
-                .diskCacheKey(paletteSourceUrl)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .networkCachePolicy(CachePolicy.ENABLED)
-                .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                .allowHardware(false)
-                .build()
-
-        val extractedColors =
-            try {
-                val image =
-                    withContext(Dispatchers.IO) {
-                        context.imageLoader.execute(request)
-                    }.image
-                if (image == null) {
-                    null
-                } else {
-                    withContext(Dispatchers.Default) {
-                        val fullBitmap = image.toBitmap()
-                        // When canvas is active, extract from the bottom 30% of the static frame.
-                        // This gives us the actual colors at the canvas bottom edge, so the scrim
-                        // gradient blends seamlessly into the backdrop below.
-                        val bitmapForPalette =
-                            if (hasCanvas && fullBitmap.height > 4) {
-                                val startY = (fullBitmap.height * 0.70f).toInt().coerceAtLeast(0)
-                                val cropHeight = (fullBitmap.height - startY).coerceAtLeast(1)
-                                android.graphics.Bitmap.createBitmap(fullBitmap, 0, startY, fullBitmap.width, cropHeight)
-                            } else {
-                                fullBitmap
-                            }
-                        val palette =
-                            Palette
-                                .from(bitmapForPalette)
-                                .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                                .generate()
-                        val dominantRgb = palette.dominantSwatch?.rgb ?: palette.getDominantColor(fallbackColor)
-                        listOf(Color(dominantRgb))
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
-
-        backdropPalette = V7BackdropPalette.fromColors(extractedColors.orEmpty(), fallbackColor)
-    }
-
-    val backdropState =
-        remember(sharpArtworkUrl, canvasSource, canvasPrimary, canvasFallback) {
-            V7PlayerBackdropState(
-                artworkUrl = sharpArtworkUrl,
-                canvasSource = canvasSource,
-                canvasPrimaryUrl = canvasPrimary,
-                canvasFallbackUrl = canvasFallback,
-            )
-        }
-    var backdropArtworkModel by remember(backdropArtworkUrl, backdropArtworkSizePx) {
-        mutableStateOf(
-            backdropArtworkUrl?.resize(
-                width = backdropArtworkSizePx,
-                height = backdropArtworkSizePx,
-                maxresAllowed = true,
-                ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
-            ),
-        )
-    }
-    val backdropArtworkRequest = rememberOfflineArtworkImageRequest(backdropArtworkModel)
-    val sharpStageBottomScrim =
-        remember(backdropPalette) {
-            val blendColor = backdropPalette.bottom
-            Brush.verticalGradient(
-                colorStops =
-                    arrayOf(
-                        0f to Color.Transparent,
-                        V7SharpStageBottomScrimStartFraction to Color.Transparent,
-                        0.60f to blendColor.copy(alpha = 0.18f),
-                        0.76f to blendColor.copy(alpha = 0.52f),
-                        0.88f to blendColor.copy(alpha = 0.82f),
-                        1f to blendColor,
-                    ),
-            )
-        }
-    val backdropFloor =
-        remember(backdropPalette) {
-            Brush.verticalGradient(
-                colorStops =
-                    arrayOf(
-                        0f to backdropPalette.bottom,
-                        V7BackdropFloorBlackStartFraction to backdropPalette.bottom,
-                        1f to backdropPalette.bottom,
-                    ),
-            )
-        }
-    val backdropBlurRadius = V7BackdropBlurDp.dp * (backdropBlurAmount.toFloat() / 100f)
-    val needsBlur = !disableBlur && backdropBlurAmount > 0
-    val backdropImageModifier =
-        remember(disableBlur, needsBlur) {
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = V7BackdropBlurScale
-                    scaleY = V7BackdropBlurScale
-                    alpha = if (disableBlur || !needsBlur) 0.20f else 0.58f
-                }
-        }
-    val canvasStageModifier =
-        remember {
-            Modifier
-                .fillMaxSize()
-        }
-
-    BoxWithConstraints(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(backdropPalette.top),
-    ) {
-        val sharpStageFraction =
-            if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                V7SharpStageLandscapeFraction
-            } else {
-                V7SharpStagePortraitFraction
-            }
-        val sharpStageHeight = maxHeight * sharpStageFraction
-        val sharpStageTopOffset = 0.dp
-        val sharpStageBottomOffset = sharpStageTopOffset + sharpStageHeight
-        val backdropTopOffset = (sharpStageBottomOffset - V7BackdropOverlapDp.dp).coerceAtLeast(0.dp)
-        val backdropHeight = maxHeight - backdropTopOffset
-
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(backdropHeight)
-                    .clipToBounds()
-                    .background(backdropPalette.bottom),
-        ) {
-            if (backdropArtworkModel != null) {
-                if (needsBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    AsyncImage(
-                        model = backdropArtworkRequest,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = backdropImageModifier.blur(backdropBlurRadius),
-                        onState = { state ->
-                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
-                                getNextFallbackUrl(backdropArtworkModel)?.let { backdropArtworkModel = it }
-                            }
-                        },
-                    )
-                } else if (needsBlur) {
-                    BackdropBlurApi30(
-                        model = backdropArtworkModel,
-                        blurAmount = backdropBlurAmount,
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = V7BackdropBlurScale
-                                    scaleY = V7BackdropBlurScale
-                                    alpha = 0.58f
-                                },
-                        onError = { failedUrl ->
-                            getNextFallbackUrl(failedUrl)?.let { backdropArtworkModel = it }
-                        },
-                    )
-                } else {
-                    AsyncImage(
-                        model = backdropArtworkRequest,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = backdropImageModifier,
-                        onState = { state ->
-                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
-                                getNextFallbackUrl(backdropArtworkModel)?.let { backdropArtworkModel = it }
-                            }
-                        },
-                    )
-                }
-            }
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(backdropFloor),
-            )
-        }
-
-        AnimatedContent(
-            targetState = backdropState,
-            transitionSpec = {
-                fadeIn(tween(900)) togetherWith fadeOut(tween(900))
-            },
-            label = label,
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = sharpStageTopOffset)
-                    .fillMaxWidth()
-                    .height(sharpStageHeight)
-                    .clipToBounds(),
-        ) { backdrop ->
-            var sharpArtworkModel by remember(backdrop.artworkUrl, backdropArtworkSizePx) {
-                mutableStateOf(
-                    backdrop.artworkUrl?.resize(
-                        width = backdropArtworkSizePx,
-                        height = backdropArtworkSizePx,
-                        maxresAllowed = true,
-                        ytimgResizePolicy = YtimgResizePolicy.AllowAnyAspect,
-                    ),
-                )
-            }
-            val sharpArtworkRequest = rememberOfflineArtworkImageRequest(sharpArtworkModel)
-
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(backdropPalette.top),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (sharpArtworkModel != null) {
-                    AsyncImage(
-                        model = sharpArtworkRequest,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onState = { state ->
-                            if (state is coil3.compose.AsyncImagePainter.State.Error) {
-                                getNextFallbackUrl(sharpArtworkModel)?.let { sharpArtworkModel = it }
-                            }
-                        },
-                    )
-                }
-
-                if (hasCanvas) {
-                    CanvasArtworkPlayer(
-                        source = backdrop.canvasSource,
-                        primaryUrl = backdrop.canvasPrimaryUrl,
-                        fallbackUrl = backdrop.canvasFallbackUrl,
-                        isPlaying = isPlaying,
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                        modifier = canvasStageModifier,
-                    )
-                }
-            }
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = sharpStageTopOffset)
-                    .fillMaxWidth()
-                    .height(sharpStageHeight)
-                    .background(sharpStageBottomScrim),
-        )
-    }
-}
-
-@Immutable
-private data class V7BackdropPalette(
-    val top: Color,
-    val mid: Color,
-    val bottom: Color,
-) {
-    companion object {
-        fun fromColors(
-            colors: List<Color>,
-            fallbackColor: Int,
-        ): V7BackdropPalette {
-            // Only use the FIRST extracted color (dominant hue from the image).
-            // PlayerColorExtractor fills colors[1..N] with hue-shifted synthetic variants
-            // (e.g. red → green at +120°) which are wrong for a backdrop that should feel
-            // coherent. We derive mid/bottom by darkening the same hue instead.
-            val dominantColor = colors.firstOrNull()
-            val fallback = Color(fallbackColor).v7BackdropTone(valueMin = 0.12f, valueMax = 0.38f)
-            val top = dominantColor?.v7BackdropTone(valueMin = 0.20f, valueMax = 0.72f) ?: fallback
-            val mid = dominantColor?.v7BackdropTone(valueMin = 0.13f, valueMax = 0.48f) ?: top
-            val bottom = dominantColor?.v7BackdropTone(valueMin = 0.08f, valueMax = 0.32f) ?: mid
-            return V7BackdropPalette(
-                top = top,
-                mid = mid,
-                bottom = bottom,
-            )
-        }
-    }
-}
-
-private fun Color.v7BackdropTone(
-    valueMin: Float,
-    valueMax: Float,
-): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(toArgb(), hsv)
-    hsv[1] =
-        if (hsv[1] < 0.12f) {
-            hsv[1].coerceAtMost(0.08f)
-        } else {
-            (hsv[1] * 1.27f).coerceIn(0f, 1f)
-        }
-    hsv[2] = hsv[2].coerceIn(valueMin, valueMax)
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
-@Immutable
-private data class V7PlayerBackdropState(
-    val artworkUrl: String?,
-    val canvasSource: CanvasSource?,
-    val canvasPrimaryUrl: String?,
-    val canvasFallbackUrl: String?,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

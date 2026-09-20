@@ -66,14 +66,13 @@ data class CanvasSettingsUiModel(
     val busy: Boolean,
 )
 
-enum class CanvasSettingsDialog { CACHE_LIMIT, CLEAR_CACHE }
+enum class CanvasSettingsDialog { CLEAR_CACHE }
 
 sealed interface CanvasSettingsAction {
     data class SetEnabled(val enabled: Boolean) : CanvasSettingsAction
     data class SelectSource(val source: CanvasSource) : CanvasSettingsAction
     data class SetWifiOnly(val wifiOnly: Boolean) : CanvasSettingsAction
     data class SetCacheLimit(val limitMb: Int) : CanvasSettingsAction
-    data object ShowCacheLimit : CanvasSettingsAction
     data object ShowClearCache : CanvasSettingsAction
     data object DismissDialog : CanvasSettingsAction
     data object ClearCache : CanvasSettingsAction
@@ -146,7 +145,6 @@ class CanvasSettingsViewModel @Inject constructor(
     fun onAction(action: CanvasSettingsAction) {
         when (action) {
             CanvasSettingsAction.DismissDialog -> controls.update { it.copy(dialog = null) }
-            CanvasSettingsAction.ShowCacheLimit -> controls.update { it.copy(dialog = CanvasSettingsDialog.CACHE_LIMIT) }
             CanvasSettingsAction.ShowClearCache -> controls.update { it.copy(dialog = CanvasSettingsDialog.CLEAR_CACHE) }
             CanvasSettingsAction.RefreshHealth -> {
                 if ((state.value as? CanvasSettingsState.Success)?.model?.canRefreshHealth == true) refresh.update { it + 1 }
