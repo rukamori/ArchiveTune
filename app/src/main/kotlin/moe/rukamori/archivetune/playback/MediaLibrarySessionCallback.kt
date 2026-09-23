@@ -2311,7 +2311,7 @@ class MediaLibrarySessionCallback
 
             return sequenceOf(completedDownloadIds, downloadCacheIds, playerCacheIds)
                 .flatten()
-                .map(String::trim)
+                .map { it.trim().let { key -> if (key.startsWith("ext:")) key.substringAfter("ext:").substringBefore(':') else key } }
                 .filter(String::isNotBlank)
                 .distinct()
                 .toList()

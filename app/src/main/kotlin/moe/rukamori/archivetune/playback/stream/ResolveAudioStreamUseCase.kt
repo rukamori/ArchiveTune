@@ -18,6 +18,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import moe.rukamori.archivetune.sources.ResolveExternalSourceUseCase
+import moe.rukamori.archivetune.sources.SourceSettingsRepository
 import kotlinx.coroutines.guava.future
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import timber.log.Timber
@@ -33,6 +38,8 @@ class ResolveAudioStreamUseCase
     @Inject
     constructor(
         private val youtubeiRepository: YoutubeiStreamRepository,
+        private val externalSources: ResolveExternalSourceUseCase,
+        private val sourceSettings: SourceSettingsRepository,
     ) {
         private data class CacheKey(
             val mediaId: String,
@@ -42,6 +49,9 @@ class ResolveAudioStreamUseCase
             val authFingerprint: String,
             val pinnedFormatId: Int?,
             val requiresSongMetadata: Boolean,
+            val sourceRevision: Long,
+            val allowExternal: Boolean,
+            val forCast: Boolean,
         )
 
         private data class InFlightKey(
@@ -55,7 +65,7 @@ class ResolveAudioStreamUseCase
         }
 
         private class InFlightResolution(
-            val deferred: Deferred<ResolvedAudioStream>,
+            val deferred: Deferred<ResolvedAudioStream?>,
             var playbackOwners: Int = 0,
             var preloadOwners: Int = 0,
         )
@@ -74,17 +84,46 @@ class ResolveAudioStreamUseCase
         private val inFlightLock = Any()
         private val inFlight = mutableMapOf<InFlightKey, InFlightResolution>()
 
+        @Volatile private var sourceRevision = 0L
+
+        init {
+            scope.launch {
+                sourceSettings.settings.catch { failure ->
+                    if (failure is CancellationException) throw failure
+                    Timber.tag(TAG).e("Source settings unavailable: %s", failure.javaClass.simpleName)
+                }.collect { settings ->
+                    if (sourceRevision != settings.revision) {
+                        sourceRevision = settings.revision
+                        clear()
+                    }
+                }
+            }
+        }
+
         suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(request, ResolutionConsumer.PLAYBACK)
+                ?: requireNotNull(resolve(request.copy(allowExternal = false), ResolutionConsumer.PLAYBACK))
+
+        suspend fun selectExternal(request: AudioStreamRequest): ResolvedAudioStream? {
+            peek(request)?.let { return it.takeIf { stream -> stream.external != null } }
+            return resolve(request, ResolutionConsumer.PLAYBACK)
+        }
 
         suspend fun preload(request: AudioStreamRequest) {
-            resolve(request, ResolutionConsumer.PRELOAD)
+            if (resolve(request, ResolutionConsumer.PRELOAD) == null) {
+                resolve(request.copy(allowExternal = false), ResolutionConsumer.PRELOAD)
+            }
         }
 
         private suspend fun resolve(
             request: AudioStreamRequest,
             consumer: ResolutionConsumer,
-        ): ResolvedAudioStream {
+        ): ResolvedAudioStream? {
+            val settings = sourceSettings.settings.first()
+            if (sourceRevision != settings.revision) {
+                sourceRevision = settings.revision
+                clear()
+            }
             val key = request.cacheKey()
             val priority = request.resolutionPriority(consumer)
             val lease = acquireResolution(key, request, consumer, priority)
@@ -106,7 +145,7 @@ class ResolveAudioStreamUseCase
             consumer: ResolutionConsumer,
             priority: StreamResolutionPriority,
         ): ResolutionLease {
-            var preloadsToCancel: List<Deferred<ResolvedAudioStream>> = emptyList()
+            var preloadsToCancel: List<Deferred<ResolvedAudioStream?>> = emptyList()
             val lease =
                 synchronized(inFlightLock) {
                     cache[key]?.let { cached ->
@@ -172,7 +211,7 @@ class ResolveAudioStreamUseCase
                                         "Audio stream resolution no longer has active consumers",
                                     )
                                 }
-                                storeResolvedStream(key, resolved)
+                                if (resolved != null) storeResolvedStream(key, resolved)
                             }
                             resolved
                         }
@@ -276,6 +315,21 @@ class ResolveAudioStreamUseCase
             }
         }
 
+        @WorkerThread
+        fun refreshExternalBlocking(selection: moe.rukamori.archivetune.sources.SourceSelection, request: AudioStreamRequest): ResolvedAudioStream {
+            check(Looper.myLooper() != Looper.getMainLooper())
+            val future = scope.future { externalSources.refresh(selection, request) }
+            return try {
+                future.get()
+            } catch (failure: InterruptedException) {
+                future.cancel(true)
+                Thread.currentThread().interrupt()
+                throw InterruptedIOException("Source refresh interrupted").apply { initCause(failure) }
+            } catch (failure: ExecutionException) {
+                throw (failure.cause ?: failure)
+            }
+        }
+
         fun invalidate(mediaId: String, purpose: StreamPurpose? = null) {
             val deferredsToCancel =
                 synchronized(inFlightLock) {
@@ -296,7 +350,7 @@ class ResolveAudioStreamUseCase
 
         fun peek(request: AudioStreamRequest): ResolvedAudioStream? {
             val key = request.cacheKey()
-            val resolved = cache[key] ?: return null
+            val resolved = cache[key] ?: cache[key.copy(allowExternal = false)] ?: return null
             if (isFresh(resolved)) return resolved
             cache.remove(key, resolved)
             return null
@@ -314,7 +368,8 @@ class ResolveAudioStreamUseCase
         private suspend fun resolveUncached(
             request: AudioStreamRequest,
             priority: StreamResolutionPriority,
-        ): ResolvedAudioStream {
+        ): ResolvedAudioStream? {
+            if (request.allowExternal) return externalSources(request)
             val resolvedAuthState =
                 if (request.authState.hasLoginCookie) {
                     YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
@@ -348,6 +403,9 @@ class ResolveAudioStreamUseCase
                 authFingerprint = authState.streamCacheFingerprint,
                 pinnedFormatId = pinnedFormatId,
                 requiresSongMetadata = requiresSongMetadata,
+                sourceRevision = sourceRevision,
+                allowExternal = allowExternal,
+                forCast = forCast,
             )
 
         private fun storeResolvedStream(

@@ -226,6 +226,14 @@ import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
 import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
 import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
 import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
+import moe.rukamori.archivetune.sources.PinnedSourceSession
+import moe.rukamori.archivetune.sources.SourceMediaSourceFactory
+import moe.rukamori.archivetune.sources.SourceDownloadRepository
+import moe.rukamori.archivetune.sources.SourceHttpClient
+import moe.rukamori.archivetune.sources.cacheFactory
+import moe.rukamori.archivetune.sources.mediaItem
+import moe.rukamori.archivetune.sources.format
+import moe.rukamori.archivetune.sources.sourceIdentity
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.playback.stream.ResolvedAudioStream
@@ -314,6 +322,9 @@ class MusicService :
 
     @Inject
     lateinit var resolveAudioStream: ResolveAudioStreamUseCase
+
+    @Inject lateinit var sourceDownloads: SourceDownloadRepository
+    @Inject lateinit var sourceHttpClient: SourceHttpClient
 
     @Inject
     lateinit var observePlaybackPreloadConfiguration: ObservePlaybackPreloadConfigurationUseCase
@@ -6966,10 +6977,11 @@ class MusicService :
                     mediaId = nextMediaId,
                     playlistId = null,
                     quality = configuration.quality,
-                    networkMetered = false,
+                    networkMetered = (getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).isActiveNetworkMetered,
                     purpose = StreamPurpose.PLAYBACK,
                     authState = configuration.authState,
                     pinnedFormatId = null,
+                    identity = nextMediaItem.metadata?.sourceIdentity(),
                 ),
         )
     }
@@ -7578,18 +7590,24 @@ class MusicService :
         if (uri.shouldBypassYouTubeResolver()) return mediaItem
         val mediaId = localConfiguration.customCacheKey ?: mediaItem.mediaId
         val lowDataModeActive = isLowDataModeActive()
-        val resolved =
-            resolveAudioStream.peek(
-                AudioStreamRequest(
-                    mediaId = mediaId,
-                    quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
-                    networkMetered = lowDataModeActive,
-                    purpose = StreamPurpose.PLAYBACK,
-                    authState = YouTube.currentPlaybackAuthState(),
-                ),
-            ) ?: return mediaItem
+        val request = AudioStreamRequest(
+            mediaId = mediaId,
+            quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+            networkMetered = (getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).isActiveNetworkMetered,
+            purpose = StreamPurpose.PLAYBACK,
+            authState = YouTube.currentPlaybackAuthState(),
+            identity = mediaItem.metadata?.sourceIdentity(),
+            forCast = true,
+        )
+        val resolved = if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            resolveAudioStream.peek(request) ?: return mediaItem
+        } else {
+            resolveAudioStream.resolveBlocking(request)
+        }
+        if (resolved.external?.audio?.headers?.isNotEmpty() == true) return mediaItem
         val resolvedMimeType =
-            localConfiguration.mimeType.toCastMimeType()
+            resolved.external?.audio?.mediaMimeType?.toCastMimeType()
+                ?: localConfiguration.mimeType.toCastMimeType()
                 ?: castMimeTypeCache.get(mediaId)
         return mediaItem
             .buildUpon()
@@ -7603,7 +7621,7 @@ class MusicService :
             return dataSpec
         }
         val mediaId = dataSpec.key ?: return dataSpec
-        val storedFormat = database.getFormatByIdBlocking(mediaId)
+        val storedFormat = database.getFormatByIdBlocking(mediaId)?.takeIf { it.sourceName == null }
         storedFormat?.let { format ->
             format.toCastMimeType()?.let { castMimeTypeCache.put(mediaId, it) }
             audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(format, normalizeAudio = true)
@@ -7632,6 +7650,7 @@ class MusicService :
                             purpose = StreamPurpose.PLAYBACK,
                             authState = YouTube.currentPlaybackAuthState(),
                             pinnedFormatId = pinnedFormatId,
+                            allowExternal = false,
                         ),
                     ).also { resolved ->
                         resolvedRequestHeaders = resolved.requestHeaders
@@ -7824,11 +7843,49 @@ class MusicService :
             }
         }.getOrDefault(false)
 
-    private fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
-            createDataSourceFactory(),
-            DefaultExtractorsFactory(),
-        )
+    private fun createMediaSourceFactory(): androidx.media3.exoplayer.source.MediaSource.Factory {
+        val original = DefaultMediaSourceFactory(createDataSourceFactory(), DefaultExtractorsFactory())
+        return SourceMediaSourceFactory(original) { item ->
+            val selection = withContext(Dispatchers.IO) {
+                val downloaded = sourceDownloads.read(item.mediaId)
+                if (downloaded?.complete == true) {
+                    downloaded.selection to true
+                } else if (downloadCache.isFullyCached(item.mediaId)) {
+                    null
+                } else {
+                    val lowData = isLowDataModeActive()
+                    val resolved = resolveAudioStream.selectExternal(AudioStreamRequest(
+                        mediaId = item.mediaId,
+                        quality = if (lowData) AudioQuality.LOW else audioQuality,
+                        networkMetered = (getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).isActiveNetworkMetered,
+                        purpose = StreamPurpose.PLAYBACK,
+                        authState = YouTube.currentPlaybackAuthState(),
+                        identity = item.metadata?.sourceIdentity(),
+                    ))
+                    resolved?.external?.let { it to false }
+                }
+            }
+            if (selection == null) {
+                original.createMediaSource(item)
+            } else {
+                val (external, offline) = selection
+                withContext(Dispatchers.IO) {
+                    database.upsert(external.format(item.mediaId))
+                    item.metadata?.let { metadata -> database.withTransaction { insert(metadata) } }
+                }
+                audioNormalizationFactorCache.remove(item.mediaId)
+                val networkFactory = if (offline) null else PinnedSourceSession(external,
+                    AudioStreamRequest(item.mediaId, quality = audioQuality,
+                        networkMetered = (getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).isActiveNetworkMetered,
+                        purpose = StreamPurpose.PLAYBACK, authState = YouTube.currentPlaybackAuthState()),
+                    resolveAudioStream).dataSourceFactory(sourceHttpClient.client)
+                DefaultMediaSourceFactory(external.cacheFactory(downloadCache,
+                    if (offline) null else sourceHttpClient.client,
+                    if (offline) null else playerCache, readOnly = true, networkFactory = networkFactory))
+                    .createMediaSource(external.mediaItem(item))
+            }
+        }
+    }
 
     private class SchemeRoutingDataSource(
         private val selectFactory: (DataSpec) -> DataSource.Factory,

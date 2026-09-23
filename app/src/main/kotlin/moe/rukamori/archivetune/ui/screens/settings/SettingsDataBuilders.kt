@@ -64,6 +64,14 @@ fun buildSettingsGroups(
             accentColor = MaterialTheme.colorScheme.tertiary,
             onClick = { navController.navigate("settings/player") },
         )
+    val sources = SettingsItem(
+        key = "sources",
+        icon = painterResource(R.drawable.music_note),
+        title = stringResource(R.string.sources_title),
+        subtitle = stringResource(R.string.sources_subtitle),
+        accentColor = MaterialTheme.colorScheme.tertiary,
+        onClick = { navController.navigate("settings/sources") },
+    )
     val canvas =
         SettingsItem(
             key = "canvas",
@@ -251,7 +259,7 @@ fun buildSettingsGroups(
         ),
         SettingsGroup(
             title = stringResource(R.string.settings_section_player_content),
-            items = listOf(appearance, playback, canvas, lyrics, content, behavior),
+            items = listOf(appearance, playback, sources, canvas, lyrics, content, behavior),
         ),
         SettingsGroup(
             title = stringResource(R.string.integration),

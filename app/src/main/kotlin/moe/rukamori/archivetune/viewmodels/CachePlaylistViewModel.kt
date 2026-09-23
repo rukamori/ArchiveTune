@@ -47,8 +47,13 @@ class CachePlaylistViewModel
                 while (true) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
-                    val cachedIds = playerCache.keys.toSet()
-                    val downloadedIds = downloadCache.keys.toSet()
+                    val cacheKeys = playerCache.keys.groupBy { key ->
+                        if (key.startsWith("ext:")) key.substringAfter("ext:").substringBefore(':') else key
+                    }
+                    val cachedIds = cacheKeys.keys
+                    val downloadedIds = downloadCache.keys.map { key ->
+                        if (key.startsWith("ext:")) key.substringAfter("ext:").substringBefore(':') else key
+                    }.toSet()
                     val pureCacheIds = cachedIds.subtract(downloadedIds)
 
                     val songs =
@@ -61,7 +66,9 @@ class CachePlaylistViewModel
                     val completeSongs =
                         songs.filter {
                             val contentLength = it.format?.contentLength
-                            contentLength != null && playerCache.isCached(it.song.id, 0, contentLength)
+                            contentLength != null && contentLength > 0 && cacheKeys[it.song.id].orEmpty().any { key ->
+                                playerCache.isCached(key, 0, contentLength)
+                            }
                         }
 
                     if (completeSongs.isNotEmpty()) {
@@ -87,6 +94,8 @@ class CachePlaylistViewModel
         }
 
         fun removeSongFromCache(songId: String) {
-            playerCache.removeResource(songId)
+            viewModelScope.launch(Dispatchers.IO) {
+                playerCache.keys.filter { it == songId || it.startsWith("ext:$songId:") }.forEach(playerCache::removeResource)
+            }
         }
     }

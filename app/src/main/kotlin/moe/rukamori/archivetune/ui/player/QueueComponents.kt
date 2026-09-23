@@ -563,7 +563,7 @@ fun QueueCollapsedContentV2(
                     .takeIf { it.isNotBlank() }
                     ?: currentFormat.containerLabel()
 
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
 
             val codecLabel =
                 if (container.isNotBlank() && !codec.equals(container, ignoreCase = true)) {
@@ -576,6 +576,8 @@ fun QueueCollapsedContentV2(
 
             val extraText =
                 listOfNotNull(
+                    currentFormat.sourceName,
+                    currentFormat.bitDepth?.let { stringResource(R.string.source_bit_depth, it) },
                     currentFormat.formattedSampleRate(),
                     currentFormat.formattedFileSize().takeIf { it.isNotBlank() },
                 ).joinToString(separator = " • ")
@@ -788,7 +790,7 @@ fun QueueCollapsedContentV3(
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
             val bitrate = currentFormat.autoRateDisplay()
 
             CodecInfoRow(
@@ -936,7 +938,7 @@ fun QueueCollapsedContentV1(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
             val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
@@ -1083,7 +1085,7 @@ fun QueueCollapsedContentV4(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
             val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
@@ -1325,7 +1327,7 @@ fun QueueCollapsedContentV8(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
             val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 
@@ -1514,7 +1516,7 @@ fun QueueCollapsedContentV9(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (showCodecOnPlayer && currentFormat != null) {
-            val container = currentFormat.containerLabel()
+            val container = listOfNotNull(currentFormat.sourceName, currentFormat.containerLabel()).joinToString(" · ")
             val bitrate = currentFormat.autoRateDisplay()
             val fileSize = currentFormat.formattedFileSize()
 

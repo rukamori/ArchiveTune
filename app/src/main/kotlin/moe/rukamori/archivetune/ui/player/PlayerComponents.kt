@@ -2815,8 +2815,8 @@ private fun V8QualityChip(
     modifier: Modifier = Modifier,
 ) {
     val label =
-        remember(currentFormat.mimeType, currentFormat.codecs) {
-            currentFormat.codecLabel()
+        remember(currentFormat.mimeType, currentFormat.codecs, currentFormat.sourceName) {
+            listOfNotNull(currentFormat.sourceName, currentFormat.codecLabel()).joinToString(" · ")
         }
 
     Surface(

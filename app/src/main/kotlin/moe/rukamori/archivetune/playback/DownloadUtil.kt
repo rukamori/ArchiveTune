@@ -46,6 +46,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.guava.future
+import moe.rukamori.archivetune.sources.SourceDownloadRepository
+import moe.rukamori.archivetune.sources.SourceDownloadRecord
+import moe.rukamori.archivetune.sources.SourceDownloader
+import moe.rukamori.archivetune.sources.PinnedSourceSession
+import moe.rukamori.archivetune.sources.SourceSelection
+import moe.rukamori.archivetune.sources.SourceHttpClient
+import moe.rukamori.archivetune.sources.ResolveExternalSourceUseCase
+import moe.rukamori.archivetune.sources.cacheFactory
+import moe.rukamori.archivetune.sources.downloadRequest
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -86,6 +96,9 @@ class DownloadUtil
         @PlayerCache val playerCache: Cache,
         private val downloadedArtworkRepository: DownloadedArtworkRepository,
         private val resolveAudioStream: ResolveAudioStreamUseCase,
+        private val sourceDownloads: SourceDownloadRepository,
+        private val externalSources: ResolveExternalSourceUseCase,
+        private val sourceHttp: SourceHttpClient,
     ) {
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -202,7 +215,7 @@ class DownloadUtil
                 context,
                 DefaultDownloadIndex(databaseProvider),
                 DownloaderFactory { request ->
-                    ResumingDownloader(request, downloaderFactory, ::resetDownloadContent)
+                    SourceDownloader(request, ::createSourceDownloader, sourceDownloads, ::removeSourceDownload)
                 },
             ).apply {
                 maxParallelDownloads = MAX_PARALLEL_DOWNLOADS
@@ -300,6 +313,38 @@ class DownloadUtil
         private fun invalidateResolvedStream(mediaId: String) =
             resolveAudioStream.invalidate(mediaId, StreamPurpose.DOWNLOAD)
 
+        private fun createSourceDownloader(request: androidx.media3.exoplayer.offline.DownloadRequest): Pair<androidx.media3.exoplayer.offline.Downloader, SourceSelection?> {
+            val streamRequest = createDownloadStreamRequest(request.id)
+            val stored = sourceDownloads.read(request.id)
+            val resolved = if (stored != null) {
+                val future = downloadScope.future { externalSources.refresh(stored.selection, streamRequest) }
+                try {
+                    future.get()
+                } catch (failure: InterruptedException) {
+                    future.cancel(true)
+                    Thread.currentThread().interrupt()
+                    throw failure
+                } catch (failure: java.util.concurrent.ExecutionException) {
+                    throw (failure.cause ?: failure)
+                }
+            } else {
+                resolveAudioStream.resolveBlocking(streamRequest)
+            }
+            val selection = resolved.external
+            if (selection == null) return ResumingDownloader(request, downloaderFactory, ::resetDownloadContent) to null
+            sourceDownloads.write(request.id, SourceDownloadRecord(selection))
+            persistPlaybackMetadata(request.id, resolved)
+            val networkFactory = PinnedSourceSession(selection, streamRequest, resolveAudioStream).dataSourceFactory(sourceHttp.client)
+            val factory = DefaultDownloaderFactory(selection.cacheFactory(downloadCache, sourceHttp.client, playerCache, networkFactory = networkFactory), downloadExecutor)
+            return factory.createDownloader(selection.downloadRequest(request)) to selection
+        }
+
+        private fun removeSourceDownload(mediaId: String) {
+            downloadCache.keys.filter { it == mediaId || it.startsWith("ext:$mediaId:") }.forEach(downloadCache::removeResource)
+            sourceDownloads.remove(mediaId)
+            resetDownloadContent(mediaId)
+        }
+
         private fun resetDownloadContent(mediaId: String) {
             downloadCache.removeResource(mediaId)
             val mutations =
@@ -315,7 +360,7 @@ class DownloadUtil
 
         private fun resolveDownloadDataSpec(dataSpec: DataSpec): DataSpec {
             val mediaId = dataSpec.key ?: throw IOException("Download has no media id")
-            val request = createDownloadStreamRequest(mediaId)
+            val request = createDownloadStreamRequest(mediaId).copy(allowExternal = false)
             val resolved =
                 try {
                     resolveAudioStream.resolveBlocking(request)
@@ -391,7 +436,7 @@ class DownloadUtil
             return AudioStreamRequest(
                 mediaId = mediaId,
                 quality = resolveDownloadAudioQuality(lowDataModeActive),
-                networkMetered = lowDataModeActive,
+                networkMetered = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).isActiveNetworkMetered,
                 purpose = StreamPurpose.DOWNLOAD,
                 authState = YouTube.currentPlaybackAuthState(),
                 pinnedFormatId = pinnedFormatId,
@@ -461,7 +506,7 @@ class DownloadUtil
                 try {
                     val artworkUrls =
                         database.withTransaction {
-                            val existingFormat = getFormatByIdBlocking(mediaId)
+                            val existingFormat = getFormatByIdBlocking(mediaId).takeIf { resolved.external == null }
                             upsert(
                                 FormatEntity(
                                     id = mediaId,
@@ -478,6 +523,8 @@ class DownloadUtil
                                     perceptualLoudnessDb =
                                         resolved.perceptualLoudnessDb ?: existingFormat?.perceptualLoudnessDb,
                                     playbackUrl = resolved.playbackTrackingUrl ?: existingFormat?.playbackUrl,
+                                    sourceName = resolved.external?.source?.name,
+                                    bitDepth = resolved.external?.audio?.bitDepth,
                                 ),
                             )
 

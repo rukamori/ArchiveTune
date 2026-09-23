@@ -434,6 +434,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/internet") {
         InternetSettings(navController)
     }
+    composable("settings/sources") {
+        moe.rukamori.archivetune.ui.screens.settings.SourcesScreen(navController)
+    }
     composable("settings/player") {
         PlayerSettings(navController)
     }

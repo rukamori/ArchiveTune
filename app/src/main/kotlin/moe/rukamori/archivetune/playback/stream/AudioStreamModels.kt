@@ -17,6 +17,7 @@ enum class StreamPurpose {
 
 enum class StreamSource {
     YOUTUBEI,
+    EXTERNAL,
 }
 
 data class AudioStreamRequest(
@@ -28,6 +29,9 @@ data class AudioStreamRequest(
     val authState: PlaybackAuthState,
     val pinnedFormatId: Int? = null,
     val requiresSongMetadata: Boolean = false,
+    val identity: moe.rukamori.archivetune.sources.TrackIdentity? = null,
+    val allowExternal: Boolean = true,
+    val forCast: Boolean = false,
 )
 
 data class ResolvedAudioStream(
@@ -49,4 +53,5 @@ data class ResolvedAudioStream(
     val loudnessDb: Double? = null,
     val perceptualLoudnessDb: Double? = null,
     val playbackTrackingUrl: String? = null,
+    val external: moe.rukamori.archivetune.sources.SourceSelection? = null,
 )

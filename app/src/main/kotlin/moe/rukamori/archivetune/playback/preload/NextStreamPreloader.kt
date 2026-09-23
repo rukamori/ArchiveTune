@@ -30,6 +30,7 @@ class NextStreamPreloader
     @Inject
     constructor(
         private val resolveAudioStream: ResolveAudioStreamUseCase,
+        private val sourceDownloads: moe.rukamori.archivetune.sources.SourceDownloadRepository,
         @PlayerCache private val playerCache: Cache,
         @DownloadCache private val downloadCache: Cache,
     ) {
@@ -88,6 +89,7 @@ class NextStreamPreloader
         }
 
         private suspend fun preload(target: Target) {
+            if (sourceDownloads.read(target.request.mediaId)?.complete == true) return
             if (resolveAudioStream.peek(target.request) != null) return
 
             val cacheKey = target.request.mediaId

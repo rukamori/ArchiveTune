@@ -23,6 +23,8 @@ data class FormatEntity(
     val loudnessDb: Double?,
     val perceptualLoudnessDb: Double? = null,
     val playbackUrl: String?,
+    val sourceName: String? = null,
+    val bitDepth: Int? = null,
 )
 
 fun FormatEntity.containerLabel(): String = mimeType.substringAfter("/").substringBefore(";").uppercase()
