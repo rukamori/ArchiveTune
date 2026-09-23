@@ -332,7 +332,7 @@ class DownloadUtil
             }
             val selection = resolved.external
             if (selection == null) return ResumingDownloader(request, downloaderFactory, ::resetDownloadContent) to null
-            sourceDownloads.write(request.id, SourceDownloadRecord(selection))
+            sourceDownloads.write(request.id, SourceDownloadRecord(selection = selection))
             persistPlaybackMetadata(request.id, resolved)
             val networkFactory = PinnedSourceSession(selection, streamRequest, resolveAudioStream).dataSourceFactory(sourceHttp.client)
             val factory = DefaultDownloaderFactory(selection.cacheFactory(downloadCache, sourceHttp.client, playerCache, networkFactory = networkFactory), downloadExecutor)
