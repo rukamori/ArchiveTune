@@ -20,6 +20,7 @@ globalThis.Headers = SourceHeaders;
 class SourceSearchParams {
     constructor(input = '') {
         this.pairs = [];
+        this.onChange = null;
         if (typeof input === 'string') {
             for (const pair of input.replace(/^\?/, '').split('&').filter(Boolean)) {
                 const index = pair.indexOf('=');
@@ -28,11 +29,11 @@ class SourceSearchParams {
             }
         } else for (const [key, value] of Array.isArray(input) ? input : Object.entries(input)) this.append(key, value);
     }
-    append(key, value) { this.pairs.push([String(key), String(value)]); }
+    append(key, value) { this.pairs.push([String(key), String(value)]); this.onChange?.(); }
     get(key) { return this.pairs.find(pair => pair[0] === String(key))?.[1] ?? null; }
     getAll(key) { return this.pairs.filter(pair => pair[0] === String(key)).map(pair => pair[1]); }
     has(key) { return this.get(key) !== null; }
-    delete(key) { this.pairs = this.pairs.filter(pair => pair[0] !== String(key)); }
+    delete(key) { this.pairs = this.pairs.filter(pair => pair[0] !== String(key)); this.onChange?.(); }
     set(key, value) { this.delete(key); this.append(key, value); }
     toString() { return this.pairs.map(pair => pair.map(encodeURIComponent).join('=')).join('&'); }
     entries() { return this.pairs[Symbol.iterator](); }
@@ -40,12 +41,30 @@ class SourceSearchParams {
 }
 globalThis.URLSearchParams = SourceSearchParams;
 globalThis.URL = class {
-    constructor(url, base) {
-        Object.assign(this, JSON.parse(__sourceUrl(String(url), base)));
-        this.origin = this.protocol + '//' + this.host;
-        this.searchParams = new SourceSearchParams(this.search);
+    constructor(url, base) { this.assignUrl(String(url), base); }
+    assignUrl(url, base) {
+        const parsed = JSON.parse(__sourceUrl(url, base));
+        this.protocol = parsed.protocol;
+        this.host = parsed.host;
+        this.hostname = parsed.hostname;
+        this.pathname = parsed.pathname;
+        this.hash = parsed.hash;
+        this.search = parsed.search;
     }
-    toString() { const query = this.searchParams.toString(); return this.origin + this.pathname + (query ? '?' + query : '') + this.hash; }
+    get origin() { return this.protocol + '//' + this.host; }
+    get search() { return this.rawSearch; }
+    set search(value) {
+        const query = String(value).replace(/^\?/, '');
+        this.rawSearch = query ? '?' + query : '';
+        this.searchParams = new SourceSearchParams(query);
+        this.searchParams.onChange = () => {
+            const encoded = this.searchParams.toString();
+            this.rawSearch = encoded ? '?' + encoded : '';
+        };
+    }
+    get href() { return this.toString(); }
+    set href(value) { this.assignUrl(String(value), this.toString()); }
+    toString() { return this.origin + this.pathname + this.search + this.hash; }
     toJSON() { return this.toString(); }
 };
 globalThis.AbortController = class {

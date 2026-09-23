@@ -24,8 +24,8 @@ class SourceProviderRepository @Inject constructor(
     suspend fun identify(raw: String, id: String = UUID.randomUUID().toString()): SourceConfiguration {
         val url = SourceHttpClient.address(raw)
         val base = addonBase(url)
-        val addresses = if (url.encodedPath.endsWith(".json")) listOf(url, endpoint(base, "manifest.json"))
-            else listOf(endpoint(base, "manifest.json"), url)
+        val addresses = if (url.encodedPath.endsWith(".json")) listOf(url)
+            else listOf(endpoint(base, "index.json"), endpoint(base, "manifest.json"), url)
         var problem: SourceException = SourceException(SourceProblem.INVALID_RESPONSE)
         for (address in addresses.distinct()) {
             try {

@@ -41,10 +41,11 @@ data class SourceEditor(val id: String? = null, val name: String = "", val url: 
 
 @Immutable
 data class SourcesUiModel(val rows: SourceRows, val editor: SourceEditor?, val busy: Boolean,
-    @param:StringRes val error: Int?)
+    @param:StringRes val error: Int?, val selected: SourceRow?)
 
 sealed interface SourcesAction {
     data object Add : SourcesAction
+    data class Manage(val id: String) : SourcesAction
     data class Edit(val id: String) : SourcesAction
     data class Enable(val id: String, val enabled: Boolean) : SourcesAction
     data class Move(val id: String, val offset: Int) : SourcesAction
@@ -58,7 +59,7 @@ sealed interface SourcesAction {
 
 @HiltViewModel
 class SourcesViewModel @Inject constructor(private val useCases: SourceSettingsUseCases) : ViewModel() {
-    private data class Controls(val editor: SourceEditor? = null, val busy: Boolean = false, val error: Int? = null)
+    private data class Controls(val selectedId: String? = null, val editor: SourceEditor? = null, val busy: Boolean = false, val error: Int? = null)
     private val controls = MutableStateFlow(Controls())
     private var actionJob: Job? = null
     val state = combine(useCases.settings, useCases.health, controls) { settings, health, controls ->
@@ -69,7 +70,7 @@ class SourcesViewModel @Inject constructor(private val useCases: SourceSettingsU
                 index > 0 && source.kind != SourceKind.YOUTUBE,
                 index < settings.sources.lastIndex - 1 && source.kind != SourceKind.YOUTUBE)
         }
-        if (rows.isEmpty()) SourcesState.Empty else SourcesState.Success(SourcesUiModel(SourceRows(rows), controls.editor, controls.busy, controls.error))
+        if (rows.isEmpty()) SourcesState.Empty else SourcesState.Success(SourcesUiModel(SourceRows(rows), controls.editor, controls.busy, controls.error, rows.firstOrNull { it.id == controls.selectedId }))
     }.catch { failure ->
         if (failure is CancellationException) throw failure
         emit(SourcesState.Error(R.string.sources_storage_error))
@@ -77,7 +78,8 @@ class SourcesViewModel @Inject constructor(private val useCases: SourceSettingsU
 
     fun onAction(action: SourcesAction) {
         when (action) {
-            SourcesAction.Add -> controls.update { it.copy(editor = SourceEditor(), error = null) }
+            SourcesAction.Add -> controls.update { it.copy(editor = SourceEditor(), selectedId = null, error = null) }
+            is SourcesAction.Manage -> controls.update { it.copy(selectedId = action.id, error = null) }
             SourcesAction.Dismiss -> {
                 actionJob?.cancel()
                 controls.value = Controls()
@@ -91,11 +93,14 @@ class SourcesViewModel @Inject constructor(private val useCases: SourceSettingsU
                     try {
                         when (action) {
                             is SourcesAction.Edit -> useCases.source(action.id)?.let { source ->
-                                controls.update { it.copy(editor = SourceEditor(source.id, source.name, source.url)) }
+                                controls.update { it.copy(editor = SourceEditor(source.id, source.name, source.url), selectedId = null) }
                             }
                             is SourcesAction.Enable -> useCases.enable(action.id, action.enabled)
                             is SourcesAction.Move -> useCases.move(action.id, action.offset)
-                            is SourcesAction.Remove -> useCases.remove(action.id)
+                            is SourcesAction.Remove -> {
+                                useCases.remove(action.id)
+                                controls.update { it.copy(selectedId = null) }
+                            }
                             is SourcesAction.Check -> useCases.check(action.id)
                             SourcesAction.Save -> controls.value.editor?.let { editor ->
                                 useCases.save(editor.id, editor.url, editor.name)

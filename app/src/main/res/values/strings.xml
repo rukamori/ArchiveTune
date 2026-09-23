@@ -1132,9 +1132,9 @@
     <string name="local_songs_metadata_unavailable">Imported %1$d songs. Online metadata is unavailable; file tags were kept.</string>
     <string name="sources_title">Sources</string>
     <string name="sources_subtitle">Match songs with external audio sources</string>
-    <string name="sources_description">Enabled sources are tried in order before YouTube. The selected recording stays unchanged during playback. Audio quality and Low Data Mode still apply.</string>
+    <string name="sources_description">Sources are tried in order before YouTube Music. Audio quality and Low Data Mode still apply.</string>
+    <string name="source_order">Playback order</string>
     <string name="sources_empty">No sources configured</string>
-    <string name="sources_back">Back</string>
     <string name="source_add">Add a source</string>
     <string name="source_name">Name (optional)</string>
     <string name="source_address">Server URL</string>
@@ -1143,7 +1143,6 @@
     <string name="source_modules">%1$d modules</string>
     <string name="source_addon">HTTP addon</string>
     <string name="source_jiosaavn">Audio up to 320 kbps</string>
-    <string name="source_youtube">YouTube Music catalogue</string>
     <string name="source_check">Check</string>
     <string name="source_move_up">Move up</string>
     <string name="source_move_down">Move down</string>

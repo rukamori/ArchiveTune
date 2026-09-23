@@ -22,6 +22,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -55,7 +56,8 @@ class SourceModuleRepository @Inject constructor(
                 Result.success(document.array("tracks").mapNotNull { element ->
                     val track = element as? JsonObject ?: return@mapNotNull null
                     val id = track.text("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
-                    SourceCandidate(id, TrackIdentity(track.text("title"), track.text("artist"), track.text("album"), track.number("duration")?.toInt()),
+                    SourceCandidate(id, TrackIdentity(track.text("title"), track.text("artist"), track.text("album"), track.number("duration")?.toInt(),
+                        (track["explicit"] as? JsonPrimitive)?.booleanOrNull),
                         moduleId = module.text("id"), format = track.text("format"))
                 })
             } catch (failure: kotlinx.coroutines.TimeoutCancellationException) {
@@ -63,7 +65,7 @@ class SourceModuleRepository @Inject constructor(
             } catch (failure: CancellationException) {
                 throw failure
             } catch (failure: Exception) {
-                Result.failure(SourceException(SourceProblem.INVALID_RESPONSE, failure))
+                Result.failure(failure as? SourceException ?: SourceException(SourceProblem.INVALID_RESPONSE, failure))
             }
             responses.send(result)
         } }
@@ -87,8 +89,17 @@ class SourceModuleRepository @Inject constructor(
         val module = entries(http.document(SourceHttpClient.address(source.url))).firstOrNull { it.text("id") == candidate.moduleId }
             ?: throw SourceException(SourceProblem.NO_MATCH)
         val quality = when { low -> "LOW"; lossless -> "HI_RES_LOSSLESS"; else -> "HIGH" }
-        val response = call(source, module, "getTrackStreamUrl", listOf(JsonPrimitive(candidate.id), JsonPrimitive(quality),
-            JsonObject(mapOf("settings" to JsonObject(mapOf("quality" to JsonPrimitive(quality)))))))
+        val context = JsonObject(mapOf(
+            "settings" to JsonObject(mapOf("quality" to JsonObject(mapOf("value" to JsonPrimitive(quality))))),
+            "track" to JsonObject(mapOf(
+                "title" to JsonPrimitive(candidate.identity.title),
+                "artist" to JsonPrimitive(candidate.identity.artist),
+                "album" to JsonPrimitive(candidate.identity.album),
+            )),
+        ))
+        val response = call(source, module, "getTrackStreamUrl", listOf(
+            JsonPrimitive(candidate.id), JsonPrimitive(quality), context,
+        ))
         return SourceProviderRepository.parseAudio(JsonObject(response.obj("track") + response + mapOf(
             "url" to JsonPrimitive(response.text("streamUrl").ifBlank { response.text("url") }),
         )))
@@ -102,8 +113,9 @@ class SourceModuleRepository @Inject constructor(
             val cached = scripts.get(key)?.takeIf { System.currentTimeMillis() - it.loadedAt < 60 * 60_000 }
             val script = cached?.code ?: http.text(Request.Builder().url(address).build()).let {
                 if (it.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
-                scripts.put(key, CachedScript(it.body, System.currentTimeMillis()))
-                it.body
+                val decoded = SourceModuleDecoder.decode(it.body)
+                scripts.put(key, CachedScript(decoded, System.currentTimeMillis()))
+                decoded
             }
             val runtime = QuickJs.create(Dispatchers.Default)
             try {
@@ -139,8 +151,10 @@ class SourceModuleRepository @Inject constructor(
                 val polyfills = withContext(Dispatchers.IO) { bridge }
                 runtime.evaluate<Unit>(polyfills)
                 val wrapped = Regex("^\\s*export\\s+const\\s+\\w+\\s*=\\s*(`.*`)\\s*;?\\s*$", RegexOption.DOT_MATCHES_ALL).matchEntire(script)
-                val code = if (wrapped != null) runtime.evaluate<String>(wrapped.groupValues[1]) else script
+                val code = wrapped?.groupValues?.get(1)?.removeSurrounding("`") ?: script
                 runtime.evaluate<Unit>("globalThis.__module = (() => { const module = {exports:{}}; const exports = module.exports; const self = globalThis;\n" + code + "\nreturn module.exports; })();")
+                val available = runtime.evaluate<Boolean>("typeof __module?.searchTracks === 'function' && typeof __module?.getTrackStreamUrl === 'function'")
+                if (!available) throw SourceException(SourceProblem.UNSUPPORTED)
                 val result = runtime.evaluate<String>("JSON.stringify(await __module[${JsonPrimitive(function)}](...${JsonArray(args)}));")
                 http.json.parseToJsonElement(result) as? JsonObject ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
             } finally {

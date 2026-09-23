@@ -1,6 +1,8 @@
 package moe.rukamori.archivetune.sources
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import okhttp3.Call
@@ -24,14 +26,15 @@ class SourceHttpClient @Inject constructor() {
         .connectTimeout(8, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(15, TimeUnit.SECONDS).retryOnConnectionFailure(false).build()
 
-    suspend fun document(url: HttpUrl): JsonObject = try {
-        json.parseToJsonElement(text(Request.Builder().url(url).header("Accept", "application/json").build()).let {
-            if (it.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
-            it.body
-        }) as? JsonObject
-            ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
-    } catch (failure: kotlinx.serialization.SerializationException) {
-        throw SourceException(SourceProblem.INVALID_RESPONSE, failure)
+    suspend fun document(url: HttpUrl): JsonObject = withContext(Dispatchers.IO) {
+        try {
+            val response = text(Request.Builder().url(url).header("Accept", "application/json").build())
+            if (response.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
+            json.parseToJsonElement(response.body.removePrefix("\uFEFF")) as? JsonObject
+                ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
+        } catch (failure: kotlinx.serialization.SerializationException) {
+            throw SourceException(SourceProblem.INVALID_RESPONSE, failure)
+        }
     }
 
     suspend fun text(request: Request): HttpReply = suspendCancellableCoroutine { continuation ->
