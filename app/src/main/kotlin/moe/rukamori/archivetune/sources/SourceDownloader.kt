@@ -26,7 +26,7 @@ class SourceDownloader(
                 throw InterruptedException()
             }
             downloader.download(progressListener)
-            if (selection != null) records.write(request.id, SourceDownloadRecord(selection, complete = true))
+            if (selection != null) records.write(request.id, SourceDownloadRecord(selection = selection, complete = true))
         } finally {
             active.set(null)
             synchronized(workerLock) { worker = null }
