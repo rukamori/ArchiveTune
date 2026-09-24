@@ -126,9 +126,13 @@ private fun SourceProblem.message(): Int = when (this) {
     SourceProblem.INVALID_ADDRESS -> R.string.source_invalid_address
     SourceProblem.DUPLICATE -> R.string.source_duplicate
     SourceProblem.UNAVAILABLE -> R.string.source_unavailable
+    SourceProblem.TIMED_OUT -> R.string.source_timed_out
     SourceProblem.INVALID_RESPONSE -> R.string.source_invalid_response
     SourceProblem.UNSUPPORTED -> R.string.source_unsupported
     SourceProblem.NO_MATCH -> R.string.source_no_match
+    SourceProblem.ACCESS_DENIED -> R.string.source_access_denied
+    SourceProblem.RATE_LIMITED -> R.string.source_rate_limited
+    SourceProblem.REQUEST_REJECTED -> R.string.source_request_rejected
     SourceProblem.MODULE_EXECUTION -> R.string.source_module_execution_error
     SourceProblem.STORAGE -> R.string.sources_storage_error
 }
