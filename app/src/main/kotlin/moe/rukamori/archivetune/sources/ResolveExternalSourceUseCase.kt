@@ -73,7 +73,7 @@ class ResolveExternalSourceUseCase @Inject constructor(
                             }
                         }
                         throw failure
-                    } ?: throw SourceException(SourceProblem.UNAVAILABLE)
+                    } ?: throw SourceException(SourceProblem.TIMED_OUT)
                     report(source.id, null)
                     return@withTimeoutOrNull selection.toResolved(request, target)
                 } catch (failure: TimeoutCancellationException) {

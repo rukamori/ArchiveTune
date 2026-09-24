@@ -23,7 +23,7 @@ class SourceStreamRepository @Inject constructor(private val http: SourceHttpCli
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val result = response.use {
-                        if (!it.isSuccessful) throw SourceException(SourceProblem.UNAVAILABLE)
+                        SourceHttpClient.problemForStatus(it.code)?.let { problem -> throw SourceException(problem) }
                         val body = it.body ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
                         val source = body.source()
                         source.request(4096)

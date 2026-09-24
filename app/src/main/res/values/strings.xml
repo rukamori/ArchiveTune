@@ -1152,6 +1152,10 @@
     <string name="source_unavailable">The source could not be reached.</string>
     <string name="source_invalid_response">The source returned an invalid response.</string>
     <string name="source_unsupported">This source or audio format is not supported.</string>
+    <string name="source_timed_out">The provider took too long to respond.</string>
+    <string name="source_access_denied">A provider denied access (HTTP 401 or 403).</string>
+    <string name="source_rate_limited">A provider is limiting requests. Try again later.</string>
+    <string name="source_request_rejected">A provider rejected the module request.</string>
     <string name="source_module_execution_error">A module could not resolve this track.</string>
     <string name="source_no_match">No confident match for the requested recording.</string>
     <string name="sources_storage_error">Source settings could not be read or saved.</string>

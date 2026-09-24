@@ -29,7 +29,7 @@ class SourceHttpClient @Inject constructor() {
     suspend fun document(url: HttpUrl): JsonObject = withContext(Dispatchers.IO) {
         try {
             val response = text(Request.Builder().url(url).header("Accept", "application/json").build())
-            if (response.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
+            problemForStatus(response.status)?.let { throw SourceException(it) }
             json.parseToJsonElement(response.body.removePrefix("\uFEFF")) as? JsonObject
                 ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
         } catch (failure: kotlinx.serialization.SerializationException) {
@@ -63,6 +63,14 @@ class SourceHttpClient @Inject constructor() {
     data class HttpReply(val status: Int, val body: String, val headers: Map<String, String>)
 
     companion object {
+        internal fun problemForStatus(status: Int): SourceProblem? = when (status) {
+            in 200..299 -> null
+            401, 403 -> SourceProblem.ACCESS_DENIED
+            429 -> SourceProblem.RATE_LIMITED
+            400, 405, 406, 409, 415, 422 -> SourceProblem.REQUEST_REJECTED
+            else -> SourceProblem.UNAVAILABLE
+        }
+
         private const val MAX_BODY_BYTES = 4L * 1024 * 1024
         fun address(raw: String): HttpUrl = raw.trim().toHttpUrlOrNull()
             ?.takeIf { it.username.isEmpty() && it.password.isEmpty() }

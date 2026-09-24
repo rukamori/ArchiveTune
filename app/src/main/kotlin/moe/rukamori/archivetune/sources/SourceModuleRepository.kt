@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.sources
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.LruCache
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -12,7 +13,6 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -26,7 +26,7 @@ class SourceModuleRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: SourceHttpClient,
 ) {
-    private val slots = Semaphore(3)
+    private val slots = Semaphore(12)
     private data class CachedScript(val code: String, val loadedAt: Long)
     private val scripts = object : LruCache<String, CachedScript>(8 * 1024 * 1024) {
         override fun sizeOf(key: String, value: CachedScript): Int = value.code.length * 2
@@ -46,10 +46,11 @@ class SourceModuleRepository @Inject constructor(
 
     suspend fun search(source: SourceConfiguration, query: String): List<SourceCandidate> = supervisorScope {
         val index = entries(http.document(SourceHttpClient.address(source.url)))
+        if (index.isEmpty()) throw SourceException(SourceProblem.UNSUPPORTED)
         val responses = Channel<Result<List<SourceCandidate>>>(index.size.coerceAtLeast(1))
         val jobs = index.map { module -> launch {
             val result = try {
-                val document = call(source, module, "searchTracks", listOf(JsonPrimitive(query), JsonPrimitive(40), JsonObject(mapOf("settings" to JsonObject(emptyMap())))))
+                val document = call(source, module, "searchTracks", listOf(JsonPrimitive(query), JsonPrimitive(15), JsonObject(mapOf("settings" to JsonObject(emptyMap())))))
                 Result.success(document.array("tracks").mapNotNull { element ->
                     val track = element as? JsonObject ?: return@mapNotNull null
                     val id = track.text("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
@@ -57,8 +58,6 @@ class SourceModuleRepository @Inject constructor(
                         (track["explicit"] as? JsonPrimitive)?.booleanOrNull),
                         moduleId = module.text("id"), format = track.text("format"))
                 })
-            } catch (failure: kotlinx.coroutines.TimeoutCancellationException) {
-                Result.failure(SourceException(SourceProblem.UNAVAILABLE, failure))
             } catch (failure: CancellationException) {
                 throw failure
             } catch (failure: Exception) {
@@ -68,17 +67,34 @@ class SourceModuleRepository @Inject constructor(
         } }
         val candidates = mutableListOf<SourceCandidate>()
         var lastFailure: Throwable? = null
+        var remaining = index.size
         try {
-            withTimeoutOrNull(8_000) {
-                repeat(index.size) {
-                    responses.receive().fold({ candidates += it }, { lastFailure = it })
-                }
+            var deadline = SystemClock.elapsedRealtime() + 8_000L
+            var receivedTracks = false
+            while (remaining > 0) {
+                val waitMillis = deadline - SystemClock.elapsedRealtime()
+                if (waitMillis <= 0L) break
+                val response = withTimeoutOrNull(waitMillis) { responses.receive() } ?: break
+                remaining--
+                response.fold(
+                    onSuccess = { tracks ->
+                        candidates += tracks
+                        if (!receivedTracks && tracks.isNotEmpty()) {
+                            receivedTracks = true
+                            deadline = SystemClock.elapsedRealtime() + 2_500L
+                        }
+                    },
+                    onFailure = { lastFailure = it },
+                )
             }
         } finally {
             jobs.forEach { it.cancel() }
             responses.close()
         }
-        if (candidates.isEmpty() && lastFailure != null) throw lastFailure!!
+        if (candidates.isEmpty()) {
+            lastFailure?.let { throw it }
+            if (remaining > 0) throw SourceException(SourceProblem.TIMED_OUT)
+        }
         val groups = candidates.groupBy { it.moduleId }.values.toList()
         buildList {
             repeat(groups.maxOfOrNull { it.size } ?: 0) { position ->
@@ -108,13 +124,13 @@ class SourceModuleRepository @Inject constructor(
     }
 
     private suspend fun call(source: SourceConfiguration, module: JsonObject, function: String, args: List<kotlinx.serialization.json.JsonElement>): JsonObject = slots.withPermit {
-        withTimeout(12_000) {
+        withTimeoutOrNull(12_000) {
             val base = SourceHttpClient.address(source.url)
             val address = base.resolve(module.text("download")) ?: throw SourceException(SourceProblem.INVALID_ADDRESS)
             val key = listOf(source.id, source.url, address.toString(), module.text("version"), module.text("code")).joinToString("\u0000")
             val cached = scripts.get(key)?.takeIf { System.currentTimeMillis() - it.loadedAt < 60 * 60_000 }
             val script = cached?.code ?: http.text(Request.Builder().url(address).build()).let {
-                if (it.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
+                SourceHttpClient.problemForStatus(it.status)?.let { problem -> throw SourceException(problem) }
                 val decoded = SourceModuleDecoder.decode(it.body)
                 scripts.put(key, CachedScript(decoded, System.currentTimeMillis()))
                 decoded
@@ -133,6 +149,6 @@ class SourceModuleRepository @Inject constructor(
             } finally {
                 session.release()
             }
-        }
+        } ?: throw SourceException(SourceProblem.TIMED_OUT)
     }
 }

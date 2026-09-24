@@ -35,6 +35,7 @@ internal class SourceModuleRuntime(
     private var users = 0
     private var retired = false
     private var engine: QuickJs? = null
+    @Volatile private var requestProblem: SourceProblem? = null
 
     fun acquire() = synchronized(lifecycleLock) {
         check(!retired)
@@ -53,6 +54,7 @@ internal class SourceModuleRuntime(
 
     suspend fun call(function: String, args: List<JsonElement>): JsonObject = mutex.withLock {
         try {
+            requestProblem = null
             val runtime = engine ?: initialize().also { engine = it }
             runtime.evaluate<String>(
                 """
@@ -74,7 +76,7 @@ internal class SourceModuleRuntime(
             val envelope = http.json.parseToJsonElement(result) as? JsonObject
                 ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
             if ((envelope["failed"] as? JsonPrimitive)?.booleanOrNull == true) {
-                throw SourceException(SourceProblem.MODULE_EXECUTION)
+                throw SourceException(requestProblem ?: SourceProblem.MODULE_EXECUTION)
             }
             envelope["value"] as? JsonObject ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
         } catch (failure: CancellationException) {
@@ -123,7 +125,13 @@ internal class SourceModuleRuntime(
             val builder = Request.Builder().url(url)
             request.obj("headers").forEach { (name, value) -> builder.header(name, (value as JsonPrimitive).content) }
             val body = if (method in listOf("GET", "HEAD")) null else request.text("body").toRequestBody("application/json".toMediaType())
-            val result = http.text(builder.method(method, body).build())
+            val result = try {
+                http.text(builder.method(method, body).build())
+            } catch (failure: SourceException) {
+                requestProblem = failure.problem
+                throw failure
+            }
+            SourceHttpClient.problemForStatus(result.status)?.let { requestProblem = it }
             JsonObject(mapOf("status" to JsonPrimitive(result.status), "body" to JsonPrimitive(result.body),
                 "headers" to JsonObject(result.headers.mapValues { JsonPrimitive(it.value) }))).toString()
         }
