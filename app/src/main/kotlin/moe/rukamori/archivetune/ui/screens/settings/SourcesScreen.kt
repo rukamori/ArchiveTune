@@ -101,6 +101,7 @@ private fun SourcesList(model: SourcesUiModel, onAction: (SourcesAction) -> Unit
     }
     val note = remember { Modifier.padding(horizontal = 24.dp, vertical = 12.dp) }
     val fullWidth = remember { Modifier.fillMaxWidth() }
+    val section = remember { Modifier.padding(top = SettingsDimensions.SectionSpacing) }
     Column(body) {
         if (model.busy) LinearProgressIndicator(fullWidth)
         PreferenceGroup(title = stringResource(R.string.source_order)) {
@@ -108,7 +109,7 @@ private fun SourcesList(model: SourcesUiModel, onAction: (SourcesAction) -> Unit
                 item { key(row.id) { SourcePreference(row, model.busy, onAction) } }
             }
         }
-        PreferenceGroup {
+        PreferenceGroup(modifier = section) {
             item {
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.source_add)) },

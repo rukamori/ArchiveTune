@@ -1152,6 +1152,7 @@
     <string name="source_unavailable">The source could not be reached.</string>
     <string name="source_invalid_response">The source returned an invalid response.</string>
     <string name="source_unsupported">This source or audio format is not supported.</string>
+    <string name="source_module_execution_error">A module could not resolve this track.</string>
     <string name="source_no_match">No confident match for the requested recording.</string>
     <string name="sources_storage_error">Source settings could not be read or saved.</string>
     <string name="source_bit_depth">%1$d-bit</string>

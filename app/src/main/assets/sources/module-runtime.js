@@ -76,12 +76,20 @@ const timers = new Set();
 globalThis.setTimeout = (fn, ms, ...args) => {
     const id = ++timerCounter;
     timers.add(id);
-    __sourceDelay(Math.max(0, Math.min(Number(ms) || 0, 12000))).then(() => {
+    __sourceTimerCreate(id);
+    __sourceDelay(JSON.stringify({id, ms: Math.max(0, Math.min(Number(ms) || 0, 12000))})).then(() => {
         if (timers.delete(id)) fn(...args);
     });
     return id;
 };
-globalThis.clearTimeout = id => timers.delete(id);
+globalThis.clearTimeout = id => {
+    timers.delete(id);
+    __sourceTimerClear(id);
+};
+globalThis.__sourceClearTimers = () => {
+    for (const id of timers) __sourceTimerClear(id);
+    timers.clear();
+};
 globalThis.fetch = async (input, options = {}) => {
     if (options.signal?.aborted) throw new Error('Aborted');
     const headers = new SourceHeaders(options.headers);

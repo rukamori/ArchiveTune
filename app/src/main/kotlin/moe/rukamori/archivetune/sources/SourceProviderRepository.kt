@@ -135,6 +135,9 @@ class SourceProviderRepository @Inject constructor(
     private fun clean(value: String): String = Html.fromHtml(value, Html.FROM_HTML_MODE_LEGACY).toString()
 
     companion object {
+        private val BITRATE_LABEL = Regex("""\b(\d{1,4})\s*(?:kbps|kbit/s)\b""", RegexOption.IGNORE_CASE)
+        private val SAAVN_BITRATE = Regex("""_(12|48|96|128|160|320)\.(?:mp4|mp3)$""")
+
         internal fun addonBase(url: HttpUrl): HttpUrl = url.newBuilder().apply {
             if (url.encodedPath.endsWith("/manifest.json")) removePathSegment(url.pathSegments.lastIndex)
         }.build()
@@ -155,15 +158,33 @@ class SourceProviderRepository @Inject constructor(
                 transportValue in listOf("hls", "m3u8", "application/x-mpegurl", "application/vnd.apple.mpegurl") || path.endsWith(".m3u8") -> StreamTransport.HLS
                 else -> StreamTransport.PROGRESSIVE
             }
-            val codec = item.text("codec").ifBlank { item.text("fileCodec").ifBlank { item.text("format") } }.lowercase()
-            val mime = item.text("mimeType").ifBlank { when (codec) {
+            val reportedMime = item.text("mimeType").substringBefore(';').trim().lowercase()
+            val quality = item.text("audioQuality").ifBlank { item.text("quality") }
+            val reportedCodec = item.text("codec").ifBlank { item.text("fileCodec").ifBlank { item.text("format") } }.lowercase()
+            val codec = reportedCodec.ifBlank {
+                when {
+                    reportedMime == "audio/flac" -> "flac"
+                    reportedMime == "audio/mpeg" || path.endsWith(".mp3") -> "mp3"
+                    reportedMime == "audio/mp4" || reportedMime == "audio/aac" || path.endsWith(".m4a") -> "aac"
+                    reportedMime == "audio/opus" || path.endsWith(".opus") -> "opus"
+                    reportedMime == "audio/wav" || path.endsWith(".wav") -> "pcm"
+                    quality.contains("flac", true) || quality.contains("lossless", true) || path.endsWith(".flac") -> "flac"
+                    else -> ""
+                }
+            }
+            val mime = reportedMime.ifBlank { when (codec) {
                 "flac" -> "audio/flac"; "alac", "aac", "m4a", "mp4" -> "audio/mp4"
                 "mp3", "mpeg" -> "audio/mpeg"; "opus", "ogg", "vorbis" -> "audio/ogg"
                 "wav", "pcm" -> "audio/wav"; else -> ""
             } }
             val expiry = item.number("expiresAt")?.toLong()?.let { if (it < 10_000_000_000L) it * 1000 else it }
                 ?: System.currentTimeMillis() + 10 * 60_000
-            val bitrate = item.number("bitrate")?.let { if (it <= 3000) it * 1000 else it }?.toInt() ?: 0
+            val reportedBitrate = item.number("bitrate")?.takeIf { it > 0 }
+            val pathBitrate = SAAVN_BITRATE.find(path)?.groupValues?.get(1)?.toIntOrNull()
+                ?.takeIf { SourceHttpClient.address(url).host.endsWith(".saavncdn.com") }
+            val labelledBitrate = BITRATE_LABEL.find(quality)?.groupValues?.get(1)?.toIntOrNull()
+            val bitrate = reportedBitrate?.let { if (it <= 3000) it * 1000 else it }?.toInt()
+                ?: ((pathBitrate ?: labelledBitrate ?: 0) * 1000)
             return SourceAudio(url, item.obj("headers").mapNotNull { (key, value) -> (value as? JsonPrimitive)?.contentOrNull?.let { key to it } }.toMap(),
                 codec, mime, transport, bitrate, item.number("sampleRate")?.let { if (it < 1000) it * 1000 else it }?.toInt(),
                 item.number("bitDepth")?.toInt(), item.number("contentLength")?.toLong() ?: -1, expiry,

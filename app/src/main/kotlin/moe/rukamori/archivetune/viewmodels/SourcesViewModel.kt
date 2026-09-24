@@ -129,5 +129,6 @@ private fun SourceProblem.message(): Int = when (this) {
     SourceProblem.INVALID_RESPONSE -> R.string.source_invalid_response
     SourceProblem.UNSUPPORTED -> R.string.source_unsupported
     SourceProblem.NO_MATCH -> R.string.source_no_match
+    SourceProblem.MODULE_EXECUTION -> R.string.source_module_execution_error
     SourceProblem.STORAGE -> R.string.sources_storage_error
 }

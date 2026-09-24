@@ -105,8 +105,7 @@ class ResolveAudioStreamUseCase
                 ?: requireNotNull(resolve(request.copy(allowExternal = false), ResolutionConsumer.PLAYBACK))
 
         suspend fun selectExternal(request: AudioStreamRequest): ResolvedAudioStream? {
-            peek(request)?.let { return it.takeIf { stream -> stream.external != null } }
-            return resolve(request, ResolutionConsumer.PLAYBACK)
+            return resolve(request.copy(allowExternal = true), ResolutionConsumer.PLAYBACK)
         }
 
         suspend fun preload(request: AudioStreamRequest) {

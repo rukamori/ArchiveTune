@@ -1,12 +1,7 @@
 package moe.rukamori.archivetune.sources
 
 import android.content.Context
-import android.util.Base64
 import android.util.LruCache
-import com.dokar.quickjs.QuickJs
-import com.dokar.quickjs.binding.asyncFunction
-import com.dokar.quickjs.binding.function
-import com.dokar.quickjs.evaluate
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -23,9 +17,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,6 +30,11 @@ class SourceModuleRepository @Inject constructor(
     private data class CachedScript(val code: String, val loadedAt: Long)
     private val scripts = object : LruCache<String, CachedScript>(8 * 1024 * 1024) {
         override fun sizeOf(key: String, value: CachedScript): Int = value.code.length * 2
+    }
+    private val runtimes = object : LruCache<String, SourceModuleRuntime>(12) {
+        override fun entryRemoved(evicted: Boolean, key: String, oldValue: SourceModuleRuntime, newValue: SourceModuleRuntime?) {
+            oldValue.retire()
+        }
     }
     private val bridge by lazy { context.assets.open("sources/module-runtime.js").bufferedReader().use { it.readText() } }
 
@@ -56,7 +53,7 @@ class SourceModuleRepository @Inject constructor(
                 Result.success(document.array("tracks").mapNotNull { element ->
                     val track = element as? JsonObject ?: return@mapNotNull null
                     val id = track.text("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
-                    SourceCandidate(id, TrackIdentity(track.text("title"), track.text("artist"), track.text("album"), track.number("duration")?.toInt(),
+                    SourceCandidate(id, TrackIdentity(track.text("title"), track.text("artist"), track.text("album"), track.number("duration")?.toInt()?.takeIf { it > 0 },
                         (track["explicit"] as? JsonPrimitive)?.booleanOrNull),
                         moduleId = module.text("id"), format = track.text("format"))
                 })
@@ -82,7 +79,12 @@ class SourceModuleRepository @Inject constructor(
             responses.close()
         }
         if (candidates.isEmpty() && lastFailure != null) throw lastFailure!!
-        candidates
+        val groups = candidates.groupBy { it.moduleId }.values.toList()
+        buildList {
+            repeat(groups.maxOfOrNull { it.size } ?: 0) { position ->
+                groups.forEach { group -> group.getOrNull(position)?.let(::add) }
+            }
+        }
     }
 
     suspend fun stream(source: SourceConfiguration, candidate: SourceCandidate, lossless: Boolean, low: Boolean): SourceAudio {
@@ -109,7 +111,7 @@ class SourceModuleRepository @Inject constructor(
         withTimeout(12_000) {
             val base = SourceHttpClient.address(source.url)
             val address = base.resolve(module.text("download")) ?: throw SourceException(SourceProblem.INVALID_ADDRESS)
-            val key = address.toString() + module.text("version") + module.text("code")
+            val key = listOf(source.id, source.url, address.toString(), module.text("version"), module.text("code")).joinToString("\u0000")
             val cached = scripts.get(key)?.takeIf { System.currentTimeMillis() - it.loadedAt < 60 * 60_000 }
             val script = cached?.code ?: http.text(Request.Builder().url(address).build()).let {
                 if (it.status !in 200..299) throw SourceException(SourceProblem.UNAVAILABLE)
@@ -117,48 +119,19 @@ class SourceModuleRepository @Inject constructor(
                 scripts.put(key, CachedScript(decoded, System.currentTimeMillis()))
                 decoded
             }
-            val runtime = QuickJs.create(Dispatchers.Default)
+            val polyfills = withContext(Dispatchers.IO) { bridge }
+            val runtimeKey = key + script.sourceHash()
+            val session = synchronized(runtimes) {
+                val session = runtimes.get(runtimeKey) ?: SourceModuleRuntime(http, address, script, polyfills).also {
+                    runtimes.put(runtimeKey, it)
+                }
+                session.acquire()
+                session
+            }
             try {
-                runtime.memoryLimit = 32L * 1024 * 1024
-                runtime.maxStackSize = 512L * 1024
-                runtime.asyncFunction<String, String>("__sourceFetch") { value ->
-                    val request = http.json.parseToJsonElement(value) as JsonObject
-                    val url = address.resolve(request.text("url")) ?: throw SourceException(SourceProblem.INVALID_ADDRESS)
-                    val method = request.text("method").ifBlank { "GET" }.uppercase()
-                    val builder = Request.Builder().url(url)
-                    request.obj("headers").forEach { (name, value) -> builder.header(name, (value as JsonPrimitive).content) }
-                    val body = if (method in listOf("GET", "HEAD")) null else request.text("body").toRequestBody("application/json".toMediaType())
-                    val result = http.text(builder.method(method, body).build())
-                    JsonObject(mapOf("status" to JsonPrimitive(result.status), "body" to JsonPrimitive(result.body),
-                        "headers" to JsonObject(result.headers.mapValues { JsonPrimitive(it.value) }))).toString()
-                }
-                runtime.asyncFunction<Long, Unit>("__sourceDelay") { delay(it.coerceIn(0, 12_000)) }
-                runtime.function("__sourceBase64Decode") { values ->
-                    Base64.decode(values.first().toString(), Base64.DEFAULT).toString(Charsets.ISO_8859_1)
-                }
-                runtime.function("__sourceBase64Encode") { values ->
-                    Base64.encodeToString(values.first().toString().toByteArray(Charsets.ISO_8859_1), Base64.NO_WRAP)
-                }
-                runtime.function("__sourceUrl") { values ->
-                    val raw = values[0].toString()
-                    val parent = values.getOrNull(1)?.toString()?.takeIf { it != "undefined" && it != "null" } ?: address.toString()
-                    val url = SourceHttpClient.address(parent).resolve(raw) ?: throw SourceException(SourceProblem.INVALID_ADDRESS)
-                    JsonObject(mapOf("href" to JsonPrimitive(url.toString()), "protocol" to JsonPrimitive(url.scheme + ":"),
-                        "host" to JsonPrimitive(url.host + if (url.port != 80 && url.port != 443) ":${url.port}" else ""),
-                        "hostname" to JsonPrimitive(url.host), "pathname" to JsonPrimitive(url.encodedPath),
-                        "search" to JsonPrimitive(url.encodedQuery?.let { "?$it" }.orEmpty()), "hash" to JsonPrimitive(url.encodedFragment?.let { "#$it" }.orEmpty()))).toString()
-                }
-                val polyfills = withContext(Dispatchers.IO) { bridge }
-                runtime.evaluate<Unit>(polyfills)
-                val wrapped = Regex("^\\s*export\\s+const\\s+\\w+\\s*=\\s*(`.*`)\\s*;?\\s*$", RegexOption.DOT_MATCHES_ALL).matchEntire(script)
-                val code = wrapped?.groupValues?.get(1)?.removeSurrounding("`") ?: script
-                runtime.evaluate<Unit>("globalThis.__module = (() => { const module = {exports:{}}; const exports = module.exports; const self = globalThis;\n" + code + "\nreturn module.exports; })();")
-                val available = runtime.evaluate<Boolean>("typeof __module?.searchTracks === 'function' && typeof __module?.getTrackStreamUrl === 'function'")
-                if (!available) throw SourceException(SourceProblem.UNSUPPORTED)
-                val result = runtime.evaluate<String>("JSON.stringify(await __module[${JsonPrimitive(function)}](...${JsonArray(args)}));")
-                http.json.parseToJsonElement(result) as? JsonObject ?: throw SourceException(SourceProblem.INVALID_RESPONSE)
+                session.call(function, args)
             } finally {
-                runtime.close()
+                session.release()
             }
         }
     }

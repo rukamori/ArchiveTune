@@ -82,7 +82,7 @@ data class SourceSelection(
     val cacheKey: String,
 )
 
-enum class SourceProblem { INVALID_ADDRESS, DUPLICATE, UNAVAILABLE, INVALID_RESPONSE, UNSUPPORTED, NO_MATCH, STORAGE }
+enum class SourceProblem { INVALID_ADDRESS, DUPLICATE, UNAVAILABLE, INVALID_RESPONSE, UNSUPPORTED, NO_MATCH, MODULE_EXECUTION, STORAGE }
 
 class SourceException(val problem: SourceProblem, cause: Throwable? = null) : IOException(problem.name, cause)
 
