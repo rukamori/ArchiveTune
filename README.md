@@ -227,7 +227,7 @@ If you choose to use a fork, you do so at your own risk.
   </tbody>
 </table>
 
-<h2>Nightly Build</h2>
+<h2>Development Build</h2>
 
 <table>
   <thead>
@@ -239,6 +239,25 @@ If you choose to use a fork, you do so at your own risk.
     <tr>
       <td align="center">
         <a href="https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune development build">
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Nightly Build</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th align="center">GitHub Releases</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center">
+        <a href="https://github.com/rukamori/Nightly/releases/latest">
           <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune nightly build">
         </a>
       </td>
