@@ -232,7 +232,7 @@ fun SwipeableMiniPlayerBox(
                                                         android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
                                                     )
                                                 }
-                                                playerConnection.player.seekToPreviousMediaItem()
+                                                playerConnection.seekToPrevious()
                                             } else if (!isRightSwipe && canSkipNext) {
                                                 if (enableHapticFeedback) {
                                                     view.performHapticFeedback(
@@ -240,7 +240,7 @@ fun SwipeableMiniPlayerBox(
                                                         android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
                                                     )
                                                 }
-                                                playerConnection.player.seekToNext()
+                                                playerConnection.seekToNext()
                                             }
                                         }
 

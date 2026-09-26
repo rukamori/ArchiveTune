@@ -1156,17 +1156,19 @@ fun BottomSheetPlayer(
             sliderPosition = it
         }
         val onSliderValueChangeFinished: () -> Unit = {
-            sliderPosition?.let {
-                val isTransitioning = playerConnection.player.currentMediaItem?.mediaId != mediaMetadata?.id
-                if (isTransitioning) {
-                    // During crossfade, we want to seek in the NEXT song (the one UI is showing)
-                    // The easiest way is to skip to it and then seek
-                    playerConnection.player.seekToNext()
-                    playerConnection.player.seekTo(it)
+            sliderPosition?.let { targetPosition ->
+                val targetMediaId = mediaMetadata?.id
+                val isTransitioning =
+                    playerConnection.player.currentMediaItem?.mediaId != targetMediaId
+
+                if (isTransitioning && !targetMediaId.isNullOrBlank()) {
+                    if (!playerConnection.seekToMediaItemPosition(targetMediaId, targetPosition)) {
+                        playerConnection.player.seekTo(targetPosition)
+                    }
                 } else {
-                    playerConnection.player.seekTo(it)
+                    playerConnection.player.seekTo(targetPosition)
                 }
-                position = it
+                position = targetPosition
             }
             isUserSeeking = false
         }

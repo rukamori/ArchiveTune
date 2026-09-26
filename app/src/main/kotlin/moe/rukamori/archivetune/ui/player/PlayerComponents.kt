@@ -4583,8 +4583,8 @@ fun V10PlayerContent(
                 field = field,
                 canSkipPrevious = canSkipPrevious,
                 canSkipNext = canSkipNext,
-                onSkipPrevious = { playerConnection.player.seekToPrevious() },
-                onSkipNext = { playerConnection.player.seekToNext() }
+                onSkipPrevious = { playerConnection.seekToPrevious() },
+                onSkipNext = { playerConnection.seekToNext() }
             )
         }
 

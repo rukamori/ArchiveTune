@@ -306,7 +306,9 @@ class PlayerConnection(
         }
         if (service.manualSkipToNextWithCrossfade()) return
         player.seekToNext()
-        player.prepare()
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+            player.prepare()
+        }
         player.playWhenReady = true
     }
 
@@ -318,9 +320,16 @@ class PlayerConnection(
         }
         if (service.manualSkipToPreviousWithCrossfade()) return
         player.seekToPrevious()
-        player.prepare()
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+            player.prepare()
+        }
         player.playWhenReady = true
     }
+
+    fun seekToMediaItemPosition(
+        mediaId: String,
+        positionMs: Long,
+    ): Boolean = service.seekToMediaItemPosition(mediaId, positionMs)
 
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state

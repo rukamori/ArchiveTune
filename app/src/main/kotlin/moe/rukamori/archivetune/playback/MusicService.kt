@@ -2647,9 +2647,21 @@ class MusicService :
      * Starts a crossfade for an explicit user-triggered previous action.
      */
     fun manualSkipToPreviousWithCrossfade(): Boolean {
+        if (!::player.isInitialized) return false
+        if (!player.playWhenReady || player.currentMediaItem == null) return false
+
+        val currentPosition = player.currentPosition.coerceAtLeast(0L)
+        if (currentPosition > MANUAL_PREVIOUS_RESTART_THRESHOLD_MS) {
+            crossfadeTriggerJob?.cancel()
+            crossfadeTriggerJob = null
+            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            releaseSecondaryCrossfadePlayer()
+            player.seekTo(0L)
+            player.playWhenReady = true
+            return true
+        }
+
         if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
-        if (!::player.isInitialized || !player.playWhenReady) return false
-        if (player.currentMediaItem == null) return false
         if (player.previousMediaItemIndex == C.INDEX_UNSET) return false
 
         val targetIndex = player.previousMediaItemIndex
@@ -2658,7 +2670,9 @@ class MusicService :
         val targetItem = player.getMediaItemAt(targetIndex)
         val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
         if (target.mediaId.isBlank()) return false
-        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) return false
+        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) {
+            return false
+        }
 
         if (prepareSecondaryCrossfadePlayer(target) == null) return false
 
@@ -2671,6 +2685,56 @@ class MusicService :
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
         startCrossfade(target, duration)
+        return true
+    }
+
+    /**
+     * Seek to a media item represented by the UI metadata.
+     *
+     * During an active crossfade the target may still be on the secondary
+     * player, so the UI must not fake the transition with seekToNext()+seekTo().
+     */
+    fun seekToMediaItemPosition(mediaId: String, positionMs: Long): Boolean {
+        if (!::player.isInitialized) return false
+
+        val targetId = mediaId.trim()
+        if (targetId.isEmpty()) return false
+        val targetPosition = positionMs.coerceAtLeast(0L)
+
+        val secondary = secondaryCrossfadePlayer
+        val secondaryTarget = secondaryCrossfadeTarget
+        if (isCrossfading &&
+            secondary != null &&
+            secondaryTarget?.mediaId == targetId
+        ) {
+            secondary.seekTo(targetPosition)
+            if (crossfadePlaybackRequested) {
+                secondary.playWhenReady = true
+            }
+            return true
+        }
+
+        val targetIndex =
+            (0 until player.mediaItemCount).firstOrNull { index ->
+                val item = player.getMediaItemAt(index)
+                item.mediaId == targetId || item.metadata?.id == targetId
+            } ?: return false
+
+        if (targetIndex == player.currentMediaItemIndex) {
+            player.seekTo(targetPosition)
+            return true
+        }
+
+        val shouldPlay = player.playWhenReady
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        releaseSecondaryCrossfadePlayer()
+        player.seekTo(targetIndex, targetPosition)
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+            player.prepare()
+        }
+        player.playWhenReady = shouldPlay
         return true
     }
 
@@ -4364,8 +4428,15 @@ class MusicService :
                     if (player.playbackState == Player.STATE_ENDED ||
                         player.mediaItemCount == player.currentMediaItemIndex + 1
                     ) {
-                        player.seekToNext()
-                        player.play()
+                        if (!manualSkipToNextWithCrossfade()) {
+                            player.seekToNext()
+                            if (player.playbackState == Player.STATE_IDLE ||
+                                player.playbackState == Player.STATE_ENDED
+                            ) {
+                                player.prepare()
+                            }
+                            player.playWhenReady = true
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -5567,16 +5638,26 @@ class MusicService :
 
                 moe.rukamori.archivetune.together.ControlAction.SkipNext -> {
                     if (player.hasNextMediaItem()) {
-                        player.seekToNext()
-                        player.prepare()
-                        player.playWhenReady = true
+                        if (!manualSkipToNextWithCrossfade()) {
+                            player.seekToNext()
+                            if (player.playbackState == Player.STATE_IDLE ||
+                                player.playbackState == Player.STATE_ENDED
+                            ) {
+                                player.prepare()
+                            }
+                            player.playWhenReady = true
+                        }
                     }
                 }
 
                 moe.rukamori.archivetune.together.ControlAction.SkipPrevious -> {
-                    if (player.hasPreviousMediaItem()) {
+                    if (!manualSkipToPreviousWithCrossfade()) {
                         player.seekToPrevious()
-                        player.prepare()
+                        if (player.playbackState == Player.STATE_IDLE ||
+                            player.playbackState == Player.STATE_ENDED
+                        ) {
+                            player.prepare()
+                        }
                         player.playWhenReady = true
                     }
                 }
@@ -8547,17 +8628,27 @@ class MusicService :
 
             "moe.rukamori.archivetune.WIDGET_SKIP_NEXT" -> {
                 if (player.hasNextMediaItem()) {
-                    player.seekToNext()
-                    player.prepare()
-                    player.play()
+                    if (!manualSkipToNextWithCrossfade()) {
+                        player.seekToNext()
+                        if (player.playbackState == Player.STATE_IDLE ||
+                            player.playbackState == Player.STATE_ENDED
+                        ) {
+                            player.prepare()
+                        }
+                        player.playWhenReady = true
+                    }
                 }
             }
 
             "moe.rukamori.archivetune.WIDGET_SKIP_PREV" -> {
-                if (player.hasPreviousMediaItem()) {
+                if (!manualSkipToPreviousWithCrossfade()) {
                     player.seekToPrevious()
-                    player.prepare()
-                    player.play()
+                    if (player.playbackState == Player.STATE_IDLE ||
+                        player.playbackState == Player.STATE_ENDED
+                    ) {
+                        player.prepare()
+                    }
+                    player.playWhenReady = true
                 }
             }
         }
@@ -8659,6 +8750,7 @@ class MusicService :
         const val EFFECTIVE_VOLUME_RAMP_DOWN_MS = 180L
         const val EFFECTIVE_VOLUME_RAMP_MIN_DELTA = 0.015f
         const val MIN_CROSSFADE_DURATION_MS = 500L
+        private const val MANUAL_PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
         const val CROSSFADE_END_GUARD_MS = 150L
         const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
         const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
