@@ -4129,8 +4129,9 @@ private fun hasCachedContentForPlaybackError(): Boolean {
 
         val cache = playerCache
         val metadata = cache.getContentMetadata(mediaId)
+        val contentLength = ContentMetadata.getContentLength(metadata)
 
-        metadata.getContentLength() > 0L ||
+        contentLength > 0L ||
             cache.getCachedBytes(mediaId, 0L, Long.MAX_VALUE) > 0L
     } catch (e: Throwable) {
         Timber.tag(TAG).d(e, "Unable to determine cached playback content")
