@@ -10,6 +10,8 @@ package moe.rukamori.archivetune.playback.stream
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.innertube.NetworkGatekeeper
 import moe.rukamori.archivetune.innertube.YouTube
@@ -33,6 +35,18 @@ class YoutubeiStreamRepository
     constructor(
         @ApplicationContext context: Context,
     ) : AudioStreamRepository {
+        /**
+         * Serializes all YoutubeiResolver calls.
+         *
+         * YoutubeiResolver uses a single JS worker. Concurrent calls (for
+         * example, primary playback + crossfade secondary playback) can
+         * cause the worker to fail with `type=j25` and abort the resolution.
+         * Crossfade catches this as a failure and falls back to immediate
+         * playback, which is why manual crossfade from outside the current
+         * queue appeared not to work.
+         */
+        private val youtubeiResolveMutex = Mutex()
+
         private val resolver =
             YoutubeiResolver(
                 context = context,
@@ -72,6 +86,7 @@ class YoutubeiStreamRepository
 
             val locale = YouTube.locale
             val resolved =
+                youtubeiResolveMutex.withLock {
                 try {
                     resolver.resolve(
                         request =
@@ -130,6 +145,7 @@ class YoutubeiStreamRepository
                         )
                     }
                     throw failure
+                }
                 }
 
             return ResolvedAudioStream(

@@ -2979,7 +2979,11 @@ class MusicService :
     }
 
     private suspend fun runCrossfade2ManualSelection(queue: Queue): Boolean {
-        val outgoingMediaId = player.currentMediaItem?.mediaId ?: return false
+        val diagStart = android.os.SystemClock.elapsedRealtime()
+        val outgoingMediaId = player.currentMediaItem?.mediaId ?: run {
+            Timber.tag(TAG).d("CROSSFADE2_MANUAL_DIAG_V7: no outgoing → false")
+            return false
+        }
         if (!crossfadeEnabled || !crossfadeManualSelectionEnabled || crossfadeDurationMs <= 0L) return false
         if (!::player.isInitialized || player !== localPlayer) return false
         if (player.currentMediaItem == null || !player.playWhenReady) return false
@@ -3040,12 +3044,20 @@ class MusicService :
         var primaryPrepared = false
 
         try {
-            if (!awaitCrossfadePlayerReady(
+            val secondaryReady =
+                awaitCrossfadePlayerReady(
                     incomingPlayer,
                     CROSSFADE2_MANUAL_READY_TIMEOUT_MS,
                     CROSSFADE2_MANUAL_MIN_BUFFER_MS,
                 )
-            ) {
+            Timber.tag(TAG).d(
+                "CROSSFADE2_MANUAL_DIAG_V7: secondaryReady=%s state=%d playerError=%s elapsedMs=%d",
+                secondaryReady,
+                incomingPlayer.playbackState,
+                incomingPlayer.playerError?.message,
+                android.os.SystemClock.elapsedRealtime() - diagStart,
+            )
+            if (!secondaryReady) {
                 Timber.tag(TAG).w(
                     "Crossfade2 incoming did not reach the required buffered state " +
                         "within %d ms; falling back to playQueueImmediate",
@@ -3369,8 +3381,20 @@ class MusicService :
         timeoutMs: Long,
         minimumBufferedMs: Long,
     ): Boolean {
+        // CROSSFADE2_SECONDARY_FAILED_WATCHER
+        // Bail out immediately when the incoming player reports an error
+        // (for example YoutubeiResolver failed to fetch the player script).
+        // Otherwise the caller waits the full timeout only to give up.
         val deadlineMs = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        var consecutivePrepared = 0
         while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {
+            if (crossfadePlayer.playerError != null) {
+                Timber.tag(TAG).w(
+                    "awaitCrossfadePlayerReady: secondary reported error, aborting early: %s",
+                    crossfadePlayer.playerError?.message,
+                )
+                return false
+            }
             when (crossfadePlayer.playbackState) {
                 Player.STATE_READY -> {
                     if (hasBufferedForSmoothStart(crossfadePlayer, minimumBufferedMs)) {
@@ -3379,11 +3403,20 @@ class MusicService :
                 }
 
                 Player.STATE_IDLE -> {
-                    crossfadePlayer.prepare()
+                    // Do not spam prepare(): calling it twice can reset the
+                    // data source and re-trigger resolution.
+                    if (consecutivePrepared < 3) {
+                        crossfadePlayer.prepare()
+                        consecutivePrepared += 1
+                    }
                 }
 
                 Player.STATE_ENDED -> {
                     return false
+                }
+
+                Player.STATE_BUFFERING -> {
+                    consecutivePrepared = 0
                 }
             }
             delay(50L)
