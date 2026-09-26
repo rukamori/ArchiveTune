@@ -242,51 +242,139 @@ jobs:
               return marker[0], len(marker)
 
 
-          def flatten_conflicts(path: Path, text: str) -> tuple[str, int]:
-              output = []
-              state = "outside"
-              marker_size = 0
-              conflict_start_line = 0
-              conflict_count = 0
+          def flatten_conflict_block(
+              path: Path,
+              lines: list[str],
+              start_index: int,
+          ) -> tuple[str, int, int]:
+              start_marker = conflict_marker(lines[start_index])
+              if start_marker is None or start_marker[0] != "<":
+                  raise ValueError(
+                      f"Expected conflict start in {path}:{start_index + 1}."
+                  )
 
-              for line_number, line in enumerate(text.splitlines(keepends=True), start=1):
+              marker_size = start_marker[1]
+              output = []
+              state = "current"
+              index = start_index + 1
+              conflict_count = 1
+
+              while index < len(lines):
+                  line = lines[index]
                   marker = conflict_marker(line)
-                  if state == "outside":
-                      if marker is None:
-                          output.append(line)
-                      elif marker[0] == "<":
-                          state = "current"
-                          marker_size = marker[1]
-                          conflict_start_line = line_number
-                      else:
-                          raise ValueError(
-                              f"Unexpected conflict marker in {path}:{line_number}."
-                          )
-                  elif marker is None:
+
+                  if marker is None:
                       if state != "ancestor":
                           output.append(line)
-                  elif marker[1] != marker_size:
-                      raise ValueError(
-                          f"Mismatched conflict marker width in {path}:{line_number}."
+                      index += 1
+                      continue
+
+                  if marker[0] == "<":
+                      nested_output, nested_count, index = flatten_conflict_block(
+                          path,
+                          lines,
+                          index,
                       )
-                  elif state == "current" and marker[0] == "|":
+                      if state != "ancestor":
+                          output.append(nested_output)
+                      conflict_count += nested_count
+                      continue
+
+                  if marker[1] != marker_size:
+                      raise ValueError(
+                          f"Mismatched conflict marker width in "
+                          f"{path}:{index + 1}."
+                      )
+
+                  if state == "current" and marker[0] == "|":
                       state = "ancestor"
                   elif state in {"current", "ancestor"} and marker[0] == "=":
                       state = "incoming"
                   elif state == "incoming" and marker[0] == ">":
-                      state = "outside"
-                      marker_size = 0
-                      conflict_count += 1
+                      return "".join(output), conflict_count, index + 1
                   else:
                       raise ValueError(
-                          f"Malformed conflict block in {path}:{line_number}."
+                          f"Malformed conflict block in {path}:{index + 1}."
                       )
 
-              if state != "outside":
+                  index += 1
+
+              raise ValueError(
+                  f"Unclosed conflict block in {path}:{start_index + 1}."
+              )
+
+
+          RESOURCE_OPEN_TAG_PATTERN = re.compile(
+              r"^[ \t]*<resources>[ \t]*$",
+              re.IGNORECASE,
+          )
+          RESOURCE_CLOSE_TAG_PATTERN = re.compile(
+              r"^[ \t]*</resources>[ \t]*$",
+              re.IGNORECASE,
+          )
+
+
+          def normalize_resources_wrapper(path: Path, text: str) -> str:
+              lines = text.splitlines(keepends=True)
+              open_indices = [
+                  index
+                  for index, line in enumerate(lines)
+                  if RESOURCE_OPEN_TAG_PATTERN.fullmatch(line.rstrip("\r\n"))
+              ]
+              close_indices = [
+                  index
+                  for index, line in enumerate(lines)
+                  if RESOURCE_CLOSE_TAG_PATTERN.fullmatch(line.rstrip("\r\n"))
+              ]
+
+              if len(open_indices) <= 1 and len(close_indices) <= 1:
+                  return text
+
+              if len(open_indices) != 1 or len(close_indices) == 0:
                   raise ValueError(
-                      f"Unclosed conflict block in {path}:{conflict_start_line}."
+                      f"Unable to normalize resources wrapper in {path}: "
+                      f"found {len(open_indices)} <resources> tag(s) and "
+                      f"{len(close_indices)} </resources> tag(s)."
                   )
-              return "".join(output), conflict_count
+
+              first_open = open_indices[0]
+              last_close = close_indices[-1]
+              normalized = []
+              for index, line in enumerate(lines):
+                  if index != first_open and index in open_indices:
+                      continue
+                  if index != last_close and index in close_indices:
+                      continue
+                  normalized.append(line)
+              return "".join(normalized)
+
+
+          def flatten_conflicts(path: Path, text: str) -> tuple[str, int]:
+              lines = text.splitlines(keepends=True)
+              output = []
+              index = 0
+              conflict_count = 0
+
+              while index < len(lines):
+                  marker = conflict_marker(lines[index])
+                  if marker is None:
+                      output.append(lines[index])
+                      index += 1
+                      continue
+
+                  if marker[0] != "<":
+                      index += 1
+                      continue
+
+                  flattened, block_count, index = flatten_conflict_block(
+                      path,
+                      lines,
+                      index,
+                  )
+                  output.append(flattened)
+                  conflict_count += block_count
+
+              return normalize_resources_wrapper(path, "".join(output)), conflict_count
 
 
           def normalize_conflicts(
