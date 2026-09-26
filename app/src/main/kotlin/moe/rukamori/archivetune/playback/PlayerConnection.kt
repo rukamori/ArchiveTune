@@ -331,6 +331,9 @@ class PlayerConnection(
         positionMs: Long,
     ): Boolean = service.seekToMediaItemPosition(mediaId, positionMs)
 
+    fun manualSeekToIndexWithCrossfade(targetIndex: Int): Boolean =
+        service.manualSeekToIndexWithCrossfade(targetIndex)
+
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state
         updatePlaybackError(player.playerError)
