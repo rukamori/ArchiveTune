@@ -2980,6 +2980,24 @@ class MusicService :
      *  - the mediaId cannot be determined,
      *  - or the resolution throws (caller falls back to immediate playback).
      */
+    /**
+     * Warms the resolve cache for the given media item so that both the
+     * crossfade secondary player and the primary handoff hit the cached
+     * ResolvedAudioStream instead of triggering a fresh YouTubei/NewPipe
+     * resolution in parallel.
+     *
+     * Why we do NOT rewrite the MediaItem's URI here:
+     *  - MediaItem.Builder has no setHttpRequestHeaders() (that is a
+     *    DataSpec.Builder API), so baking a resolved URL into a MediaItem
+     *    would drop the auth headers that YouTubei/NewPipe returned and
+     *    would produce 403 errors on the raw googlevideo URL.
+     *  - The existing ResolvingDataSource already applies requestHeaders
+     *    when it opens the DataSpec. We only need to make sure its cache
+     *    is warm by the time the secondary player starts.
+     *
+     * Returns the original MediaItem unchanged. If warming fails the
+     * caller falls back to playQueueImmediate().
+     */
     private suspend fun resolveMediaItemForCrossfade(mediaItem: MediaItem): MediaItem {
         val config = mediaItem.localConfiguration ?: return mediaItem
         val scheme = config.uri.scheme?.lowercase(java.util.Locale.US)
@@ -2994,6 +3012,9 @@ class MusicService :
 
         val lowDataModeActive = isLowDataModeActive()
         return try {
+            // Warm the resolution cache. The cached entry will be reused by
+            // resolvePlaybackDataSpec() when the secondary player opens its
+            // DataSource, avoiding a second YouTubei resolve.
             val resolved = resolveAudioStream.resolveBlocking(
                 AudioStreamRequest(
                     mediaId = mediaId,
@@ -3005,17 +3026,11 @@ class MusicService :
                 ),
             )
             Timber.tag(TAG).d(
-                "resolveMediaItemForCrossfade: resolved %s -> direct URL, headers=%d",
+                "resolveMediaItemForCrossfade: warmed cache for %s (headers=%d)",
                 mediaId,
                 resolved.requestHeaders.size,
             )
             mediaItem
-                .buildUpon()
-                .setUri(resolved.url.toUri())
-                .setMimeType(resolved.mimeType)
-                .setCustomCacheKey(mediaId)
-                .setHttpRequestHeaders(resolved.requestHeaders)
-                .build()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -3023,6 +3038,7 @@ class MusicService :
             mediaItem
         }
     }
+
 
     private fun prepareCrossfade2Incoming(mediaItem: MediaItem): ExoPlayer? {
         releaseSecondaryCrossfadePlayer()
