@@ -132,8 +132,16 @@ object YTPlayerUtils {
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> =
         arrayOf(
-            VISIONOS,
+            // Non-web clients first: they usually return direct (non-ciphered)
+            // stream URLs, so we never reach the QuickJS signature decipher
+            // path (which can hard-crash the process on some player-JS
+            // revisions with no catchable exception).
             ANDROID_VR_1_65_10,
+            IOS,
+            ANDROID_MUSIC,
+            VISIONOS,
+            // Web clients last: these require QuickJS decipher for ciphered
+            // formats. Only reached if the clients above fail.
             WEB_REMIX,
             WEB,
             MWEB,
@@ -1180,6 +1188,36 @@ object YTPlayerUtils {
                 )
 
             if (candidates.isEmpty()) continue
+
+            // ── QuickJS native crash guard ───────────────────────────
+            // NewPipeExtractor uses QuickJS for signature decipher. On some
+            // YouTube player-JS revisions QuickJS hits a native stack overflow
+            // (SIGSEGV / stack-overflow in libquickjs.so) which CANNOT be
+            // caught by try/catch in Kotlin — the process dies immediately.
+            //
+            // Web clients are the ones that route through QuickJS. If a web
+            // client only returned ciphered formats (no direct `.url`), we
+            // would have to decipher and risk a native crash. So: skip that
+            // client entirely and move to the next one. Non-web clients and
+            // clients that have at least one direct-URL candidate still run
+            // normally.
+            val isWebClient = PlaybackAuthState.supportsGvsPoToken(client)
+            val hasDirectCandidate = candidates.any { it.url != null }
+            if (isWebClient && !hasDirectCandidate) {
+                Timber.tag(logTag).w(
+                    "Skipping web client %s: all %d format candidate(s) require JS " +
+                        "decipher (QuickJS crash risk)",
+                    describeClient(client),
+                    candidates.size,
+                )
+                markStreamClientFailed(
+                    videoId = videoId,
+                    clientKey = StreamClientUtils.buildClientKey(client),
+                    httpStatusCode = null,
+                    authFingerprint = authState.streamCacheFingerprint,
+                )
+                continue
+            }
 
             var selectedFormat: PlayerResponse.StreamingData.Format? = null
             var selectedUrl: String? = null
