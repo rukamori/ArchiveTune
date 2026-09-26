@@ -31,8 +31,4 @@
     <string name="search_library">Kitabxanada axtarın</string>
     <string name="filter_library">Kitabxana</string>
     <string name="filter_liked">Bəyənilənlər</string>
-    <plurals name="n_selected">
-        <item quantity="one">%d seçildi</item>
-        <item quantity="other">%d ədəd seçildi</item>
-    </plurals>
 </resources>
