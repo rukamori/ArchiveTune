@@ -1600,6 +1600,25 @@ object YTPlayerUtils {
      * Wrapper around the [NewPipeUtils.getStreamUrl] function which reports exceptions.
      * Serialized by [quickJsDecipherMutex] to avoid concurrent QuickJS access.
      */
+    /**
+     * Wrapper around [NewPipeUtils.getStreamUrl].
+     *
+     * QUICKJS_NO_DECIPHER_GUARD_V1
+     *
+     * The QuickJS signature decipher used by NewPipeExtractor has a hard
+     * failure mode: on some YouTube player.js revisions the JS interpreter
+     * recurses infinitely inside libquickjs.so and the process dies with a
+     * native SIGSEGV that no Kotlin try/catch can intercept.
+     *
+     * To prevent that we now refuse to decipher at all. If a format has no
+     * direct URL the caller skips it and tries the next candidate/client.
+     * Non-web clients (ANDROID_VR, IOS, ANDROID_MUSIC, VISIONOS) return
+     * direct URLs, so this guard has no effect on the common path.
+     *
+     * quickJsDecipherMutex is retained as defense-in-depth: if a future
+     * client reintroduces a decipher path, only one decipher can run at a
+     * time.
+     */
     private suspend fun findUrl(
         format: PlayerResponse.StreamingData.Format,
         videoId: String,
@@ -1607,10 +1626,20 @@ object YTPlayerUtils {
         authState: PlaybackAuthState,
     ): Result<String> {
         Timber.tag(logTag).i("Finding stream URL for format: ${format.mimeType}, videoId: $videoId")
+
+        val directUrl = format.url
+        if (directUrl.isNullOrBlank()) {
+            val reason =
+                "Refusing QuickJS decipher for ciphered format itag=${format.itag} " +
+                    "(native SIGSEGV risk). Client=${client?.clientName ?: "unknown"}"
+            Timber.tag(logTag).w(reason)
+            return Result.failure(IllegalStateException(reason))
+        }
+
         return quickJsDecipherMutex.withLock {
             NewPipeUtils
                 .getStreamUrl(format, videoId, client, authState)
-                .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
+                .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully (direct)") }
         }
     }
 
