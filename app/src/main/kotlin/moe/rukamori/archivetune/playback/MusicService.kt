@@ -3756,6 +3756,28 @@ class MusicService :
         player.pause()
     }
 
+    private fun PlaybackException.isRemoteStreamReadFailure(): Boolean {
+        if (errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+            errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+        ) {
+            return true
+        }
+
+        var throwable: Throwable? = cause
+        while (throwable != null) {
+            when {
+                throwable is EOFException -> return true
+                throwable is IOException &&
+                    throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true -> {
+                    return true
+                }
+            }
+            throwable = throwable.cause
+        }
+        return false
+    }
+
     private fun findStreamHttpFailure(
         error: PlaybackException,
     ): androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException? {
@@ -3806,7 +3828,11 @@ class MusicService :
         var throwable: Throwable? = error.cause
         while (throwable != null) {
             when {
-                throwable is EOFException || throwable is Cache.CacheException -> {
+                throwable is Cache.CacheException -> {
+                    return true
+                }
+
+                throwable is EOFException && isContentCached -> {
                     return true
                 }
 
@@ -7414,7 +7440,27 @@ class MusicService :
         val snapshot = capturePlaybackRecoverySnapshot() ?: return
         playbackErrorRecoveryJob?.cancel()
         playbackErrorRecoveryJob = scope.launch {
-            handlePlaybackError(error, snapshot)
+            try {
+                handlePlaybackError(error, snapshot)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                Timber.tag("MusicService").e(
+                    failure,
+                    "Unhandled exception while recovering playback for %s",
+                    snapshot.mediaId,
+                )
+                runCatching {
+                    if (player.currentMediaItem?.mediaId == snapshot.mediaId) {
+                        stopOnError()
+                    }
+                }.onFailure { stopFailure ->
+                    Timber.tag("MusicService").w(
+                        stopFailure,
+                        "Failed to safely stop playback after recovery failure",
+                    )
+                }
+            }
         }
     }
 
@@ -7481,6 +7527,26 @@ class MusicService :
             retryPlaybackAfterNetworkFailure(currentMediaId, isFullyDownloadedMedia)
         ) {
             return
+        }
+
+        if (!isLocalMedia &&
+            !isFullyDownloadedMedia &&
+            !hasAnyCachedData &&
+            error.isRemoteStreamReadFailure() &&
+            playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)
+        ) {
+            val recoverySnapshot = capturePlaybackRecoverySnapshot()
+            resolveAudioStream.invalidate(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+
+            Timber.tag("MusicService").i(
+                "Refreshing remote stream for %s after a truncated/read failure",
+                currentMediaId,
+            )
+
+            if (preparePlaybackFromSnapshot(recoverySnapshot)) {
+                return
+            }
         }
 
         val streamHttpFailure = findStreamHttpFailure(error)
