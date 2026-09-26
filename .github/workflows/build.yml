@@ -220,56 +220,32 @@ jobs:
 
 
       # ---------------------------------------------
-      # Sign Release APK
+      # Prepare Full APK (No External Signing)
       # ---------------------------------------------
 
-      - name: Sign Full APK
-        uses: ilharp/sign-android-release@v2.0.0
-
-        with:
-          releaseDir: app/build/outputs/apk/final/
-
-          signingKey: ${{ secrets.KEYSTORE }}
-          keyAlias: ${{ secrets.KEY_ALIAS }}
-
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-          buildToolsVersion: 35.0.0
-
-
-      # ---------------------------------------------
-      # Resolve Signed APK
-      # ---------------------------------------------
-
-      - name: Prepare Signed Full APK
+      - name: Prepare Full APK
         shell: bash
 
         run: |
           set -euo pipefail
 
           DIR="app/build/outputs/apk/final"
+          SOURCE="${{ steps.release_apk.outputs.apk }}"
+          FINAL="$DIR/app-gms-mobile-universal-full.apk"
 
-          SIGNED="$(find "$DIR" \
-            -type f \
-            -name "*-signed.apk" \
-            | head -n 1 || true)"
-
-          if [ -z "$SIGNED" ]; then
-            echo "ERROR: Signed APK was not found."
-
-            echo "Directory contents:"
-            find "$DIR" -type f -print || true
-
+          if [ ! -f "$SOURCE" ]; then
+            echo "ERROR: Release APK source was not found:"
+            echo "$SOURCE"
             exit 1
           fi
 
-          cp "$SIGNED" \
-            "$DIR/app-gms-mobile-universal-full.apk"
+          # Keep the Gradle-produced APK unchanged.
+          if [ "$SOURCE" != "$FINAL" ]; then
+            cp "$SOURCE" "$FINAL"
+          fi
 
           echo "Final Full APK:"
-          ls -lh "$DIR/app-gms-mobile-universal-full.apk"
-
+          ls -lh "$FINAL"
 
       # ---------------------------------------------
       # Upload Full Artifact
