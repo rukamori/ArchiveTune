@@ -2606,6 +2606,74 @@ class MusicService :
         incomingPlayer.volume = (incomingBaseVolume * gains.incoming).coerceIn(0f, maxSafeGainFactor)
     }
 
+
+    /**
+     * Starts a crossfade for an explicit user-triggered next/previous action.
+     * Returns true when the secondary player was prepared and the crossfade job
+     * was scheduled. Caller must not perform an instant seek when this is true.
+     */
+    fun manualSkipToNextWithCrossfade(): Boolean {
+        if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
+        if (!::player.isInitialized || !player.playWhenReady) return false
+        if (player.currentMediaItem == null) return false
+
+        val targetIndex = when {
+            player.repeatMode == REPEAT_MODE_ONE -> player.currentMediaItemIndex
+            player.nextMediaItemIndex != C.INDEX_UNSET -> player.nextMediaItemIndex
+            else -> return false
+        }
+        if (targetIndex !in 0 until player.mediaItemCount) return false
+
+        val targetItem = player.getMediaItemAt(targetIndex)
+        val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
+        if (target.mediaId.isBlank()) return false
+        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) return false
+
+        if (prepareSecondaryCrossfadePlayer(target) == null) return false
+
+        val duration = effectiveCrossfadeDuration(player.duration) ?: crossfadeDurationMs
+        if (duration < MIN_CROSSFADE_DURATION_MS) {
+            releaseSecondaryCrossfadePlayer()
+            return false
+        }
+
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        startCrossfade(target, duration)
+        return true
+    }
+
+    /**
+     * Starts a crossfade for an explicit user-triggered previous action.
+     */
+    fun manualSkipToPreviousWithCrossfade(): Boolean {
+        if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
+        if (!::player.isInitialized || !player.playWhenReady) return false
+        if (player.currentMediaItem == null) return false
+        if (player.previousMediaItemIndex == C.INDEX_UNSET) return false
+
+        val targetIndex = player.previousMediaItemIndex
+        if (targetIndex !in 0 until player.mediaItemCount) return false
+
+        val targetItem = player.getMediaItemAt(targetIndex)
+        val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
+        if (target.mediaId.isBlank()) return false
+        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) return false
+
+        if (prepareSecondaryCrossfadePlayer(target) == null) return false
+
+        val duration = effectiveCrossfadeDuration(player.duration) ?: crossfadeDurationMs
+        if (duration < MIN_CROSSFADE_DURATION_MS) {
+            releaseSecondaryCrossfadePlayer()
+            return false
+        }
+
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        startCrossfade(target, duration)
+        return true
+    }
+
     fun pauseFromSleepTimer() {
         sleepTimer.clear()
         crossfadeTriggerJob?.cancel()
