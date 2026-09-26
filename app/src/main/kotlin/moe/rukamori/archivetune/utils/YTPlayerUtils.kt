@@ -1584,6 +1584,22 @@ object YTPlayerUtils {
     /**
      * Wrapper around the [NewPipeUtils.getStreamUrl] function which reports exceptions.
      */
+    /**
+     * QuickJS signature decipher serialization gate.
+     *
+     * The native libquickjs used by NewPipeExtractor is not thread-safe.
+     * When the primary player and a crossfade secondary player both trigger
+     * a ciphered resolution, QuickJS executes on two native threads at once
+     * and eventually hits a native stack overflow (SIGSEGV in libquickjs.so).
+     * That crash cannot be caught from Kotlin, so every decipher call is
+     * serialized through this mutex.
+     */
+    private val quickJsDecipherMutex = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * Wrapper around the [NewPipeUtils.getStreamUrl] function which reports exceptions.
+     * Serialized by [quickJsDecipherMutex] to avoid concurrent QuickJS access.
+     */
     private suspend fun findUrl(
         format: PlayerResponse.StreamingData.Format,
         videoId: String,
@@ -1591,9 +1607,11 @@ object YTPlayerUtils {
         authState: PlaybackAuthState,
     ): Result<String> {
         Timber.tag(logTag).i("Finding stream URL for format: ${format.mimeType}, videoId: $videoId")
-        return NewPipeUtils
-            .getStreamUrl(format, videoId, client, authState)
-            .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
+        return quickJsDecipherMutex.withLock {
+            NewPipeUtils
+                .getStreamUrl(format, videoId, client, authState)
+                .onSuccess { Timber.tag(logTag).i("Stream URL obtained successfully") }
+        }
     }
 
     private fun Throwable.isJavaScriptPlayerExtractorFailure(): Boolean {

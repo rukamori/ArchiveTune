@@ -2995,7 +2995,17 @@ class MusicService :
                     .filterPlaybackContent(hideExplicit, hideVideo)
             }
 
-        if (initialStatus.items.isEmpty()) return false
+        // CROSSFADE2_MANUAL_DIAG_V6
+        Timber.tag(TAG).d(
+            "runCrossfade2ManualSelection: outgoing=%s items=%d targetIndex=%d",
+            outgoingMediaId,
+            initialStatus.items.size,
+            initialStatus.mediaItemIndex,
+        )
+        if (initialStatus.items.isEmpty()) {
+            Timber.tag(TAG).d("runCrossfade2ManualSelection: empty items → return false")
+            return false
+        }
 
         val targetIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex)
         val targetItem = initialStatus.items[targetIndex]
@@ -3032,12 +3042,20 @@ class MusicService :
         try {
             if (!awaitCrossfadePlayerReady(
                     incomingPlayer,
-                    CROSSFADE2_READY_TIMEOUT_MS,
-                    CROSSFADE2_MIN_BUFFER_MS,
+                    CROSSFADE2_MANUAL_READY_TIMEOUT_MS,
+                    CROSSFADE2_MANUAL_MIN_BUFFER_MS,
                 )
             ) {
-                Timber.tag(TAG).w("Crossfade2 incoming did not reach the required buffered state")
-                return true
+                Timber.tag(TAG).w(
+                    "Crossfade2 incoming did not reach the required buffered state " +
+                        "within %d ms; falling back to playQueueImmediate",
+                    CROSSFADE2_MANUAL_READY_TIMEOUT_MS,
+                )
+                // Return false so playQueue() falls back to
+                // playQueueImmediate() and the song still plays (without
+                // crossfade) instead of the transition being silently
+                // dropped.
+                return false
             }
 
             if (player.currentMediaItem?.mediaId != outgoingMediaId || !player.playWhenReady) {
@@ -4467,6 +4485,19 @@ private fun isCacheCorruptionError(
             return
         }
 
+        // CROSSFADE2_MANUAL_DIAG_V6
+        Timber.tag(TAG).d(
+            "playQueue: playWhenReady=%s eligible=%s enabled=%s manual=%s durationMs=%d isCrossfading=%s handoff=%s secondary=%s jobActive=%s",
+            playWhenReady,
+            shouldUseCrossfade2ForManualSelection(),
+            crossfadeEnabled,
+            crossfadeManualSelectionEnabled,
+            crossfadeDurationMs,
+            isCrossfading,
+            crossfadeHandoffInProgress,
+            secondaryCrossfadePlayer != null,
+            crossfade2ManualJob?.isActive == true,
+        )
         if (playWhenReady && shouldUseCrossfade2ForManualSelection()) {
             crossfade2ManualJob?.cancel()
             cancelRestoredQueueHydration()
@@ -9240,6 +9271,13 @@ private fun isCacheCorruptionError(
         const val CROSSFADE2_FRAME_MS = 16L
         const val CROSSFADE2_PRIMARY_PREPARE_PROGRESS = 0.88f
         const val CROSSFADE2_MIN_FADE_MS = 250L
+
+        // Manual crossfade must feel immediate. The auto (end-of-song)
+        // path can wait for a large buffer because it prepares the
+        // secondary player ~30s ahead. A manual selection needs to start
+        // fading as soon as we have a small safety margin.
+        const val CROSSFADE2_MANUAL_MIN_BUFFER_MS = 2_000L
+        const val CROSSFADE2_MANUAL_READY_TIMEOUT_MS = 15_000L
         const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
         const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
         const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
