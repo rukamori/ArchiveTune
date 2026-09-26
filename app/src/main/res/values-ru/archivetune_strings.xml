@@ -528,10 +528,6 @@
     <string name="android_auto_mixes_and_radios">Миксы и радио</string>
     <string name="android_auto_sort_playlist">Сортировать плейлист</string>
     <string name="android_auto_sort_option_format">%1$s - %2$s</string>
-<<<<<<< HEAD
-=======
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
->>>>>>> 5d9ea1a5a (Translated using Weblate (Russian))
     <string name="settings_appearance_subtitle">Темы, макет и визуальные стили</string>
     <string name="settings_playback_title">Воспроизведение</string>
     <string name="settings_playback_subtitle">Аудиоповедение, кроссфейд и фоновое воспроизведение</string>
@@ -544,10 +540,6 @@
     <string name="settings_lyrics_subtitle">Поставщики текста, предзагрузка и перевод</string>
     <string name="settings_content_subtitle">Язык, страна и настройки рекомендаций по умолчанию</string>
     <string name="settings_internet_subtitle">Прокси, DNS и поведение при воспроизведении по сети</string>
-<<<<<<< HEAD
-=======
-    <string name="settings_po_token_subtitle">Проверка воспроизведения и данные посетителей</string>
->>>>>>> 5d9ea1a5a (Translated using Weblate (Russian))
     <string name="settings_storage_subtitle">Кеш, загрузки и офлайн-хранилище</string>
     <string name="settings_updates_subtitle">Версия, примечания к релизу и канал обновлений</string>
     <string name="settings_about_subtitle">Информация о приложении, лицензии и участники</string>
@@ -690,34 +682,6 @@
     <string name="ai_api_status_failed">Ошибка API. Повторите тест после обновления настроек.</string>
     <string name="ai_model">Модель</string>
     <string name="ai_model_fetch_hint">Нажмите обновить, чтобы загрузить доступные модели</string>
-<<<<<<< HEAD
-=======
-    <string name="mori_cipher_settings_title">Дешифровка YouTube</string>
-    <string name="mori_cipher_settings_description">Управление автоматическими обновлениями дешифровки плеера</string>
-    <string name="mori_cipher_loading_configuration">Подготовка текущей конфигурации плеера…%1$d%%</string>
-    <string name="mori_cipher_next_refresh">Следующее автоматическое обновление</string>
-    <string name="mori_cipher_runtime_section">Статус дешифровки</string>
-    <string name="mori_cipher_update_section">Обновления</string>
-    <string name="mori_cipher_status">Статус движка</string>
-    <string name="mori_cipher_status_ready">Готов</string>
-    <string name="mori_cipher_status_refreshing">Обновление</string>
-    <string name="mori_cipher_status_degraded">Используется кешированная конфигурация</string>
-    <string name="mori_cipher_status_uninitialized">Не инициализировано</string>
-    <string name="mori_cipher_player_id">Конфигурация плеера</string>
-    <string name="mori_cipher_last_updated">Последнее обновление</string>
-    <string name="mori_cipher_refresh">Обновить конфигурацию</string>
-    <string name="mori_cipher_refresh_remaining">Осталось %1$d ручных обновлений</string>
-    <string name="mori_cipher_rate_limit_countdown">Доступно снова через %1$s</string>
-    <string name="mori_cipher_automatic_updates">Автоматические обновления</string>
-    <string name="mori_cipher_automatic_updates_description">ArchiveTune обновляет текущую конфигурацию плеера YouTube каждые шесть часов и после сбоев дешифровки.</string>
-    <string name="mori_cipher_refresh_success">Конфигурация плеера обновлена</string>
-    <string name="mori_cipher_refresh_failed">Не удалось обновить конфигурацию плеера</string>
-    <string name="mori_cipher_rate_limited">Достигнут лимит ручного обновления</string>
-    <string name="mori_cipher_empty_title">Нет конфигурации плеера</string>
-    <string name="mori_cipher_empty_description">Подключитесь к интернету, чтобы загрузить текущую конфигурацию плеера YouTube.</string>
-    <string name="mori_cipher_error_title">Дешифровка недоступна</string>
-    <string name="mori_cipher_load_failed">Не удалось загрузить текущую конфигурацию плеера. Существующие резервные варианты воспроизведения остаются доступными.</string>
->>>>>>> 5d9ea1a5a (Translated using Weblate (Russian))
     <string name="ai_model_api_key_required">Для загрузки моделей требуется API ключ</string>
     <string name="ai_model_not_selected">Не выбрано</string>
     <string name="ai_model_loading">Получение доступных моделей…</string>
@@ -738,10 +702,6 @@
     <string name="about_position_lead_dev">А?</string>
     <string name="about_position_developers">Разработчик | Команда</string>
     <string name="aod_mode">Режим AOD</string>
-<<<<<<< HEAD
-=======
-    <string name="aod_mode_exit">Выйти из AOD</string>
->>>>>>> 5d9ea1a5a (Translated using Weblate (Russian))
     <string name="playlist_source_local">Локальный</string>
     <string name="playlist_source_online">Онлайн</string>
 </resources>

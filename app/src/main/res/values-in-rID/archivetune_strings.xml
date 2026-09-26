@@ -707,7 +707,6 @@
     <string name="about_content_desc_website">Situs Web</string>
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
-<<<<<<< HEAD
     <string name="about_content_desc_donate">Donasi</string>
     <string name="aod_mode">Mode AOD</string>
     <string name="playlist_source_local">Lokal</string>
@@ -737,46 +736,4 @@
     <string name="canvas_cache_desc">Video dapat diputar secara offline. Video terlama akan dihapus ketika cache penuh.</string>
     <string name="canvas_settings_load_failed">Tidak dapat memuat pengaturan kanvas</string>
     <string name="canvas_settings_update_failed">Tidak dapat memperbarui pengaturan kanvas</string>
-=======
-    <string name="aod_clock_minimal">Minimalis</string>
-    <string name="aod_customize_security_power">Sekuriti &amp; Daya</string>
-    <string name="aod_customize_smart_lock">Kunci Pintar &amp; Tampilan</string>
-    <string name="aod_customize_shake_to_unlock">Goyangkan Untuk Membuka Kunci</string>
-    <string name="aod_customize_shake_to_unlock_desc">Goyangkan HP Anda Untuk Keluar Dari Mode Kunci Sentuh</string>
-    <string name="aod_customize_auto_lock">Kunci Otomatis saat AOD Aktif</string>
-    <string name="aod_customize_auto_lock_desc">Layar Terkunci Otomatis Setelah Jeda Saat Masuk AOD</string>
-    <string name="aod_customize_auto_lock_delay">Jeda Kunci Otomatis</string>
-    <string name="aod_customize_marquee_titles">Judul Lagu Berjalan</string>
-    <string name="aod_background_adaptive_art">Sampul Adaptif</string>
-    <string name="aod_background_frosted_wallpaper">Wallpaper Buram</string>
-    <string name="aod_customize_show_lyric_ticker">Tampilkan Lirik Berjalan</string>
-    <string name="aod_background_adaptive_frosted">Buram Adaptif</string>
-    <string name="aod_clock_pixel_stacked">Pixel Bertumpuk</string>
-    <string name="aod_clock_elegant_thin">Elegan Tipis</string>
-    <string name="aod_clock_bold_digital">Tebal Digital</string>
-    <string name="aod_customize_ambient_brightness">Kecerahan Sekitar</string>
-    <string name="aod_customize_auto_dimming_desc">Turunkan opasitas layar setelah 10 detik tidak aktif</string>
-    <string name="aod_slide_to_unlock">Geser untuk Membuka Kunci &gt;&gt;&gt;</string>
-    <string name="aod_hold_to_unlock">Tekan untuk 1,5 detik untuk membuka kunci</string>
-    <string name="aod_customize_clock_style">Tema Jam</string>
-    <string name="aod_customize_proximity_blackout_desc">Matikan layar saat sensor proksimitas mendeteksi penempatan di saku atau menghadap ke bawah</string>
-    <string name="aod_slide_to_lock">Geser untuk Mengunci &gt;&gt;&gt;</string>
-<<<<<<< HEAD
->>>>>>> be2445cbb (Translated using Weblate (Indonesian))
-=======
-    <string name="aod_customize_mode_enabled">Aktifkan Mode AOD</string>
-    <string name="aod_customize_mode_enabled_desc">Izinkan ArchiveTune menampilkan pemutar musik Always-On.</string>
-    <string name="aod_customize_marquee_titles_desc">Gulir judul lagu yang panjang daripada memotongnya</string>
-    <string name="aod_customize_minimal_locked_view">Tampilan Terkunci Minimal</string>
-    <string name="aod_customize_minimal_locked_view_desc">Saat terkunci, hanya tampilkan jam dan judul lagu — sembunyikan sampul dan kontrol</string>
-    <string name="aod_customize_touch_lock">Kunci Sentuh Diaktifkan</string>
-    <string name="aod_customize_touch_lock_desc">Mencegah sentuhan yang tidak disengaja pada layar AOD</string>
-    <string name="aod_customize_show_clock">Tampilkan Jam Digital</string>
-    <string name="aod_customize_show_battery">Tampilkan Status Baterai</string>
-    <string name="aod_customize_pixel_shift">Perlindungan Burn-in OLED</string>
-    <string name="aod_customize_pixel_shift_desc">Menggeser posisi tampilan secara berkala setiap 60 detik</string>
-    <string name="aod_customize_auto_dimming">Mode Hemat Daya dengan Peredupan Otomatis</string>
-    <string name="aod_customize_gestures">Kontrol Gestur</string>
-    <string name="aod_customize_gestures_desc">Ketuk dua kali untuk putar/jeda, geser kiri/kanan untuk mengganti lagu</string>
->>>>>>> 3fbe4f04c (Translated using Weblate (Indonesian))
 </resources>

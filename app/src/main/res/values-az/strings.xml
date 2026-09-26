@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<<<<<<< HEAD
-<<<<<<< HEAD
     <string name="home">Ev</string>
     <string name="songs">Mahnılar</string>
     <string name="artists">Sənətkar</string>
@@ -33,41 +31,8 @@
     <string name="search_library">Kitabxanada axtarın</string>
     <string name="filter_library">Kitabxana</string>
     <string name="filter_liked">Bəyənilənlər</string>
-</resources>
-=======
-</resources>
->>>>>>> 25a59cf42 (Added translation using Weblate (Azerbaijani))
-=======
-    <string name="home">Ev</string>
-    <string name="songs">Mahnılar</string>
-    <string name="artists">Sənətkar</string>
-    <string name="albums">Albumlar</string>
-    <string name="playlists">Pleylistlər</string>
     <plurals name="n_selected">
         <item quantity="one">%d seçildi</item>
         <item quantity="other">%d ədəd seçildi</item>
     </plurals>
-    <string name="history">Tarixçə</string>
-    <string name="stats">Statistika</string>
-    <string name="mood_and_genres">Əhval-ruhiyyə və Janrlar</string>
-    <string name="account">Hesab</string>
-    <string name="quick_picks">Sürətli seçimilər</string>
-    <string name="speed_dial">Sürətli yığım</string>
-    <string name="forgotten_favorites">Unudulmuş sevimlilər</string>
-    <string name="keep_listening">Dinləməyə davam et</string>
-    <string name="your_youtube_playlists">Sizin YouTube pleylistləriniz</string>
-    <string name="similar_to">Bənzər</string>
-    <string name="new_release_albums">Yeni çıxan albomlar</string>
-    <string name="integration">Inteqrasiya</string>
-    <string name="today">Bu gün</string>
-    <string name="yesterday">Dünən</string>
-    <string name="this_week">Bu həftə</string>
-    <string name="last_week">Keçən həftə</string>
-    <string name="most_played_songs">Ən çox dinlənilən mahnılar</string>
-    <string name="search">Axtarış</string>
-    <string name="search_yt_music">YouTube Music-də axtarın</string>
-    <string name="search_library">Kitabxanada axtarın</string>
-    <string name="filter_library">Kitabxana</string>
-    <string name="filter_liked">Bəyənilənlər</string>
 </resources>
->>>>>>> 147eddc78 (Translated using Weblate (Azerbaijani))

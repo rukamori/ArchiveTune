@@ -152,13 +152,6 @@
         <item quantity="one">1 saniye</item>
         <item quantity="other">%d saniye</item>
     </plurals>
-<<<<<<< HEAD
-=======
-    <string name="player_stream_client">Oynatma istemcisi</string>
-    <string name="player_stream_client_desc">Akışları almak için hangi oynatma kaynağının kullanılacağını belirler</string>
-    <string name="player_stream_client_web_remix">Web Remiksi</string>
-    <string name="player_stream_client_web_remix_desc">Hız pahasına genişletilmiş format desteği. JavaScript imza şifre çözme işlemi ~5-10 saniyelik bir başlatma gecikmesine neden olur.</string>
->>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
     <string name="settings_section_player_content">Oyuncu &amp; İçeriği</string>
     <string name="similar_content">Benzer içerik</string>
     <string name="year_in_music">Müzik Yılı</string>
@@ -299,10 +292,6 @@
     <string name="aod_customize_show_time_labels">Süre etiketlerini göster</string>
     <string name="aod_customize_show_controls">Kontrolleri göster</string>
     <string name="aod_customize_show_exit_button">Çıkış tuşunu göster</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
     <string name="music_recognition_background_description">Etkinleştirildiğinde, Hızlı Ayarlar kutucuğu ArchiveTune\'u açmadan bu cihazda oynatılan sesi tanır.</string>
     <string name="history_remote_loading">Uzak geçmiş senkronize ediliyor</string>
     <string name="history_remote_empty_title">Hiç uzak geçmiş mevcut değil</string>
@@ -444,10 +433,6 @@
     <string name="lyrics_background_style">Şarkı sözü arka plan stili</string>
     <string name="lyrics_background_default">Varsayılan</string>
     <string name="mini_player_background_style">Küçük oynatıcı arka plan stili</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> f10143dab (Translated using Weblate (Turkish))
     <string name="player_design_v6">Expresif</string>
     <string name="player_design_v7">Sürükleyici</string>
     <string name="player_design_v8">Gelişmiş Sürükleyici</string>
@@ -517,13 +502,7 @@
     <string name="audio_crossfade_dialog_title">Çapraz geçiş süresi</string>
     <string name="audio_crossfade_seconds">%1$s sn</string>
     <string name="crossfade_gapless_title">Boşluk albümleri atla</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
     <string name="crossfade_gapless_description">Aynı albümden ardışık şarkılar arasında çapraz geçiş kullanmayın.</string>
-=======
-    <string name="crossfade_gapless_description">Aynı albümden ardışık şarkılar arasında çapraz geçiş kullanmayın.</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune Çıkarıcı</string>
->>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
     <string name="settings_appearance_subtitle">Temalar, düzen ve görsel stiller</string>
     <string name="settings_playback_title">Playback</string>
     <string name="settings_playback_subtitle">Ses davranışı, çapraz geçiş ve arkaplan oynatması</string>
@@ -536,19 +515,11 @@
     <string name="settings_lyrics_subtitle">Şarkı sözü sağlayıcıları, önyükleme ve çeviri</string>
     <string name="settings_content_subtitle">Dil, ülke ve öneri varsayılanları</string>
     <string name="settings_internet_subtitle">Proxy, DNS ve ağ oynatma davranışı</string>
-<<<<<<< HEAD
-=======
-    <string name="settings_po_token_subtitle">Oynatma doğrulaması ve ziyaretçi verileri</string>
->>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
     <string name="settings_storage_subtitle">Önbellek, indirilenler ve çevrimdışı depolama</string>
     <string name="settings_updates_subtitle">Sürüm, sürüm notları ve güncelleme kanalı</string>
     <string name="settings_about_subtitle">Uygulama bilgisi, lisanlar ve katkıda bulunanlar</string>
     <string name="settings_account_subtitle">Giriş yapın ve hesap senkronizasyonunu yönetin</string>
     <string name="settings_stats_title">Dinlenme İstatistikleri</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
     <string name="settings_stats_subtitle">En çok dinlediğiniz şarkılar, sanatçılar ve çalma geçmişiniz</string>
     <string name="top_songs">En çok dinlediğiniz şarkılar</string>
     <string name="top_albums">En çok dinlediğiniz Şarkılar</string>
@@ -603,10 +574,6 @@
     <string name="backup_step_export_settings">Ayarlar yedekleniyor</string>
     <string name="backup_step_checkpoint_database">Veritabanı hazırlanıyor</string>
     <string name="backup_step_copying_file">Kopyalanıyor%1$s</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d670b9738 (Translated using Weblate (Turkish))
     <string name="restore_step_verifying">Yedekleme doğrulanıyor</string>
     <string name="restore_step_stopping_playback">Oynatma durduruluyor</string>
     <string name="restore_step_restoring_settings">Ayarlar geri yükleniyor</string>
@@ -638,10 +605,6 @@
     <string name="import_priority_local_first_desc">Öncelikle yerel kütüphaneyi ara, eşleşme bulunamadığında ise YouTube Music\'i tara.</string>
     <string name="import_priority_youtube_only">Sadece YouTube Music</string>
     <string name="import_priority_youtube_only_desc">Yerel kütüphane eşleşmesini geçin ve doğrudan YouTube Music\'de arayın.</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c4ab03acc (Translated using Weblate (Turkish))
     <string name="spotify_not_connected">Spotify bağlı değil</string>
     <string name="spotify_login_title">Spotify\'da giriş yap</string>
     <string name="spotify_loading_library">Spotify kütüphanesi yükleniyor</string>
@@ -661,32 +624,10 @@
     <string name="ai_provider">YZ sağlayıcı</string>
     <string name="ai_provider_desc">YZ servisi seçin.</string>
     <string name="ai_provider_none">Hiçbiri (Devre dışı)</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
     <string name="ai_custom_endpoint">Özel uç nokta</string>
     <string name="ai_api_key">API anahtarı</string>
     <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
-=======
     <string name="ai_provider_openrouter"></string>
-=======
->>>>>>> b71d10e92 (Update translation files)
-    <string name="ai_custom_endpoint">Özel uç nokta</string>
-    <string name="ai_api_key">API anahtarı</string>
-    <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
-    <string name="mori_cipher_status_refreshing">Yenileniyor</string>
-    <string name="mori_cipher_status_degraded">Önbelleğe alınmış konfigürasyon kullanılıyor</string>
-    <string name="mori_cipher_status_uninitialized">Başlatılamadı</string>
-    <string name="mori_cipher_player_id">Oynatıcı konfigürasyonu</string>
-    <string name="mori_cipher_last_updated">En son güncellenen</string>
-    <string name="mori_cipher_refresh">Konfigürasyonu yenile</string>
-    <string name="mori_cipher_refresh_remaining">%1$d elle yenileme kaldı</string>
-    <string name="mori_cipher_rate_limit_countdown">%1$s\'de tekrardan mevcut olacak</string>
-    <string name="mori_cipher_automatic_updates">Otomatik güncellemeler</string>
-    <string name="mori_cipher_automatic_updates_description">ArchiveTune mevcut YouTube oynatıcı konfigürasyonunu her 6 saatte bir ve şifre çözme sorunlarının ardından yeniler.</string>
-    <string name="mori_cipher_refresh_success">Oynatıcı konfigürasyonu güncellendi</string>
-    <string name="mori_cipher_refresh_failed">Oynatıcı konfigürasyonu güncellenemez</string>
-    <string name="mori_cipher_rate_limited">Elle yenileme limiti doldu</string>
->>>>>>> c4ab03acc (Translated using Weblate (Turkish))
     <string name="ai_translation_menu">YZ Çeviri</string>
     <string name="about_lead_developer">Baş Geliştirici</string>
     <string name="about_archive_tune_team">Ekip</string>
@@ -696,10 +637,6 @@
     <string name="about_license">LİSANLAR</string>
     <string name="about_license_unknown">Bilinmeyen lisans</string>
     <string name="about_position_lead_dev">Ha?</string>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
     <string name="about_position_developers">Geliştirici | Ekip</string>
     <string name="about_position_yuki">dummy reze | Yönetici</string>
     <string name="about_position_mo_agamy">Ana Taban | Metrolist</string>
@@ -710,10 +647,6 @@
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Bağış yapın</string>
     <string name="aod_mode">Her zaman açık ekran modu</string>
-<<<<<<< HEAD
-=======
-    <string name="aod_mode_exit">Her zaman açık ekrandan çık</string>
->>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
     <string name="playlist_source_local">Yerel</string>
     <string name="playlist_source_online">Çevrimiçi</string>
     <string name="import_source_local">Yerel Kütüphane</string>
@@ -747,7 +680,6 @@
     <string name="spotify_connect">Spotfiy\'ı Bağla</string>
     <string name="spotify_available_count">%1$d oynatma listesi mevcut</string>
     <string name="spotify_connected_as">%1$s olarak bağlanıldı</string>
-    <string name="ai_provider_openrouter">OpenRouter</string>
     <string name="ai_api_key_configured">Konfigüre edildi</string>
     <string name="ai_test_api">API\'ı Test et</string>
     <string name="ai_api_testing">Bağlantı test ediliyor…</string>
@@ -755,21 +687,4 @@
     <string name="ai_api_status_success">API hazır</string>
     <string name="ai_api_status_failed">API başarısız. Ayarları güncelledikten sonra tekrar deneyin.</string>
     <string name="ai_model">Model</string>
-<<<<<<< HEAD
-=======
->>>>>>> 5132b947d (Translated using Weblate (Turkish))
-=======
->>>>>>> 4bd205ecc (Translated using Weblate (Turkish))
-=======
->>>>>>> f10143dab (Translated using Weblate (Turkish))
-=======
->>>>>>> 43ddd62f4 (Translated using Weblate (Turkish))
-=======
->>>>>>> bffd4ae9e (Translated using Weblate (Turkish))
-=======
->>>>>>> d670b9738 (Translated using Weblate (Turkish))
-=======
->>>>>>> c4ab03acc (Translated using Weblate (Turkish))
-=======
->>>>>>> 2bbbaa760 (Translated using Weblate (Turkish))
 </resources>

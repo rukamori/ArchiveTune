@@ -686,47 +686,9 @@
     <string name="import_matching_progress">匹配： %1$d/%2$d</string>
     <string name="import_saving">正在保存導入…</string>
     <string name="import_saving_progress">保存：%1$d/%2$d</string>
-<<<<<<< HEAD
     <string name="playlist_source_local">本地</string>
     <string name="playlist_source_online">線上</string>
     <string name="aod_customize_mode_enabled">啟用 AOD 模式</string>
     <string name="aod_customize_mode_enabled_desc">允許 ArchiveTune 顯示 AOD 播放器介面</string>
     <string name="ai_provider_openrouter">開放路由器</string>
-=======
-    <string name="mori_cipher_settings_title">YouTube 解密</string>
-    <string name="mori_cipher_settings_description">管理播放器自動解密更新</string>
-    <string name="mori_cipher_loading_configuration">正在準備當前播放器配置…%1$d%%</string>
-    <string name="mori_cipher_next_refresh">下次自動刷新</string>
-    <string name="mori_cipher_runtime_section">解密狀態</string>
-    <string name="mori_cipher_update_section">更新</string>
-    <string name="mori_cipher_status">當前狀態</string>
-    <string name="mori_cipher_status_ready">就緒</string>
-    <string name="mori_cipher_status_refreshing">刷新中</string>
-    <string name="mori_cipher_status_degraded">使用快取配置</string>
-    <string name="mori_cipher_status_uninitialized">未初始化</string>
-    <string name="mori_cipher_player_id">播放器配置</string>
-    <string name="mori_cipher_last_updated">最後更新於</string>
-    <string name="mori_cipher_refresh">重新整理配置</string>
-    <string name="mori_cipher_refresh_remaining">剩餘 %1$d 次手動刷新</string>
-    <string name="mori_cipher_rate_limit_countdown">將於 %1$s 再次提供</string>
-    <string name="mori_cipher_automatic_updates">自動更新</string>
-    <string name="mori_cipher_automatic_updates_description">ArchiveTune 每六小時以及在解密失敗後刷新目前的 YouTube 播放器配置。</string>
-    <string name="mori_cipher_refresh_success">播放器配置已更新</string>
-    <string name="mori_cipher_refresh_failed">無法更新播放器配置</string>
-    <string name="mori_cipher_rate_limited">已達到手動刷新次數上限</string>
-    <string name="mori_cipher_empty_title">無播放器配置</string>
-    <string name="mori_cipher_empty_description">連接網路以載入目前的 YouTube 播放器配置。</string>
-    <string name="mori_cipher_error_title">無法解密</string>
-    <string name="mori_cipher_load_failed">無法載入目前的播放器配置。現有的回退播放方案仍可使用。</string>
-    <string name="aod_mode">AOD 模式</string>
-    <string name="aod_mode_exit">退出 AOD</string>
-    <string name="playlist_source_local">本地</string>
-    <string name="playlist_source_online">線上</string>
-<<<<<<< HEAD
->>>>>>> 6268ddb66 (Translated using Weblate (Chinese (Traditional Han script)))
-=======
-    <string name="aod_customize_mode_enabled">啟用 AOD 模式</string>
-    <string name="aod_customize_mode_enabled_desc">允許 ArchiveTune 顯示 AOD 播放器介面</string>
-    <string name="ai_provider_openrouter">開放路由器</string>
->>>>>>> d8e41d1f4 (Translated using Weblate (Chinese (Traditional Han script)))
 </resources>
