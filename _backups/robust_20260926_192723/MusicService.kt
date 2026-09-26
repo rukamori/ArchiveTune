@@ -1,0 +1,9303 @@
+/*
+ * ArchiveTune (2026)
+ * © Rukamori — github.com/rukamori
+ * GPL-3.0 License | Contributors: see git history
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ */
+
+@file:Suppress("DEPRECATION")
+
+package moe.rukamori.archivetune.playback
+
+import android.app.ActivityManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.database.ContentObserver
+import android.database.SQLException
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.MediaCodecList
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.Virtualizer
+import android.net.ConnectivityManager
+import android.net.Uri
+import android.os.Binder
+import android.os.Build
+import android.os.Handler
+import android.os.PowerManager
+import android.util.LruCache
+import android.widget.Toast
+import androidx.core.app.NotificationCompat
+import androidx.core.content.getSystemService
+import androidx.core.net.toUri
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.ParserException
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Player.EVENT_POSITION_DISCONTINUITY
+import androidx.media3.common.Player.EVENT_TIMELINE_CHANGED
+import androidx.media3.common.Player.REPEAT_MODE_ALL
+import androidx.media3.common.Player.REPEAT_MODE_OFF
+import androidx.media3.common.Player.REPEAT_MODE_ONE
+import androidx.media3.common.Player.STATE_IDLE
+import androidx.media3.common.Timeline
+import androidx.media3.common.audio.SonicAudioProcessor
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.TransferListener
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
+import androidx.media3.datasource.cache.ContentMetadata
+import androidx.media3.datasource.cache.ContentMetadataMutations
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.analytics.PlaybackStats
+import androidx.media3.exoplayer.analytics.PlaybackStatsListener
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.session.CommandButton
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaSession
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import moe.rukamori.archivetune.MainActivity
+import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
+import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
+import moe.rukamori.archivetune.constants.AodModeEnabledKey
+import moe.rukamori.archivetune.cast.CastMediaItemResolver
+import moe.rukamori.archivetune.cast.CastPlaybackRepository
+import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
+import moe.rukamori.archivetune.constants.AudioNormalizationKey
+import moe.rukamori.archivetune.constants.AudioOffload
+import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
+import moe.rukamori.archivetune.constants.AutoLoadMoreKey
+import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.CrossfadeDurationKey
+import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
+import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
+import moe.rukamori.archivetune.constants.CrossfadeManualSelectionKey
+import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
+import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
+import moe.rukamori.archivetune.constants.DiscordTokenKey
+import moe.rukamori.archivetune.constants.EnableDiscordRPCKey
+import moe.rukamori.archivetune.constants.EnableLastFMScrobblingKey
+import moe.rukamori.archivetune.constants.EqualizerAutoHeadroomEnabledKey
+import moe.rukamori.archivetune.constants.EqualizerBandLevelsMbKey
+import moe.rukamori.archivetune.constants.EqualizerBassBoostEnabledKey
+import moe.rukamori.archivetune.constants.EqualizerBassBoostStrengthKey
+import moe.rukamori.archivetune.constants.EqualizerEnabledKey
+import moe.rukamori.archivetune.constants.EqualizerOutputGainEnabledKey
+import moe.rukamori.archivetune.constants.EqualizerOutputGainMbKey
+import moe.rukamori.archivetune.constants.EqualizerSelectedProfileIdKey
+import moe.rukamori.archivetune.constants.EqualizerVirtualizerEnabledKey
+import moe.rukamori.archivetune.constants.EqualizerVirtualizerStrengthKey
+import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
+import moe.rukamori.archivetune.constants.HISTORY_DURATION_MAX
+import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
+import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.HistoryDuration
+import moe.rukamori.archivetune.constants.LastFMSessionKey
+import moe.rukamori.archivetune.constants.LastFMUseNowPlaying
+import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
+import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
+import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleLike
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleRepeatMode
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleShuffle
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleStartRadio
+import moe.rukamori.archivetune.constants.PauseListenHistoryKey
+import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
+import moe.rukamori.archivetune.constants.PermanentShuffleKey
+import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.PlayerVolumeKey
+import moe.rukamori.archivetune.constants.RepeatModeKey
+import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
+import moe.rukamori.archivetune.constants.ScrobbleDelaySecondsKey
+import moe.rukamori.archivetune.constants.ScrobbleMinSongDurationKey
+import moe.rukamori.archivetune.constants.ShowLyricsKey
+import moe.rukamori.archivetune.constants.SkipSilenceKey
+import moe.rukamori.archivetune.constants.SmartTrimmerKey
+import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
+import moe.rukamori.archivetune.constants.TogetherClientIdKey
+import moe.rukamori.archivetune.constants.WakelockKey
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.AlbumEntity
+import moe.rukamori.archivetune.db.entities.ArtistEntity
+import moe.rukamori.archivetune.db.entities.Event
+import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.RelatedSongMap
+import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.di.DownloadCache
+import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.extensions.SilentHandler
+import moe.rukamori.archivetune.extensions.collect
+import moe.rukamori.archivetune.extensions.collectLatest
+import moe.rukamori.archivetune.extensions.currentMetadata
+import moe.rukamori.archivetune.extensions.directorySizeBytes
+import moe.rukamori.archivetune.extensions.findNextMediaItemById
+import moe.rukamori.archivetune.extensions.getQueueWindows
+import moe.rukamori.archivetune.extensions.mediaItems
+import moe.rukamori.archivetune.extensions.metadata
+import moe.rukamori.archivetune.extensions.move
+import moe.rukamori.archivetune.extensions.setOffloadEnabled
+import moe.rukamori.archivetune.extensions.toContinuationQueue
+import moe.rukamori.archivetune.extensions.toMediaItem
+import moe.rukamori.archivetune.extensions.toPersistQueue
+import moe.rukamori.archivetune.extensions.toQueue
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
+import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
+import moe.rukamori.archivetune.lastfm.LastFM
+import moe.rukamori.archivetune.lyrics.LyricsHelper
+import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.models.PersistPlayerState
+import moe.rukamori.archivetune.models.PersistQueue
+import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
+import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
+import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
+import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
+import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
+import moe.rukamori.archivetune.playback.stream.ResolvedAudioStream
+import moe.rukamori.archivetune.playback.stream.StreamPurpose
+import moe.rukamori.archivetune.playback.queues.EmptyQueue
+import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
+import moe.rukamori.archivetune.playback.queues.filterExplicit
+import moe.rukamori.archivetune.playback.queues.filterVideo
+import moe.rukamori.archivetune.playback.queues.hasBlockedArtist
+import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockPlaybackController
+import moe.rukamori.archivetune.storage.StorageFolderKind
+import moe.rukamori.archivetune.storage.StorageLocationRepository
+import moe.rukamori.archivetune.together.TogetherPlaybackSync
+import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
+import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
+import moe.rukamori.archivetune.utils.CoilBitmapLoader
+import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
+import moe.rukamori.archivetune.utils.StreamClientUtils
+import moe.rukamori.archivetune.utils.SyncUtils
+import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.enumPreference
+import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.getAsync
+import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.utils.isLowDataModeActive
+import moe.rukamori.archivetune.utils.reportException
+import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
+import moe.rukamori.archivetune.widget.LoadWidgetInsightsUseCase
+import okhttp3.OkHttpClient
+import timber.log.Timber
+import java.io.EOFException
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.io.Serializable
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.time.LocalDateTime
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import javax.inject.Inject
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.pow
+import kotlin.math.roundToLong
+import kotlin.time.Duration.Companion.seconds
+
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
+@AndroidEntryPoint
+class MusicService :
+    MediaLibraryService(),
+    Player.Listener,
+    PlaybackStatsListener.Callback {
+    @Inject
+    lateinit var canvasPlaybackUseCase: moe.rukamori.archivetune.canvas.CanvasPlaybackUseCase
+
+    @Inject
+    lateinit var database: MusicDatabase
+
+    @Inject
+    lateinit var lyricsHelper: LyricsHelper
+
+    @Inject
+    lateinit var syncUtils: SyncUtils
+
+    @Inject
+    lateinit var mediaLibrarySessionCallback: MediaLibrarySessionCallback
+
+    @Inject
+    internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
+
+    @Inject
+    lateinit var equalizerPlaybackController: EqualizerPlaybackController
+
+    @Inject
+    lateinit var resolveAudioStream: ResolveAudioStreamUseCase
+
+    @Inject
+    lateinit var observePlaybackPreloadConfiguration: ObservePlaybackPreloadConfigurationUseCase
+
+    @Inject
+    lateinit var nextStreamPreloader: NextStreamPreloader
+
+    @Inject
+    lateinit var sponsorBlockPlaybackController: SponsorBlockPlaybackController
+
+    private var playbackPreloadConfiguration: PlaybackPreloadConfiguration? = null
+
+    private lateinit var audioManager: AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var lastAudioFocusState = AudioManager.AUDIOFOCUS_NONE
+    private var wasPlayingBeforeAudioFocusLoss = false
+    private var pauseOnDeviceMuteEnabled = false
+    private var deviceMutePlaybackRecoveryVolumePercent = 0
+    private var wasAutoPausedByDeviceMute = false
+    private var muteRecoveryObserver: ContentObserver? = null
+    private var lastDeviceMutePlaybackNoticeAtElapsedMs = 0L
+    private var hasAudioFocus = false
+    private var autoStartOnBluetoothEnabled = false
+    private var bluetoothReceiverRegistered = false
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wakelockEnabled = false
+    private var audioDeviceCallbackRegistered = false
+    private var audioRouteRecoveryJob: Job? = null
+    private var audiblePlaybackRecoveryJob: Job? = null
+    private var lastAudioOutputDeviceSignature: String? = null
+    private var lastAudioRouteRecoveryRealtimeMs = 0L
+    private var aodScreenOffReceiver: BroadcastReceiver? = null
+
+    private lateinit var audioOutputResolver: AudioOutputResolver
+
+    val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
+
+    fun refreshActiveDevice() = audioOutputResolver.refresh()
+
+    private val audioDeviceCallback =
+        object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
+                if (addedDevices.any { it.isSink }) onAudioOutputDeviceChanged()
+            }
+
+            override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+                if (removedDevices.any { it.isSink }) onAudioOutputDeviceChanged()
+            }
+        }
+
+    private var scopeJob = SupervisorJob()
+    private var scope = CoroutineScope(Dispatchers.Main + scopeJob)
+    private var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
+    private val binder = MusicBinder()
+    private var hasBoundClients = false
+    private var idleStopJob: Job? = null
+
+    private lateinit var connectivityManager: ConnectivityManager
+    lateinit var connectivityObserver: NetworkConnectivityObserver
+    val waitingForNetworkConnection = MutableStateFlow(false)
+    private val isNetworkConnected = MutableStateFlow(false)
+
+    private val audioQuality by enumPreference(
+        this,
+        AudioQualityKey,
+        moe.rukamori.archivetune.constants.AudioQuality.AUTO,
+    )
+    private val remotePlaybackTrackingUrlCache = ConcurrentHashMap<String, String>()
+    private val cacheBypassMediaIds = ConcurrentHashMap.newKeySet<String>()
+    private val castMimeTypeCache = LruCache<String, String>(128)
+    private val mediaOkHttpClient: OkHttpClient by lazy {
+        OkHttpClient
+            .Builder()
+            .proxy(YouTube.streamOkHttpProxy)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val host = request.url.host
+                val isYouTubeMediaHost =
+                    host.endsWith("googlevideo.com") ||
+                        host.endsWith("googleusercontent.com") ||
+                        host.endsWith("youtube.com") ||
+                        host.endsWith("youtube-nocookie.com") ||
+                        host.endsWith("ytimg.com")
+
+                if (!isYouTubeMediaHost) return@addInterceptor chain.proceed(request)
+
+                val requestProfile = StreamClientUtils.resolveRequestProfile(request.url)
+                val requestBuilder = request.newBuilder()
+                if (request.header("User-Agent") == null) {
+                    requestBuilder.header("User-Agent", requestProfile.userAgent)
+                }
+                if (request.header("Origin") == null && requestProfile.origin != null) {
+                    requestBuilder.header("Origin", requestProfile.origin)
+                }
+                if (request.header("Referer") == null && requestProfile.referer != null) {
+                    requestBuilder.header("Referer", requestProfile.referer)
+                }
+                chain.proceed(
+                    requestBuilder.build(),
+                )
+            }.build()
+    }
+
+    private var currentQueue: Queue = EmptyQueue
+    var queueTitle: String? = null
+    private var blockedArtistIds: Set<String> = emptySet()
+    private var hideMusicVideos = false
+    private var infiniteQueueJob: Job? = null
+    private var infiniteQueueGeneration = 0L
+    private val persistentStateLock = Any()
+    private val persistentSaveGeneration = AtomicLong(0L)
+
+    @Volatile
+    private var isRestoringPersistentState = false
+
+    @Volatile
+    private var isHydratingRestoredQueue = false
+    private val restoredQueueHydrationGeneration = AtomicLong(0L)
+    private var restoredQueueBackfillJob: Job? = null
+
+    @Volatile
+    private var suppressAutoPlayback = false
+    private var lastPresenceToken: String? = null
+
+    @Volatile
+    private var pausedPresenceGate = PausedPresenceGate.FollowPreference
+
+    @Volatile
+    private var discordServiceStopping = false
+
+    @Volatile
+    private var lastDiscordPresenceDecision: DiscordPresenceDecision? = null
+
+    @Volatile
+    private var activeDiscordHoldState: ActiveHoldState? = null
+
+    private var activeDiscordHoldTimeoutJob: Job? = null
+
+    @Volatile
+    private var lastAppliedVisiblePresence: LastAppliedVisiblePresence? = null
+
+    private val discordSyncEpoch = AtomicLong(0L)
+    private val discordSyncRequests = Channel<DiscordSyncRequest>(Channel.CONFLATED)
+    private var discordSyncWorkerJob: Job? = null
+    private val pendingDiscordRefreshWaiters = mutableListOf<CompletableDeferred<Boolean>>()
+    private val discordRefreshWaitersMutex = Mutex()
+    private val toggleLikeMutex = Mutex()
+
+    @Volatile
+    private var lastLoginRecoveryPrompt: Pair<String, Long>? = null
+    private val playbackStreamRecoveryTracker = PlaybackStreamRecoveryTracker()
+    private var playbackErrorRecoveryJob: Job? = null
+    private var nextHistorySessionToken = 0L
+    private var currentHistorySessionToken = 0L
+    private var currentHistoryMediaId: String? = null
+    private var currentHistoryAccumulatedPlayMs = 0L
+    private var currentHistoryStartedAtElapsedMs: Long? = null
+    private var currentHistoryEventId: Long? = null
+    private var currentHistoryRemoteRegistered = false
+    private var currentHistoryImmediateAttempted = false
+    private var currentHistorySessionQueued = false
+    private var historyThresholdJob: Job? = null
+    private val pendingHistoryFinalizations = mutableMapOf<String, MutableList<PendingHistoryFinalization>>()
+    private val historyRecordingJobs = ConcurrentHashMap<Long, kotlinx.coroutines.Deferred<ImmediateHistoryResult>>()
+
+    val currentMediaMetadata = MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
+    val queueRestoreCompleted = MutableStateFlow(false)
+    val infiniteQueueLoading = MutableStateFlow(false)
+    private val playerInitialized = MutableStateFlow(false)
+    private val currentSong =
+        currentMediaMetadata
+            .flatMapLatest { mediaMetadata ->
+                database.song(mediaMetadata?.id)
+            }.flowOn(Dispatchers.IO)
+            .stateIn(scope, SharingStarted.Lazily, null)
+    private val currentFormat =
+        currentMediaMetadata
+            .flatMapLatest { mediaMetadata ->
+                database.format(mediaMetadata?.id)
+            }.flowOn(Dispatchers.IO)
+
+    private val normalizeFactor = MutableStateFlow(1f)
+    private val audioNormalizationFactorCache = ConcurrentHashMap<String, Float>()
+    private var audioNormalizationEnabled = true
+    var playerVolume = MutableStateFlow(1f)
+    private val audioFocusVolumeFactor = MutableStateFlow(1f)
+    private var effectiveVolumeRampJob: Job? = null
+    private var crossfadeEnabled = false
+    private var crossfadeDurationMs = 0L
+    private var crossfadeGapless = false
+    private var crossfadeTriggerJob: Job? = null
+    private var crossfade2ManualJob: Job? = null
+    private var crossfadeJob: Job? = null
+    private var secondaryCrossfadePlayer: ExoPlayer? = null
+    private var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    private var isCrossfading = false
+    private var crossfadeHandoffInProgress = false
+    private var crossfadeBaseVolume = 1f
+    private var crossfadeIncomingBaseVolume = 1f
+    private var crossfadeProgress = 0f
+    private var crossfadeHandoffProgress = 0f
+    private var crossfadePlaybackRequested = false
+    private var crossfadeManualSelectionEnabled = true
+    private var crossfadeSuppressedMediaId: String? = null
+    private val secondaryCrossfadeListener =
+        object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Timber.tag(TAG).w(error, "Secondary crossfade player failed")
+                scope.launch {
+                    abortCrossfadeAndResumePrimary("secondary_player_error")
+                }
+            }
+        }
+
+    private data class CrossfadeConfig(
+        val enabled: Boolean,
+        val durationSeconds: Float,
+        val gapless: Boolean,
+    )
+
+    private data class DiscordSyncRequest(
+        val epoch: Long,
+        val reason: String,
+        val force: Boolean,
+    )
+
+    private data class Quadruple<A, B, C, D>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D,
+    )
+
+    private class StaleDiscordSyncException : CancellationException("Stale Discord sync request")
+
+    private data class CrossfadeTarget(
+        val index: Int,
+        val mediaId: String,
+    )
+
+    private data class PlaybackRecoverySnapshot(
+        val mediaId: String,
+        val positionMs: Long,
+        val playWhenReady: Boolean,
+    )
+
+    private data class PendingHistoryFinalization(
+        val sessionToken: Long,
+        val eventId: Long?,
+        val remoteRegistered: Boolean,
+    )
+
+    private data class ImmediateHistoryResult(
+        val eventId: Long?,
+        val remoteRegistered: Boolean,
+    )
+
+    private fun PlayerResponse.PlaybackTracking.remotePlaybackTrackingUrl(): String? =
+        videostatsPlaybackUrl
+            ?.baseUrl
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+    private fun ResolvedAudioStream.toPlaybackData(mediaId: String): YTPlayerUtils.PlaybackData {
+        val resolvedMimeType =
+            if (codecs.isBlank()) {
+                mimeType
+            } else {
+                "$mimeType; codecs=\"$codecs\""
+            }
+        val tracking =
+            playbackTrackingUrl?.let { url ->
+                PlayerResponse.PlaybackTracking(
+                    videostatsPlaybackUrl = PlayerResponse.PlaybackTracking.VideostatsPlaybackUrl(url),
+                    videostatsWatchtimeUrl = null,
+                    atrUrl = null,
+                )
+            }
+        return YTPlayerUtils.PlaybackData(
+            audioConfig =
+                PlayerResponse.PlayerConfig.AudioConfig(
+                    loudnessDb = loudnessDb,
+                    perceptualLoudnessDb = perceptualLoudnessDb,
+                ),
+            videoDetails =
+                PlayerResponse.VideoDetails(
+                    videoId = mediaId,
+                    title = title,
+                    lengthSeconds = durationSeconds?.toString(),
+                ),
+            playbackTracking = tracking,
+            format =
+                PlayerResponse.StreamingData.Format(
+                    itag = formatId,
+                    url = url,
+                    mimeType = resolvedMimeType,
+                    bitrate = bitrate,
+                    width = null,
+                    height = null,
+                    contentLength = contentLength.takeIf { it > 0L },
+                    quality = "",
+                    fps = null,
+                    qualityLabel = null,
+                    averageBitrate = bitrate,
+                    audioQuality = null,
+                    approxDurationMs = durationSeconds?.times(1_000L)?.toString(),
+                    audioSampleRate = sampleRate,
+                    audioChannels = null,
+                    loudnessDb = loudnessDb,
+                    lastModified = null,
+                    signatureCipher = null,
+                    cipher = null,
+                ),
+            streamUrl = url,
+            streamExpiresInSeconds =
+                ((expiresAtMs - System.currentTimeMillis()) / 1_000L)
+                    .coerceIn(1L, Int.MAX_VALUE.toLong())
+                    .toInt(),
+            authFingerprint = authFingerprint,
+        )
+    }
+
+    private fun isAppInForeground(): Boolean {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val appProcesses = activityManager.runningAppProcesses ?: return false
+        return appProcesses.any { processInfo ->
+            processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
+                processInfo.processName == packageName
+        }
+    }
+
+    private fun promptLoginRecovery(
+        mediaId: String,
+        targetUrl: String,
+    ) {
+        if (!isAppInForeground()) return
+
+        val now = System.currentTimeMillis()
+        val lastPrompt = lastLoginRecoveryPrompt
+        if (lastPrompt?.first == mediaId && now - lastPrompt.second < 10000L) return
+        lastLoginRecoveryPrompt = mediaId to now
+
+        val deepLink = Uri.parse("archivetune://login?url=${Uri.encode(targetUrl)}")
+        val intent =
+            Intent(Intent.ACTION_VIEW, deepLink, this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+
+        runCatching {
+            startActivity(intent)
+        }.onFailure {
+            Timber.e(it, "Failed to open login recovery for %s", mediaId)
+        }
+    }
+
+    private fun Throwable.isRequestTimeout(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            if (current is SocketTimeoutException) return true
+            if (current.message?.contains("Request timeout has expired", ignoreCase = true) == true) return true
+            current = current.cause
+        }
+        return false
+    }
+
+    private fun Throwable.isNetworkConnectionFailure(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            if (current is ConnectException || current is UnknownHostException) return true
+            current = current.cause
+        }
+        return false
+    }
+
+    private fun isNetworkCurrentlyConnected(): Boolean =
+        isNetworkConnected.value ||
+            (::connectivityObserver.isInitialized && connectivityObserver.isCurrentlyConnected())
+
+    private fun Throwable.isTransientNetworkFailure(): Boolean =
+        isRequestTimeout() || isNetworkConnectionFailure()
+
+    lateinit var sleepTimer: SleepTimer
+
+    @Inject
+    @PlayerCache
+    lateinit var playerCache: Cache
+
+    @Inject
+    @DownloadCache
+    lateinit var downloadCache: Cache
+
+    lateinit var localPlayer: ExoPlayer
+        private set
+    lateinit var player: Player
+        private set
+    private lateinit var castPlaybackRepository: CastPlaybackRepository
+    private lateinit var mediaSession: MediaLibrarySession
+
+    private var isAudioEffectSessionOpened = false
+    private var openedAudioSessionId: Int? = null
+    val eqCapabilities = MutableStateFlow<EqCapabilities?>(null)
+    private val desiredEqSettings =
+        MutableStateFlow(
+            EqSettings(
+                enabled = false,
+                bandLevelsMb = emptyList(),
+                outputGainEnabled = false,
+                outputGainMb = 0,
+                bassBoostEnabled = false,
+                bassBoostStrength = 0,
+                virtualizerEnabled = false,
+                virtualizerStrength = 0,
+                autoHeadroomEnabled = false,
+            ),
+        )
+
+    private var audioEffectsSessionId: Int? = null
+    private var audioEffectsInitializationJob: Job? = null
+    private var equalizer: Equalizer? = null
+    private var bassBoost: BassBoost? = null
+    private var virtualizer: Virtualizer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private val audioEffectPlayerListener =
+        object : Player.Listener {
+            override fun onEvents(
+                player: Player,
+                events: Player.Events,
+            ) {
+                if (events.containsAny(
+                        Player.EVENT_AUDIO_SESSION_ID,
+                        Player.EVENT_PLAYBACK_STATE_CHANGED,
+                        Player.EVENT_IS_PLAYING_CHANGED,
+                    )
+                ) {
+                    reconcileAudioEffectSession()
+                }
+            }
+        }
+
+    private var lastDiscordUpdateTime = 0L
+
+    private var scrobbleManager: moe.rukamori.archivetune.utils.ScrobbleManager? = null
+
+    private lateinit var widgetUpdater: MusicServiceWidgetUpdater
+
+    val autoAddedMediaIds: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
+
+    private var consecutivePlaybackErr = 0
+
+    val maxSafeGainFactor = MAX_AUDIO_NORMALIZATION_FACTOR
+
+    @Volatile
+    private var hasCalledStartForeground = false
+
+    val togetherSessionState =
+        MutableStateFlow<moe.rukamori.archivetune.together.TogetherSessionState>(
+            moe.rukamori.archivetune.together.TogetherSessionState.Idle,
+        )
+    private var togetherServer: moe.rukamori.archivetune.together.TogetherServer? = null
+    private var togetherOnlineHost: moe.rukamori.archivetune.together.TogetherOnlineHost? = null
+    private var togetherClient: moe.rukamori.archivetune.together.TogetherClient? = null
+    private var togetherBroadcastJob: Job? = null
+    private var togetherOnlineConnectJob: Job? = null
+    private var togetherClientEventsJob: Job? = null
+    private var togetherHeartbeatJob: Job? = null
+    private var togetherHostInactivityJob: Job? = null
+    private var togetherHostInactivityEndSession: (suspend () -> Unit)? = null
+    private var togetherClock: moe.rukamori.archivetune.together.TogetherClock? = null
+    private var togetherSelfParticipantId: String? = null
+    private var togetherAuthorityParticipantId: String? = null
+    private var togetherLastAppliedQueueHash: String? = null
+    private var togetherIsOnlineSession: Boolean = false
+
+    @Volatile
+    private var togetherApplyingRemote: Boolean = false
+
+    @Volatile
+    private var togetherSuppressEchoUntilElapsedMs: Long = 0L
+
+    @Volatile
+    private var togetherLastAppliedRoomStateSentAtElapsedMs: Long = 0L
+
+    @Volatile
+    private var togetherLastRemoteAppliedPlayWhenReady: Boolean? = null
+
+    @Volatile
+    private var togetherLastRemoteAppliedIndex: Int = -1
+
+    @Volatile
+    private var togetherLastSentControlAtElapsedMs: Long = 0L
+
+    @Volatile
+    private var togetherLastSentControlAction: moe.rukamori.archivetune.together.ControlAction? = null
+
+    @Volatile
+    private var togetherPendingGuestControl: TogetherPendingGuestControl? = null
+
+    private fun isTogetherApplyingRemote(): Boolean = togetherApplyingRemote
+
+    private val togetherHostId: String = "host"
+    private val togetherParticipantNames = ConcurrentHashMap<String, String>()
+    private var lastTogetherNoticeAtElapsedMs: Long = 0L
+    private var lastTogetherNoticeKey: String? = null
+
+    private data class TogetherPendingGuestControl(
+        val desiredIsPlaying: Boolean? = null,
+        val desiredIndex: Int? = null,
+        val desiredTrackId: String? = null,
+        val requestedAtElapsedMs: Long,
+        val expiresAtElapsedMs: Long,
+    )
+
+    private fun showTogetherNotice(
+        message: String,
+        key: String? = null,
+    ) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val normalizedKey = key ?: message
+        if (normalizedKey == lastTogetherNoticeKey && now - lastTogetherNoticeAtElapsedMs < 1200L) return
+        lastTogetherNoticeKey = normalizedKey
+        lastTogetherNoticeAtElapsedMs = now
+        scope.launch(SilentHandler) {
+            Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showTogetherParticipantNotification(
+        participantName: String,
+        joined: Boolean,
+    ) {
+        val normalizedName = participantName.trim().ifBlank { getString(R.string.together_unknown_participant) }
+        val contentText =
+            getString(
+                if (joined) {
+                    R.string.together_participant_joined_notification
+                } else {
+                    R.string.together_participant_left_notification
+                },
+                normalizedName,
+            )
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat
+                .Builder(this, TOGETHER_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_together))
+                .setContentText(contentText)
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(TOGETHER_PARTICIPANT_NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            Timber.tag("Together").v(error, "Unable to show participant notification")
+        }
+    }
+
+    private fun showTogetherInactivityNotification() {
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat
+                .Builder(this, TOGETHER_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_together))
+                .setContentText(getString(R.string.together_room_closed_inactivity_notification))
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(TOGETHER_INACTIVITY_NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            Timber.tag("Together").v(error, "Unable to show inactivity notification")
+        }
+    }
+
+    private fun cancelTogetherHostInactivityTimeout() {
+        togetherHostInactivityJob?.cancel()
+        togetherHostInactivityJob = null
+    }
+
+    private fun scheduleTogetherHostInactivityTimeout(
+        sessionId: String,
+        endOnlineSession: (suspend () -> Unit)? = togetherHostInactivityEndSession,
+    ) {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = endOnlineSession
+        togetherHostInactivityJob =
+            ioScope.launch(SilentHandler) {
+                delay(TOGETHER_HOST_INACTIVITY_TIMEOUT_MS)
+
+                val currentState = togetherSessionState.value
+                val isCurrentHostSession =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                            currentState.sessionId == sessionId
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                            currentState.sessionId == sessionId &&
+                                currentState.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                        }
+
+                        else -> {
+                            false
+                        }
+                    }
+                val isLocalAuthority =
+                    togetherAuthorityParticipantId == null ||
+                        togetherAuthorityParticipantId == togetherHostId
+                val participants =
+                    togetherServer?.currentParticipants()
+                        ?: togetherOnlineHost?.currentParticipants()
+                        ?: emptyList()
+                val hasConnectedGuest =
+                    participants.any { participant ->
+                        participant.id != togetherHostId &&
+                            participant.isConnected &&
+                            !participant.isPending
+                    }
+                if (!isCurrentHostSession ||
+                    !isLocalAuthority ||
+                    togetherParticipantNames.isNotEmpty() ||
+                    hasConnectedGuest
+                ) {
+                    togetherHostInactivityJob = null
+                    return@launch
+                }
+
+                togetherHostInactivityJob = null
+                runCatching { endOnlineSession?.invoke() }
+                    .onFailure { error ->
+                        Timber.tag("Together").w(error, "Unable to end inactive online room")
+                    }
+                stopTogetherInternal()
+                togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+                showTogetherInactivityNotification()
+                scheduleStopIfIdle()
+            }
+    }
+
+    private suspend fun getOrCreateTogetherClientId(): String {
+        val existing = dataStore.getAsync(TogetherClientIdKey)?.trim().orEmpty()
+        if (existing.isNotBlank()) return existing
+        val generated =
+            java.util.UUID
+                .randomUUID()
+                .toString()
+        dataStore.edit { prefs -> prefs[TogetherClientIdKey] = generated }
+        return generated
+    }
+
+    private fun ensureStartedAsForeground() {
+        if (hasCalledStartForeground) return
+
+        val notification =
+            try {
+                val contentIntent =
+                    PendingIntent.getActivity(
+                        this,
+                        0,
+                        Intent(this, MainActivity::class.java),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    )
+
+                NotificationCompat
+                    .Builder(this, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.small_icon)
+                    .setContentTitle(getString(R.string.music_player))
+                    .setContentText(getString(R.string.app_name))
+                    .setContentIntent(contentIntent)
+                    .setCategory(Notification.CATEGORY_SERVICE)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setOngoing(true)
+                    .setOnlyAlertOnce(true)
+                    .build()
+            } catch (e: Exception) {
+                reportException(e)
+                return
+            }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            hasCalledStartForeground = true
+        } catch (e: Exception) {
+            reportException(e)
+        }
+    }
+
+    private fun promoteToStartedService() {
+        runCatching { startService(Intent(this, MusicService::class.java)) }
+            .onFailure { reportException(it) }
+    }
+
+    private fun cancelIdleStop() {
+        idleStopJob?.cancel()
+        idleStopJob = null
+    }
+
+    private fun hasResumablePlaybackNotification(): Boolean {
+        val state = player.playbackState
+        return player.mediaItemCount > 0 &&
+            player.currentMediaItem != null &&
+            state != Player.STATE_IDLE &&
+            state != Player.STATE_ENDED
+    }
+
+    private fun stopForegroundAndSelf() {
+        cancelIdleStop()
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                stopForeground(true)
+            }
+        }
+        hasCalledStartForeground = false
+        stopSelf()
+    }
+
+    private fun scheduleStopIfIdle() {
+        if (hasBoundClients) return
+        if (hasResumablePlaybackNotification()) {
+            cancelIdleStop()
+            promoteToStartedService()
+            ensureStartedAsForeground()
+            return
+        }
+        val togetherIdle = togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle
+        if (!togetherIdle) {
+            cancelIdleStop()
+            return
+        }
+
+        val state = player.playbackState
+        val delayMs =
+            when (state) {
+                Player.STATE_ENDED, Player.STATE_IDLE -> 30_000L
+                else -> 60_000L
+            }
+
+        cancelIdleStop()
+        idleStopJob =
+            scope.launch {
+                delay(delayMs)
+                if (hasBoundClients) return@launch
+                if (hasResumablePlaybackNotification()) return@launch
+                if (togetherSessionState.value !is moe.rukamori.archivetune.together.TogetherSessionState.Idle) return@launch
+                stopForegroundAndSelf()
+            }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        equalizerPlaybackController.attach(this)
+        ensureScopesActive()
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val nm = getSystemService(NotificationManager::class.java)
+                nm?.createNotificationChannel(
+                    NotificationChannel(
+                        CHANNEL_ID,
+                        getString(R.string.music_player),
+                        NotificationManager.IMPORTANCE_LOW,
+                    ),
+                )
+                nm?.createNotificationChannel(
+                    NotificationChannel(
+                        TOGETHER_NOTIFICATION_CHANNEL_ID,
+                        getString(R.string.music_together),
+                        NotificationManager.IMPORTANCE_DEFAULT,
+                    ),
+                )
+            }
+        } catch (e: Exception) {
+            reportException(e)
+        }
+
+        localPlayer =
+            ExoPlayer
+                .Builder(this)
+                .setMediaSourceFactory(createMediaSourceFactory())
+                .setRenderersFactory(createRenderersFactory())
+                .setLoadControl(createPrimaryLoadControl())
+                .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
+                .setHandleAudioBecomingNoisy(true)
+                .setWakeMode(C.WAKE_MODE_NETWORK)
+                .setAudioAttributes(
+                    playbackAudioAttributes(),
+                    false,
+                ).setSeekBackIncrementMs(5000)
+                .setSeekForwardIncrementMs(5000)
+                .setDeviceVolumeControlEnabled(true)
+                .build()
+                .apply {
+                    addAnalyticsListener(PlaybackStatsListener(false, this@MusicService))
+                    addListener(audioEffectPlayerListener)
+                    setOffloadEnabled(false)
+                }
+        castPlaybackRepository = CastPlaybackRepositoryLocator.get(this)
+        player =
+            castPlaybackRepository
+                .createPlayer(
+                    context = this,
+                    localPlayer = localPlayer,
+                    mediaItemResolver =
+                        object : CastMediaItemResolver {
+                            override fun resolveForCast(mediaItem: MediaItem): MediaItem =
+                                resolveMediaItemForCast(mediaItem)
+
+                            override fun mimeTypeForCast(mediaItem: MediaItem): String? =
+                                mediaItem.localConfiguration?.mimeType
+                                    ?.toCastMimeType()
+                                    ?: mediaItem.localConfiguration
+                                        ?.customCacheKey
+                                        ?.let(castMimeTypeCache::get)
+                                    ?: castMimeTypeCache.get(mediaItem.mediaId)
+                        },
+                ).apply {
+                    addListener(this@MusicService)
+                    sleepTimer = SleepTimer(scope, this, this@MusicService)
+                    addListener(sleepTimer)
+                }
+        sponsorBlockPlaybackController.attach(player, scope)
+        playerInitialized.value = true
+        observePlaybackPreloadConfiguration()
+            .collect(scope) { configuration ->
+                playbackPreloadConfiguration = configuration
+                updateNextStreamPreload()
+            }
+        database
+            .blockedArtistIds()
+            .map { ids -> ids.toSet() }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.IO)
+            .collect(scope) { updatedBlockedArtistIds ->
+                blockedArtistIds = updatedBlockedArtistIds
+                removeBlockedArtistItems(updatedBlockedArtistIds)
+            }
+        dataStore.data
+            .map { preferences -> preferences[HideVideoKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { shouldHideMusicVideos ->
+                hideMusicVideos = shouldHideMusicVideos
+                if (shouldHideMusicVideos) {
+                    removeMusicVideoItems()
+                }
+            }
+        widgetUpdater =
+            MusicServiceWidgetUpdater(
+                service = this,
+                player = player,
+                scope = scope,
+                loadWidgetInsights = loadWidgetInsightsUseCase,
+            )
+
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioOutputResolver = AudioOutputResolver(audioManager)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            audioManager.setAllowedCapturePolicy(android.media.AudioAttributes.ALLOW_CAPTURE_BY_ALL)
+        }
+        wakeLock =
+            (getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ArchiveTune:Playback")
+                .also { it.setReferenceCounted(false) }
+        setupAudioFocusRequest()
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, android.os.Handler(mainLooper))
+        audioDeviceCallbackRegistered = true
+        lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
+        audioOutputResolver.refresh()
+
+        val screenOffFilter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        val screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
+                scope.launch {
+                    val preferences = dataStore.data.first()
+                    val aodEnabled = preferences[AodModeEnabledKey] ?: false
+                    val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
+                    if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
+
+                    val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    val aodLaunchWl = pm?.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "ArchiveTune:AodAutoStart",
+                    )
+                    aodLaunchWl?.acquire(3000L)
+
+                    val aodIntent = Intent(this@MusicService, MainActivity::class.java).apply {
+                        action = ACTION_AOD_MODE
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    try {
+                        startActivity(aodIntent)
+                    } finally {
+                        if (aodLaunchWl?.isHeld == true) aodLaunchWl.release()
+                    }
+                }
+            }
+        }
+        aodScreenOffReceiver = screenReceiver
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenReceiver, screenOffFilter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(screenReceiver, screenOffFilter)
+        }
+
+        mediaLibrarySessionCallback.apply {
+            toggleLike = ::toggleLike
+            toggleStartRadio = ::toggleStartRadio
+            toggleLibrary = ::toggleLibrary
+        }
+        mediaSession =
+            MediaLibrarySession
+                .Builder(this, player, mediaLibrarySessionCallback)
+                .setSessionActivity(
+                    PendingIntent.getActivity(
+                        this,
+                        0,
+                        Intent(this, MainActivity::class.java),
+                        PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                ).setBitmapLoader(CoilBitmapLoader(this, scope))
+                .build()
+        setMediaNotificationProvider(
+            ArchiveTuneMediaNotificationProvider(
+                context = this,
+                smallIconResId = R.drawable.small_icon,
+            ),
+        )
+        addSession(mediaSession)
+
+        updateNotification()
+        player.repeatMode = REPEAT_MODE_OFF
+
+        scope.launch(Dispatchers.IO) {
+            val prefs = dataStore.data.first()
+            val repeatMode = prefs[RepeatModeKey] ?: REPEAT_MODE_OFF
+            val volume = (prefs[PlayerVolumeKey] ?: 1f).coerceIn(0f, 1f)
+            val offload = prefs[AudioOffload] ?: false
+            val crossfadePrefEnabled = prefs[CrossfadeEnabledKey] ?: false
+            withContext(Dispatchers.Main) {
+                player.repeatMode = repeatMode
+                playerVolume.value = volume
+                updateAudioOffload(offload && !crossfadePrefEnabled)
+            }
+        }
+
+        connectivityManager = getSystemService()!!
+        connectivityObserver = NetworkConnectivityObserver(this)
+
+        scope.launch {
+            connectivityObserver.networkStatus.collect { isConnected ->
+                isNetworkConnected.value = isConnected
+                if (isConnected && waitingForNetworkConnection.value) {
+                    waitingForNetworkConnection.value = false
+                    if (player.currentMediaItem != null && player.playWhenReady &&
+                        player.playbackState == Player.STATE_IDLE
+                    ) {
+                        if (!preparePlaybackFromSnapshot(capturePlaybackRecoverySnapshot())) {
+                            player.prepare()
+                        }
+                        player.play()
+                    }
+                }
+            }
+        }
+
+        combine(playerVolume, normalizeFactor, audioFocusVolumeFactor) { playerVolume, normalizeFactor, audioFocusVolumeFactor ->
+            calculateEffectivePlayerVolume(playerVolume, normalizeFactor, audioFocusVolumeFactor)
+        }.collectLatest(scope) { finalVolume ->
+            updateEffectiveVolume(finalVolume)
+        }
+
+        playerVolume.debounce(1000).collect(ioScope) { volume ->
+            dataStore.edit { settings ->
+                settings[PlayerVolumeKey] = volume
+            }
+        }
+
+        currentSong.debounce(300).collect(scope) { song ->
+            updateNotification()
+            requestDiscordSync(
+                reason =
+                    if (song == null) {
+                        "current_song_cleared"
+                    } else {
+                        "current_song_changed"
+                    },
+            )
+            if (song != null && player.playWhenReady && player.playbackState == Player.STATE_READY) {
+                ensurePresenceManager()
+            }
+        }
+
+        combine(
+            currentMediaMetadata.distinctUntilChangedBy { it?.id },
+            dataStore.data.map { it[ShowLyricsKey] ?: false }.distinctUntilChanged(),
+        ) { mediaMetadata, showLyrics ->
+            mediaMetadata to showLyrics
+        }.collectLatest(ioScope) { (mediaMetadata, showLyrics) ->
+            if (showLyrics && mediaMetadata != null && !mediaMetadata.isPodcast && database
+                    .lyrics(mediaMetadata.id)
+                    .first() == null
+            ) {
+                val lyrics = lyricsHelper.getLyrics(mediaMetadata)
+                database.query {
+                    insertLyricsIfAbsent(
+                        id = mediaMetadata.id,
+                        lyrics = lyrics,
+                    )
+                }
+            }
+        }
+
+        dataStore.data
+            .map { it[SkipSilenceKey] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) {
+                localPlayer.skipSilenceEnabled = it
+                secondaryCrossfadePlayer?.skipSilenceEnabled = it
+            }
+
+        dataStore.data
+            .map { it[PauseOnDeviceMuteKey] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) { enabled ->
+                pauseOnDeviceMuteEnabled = enabled
+                if (!enabled) {
+                    wasAutoPausedByDeviceMute = false
+                    unregisterMuteRecoveryObserver()
+                } else {
+                    handleDeviceMuteStateChanged()
+                }
+            }
+
+        dataStore.data
+            .map { (it[DeviceMutePlaybackRecoveryVolumeKey] ?: 0).coerceIn(0, 100) }
+            .distinctUntilChanged()
+            .collectLatest(scope) { percent ->
+                deviceMutePlaybackRecoveryVolumePercent = percent
+            }
+
+        dataStore.data
+            .map { it[AutoStartOnBluetoothKey] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) { enabled ->
+                autoStartOnBluetoothEnabled = enabled
+                if (enabled) {
+                    registerBluetoothReceiver()
+                } else {
+                    unregisterBluetoothReceiver()
+                }
+            }
+
+        combine(
+            dataStore.data.map { it[AudioOffload] ?: false },
+            dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
+        ) { offloadEnabled, crossfadeEnabled ->
+            offloadEnabled to crossfadeEnabled
+        }.distinctUntilChanged()
+            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled) ->
+                val effectiveOffload = offloadEnabled && !crossfadeEnabled
+                updateAudioOffload(effectiveOffload)
+                if (effectiveOffload) {
+                    val skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
+                    if (skipSilenceEnabled) {
+                        dataStore.edit { it[SkipSilenceKey] = false }
+                        localPlayer.skipSilenceEnabled = false
+                    }
+                }
+            }
+
+        combine(dataStore.data, togetherSessionState) { prefs, togetherState ->
+            val enabled = prefs[CrossfadeEnabledKey] ?: false
+            val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
+            val gapless = prefs[CrossfadeGaplessKey] ?: true
+            CrossfadeConfig(
+                enabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle,
+                durationSeconds = durationSeconds,
+                gapless = gapless,
+            )
+        }.distinctUntilChanged()
+            .collectLatest(scope) { config ->
+                crossfadeEnabled = config.enabled
+                if (!config.enabled) {
+                    crossfadeSuppressedMediaId = null
+                }
+                crossfadeDurationMs =
+                    (config.durationSeconds.coerceIn(0f, 10f) * 1000f)
+                        .roundToLong()
+                        .coerceAtLeast(0L)
+                crossfadeGapless = config.gapless
+                if (crossfadeEnabled && crossfadeDurationMs > 0L) {
+                    scheduleCrossfade()
+                } else {
+                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                }
+            }
+
+        dataStore.data
+            .map { it[CrossfadeManualSelectionKey] ?: true }
+            .distinctUntilChanged()
+            .collectLatest(scope) { enabled ->
+                crossfadeManualSelectionEnabled = enabled
+            }
+
+        dataStore.data
+            .map { it[WakelockKey] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) { enabled ->
+                wakelockEnabled = enabled
+                updateWakeLock()
+            }
+
+        dataStore.data
+            .map(::readEqSettingsFromPrefs)
+            .distinctUntilChanged()
+            .collectLatest(scope) { settings ->
+                desiredEqSettings.value = settings
+                applyEqSettingsToEffects(settings)
+            }
+
+        combine(
+            currentMediaMetadata
+                .map { it?.id }
+                .distinctUntilChanged(),
+            currentFormat,
+            dataStore.data
+                .map { it[AudioNormalizationKey] ?: true }
+                .distinctUntilChanged(),
+        ) { mediaId, format, normalizeAudio ->
+            normalizeAudio to resolveAudioNormalizationFactor(mediaId, format, normalizeAudio)
+        }.distinctUntilChanged()
+            .collectLatest(scope) { (normalizeAudio, factor) ->
+                audioNormalizationEnabled = normalizeAudio
+                normalizeFactor.value = factor
+            }
+
+        dataStore.data
+            .map { it[DiscordTokenKey] to (it[EnableDiscordRPCKey] ?: true) }
+            .debounce(300)
+            .distinctUntilChanged()
+            .collectLatest(scope) { (key, enabled) ->
+                requestDiscordSync(
+                    reason =
+                        when {
+                            !enabled -> "discord_rpc_disabled"
+                            key.isNullOrBlank() -> "discord_token_missing"
+                            else -> "discord_token_or_toggle_changed"
+                        },
+                    force = !enabled || key.isNullOrBlank(),
+                )
+                if (!key.isNullOrBlank() && enabled) {
+                    if (player.playbackState == Player.STATE_READY && player.playWhenReady) {
+                        currentSong.value?.let {
+                            ensurePresenceManager()
+                        }
+                    }
+                }
+            }
+
+        dataStore.data
+            .map { prefs ->
+                (prefs[SmartTrimmerKey] ?: false) to (prefs[MaxSongCacheSizeKey] ?: 1024)
+            }.debounce(300)
+            .distinctUntilChanged()
+            .collectLatest(ioScope) { (enabled, maxSongCacheSizeMb) ->
+                if (!enabled) return@collectLatest
+                if (maxSongCacheSizeMb <= 0 || maxSongCacheSizeMb == -1) return@collectLatest
+                val bytesPerMb = 1024L * 1024L
+                val safeSizeMb = maxSongCacheSizeMb.toLong().coerceAtMost(Long.MAX_VALUE / bytesPerMb)
+                val limitBytes = safeSizeMb * bytesPerMb
+                trimPlayerCacheToBytes(limitBytes)
+            }
+
+        dataStore.data
+            .map { preferences ->
+                val serviceConfig = LastFmServiceConfig.fromPreferences(preferences)
+                val enabled = preferences[EnableLastFMScrobblingKey] ?: false
+                val hasSession = !preferences[LastFMSessionKey].isNullOrBlank()
+                val serviceConfigured = serviceConfig.initialized
+                val historyPaused = preferences[PauseListenHistoryKey] ?: false
+                enabled && hasSession && serviceConfigured && !historyPaused
+            }.debounce(300)
+            .distinctUntilChanged()
+            .collect(scope) { shouldEnable ->
+                if (shouldEnable && scrobbleManager == null) {
+                    val delayPercent = dataStore.get(ScrobbleDelayPercentKey, LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT)
+                    val minSongDuration = dataStore.get(ScrobbleMinSongDurationKey, LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION)
+                    val delaySeconds = dataStore.get(ScrobbleDelaySecondsKey, LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS)
+
+                    scrobbleManager =
+                        moe.rukamori.archivetune.utils.ScrobbleManager(
+                            ioScope,
+                            minSongDuration = minSongDuration,
+                            scrobbleDelayPercent = delayPercent,
+                            scrobbleDelaySeconds = delaySeconds,
+                        )
+                    scrobbleManager?.useNowPlaying = dataStore.get(LastFMUseNowPlaying, false)
+                } else if (!shouldEnable && scrobbleManager != null) {
+                    scrobbleManager?.destroy()
+                    scrobbleManager = null
+                }
+            }
+
+        dataStore.data
+            .map { it[LastFMUseNowPlaying] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) {
+                scrobbleManager?.useNowPlaying = it
+            }
+
+        dataStore.data
+            .map { prefs ->
+                Triple(
+                    prefs[ScrobbleDelayPercentKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT,
+                    prefs[ScrobbleMinSongDurationKey] ?: LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION,
+                    prefs[ScrobbleDelaySecondsKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS,
+                )
+            }.distinctUntilChanged()
+            .collect(scope) { (delayPercent, minSongDuration, delaySeconds) ->
+                scrobbleManager?.let {
+                    it.scrobbleDelayPercent = delayPercent
+                    it.minSongDuration = minSongDuration
+                    it.scrobbleDelaySeconds = delaySeconds
+                }
+            }
+
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                if (dataStore.get(PersistentQueueKey, true)) {
+                    playerInitialized.first { it }
+                    val persistedQueue = readPersistentObject<PersistQueue>(PERSISTENT_QUEUE_FILE)
+                    val persistedPlayerState = readPersistentObject<PersistPlayerState>(PERSISTENT_PLAYER_STATE_FILE)
+
+                    if (persistedQueue != null || persistedPlayerState != null) {
+                        isRestoringPersistentState = true
+                    }
+
+                    var restoredQueue = false
+                    try {
+                        persistedQueue?.let { queue ->
+                            restorePersistentQueue(queue)
+                            restoredQueue = true
+                        }
+                        persistedPlayerState?.let { playerState ->
+                            restorePersistentPlayerState(playerState, restoredQueue)
+                        }
+                    } finally {
+                        isRestoringPersistentState = false
+                    }
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.tag(TAG).w(error, "Failed to restore persisted queue, clearing data")
+                isRestoringPersistentState = false
+                cancelRestoredQueueHydration()
+                clearPersistedQueueFiles()
+            }
+            withContext(Dispatchers.Main) {
+                queueRestoreCompleted.value = true
+            }
+        }
+
+        scope.launch {
+            while (isActive) {
+                delay(if (player.isPlaying) 10.seconds else 30.seconds)
+                val shouldSave = withContext(Dispatchers.IO) { dataStore.get(PersistentQueueKey, true) }
+                if (shouldSave && player.mediaItemCount > 0) {
+                    saveQueueToDisk()
+                }
+            }
+        }
+    }
+
+    private fun ensureScopesActive() {
+        if (!scopeJob.isActive) {
+            scopeJob = SupervisorJob()
+        }
+        if (!scope.isActive) {
+            scope = CoroutineScope(Dispatchers.Main + scopeJob)
+        }
+        if (!ioScope.isActive) {
+            ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
+        }
+        startDiscordSyncWorker()
+    }
+
+    private fun startDiscordSyncWorker() {
+        if (discordSyncWorkerJob?.isActive == true) return
+        discordSyncWorkerJob =
+            scope.launch(Dispatchers.IO) {
+                for (request in discordSyncRequests) {
+                    try {
+                        syncDiscordStateInternal(request)
+                    } catch (_: StaleDiscordSyncException) {
+                        Timber.tag(DISCORD_SYNC_TAG).d(
+                            "stale sync aborted epoch=%d reason=%s",
+                            request.epoch,
+                            request.reason,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Timber.tag(DISCORD_SYNC_TAG).e(
+                            error,
+                            "sync failed epoch=%d reason=%s",
+                            request.epoch,
+                            request.reason,
+                        )
+                    }
+                }
+            }
+    }
+
+    private fun requestDiscordSync(
+        reason: String,
+        force: Boolean = false,
+    ) {
+        val request =
+            DiscordSyncRequest(
+                epoch = discordSyncEpoch.incrementAndGet(),
+                reason = reason,
+                force = force,
+            )
+        if (discordSyncRequests.trySend(request).isFailure) {
+            Timber.tag(DISCORD_SYNC_TAG).w(
+                "failed to enqueue sync epoch=%d reason=%s",
+                request.epoch,
+                request.reason,
+            )
+        }
+    }
+
+    fun forceDiscordSync(reason: String) {
+        requestDiscordSync(
+            reason = reason,
+            force = true,
+        )
+    }
+
+    private fun ensureDiscordSyncFresh(epoch: Long) {
+        if (epoch != discordSyncEpoch.get()) {
+            throw StaleDiscordSyncException()
+        }
+    }
+
+    private fun updateActiveDiscordHoldState(nextHoldState: ActiveHoldState?) {
+        val previousHoldState = activeDiscordHoldState
+        activeDiscordHoldState = nextHoldState
+        Timber.tag(DISCORD_SYNC_TAG).d(
+            "hold state transition previous=%s next=%s",
+            previousHoldState,
+            nextHoldState,
+        )
+        reconcileDiscordHoldTimeoutJob(previousHoldState, nextHoldState)
+    }
+
+    private fun reconcileDiscordHoldTimeoutJob(
+        previousHoldState: ActiveHoldState?,
+        nextHoldState: ActiveHoldState?,
+    ) {
+        if (previousHoldState === nextHoldState) {
+            Timber.tag(DISCORD_SYNC_TAG).v("hold timeout job unchanged for holdState=%s", nextHoldState)
+            return
+        }
+
+        activeDiscordHoldTimeoutJob?.cancel()
+        activeDiscordHoldTimeoutJob = null
+
+        if (nextHoldState == null) {
+            Timber.tag(DISCORD_SYNC_TAG).d("no active hold state, no timeout job scheduled")
+            return
+        }
+
+        Timber.tag(DISCORD_SYNC_TAG).d(
+            "scheduling hold timeout job state=%s timeoutMs=%d",
+            nextHoldState,
+            DISCORD_HOLD_TIMEOUT_MS,
+        )
+        activeDiscordHoldTimeoutJob =
+            scope.launch {
+                delay(DISCORD_HOLD_TIMEOUT_MS)
+                Timber.tag(DISCORD_SYNC_TAG).d(
+                    "hold timeout fired state=%s -> enqueue resync",
+                    nextHoldState,
+                )
+                requestDiscordSync(
+                    reason = "hold_timeout_check",
+                    force = true,
+                )
+            }
+    }
+
+    private fun clearDiscordHoldState() {
+        if (activeDiscordHoldState != null) {
+            Timber.tag(DISCORD_SYNC_TAG).d("clearing active hold state=%s", activeDiscordHoldState)
+        }
+        updateActiveDiscordHoldState(null)
+    }
+
+    private fun markLastAppliedVisiblePresence(visibleDecision: DiscordPresenceDecision.Visible) {
+        lastAppliedVisiblePresence =
+            LastAppliedVisiblePresence(
+                songId = visibleDecision.songId,
+                mode = visibleDecision.mode,
+                appliedAtMs = System.currentTimeMillis(),
+            )
+        Timber.tag(DISCORD_SYNC_TAG).d(
+            "marked last applied visible presence songId=%s mode=%s",
+            visibleDecision.songId,
+            visibleDecision.mode,
+        )
+    }
+
+    private suspend fun addPendingDiscordRefreshWaiter(waiter: CompletableDeferred<Boolean>) {
+        discordRefreshWaitersMutex.withLock {
+            pendingDiscordRefreshWaiters += waiter
+        }
+    }
+
+    private suspend fun takePendingDiscordRefreshWaiters(): List<CompletableDeferred<Boolean>> =
+        discordRefreshWaitersMutex.withLock {
+            val snapshot = pendingDiscordRefreshWaiters.toList()
+            pendingDiscordRefreshWaiters.removeAll(snapshot)
+            snapshot
+        }
+
+    private suspend fun requeueDiscordRefreshWaiters(waiters: List<CompletableDeferred<Boolean>>) {
+        if (waiters.isEmpty()) return
+        discordRefreshWaitersMutex.withLock {
+            waiters.forEach { waiter ->
+                if (!waiter.isCompleted && !waiter.isCancelled) {
+                    pendingDiscordRefreshWaiters += waiter
+                }
+            }
+        }
+    }
+
+    private fun completeDiscordRefreshWaiters(
+        waiters: List<CompletableDeferred<Boolean>>,
+        result: Boolean,
+    ) {
+        waiters.forEach { waiter ->
+            if (!waiter.isCompleted && !waiter.isCancelled) {
+                waiter.complete(result)
+            }
+        }
+    }
+
+    suspend fun refreshDiscordNow(): Boolean {
+        val waiter = CompletableDeferred<Boolean>()
+        addPendingDiscordRefreshWaiter(waiter)
+        requestDiscordSync(
+            reason = "manual_refresh",
+            force = true,
+        )
+        return try {
+            withTimeout(15_000L) { waiter.await() }
+        } catch (error: CancellationException) {
+            false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private suspend fun syncDiscordStateInternal(request: DiscordSyncRequest) {
+        val refreshWaiters = takePendingDiscordRefreshWaiters()
+        try {
+            ensureDiscordSyncFresh(request.epoch)
+
+            val enabled = dataStore.get(EnableDiscordRPCKey, true)
+            val token = dataStore.get(DiscordTokenKey, "")
+            val hasToken = token.isNotBlank()
+            val showWhenPaused = dataStore.get(DiscordShowWhenPausedKey, false)
+            val (song, isPlaying, playWhenReady, playbackState) =
+                withContext(Dispatchers.Main.immediate) {
+                    Quadruple(
+                        currentPresenceSong(),
+                        player.isPlaying,
+                        player.playWhenReady,
+                        player.playbackState,
+                    )
+                }
+
+            if (playWhenReady && pausedPresenceGate != PausedPresenceGate.FollowPreference) {
+                pausedPresenceGate = PausedPresenceGate.FollowPreference
+                Timber.tag(DISCORD_SYNC_TAG).d(
+                    "sync epoch=%d reason=%s reset paused gate because playback intent resumed",
+                    request.epoch,
+                    request.reason,
+                )
+            }
+
+            val inputs =
+                DiscordPresenceInputs(
+                    enabled = enabled,
+                    hasToken = hasToken,
+                    song = song,
+                    isPlaying = isPlaying,
+                    showWhenPaused = showWhenPaused,
+                    pausedPresenceGate = pausedPresenceGate,
+                    serviceStopping = discordServiceStopping,
+                    playWhenReady = playWhenReady,
+                    playbackState = playbackState,
+                )
+            val holdContext =
+                DiscordHoldContext(
+                    nowMs = System.currentTimeMillis(),
+                    activeHoldState = activeDiscordHoldState,
+                    lastAppliedVisiblePresence = lastAppliedVisiblePresence,
+                    holdTimeoutMs = DISCORD_HOLD_TIMEOUT_MS,
+                )
+            val semanticState = derivePlaybackSemanticState(inputs)
+            val rawDecision = deriveRawDiscordPresenceDecision(inputs, semanticState)
+            val resolution = resolveDiscordPresenceDecision(rawDecision, holdContext)
+
+            val decision = resolution.decision
+            ensureDiscordSyncFresh(request.epoch)
+
+            val effectiveForce = request.force || refreshWaiters.isNotEmpty()
+            if (!effectiveForce && decision == lastDiscordPresenceDecision) {
+                Timber.tag(DISCORD_SYNC_TAG).v(
+                    "sync epoch=%d reason=%s unchanged decision=%s",
+                    request.epoch,
+                    request.reason,
+                    decision,
+                )
+                completeDiscordRefreshWaiters(refreshWaiters, true)
+                return
+            }
+
+            Timber.tag(DISCORD_SYNC_TAG).d(
+                "sync epoch=%d reason=%s force=%s effectiveForce=%s songId=%s playWhenReady=%s playbackState=%d isPlaying=%s semantic=%s raw=%s decision=%s holdState=%s lastAppliedVisible=%s refreshWaiters=%d",
+                request.epoch,
+                request.reason,
+                request.force,
+                effectiveForce,
+                song?.song?.id,
+                playWhenReady,
+                playbackState,
+                isPlaying,
+                semanticState,
+                rawDecision,
+                decision,
+                resolution.nextHoldState,
+                lastAppliedVisiblePresence,
+                refreshWaiters.size,
+            )
+
+            val applied =
+                applyDiscordPresenceDecision(
+                    request = request,
+                    resolution = resolution,
+                    token = token,
+                    song = song,
+                )
+
+            if (applied) {
+                lastDiscordPresenceDecision = decision
+            }
+            if (decision is DiscordPresenceDecision.Hold) {
+                requeueDiscordRefreshWaiters(refreshWaiters)
+                Timber.tag(DISCORD_SYNC_TAG).d(
+                    "refresh waiters requeued because decision is Hold count=%d",
+                    refreshWaiters.size,
+                )
+            } else {
+                completeDiscordRefreshWaiters(refreshWaiters, applied)
+            }
+        } catch (_: StaleDiscordSyncException) {
+            requeueDiscordRefreshWaiters(refreshWaiters)
+            Timber.tag(DISCORD_SYNC_TAG).d(
+                "stale sync aborted epoch=%d reason=%s and refresh waiters requeued=%d",
+                request.epoch,
+                request.reason,
+                refreshWaiters.size,
+            )
+        } catch (error: CancellationException) {
+            completeDiscordRefreshWaiters(refreshWaiters, false)
+            throw error
+        } catch (error: Exception) {
+            Timber.tag(DISCORD_SYNC_TAG).e(error, "syncDiscordStateInternal failed epoch=%d reason=%s", request.epoch, request.reason)
+            completeDiscordRefreshWaiters(refreshWaiters, false)
+            throw error
+        }
+    }
+
+    private suspend fun applyDiscordPresenceDecision(
+        request: DiscordSyncRequest,
+        resolution: DiscordPresenceResolution,
+        token: String,
+        song: Song?,
+    ): Boolean {
+        ensureDiscordSyncFresh(request.epoch)
+
+        val decision = resolution.decision
+        Timber.tag(DISCORD_SYNC_TAG).d(
+            "apply decision epoch=%d decision=%s tokenPresent=%s songId=%s",
+            request.epoch,
+            decision,
+            token.isNotBlank() || !lastPresenceToken.isNullOrBlank(),
+            song?.song?.id,
+        )
+        return when (decision) {
+            is DiscordPresenceDecision.Hidden -> {
+                clearDiscordHoldState()
+                when (decision.reason) {
+                    HiddenReason.NoSong,
+                    HiddenReason.PausedByPreference,
+                    HiddenReason.PausedByNotificationDismiss,
+                    HiddenReason.NoStablePlaybackYet,
+                    HiddenReason.PlaybackStalled,
+                    -> {
+                        ensureDiscordSyncFresh(request.epoch)
+                        val cleared =
+                            DiscordPresenceManager.clearNow(
+                                context = this@MusicService,
+                                token = token.takeIf { it.isNotBlank() } ?: lastPresenceToken,
+                            )
+                        if (!cleared) {
+                            Timber.tag(DISCORD_SYNC_TAG).d(
+                                "clear skipped or failed for hidden reason=%s",
+                                decision.reason,
+                            )
+                        }
+                        cleared
+                    }
+
+                    HiddenReason.Disabled -> {
+                        ensureDiscordSyncFresh(request.epoch)
+                        DiscordPresenceManager.stop(clearActivity = false)
+                        lastPresenceToken = null
+                        true
+                    }
+
+                    HiddenReason.ServiceStopping -> {
+                        val clearToken = token.takeIf { it.isNotBlank() } ?: lastPresenceToken
+                        ensureDiscordSyncFresh(request.epoch)
+                        val cleared =
+                            DiscordPresenceManager.clearNow(
+                                context = this@MusicService,
+                                token = clearToken,
+                            )
+                        if (!cleared) {
+                            Timber.tag(DISCORD_SYNC_TAG).d(
+                                "terminal clear skipped or failed for hidden reason=%s",
+                                decision.reason,
+                            )
+                        }
+                        ensureDiscordSyncFresh(request.epoch)
+                        DiscordPresenceManager.stop()
+                        lastPresenceToken = null
+                        true
+                    }
+
+                    HiddenReason.NoToken -> {
+                        val clearToken = token.takeIf { it.isNotBlank() } ?: lastPresenceToken
+                        ensureDiscordSyncFresh(request.epoch)
+                        if (clearToken.isNullOrBlank()) {
+                            Timber.tag(DISCORD_SYNC_TAG).v(
+                                "no token available for terminal clear; stopping manager only",
+                            )
+                        } else {
+                            val cleared =
+                                DiscordPresenceManager.clearNow(
+                                    context = this@MusicService,
+                                    token = clearToken,
+                                )
+                            if (!cleared) {
+                                Timber.tag(DISCORD_SYNC_TAG).d(
+                                    "terminal clear skipped or failed for hidden reason=%s",
+                                    decision.reason,
+                                )
+                            }
+                        }
+                        ensureDiscordSyncFresh(request.epoch)
+                        DiscordPresenceManager.stop()
+                        lastPresenceToken = null
+                        true
+                    }
+                }
+            }
+
+            is DiscordPresenceDecision.Visible -> {
+                clearDiscordHoldState()
+                ensureDiscordSyncFresh(request.epoch)
+                val snapshot =
+                    buildDiscordPresenceSnapshot(
+                        song = song,
+                        mode = decision.mode,
+                    ) ?: run {
+                        requestDiscordSync(
+                            reason = "playback_changed_before_presence_apply",
+                            force = true,
+                        )
+                        return false
+                    }
+                ensureDiscordSyncFresh(request.epoch)
+                val updated =
+                    DiscordPresenceManager.updateNow(
+                        context = this@MusicService,
+                        token = token,
+                        song = snapshot.song,
+                        positionMs = snapshot.positionMs,
+                        isPaused = snapshot.isPaused,
+                        isMusicVideo = currentMediaMetadata.value?.isMusicVideo ?: false,
+                    )
+                if (!updated) {
+                    Timber.tag(DISCORD_SYNC_TAG).d(
+                        "visible update failed songId=%s paused=%s",
+                        decision.songId,
+                        decision.isPaused,
+                    )
+                    false
+                } else {
+                    if (token.isNotBlank()) {
+                        lastPresenceToken = token
+                    }
+                    markLastAppliedVisiblePresence(decision)
+                    true
+                }
+            }
+
+            is DiscordPresenceDecision.Hold -> {
+                updateActiveDiscordHoldState(resolution.nextHoldState)
+                true
+            }
+        }
+    }
+
+    private suspend fun buildDiscordPresenceSnapshot(
+        song: Song?,
+        mode: PresenceMode,
+    ): DiscordPresenceSnapshot? {
+        val expectedSong = song ?: return null
+        return withContext(Dispatchers.Main.immediate) {
+            val currentSong = currentPresenceSong() ?: return@withContext null
+            if (currentSong.song.id != expectedSong.song.id) {
+                return@withContext null
+            }
+
+            val isPaused =
+                when {
+                    !player.playWhenReady -> true
+                    player.isPlaying -> false
+                    else -> return@withContext null
+                }
+            if (isPaused != (mode == PresenceMode.Paused)) {
+                return@withContext null
+            }
+
+            DiscordPresenceSnapshot(
+                song = currentSong,
+                positionMs = player.currentPosition,
+                isPaused = isPaused,
+            )
+        }
+    }
+
+    private fun cancelRestoredQueueHydration() {
+        restoredQueueHydrationGeneration.incrementAndGet()
+        restoredQueueBackfillJob?.cancel()
+        restoredQueueBackfillJob = null
+        isHydratingRestoredQueue = false
+    }
+
+    private suspend fun Queue.Status.filterPlaybackContent(
+        hideExplicit: Boolean,
+        hideVideo: Boolean,
+    ): Queue.Status =
+        filterExplicit(hideExplicit)
+            .filterVideo(hideVideo)
+            .filterBlockedArtists(loadBlockedArtistIds())
+
+    private suspend fun List<MediaItem>.filterPlaybackContent(
+        hideExplicit: Boolean,
+        hideVideo: Boolean,
+    ): List<MediaItem> =
+        filterExplicit(hideExplicit)
+            .filterVideo(hideVideo)
+            .filterBlockedArtists(loadBlockedArtistIds())
+
+    private suspend fun loadBlockedArtistIds(): Set<String> =
+        withContext(Dispatchers.IO) {
+            database.getBlockedArtistIds().toSet()
+        }
+
+    private fun removeBlockedArtistItems(updatedBlockedArtistIds: Set<String>) {
+        if (updatedBlockedArtistIds.isEmpty() || player.mediaItemCount == 0) return
+
+        removeQueueItems { item -> item.hasBlockedArtist(updatedBlockedArtistIds) }
+    }
+
+    private fun removeMusicVideoItems() {
+        removeQueueItems { item -> item.metadata?.isMusicVideo == true }
+    }
+
+    private inline fun removeQueueItems(shouldRemove: (MediaItem) -> Boolean) {
+        if (player.mediaItemCount == 0) return
+
+        var blockedRangeEnd = C.INDEX_UNSET
+        for (index in player.mediaItemCount - 1 downTo 0) {
+            val item = player.getMediaItemAt(index)
+            if (shouldRemove(item)) {
+                autoAddedMediaIds.remove(item.mediaId)
+                if (blockedRangeEnd == C.INDEX_UNSET) {
+                    blockedRangeEnd = index + 1
+                }
+            } else if (blockedRangeEnd != C.INDEX_UNSET) {
+                player.removeMediaItems(index + 1, blockedRangeEnd)
+                blockedRangeEnd = C.INDEX_UNSET
+            }
+        }
+        if (blockedRangeEnd != C.INDEX_UNSET) {
+            player.removeMediaItems(0, blockedRangeEnd)
+        }
+        if (player.mediaItemCount == 0) {
+            cancelInfiniteQueueBootstrap()
+            currentQueue = EmptyQueue
+            queueTitle = null
+        }
+    }
+
+    private suspend fun restorePersistentQueue(persistedQueue: PersistQueue) {
+        cancelRestoredQueueHydration()
+        val hydrationGeneration = restoredQueueHydrationGeneration.incrementAndGet()
+        isHydratingRestoredQueue = true
+
+        val itemQueue = persistedQueue.toQueue()
+        val continuationQueue = persistedQueue.toContinuationQueue()
+        val hideExplicit = dataStore.get(HideExplicitKey, false)
+        val hideVideo = dataStore.get(HideVideoKey, false)
+        val initialStatus =
+            itemQueue
+                .getInitialStatus()
+                .filterPlaybackContent(hideExplicit, hideVideo)
+
+        withContext(Dispatchers.Main) {
+            currentQueue = continuationQueue
+            queueTitle = initialStatus.title
+
+            val items = initialStatus.items
+            if (items.isEmpty()) {
+                if (hydrationGeneration == restoredQueueHydrationGeneration.get()) {
+                    isHydratingRestoredQueue = false
+                }
+                return@withContext
+            }
+
+            val fullIndex = initialStatus.mediaItemIndex.coerceIn(0, items.lastIndex)
+            val windowStart = (fullIndex - 20).coerceAtLeast(0)
+            val windowEnd = (fullIndex + 50).coerceAtMost(items.size)
+
+            val initialChunk = items.subList(windowStart, windowEnd)
+            val relativeIndex = (fullIndex - windowStart).coerceIn(0, initialChunk.lastIndex)
+
+            player.setMediaItems(
+                initialChunk,
+                relativeIndex,
+                initialStatus.position,
+            )
+            player.prepare()
+            player.playWhenReady = false
+            currentMediaMetadata.value = player.currentMetadata
+            updateNotification()
+
+            if (items.size > initialChunk.size) {
+                restoredQueueBackfillJob =
+                    scope.launch(SilentHandler) {
+                        try {
+                            delay(2000)
+                            if (!isActive || player.mediaItemCount == 0) return@launch
+                            if (windowStart > 0) {
+                                player.addMediaItems(0, items.subList(0, windowStart))
+                            }
+                            if (windowEnd < items.size) {
+                                player.addMediaItems(items.subList(windowEnd, items.size))
+                            }
+                        } finally {
+                            if (hydrationGeneration == restoredQueueHydrationGeneration.get()) {
+                                isHydratingRestoredQueue = false
+                                restoredQueueBackfillJob = null
+                                if (isActive && dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
+                                    saveQueueToDisk()
+                                }
+                            }
+                        }
+                    }
+            } else {
+                if (hydrationGeneration == restoredQueueHydrationGeneration.get()) {
+                    isHydratingRestoredQueue = false
+                }
+            }
+        }
+    }
+
+    private suspend fun restorePersistentPlayerState(
+        playerState: PersistPlayerState,
+        restoredQueue: Boolean,
+    ) {
+        withContext(Dispatchers.Main) {
+            player.repeatMode = playerState.repeatMode
+            player.shuffleModeEnabled = playerState.shuffleModeEnabled
+            playerVolume.value = playerState.volume.coerceIn(0f, 1f)
+
+            if (player.mediaItemCount > 0) {
+                val index =
+                    when {
+                        restoredQueue -> {
+                            player.currentMediaItemIndex.coerceIn(0, player.mediaItemCount - 1)
+                        }
+
+                        playerState.currentMediaItemIndex in 0 until player.mediaItemCount -> {
+                            playerState.currentMediaItemIndex
+                        }
+
+                        else -> {
+                            player.currentMediaItemIndex.coerceIn(0, player.mediaItemCount - 1)
+                        }
+                    }
+                player.seekTo(index, playerState.currentPosition.coerceAtLeast(0L))
+            }
+
+            player.playWhenReady = false
+            abandonAudioFocus()
+
+            currentMediaMetadata.value = player.currentMetadata.takeIf { player.mediaItemCount > 0 }
+            updateNotification()
+        }
+    }
+
+    private fun ensurePresenceManager() {
+        if (currentMediaMetadata.value?.isPodcast == true) {
+            requestDiscordSync(reason = "podcast_playback", force = true)
+            return
+        }
+        if (DiscordPresenceManager.isRunning() && lastPresenceToken != null) return
+
+        // Launch in scope to avoid blocking
+        scope.launch {
+            // Don't start if Discord RPC is disabled in settings
+            if (!dataStore.get(EnableDiscordRPCKey, true)) {
+                if (DiscordPresenceManager.isRunning()) {
+                    Timber.tag("MusicService").d("Discord RPC disabled → stopping presence manager")
+                    try {
+                        DiscordPresenceManager.stop()
+                    } catch (_: Exception) {
+                    }
+                    lastPresenceToken = null
+                }
+                return@launch
+            }
+
+            val key: String = dataStore.get(DiscordTokenKey, "")
+            if (key.isNullOrBlank()) {
+                if (DiscordPresenceManager.isRunning()) {
+                    Timber.tag("MusicService").d("No Discord OAuth session -> stopping presence manager")
+                    try {
+                        DiscordPresenceManager.stop()
+                    } catch (_: Exception) {
+                    }
+                    lastPresenceToken = null
+                }
+                return@launch
+            }
+
+            if (DiscordPresenceManager.isRunning() && lastPresenceToken == key) {
+                return@launch
+            }
+
+            try {
+                DiscordPresenceManager.stop()
+                DiscordPresenceManager.start(
+                    context = this@MusicService,
+                    token = key,
+                )
+                DiscordPresenceManager.setOnTransportInvalidated { reason ->
+                    Timber.tag(DISCORD_SYNC_TAG).w(
+                        "transport invalidated reason=%s; requesting forced sync",
+                        reason,
+                    )
+                    requestDiscordSync(
+                        reason = "transport_invalidated:$reason",
+                        force = true,
+                    )
+                }
+                Timber.tag("MusicService").d("Presence manager started")
+                lastPresenceToken = key
+                requestDiscordSync(
+                    reason = "presence_manager_started",
+                    force = true,
+                )
+            } catch (ex: Exception) {
+                Timber.tag("MusicService").e(ex, "Failed to start presence manager")
+            }
+        }
+    }
+
+    private fun setupAudioFocusRequest() {
+        audioFocusRequest =
+            AudioFocusRequest
+                .Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    android.media.AudioAttributes
+                        .Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build(),
+                ).setOnAudioFocusChangeListener { focusChange ->
+                    handleAudioFocusChange(focusChange)
+                }.setAcceptsDelayedFocusGain(true)
+                .build()
+    }
+
+    private fun onAudioOutputDeviceChanged() {
+        if (!::player.isInitialized) return
+        val outputSignature = currentAudioOutputDeviceSignature()
+        if (outputSignature == lastAudioOutputDeviceSignature) return
+        lastAudioOutputDeviceSignature = outputSignature
+        audioOutputResolver.refresh()
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        player.setAudioAttributes(playbackAudioAttributes(), false)
+        audioRouteRecoveryJob?.cancel()
+        audioRouteRecoveryJob =
+            scope.launch {
+                delay(AUDIO_ROUTE_CHANGE_DEBOUNCE_MS)
+                recoverAudioRouteAfterDeviceChange()
+            }
+    }
+
+    private suspend fun recoverAudioRouteAfterDeviceChange() {
+        if (!::player.isInitialized) return
+
+        rebindAudioEffectsAfterRouteChange()
+
+        if (!shouldRebuildPlaybackForAudioRouteChange()) return
+
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastAudioRouteRecoveryRealtimeMs < AUDIO_ROUTE_RECOVERY_MIN_INTERVAL_MS) return
+        lastAudioRouteRecoveryRealtimeMs = now
+
+        val mediaItemIndex = player.currentMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: return
+        val playbackPosition = player.currentPosition.coerceAtLeast(0L)
+        val shouldResumePlayback = player.playWhenReady
+
+        Timber.tag("MusicService").i(
+            "Recovering audio route after output change at index=$mediaItemIndex position=$playbackPosition resume=$shouldResumePlayback",
+        )
+
+        if (shouldResumePlayback && !requestAudioFocus()) {
+            wasPlayingBeforeAudioFocusLoss = true
+            player.playWhenReady = false
+            return
+        }
+
+        player.playWhenReady = false
+        player.prepare()
+        player.seekTo(mediaItemIndex, playbackPosition)
+        delay(AUDIO_ROUTE_RECOVERY_RESUME_DELAY_MS)
+
+        if (
+            shouldResumePlayback &&
+            player.currentMediaItem != null &&
+            player.playbackState != Player.STATE_ENDED &&
+            requestAudioFocus()
+        ) {
+            player.playWhenReady = true
+        }
+    }
+
+    private suspend fun rebindAudioEffectsAfterRouteChange() {
+        if (!isAudioEffectSessionOpened) return
+        closeAudioEffectSession()
+        if (!player.playWhenReady) return
+        delay(AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS)
+        openAudioEffectSession()
+    }
+
+    private fun shouldRebuildPlaybackForAudioRouteChange(): Boolean {
+        if (player.currentMediaItem == null) return false
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
+        return player.playWhenReady || player.playbackState == Player.STATE_BUFFERING
+    }
+
+    private fun currentAudioOutputDeviceSignature(): String =
+        runCatching {
+            audioManager
+                .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                .asSequence()
+                .filter { it.isSink }
+                .sortedWith(
+                    compareBy<AudioDeviceInfo>(
+                        { it.type },
+                        { it.id },
+                        { it.productName?.toString().orEmpty() },
+                    ),
+                ).joinToString(separator = "|") { device ->
+                    "${device.type}:${device.id}:${device.productName?.toString().orEmpty()}"
+                }
+        }.getOrDefault("")
+
+    private fun playbackAudioAttributes(): AudioAttributes =
+        AudioAttributes
+            .Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .setAllowedCapturePolicy(C.ALLOW_CAPTURE_BY_ALL)
+            .build()
+
+    private fun calculateEffectivePlayerVolume(
+        playerVolume: Float,
+        normalizeFactor: Float,
+        audioFocusVolumeFactor: Float,
+    ): Float {
+        val safePlayerVolume = playerVolume.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
+        val safeNormalizeFactor =
+            normalizeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_NORMALIZATION_FACTOR, MAX_AUDIO_NORMALIZATION_FACTOR) ?: 1f
+        val safeAudioFocusVolumeFactor =
+            audioFocusVolumeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_FOCUS_VOLUME_FACTOR, 1f) ?: 1f
+        return (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor).coerceIn(0f, maxSafeGainFactor)
+    }
+
+    private fun currentEffectivePlayerVolume(): Float =
+        calculateEffectivePlayerVolume(playerVolume.value, normalizeFactor.value, audioFocusVolumeFactor.value)
+
+    private fun currentEffectivePlayerVolumeForMediaId(mediaId: String): Float {
+        val targetNormalizeFactor =
+            if (audioNormalizationEnabled) {
+                audioNormalizationFactorCache[mediaId] ?: 1f
+            } else {
+                1f
+            }
+        return calculateEffectivePlayerVolume(playerVolume.value, targetNormalizeFactor, audioFocusVolumeFactor.value)
+    }
+
+    private fun updateEffectiveVolume(finalVolume: Float) {
+        if (!::player.isInitialized || !shouldRampEffectiveVolume(finalVolume)) {
+            applyEffectiveVolumeImmediately(finalVolume)
+            return
+        }
+
+        val startVolume = player.volume.takeIf { it.isFinite() }?.coerceIn(0f, maxSafeGainFactor) ?: finalVolume
+        val targetVolume = finalVolume.coerceIn(0f, maxSafeGainFactor)
+        if (abs(targetVolume - startVolume) <= EFFECTIVE_VOLUME_RAMP_MIN_DELTA) {
+            applyEffectiveVolumeImmediately(targetVolume)
+            return
+        }
+
+        effectiveVolumeRampJob?.cancel()
+        effectiveVolumeRampJob =
+            scope.launch {
+                val durationMs =
+                    if (targetVolume > startVolume) {
+                        EFFECTIVE_VOLUME_RAMP_UP_MS
+                    } else {
+                        EFFECTIVE_VOLUME_RAMP_DOWN_MS
+                    }
+                val startedAtMs = android.os.SystemClock.elapsedRealtime()
+                while (isActive) {
+                    val elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAtMs
+                    val progress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                    val easedProgress = progress * progress * (3f - (2f * progress))
+                    val interpolatedVolume = startVolume + ((targetVolume - startVolume) * easedProgress)
+                    applyEffectiveVolume(interpolatedVolume)
+                    if (progress >= 1f) break
+                    delay(EFFECTIVE_VOLUME_RAMP_FRAME_MS)
+                }
+                applyEffectiveVolume(targetVolume)
+                effectiveVolumeRampJob = null
+            }
+    }
+
+    private fun shouldRampEffectiveVolume(finalVolume: Float): Boolean {
+        if (isCrossfading || crossfadeHandoffInProgress) return false
+        if (!shouldKeepPlaybackAudible()) return false
+        if (!finalVolume.isFinite()) return false
+        if (player.volume <= STUCK_MUTED_VOLUME_EPSILON) return false
+        return true
+    }
+
+    private fun applyEffectiveVolumeImmediately(finalVolume: Float = currentEffectivePlayerVolume()) {
+        effectiveVolumeRampJob?.cancel()
+        effectiveVolumeRampJob = null
+        applyEffectiveVolume(finalVolume)
+    }
+
+    private fun applyEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
+        crossfadeBaseVolume = finalVolume
+        val incomingPlayer = secondaryCrossfadePlayer
+        if (crossfadeHandoffInProgress && incomingPlayer != null) {
+            val handoffBaseVolume =
+                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
+                    ?: finalVolume
+            crossfadeIncomingBaseVolume = handoffBaseVolume
+            applyCrossfadeVolumes(
+                crossfadeHandoffProgress,
+                handoffBaseVolume,
+                handoffBaseVolume,
+                incomingPlayer,
+                localPlayer,
+            )
+            return
+        }
+        if (isCrossfading && incomingPlayer != null) {
+            val incomingBaseVolume =
+                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
+                    ?: finalVolume
+            crossfadeIncomingBaseVolume = incomingBaseVolume
+            applyCrossfadeVolumes(crossfadeProgress, finalVolume, incomingBaseVolume, localPlayer, incomingPlayer)
+            return
+        }
+        if (::player.isInitialized) {
+            player.volume = finalVolume
+        }
+        incomingPlayer?.volume = 0f
+    }
+
+    private fun ensureAudiblePlaybackVolume(reason: String) {
+        if (!::player.isInitialized) return
+        if (isCrossfading || crossfadeHandoffInProgress) return
+        if (!shouldKeepPlaybackAudible()) return
+        if (playerVolume.value <= 0f) return
+
+        val expectedVolume = currentEffectivePlayerVolume()
+        if (expectedVolume <= MIN_AUDIBLE_EFFECTIVE_VOLUME) return
+        if (player.volume > STUCK_MUTED_VOLUME_EPSILON) return
+
+        Timber.tag(TAG).w(
+            "Restoring muted primary player volume during active playback: reason=%s expected=%s actual=%s",
+            reason,
+            expectedVolume,
+            player.volume,
+        )
+        applyEffectiveVolumeImmediately(expectedVolume)
+    }
+
+    private fun updateAudiblePlaybackRecovery() {
+        if (!::player.isInitialized || !shouldKeepPlaybackAudible()) {
+            audiblePlaybackRecoveryJob?.cancel()
+            audiblePlaybackRecoveryJob = null
+            return
+        }
+
+        if (audiblePlaybackRecoveryJob?.isActive == true) return
+        audiblePlaybackRecoveryJob =
+            scope.launch {
+                while (isActive && shouldKeepPlaybackAudible()) {
+                    ensureAudiblePlaybackVolume("watchdog")
+                    delay(AUDIBLE_PLAYBACK_VOLUME_CHECK_MS)
+                }
+                audiblePlaybackRecoveryJob = null
+            }
+    }
+
+    private fun applyCrossfadeVolumes(
+        progress: Float,
+        outgoingBaseVolume: Float,
+        incomingBaseVolume: Float,
+        outgoingPlayer: ExoPlayer,
+        incomingPlayer: ExoPlayer,
+    ) {
+        val gains = equalPowerGains(progress)
+        outgoingPlayer.volume = (outgoingBaseVolume * gains.outgoing).coerceIn(0f, maxSafeGainFactor)
+        incomingPlayer.volume = (incomingBaseVolume * gains.incoming).coerceIn(0f, maxSafeGainFactor)
+    }
+
+
+    /**
+     * Starts a crossfade for an explicit user-triggered next/previous action.
+     * Returns true when the secondary player was prepared and the crossfade job
+     * was scheduled. Caller must not perform an instant seek when this is true.
+     */
+    private enum class CrossfadeSource {
+        SkipNext,
+        SkipPrev,
+        SeekIndex,
+    }
+
+    /**
+     * Unified in-queue crossfade entry point.
+     *
+     * All user-initiated in-queue crossfade sources (skip next, skip previous,
+     * seek to an index already in the queue) funnel through this function so
+     * the guards, logging and secondary-player setup exist in one place.
+     *
+     * Not unified here:
+     *   - Auto crossfade uses scheduleCrossfade() because it must prepare the
+     *     secondary player ahead of time (CROSSFADE_PREPARE_AHEAD_MS).
+     *   - playQueue uses runCrossfade2ManualSelection() because it replaces
+     *     the whole queue mid-fade instead of seeking within the current one.
+     */
+    private fun startInQueueCrossfade(
+        source: CrossfadeSource,
+        targetIndex: Int,
+        allowSameIndex: Boolean = false,
+    ): Boolean {
+        if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
+        if (!::player.isInitialized || !player.playWhenReady) return false
+        if (player.currentMediaItem == null) return false
+        if (targetIndex !in 0 until player.mediaItemCount) return false
+        if (!allowSameIndex && targetIndex == player.currentMediaItemIndex) return false
+
+        val targetItem = player.getMediaItemAt(targetIndex)
+        val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
+        if (target.mediaId.isBlank()) return false
+        if (targetItem.metadata?.isPodcast == true) return false
+        if (player.currentMediaItem?.metadata?.isPodcast == true) return false
+
+        if (prepareSecondaryCrossfadePlayer(target) == null) return false
+
+        val duration = effectiveCrossfadeDuration(player.duration) ?: crossfadeDurationMs
+        if (duration < MIN_CROSSFADE_DURATION_MS) {
+            releaseSecondaryCrossfadePlayer()
+            return false
+        }
+
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        Timber.tag(TAG).d(
+            "startInQueueCrossfade source=%s targetIndex=%d durationMs=%d",
+            source,
+            targetIndex,
+            duration,
+        )
+        startCrossfade(target, duration)
+        return true
+    }
+
+    fun manualSkipToNextWithCrossfade(): Boolean {
+        if (!::player.isInitialized || !player.playWhenReady) return false
+        if (player.currentMediaItem == null) return false
+
+        val repeatCurrent = player.repeatMode == REPEAT_MODE_ONE
+        val targetIndex =
+            if (repeatCurrent) {
+                player.currentMediaItemIndex
+            } else {
+                val next = player.nextMediaItemIndex
+                if (next == C.INDEX_UNSET) return false
+                next
+            }
+
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SkipNext,
+            targetIndex = targetIndex,
+            allowSameIndex = repeatCurrent,
+        )
+    }
+
+    /**
+     * Starts a crossfade for an explicit user-triggered previous action.
+     */
+    fun manualSkipToPreviousWithCrossfade(): Boolean {
+        if (!::player.isInitialized) return false
+        if (!player.playWhenReady || player.currentMediaItem == null) return false
+
+        val currentPosition = player.currentPosition.coerceAtLeast(0L)
+        if (currentPosition > MANUAL_PREVIOUS_RESTART_THRESHOLD_MS) {
+            crossfadeTriggerJob?.cancel()
+            crossfadeTriggerJob = null
+            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            releaseSecondaryCrossfadePlayer()
+            player.seekTo(0L)
+            player.playWhenReady = true
+            return true
+        }
+
+        val previous = player.previousMediaItemIndex
+        if (previous == C.INDEX_UNSET) return false
+
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SkipPrev,
+            targetIndex = previous,
+        )
+    }
+
+    /**
+     * Starts a crossfade for an explicit user-triggered jump to an arbitrary
+     * media item already in the current queue (e.g. tapping a song in the
+     * queue/playlist screen), rather than the adjacent next/previous item.
+     *
+     * Returns true when the secondary player was prepared and the crossfade
+     * job was scheduled. Caller must not perform an instant seek when this
+     * is true.
+     */
+    fun manualSeekToIndexWithCrossfade(targetIndex: Int): Boolean {
+        if (!::player.isInitialized) return false
+        if (targetIndex !in 0 until player.mediaItemCount) return false
+        if (targetIndex == player.currentMediaItemIndex) return false
+
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SeekIndex,
+            targetIndex = targetIndex,
+        )
+    }
+
+    /**
+     * Seek to a media item represented by the UI metadata.
+     *
+     * During an active crossfade the target may still be on the secondary
+     * player, so the UI must not fake the transition with seekToNext()+seekTo().
+     */
+    fun seekToMediaItemPosition(mediaId: String, positionMs: Long): Boolean {
+        if (!::player.isInitialized) return false
+
+        val targetId = mediaId.trim()
+        if (targetId.isEmpty()) return false
+        val targetPosition = positionMs.coerceAtLeast(0L)
+
+        val secondary = secondaryCrossfadePlayer
+        val secondaryTarget = secondaryCrossfadeTarget
+        if (isCrossfading &&
+            secondary != null &&
+            secondaryTarget?.mediaId == targetId
+        ) {
+            secondary.seekTo(targetPosition)
+            if (crossfadePlaybackRequested) {
+                secondary.playWhenReady = true
+            }
+            return true
+        }
+
+        val targetIndex =
+            (0 until player.mediaItemCount).firstOrNull { index ->
+                val item = player.getMediaItemAt(index)
+                item.mediaId == targetId || item.metadata?.id == targetId
+            } ?: return false
+
+        if (targetIndex == player.currentMediaItemIndex) {
+            player.seekTo(targetPosition)
+            return true
+        }
+
+        val shouldPlay = player.playWhenReady
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        releaseSecondaryCrossfadePlayer()
+        player.seekTo(targetIndex, targetPosition)
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+            player.prepare()
+        }
+        player.playWhenReady = shouldPlay
+        return true
+    }
+
+    fun pauseFromSleepTimer() {
+        sleepTimer.clear()
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        releaseSecondaryCrossfadePlayer()
+        player.pause()
+        player.playWhenReady = false
+        localPlayer.pause()
+        localPlayer.playWhenReady = false
+    }
+
+    private fun scheduleCrossfade() {
+        if (!::player.isInitialized) return
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+
+        if (player.currentMetadata?.isPodcast == true) {
+            localPlayer.pauseAtEndOfMediaItems = false
+            releaseSecondaryCrossfadePlayer()
+            return
+        }
+
+        if (isCrossfading) return
+        if (!player.playWhenReady || sleepTimer.pauseWhenSongEnd) {
+            localPlayer.pauseAtEndOfMediaItems = false
+            releaseSecondaryCrossfadePlayer()
+            return
+        }
+
+        val currentMediaId = player.currentMediaItem?.mediaId ?: return
+        if (crossfadeSuppressedMediaId == currentMediaId) {
+            localPlayer.pauseAtEndOfMediaItems = false
+            releaseSecondaryCrossfadePlayer()
+            return
+        }
+        if (crossfadeSuppressedMediaId != null) {
+            crossfadeSuppressedMediaId = null
+        }
+
+        val target = resolveCrossfadeTarget()
+        val duration = player.duration
+        val effectiveDuration = effectiveCrossfadeDuration(duration)
+        if (target == null || effectiveDuration == null) {
+            localPlayer.pauseAtEndOfMediaItems = false
+            releaseSecondaryCrossfadePlayer()
+            return
+        }
+
+        val currentIndex = player.currentMediaItemIndex
+        val triggerAt = duration - effectiveDuration - CROSSFADE_END_GUARD_MS
+
+        crossfadeTriggerJob =
+            scope.launch {
+                var hasPreparedSecondaryPlayer = false
+                while (isActive) {
+                    if (!crossfadeEnabled || isCrossfading) return@launch
+                    if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
+                        return@launch
+                    }
+                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                        return@launch
+                    }
+
+                    val remainingToTrigger = triggerAt - player.currentPosition
+                    if (!hasPreparedSecondaryPlayer && remainingToTrigger <= CROSSFADE_PREPARE_AHEAD_MS) {
+                        prepareSecondaryCrossfadePlayer(target)
+                        hasPreparedSecondaryPlayer = true
+                    }
+                    if (remainingToTrigger <= 0L) {
+                        val adjustedDuration =
+                            (duration - player.currentPosition - CROSSFADE_END_GUARD_MS)
+                                .coerceAtMost(effectiveDuration)
+                        if (adjustedDuration >= MIN_CROSSFADE_DURATION_MS) {
+                            startCrossfade(target, adjustedDuration)
+                        }
+                        return@launch
+                    }
+
+                    val sleepMs =
+                        when {
+                            remainingToTrigger > 5_000L -> 1_000L
+                            remainingToTrigger > 1_000L -> 250L
+                            else -> 50L
+                        }.coerceAtMost(remainingToTrigger).coerceAtLeast(1L)
+                    delay(sleepMs)
+                }
+            }
+    }
+
+    private fun resolveCrossfadeTarget(): CrossfadeTarget? {
+        if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
+        if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex !in 0 until player.mediaItemCount) return null
+
+        val repeatCurrent = player.repeatMode == REPEAT_MODE_ONE
+        val targetIndex = if (repeatCurrent) currentIndex else player.nextMediaItemIndex
+        if (targetIndex == C.INDEX_UNSET || targetIndex !in 0 until player.mediaItemCount) return null
+        if (!repeatCurrent && targetIndex == currentIndex) return null
+
+        val currentItem = player.getMediaItemAt(currentIndex)
+        val targetItem = player.getMediaItemAt(targetIndex)
+        if (currentItem.metadata?.isPodcast == true || targetItem.metadata?.isPodcast == true) return null
+        if (!repeatCurrent && crossfadeGapless && isGaplessAlbumTransition(currentItem, targetItem)) return null
+
+        return CrossfadeTarget(
+            index = targetIndex,
+            mediaId = targetItem.mediaId,
+        )
+    }
+
+    private fun effectiveCrossfadeDuration(duration: Long): Long? {
+        if (duration == C.TIME_UNSET || duration <= 0L) return null
+        val maxDuration = duration - CROSSFADE_END_GUARD_MS
+        if (maxDuration < MIN_CROSSFADE_DURATION_MS) return null
+        return crossfadeDurationMs
+            .coerceAtLeast(MIN_CROSSFADE_DURATION_MS)
+            .coerceAtMost(maxDuration)
+    }
+
+    private fun isGaplessAlbumTransition(
+        currentItem: MediaItem,
+        targetItem: MediaItem,
+    ): Boolean {
+        val currentAlbum =
+            currentItem.metadata
+                ?.album
+                ?.id
+                ?.takeIf { it.isNotBlank() }
+                ?: currentItem.metadata
+                    ?.album
+                    ?.title
+                    ?.takeIf { it.isNotBlank() }
+                ?: currentItem.mediaMetadata.albumTitle
+                    ?.toString()
+                    ?.takeIf { it.isNotBlank() }
+        val targetAlbum =
+            targetItem.metadata
+                ?.album
+                ?.id
+                ?.takeIf { it.isNotBlank() }
+                ?: targetItem.metadata
+                    ?.album
+                    ?.title
+                    ?.takeIf { it.isNotBlank() }
+                ?: targetItem.mediaMetadata.albumTitle
+                    ?.toString()
+                    ?.takeIf { it.isNotBlank() }
+        return currentAlbum != null && currentAlbum == targetAlbum
+    }
+
+    private fun shouldUseCrossfade2ForManualSelection(): Boolean {
+        if (!crossfadeEnabled || !crossfadeManualSelectionEnabled || crossfadeDurationMs <= 0L) return false
+        if (!::player.isInitialized || !::localPlayer.isInitialized) return false
+        if (player !== localPlayer) return false
+        if (player.currentMediaItem == null || !player.playWhenReady) return false
+        if (player.currentMetadata?.isPodcast == true) return false
+        if (isCrossfading || crossfadeHandoffInProgress) return false
+        if (crossfade2ManualJob?.isActive == true) return false
+        return true
+    }
+
+    private fun prepareCrossfade2Incoming(mediaItem: MediaItem): ExoPlayer? {
+        releaseSecondaryCrossfadePlayer()
+        return runCatching {
+            createSecondaryCrossfadePlayer().also { secondary ->
+                secondaryCrossfadePlayer = secondary
+                secondaryCrossfadeTarget = null
+                secondary.setMediaItem(mediaItem)
+                secondary.playbackParameters = player.playbackParameters
+                secondary.volume = 0f
+                secondary.prepare()
+            }
+        }.onFailure { error ->
+            Timber.tag(TAG).w(error, "Crossfade2 incoming preparation failed")
+            releaseSecondaryCrossfadePlayer()
+        }.getOrNull()
+    }
+
+    private suspend fun runCrossfade2ManualSelection(queue: Queue): Boolean {
+        val outgoingMediaId = player.currentMediaItem?.mediaId ?: return false
+        if (!crossfadeEnabled || !crossfadeManualSelectionEnabled || crossfadeDurationMs <= 0L) return false
+        if (!::player.isInitialized || player !== localPlayer) return false
+        if (player.currentMediaItem == null || !player.playWhenReady) return false
+        if (player.currentMetadata?.isPodcast == true) return false
+        if (isCrossfading || crossfadeHandoffInProgress) return false
+
+        val hideExplicit = dataStore.get(HideExplicitKey, false)
+        val hideVideo = dataStore.get(HideVideoKey, false)
+        val initialStatus =
+            withContext(Dispatchers.IO) {
+                queue
+                    .getInitialStatus()
+                    .filterPlaybackContent(hideExplicit, hideVideo)
+            }
+
+        // CROSSFADE2_MANUAL_DIAG_V6
+        Timber.tag(TAG).d(
+            "runCrossfade2ManualSelection: outgoing=%s items=%d targetIndex=%d",
+            outgoingMediaId,
+            initialStatus.items.size,
+            initialStatus.mediaItemIndex,
+        )
+        if (initialStatus.items.isEmpty()) {
+            Timber.tag(TAG).d("runCrossfade2ManualSelection: empty items → return false")
+            return false
+        }
+
+        val targetIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex)
+        val targetItem = initialStatus.items[targetIndex]
+        val targetMediaId = targetItem.mediaId.trim()
+        if (targetMediaId.isEmpty() || targetMediaId == outgoingMediaId) return false
+        if (targetItem.hasBlockedArtist(loadBlockedArtistIds())) return false
+
+        val durationMs =
+            crossfadeDurationMs
+                .coerceAtMost(10_000L)
+                .coerceAtLeast(CROSSFADE2_MIN_FADE_MS)
+
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadePlaybackRequested = true
+        crossfadeBaseVolume = currentEffectivePlayerVolume()
+        crossfadeIncomingBaseVolume = currentEffectivePlayerVolumeForMediaId(targetMediaId)
+        crossfadeProgress = 0f
+        crossfadeHandoffInProgress = false
+        crossfadeHandoffProgress = 0f
+        isCrossfading = true
+        localPlayer.pauseAtEndOfMediaItems = false
+
+        val incomingPlayer = prepareCrossfade2Incoming(targetItem) ?: run {
+            isCrossfading = false
+            crossfadePlaybackRequested = false
+            applyEffectiveVolumeImmediately()
+            return false
+        }
+
+        var primarySwapped = false
+        var primaryPrepared = false
+
+        try {
+            if (!awaitCrossfadePlayerReady(
+                    incomingPlayer,
+                    CROSSFADE2_MANUAL_READY_TIMEOUT_MS,
+                    CROSSFADE2_MANUAL_MIN_BUFFER_MS,
+                )
+            ) {
+                Timber.tag(TAG).w(
+                    "Crossfade2 incoming did not reach the required buffered state " +
+                        "within %d ms; falling back to playQueueImmediate",
+                    CROSSFADE2_MANUAL_READY_TIMEOUT_MS,
+                )
+                // Return false so playQueue() falls back to
+                // playQueueImmediate() and the song still plays (without
+                // crossfade) instead of the transition being silently
+                // dropped.
+                return false
+            }
+
+            if (player.currentMediaItem?.mediaId != outgoingMediaId || !player.playWhenReady) {
+                return true
+            }
+
+            incomingPlayer.playWhenReady = true
+
+            val startMs = android.os.SystemClock.elapsedRealtime()
+            var lastTickMs = startMs
+            while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                val elapsedMs = (nowMs - startMs).coerceAtMost(durationMs)
+                lastTickMs = nowMs
+                crossfadeProgress =
+                    (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                applyCrossfadeVolumes(
+                    crossfadeProgress,
+                    crossfadeBaseVolume,
+                    crossfadeIncomingBaseVolume,
+                    localPlayer,
+                    incomingPlayer,
+                )
+
+                // At the very end of A->B, A is already inaudible. We can now
+                // replace the primary player's queue under silence while B keeps
+                // playing, then hand B back to the primary player without a gap.
+                if (!primaryPrepared && crossfadeProgress >= CROSSFADE2_PRIMARY_PREPARE_PROGRESS) {
+                    player.volume = 0f
+                    player.setMediaItems(
+                        initialStatus.items,
+                        targetIndex,
+                        incomingPlayer.currentPosition.coerceAtLeast(0L),
+                    )
+                    player.prepare()
+                    val savedRepeatMode = player.repeatMode
+                    val savedShuffleModeEnabled = player.shuffleModeEnabled
+                    player.repeatMode = savedRepeatMode
+                    player.shuffleModeEnabled = savedShuffleModeEnabled
+                    player.playWhenReady = true
+                    primaryPrepared = true
+                    primarySwapped = true
+
+                    val readyDeadline =
+                        android.os.SystemClock.elapsedRealtime() + CROSSFADE2_READY_TIMEOUT_MS.coerceAtMost(15_000L)
+                    while (kotlinx.coroutines.currentCoroutineContext().isActive &&
+                        android.os.SystemClock.elapsedRealtime() < readyDeadline
+                    ) {
+                        if (player.playbackState == Player.STATE_READY) break
+                        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                        if (player.playbackState == Player.STATE_ENDED) break
+                        delay(25L)
+                    }
+
+                    if (player.playbackState != Player.STATE_READY) {
+                        Timber.tag(TAG).w("Crossfade2 primary handoff preparation did not reach READY")
+                        player.playWhenReady = false
+                        player.volume = 0f
+                        return true
+                    }
+
+                    val handoffPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                    player.seekTo(targetIndex, handoffPosition)
+                    player.playWhenReady = true
+                }
+
+                if (crossfadeProgress >= 1f) break
+                delay(CROSSFADE2_FRAME_MS)
+            }
+
+            if (!primaryPrepared) {
+                player.volume = 0f
+                player.setMediaItems(
+                    initialStatus.items,
+                    targetIndex,
+                    incomingPlayer.currentPosition.coerceAtLeast(0L),
+                )
+                player.prepare()
+                player.playWhenReady = true
+                primaryPrepared = true
+                primarySwapped = true
+            }
+
+            if (player.playbackState != Player.STATE_READY) {
+                val primaryReadyDeadline =
+                    android.os.SystemClock.elapsedRealtime() + CROSSFADE2_READY_TIMEOUT_MS.coerceAtMost(15_000L)
+                while (kotlinx.coroutines.currentCoroutineContext().isActive &&
+                    android.os.SystemClock.elapsedRealtime() < primaryReadyDeadline
+                ) {
+                    if (player.playbackState == Player.STATE_READY) break
+                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                    if (player.playbackState == Player.STATE_ENDED) break
+                    delay(25L)
+                }
+            }
+
+            if (player.playbackState == Player.STATE_READY) {
+                val syncPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                player.seekTo(targetIndex, syncPosition)
+                player.playWhenReady = true
+                crossfadeHandoffInProgress = true
+                crossfadeHandoffProgress = 0f
+
+                // Critical manual-selection rule:
+                // keep B audible while the new primary B player becomes
+                // actually playable. Never pause the secondary merely because
+                // the stricter natural-crossfade readiness guard failed.
+                if (!awaitManualPrimaryCrossfadeHandoffReady(targetIndex, incomingPlayer)) {
+                    Timber.tag(TAG).w(
+                        "Crossfade2 manual primary did not become playable before timeout; keeping secondary active until cleanup",
+                    )
+                } else if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {
+                    Timber.tag(TAG).w(
+                        "Crossfade2 manual primary handoff animation did not complete",
+                    )
+                }
+            }
+
+            currentQueue = queue
+            queueTitle = initialStatus.title
+            suppressAutoPlayback = false
+            clearAutomix()
+            autoAddedMediaIds.clear()
+            currentMediaMetadata.value = player.currentMetadata
+            ensurePresenceManager()
+            updateAudiblePlaybackRecovery()
+            scheduleCrossfade()
+            return true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Timber.tag(TAG).w(e, "Crossfade2 manual transition failed")
+            return true
+        } finally {
+            if (!primarySwapped) {
+                localPlayer.volume = crossfadeBaseVolume
+                player.playWhenReady = true
+            }
+            crossfadeHandoffInProgress = false
+            crossfadeHandoffProgress = 0f
+            isCrossfading = false
+            crossfadeProgress = 0f
+            crossfadePlaybackRequested = false
+            crossfadeIncomingBaseVolume = 1f
+            crossfade2ManualJob = null
+            releaseSecondaryCrossfadePlayer()
+            if (::player.isInitialized) {
+                if (primarySwapped) {
+                    applyEffectiveVolumeImmediately()
+                } else {
+                    localPlayer.volume = crossfadeBaseVolume
+                    applyEffectiveVolumeImmediately()
+                }
+            }
+        }
+    }
+
+    private fun prepareSecondaryCrossfadePlayer(target: CrossfadeTarget): ExoPlayer? {
+        val existingPlayer = secondaryCrossfadePlayer
+        if (existingPlayer != null && secondaryCrossfadeTarget == target) {
+            return existingPlayer
+        }
+
+        releaseSecondaryCrossfadePlayer()
+
+        val targetItem =
+            runCatching { player.getMediaItemAt(target.index) }
+                .getOrNull()
+                ?.takeIf { it.mediaId == target.mediaId }
+                ?: return null
+
+        return runCatching {
+            createSecondaryCrossfadePlayer().also { secondaryPlayer ->
+                secondaryCrossfadePlayer = secondaryPlayer
+                secondaryCrossfadeTarget = target
+                secondaryPlayer.setMediaItem(targetItem)
+                secondaryPlayer.playbackParameters = player.playbackParameters
+                secondaryPlayer.volume = 0f
+                secondaryPlayer.prepare()
+            }
+        }.onFailure { error ->
+            Timber.tag(TAG).w(error, "Failed to prepare crossfade player")
+            releaseSecondaryCrossfadePlayer()
+        }.getOrNull()
+    }
+
+    private fun createSecondaryCrossfadePlayer(): ExoPlayer =
+        ExoPlayer
+            .Builder(this)
+            .setMediaSourceFactory(createMediaSourceFactory())
+            .setRenderersFactory(createRenderersFactory())
+            .setLoadControl(createCrossfadeLoadControl())
+            .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
+            .setHandleAudioBecomingNoisy(false)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setAudioAttributes(playbackAudioAttributes(), false)
+            .setSeekBackIncrementMs(5000)
+            .setSeekForwardIncrementMs(5000)
+            .build()
+            .apply {
+                addListener(secondaryCrossfadeListener)
+                setOffloadEnabled(false)
+                skipSilenceEnabled = localPlayer.skipSilenceEnabled
+            }
+
+    private fun startCrossfade(
+        target: CrossfadeTarget,
+        durationMs: Long,
+    ) {
+        if (isCrossfading || !crossfadeEnabled) return
+
+        val incomingPlayer = prepareSecondaryCrossfadePlayer(target) ?: return
+        val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
+
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadeJob?.cancel()
+        crossfadeJob =
+            scope.launch {
+                isCrossfading = true
+                crossfadeProgress = 0f
+                crossfadeBaseVolume = currentEffectivePlayerVolume()
+                crossfadeIncomingBaseVolume = currentEffectivePlayerVolumeForMediaId(target.mediaId)
+                crossfadePlaybackRequested = player.playWhenReady
+
+                try {
+                    val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
+                    if (!awaitCrossfadePlayerReady(incomingPlayer, CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
+                        abortCrossfadeAndResumePrimary("secondary_player_not_ready")
+                        return@launch
+                    }
+
+                    val hasMovedToAnotherMediaItem = player.currentMediaItem?.mediaId != outgoingMediaId
+                    if (!crossfadePlaybackRequested) {
+                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                        return@launch
+                    }
+                    if (hasMovedToAnotherMediaItem) {
+                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                        scheduleCrossfade()
+                        return@launch
+                    }
+                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                        abortCrossfadeAndResumePrimary("primary_ended_before_crossfade_start")
+                        return@launch
+                    }
+
+                    val currentDuration = player.duration
+                    val remainingDurationMs =
+                        (
+                            if (currentDuration != C.TIME_UNSET) {
+                                (currentDuration - player.currentPosition).coerceAtLeast(0L)
+                            } else {
+                                durationMs
+                            }
+                        ).coerceAtMost(durationMs)
+                    if (remainingDurationMs < MIN_CROSSFADE_DURATION_MS) {
+                        abortCrossfadeAndResumePrimary("secondary_player_ready_too_late")
+                        return@launch
+                    }
+
+                    localPlayer.pauseAtEndOfMediaItems = true
+
+                    incomingPlayer.playbackParameters = player.playbackParameters
+                    incomingPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        incomingPlayer.play()
+                    }
+
+                    var elapsedMs = 0L
+                    var lastTickMs = android.os.SystemClock.elapsedRealtime()
+                    while (isActive && elapsedMs < remainingDurationMs) {
+                        if (player.currentMediaItem?.mediaId != outgoingMediaId) {
+                            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                            scheduleCrossfade()
+                            return@launch
+                        }
+
+                        val nowMs = android.os.SystemClock.elapsedRealtime()
+                        if (crossfadePlaybackRequested) {
+                            incomingPlayer.playWhenReady = true
+                            elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(remainingDurationMs)
+                            crossfadeProgress =
+                                (elapsedMs.toFloat() / remainingDurationMs.toFloat()).coerceIn(0f, 1f)
+                            applyCrossfadeVolumes(
+                                crossfadeProgress,
+                                crossfadeBaseVolume,
+                                crossfadeIncomingBaseVolume,
+                                localPlayer,
+                                incomingPlayer,
+                            )
+                        } else {
+                            incomingPlayer.pause()
+                        }
+                        lastTickMs = nowMs
+                        delay(CROSSFADE_FRAME_MS)
+                    }
+
+                    finishCrossfade(target, incomingPlayer)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.tag(TAG).w(error, "Crossfade failed")
+                    abortCrossfadeAndResumePrimary("crossfade_exception")
+                }
+            }
+    }
+
+    private suspend fun awaitCrossfadePlayerReady(
+        crossfadePlayer: ExoPlayer,
+        timeoutMs: Long,
+        minimumBufferedMs: Long,
+    ): Boolean {
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {
+            when (crossfadePlayer.playbackState) {
+                Player.STATE_READY -> {
+                    if (hasBufferedForSmoothStart(crossfadePlayer, minimumBufferedMs)) {
+                        return true
+                    }
+                }
+
+                Player.STATE_IDLE -> {
+                    crossfadePlayer.prepare()
+                }
+
+                Player.STATE_ENDED -> {
+                    return false
+                }
+            }
+            delay(50L)
+        }
+        return crossfadePlayer.playbackState == Player.STATE_READY &&
+            hasBufferedForSmoothStart(crossfadePlayer, minimumBufferedMs)
+    }
+
+    private suspend fun finishCrossfade(
+        target: CrossfadeTarget,
+        incomingPlayer: ExoPlayer,
+    ) {
+        val targetIndex = resolveCrossfadeTargetIndex(target)
+        if (targetIndex == C.INDEX_UNSET) {
+            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            return
+        }
+
+        val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+        val shouldContinuePlayback = crossfadePlaybackRequested
+
+        var handoffCompleted = false
+        try {
+            crossfadeHandoffInProgress = true
+            crossfadeHandoffProgress = 0f
+            localPlayer.pauseAtEndOfMediaItems = false
+            player.volume = 0f
+            player.seekTo(targetIndex, incomingPosition)
+            player.playWhenReady = shouldContinuePlayback
+            if (shouldContinuePlayback) {
+                if (!awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
+                    abortCrossfadeAndResumePrimary("primary_handoff_not_ready")
+                    handoffCompleted = true
+                    return
+                }
+
+                val primaryPosition = player.currentPosition.coerceAtLeast(0L)
+                val secondaryPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                if (needsCorrectiveCrossfadeSeek(
+                        primaryPositionMs = primaryPosition,
+                        secondaryPositionMs = secondaryPosition,
+                        maximumDriftMs = CROSSFADE_HANDOFF_MAX_DRIFT_MS,
+                    )
+                ) {
+                    player.seekTo(targetIndex, secondaryPosition)
+                }
+
+                if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {
+                    if (crossfadePlaybackRequested && player.currentMediaItemIndex == targetIndex) {
+                        abortCrossfadeAndResumePrimary("primary_handoff_failed")
+                    } else {
+                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    }
+                    handoffCompleted = true
+                    return
+                }
+            } else {
+                incomingPlayer.pause()
+            }
+            currentMediaMetadata.value = player.getMediaItemAt(targetIndex).metadata
+            handoffCompleted = true
+        } finally {
+            if (!handoffCompleted) {
+                crossfadeHandoffInProgress = false
+                crossfadeHandoffProgress = 0f
+                isCrossfading = false
+                crossfadeProgress = 0f
+                crossfadePlaybackRequested = false
+                releaseSecondaryCrossfadePlayer()
+                applyEffectiveVolumeImmediately()
+            }
+        }
+
+        isCrossfading = false
+        crossfadeHandoffInProgress = false
+        crossfadeHandoffProgress = 0f
+        crossfadeProgress = 0f
+        crossfadeIncomingBaseVolume = 1f
+        crossfadePlaybackRequested = false
+        releaseSecondaryCrossfadePlayer()
+        applyEffectiveVolumeImmediately()
+        updateAudiblePlaybackRecovery()
+        scheduleCrossfade()
+    }
+
+    private suspend fun awaitManualPrimaryCrossfadeHandoffReady(
+        targetIndex: Int,
+        incomingPlayer: ExoPlayer,
+    ): Boolean {
+        val deadlineMs =
+            android.os.SystemClock.elapsedRealtime() +
+                CROSSFADE2_READY_TIMEOUT_MS.coerceAtMost(15_000L)
+
+        while (
+            kotlinx.coroutines.currentCoroutineContext().isActive &&
+                android.os.SystemClock.elapsedRealtime() < deadlineMs
+        ) {
+            if (player.currentMediaItemIndex != targetIndex) return false
+
+            // The secondary B player remains audible while primary B is
+            // preparing. Do not apply the strict natural-crossfade
+            // canHandoffWithoutRebuffer() rejection here, because that
+            // rejection used to mute B and caused the audible hole reported
+            // for manual selection.
+            if (player.playbackState == Player.STATE_IDLE) {
+                player.prepare()
+            }
+
+            if (
+                player.playbackState == Player.STATE_READY &&
+                    player.playWhenReady
+            ) {
+                if (!player.isPlaying) {
+                    player.play()
+                }
+
+                if (player.isPlaying) {
+                    val secondaryPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+                    val primaryPosition = player.currentPosition.coerceAtLeast(0L)
+
+                    if (
+                        abs(primaryPosition - secondaryPosition) <=
+                            CROSSFADE_HANDOFF_MAX_DRIFT_MS
+                    ) {
+                        return true
+                    }
+
+                    player.seekTo(targetIndex, secondaryPosition)
+                }
+            }
+
+            delay(25L)
+        }
+
+        return player.currentMediaItemIndex == targetIndex &&
+            player.playbackState == Player.STATE_READY &&
+            player.playWhenReady &&
+            player.isPlaying
+    }
+
+    private suspend fun awaitPrimaryCrossfadeHandoffReady(incomingPlayer: ExoPlayer): Boolean {
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_READY_TIMEOUT_MS
+        while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {
+            if (player.playbackState == Player.STATE_READY && canHandoffWithoutRebuffer(incomingPlayer)) {
+                return true
+            }
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                return false
+            }
+            delay(25L)
+        }
+        return player.playbackState == Player.STATE_READY && canHandoffWithoutRebuffer(incomingPlayer)
+    }
+
+    private suspend fun awaitPrimaryPositionAdvance(
+        targetIndex: Int,
+        positionAfterSeekMs: Long,
+    ): Boolean {
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_READY_TIMEOUT_MS
+        while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {
+            if (!crossfadePlaybackRequested || !player.playWhenReady) return false
+            if (player.currentMediaItemIndex != targetIndex) return false
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
+            if (player.playbackState == Player.STATE_READY &&
+                player.isPlaying &&
+                hasPlaybackPositionAdvanced(positionAfterSeekMs, player.currentPosition)
+            ) {
+                return true
+            }
+            delay(CROSSFADE_HANDOFF_POLL_MS)
+        }
+        return player.currentMediaItemIndex == targetIndex &&
+            player.playbackState == Player.STATE_READY &&
+            player.isPlaying &&
+            hasPlaybackPositionAdvanced(positionAfterSeekMs, player.currentPosition)
+    }
+
+    private suspend fun performCrossfadeHandoff(
+        targetIndex: Int,
+        incomingPlayer: ExoPlayer,
+    ): Boolean {
+        var startedAtMs = android.os.SystemClock.elapsedRealtime()
+        var lastConfirmedPrimaryPositionMs = player.currentPosition.coerceAtLeast(0L)
+        while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+            if (!crossfadePlaybackRequested || !player.playWhenReady) {
+                incomingPlayer.pause()
+                return false
+            }
+            if (player.currentMediaItemIndex != targetIndex) return false
+            if (player.playbackState != Player.STATE_READY || !player.isPlaying) {
+                crossfadeHandoffProgress = 0f
+                applyEffectiveVolume()
+                if (!awaitPrimaryPositionAdvance(targetIndex, lastConfirmedPrimaryPositionMs)) return false
+                lastConfirmedPrimaryPositionMs = player.currentPosition.coerceAtLeast(0L)
+                startedAtMs = android.os.SystemClock.elapsedRealtime()
+                continue
+            }
+
+            val elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAtMs
+            crossfadeHandoffProgress =
+                (elapsedMs.toFloat() / CROSSFADE_HANDOFF_DURATION_MS.toFloat()).coerceIn(0f, 1f)
+            val handoffBaseVolume =
+                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
+                    ?: crossfadeIncomingBaseVolume
+            applyCrossfadeVolumes(
+                crossfadeHandoffProgress,
+                handoffBaseVolume,
+                handoffBaseVolume,
+                incomingPlayer,
+                localPlayer,
+            )
+            if (crossfadeHandoffProgress >= 1f) return true
+            delay(CROSSFADE_HANDOFF_FRAME_MS)
+        }
+        return false
+    }
+
+    private fun canHandoffWithoutRebuffer(incomingPlayer: ExoPlayer): Boolean {
+        if (player.currentMediaItem
+                ?.localConfiguration
+                ?.uri
+                ?.shouldBypassPlayerCache() == true
+        ) {
+            return true
+        }
+        if (hasBufferedForSmoothStart(localPlayer, CROSSFADE_HANDOFF_BUFFER_MS)) {
+            val bufferedPosition = localPlayer.bufferedPosition
+            val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
+            return bufferedPosition == C.TIME_UNSET ||
+                incomingPosition + CROSSFADE_HANDOFF_SEEK_GUARD_MS <= bufferedPosition
+        }
+        return false
+    }
+
+    private fun requiredCrossfadeStartBufferMs(durationMs: Long): Long =
+        (durationMs + CROSSFADE_HANDOFF_BUFFER_MS)
+            .coerceAtLeast(CROSSFADE_MIN_BUFFER_BEFORE_START_MS)
+            .coerceAtMost(CROSSFADE_MAX_BUFFER_BEFORE_START_MS)
+
+    private fun hasBufferedForSmoothStart(
+        targetPlayer: ExoPlayer,
+        minimumBufferedMs: Long,
+    ): Boolean {
+        if (minimumBufferedMs <= 0L) return true
+        if (targetPlayer.currentMediaItem
+                ?.localConfiguration
+                ?.uri
+                ?.shouldBypassPlayerCache() == true
+        ) {
+            return true
+        }
+
+        val duration = targetPlayer.duration
+        val currentPosition = targetPlayer.currentPosition.coerceAtLeast(0L)
+        val remainingDuration =
+            if (duration != C.TIME_UNSET && duration > currentPosition) {
+                duration - currentPosition
+            } else {
+                Long.MAX_VALUE
+            }
+        val requiredBufferedMs = minimumBufferedMs.coerceAtMost(remainingDuration)
+        if (requiredBufferedMs <= 0L) return true
+
+        val bufferedDuration = targetPlayer.totalBufferedDuration.coerceAtLeast(0L)
+        if (bufferedDuration >= requiredBufferedMs) return true
+
+        return duration != C.TIME_UNSET &&
+            targetPlayer.bufferedPosition >= duration - CROSSFADE_END_GUARD_MS
+    }
+
+    private fun resolveCrossfadeTargetIndex(target: CrossfadeTarget): Int {
+        if (target.index in 0 until player.mediaItemCount &&
+            player.getMediaItemAt(target.index).mediaId == target.mediaId
+        ) {
+            return target.index
+        }
+
+        for (index in 0 until player.mediaItemCount) {
+            if (player.getMediaItemAt(index).mediaId == target.mediaId) {
+                return index
+            }
+        }
+        return C.INDEX_UNSET
+    }
+
+    private fun cancelCrossfade(
+        resetVolume: Boolean,
+        resetPauseAtEnd: Boolean,
+    ) {
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        isCrossfading = false
+        crossfadeHandoffInProgress = false
+        crossfadeHandoffProgress = 0f
+        crossfadeProgress = 0f
+        crossfadeIncomingBaseVolume = 1f
+        crossfadePlaybackRequested = false
+        if (::player.isInitialized && resetPauseAtEnd) {
+            localPlayer.pauseAtEndOfMediaItems = false
+        }
+        releaseSecondaryCrossfadePlayer()
+        if (resetVolume && ::player.isInitialized) {
+            applyEffectiveVolumeImmediately()
+        }
+    }
+
+    private fun abortCrossfadeAndResumePrimary(reason: String) {
+        if (!::player.isInitialized) return
+
+        val currentMediaId = player.currentMediaItem?.mediaId
+        val targetIndex = secondaryCrossfadeTarget?.let(::resolveCrossfadeTargetIndex) ?: C.INDEX_UNSET
+        val shouldResumePlayback = crossfadePlaybackRequested || player.playWhenReady
+        val primaryAtEnd =
+            player.playbackState == Player.STATE_ENDED ||
+                (player.duration != C.TIME_UNSET && player.currentPosition >= player.duration)
+
+        crossfadeSuppressedMediaId = currentMediaId
+
+        Timber.tag(TAG).w("Falling back to primary playback after crossfade failure: reason=%s", reason)
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+
+        if (!shouldResumePlayback || player.currentMediaItem == null) return
+
+        if (primaryAtEnd && targetIndex != C.INDEX_UNSET) {
+            player.seekTo(targetIndex, 0L)
+        }
+        player.play()
+    }
+
+    private fun releaseSecondaryCrossfadePlayer() {
+        val playerToRelease = secondaryCrossfadePlayer ?: return
+        secondaryCrossfadePlayer = null
+        secondaryCrossfadeTarget = null
+        runCatching { playerToRelease.removeListener(secondaryCrossfadeListener) }
+        runCatching { playerToRelease.stop() }
+        runCatching { playerToRelease.clearMediaItems() }
+        runCatching { playerToRelease.release() }
+    }
+
+    private fun calculateAudioNormalizationFactor(
+        format: FormatEntity?,
+        normalizeAudio: Boolean,
+    ): Float {
+        Timber.tag("AudioNormalization").d("Audio normalization enabled: $normalizeAudio")
+        Timber
+            .tag(
+                "AudioNormalization",
+            ).d("Format loudnessDb: ${format?.loudnessDb}, perceptualLoudnessDb: ${format?.perceptualLoudnessDb}")
+
+        if (!normalizeAudio) {
+            Timber.tag("AudioNormalization").d("Normalization disabled - using factor 1.0")
+            return 1f
+        }
+
+        val loudnessDb = format?.normalizationLoudnessDb()
+        if (loudnessDb == null || !loudnessDb.isFinite()) {
+            Timber.tag("AudioNormalization").w("Normalization enabled but no valid loudness data available - no normalization applied")
+            return 1f
+        }
+
+        val rawFactor = 10f.pow(-loudnessDb / 20)
+        val factor =
+            if (rawFactor.isFinite()) {
+                rawFactor.coerceIn(MIN_AUDIO_NORMALIZATION_FACTOR, MAX_AUDIO_NORMALIZATION_FACTOR)
+            } else {
+                1f
+            }
+
+        if (factor != rawFactor) {
+            Timber.tag("AudioNormalization").d("Normalization factor clamped from $rawFactor to $factor")
+        }
+        Timber.tag("AudioNormalization").i("Applying normalization factor: $factor")
+        return factor
+    }
+
+    private fun resolveAudioNormalizationFactor(
+        mediaId: String?,
+        format: FormatEntity?,
+        normalizeAudio: Boolean,
+    ): Float {
+        val currentMediaId = mediaId?.takeIf { it.isNotBlank() } ?: return 1f
+        if (!normalizeAudio) {
+            return 1f
+        }
+
+        if (format?.id == currentMediaId) {
+            val factor = calculateAudioNormalizationFactor(format, normalizeAudio = true)
+            audioNormalizationFactorCache[currentMediaId] = factor
+            return factor
+        }
+
+        return audioNormalizationFactorCache[currentMediaId] ?: 1f
+    }
+
+    private fun FormatEntity.normalizationLoudnessDb(): Float? =
+        sequenceOf(perceptualLoudnessDb, loudnessDb)
+            .mapNotNull { it?.toFloat() }
+            .firstOrNull { it.isFinite() }
+
+    private fun shouldKeepPlaybackAudible(): Boolean {
+        if (!::player.isInitialized) return false
+        if (player.currentMediaItem == null || !player.playWhenReady) return false
+        return player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED
+    }
+
+    private fun restoreAudioFocusVolume() {
+        audioFocusVolumeFactor.value = 1f
+        hasAudioFocus = true
+        lastAudioFocusState = AudioManager.AUDIOFOCUS_GAIN
+    }
+
+    private fun pauseForAudioFocusLoss(resumeWhenFocusReturns: Boolean) {
+        audioFocusVolumeFactor.value = 1f
+        wasPlayingBeforeAudioFocusLoss = resumeWhenFocusReturns && player.playWhenReady
+        if (player.playWhenReady) {
+            player.pause()
+        }
+    }
+
+    private fun ensureAudioFocusForActivePlayback(): Boolean {
+        if (!player.playWhenReady) return true
+        if (requestAudioFocus()) return true
+        pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
+        return false
+    }
+
+    private fun handleAudioFocusChange(focusChange: Int) {
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                hasAudioFocus = true
+                audioFocusVolumeFactor.value = 1f
+
+                if (wasPlayingBeforeAudioFocusLoss) {
+                    player.play()
+                    wasPlayingBeforeAudioFocusLoss = false
+                }
+
+                lastAudioFocusState = focusChange
+            }
+
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                hasAudioFocus = false
+                pauseForAudioFocusLoss(resumeWhenFocusReturns = false)
+
+                abandonAudioFocus()
+
+                lastAudioFocusState = focusChange
+            }
+
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                hasAudioFocus = false
+                pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
+
+                lastAudioFocusState = focusChange
+            }
+
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                hasAudioFocus = false
+                pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
+
+                lastAudioFocusState = focusChange
+            }
+
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT -> {
+                hasAudioFocus = true
+                audioFocusVolumeFactor.value = 1f
+
+                if (wasPlayingBeforeAudioFocusLoss) {
+                    player.play()
+                    wasPlayingBeforeAudioFocusLoss = false
+                }
+
+                lastAudioFocusState = focusChange
+            }
+
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
+                hasAudioFocus = true
+                audioFocusVolumeFactor.value = 1f
+
+                lastAudioFocusState = focusChange
+            }
+        }
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        if (hasAudioFocus) {
+            if (audioFocusVolumeFactor.value != 1f || lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                restoreAudioFocusVolume()
+            }
+            return true
+        }
+
+        audioFocusRequest?.let { request ->
+            val result = audioManager.requestAudioFocus(request)
+            hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            if (hasAudioFocus) {
+                restoreAudioFocusVolume()
+            }
+            return hasAudioFocus
+        }
+        return false
+    }
+
+    private fun abandonAudioFocus() {
+        if (hasAudioFocus) {
+            audioFocusRequest?.let { request ->
+                audioManager.abandonAudioFocusRequest(request)
+                hasAudioFocus = false
+            }
+        }
+    }
+
+    fun hasAudioFocusForPlayback(): Boolean = hasAudioFocus
+
+    private fun isDeviceMutedNow(): Boolean {
+        val streamVolume =
+            runCatching {
+                audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }.getOrElse { error ->
+                reportException(error)
+                return player.isDeviceMuted || player.deviceVolume <= 0
+            }
+        val isStreamMuted =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                runCatching {
+                    audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
+                }.getOrElse { error ->
+                    reportException(error)
+                    false
+                }
+
+        return isStreamMuted || streamVolume <= 0
+    }
+
+    private fun isTogetherGuestSession(): Boolean {
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        return joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest
+    }
+
+    private fun registerMuteRecoveryObserver() {
+        if (muteRecoveryObserver != null) return
+        val observer =
+            object : ContentObserver(Handler(mainLooper)) {
+                override fun onChange(selfChange: Boolean) {
+                    if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0) {
+                        handleDeviceMuteStateChanged()
+                    }
+                }
+            }
+        contentResolver.registerContentObserver(
+            android.provider.Settings.System.CONTENT_URI,
+            true,
+            observer,
+        )
+        muteRecoveryObserver = observer
+    }
+
+    private fun unregisterMuteRecoveryObserver() {
+        muteRecoveryObserver?.let { contentResolver.unregisterContentObserver(it) }
+        muteRecoveryObserver = null
+    }
+
+    private fun handleDeviceMuteStateChanged(playbackRequestedWhileMuted: Boolean = false) {
+        if (!pauseOnDeviceMuteEnabled || isTogetherGuestSession()) {
+            wasAutoPausedByDeviceMute = false
+            unregisterMuteRecoveryObserver()
+            return
+        }
+
+        if (isDeviceMutedNow()) {
+            if (playbackRequestedWhileMuted && restoreDeviceMusicVolumeForPlayback()) {
+                wasAutoPausedByDeviceMute = false
+                unregisterMuteRecoveryObserver()
+                return
+            }
+
+            val canPauseNow =
+                player.currentMediaItem != null &&
+                    player.playWhenReady &&
+                    player.playbackState != Player.STATE_IDLE &&
+                    player.playbackState != Player.STATE_ENDED
+
+            if (canPauseNow) {
+                player.pause()
+                wasAutoPausedByDeviceMute = true
+                registerMuteRecoveryObserver()
+                if (playbackRequestedWhileMuted) {
+                    showDeviceMutePlaybackNotice()
+                }
+            }
+            return
+        }
+
+        unregisterMuteRecoveryObserver()
+
+        if (!wasAutoPausedByDeviceMute) return
+
+        wasAutoPausedByDeviceMute = false
+        val canResumeNow =
+            player.currentMediaItem != null &&
+                player.playbackState != Player.STATE_IDLE &&
+                player.playbackState != Player.STATE_ENDED
+        if (canResumeNow) {
+            player.play()
+        }
+    }
+
+    private fun restoreDeviceMusicVolumeForPlayback(): Boolean {
+        val recoveryPercent = deviceMutePlaybackRecoveryVolumePercent.coerceIn(0, 100)
+        if (recoveryPercent <= 0) return false
+
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (maxVolume <= 0) return false
+
+        val targetVolume =
+            ceil(maxVolume * (recoveryPercent / 100.0))
+                .toInt()
+                .coerceIn(1, maxVolume)
+
+        return runCatching {
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0)
+            audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0
+        }.getOrElse {
+            reportException(it)
+            false
+        }
+    }
+
+    private fun showDeviceMutePlaybackNotice() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastDeviceMutePlaybackNoticeAtElapsedMs < DEVICE_MUTE_PLAYBACK_NOTICE_INTERVAL_MS) return
+        lastDeviceMutePlaybackNoticeAtElapsedMs = now
+        scope.launch(SilentHandler) {
+            Toast
+                .makeText(
+                    this@MusicService,
+                    R.string.device_volume_zero_playback_paused,
+                    Toast.LENGTH_SHORT,
+                ).show()
+        }
+    }
+
+    private val bluetoothReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                if (intent.action != BluetoothDevice.ACTION_ACL_CONNECTED) return
+                if (!autoStartOnBluetoothEnabled) return
+
+                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
+
+                val isAudioDevice =
+                    try {
+                        val majorClass = device.bluetoothClass?.majorDeviceClass
+                        majorClass == BluetoothClass.Device.Major.AUDIO_VIDEO ||
+                            majorClass == BluetoothClass.Device.Major.WEARABLE
+                    } catch (_: SecurityException) {
+                        true
+                    }
+
+                if (!isAudioDevice) return
+
+                scope.launch {
+                    delay(1500)
+                    handleBluetoothAutoStart()
+                }
+            }
+        }
+
+    private fun handleBluetoothAutoStart() {
+        if (isTogetherGuestSession()) return
+
+        if (player.currentMediaItem != null &&
+            player.playbackState != Player.STATE_IDLE &&
+            player.playbackState != Player.STATE_ENDED
+        ) {
+            if (!player.playWhenReady) {
+                player.play()
+            }
+            return
+        }
+
+        if (player.mediaItemCount > 0) {
+            player.prepare()
+            player.play()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun registerBluetoothReceiver() {
+        if (bluetoothReceiverRegistered) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val filter = IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bluetoothReceiver, filter, RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(bluetoothReceiver, filter)
+        }
+        bluetoothReceiverRegistered = true
+    }
+
+    private fun unregisterBluetoothReceiver() {
+        if (!bluetoothReceiverRegistered) return
+        try {
+            unregisterReceiver(bluetoothReceiver)
+        } catch (_: Exception) {
+        }
+        bluetoothReceiverRegistered = false
+    }
+
+    private fun waitOnNetworkError() {
+        waitingForNetworkConnection.value = true
+    }
+
+    private fun skipOnError() {
+        /**
+         * Auto skip to the next media item on error.
+         *
+         * To prevent a "runaway diesel engine" scenario, force the user to take action after
+         * too many errors come up too quickly. Pause to show player "stopped" state
+         */
+        consecutivePlaybackErr += 2
+        val nextWindowIndex = player.nextMediaItemIndex
+
+        if (consecutivePlaybackErr <= MAX_CONSECUTIVE_ERR && nextWindowIndex != C.INDEX_UNSET) {
+            player.seekTo(nextWindowIndex, C.TIME_UNSET)
+            player.prepare()
+            player.play()
+            return
+        }
+
+        player.pause()
+        consecutivePlaybackErr = 0
+    }
+
+    private fun stopOnError() {
+        player.pause()
+    }
+
+    private fun PlaybackException.isRemoteStreamReadFailure(): Boolean {
+        if (errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+            errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+        ) {
+            return true
+        }
+
+        var throwable: Throwable? = cause
+        while (throwable != null) {
+            when {
+                throwable is EOFException -> return true
+                throwable is IOException &&
+                    throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true -> {
+                    return true
+                }
+            }
+            throwable = throwable.cause
+        }
+        return false
+    }
+
+    private fun findStreamHttpFailure(
+        error: PlaybackException,
+    ): androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException? {
+        var throwable: Throwable? = error.cause
+        while (throwable != null) {
+            if (throwable is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
+                return throwable
+            }
+            throwable = throwable.cause
+        }
+        return null
+    }
+
+    private fun isRetryableRemoteParserFailure(error: PlaybackException): Boolean {
+        if (
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+        ) {
+            return true
+        }
+
+        var throwable: Throwable? = error.cause
+        while (throwable != null) {
+            if (
+                throwable.message?.contains("Skipping atom with length", ignoreCase = true) == true ||
+                    throwable.isMedia3ExtractorBoundsFailure()
+            ) {
+                return true
+            }
+            throwable = throwable.cause
+        }
+        return false
+    }
+
+    
+private fun hasCachedContentForPlaybackError(): Boolean {
+    return try {
+        val mediaId = player.currentMediaItem?.mediaId ?: return false
+
+        val cache = playerCache
+        val metadata = cache.getContentMetadata(mediaId)
+        val contentLength = ContentMetadata.getContentLength(metadata)
+
+        contentLength > 0L ||
+            cache.getCachedBytes(mediaId, 0L, Long.MAX_VALUE) > 0L
+    } catch (e: Throwable) {
+        Timber.tag(TAG).d(e, "Unable to determine cached playback content")
+        false
+    }
+}
+
+private fun isCacheCorruptionError(
+        error: PlaybackException,
+        isContentCached: Boolean,
+    ): Boolean {
+        val isContainerParseError =
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+        if (error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
+            (isContentCached && error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE)
+        ) {
+            return true
+        }
+
+        var throwable: Throwable? = error.cause
+        while (throwable != null) {
+            when {
+                throwable is Cache.CacheException -> {
+                    return true
+                }
+
+                throwable is EOFException && isContentCached -> {
+                    return true
+                }
+
+                throwable is IOException &&
+                    throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true -> {
+                    return true
+                }
+
+                throwable is IllegalStateException || throwable is IllegalArgumentException -> {
+                    if (throwable.stackTrace.any { it.className.startsWith("androidx.media3.extractor") }) {
+                        return true
+                    }
+                }
+
+                isContentCached && throwable.isMedia3ExtractorBoundsFailure() -> {
+                    return true
+                }
+
+                isContainerParseError && isContentCached && throwable is ParserException -> {
+                    return true
+                }
+
+                isContainerParseError && isContentCached &&
+                    throwable.message?.let {
+                        it.contains("Invalid integer size", ignoreCase = true) ||
+                            it.contains("Skipping atom with length", ignoreCase = true) ||
+                            it.contains("contentIsMalformed=true", ignoreCase = true)
+                    } == true -> {
+                    return true
+                }
+            }
+            throwable = throwable.cause
+        }
+        return false
+    }
+
+    private fun Throwable.isMedia3ExtractorBoundsFailure(): Boolean =
+        this is ArrayIndexOutOfBoundsException &&
+            stackTrace.any { it.className.startsWith("androidx.media3.extractor") }
+
+    private fun retryPlaybackAfterStreamFailure(
+        mediaId: String,
+        isFullyDownloadedMedia: Boolean,
+        responseException: androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException,
+    ): Boolean {
+        if (isFullyDownloadedMedia) return false
+
+        val recoverySnapshot = capturePlaybackRecoverySnapshot()
+
+        val failedUrl = responseException.dataSpec.uri.toString()
+        val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
+        val failedExpiredUrl = YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(failedUrl)
+
+        resolveAudioStream.invalidate(mediaId)
+        YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
+        if (!failedExpiredUrl && requestProfile.clientKey.isNotEmpty()) {
+            YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)
+        }
+
+        if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {
+            return false
+        }
+
+        Timber.tag("MusicService").i(
+            "Retrying playback for %s after stream HTTP %d from %s failed",
+            mediaId,
+            responseException.responseCode,
+            requestProfile.variantLabel,
+        )
+        return preparePlaybackFromSnapshot(recoverySnapshot)
+    }
+
+    private fun retryPlaybackAfterNetworkFailure(
+        mediaId: String,
+        isFullyDownloadedMedia: Boolean,
+    ): Boolean {
+        if (isFullyDownloadedMedia) return false
+
+        val recoverySnapshot = capturePlaybackRecoverySnapshot()
+
+        resolveAudioStream.invalidate(mediaId)
+        YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
+
+        if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {
+            return false
+        }
+
+        Timber.tag("MusicService").i("Retrying playback for %s after a transient network failure", mediaId)
+        return preparePlaybackFromSnapshot(recoverySnapshot)
+    }
+
+    private fun capturePlaybackRecoverySnapshot(): PlaybackRecoverySnapshot? {
+        val mediaItem = player.currentMediaItem ?: return null
+        val mediaItemIndex = player.currentMediaItemIndex
+        if (mediaItemIndex == C.INDEX_UNSET) return null
+
+        val duration = player.duration
+        val positionMs =
+            player.currentPosition
+                .coerceAtLeast(0L)
+                .let { position ->
+                    if (duration > 0L && duration != C.TIME_UNSET) {
+                        position.coerceAtMost(duration)
+                    } else {
+                        position
+                    }
+                }
+
+        return PlaybackRecoverySnapshot(
+            mediaId = mediaItem.mediaId,
+            positionMs = positionMs,
+            playWhenReady = player.playWhenReady,
+        )
+    }
+
+    private fun preparePlaybackFromSnapshot(snapshot: PlaybackRecoverySnapshot?): Boolean {
+        if (snapshot == null) {
+            player.prepare()
+            return true
+        }
+        if (player.currentMediaItem?.mediaId != snapshot.mediaId) return false
+
+        val currentIndex = player.currentMediaItemIndex
+        val targetIndex =
+            if (currentIndex in 0 until player.mediaItemCount &&
+                player.getMediaItemAt(currentIndex).mediaId == snapshot.mediaId
+            ) {
+                currentIndex
+            } else {
+                (0 until player.mediaItemCount)
+                    .firstOrNull { index -> player.getMediaItemAt(index).mediaId == snapshot.mediaId }
+                    ?: return false
+            }
+        player.seekTo(targetIndex, snapshot.positionMs)
+        player.prepare()
+        player.playWhenReady = snapshot.playWhenReady
+        return true
+    }
+
+    private fun updateNotification() {
+        try {
+            val customLayout =
+                listOf(
+                    CommandButton
+                        .Builder()
+                        .setDisplayName(
+                            getString(
+                                if (currentSong.value?.song?.liked == true) {
+                                    R.string.action_remove_like
+                                } else {
+                                    R.string.action_like
+                                },
+                            ),
+                        ).setIconResId(if (currentSong.value?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border)
+                        .setSessionCommand(CommandToggleLike)
+                        .setEnabled(currentSong.value != null)
+                        .build(),
+                    CommandButton
+                        .Builder()
+                        .setDisplayName(
+                            getString(
+                                when (player.repeatMode) {
+                                    REPEAT_MODE_OFF -> R.string.repeat_mode_off
+                                    REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                                    REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                                    else -> R.string.repeat_mode_off
+                                },
+                            ),
+                        ).setIconResId(
+                            when (player.repeatMode) {
+                                REPEAT_MODE_OFF -> R.drawable.repeat
+                                REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                                REPEAT_MODE_ALL -> R.drawable.repeat_on
+                                else -> R.drawable.repeat
+                            },
+                        ).setSessionCommand(CommandToggleRepeatMode)
+                        .build(),
+                    CommandButton
+                        .Builder()
+                        .setDisplayName(
+                            getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
+                        ).setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
+                        .setSessionCommand(CommandToggleShuffle)
+                        .build(),
+                    CommandButton
+                        .Builder()
+                        .setDisplayName(getString(R.string.start_radio))
+                        .setIconResId(R.drawable.radio)
+                        .setSessionCommand(CommandToggleStartRadio)
+                        .setEnabled(currentSong.value != null && currentMediaMetadata.value?.isPodcast != true)
+                        .build(),
+                )
+            mediaSession.setCustomLayout(customLayout)
+        } catch (e: Exception) {
+            reportException(e)
+        }
+    }
+
+    fun refreshPlaybackNotification() {
+        updateNotification()
+        onUpdateNotification(mediaSession, hasResumablePlaybackNotification())
+    }
+
+    private suspend fun recoverSong(
+        mediaId: String,
+        playbackData: YTPlayerUtils.PlaybackData? = null,
+    ) {
+        val song = database.song(mediaId).first()
+        val mediaMetadata =
+            withContext(Dispatchers.Main) {
+                player.findNextMediaItemById(mediaId)?.metadata
+            } ?: return
+        val duration =
+            song?.song?.duration?.takeIf { it != -1 }
+                ?: mediaMetadata.duration.takeIf { it != -1 }
+                ?: (
+                    playbackData?.videoDetails ?: YTPlayerUtils
+                        .playerResponseForMetadata(mediaId)
+                        .getOrNull()
+                        ?.videoDetails
+                )?.lengthSeconds?.toInt()
+                ?: -1
+        database.query {
+            if (song == null) {
+                insert(mediaMetadata.copy(duration = duration))
+            } else if (song.song.duration == -1) {
+                update(song.song.copy(duration = duration))
+            }
+        }
+        if (mediaMetadata.isPodcast) return
+        if (!database.hasRelatedSongs(mediaId)) {
+            val relatedEndpoint =
+                YouTube.next(WatchEndpoint(videoId = mediaId)).getOrNull()?.relatedEndpoint
+                    ?: return
+            val relatedPage = YouTube.related(relatedEndpoint).getOrNull() ?: return
+            database.query {
+                relatedPage.songs
+                    .map(SongItem::toMediaMetadata)
+                    .onEach(::insert)
+                    .map {
+                        RelatedSongMap(
+                            songId = mediaId,
+                            relatedSongId = it.id,
+                        )
+                    }.forEach(::insert)
+            }
+        }
+    }
+
+    fun playQueue(
+        queue: Queue,
+        playWhenReady: Boolean = true,
+    ) {
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (!isTogetherApplyingRemote() && joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            playQueueImmediate(queue, playWhenReady)
+            return
+        }
+
+        // CROSSFADE2_MANUAL_DIAG_V6
+        Timber.tag(TAG).d(
+            "playQueue: playWhenReady=%s eligible=%s enabled=%s manual=%s durationMs=%d isCrossfading=%s handoff=%s secondary=%s jobActive=%s",
+            playWhenReady,
+            shouldUseCrossfade2ForManualSelection(),
+            crossfadeEnabled,
+            crossfadeManualSelectionEnabled,
+            crossfadeDurationMs,
+            isCrossfading,
+            crossfadeHandoffInProgress,
+            secondaryCrossfadePlayer != null,
+            crossfade2ManualJob?.isActive == true,
+        )
+        if (playWhenReady && shouldUseCrossfade2ForManualSelection()) {
+            crossfade2ManualJob?.cancel()
+            cancelRestoredQueueHydration()
+            cancelInfiniteQueueBootstrap()
+            crossfade2ManualJob =
+                scope.launch(SilentHandler) {
+                    try {
+                        val handled = runCrossfade2ManualSelection(queue)
+                        if (!handled && isActive) {
+                            playQueueImmediate(queue, playWhenReady)
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        Timber.tag(TAG).w(e, "Crossfade2 manual transition failed before commit")
+                        if (isActive) {
+                            playQueueImmediate(queue, playWhenReady)
+                        }
+                    }
+                }
+            return
+        }
+
+        playQueueImmediate(queue, playWhenReady)
+    }
+
+    private fun playQueueImmediate(
+        queue: Queue,
+        playWhenReady: Boolean = true,
+    ) {
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (!isTogetherApplyingRemote() && joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_DISABLED")
+                return
+            }
+            ensureScopesActive()
+            scope.launch(SilentHandler) {
+                val initialStatus =
+                    withContext(Dispatchers.IO) {
+                        queue
+                            .getInitialStatus()
+                            .filterPlaybackContent(
+                                hideExplicit = dataStore.get(HideExplicitKey, false),
+                                hideVideo = dataStore.get(HideVideoKey, false),
+                            )
+                    }
+
+                val targetItem =
+                    initialStatus.items.getOrNull(initialStatus.mediaItemIndex)
+                        ?: queue.preloadItem
+                            ?.toMediaItem()
+                            ?.takeUnless { item ->
+                                item.hasBlockedArtist(loadBlockedArtistIds())
+                            }
+
+                val meta = targetItem?.metadata
+                val trackId =
+                    meta?.id?.trim().orEmpty().ifBlank {
+                        targetItem?.mediaId?.trim().orEmpty()
+                    }
+                if (trackId.isBlank()) {
+                    showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_NO_TRACK")
+                    return@launch
+                }
+
+                val track =
+                    moe.rukamori.archivetune.together.TogetherTrack(
+                        id = trackId,
+                        title = meta?.title ?: trackId,
+                        artists = meta?.artists?.map { it.name }.orEmpty(),
+                        durationSec = meta?.duration ?: -1,
+                        thumbnailUrl = meta?.thumbnailUrl,
+                    )
+
+                val ops =
+                    moe.rukamori.archivetune.together.TogetherGuestPlaybackPlanner.planPlayTrackNow(
+                        roomState = joined.roomState,
+                        track = track,
+                        positionMs = initialStatus.position,
+                        playWhenReady = playWhenReady,
+                    )
+
+                if (ops.isEmpty()) {
+                    showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_BLOCKED")
+                    return@launch
+                }
+
+                showTogetherNotice(getString(R.string.together_requesting_song_change), key = "GUEST_PLAYQUEUE_REQUEST")
+                ops.forEach { op ->
+                    when (op) {
+                        is moe.rukamori.archivetune.together.TogetherGuestOp.Control -> requestTogetherControl(op.action)
+                        is moe.rukamori.archivetune.together.TogetherGuestOp.AddTrack -> requestTogetherAddTrack(op.track, op.mode)
+                    }
+                }
+            }
+            return
+        }
+        if (playWhenReady) {
+            cancelIdleStop()
+            promoteToStartedService()
+            ensureStartedAsForeground()
+        }
+        cancelRestoredQueueHydration()
+        ensureScopesActive()
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelInfiniteQueueBootstrap()
+        suppressAutoPlayback = false
+        currentQueue = queue
+        queueTitle = null
+        val permanentShuffle = dataStore.get(PermanentShuffleKey, false)
+        if (!permanentShuffle) {
+            player.shuffleModeEnabled = false
+        }
+
+        clearAutomix()
+        autoAddedMediaIds.clear()
+        scope.launch(SilentHandler) {
+            val hideExplicit = dataStore.get(HideExplicitKey, false)
+            val hideVideo = dataStore.get(HideVideoKey, false)
+            val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
+            val preloadItem =
+                queue.preloadItem
+                    ?.toMediaItem()
+                    ?.takeUnless { item ->
+                        item.hasBlockedArtist(loadBlockedArtistIds())
+                    }
+            if (preloadItem != null) {
+                player.setMediaItem(preloadItem)
+                player.prepare()
+                player.playWhenReady = playWhenReady
+            }
+            var initialStatus =
+                withContext(Dispatchers.IO) {
+                    queue
+                        .getInitialStatus()
+                        .filterPlaybackContent(hideExplicit, hideVideo)
+                }
+            if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
+                val expandedItems = initialStatus.items.toMutableList()
+                var pagesLoaded = 0
+                while (queue.hasNextPage() && pagesLoaded < 200) {
+                    pagesLoaded++
+                    val nextItems =
+                        withContext(Dispatchers.IO) {
+                            queue
+                                .nextPage()
+                                .filterPlaybackContent(hideExplicit, hideVideo)
+                        }
+                    if (nextItems.isNotEmpty()) {
+                        expandedItems += nextItems
+                    }
+                }
+                initialStatus = initialStatus.copy(items = expandedItems)
+            }
+            if (initialStatus.title != null) {
+                queueTitle = initialStatus.title
+            }
+            if (initialStatus.items.isEmpty()) return@launch
+            if (preloadItem != null) {
+                val preloadMediaId = preloadItem.mediaId.trim()
+                val insertionIndex =
+                    initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
+                val itemsBeforeCurrent =
+                    initialStatus.items
+                        .subList(0, insertionIndex)
+                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                val itemsAfterCurrent =
+                    initialStatus.items
+                        .subList(insertionIndex, initialStatus.items.size)
+                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+
+                player.addMediaItems(0, itemsBeforeCurrent)
+                player.addMediaItems(itemsAfterCurrent)
+                if (player.shuffleModeEnabled) {
+                    applyCurrentFirstShuffleOrder()
+                }
+            } else {
+                val items = initialStatus.items
+                val index = initialStatus.mediaItemIndex
+
+                player.setMediaItems(items, index, initialStatus.position)
+                player.prepare()
+                player.playWhenReady = playWhenReady
+                if (player.shuffleModeEnabled) {
+                    applyCurrentFirstShuffleOrder()
+                }
+            }
+
+            if (
+                autoLoadMoreEnabled &&
+                player.currentMetadata?.isPodcast != true &&
+                !queue.hasNextPage() &&
+                player.mediaItemCount - player.currentMediaItemIndex <= 3
+            ) {
+                onInfiniteQueueEnabled()
+            }
+        }
+    }
+
+    private fun applyCurrentFirstShuffleOrder() {
+        val count = player.mediaItemCount
+        if (count <= 1) return
+        val currentIndex = player.currentMediaItemIndex.coerceIn(0, count - 1)
+        val shuffledIndices = IntArray(count) { it }
+        shuffledIndices.shuffle()
+        val currentPos = shuffledIndices.indexOf(currentIndex)
+        if (currentPos >= 0) {
+            shuffledIndices[currentPos] = shuffledIndices[0]
+        }
+        shuffledIndices[0] = currentIndex
+        localPlayer.setShuffleOrder(DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis()))
+    }
+
+    private fun buildPlayNextShuffleOrder(
+        currentIndex: Int,
+        insertionIndex: Int,
+        insertionCount: Int,
+    ): DefaultShuffleOrder? {
+        if (insertionCount <= 0 || player.currentTimeline.isEmpty) return null
+
+        fun adjustedIndex(index: Int): Int =
+            if (index >= insertionIndex) {
+                index + insertionCount
+            } else {
+                index
+            }
+
+        val timeline = player.currentTimeline
+        val previousIndices = ArrayDeque<Int>()
+        var traversalIndex = currentIndex
+        while (true) {
+            traversalIndex = timeline.getPreviousWindowIndex(traversalIndex, REPEAT_MODE_OFF, true)
+            if (traversalIndex == C.INDEX_UNSET) {
+                break
+            }
+            previousIndices.addFirst(adjustedIndex(traversalIndex))
+        }
+
+        val nextIndices = mutableListOf<Int>()
+        traversalIndex = currentIndex
+        while (true) {
+            traversalIndex = timeline.getNextWindowIndex(traversalIndex, REPEAT_MODE_OFF, true)
+            if (traversalIndex == C.INDEX_UNSET) {
+                break
+            }
+            nextIndices += adjustedIndex(traversalIndex)
+        }
+
+        val shuffledIndices =
+            buildList(player.mediaItemCount + insertionCount) {
+                addAll(previousIndices)
+                add(currentIndex)
+                repeat(insertionCount) { offset ->
+                    add(insertionIndex + offset)
+                }
+                addAll(nextIndices)
+            }.toIntArray()
+
+        return DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis())
+    }
+
+    fun startRadioSeamlessly() {
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (!isTogetherApplyingRemote() && joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_RADIO_DISABLED")
+                return
+            }
+            showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_RADIO_UNSUPPORTED")
+            return
+        }
+        cancelInfiniteQueueBootstrap()
+        suppressAutoPlayback = false
+        val currentMediaMetadata = player.currentMetadata ?: return
+
+        val currentIndex = player.currentMediaItemIndex
+        val currentMediaId = currentMediaMetadata.id
+        if (currentSong.value?.song?.isLocal == true || currentMediaId.isLocalMediaId()) {
+            return
+        }
+
+        scope.launch(SilentHandler) {
+            val radioQueue =
+                YouTubeQueue(
+                    endpoint = WatchEndpoint(videoId = currentMediaId),
+                    followAutomixPreview = true,
+                )
+            val initialStatus =
+                withContext(Dispatchers.IO) {
+                    radioQueue
+                        .getInitialStatus()
+                        .filterPlaybackContent(
+                            hideExplicit = dataStore.get(HideExplicitKey, false),
+                            hideVideo = dataStore.get(HideVideoKey, false),
+                        )
+                }
+
+            if (initialStatus.title != null) {
+                queueTitle = initialStatus.title
+            }
+
+            val radioItems =
+                initialStatus.items.filter { item ->
+                    item.mediaId != currentMediaId
+                }
+
+            if (radioItems.isNotEmpty()) {
+                val itemCount = player.mediaItemCount
+
+                if (itemCount > currentIndex + 1) {
+                    player.removeMediaItems(currentIndex + 1, itemCount)
+                }
+
+                player.addMediaItems(currentIndex + 1, radioItems)
+            }
+
+            currentQueue = radioQueue
+        }
+    }
+
+    fun clearAutomix() {
+        autoAddedMediaIds.clear()
+    }
+
+    fun onInfiniteQueueDisabled() {
+        cancelInfiniteQueueBootstrap()
+        val currentIndex = player.currentMediaItemIndex
+        val idsToRemove = synchronized(autoAddedMediaIds) { autoAddedMediaIds.toSet() }
+        if (idsToRemove.isEmpty()) {
+            return
+        }
+        for (i in player.mediaItemCount - 1 downTo 0) {
+            if (i == currentIndex) continue
+            val item = player.getMediaItemAt(i)
+            if (item.mediaId in idsToRemove) {
+                player.removeMediaItem(i)
+            }
+        }
+        autoAddedMediaIds.clear()
+        currentQueue = EmptyQueue
+    }
+
+    fun onInfiniteQueueEnabled() {
+        val currentMeta = player.currentMetadata ?: return
+        if (currentMeta.isPodcast) return
+        if (isCurrentPlaybackItemLocal(currentMeta)) return
+        if (infiniteQueueJob?.isActive == true) return
+
+        val seedMediaId = currentMeta.id.trim().ifBlank { return }
+        val generation = ++infiniteQueueGeneration
+        infiniteQueueLoading.value = true
+
+        infiniteQueueJob =
+            scope.launch(SilentHandler) {
+                try {
+                    val hideExplicit = dataStore.get(HideExplicitKey, false)
+                    val hideVideo = dataStore.get(HideVideoKey, false)
+                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedMediaId), followAutomixPreview = true)
+                    val status =
+                        withContext(Dispatchers.IO) {
+                            radioQueue
+                                .getInitialStatus()
+                                .filterPlaybackContent(hideExplicit, hideVideo)
+                        }
+                    val knownIds =
+                        (0 until player.mediaItemCount)
+                            .mapTo(mutableSetOf()) { player.getMediaItemAt(it).mediaId }
+                    val newItems = status.items.filter { knownIds.add(it.mediaId) }.toMutableList()
+                    var loadedPageCount = 1
+
+                    while (
+                        newItems.isEmpty() &&
+                        radioQueue.hasNextPage() &&
+                        loadedPageCount < INFINITE_QUEUE_MAX_BOOTSTRAP_PAGES
+                    ) {
+                        loadedPageCount++
+                        val page =
+                            withContext(Dispatchers.IO) {
+                                radioQueue
+                                    .nextPage()
+                                    .filterPlaybackContent(hideExplicit, hideVideo)
+                            }
+                        newItems += page.filter { knownIds.add(it.mediaId) }
+                    }
+
+                    if (generation != infiniteQueueGeneration) return@launch
+
+                    if (newItems.isNotEmpty()) {
+                        player.addMediaItems(newItems)
+                        newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
+                    }
+
+                    currentQueue = radioQueue
+
+                    if (player.playbackState == Player.STATE_ENDED ||
+                        player.mediaItemCount == player.currentMediaItemIndex + 1
+                    ) {
+                        if (!manualSkipToNextWithCrossfade()) {
+                            player.seekToNext()
+                            if (player.playbackState == Player.STATE_IDLE ||
+                                player.playbackState == Player.STATE_ENDED
+                            ) {
+                                player.prepare()
+                            }
+                            player.playWhenReady = true
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to bootstrap auto-queue")
+                } finally {
+                    if (generation == infiniteQueueGeneration) {
+                        infiniteQueueJob = null
+                        infiniteQueueLoading.value = false
+                    }
+                }
+            }
+    }
+
+    private fun cancelInfiniteQueueBootstrap() {
+        infiniteQueueGeneration++
+        infiniteQueueJob?.cancel()
+        infiniteQueueJob = null
+        infiniteQueueLoading.value = false
+    }
+
+    fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
+        cancelRestoredQueueHydration()
+        cancelInfiniteQueueBootstrap()
+        suppressAutoPlayback = true
+        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        clearAutomix()
+        currentQueue = EmptyQueue
+        queueTitle = null
+        waitingForNetworkConnection.value = false
+        currentMediaMetadata.value = null
+        player.playWhenReady = false
+        player.stop()
+        player.clearMediaItems()
+        abandonAudioFocus()
+        closeAudioEffectSession()
+        consecutivePlaybackErr = 0
+        if (clearPersistentState) {
+            clearPersistedQueueFiles()
+        }
+    }
+
+    fun playNext(items: List<MediaItem>) {
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
+        if (allowedItems.isEmpty()) return
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!joined.roomState.settings.allowGuestsToAddTracks) {
+                return
+            }
+            val tracks =
+                allowedItems.mapNotNull { it.metadata }.map { meta ->
+                    moe.rukamori.archivetune.together.TogetherTrack(
+                        id = meta.id,
+                        title = meta.title,
+                        artists = meta.artists.map { it.name },
+                        durationSec = meta.duration,
+                        thumbnailUrl = meta.thumbnailUrl,
+                    )
+                }
+            tracks.asReversed().forEach { track ->
+                requestTogetherAddTrack(track, moe.rukamori.archivetune.together.AddTrackMode.PLAY_NEXT)
+            }
+            return
+        }
+        suppressAutoPlayback = false
+        val insertionIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
+        val playNextShuffleOrder =
+            if (player.shuffleModeEnabled && player.mediaItemCount > 0) {
+                buildPlayNextShuffleOrder(
+                    currentIndex = player.currentMediaItemIndex,
+                    insertionIndex = insertionIndex,
+                    insertionCount = allowedItems.size,
+                )
+            } else {
+                null
+            }
+
+        player.addMediaItems(insertionIndex, allowedItems)
+        playNextShuffleOrder?.let(localPlayer::setShuffleOrder)
+        player.prepare()
+    }
+
+    fun moveQueueItemToNext(mediaItemIndex: Int) {
+        val currentIndex = player.currentMediaItemIndex
+        if (
+            player.mediaItemCount < 2 ||
+            currentIndex == C.INDEX_UNSET ||
+            mediaItemIndex !in 0 until player.mediaItemCount ||
+            mediaItemIndex == currentIndex
+        ) {
+            return
+        }
+
+        if (player.shuffleModeEnabled) {
+            val shuffledIndices = player.getQueueWindows().map { it.firstPeriodIndex }.toMutableList()
+            val sourcePosition = shuffledIndices.indexOf(mediaItemIndex)
+            val currentPosition = shuffledIndices.indexOf(currentIndex)
+            if (sourcePosition == -1 || currentPosition == -1) return
+
+            val destinationPosition = (currentPosition + 1).coerceAtMost(shuffledIndices.lastIndex)
+            if (sourcePosition == destinationPosition) return
+
+            shuffledIndices.move(sourcePosition, destinationPosition)
+            localPlayer.setShuffleOrder(
+                DefaultShuffleOrder(
+                    shuffledIndices.toIntArray(),
+                    System.currentTimeMillis(),
+                ),
+            )
+            return
+        }
+
+        val destinationIndex = (currentIndex + 1).coerceAtMost(player.mediaItemCount - 1)
+        if (mediaItemIndex != destinationIndex) {
+            player.moveMediaItem(mediaItemIndex, destinationIndex)
+        }
+    }
+
+    fun addToQueue(items: List<MediaItem>) {
+        val allowedItems =
+            items
+                .filterBlockedArtists(blockedArtistIds)
+                .filterVideo(hideMusicVideos)
+        if (allowedItems.isEmpty()) return
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!joined.roomState.settings.allowGuestsToAddTracks) {
+                return
+            }
+            val tracks =
+                allowedItems.mapNotNull { it.metadata }.map { meta ->
+                    moe.rukamori.archivetune.together.TogetherTrack(
+                        id = meta.id,
+                        title = meta.title,
+                        artists = meta.artists.map { it.name },
+                        durationSec = meta.duration,
+                        thumbnailUrl = meta.thumbnailUrl,
+                    )
+                }
+            tracks.forEach { track ->
+                requestTogetherAddTrack(track, moe.rukamori.archivetune.together.AddTrackMode.ADD_TO_QUEUE)
+            }
+            return
+        }
+        suppressAutoPlayback = false
+        player.addMediaItems(allowedItems)
+        player.prepare()
+    }
+
+    fun playFromVoiceSearch(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return
+        ensureScopesActive()
+        scope.launch(SilentHandler) {
+            val mediaItems =
+                withContext(Dispatchers.IO) {
+                    mediaLibrarySessionCallback.resolveVoiceMediaItems(trimmed)
+                }
+            if (mediaItems.isEmpty()) return@launch
+            playQueue(ListQueue(items = mediaItems))
+        }
+    }
+
+    fun startTogetherHost(
+        port: Int,
+        displayName: String,
+        settings: moe.rukamori.archivetune.together.TogetherRoomSettings,
+    ) {
+        ensureScopesActive()
+        scope.launch(SilentHandler) {
+            togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+        }
+
+        ioScope.launch(SilentHandler) {
+            stopTogetherInternal()
+            togetherIsOnlineSession = false
+
+            val localIp = getLocalIpv4Address()
+            val sessionId =
+                java.util.UUID
+                    .randomUUID()
+                    .toString()
+            val sessionKey =
+                java.util.UUID
+                    .randomUUID()
+                    .toString()
+            val joinInfo =
+                moe.rukamori.archivetune.together.TogetherJoinInfo(
+                    host = localIp ?: "127.0.0.1",
+                    port = port,
+                    sessionId = sessionId,
+                    sessionKey = sessionKey,
+                )
+            val joinLink =
+                moe.rukamori.archivetune.together.TogetherLink
+                    .encode(joinInfo)
+
+            val server =
+                moe.rukamori.archivetune.together.TogetherServer(
+                    scope = ioScope,
+                    sessionId = sessionId,
+                    sessionKey = sessionKey,
+                    hostDisplayName = displayName.trim().ifBlank { getString(R.string.app_name) },
+                    initialSettings = settings,
+                    hostParticipantId = togetherHostId,
+                )
+
+            server.onEvent = { event ->
+                ioScope.launch(SilentHandler) {
+                    handleTogetherHostEvent(event) { server.currentSettings() }
+                }
+            }
+
+            server.start(port)
+            togetherServer = server
+            scheduleTogetherHostInactivityTimeout(sessionId)
+
+            scope.launch(SilentHandler) {
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.Hosting(
+                        sessionId = sessionId,
+                        joinLink = joinLink,
+                        localAddressHint = localIp,
+                        port = port,
+                        settings = settings,
+                        roomState = null,
+                    )
+            }
+
+            togetherBroadcastJob =
+                ioScope.launch(SilentHandler) {
+                    while (togetherServer === server) {
+                        if (togetherAuthorityParticipantId == null || togetherAuthorityParticipantId == togetherHostId) {
+                            val state = buildTogetherRoomState(sessionId = sessionId, hostId = togetherHostId)
+                            server.broadcastRoomState(state)
+                            scope.launch(SilentHandler) {
+                                val hosting = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Hosting
+                                if (hosting?.sessionId == sessionId) {
+                                    togetherSessionState.value =
+                                        hosting.copy(
+                                            settings = server.currentSettings(),
+                                            roomState =
+                                                state.copy(
+                                                    participants = server.currentParticipants(),
+                                                    settings = server.currentSettings(),
+                                                ),
+                                        )
+                                }
+                            }
+                        }
+                        kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
+                    }
+                }
+        }
+    }
+
+    private fun togetherOnlineErrorMessage(t: Throwable): String {
+        if (t is moe.rukamori.archivetune.together.TogetherOnlineApiException) {
+            val code = t.statusCode
+            return when {
+                code == 404 -> getString(R.string.together_session_not_found)
+                code != null && code in 500..599 -> getString(R.string.together_server_error)
+                else -> t.message ?: getString(R.string.network_unavailable)
+            }
+        }
+        val root = generateSequence(t) { it.cause }.lastOrNull() ?: t
+        return when (root) {
+            is UnknownHostException -> getString(R.string.together_server_unreachable)
+            is ConnectException -> getString(R.string.together_server_unreachable)
+            is SocketTimeoutException -> getString(R.string.together_connection_timed_out)
+            is javax.net.ssl.SSLHandshakeException -> getString(R.string.together_server_unreachable)
+            else -> getString(R.string.network_unavailable)
+        }
+    }
+
+    fun startTogetherOnlineHost(
+        displayName: String,
+        settings: moe.rukamori.archivetune.together.TogetherRoomSettings,
+    ) {
+        ensureScopesActive()
+        scope.launch(SilentHandler) {
+            togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+        }
+
+        ioScope.launch(SilentHandler) {
+            stopTogetherInternal()
+            togetherIsOnlineSession = true
+
+            val baseUrl =
+                moe.rukamori.archivetune.together.TogetherOnlineEndpoint
+                    .baseUrlOrNull(dataStore)
+            if (baseUrl == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = getString(R.string.together_online_not_configured),
+                            recoverable = true,
+                        )
+                }
+                return@launch
+            }
+
+            val togetherToken =
+                moe.rukamori.archivetune.BuildConfig.TOGETHER_BEARER_TOKEN
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+            if (togetherToken == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = getString(R.string.together_token_missing),
+                            recoverable = true,
+                        )
+                }
+                return@launch
+            }
+
+            val api =
+                moe.rukamori.archivetune.together
+                    .TogetherOnlineApi(baseUrl = baseUrl, bearerToken = togetherToken)
+            val hostName = displayName.trim().ifBlank { getString(R.string.app_name) }
+
+            val created =
+                runCatching {
+                    api.createSession(
+                        hostDisplayName = hostName,
+                        settings = settings,
+                    )
+                }.getOrElse { t ->
+                    scope.launch(SilentHandler) {
+                        togetherSessionState.value =
+                            moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                message = togetherOnlineErrorMessage(t),
+                                recoverable = true,
+                            )
+                    }
+                    reportException(t)
+                    return@launch
+                }
+
+            val onlineHost =
+                moe.rukamori.archivetune.together.TogetherOnlineHost(
+                    externalScope = ioScope,
+                    sessionId = created.sessionId,
+                    sessionKey = created.hostKey,
+                    hostId = togetherHostId,
+                    hostDisplayName = hostName,
+                    initialSettings = created.settings,
+                    clientId = getOrCreateTogetherClientId(),
+                    bearerToken = togetherToken,
+                )
+
+            onlineHost.onEvent = { event ->
+                ioScope.launch(SilentHandler) {
+                    handleTogetherHostEvent(event) { onlineHost.currentSettings() }
+                }
+            }
+
+            togetherOnlineHost = onlineHost
+            scheduleTogetherHostInactivityTimeout(created.sessionId) {
+                api.endSession(
+                    sessionId = created.sessionId,
+                    hostKey = created.hostKey,
+                )
+            }
+
+            scope.launch(SilentHandler) {
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline(
+                        sessionId = created.sessionId,
+                        code = created.code,
+                        settings = created.settings,
+                        roomState = null,
+                    )
+            }
+
+            val wsUrl =
+                moe.rukamori.archivetune.together.TogetherOnlineEndpoint.onlineWebSocketUrlOrNull(
+                    rawWsUrl = created.wsUrl,
+                    baseUrl = baseUrl,
+                )
+            if (wsUrl == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = "Connection failed: Invalid server websocket URL",
+                            recoverable = true,
+                        )
+                }
+                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                return@launch
+            }
+
+            togetherOnlineConnectJob?.cancel()
+            togetherOnlineConnectJob =
+                ioScope.launch(SilentHandler) {
+                    onlineHost.connect(wsUrl)
+                }
+
+            togetherBroadcastJob =
+                ioScope.launch(SilentHandler) {
+                    while (togetherOnlineHost === onlineHost) {
+                        val state =
+                            if (togetherAuthorityParticipantId == null || togetherAuthorityParticipantId == togetherHostId) {
+                                buildTogetherRoomState(
+                                    sessionId = created.sessionId,
+                                    hostId = togetherHostId,
+                                )
+                            } else {
+                                null
+                            }
+                        if (state != null) {
+                            onlineHost.broadcastRoomState(state)
+                            scope.launch(SilentHandler) {
+                                val hosting =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline
+                                if (hosting?.sessionId == created.sessionId) {
+                                    val currentSettings = onlineHost.currentSettings()
+                                    togetherSessionState.value =
+                                        hosting.copy(
+                                            settings = currentSettings,
+                                            roomState =
+                                                state.copy(
+                                                    participants = onlineHost.currentParticipants(),
+                                                    settings = currentSettings,
+                                                ),
+                                        )
+                                }
+                            }
+                        }
+                        kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
+                    }
+                }
+        }
+    }
+
+    fun joinTogether(
+        rawLink: String,
+        displayName: String,
+    ) {
+        ensureScopesActive()
+        val joinInfo =
+            moe.rukamori.archivetune.together.TogetherLink
+                .decode(rawLink)
+        if (joinInfo == null) {
+            scope.launch(SilentHandler) {
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                        message = getString(R.string.invalid_link),
+                        recoverable = true,
+                    )
+            }
+            return
+        }
+
+        scope.launch(SilentHandler) {
+            togetherSessionState.value =
+                moe.rukamori.archivetune.together.TogetherSessionState
+                    .Joining(joinInfo.toDeepLink())
+        }
+
+        ioScope.launch(SilentHandler) {
+            stopTogetherInternal()
+            togetherIsOnlineSession = false
+            val client =
+                moe.rukamori.archivetune.together.TogetherClient(
+                    ioScope,
+                    clientId = getOrCreateTogetherClientId(),
+                )
+            togetherClient = client
+            togetherClock =
+                moe.rukamori.archivetune.together
+                    .TogetherClock()
+            togetherSelfParticipantId = null
+            togetherLastAppliedQueueHash = null
+
+            togetherClientEventsJob?.cancel()
+            togetherClientEventsJob =
+                ioScope.launch(SilentHandler) {
+                    client.events.collect { event ->
+                        when (event) {
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.Welcome -> {
+                                togetherSelfParticipantId = event.welcome.participantId
+                                scope.launch(SilentHandler) {
+                                    val state = togetherSessionState.value
+                                    if (state is moe.rukamori.archivetune.together.TogetherSessionState.Joining) {
+                                        val selfName = displayName.trim().ifBlank { getString(R.string.together_role_guest) }
+                                        val initial =
+                                            moe.rukamori.archivetune.together.TogetherRoomState(
+                                                sessionId = joinInfo.sessionId,
+                                                hostId = togetherHostId,
+                                                participants =
+                                                    listOf(
+                                                        moe.rukamori.archivetune.together.TogetherParticipant(
+                                                            id = event.welcome.participantId,
+                                                            name = selfName,
+                                                            isHost = false,
+                                                            isPending = event.welcome.isPending,
+                                                            isConnected = true,
+                                                        ),
+                                                    ),
+                                                settings = event.welcome.settings,
+                                                queue = emptyList(),
+                                                queueHash = "",
+                                                currentIndex = 0,
+                                                isPlaying = false,
+                                                positionMs = 0L,
+                                                repeatMode = 0,
+                                                shuffleEnabled = false,
+                                                sentAtElapsedRealtimeMs = android.os.SystemClock.elapsedRealtime(),
+                                            )
+                                        togetherSessionState.value =
+                                            moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                                                role = moe.rukamori.archivetune.together.TogetherRole.Guest,
+                                                sessionId = joinInfo.sessionId,
+                                                selfParticipantId = event.welcome.participantId,
+                                                roomState = initial,
+                                            )
+                                    }
+                                }
+                                startTogetherHeartbeat(joinInfo.sessionId, client)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.RoomState -> {
+                                applyRemoteRoomState(event.state)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HostTransferred -> {
+                                handleTogetherClientHostTransferred(event.transfer)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ControlRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToControlPlayback == true
+                                ) {
+                                    applyHostControl(event.request.action)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.AddTrackRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToAddTracks == true
+                                ) {
+                                    applyHostAddTrack(event.request.track, event.request.mode)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.JoinDecision -> {
+                                if (!event.decision.approved) {
+                                    scope.launch(SilentHandler) {
+                                        togetherSessionState.value =
+                                            moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                                message = getString(R.string.not_allowed),
+                                                recoverable = true,
+                                            )
+                                    }
+                                    ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ServerIssue -> {
+                                Timber.tag("Together").w("server issue (lan) code=${event.code.orEmpty()} message=${event.message}")
+                                when (event.code) {
+                                    "GUEST_CONTROL_DISABLED" -> {
+                                        showTogetherNotice(event.message, key = "GUEST_CONTROL_DISABLED")
+                                        val joined =
+                                            togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+                                            togetherPendingGuestControl = null
+                                            togetherLastSentControlAction = null
+                                            scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+                                        }
+                                    }
+
+                                    "GUEST_ADD_DISABLED" -> {
+                                        showTogetherNotice(event.message, key = "GUEST_ADD_DISABLED")
+                                    }
+
+                                    "HOST_OFFLINE" -> {
+                                        showTogetherNotice(event.message, key = "HOST_OFFLINE")
+                                    }
+
+                                    else -> {
+                                        scope.launch(SilentHandler) {
+                                            togetherSessionState.value =
+                                                moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                                    message = event.message,
+                                                    recoverable = true,
+                                                )
+                                        }
+                                        ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                                    }
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HeartbeatPong -> {
+                                val clock = togetherClock ?: return@collect
+                                clock.onPong(
+                                    sentAtElapsedMs = event.pong.clientElapsedRealtimeMs,
+                                    receivedAtElapsedMs = event.receivedAtElapsedRealtimeMs,
+                                    serverElapsedMs = event.pong.serverElapsedRealtimeMs,
+                                )
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.Error -> {
+                                scope.launch(SilentHandler) {
+                                    togetherSessionState.value =
+                                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                            message = event.message,
+                                            recoverable = true,
+                                        )
+                                }
+                                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                            }
+
+                            moe.rukamori.archivetune.together.TogetherClientEvent.Disconnected -> {
+                                val current = togetherSessionState.value
+                                if (current is moe.rukamori.archivetune.together.TogetherSessionState.Idle) return@collect
+                                scope.launch(SilentHandler) {
+                                    val currentState = togetherSessionState.value
+                                    togetherSessionState.value =
+                                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                            message =
+                                                if (currentState is moe.rukamori.archivetune.together.TogetherSessionState.Joined &&
+                                                    currentState.role is moe.rukamori.archivetune.together.TogetherRole.Guest
+                                                ) {
+                                                    getString(R.string.together_host_left_session)
+                                                } else {
+                                                    getString(R.string.network_unavailable)
+                                                },
+                                            recoverable = true,
+                                        )
+                                }
+                                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                            }
+                        }
+                    }
+                }
+
+            client.connect(joinInfo, displayName.trim().ifBlank { getString(R.string.together_role_guest) })
+        }
+    }
+
+    fun joinTogetherOnline(
+        code: String,
+        displayName: String,
+    ) {
+        ensureScopesActive()
+        val trimmedCode = code.trim()
+        if (trimmedCode.isBlank()) {
+            scope.launch(SilentHandler) {
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                        message = getString(R.string.invalid_code),
+                        recoverable = true,
+                    )
+            }
+            return
+        }
+
+        scope.launch(SilentHandler) {
+            togetherSessionState.value =
+                moe.rukamori.archivetune.together.TogetherSessionState
+                    .JoiningOnline(trimmedCode)
+        }
+
+        ioScope.launch(SilentHandler) {
+            stopTogetherInternal()
+            togetherIsOnlineSession = true
+
+            val baseUrl =
+                moe.rukamori.archivetune.together.TogetherOnlineEndpoint
+                    .baseUrlOrNull(dataStore)
+            if (baseUrl == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = getString(R.string.together_online_not_configured),
+                            recoverable = true,
+                        )
+                }
+                return@launch
+            }
+
+            val togetherToken =
+                moe.rukamori.archivetune.BuildConfig.TOGETHER_BEARER_TOKEN
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+            if (togetherToken == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = getString(R.string.together_token_missing),
+                            recoverable = true,
+                        )
+                }
+                return@launch
+            }
+
+            val api =
+                moe.rukamori.archivetune.together
+                    .TogetherOnlineApi(baseUrl = baseUrl, bearerToken = togetherToken)
+            val resolved =
+                runCatching { api.resolveCode(trimmedCode) }
+                    .getOrElse { t ->
+                        scope.launch(SilentHandler) {
+                            togetherSessionState.value =
+                                moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                    message = togetherOnlineErrorMessage(t),
+                                    recoverable = true,
+                                )
+                        }
+                        reportException(t)
+                        return@launch
+                    }
+
+            val client =
+                moe.rukamori.archivetune.together.TogetherClient(
+                    ioScope,
+                    clientId = getOrCreateTogetherClientId(),
+                    bearerToken = togetherToken,
+                )
+            togetherClient = client
+            togetherClock =
+                moe.rukamori.archivetune.together
+                    .TogetherClock()
+            togetherSelfParticipantId = null
+            togetherLastAppliedQueueHash = null
+
+            togetherClientEventsJob?.cancel()
+            togetherClientEventsJob =
+                ioScope.launch(SilentHandler) {
+                    client.events.collect { event ->
+                        when (event) {
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.Welcome -> {
+                                togetherSelfParticipantId = event.welcome.participantId
+                                scope.launch(SilentHandler) {
+                                    val state = togetherSessionState.value
+                                    if (state is moe.rukamori.archivetune.together.TogetherSessionState.JoiningOnline) {
+                                        val selfName = displayName.trim().ifBlank { getString(R.string.together_role_guest) }
+                                        val initial =
+                                            moe.rukamori.archivetune.together.TogetherRoomState(
+                                                sessionId = resolved.sessionId,
+                                                hostId = togetherHostId,
+                                                participants =
+                                                    listOf(
+                                                        moe.rukamori.archivetune.together.TogetherParticipant(
+                                                            id = event.welcome.participantId,
+                                                            name = selfName,
+                                                            isHost = false,
+                                                            isPending = event.welcome.isPending,
+                                                            isConnected = true,
+                                                        ),
+                                                    ),
+                                                settings = event.welcome.settings,
+                                                queue = emptyList(),
+                                                queueHash = "",
+                                                currentIndex = 0,
+                                                isPlaying = false,
+                                                positionMs = 0L,
+                                                repeatMode = 0,
+                                                shuffleEnabled = false,
+                                                sentAtElapsedRealtimeMs = android.os.SystemClock.elapsedRealtime(),
+                                            )
+                                        togetherSessionState.value =
+                                            moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                                                role = moe.rukamori.archivetune.together.TogetherRole.Guest,
+                                                sessionId = resolved.sessionId,
+                                                selfParticipantId = event.welcome.participantId,
+                                                roomState = initial,
+                                            )
+                                    }
+                                }
+                                startTogetherHeartbeat(resolved.sessionId, client)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.RoomState -> {
+                                applyRemoteRoomState(event.state)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HostTransferred -> {
+                                handleTogetherClientHostTransferred(event.transfer)
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ControlRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToControlPlayback == true
+                                ) {
+                                    applyHostControl(event.request.action)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.AddTrackRequested -> {
+                                val joined =
+                                    togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                if (togetherAuthorityParticipantId == togetherSelfParticipantId &&
+                                    joined?.roomState?.settings?.allowGuestsToAddTracks == true
+                                ) {
+                                    applyHostAddTrack(event.request.track, event.request.mode)
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.JoinDecision -> {
+                                if (!event.decision.approved) {
+                                    scope.launch(SilentHandler) {
+                                        togetherSessionState.value =
+                                            moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                                message = getString(R.string.not_allowed),
+                                                recoverable = true,
+                                            )
+                                    }
+                                    ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.ServerIssue -> {
+                                Timber.tag("Together").w("server issue (online) code=${event.code.orEmpty()} message=${event.message}")
+                                when (event.code) {
+                                    "GUEST_CONTROL_DISABLED" -> {
+                                        showTogetherNotice(event.message, key = "GUEST_CONTROL_DISABLED")
+                                        val joined =
+                                            togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+                                        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+                                            togetherPendingGuestControl = null
+                                            togetherLastSentControlAction = null
+                                            scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+                                        }
+                                    }
+
+                                    "GUEST_ADD_DISABLED" -> {
+                                        showTogetherNotice(event.message, key = "GUEST_ADD_DISABLED")
+                                    }
+
+                                    "HOST_OFFLINE" -> {
+                                        showTogetherNotice(event.message, key = "HOST_OFFLINE")
+                                    }
+
+                                    else -> {
+                                        scope.launch(SilentHandler) {
+                                            togetherSessionState.value =
+                                                moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                                    message = event.message,
+                                                    recoverable = true,
+                                                )
+                                        }
+                                        ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                                    }
+                                }
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.HeartbeatPong -> {
+                                val clock = togetherClock ?: return@collect
+                                clock.onPong(
+                                    sentAtElapsedMs = event.pong.clientElapsedRealtimeMs,
+                                    receivedAtElapsedMs = event.receivedAtElapsedRealtimeMs,
+                                    serverElapsedMs = event.pong.serverElapsedRealtimeMs,
+                                )
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherClientEvent.Error -> {
+                                scope.launch(SilentHandler) {
+                                    togetherSessionState.value =
+                                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                            message = event.message,
+                                            recoverable = true,
+                                        )
+                                }
+                                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                            }
+
+                            moe.rukamori.archivetune.together.TogetherClientEvent.Disconnected -> {
+                                val current = togetherSessionState.value
+                                if (current is moe.rukamori.archivetune.together.TogetherSessionState.Idle) return@collect
+                                scope.launch(SilentHandler) {
+                                    val currentState = togetherSessionState.value
+                                    togetherSessionState.value =
+                                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                                            message =
+                                                if (currentState is moe.rukamori.archivetune.together.TogetherSessionState.Joined &&
+                                                    currentState.role is moe.rukamori.archivetune.together.TogetherRole.Guest
+                                                ) {
+                                                    getString(R.string.together_host_left_session)
+                                                } else {
+                                                    getString(R.string.network_unavailable)
+                                                },
+                                            recoverable = true,
+                                        )
+                                }
+                                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                            }
+                        }
+                    }
+                }
+
+            val wsUrl =
+                moe.rukamori.archivetune.together.TogetherOnlineEndpoint.onlineWebSocketUrlOrNull(
+                    rawWsUrl = resolved.wsUrl,
+                    baseUrl = baseUrl,
+                )
+            if (wsUrl == null) {
+                scope.launch(SilentHandler) {
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                            message = "Connection failed: Invalid server websocket URL",
+                            recoverable = true,
+                        )
+                }
+                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+                return@launch
+            }
+
+            client.connect(
+                wsUrl = wsUrl,
+                sessionId = resolved.sessionId,
+                sessionKey = resolved.guestKey,
+                displayName = displayName.trim().ifBlank { getString(R.string.together_role_guest) },
+            )
+        }
+    }
+
+    fun leaveTogether() {
+        ensureScopesActive()
+        scope.launch(SilentHandler) {
+            togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle
+        }
+        ioScope.launch(SilentHandler) { stopTogetherInternal() }
+    }
+
+    fun updateTogetherSettings(settings: moe.rukamori.archivetune.together.TogetherRoomSettings) {
+        val server = togetherServer
+        val onlineHost = togetherOnlineHost
+        if (server == null && onlineHost == null) return
+        ioScope.launch(SilentHandler) {
+            server?.updateSettings(settings)
+            onlineHost?.updateSettings(settings)
+        }
+    }
+
+    fun approveTogetherParticipant(
+        participantId: String,
+        approved: Boolean,
+    ) {
+        val server = togetherServer
+        val onlineHost = togetherOnlineHost
+        if (server == null && onlineHost == null) return
+        ioScope.launch(SilentHandler) {
+            server?.approveParticipant(participantId, approved)
+            onlineHost?.approveParticipant(participantId, approved)
+        }
+    }
+
+    fun kickTogetherParticipant(
+        participantId: String,
+        reason: String? = null,
+    ) {
+        val onlineHost = togetherOnlineHost ?: return
+        ioScope.launch(SilentHandler) {
+            onlineHost.kickParticipant(participantId, reason)
+        }
+    }
+
+    fun banTogetherParticipant(
+        participantId: String,
+        reason: String? = null,
+    ) {
+        val onlineHost = togetherOnlineHost ?: return
+        ioScope.launch(SilentHandler) {
+            onlineHost.banParticipant(participantId, reason)
+        }
+    }
+
+    fun transferTogetherHostOwnership(participantId: String) {
+        val targetId = participantId.trim()
+        if (targetId.isBlank() || targetId == togetherHostId || targetId == togetherSelfParticipantId) return
+        val server = togetherServer
+        val onlineHost = togetherOnlineHost
+        val client = togetherClient
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        ioScope.launch(SilentHandler) {
+            when {
+                server != null -> {
+                    server.transferHostOwnership(targetId)
+                }
+
+                onlineHost != null -> {
+                    onlineHost.transferHostOwnership(targetId)
+                }
+
+                joined?.role is moe.rukamori.archivetune.together.TogetherRole.Host && client != null -> {
+                    client.transferHostOwnership(joined.sessionId, targetId)
+                }
+            }
+        }
+    }
+
+    fun requestTogetherControl(action: moe.rukamori.archivetune.together.ControlAction) {
+        val client =
+            togetherClient ?: run {
+                showTogetherNotice(getString(R.string.network_unavailable), key = "TOGETHER_CLIENT_MISSING")
+                return
+            }
+        val state = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined ?: return
+        if (state.role !is moe.rukamori.archivetune.together.TogetherRole.Guest) return
+        if (!state.roomState.settings.allowGuestsToControlPlayback) {
+            Timber.tag("Together").i("control blocked locally (disabled) action=${action::class.java.simpleName}")
+            showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_CONTROL_DISABLED_LOCAL")
+            return
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        val lastAction = togetherLastSentControlAction
+        val lastAt = togetherLastSentControlAtElapsedMs
+        if (lastAction == action && now - lastAt < 350L) return
+        togetherLastSentControlAction = action
+        togetherLastSentControlAtElapsedMs = now
+
+        val timeout = if (togetherIsOnlineSession) 5000L else 2000L
+        togetherPendingGuestControl =
+            when (action) {
+                moe.rukamori.archivetune.together.ControlAction.Play -> {
+                    TogetherPendingGuestControl(desiredIsPlaying = true, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
+                }
+
+                moe.rukamori.archivetune.together.ControlAction.Pause -> {
+                    TogetherPendingGuestControl(desiredIsPlaying = false, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SeekToIndex -> {
+                    TogetherPendingGuestControl(
+                        desiredIndex = action.index.coerceAtLeast(0),
+                        requestedAtElapsedMs = now,
+                        expiresAtElapsedMs =
+                            now + timeout,
+                    )
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SeekToTrack -> {
+                    TogetherPendingGuestControl(
+                        desiredTrackId = action.trackId.trim().ifBlank { null },
+                        requestedAtElapsedMs = now,
+                        expiresAtElapsedMs = now + timeout,
+                    )
+                }
+
+                else -> {
+                    togetherPendingGuestControl
+                }
+            }
+        client.requestControl(state.sessionId, action)
+    }
+
+    fun requestTogetherAddTrack(
+        track: moe.rukamori.archivetune.together.TogetherTrack,
+        mode: moe.rukamori.archivetune.together.AddTrackMode,
+    ) {
+        val client = togetherClient ?: return
+        val state = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined ?: return
+        if (state.role !is moe.rukamori.archivetune.together.TogetherRole.Guest) return
+        if (!state.roomState.settings.allowGuestsToAddTracks) {
+            Timber.tag("Together").i("add blocked locally (disabled) mode=$mode trackId=${track.id}")
+            showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_ADD_DISABLED_LOCAL")
+            return
+        }
+        client.requestAddTrack(state.sessionId, track, mode)
+    }
+
+    private suspend fun handleTogetherHostEvent(
+        event: moe.rukamori.archivetune.together.TogetherServerEvent,
+        currentSettings: suspend () -> moe.rukamori.archivetune.together.TogetherRoomSettings,
+    ) {
+        when (event) {
+            is moe.rukamori.archivetune.together.TogetherServerEvent.ControlRequested -> {
+                val settings = currentSettings()
+                if (!settings.allowGuestsToControlPlayback) return
+                applyHostControl(event.request.action)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.AddTrackRequested -> {
+                val settings = currentSettings()
+                if (!settings.allowGuestsToAddTracks) return
+                applyHostAddTrack(event.request.track, event.request.mode)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.ParticipantJoined -> {
+                val participant = event.participant
+                if (!participant.isHost && !participant.isPending) {
+                    togetherParticipantNames[participant.id] = participant.name
+                    cancelTogetherHostInactivityTimeout()
+                    showTogetherParticipantNotification(participant.name, joined = true)
+                }
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.ParticipantLeft -> {
+                val participantName =
+                    togetherParticipantNames.remove(event.participantId)
+                        ?: return
+                showTogetherParticipantNotification(participantName, joined = false)
+                if (togetherParticipantNames.isEmpty()) {
+                    val sessionId =
+                        when (val state = togetherSessionState.value) {
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                                state.sessionId
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                                state.sessionId
+                            }
+
+                            is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                                state.sessionId.takeIf {
+                                    state.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                                }
+                            }
+
+                            else -> {
+                                null
+                            }
+                        }
+                    if (sessionId != null) {
+                        scheduleTogetherHostInactivityTimeout(sessionId)
+                    }
+                }
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.HostTransferred -> {
+                val currentState = togetherSessionState.value
+                val sessionId =
+                    when (currentState) {
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> currentState.sessionId
+                        is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> currentState.sessionId
+                        else -> null
+                    }
+                if (event.participantId == togetherHostId &&
+                    togetherParticipantNames.isEmpty() &&
+                    sessionId != null
+                ) {
+                    scheduleTogetherHostInactivityTimeout(sessionId)
+                } else {
+                    cancelTogetherHostInactivityTimeout()
+                    togetherHostInactivityEndSession = null
+                }
+                handleTogetherHostTransferred(event.participantId)
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.RoomStateReceived -> {
+                if (event.state.hostId != togetherHostId) {
+                    togetherSelfParticipantId = togetherHostId
+                    applyRemoteRoomState(event.state, force = true)
+                }
+            }
+
+            is moe.rukamori.archivetune.together.TogetherServerEvent.Error -> {
+                val current = togetherSessionState.value
+                if (current is moe.rukamori.archivetune.together.TogetherSessionState.Idle) return
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.Error(
+                        message = event.message,
+                        recoverable = true,
+                    )
+                ioScope.launch(SilentHandler) { stopTogetherInternal() }
+            }
+
+            else -> {
+                Unit
+            }
+        }
+    }
+
+    private suspend fun applyHostControl(action: moe.rukamori.archivetune.together.ControlAction) {
+        withContext(Dispatchers.Main) {
+            when (action) {
+                moe.rukamori.archivetune.together.ControlAction.Play -> {
+                    if (!player.playWhenReady) {
+                        player.prepare()
+                        player.playWhenReady = true
+                    }
+                }
+
+                moe.rukamori.archivetune.together.ControlAction.Pause -> {
+                    if (player.playWhenReady) {
+                        player.playWhenReady = false
+                    }
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SeekTo -> {
+                    player.seekTo(action.positionMs.coerceAtLeast(0L))
+                    player.prepare()
+                }
+
+                moe.rukamori.archivetune.together.ControlAction.SkipNext -> {
+                    if (player.hasNextMediaItem()) {
+                        if (!manualSkipToNextWithCrossfade()) {
+                            player.seekToNext()
+                            if (player.playbackState == Player.STATE_IDLE ||
+                                player.playbackState == Player.STATE_ENDED
+                            ) {
+                                player.prepare()
+                            }
+                            player.playWhenReady = true
+                        }
+                    }
+                }
+
+                moe.rukamori.archivetune.together.ControlAction.SkipPrevious -> {
+                    if (!manualSkipToPreviousWithCrossfade()) {
+                        player.seekToPrevious()
+                        if (player.playbackState == Player.STATE_IDLE ||
+                            player.playbackState == Player.STATE_ENDED
+                        ) {
+                            player.prepare()
+                        }
+                        player.playWhenReady = true
+                    }
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SeekToTrack -> {
+                    val trackId = action.trackId.trim()
+                    if (trackId.isNotBlank()) {
+                        val idx =
+                            player.mediaItems.indexOfFirst {
+                                val metaId = it.metadata?.id
+                                it.mediaId == trackId || metaId == trackId
+                            }
+                        if (idx >= 0 && idx < player.mediaItemCount) {
+                            player.seekTo(idx, action.positionMs.coerceAtLeast(0L))
+                            player.prepare()
+                        }
+                    }
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SeekToIndex -> {
+                    val idx = action.index.coerceAtLeast(0)
+                    if (idx < player.mediaItemCount) {
+                        player.seekTo(idx, action.positionMs.coerceAtLeast(0L))
+                        player.prepare()
+                    }
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SetRepeatMode -> {
+                    if (player.repeatMode != action.repeatMode) {
+                        player.repeatMode = action.repeatMode
+                    }
+                }
+
+                is moe.rukamori.archivetune.together.ControlAction.SetShuffleEnabled -> {
+                    if (player.shuffleModeEnabled != action.shuffleEnabled) {
+                        player.shuffleModeEnabled = action.shuffleEnabled
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun applyHostAddTrack(
+        track: moe.rukamori.archivetune.together.TogetherTrack,
+        mode: moe.rukamori.archivetune.together.AddTrackMode,
+    ) {
+        val mediaItem = track.toMediaMetadata().toMediaItem()
+        withContext(Dispatchers.Main) {
+            when (mode) {
+                moe.rukamori.archivetune.together.AddTrackMode.PLAY_NEXT -> playNext(listOf(mediaItem))
+                moe.rukamori.archivetune.together.AddTrackMode.ADD_TO_QUEUE -> addToQueue(listOf(mediaItem))
+            }
+        }
+    }
+
+    private suspend fun buildTogetherRoomState(
+        sessionId: String,
+        hostId: String,
+    ): moe.rukamori.archivetune.together.TogetherRoomState =
+        withContext(Dispatchers.Main) {
+            val tracks =
+                player.mediaItems.mapNotNull { it.metadata }.map { meta ->
+                    moe.rukamori.archivetune.together.TogetherTrack(
+                        id = meta.id,
+                        title = meta.title,
+                        artists = meta.artists.map { it.name },
+                        durationSec = meta.duration,
+                        thumbnailUrl = meta.thumbnailUrl,
+                    )
+                }
+
+            val queueHash =
+                moe.rukamori.archivetune.utils
+                    .md5(tracks.joinToString(separator = "|") { it.id })
+
+            moe.rukamori.archivetune.together.TogetherRoomState(
+                sessionId = sessionId,
+                hostId = hostId,
+                settings =
+                    moe.rukamori.archivetune.together
+                        .TogetherRoomSettings(),
+                participants = emptyList(),
+                queue = tracks,
+                queueHash = queueHash,
+                currentIndex = player.currentMediaItemIndex.coerceAtLeast(0),
+                isPlaying = player.playWhenReady && player.playbackState != Player.STATE_ENDED,
+                positionMs = player.currentPosition.coerceAtLeast(0L),
+                repeatMode = player.repeatMode,
+                shuffleEnabled = player.shuffleModeEnabled,
+                sentAtElapsedRealtimeMs = android.os.SystemClock.elapsedRealtime(),
+            )
+        }
+
+    private fun markTogetherHostParticipant(
+        state: moe.rukamori.archivetune.together.TogetherRoomState,
+        hostId: String,
+    ): moe.rukamori.archivetune.together.TogetherRoomState =
+        state.copy(
+            hostId = hostId,
+            participants =
+                state.participants.map { participant ->
+                    participant.copy(isHost = participant.id == hostId)
+                },
+        )
+
+    private fun handleTogetherHostTransferred(participantId: String) {
+        togetherAuthorityParticipantId = participantId
+        if (participantId != togetherHostId) {
+            togetherSelfParticipantId = togetherHostId
+        }
+        scope.launch(SilentHandler) {
+            when (val current = togetherSessionState.value) {
+                is moe.rukamori.archivetune.together.TogetherSessionState.Hosting -> {
+                    val roomState = current.roomState?.let { markTogetherHostParticipant(it, participantId) }
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                            role =
+                                if (participantId == togetherHostId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            sessionId = current.sessionId,
+                            selfParticipantId = togetherHostId,
+                            roomState =
+                                roomState
+                                    ?: moe.rukamori.archivetune.together.TogetherRoomState(
+                                        sessionId = current.sessionId,
+                                        hostId = participantId,
+                                    ),
+                        )
+                }
+
+                is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline -> {
+                    val roomState = current.roomState?.let { markTogetherHostParticipant(it, participantId) }
+                    togetherSessionState.value =
+                        moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                            role =
+                                if (participantId == togetherHostId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            sessionId = current.sessionId,
+                            selfParticipantId = togetherHostId,
+                            roomState =
+                                roomState
+                                    ?: moe.rukamori.archivetune.together.TogetherRoomState(
+                                        sessionId = current.sessionId,
+                                        hostId = participantId,
+                                    ),
+                        )
+                }
+
+                is moe.rukamori.archivetune.together.TogetherSessionState.Joined -> {
+                    togetherSessionState.value =
+                        current.copy(
+                            role =
+                                if (current.selfParticipantId == participantId) {
+                                    moe.rukamori.archivetune.together.TogetherRole.Host
+                                } else {
+                                    moe.rukamori.archivetune.together.TogetherRole.Guest
+                                },
+                            roomState = markTogetherHostParticipant(current.roomState, participantId),
+                        )
+                }
+
+                else -> {
+                    Unit
+                }
+            }
+        }
+    }
+
+    private fun handleTogetherClientHostTransferred(transfer: moe.rukamori.archivetune.together.HostTransferred) {
+        val participantId = transfer.participantId
+        handleTogetherHostTransferred(participantId)
+        val client = togetherClient ?: return
+        if (participantId != togetherSelfParticipantId) return
+        startTogetherAuthorityBroadcast(transfer.sessionId, participantId, client)
+    }
+
+    private fun startTogetherAuthorityBroadcast(
+        sessionId: String,
+        participantId: String,
+        client: moe.rukamori.archivetune.together.TogetherClient,
+    ) {
+        togetherBroadcastJob?.cancel()
+        togetherBroadcastJob =
+            ioScope.launch(SilentHandler) {
+                while (togetherClient === client && togetherAuthorityParticipantId == participantId) {
+                    val state = buildTogetherRoomState(sessionId = sessionId, hostId = participantId)
+                    client.sendRoomState(state)
+                    kotlinx.coroutines.delay(TogetherPlaybackSync.BroadcastIntervalMs)
+                }
+            }
+    }
+
+    private suspend fun applyRemoteRoomState(
+        state: moe.rukamori.archivetune.together.TogetherRoomState,
+        force: Boolean = false,
+    ) {
+        val pid = togetherSelfParticipantId ?: return
+        val now = android.os.SystemClock.elapsedRealtime()
+
+        val pending = togetherPendingGuestControl
+        if (force) {
+            togetherPendingGuestControl = null
+        } else if (pending != null) {
+            val currentTrackId = state.queue.getOrNull(state.currentIndex.coerceAtLeast(0))?.id
+            val mismatch =
+                (pending.desiredIsPlaying != null && state.isPlaying != pending.desiredIsPlaying) ||
+                    (pending.desiredIndex != null && state.currentIndex != pending.desiredIndex) ||
+                    (pending.desiredTrackId != null && currentTrackId != pending.desiredTrackId)
+            if (now >= pending.expiresAtElapsedMs) {
+                if ((pending.desiredIndex != null || pending.desiredTrackId != null) &&
+                    now - pending.requestedAtElapsedMs >= 1200L &&
+                    mismatch
+                ) {
+                    showTogetherNotice(getString(R.string.together_song_change_failed), key = "GUEST_SEEK_TIMEOUT")
+                }
+                togetherPendingGuestControl = null
+            } else {
+                if (mismatch) return
+                togetherPendingGuestControl = null
+            }
+        }
+
+        val sentAt = state.sentAtElapsedRealtimeMs
+        if (TogetherPlaybackSync.isStaleRoomState(
+                sentAtElapsedRealtimeMs = sentAt,
+                lastAppliedSentAtElapsedRealtimeMs = togetherLastAppliedRoomStateSentAtElapsedMs,
+                force = force,
+            )
+        ) {
+            return
+        }
+
+        val targetPos =
+            TogetherPlaybackSync.targetPositionMs(
+                state = state,
+                isOnlineSession = togetherIsOnlineSession,
+                clockSnapshot = if (togetherIsOnlineSession) null else togetherClock?.snapshot(),
+                nowElapsedRealtimeMs = now,
+            )
+
+        withContext(Dispatchers.Main) {
+            togetherApplyingRemote = true
+            togetherSuppressEchoUntilElapsedMs =
+                TogetherPlaybackSync.echoSuppressionUntil(
+                    android.os.SystemClock.elapsedRealtime(),
+                )
+            try {
+                val desiredItems = state.queue.map { it.toMediaMetadata().toMediaItem() }
+                val desiredIds = state.queue.map { it.id }
+                val desiredHash = state.queueHash
+                val localIds = player.mediaItems.mapNotNull { it.metadata?.id ?: it.mediaId }.filter { it.isNotBlank() }
+                val localHash =
+                    if (localIds.isEmpty()) {
+                        ""
+                    } else {
+                        moe.rukamori.archivetune.utils
+                            .md5(localIds.joinToString(separator = "|"))
+                    }
+                val needsRebuild =
+                    TogetherPlaybackSync.needsQueueRebuild(
+                        desiredHash = desiredHash,
+                        desiredIds = desiredIds,
+                        localHash = localHash,
+                        localIds = localIds,
+                    )
+
+                if (desiredItems.isNotEmpty() && needsRebuild) {
+                    togetherLastAppliedQueueHash = desiredHash.ifBlank { localHash }
+                    val startIndex = state.currentIndex.coerceIn(0, desiredItems.lastIndex)
+                    suppressAutoPlayback = false
+                    currentQueue =
+                        moe.rukamori.archivetune.playback.queues.ListQueue(
+                            title = getString(R.string.music_player),
+                            items = desiredItems,
+                            startIndex = startIndex,
+                            position = targetPos,
+                        )
+                    queueTitle = null
+                    player.setMediaItems(desiredItems, startIndex, targetPos)
+                    player.prepare()
+                    player.repeatMode = state.repeatMode
+                    player.shuffleModeEnabled = state.shuffleEnabled
+                    player.playWhenReady = state.isPlaying
+                    togetherLastRemoteAppliedIndex = startIndex
+                } else {
+                    val index =
+                        if (player.mediaItemCount > 0) {
+                            state.currentIndex.coerceIn(0, player.mediaItemCount - 1)
+                        } else {
+                            0
+                        }
+                    val indexChanged = player.mediaItemCount > 0 && index != player.currentMediaItemIndex
+
+                    if (indexChanged) {
+                        if (player.repeatMode != state.repeatMode) player.repeatMode = state.repeatMode
+                        if (player.shuffleModeEnabled != state.shuffleEnabled) player.shuffleModeEnabled = state.shuffleEnabled
+                        player.seekTo(index, targetPos)
+                        player.prepare()
+                        player.playWhenReady = state.isPlaying
+                    } else {
+                        val playbackStateChanged = player.playWhenReady != state.isPlaying
+                        if (player.repeatMode != state.repeatMode) player.repeatMode = state.repeatMode
+                        if (player.shuffleModeEnabled != state.shuffleEnabled) player.shuffleModeEnabled = state.shuffleEnabled
+                        if (playbackStateChanged) player.playWhenReady = state.isPlaying
+                        val shouldSeekForDrift =
+                            TogetherPlaybackSync.shouldSeekForDrift(
+                                currentPositionMs = player.currentPosition,
+                                targetPositionMs = targetPos,
+                                isPlaying = state.isPlaying,
+                                isOnlineSession = togetherIsOnlineSession,
+                            )
+                        if (shouldSeekForDrift || (playbackStateChanged && !state.isPlaying)) {
+                            player.seekTo(targetPos)
+                            player.prepare()
+                        }
+                    }
+                    togetherLastRemoteAppliedIndex = index
+                }
+                togetherLastRemoteAppliedPlayWhenReady = state.isPlaying
+                togetherLastAppliedRoomStateSentAtElapsedMs = sentAt
+
+                togetherSessionState.value =
+                    moe.rukamori.archivetune.together.TogetherSessionState.Joined(
+                        role = moe.rukamori.archivetune.together.TogetherRole.Guest,
+                        sessionId = state.sessionId,
+                        selfParticipantId = pid,
+                        roomState = state,
+                    )
+            } finally {
+                togetherApplyingRemote = false
+            }
+        }
+    }
+
+    private fun startTogetherHeartbeat(
+        sessionId: String,
+        client: moe.rukamori.archivetune.together.TogetherClient,
+    ) {
+        togetherHeartbeatJob?.cancel()
+        togetherHeartbeatJob =
+            ioScope.launch(SilentHandler) {
+                var pingId = 0L
+                while (togetherClient === client) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    client.sendHeartbeat(sessionId = sessionId, pingId = pingId++, clientElapsedRealtimeMs = now)
+                    kotlinx.coroutines.delay(2000)
+                }
+            }
+    }
+
+    private suspend fun stopTogetherInternal() {
+        cancelTogetherHostInactivityTimeout()
+        togetherHostInactivityEndSession = null
+
+        togetherBroadcastJob?.cancel()
+        togetherBroadcastJob = null
+
+        togetherOnlineConnectJob?.cancel()
+        togetherOnlineConnectJob = null
+
+        togetherClientEventsJob?.cancel()
+        togetherClientEventsJob = null
+
+        togetherHeartbeatJob?.cancel()
+        togetherHeartbeatJob = null
+
+        togetherClock = null
+        togetherSelfParticipantId = null
+        togetherAuthorityParticipantId = null
+        togetherParticipantNames.clear()
+        togetherLastAppliedQueueHash = null
+        togetherIsOnlineSession = false
+        togetherApplyingRemote = false
+        togetherSuppressEchoUntilElapsedMs = 0L
+        togetherLastAppliedRoomStateSentAtElapsedMs = 0L
+        togetherLastRemoteAppliedPlayWhenReady = null
+        togetherLastRemoteAppliedIndex = -1
+        togetherLastSentControlAtElapsedMs = 0L
+        togetherLastSentControlAction = null
+        togetherPendingGuestControl = null
+
+        try {
+            togetherClient?.disconnect()
+        } catch (_: Exception) {
+        }
+        togetherClient = null
+
+        try {
+            togetherOnlineHost?.disconnect()
+        } catch (_: Exception) {
+        }
+        togetherOnlineHost = null
+
+        try {
+            togetherServer?.stop()
+        } catch (_: Exception) {
+        }
+        togetherServer = null
+    }
+
+    private fun moe.rukamori.archivetune.together.TogetherTrack.toMediaMetadata(): moe.rukamori.archivetune.models.MediaMetadata =
+        moe.rukamori.archivetune.models.MediaMetadata(
+            id = id,
+            title = title,
+            artists =
+                artists.map { name ->
+                    moe.rukamori.archivetune.models.MediaMetadata
+                        .Artist(id = null, name = name)
+                },
+            duration = durationSec,
+            thumbnailUrl = thumbnailUrl,
+            album = null,
+            setVideoId = null,
+            explicit = false,
+            liked = false,
+            likedDate = null,
+            inLibrary = null,
+        )
+
+    private fun getLocalIpv4Address(): String? =
+        runCatching {
+            java.net.NetworkInterface
+                .getNetworkInterfaces()
+                .toList()
+                .asSequence()
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { it.inetAddresses.toList().asSequence() }
+                .filterIsInstance<java.net.Inet4Address>()
+                .map { it.hostAddress }
+                .firstOrNull { it.isNotBlank() && it != "127.0.0.1" }
+        }.getOrNull()
+
+    private fun toggleLibrary() {
+        database.query {
+            currentSong.value?.let {
+                update(it.song.toggleLibrary())
+            }
+        }
+    }
+
+    fun toggleLike() {
+        val mediaMetadata = currentMediaMetadata.value ?: return
+        ioScope.launch {
+            try {
+                val result =
+                    toggleLikeMutex.withLock {
+                        val requestedSong =
+                            database.withTransaction {
+                                val currentSongEntity =
+                                    getSongById(mediaMetadata.id)
+                                        ?: run {
+                                            insert(mediaMetadata) {
+                                                it.copy(isLocal = mediaMetadata.id.isLocalMediaId())
+                                            }
+                                            getSongById(mediaMetadata.id)
+                                        }
+                                        ?: return@withTransaction null
+                                currentSongEntity.song.toggleLike()
+                            } ?: return@withLock null
+                        syncUtils.likeSong(requestedSong)
+                    } ?: return@launch
+                val song =
+                    result.getOrElse { error ->
+                        reportException(error)
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(this@MusicService, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                        }
+                        return@launch
+                    }
+
+                // Check if auto-download on like is enabled and the song is now liked
+                if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
+                    // Trigger download for the liked song
+                    val downloadRequest =
+                        androidx.media3.exoplayer.offline.DownloadRequest
+                            .Builder(song.id, song.id.toUri())
+                            .setCustomCacheKey(song.id)
+                            .setData(song.title.toByteArray())
+                            .build()
+                    androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                        this@MusicService,
+                        ExoDownloadService::class.java,
+                        downloadRequest,
+                        false,
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                reportException(error)
+            }
+        }
+    }
+
+    fun toggleStartRadio() {
+        startRadioSeamlessly()
+    }
+
+    private fun decodeBandLevelsMb(raw: String?): List<Int> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching { EqualizerJson.json.decodeFromString<List<Int>>(raw) }.getOrNull() ?: emptyList()
+    }
+
+    private fun encodeBandLevelsMb(levelsMb: List<Int>): String =
+        runCatching {
+            EqualizerJson.json.encodeToString(levelsMb)
+        }.getOrNull().orEmpty()
+
+    private fun readEqSettingsFromPrefs(prefs: Preferences): EqSettings {
+        val levels = decodeBandLevelsMb(prefs[EqualizerBandLevelsMbKey])
+        return EqSettings(
+            enabled = prefs[EqualizerEnabledKey] ?: false,
+            bandLevelsMb = levels,
+            outputGainEnabled = prefs[EqualizerOutputGainEnabledKey] ?: false,
+            outputGainMb = prefs[EqualizerOutputGainMbKey] ?: 0,
+            bassBoostEnabled = prefs[EqualizerBassBoostEnabledKey] ?: false,
+            bassBoostStrength = (prefs[EqualizerBassBoostStrengthKey] ?: 0).coerceIn(0, 1000),
+            virtualizerEnabled = prefs[EqualizerVirtualizerEnabledKey] ?: false,
+            virtualizerStrength = (prefs[EqualizerVirtualizerStrengthKey] ?: 0).coerceIn(0, 1000),
+            autoHeadroomEnabled = prefs[EqualizerAutoHeadroomEnabledKey] ?: false,
+        )
+    }
+
+    fun applyEqFlatPreset() {
+        ioScope.launch {
+            val caps = eqCapabilities.value
+            val bandCount =
+                caps?.bandCount ?: equalizer?.let { readAudioEffectValue("equalizer band count") { it.numberOfBands.toInt() } } ?: 0
+            val encoded = encodeBandLevelsMb(List(bandCount.coerceAtLeast(0)) { 0 })
+            dataStore.edit { prefs ->
+                prefs[EqualizerEnabledKey] = true
+                prefs[EqualizerBandLevelsMbKey] = encoded
+                prefs[EqualizerSelectedProfileIdKey] = "flat"
+            }
+        }
+    }
+
+    fun applySystemEqPreset(presetIndex: Int) {
+        scope.launch {
+            ensureAudioEffects(localPlayer.audioSessionId)
+            val eq = equalizer ?: return@launch
+            val maxPreset = readAudioEffectValue("equalizer preset count") { eq.numberOfPresets.toInt() } ?: 0
+            if (presetIndex !in 0 until maxPreset) return@launch
+
+            runCatching { eq.usePreset(presetIndex.toShort()) }.getOrNull() ?: return@launch
+
+            val bandCount = readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt() } ?: 0
+            val levels =
+                (0 until bandCount).map { band ->
+                    readAudioEffectValue("equalizer band level for band $band") {
+                        eq.getBandLevel(band.toShort()).toInt()
+                    } ?: 0
+                }
+
+            val encoded = encodeBandLevelsMb(levels)
+            if (encoded.isBlank()) return@launch
+
+            ioScope.launch {
+                dataStore.edit { prefs ->
+                    prefs[EqualizerEnabledKey] = true
+                    prefs[EqualizerBandLevelsMbKey] = encoded
+                    prefs[EqualizerSelectedProfileIdKey] = "system:$presetIndex"
+                }
+            }
+        }
+    }
+
+    private fun resampleLevelsByIndex(
+        levelsMb: List<Int>,
+        targetCount: Int,
+    ): List<Int> {
+        if (targetCount <= 0) return emptyList()
+        if (levelsMb.isEmpty()) return List(targetCount) { 0 }
+        if (levelsMb.size == targetCount) return levelsMb
+        if (targetCount == 1) return listOf(levelsMb.sum() / levelsMb.size)
+
+        val lastIndex = levelsMb.lastIndex.toFloat().coerceAtLeast(1f)
+        return List(targetCount) { i ->
+            val pos = i.toFloat() * lastIndex / (targetCount - 1).toFloat()
+            val lo =
+                kotlin.math
+                    .floor(pos)
+                    .toInt()
+                    .coerceIn(0, levelsMb.lastIndex)
+            val hi =
+                kotlin.math
+                    .ceil(pos)
+                    .toInt()
+                    .coerceIn(0, levelsMb.lastIndex)
+            val t = (pos - lo.toFloat()).coerceIn(0f, 1f)
+            val a = levelsMb[lo]
+            val b = levelsMb[hi]
+            (a + ((b - a) * t)).toInt()
+        }
+    }
+
+    private inline fun <T> readAudioEffectValue(
+        operation: String,
+        block: () -> T,
+    ): T? =
+        runCatching(block)
+            .onFailure { error ->
+                Timber.tag("MusicService").w(error, "Audio effect query failed: %s", operation)
+            }.getOrNull()
+
+    private fun updateEqCapabilitiesFromEffect(eq: Equalizer) {
+        val bandCount = readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt().coerceAtLeast(0) } ?: 0
+        val range = readAudioEffectValue("equalizer band range") { eq.bandLevelRange }
+        val minMb = range?.getOrNull(0)?.toInt() ?: -1500
+        val maxMb = range?.getOrNull(1)?.toInt() ?: 1500
+        val center =
+            (0 until bandCount).map { band ->
+                (
+                    readAudioEffectValue("equalizer center frequency for band $band") {
+                        eq.getCenterFreq(band.toShort())
+                    } ?: 0
+                ) / 1000
+            }
+        val presetCount = readAudioEffectValue("equalizer preset count") { eq.numberOfPresets.toInt().coerceAtLeast(0) } ?: 0
+        val presets =
+            (0 until presetCount).map { idx ->
+                readAudioEffectValue("equalizer preset name for preset $idx") {
+                    eq.getPresetName(idx.toShort()).toString()
+                } ?: "Preset ${idx + 1}"
+            }
+        val capabilities =
+            EqCapabilities(
+                bandCount = bandCount,
+                minBandLevelMb = minMb,
+                maxBandLevelMb = maxMb,
+                centerFreqHz = center,
+                systemPresets = presets,
+            )
+        eqCapabilities.value = capabilities
+        equalizerPlaybackController.updateCapabilities(capabilities)
+    }
+
+    private fun releaseAudioEffectInstances() {
+        audioEffectsSessionId = null
+        try {
+            equalizer?.release()
+        } catch (_: Exception) {
+        }
+        try {
+            bassBoost?.release()
+        } catch (_: Exception) {
+        }
+        try {
+            virtualizer?.release()
+        } catch (_: Exception) {
+        }
+        try {
+            loudnessEnhancer?.release()
+        } catch (_: Exception) {
+        }
+        equalizer = null
+        bassBoost = null
+        virtualizer = null
+        loudnessEnhancer = null
+        eqCapabilities.value = null
+        equalizerPlaybackController.updateCapabilities(null)
+    }
+
+    private fun releaseAudioEffects() {
+        audioEffectsInitializationJob?.cancel()
+        audioEffectsInitializationJob = null
+        releaseAudioEffectInstances()
+    }
+
+    private fun ensureAudioEffects(sessionId: Int) {
+        if (sessionId <= 0) return
+        if (audioEffectsSessionId == sessionId && equalizer != null) return
+
+        audioEffectsInitializationJob?.cancel()
+        audioEffectsInitializationJob = null
+        if (initializeAudioEffects(sessionId)) return
+
+        audioEffectsInitializationJob =
+            scope.launch {
+                repeat(AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS - 1) {
+                    delay(AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS)
+                    if (localPlayer.audioSessionId != sessionId || !shouldKeepAudioEffectSessionOpen()) {
+                        return@launch
+                    }
+                    if (initializeAudioEffects(sessionId)) return@launch
+                }
+            }
+    }
+
+    private fun initializeAudioEffects(sessionId: Int): Boolean {
+        releaseAudioEffectInstances()
+        audioEffectsSessionId = sessionId
+
+        equalizer = createAudioEffect("Equalizer", sessionId) { Equalizer(0, sessionId) }
+        bassBoost = createAudioEffect("BassBoost", sessionId) { BassBoost(0, sessionId) }
+        virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
+        loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
+
+        equalizer?.let(::updateEqCapabilitiesFromEffect)
+        applyEqSettingsToEffects(desiredEqSettings.value)
+        return equalizer != null
+    }
+
+    private inline fun <T> createAudioEffect(
+        name: String,
+        sessionId: Int,
+        factory: () -> T,
+    ): T? =
+        runCatching(factory)
+            .onFailure { error ->
+                Timber.tag(TAG).w(error, "%s initialization failed for audio session %d", name, sessionId)
+            }.getOrNull()
+
+    private fun applyEqSettingsToEffects(settings: EqSettings) {
+        val eq = equalizer ?: return
+        val caps = eqCapabilities.value
+        val bandCount = caps?.bandCount ?: readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt() } ?: 0
+        val minMb =
+            caps?.minBandLevelMb ?: readAudioEffectValue("equalizer minimum band level") { eq.bandLevelRange.getOrNull(0)?.toInt() }
+                ?: -1500
+        val maxMb =
+            caps?.maxBandLevelMb ?: readAudioEffectValue("equalizer maximum band level") { eq.bandLevelRange.getOrNull(1)?.toInt() } ?: 1500
+
+        val levels = resampleLevelsByIndex(settings.bandLevelsMb, bandCount)
+        runCatching { eq.enabled = settings.enabled }
+
+        for (band in 0 until bandCount) {
+            val levelMb = levels.getOrNull(band)?.coerceIn(minMb, maxMb) ?: 0
+            runCatching { eq.setBandLevel(band.toShort(), levelMb.toShort()) }
+        }
+
+        bassBoost?.let { bb ->
+            runCatching { bb.enabled = settings.enabled && settings.bassBoostEnabled }
+            runCatching { bb.setStrength(settings.bassBoostStrength.toShort()) }
+        }
+
+        virtualizer?.let { v ->
+            runCatching { v.enabled = settings.enabled && settings.virtualizerEnabled }
+            runCatching { v.setStrength(settings.virtualizerStrength.toShort()) }
+        }
+
+        loudnessEnhancer?.let { le ->
+            val automaticHeadroomMb = -(levels.maxOrNull()?.coerceAtLeast(0) ?: 0)
+            val gainMb =
+                when {
+                    settings.autoHeadroomEnabled -> automaticHeadroomMb
+                    settings.outputGainEnabled -> settings.outputGainMb.coerceIn(-1500, 1500)
+                    else -> 0
+                }
+            runCatching { le.setTargetGain(gainMb) }
+            runCatching { le.enabled = settings.enabled && (settings.autoHeadroomEnabled || settings.outputGainEnabled) }
+        }
+    }
+
+    private fun shouldKeepAudioEffectSessionOpen(): Boolean {
+        val playbackState = localPlayer.playbackState
+        return playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY
+    }
+
+    private fun reconcileAudioEffectSession() {
+        if (!shouldKeepAudioEffectSessionOpen()) {
+            closeAudioEffectSession()
+            return
+        }
+
+        val sessionId = localPlayer.audioSessionId
+        if (sessionId > 0) {
+            rebindAudioEffectSession(sessionId)
+        }
+    }
+
+    private fun openAudioEffectSession() {
+        if (isAudioEffectSessionOpened) return
+        val sessionId = localPlayer.audioSessionId
+        if (sessionId <= 0) return
+        isAudioEffectSessionOpened = true
+        openedAudioSessionId = sessionId
+        ensureAudioEffects(sessionId)
+        sendOpenAudioEffectSessionBroadcast(sessionId)
+    }
+
+    private fun closeAudioEffectSession() {
+        if (!isAudioEffectSessionOpened) return
+        isAudioEffectSessionOpened = false
+        val sessionId = openedAudioSessionId ?: localPlayer.audioSessionId
+        openedAudioSessionId = null
+        releaseAudioEffects()
+        if (sessionId <= 0) return
+        sendCloseAudioEffectSessionBroadcast(sessionId)
+    }
+
+    private fun rebindAudioEffectSession(newSessionId: Int) {
+        if (newSessionId <= 0 || !shouldKeepAudioEffectSessionOpen()) return
+        val oldSessionId = openedAudioSessionId
+        if (!isAudioEffectSessionOpened) {
+            openAudioEffectSession()
+            return
+        }
+        if (oldSessionId == newSessionId) {
+            ensureAudioEffects(newSessionId)
+            return
+        }
+
+        if (oldSessionId != null && oldSessionId > 0) {
+            sendCloseAudioEffectSessionBroadcast(oldSessionId)
+        }
+        openedAudioSessionId = newSessionId
+        ensureAudioEffects(newSessionId)
+        sendOpenAudioEffectSessionBroadcast(newSessionId)
+    }
+
+    private fun sendOpenAudioEffectSessionBroadcast(sessionId: Int) {
+        sendBroadcast(
+            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
+                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+            },
+        )
+    }
+
+    private fun sendCloseAudioEffectSessionBroadcast(sessionId: Int) {
+        sendBroadcast(
+            Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
+                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
+                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            },
+        )
+    }
+
+    private fun historyThresholdMs(): Long =
+        (runCatching { dataStore[HistoryDuration] }.getOrNull() ?: HISTORY_DURATION_DEFAULT)
+            .coerceIn(HISTORY_DURATION_MIN, HISTORY_DURATION_MAX)
+            .toLong() * 1000L
+
+    private fun currentHistoryPlayedMs(nowElapsedMs: Long = android.os.SystemClock.elapsedRealtime()): Long {
+        val runningPlayMs =
+            currentHistoryStartedAtElapsedMs
+                ?.let { (nowElapsedMs - it).coerceAtLeast(0L) }
+                ?: 0L
+        return currentHistoryAccumulatedPlayMs + runningPlayMs
+    }
+
+    private fun flushCurrentHistoryPlayedTime(nowElapsedMs: Long = android.os.SystemClock.elapsedRealtime()) {
+        currentHistoryAccumulatedPlayMs = currentHistoryPlayedMs(nowElapsedMs)
+        currentHistoryStartedAtElapsedMs = null
+    }
+
+    private fun updatePendingHistoryFinalization(
+        mediaId: String,
+        sessionToken: Long,
+        result: ImmediateHistoryResult,
+    ) {
+        val pendingSessions = pendingHistoryFinalizations[mediaId] ?: return
+        val index = pendingSessions.indexOfFirst { it.sessionToken == sessionToken }
+        if (index == -1) return
+
+        val existing = pendingSessions[index]
+        pendingSessions[index] =
+            existing.copy(
+                eventId = result.eventId ?: existing.eventId,
+                remoteRegistered = existing.remoteRegistered || result.remoteRegistered,
+            )
+    }
+
+    private fun enqueueCurrentHistorySessionForFinalization() {
+        val mediaId = currentHistoryMediaId ?: return
+        if (currentHistorySessionQueued) return
+
+        pendingHistoryFinalizations
+            .getOrPut(mediaId) { mutableListOf() }
+            .add(
+                PendingHistoryFinalization(
+                    sessionToken = currentHistorySessionToken,
+                    eventId = currentHistoryEventId,
+                    remoteRegistered = currentHistoryRemoteRegistered,
+                ),
+            )
+        currentHistorySessionQueued = true
+    }
+
+    private fun popPendingHistoryFinalization(mediaId: String): PendingHistoryFinalization? {
+        val pendingSessions = pendingHistoryFinalizations[mediaId] ?: return null
+        val pending = pendingSessions.firstOrNull() ?: return null
+        pendingSessions.removeAt(0)
+        if (pendingSessions.isEmpty()) {
+            pendingHistoryFinalizations.remove(mediaId)
+        }
+        return pending
+    }
+
+    private fun beginHistorySession(
+        mediaId: String?,
+        forceNew: Boolean = false,
+    ) {
+        val normalizedMediaId = mediaId?.trim()?.takeIf { it.isNotEmpty() }
+        if (!forceNew && currentHistoryMediaId == normalizedMediaId && currentHistorySessionToken != 0L) {
+            updateHistoryTrackingPlaybackState()
+            return
+        }
+
+        historyThresholdJob?.cancel()
+        historyThresholdJob = null
+        flushCurrentHistoryPlayedTime()
+        enqueueCurrentHistorySessionForFinalization()
+
+        currentHistorySessionToken = ++nextHistorySessionToken
+        currentHistoryMediaId = normalizedMediaId
+        currentHistoryAccumulatedPlayMs = 0L
+        currentHistoryStartedAtElapsedMs = null
+        currentHistoryEventId = null
+        currentHistoryRemoteRegistered = false
+        currentHistoryImmediateAttempted = false
+        currentHistorySessionQueued = false
+
+        updateHistoryTrackingPlaybackState()
+    }
+
+    private fun updateHistoryTrackingPlaybackState() {
+        val mediaId = currentHistoryMediaId
+        if (mediaId == null || currentHistorySessionQueued) {
+            historyThresholdJob?.cancel()
+            historyThresholdJob = null
+            currentHistoryStartedAtElapsedMs = null
+            return
+        }
+
+        if (player.isPlaying) {
+            if (currentHistoryStartedAtElapsedMs == null) {
+                currentHistoryStartedAtElapsedMs = android.os.SystemClock.elapsedRealtime()
+            }
+        } else {
+            flushCurrentHistoryPlayedTime()
+        }
+
+        syncHistoryThresholdJob()
+    }
+
+    private fun syncHistoryThresholdJob() {
+        historyThresholdJob?.cancel()
+        historyThresholdJob = null
+
+        val mediaId = currentHistoryMediaId ?: return
+        if (currentHistorySessionQueued) return
+        if (dataStore.get(PauseListenHistoryKey, false)) return
+        if (currentHistoryEventId != null && currentHistoryRemoteRegistered) return
+
+        val thresholdMs = historyThresholdMs()
+        val playedMs = currentHistoryPlayedMs()
+        if (playedMs >= thresholdMs) {
+            if (!currentHistoryImmediateAttempted) {
+                maybeRecordCurrentPlaybackHistory()
+            }
+            return
+        }
+        if (!player.isPlaying) return
+
+        historyThresholdJob =
+            scope.launch {
+                delay((thresholdMs - playedMs).coerceAtLeast(0L))
+                maybeRecordCurrentPlaybackHistory()
+            }
+    }
+
+    private fun maybeRecordCurrentPlaybackHistory() {
+        val mediaId = currentHistoryMediaId ?: return
+        if (currentHistorySessionQueued) return
+        if (dataStore.get(PauseListenHistoryKey, false)) return
+
+        val thresholdMs = historyThresholdMs()
+        val playedMs = currentHistoryPlayedMs()
+        if (playedMs < thresholdMs) {
+            syncHistoryThresholdJob()
+            return
+        }
+
+        val sessionToken = currentHistorySessionToken
+        if (historyRecordingJobs.containsKey(sessionToken)) return
+        currentHistoryImmediateAttempted = true
+
+        val eventIdSnapshot = currentHistoryEventId
+        val remoteRegisteredSnapshot = currentHistoryRemoteRegistered
+        val mediaMetadataSnapshot = player.currentMetadata?.takeIf { it.id == mediaId }
+
+        val deferred =
+            scope.async {
+                withContext(Dispatchers.IO) {
+                    val resolvedEventId =
+                        eventIdSnapshot
+                            ?: insertPlaybackHistoryEvent(
+                                mediaId = mediaId,
+                                playTimeMs = playedMs,
+                                mediaMetadata = mediaMetadataSnapshot,
+                            )
+                    val remoteRegistered = remoteRegisteredSnapshot || registerRemotePlaybackHistory(mediaId)
+                    ImmediateHistoryResult(
+                        eventId = resolvedEventId,
+                        remoteRegistered = remoteRegistered,
+                    )
+                }
+            }
+
+        historyRecordingJobs[sessionToken] = deferred
+        scope.launch {
+            val result =
+                runCatching { deferred.await() }
+                    .onFailure(::reportException)
+                    .getOrNull()
+
+            historyRecordingJobs.remove(sessionToken)
+
+            if (result != null) {
+                if (currentHistorySessionToken == sessionToken &&
+                    !currentHistorySessionQueued &&
+                    currentHistoryMediaId == mediaId
+                ) {
+                    currentHistoryEventId = result.eventId ?: currentHistoryEventId
+                    currentHistoryRemoteRegistered = currentHistoryRemoteRegistered || result.remoteRegistered
+                } else {
+                    updatePendingHistoryFinalization(mediaId, sessionToken, result)
+                }
+            }
+
+            syncHistoryThresholdJob()
+        }
+    }
+
+    private suspend fun insertPlaybackHistoryEvent(
+        mediaId: String,
+        playTimeMs: Long,
+        mediaMetadata: moe.rukamori.archivetune.models.MediaMetadata?,
+    ): Long? =
+        try {
+            database.withTransaction {
+                if (song(mediaId).first() == null && mediaMetadata != null) {
+                    insert(mediaMetadata)
+                }
+
+                insert(
+                    Event(
+                        songId = mediaId,
+                        timestamp = LocalDateTime.now(),
+                        playTime = playTimeMs,
+                    ),
+                ).takeIf { it > 0L }
+            }
+        } catch (_: SQLException) {
+            null
+        } catch (throwable: Throwable) {
+            reportException(throwable)
+            null
+        }
+
+    private suspend fun registerRemotePlaybackHistory(mediaId: String): Boolean {
+        if (database
+                .song(mediaId)
+                .first()
+                ?.song
+                ?.isLocal == true
+        ) {
+            return false
+        }
+
+        suspend fun registerTracking(playbackTrackingUrl: String): Boolean =
+            YouTube
+                .registerPlayback(
+                    playlistId = null,
+                    playbackTracking = playbackTrackingUrl,
+                ).onFailure { throwable ->
+                    if (throwable is CancellationException) {
+                        throw throwable
+                    }
+                    Timber.tag("MusicService").w(
+                        throwable,
+                        "Failed to register remote playback history for %s",
+                        mediaId,
+                    )
+                }.onSuccess {
+                    YouTube.notifyHistorySynced()
+                }.isSuccess
+
+        remotePlaybackTrackingUrlCache[mediaId]?.let { cachedPlaybackTrackingUrl ->
+            if (registerTracking(cachedPlaybackTrackingUrl)) {
+                return true
+            }
+            remotePlaybackTrackingUrlCache.remove(mediaId, cachedPlaybackTrackingUrl)
+        }
+
+        val remotePlaybackTracking =
+            retryWithoutPlaybackLoginContext {
+                YTPlayerUtils.playerResponseForMetadata(mediaId)
+            }.onFailure { throwable ->
+                if (throwable is CancellationException) {
+                    throw throwable
+                }
+                when (throwable) {
+                    is YTPlayerUtils.InvalidPlaybackLoginContextException -> {
+                        promptLoginRecovery(mediaId, throwable.targetUrl)
+                    }
+
+                    is YTPlayerUtils.LoginRequiredForPlaybackException -> {
+                        Timber.tag("MusicService").w(
+                            throwable,
+                            "Playback confirmation is required before refreshing remote playback tracking for %s",
+                            mediaId,
+                        )
+                    }
+
+                    else -> {
+                        Timber.tag("MusicService").w(
+                            throwable,
+                            "Failed to refresh remote playback tracking for %s",
+                            mediaId,
+                        )
+                    }
+                }
+            }.getOrNull()
+                ?.playbackTracking
+
+        val refreshedPlaybackTrackingUrl = remotePlaybackTracking?.remotePlaybackTrackingUrl()
+        if (refreshedPlaybackTrackingUrl != null) {
+            remotePlaybackTrackingUrlCache[mediaId] = refreshedPlaybackTrackingUrl
+            return registerTracking(refreshedPlaybackTrackingUrl)
+        }
+
+        return false
+    }
+
+    override fun onMediaItemTransition(
+        mediaItem: MediaItem?,
+        reason: Int,
+    ) {
+        super.onMediaItemTransition(mediaItem, reason)
+
+        if (sleepTimer.pauseWhenSongEnd) {
+            pauseFromSleepTimer()
+            return
+        }
+
+        crossfadeSuppressedMediaId = null
+
+        beginHistorySession(mediaItem?.mediaId, forceNew = true)
+
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&
+            reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+        ) {
+            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+                return
+            }
+            val now = android.os.SystemClock.elapsedRealtime()
+            val index = player.currentMediaItemIndex.coerceAtLeast(0)
+            val isEcho =
+                isTogetherApplyingRemote() ||
+                    (now < togetherSuppressEchoUntilElapsedMs && togetherLastRemoteAppliedIndex == index)
+            if (!isEcho) {
+                val trackId = (mediaItem?.metadata ?: player.currentMetadata)?.id?.trim().orEmpty()
+                requestTogetherControl(
+                    if (trackId.isBlank()) {
+                        moe.rukamori.archivetune.together.ControlAction.SeekToIndex(
+                            index = index,
+                            positionMs = player.currentPosition.coerceAtLeast(0L),
+                        )
+                    } else {
+                        moe.rukamori.archivetune.together.ControlAction.SeekToTrack(
+                            trackId = trackId,
+                            positionMs = player.currentPosition.coerceAtLeast(0L),
+                        )
+                    },
+                )
+            }
+        }
+
+        val timelineEmpty = player.currentTimeline.isEmpty || player.mediaItemCount == 0 || player.currentMediaItem == null
+        currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
+
+        widgetUpdater.update()
+
+        scrobbleManager?.onSongStop()
+
+        if (!timelineEmpty &&
+            dataStore.get(AutoLoadMoreKey, true) &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
+            player.repeatMode == REPEAT_MODE_OFF
+        ) {
+            // No redundant seeding update check.
+        }
+
+        // Auto-load more from queue if available
+        if (!suppressAutoPlayback &&
+            !timelineEmpty &&
+            currentMediaMetadata.value?.isPodcast != true &&
+            dataStore.get(AutoLoadMoreKey, true) &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
+            player.mediaItemCount - player.currentMediaItemIndex <= 5 &&
+            currentQueue.hasNextPage() &&
+            player.repeatMode == REPEAT_MODE_OFF
+        ) {
+            scope.launch(SilentHandler) {
+                val mediaItems =
+                    currentQueue
+                        .nextPage()
+                        .filterPlaybackContent(
+                            hideExplicit = dataStore.get(HideExplicitKey, false),
+                            hideVideo = dataStore.get(HideVideoKey, false),
+                        )
+                if (player.playbackState != STATE_IDLE) {
+                    player.addMediaItems(mediaItems.drop(1))
+                } else {
+                    requestDiscordSync(
+                        reason = "player_idle_after_queue_extension",
+                        force = true,
+                    )
+                }
+            }
+        }
+
+        if (!suppressAutoPlayback &&
+            !timelineEmpty &&
+            dataStore.get(AutoLoadMoreKey, true) &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
+            player.repeatMode == REPEAT_MODE_OFF &&
+            player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
+            !currentQueue.hasNextPage()
+        ) {
+            onInfiniteQueueEnabled()
+        }
+
+        if (player.playWhenReady && player.playbackState == Player.STATE_READY && player.currentMetadata?.isPodcast != true) {
+            scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
+        }
+
+        scope.launch {
+            val shouldSave = withContext(Dispatchers.IO) { dataStore.get(PersistentQueueKey, true) }
+            if (shouldSave) {
+                saveQueueToDisk()
+            }
+        }
+        ensurePresenceManager()
+        if (!isCrossfading) {
+            scheduleCrossfade()
+        }
+    }
+
+    private fun isCurrentPlaybackItemLocal(currentMediaMetadata: MediaMetadata): Boolean =
+        currentSong.value?.song?.isLocal == true ||
+            currentMediaMetadata.id.trim().isLocalMediaId() ||
+            player.currentMediaItem
+                ?.localConfiguration
+                ?.uri
+                ?.shouldBypassPlayerCache() == true
+
+    override fun onPlaybackStateChanged(
+        @Player.State playbackState: Int,
+    ) {
+        super.onPlaybackStateChanged(playbackState)
+
+        updateHistoryTrackingPlaybackState()
+        if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
+            enqueueCurrentHistorySessionForFinalization()
+            if (!isCrossfading || playbackState == Player.STATE_IDLE) {
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            }
+            if (playbackState == Player.STATE_ENDED &&
+                !suppressAutoPlayback &&
+                player.currentMetadata?.isPodcast != true &&
+                dataStore.get(AutoLoadMoreKey, true) &&
+                player.repeatMode == REPEAT_MODE_OFF &&
+                player.currentMediaItem != null
+            ) {
+                onInfiniteQueueEnabled()
+            }
+        } else if (playbackState == Player.STATE_READY) {
+            scheduleCrossfade()
+        }
+
+        widgetUpdater.update()
+        widgetUpdater.updateProgressTracking()
+
+        scope.launch {
+            val shouldSave = withContext(Dispatchers.IO) { dataStore.get(PersistentQueueKey, true) }
+            if (shouldSave) {
+                saveQueueToDisk()
+            }
+        }
+    }
+
+    override fun onPlayWhenReadyChanged(
+        playWhenReady: Boolean,
+        reason: Int,
+    ) {
+        super.onPlayWhenReadyChanged(playWhenReady, reason)
+        secondaryCrossfadePlayer?.let { secondaryPlayer ->
+            if (isCrossfading) {
+                val isEndOfOutgoingItemPause =
+                    !playWhenReady &&
+                        reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
+                        crossfadePlaybackRequested &&
+                        (localPlayer.pauseAtEndOfMediaItems || crossfadeHandoffInProgress)
+                if (!isEndOfOutgoingItemPause) {
+                    crossfadePlaybackRequested = playWhenReady
+                    secondaryPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        secondaryPlayer.play()
+                    } else {
+                        secondaryPlayer.pause()
+                    }
+                } else if (!crossfadeHandoffInProgress) {
+                    secondaryPlayer.playWhenReady = crossfadePlaybackRequested
+                    if (crossfadePlaybackRequested) {
+                        secondaryPlayer.play()
+                    }
+                }
+            }
+        }
+        if (playWhenReady && !isCrossfading) {
+            scheduleCrossfade()
+        } else if (!playWhenReady && !isCrossfading) {
+            crossfadeTriggerJob?.cancel()
+            crossfadeTriggerJob = null
+            localPlayer.pauseAtEndOfMediaItems = false
+            releaseSecondaryCrossfadePlayer()
+        }
+    }
+
+    override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+        super.onPlaybackParametersChanged(playbackParameters)
+        secondaryCrossfadePlayer?.playbackParameters = playbackParameters
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        super.onIsPlayingChanged(isPlaying)
+        secondaryCrossfadePlayer?.let { secondaryPlayer ->
+            if (isCrossfading && !crossfadeHandoffInProgress) {
+                val isEndOfOutgoingItemPause =
+                    !isPlaying &&
+                        !player.playWhenReady &&
+                        crossfadePlaybackRequested &&
+                        localPlayer.pauseAtEndOfMediaItems
+                if (isPlaying || isEndOfOutgoingItemPause) {
+                    secondaryPlayer.play()
+                } else {
+                    secondaryPlayer.pause()
+                }
+            }
+        }
+        if (isPlaying && !isCrossfading) {
+            scheduleCrossfade()
+        }
+        updateAudiblePlaybackRecovery()
+
+        widgetUpdater.update()
+        widgetUpdater.updateProgressTracking()
+    }
+
+    private fun updateNextStreamPreload() {
+        val configuration = playbackPreloadConfiguration
+        if (configuration == null || !configuration.enabled || player.playbackState != Player.STATE_READY) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        val nextMediaItemIndex = player.nextMediaItemIndex
+        if (nextMediaItemIndex == C.INDEX_UNSET ||
+            nextMediaItemIndex == player.currentMediaItemIndex ||
+            nextMediaItemIndex !in 0 until player.mediaItemCount
+        ) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        val nextMediaItem = player.getMediaItemAt(nextMediaItemIndex)
+        val nextMediaId =
+            (nextMediaItem.localConfiguration?.customCacheKey ?: nextMediaItem.mediaId)
+                .trim()
+                .takeIf(String::isNotEmpty)
+        val currentMediaId =
+            player.currentMediaItem
+                ?.let { mediaItem -> mediaItem.localConfiguration?.customCacheKey ?: mediaItem.mediaId }
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+        val nextUri = nextMediaItem.localConfiguration?.uri
+        if (nextMediaId == null ||
+            nextMediaId == currentMediaId ||
+            nextMediaId.isLocalMediaId() ||
+            nextUri == null ||
+            nextUri.shouldBypassYouTubeResolver()
+        ) {
+            nextStreamPreloader.cancel()
+            return
+        }
+
+        nextStreamPreloader.updateTarget(
+            request =
+                AudioStreamRequest(
+                    mediaId = nextMediaId,
+                    playlistId = null,
+                    quality = configuration.quality,
+                    networkMetered = false,
+                    purpose = StreamPurpose.PLAYBACK,
+                    authState = configuration.authState,
+                    pinnedFormatId = null,
+                ),
+        )
+    }
+
+    override fun onEvents(
+        player: Player,
+        events: Player.Events,
+    ) {
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED,
+            )
+        ) {
+            updateNextStreamPreload()
+        }
+        val currentMediaId = player.currentMediaItem?.mediaId
+        if (currentMediaId == null && currentHistoryMediaId != null) {
+            beginHistorySession(null, forceNew = true)
+        } else if (currentHistoryMediaId == null && currentMediaId != null) {
+            beginHistorySession(currentMediaId)
+        }
+        if (player.playerError == null &&
+            events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_POSITION_DISCONTINUITY)
+        ) {
+            playbackErrorRecoveryJob?.cancel()
+            playbackErrorRecoveryJob = null
+        }
+        if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+            playbackStreamRecoveryTracker.onMediaItemChanged(currentMediaId)
+        }
+        if (
+            (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) && player.playbackState == Player.STATE_READY) ||
+            (events.contains(Player.EVENT_IS_PLAYING_CHANGED) && player.isPlaying)
+        ) {
+            if (player.isPlaying || (player.playbackState == Player.STATE_READY && !player.playWhenReady)) {
+                playbackStreamRecoveryTracker.onPlaybackRecovered(currentMediaId)
+            }
+            ensureAudiblePlaybackVolume("player_event")
+        }
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_IS_PLAYING_CHANGED,
+            )
+        ) {
+            updateAudiblePlaybackRecovery()
+        }
+        if (events.contains(Player.EVENT_MEDIA_METADATA_CHANGED)) {
+            currentMediaMetadata.value = player.currentMetadata
+        }
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_IS_PLAYING_CHANGED,
+            )
+        ) {
+            updateHistoryTrackingPlaybackState()
+        }
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&
+            events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)
+        ) {
+            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+            } else {
+                val now = android.os.SystemClock.elapsedRealtime()
+                val playWhenReady = this.player.playWhenReady
+                val isEcho =
+                    isTogetherApplyingRemote() ||
+                        (
+                            now < togetherSuppressEchoUntilElapsedMs &&
+                                togetherLastRemoteAppliedPlayWhenReady != null &&
+                                togetherLastRemoteAppliedPlayWhenReady == playWhenReady
+                        )
+                if (!isEcho) {
+                    val action =
+                        if (playWhenReady) {
+                            moe.rukamori.archivetune.together.ControlAction.Play
+                        } else {
+                            moe.rukamori.archivetune.together.ControlAction.Pause
+                        }
+                    requestTogetherControl(action)
+                }
+            }
+        }
+        if (events.contains(Player.EVENT_DEVICE_VOLUME_CHANGED)) {
+            handleDeviceMuteStateChanged()
+        }
+        if (events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) && isDeviceMutedNow() && this.player.playWhenReady) {
+            handleDeviceMuteStateChanged(playbackRequestedWhileMuted = true)
+        }
+        if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+            (this.player.playbackState == Player.STATE_IDLE || this.player.playbackState == Player.STATE_ENDED)
+        ) {
+            wasAutoPausedByDeviceMute = false
+            unregisterMuteRecoveryObserver()
+            updateAudiblePlaybackRecovery()
+        }
+        if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+            isDeviceMutedNow() &&
+            this.player.playWhenReady
+        ) {
+            handleDeviceMuteStateChanged(playbackRequestedWhileMuted = true)
+        }
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+            )
+        ) {
+            if (player.playWhenReady && shouldKeepAudioEffectSessionOpen()) {
+                ensureAudioFocusForActivePlayback()
+            }
+            updateWakeLock()
+            if (hasResumablePlaybackNotification()) {
+                cancelIdleStop()
+                promoteToStartedService()
+                ensureStartedAsForeground()
+            } else {
+                scheduleStopIfIdle()
+            }
+        }
+
+        if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
+            currentMediaMetadata.value = player.currentMetadata
+            requestDiscordSync(
+                reason = "timeline_or_position_discontinuity",
+                force = true,
+            )
+            val currentMediaId = player.currentMediaItem?.mediaId
+            val currentMetadata = player.currentMetadata
+            val currentDuration = player.duration
+            val currentPosition = player.currentPosition
+            scope.launch {
+                try {
+                    if (currentMetadata?.isPodcast == true) return@launch
+                    val song = if (currentMediaId != null) withContext(Dispatchers.IO) { database.song(currentMediaId).first() } else null
+                    val finalSong =
+                        resolvePresenceSong(
+                            dbSong = song,
+                            mediaMetadata = currentMetadata,
+                            durationMs = currentDuration,
+                        ) ?: return@launch
+                    try {
+                        val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
+                        val lbToken = dataStore.get(ListenBrainzTokenKey, "")
+                        val historyPaused = dataStore.get(PauseListenHistoryKey, false)
+                        if (lbEnabled && !lbToken.isNullOrBlank() && !historyPaused) {
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    ListenBrainzManager.submitPlayingNow(
+                                        this@MusicService,
+                                        lbToken,
+                                        finalSong,
+                                        currentPosition,
+                                    )
+                                } catch (ie: Exception) {
+                                    Timber.tag("MusicService").v(ie, "ListenBrainz playing_now submit failed on transition")
+                                }
+                            }
+                        }
+
+                        // Last.fm now playing - handled by ScrobbleManager
+                    } catch (_: Exception) {
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("MusicService").v(e, "timeline/position follow-up work failed")
+                }
+            }
+        }
+        if (events.contains(EVENT_TIMELINE_CHANGED) && !isCrossfading) {
+            scheduleCrossfade()
+        }
+
+        // Also handle immediate update for play state and media item transition events explicitly
+        if (events.containsAny(
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_IS_PLAYING_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+            )
+        ) {
+            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                currentMediaMetadata.value = player.currentMetadata
+            }
+            requestDiscordSync(
+                reason = "is_playing_or_media_item_transition",
+                force = true,
+            )
+            // Capture player state on Main thread
+            val currentMediaId = player.currentMediaItem?.mediaId
+            val currentMetadata = player.currentMetadata
+            val currentPosition = player.currentPosition
+            val currentDuration = player.duration
+            val isPlaying = player.isPlaying
+
+            scope.launch {
+                try {
+                    if (currentMetadata?.isPodcast == true) return@launch
+                    val song =
+                        if (currentMediaId !=
+                            null
+                        ) {
+                            withContext(Dispatchers.IO) { database.song(currentMediaId).first() }
+                        } else {
+                            null
+                        }
+                    val finalSong =
+                        resolvePresenceSong(
+                            dbSong = song,
+                            mediaMetadata = currentMetadata,
+                            durationMs = currentDuration,
+                        ) ?: return@launch
+                    try {
+                        val lbEnabled = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzEnabledKey, false) }
+                        val lbToken = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzTokenKey, "") }
+                        val historyPaused = withContext(Dispatchers.IO) { dataStore.get(PauseListenHistoryKey, false) }
+                        if (lbEnabled && !lbToken.isNullOrBlank() && !historyPaused) {
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    ListenBrainzManager.submitPlayingNow(this@MusicService, lbToken, finalSong, currentPosition)
+                                } catch (ie: Exception) {
+                                    Timber
+                                        .tag(
+                                            "MusicService",
+                                        ).v(ie, "ListenBrainz playing_now submit failed for isPlaying/mediaTransition")
+                                }
+                            }
+                        }
+
+                        // Last.fm now playing - handled by ScrobbleManager
+                    } catch (_: Exception) {
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("MusicService").v(e, "isPlaying/mediaTransition follow-up work failed")
+                }
+            }
+        }
+
+        if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
+            // Scrobble: Track play/pause state
+            if (player.currentMetadata?.isPodcast != true) {
+                scrobbleManager?.onPlayerStateChanged(player.isPlaying, player.currentMetadata, duration = player.duration)
+            }
+        }
+
+        // Persist queue on play/pause so a force-stop right after pausing still restores the correct position
+        if (events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) && player.mediaItemCount > 0) {
+            scope.launch(SilentHandler) {
+                if (withContext(Dispatchers.IO) { dataStore.get(PersistentQueueKey, true) }) {
+                    saveQueueToDisk()
+                }
+            }
+        }
+    }
+
+    override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int,
+    ) {
+        super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+        val isSeekDiscontinuity =
+            reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+        if (isSeekDiscontinuity) {
+            if (!crossfadeHandoffInProgress) {
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            }
+        }
+        if (!isCrossfading && !crossfadeHandoffInProgress) {
+            scheduleCrossfade()
+        }
+    }
+
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+        updateNotification()
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!isTogetherApplyingRemote()) {
+                if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                    scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+                    return
+                }
+                requestTogetherControl(
+                    moe.rukamori.archivetune.together.ControlAction.SetShuffleEnabled(
+                        shuffleEnabled = shuffleModeEnabled,
+                    ),
+                )
+            }
+            return
+        }
+        if (shuffleModeEnabled) {
+            applyCurrentFirstShuffleOrder()
+        }
+
+        // Save state when shuffle mode changes - must be on Main thread to access player
+        scope.launch {
+            if (dataStore.get(PersistentQueueKey, true)) {
+                saveQueueToDisk()
+            }
+        }
+        if (!isCrossfading) {
+            scheduleCrossfade()
+        }
+    }
+
+    override fun onRepeatModeChanged(repeatMode: Int) {
+        updateNotification()
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
+            if (!isTogetherApplyingRemote()) {
+                if (!joined.roomState.settings.allowGuestsToControlPlayback) {
+                    scope.launch(SilentHandler) { applyRemoteRoomState(joined.roomState, force = true) }
+                    return
+                }
+                requestTogetherControl(
+                    moe.rukamori.archivetune.together.ControlAction.SetRepeatMode(
+                        repeatMode = repeatMode,
+                    ),
+                )
+            }
+            return
+        }
+        scope.launch {
+            dataStore.edit { settings ->
+                settings[RepeatModeKey] = repeatMode
+            }
+        }
+
+        // Save state when repeat mode changes - must be on Main thread to access player
+        scope.launch {
+            if (dataStore.get(PersistentQueueKey, true)) {
+                saveQueueToDisk()
+            }
+        }
+        if (!isCrossfading) {
+            scheduleCrossfade()
+        }
+    }
+
+    override fun onPlayerError(error: PlaybackException) {
+        super.onPlayerError(error)
+        val snapshot = capturePlaybackRecoverySnapshot() ?: return
+        playbackErrorRecoveryJob?.cancel()
+        playbackErrorRecoveryJob = scope.launch {
+            try {
+                handlePlaybackError(error, snapshot)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                Timber.tag("MusicService").e(
+                    failure,
+                    "Unhandled exception while recovering playback for %s",
+                    snapshot.mediaId,
+                )
+                runCatching {
+                    if (player.currentMediaItem?.mediaId == snapshot.mediaId) {
+                        stopOnError()
+                    }
+                }.onFailure { stopFailure ->
+                    Timber.tag("MusicService").w(
+                        stopFailure,
+                        "Failed to safely stop playback after recovery failure",
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun handlePlaybackError(
+        error: PlaybackException,
+        recoverySnapshot: PlaybackRecoverySnapshot,
+    ) {
+        val currentMediaId = recoverySnapshot.mediaId
+        val isLocalMedia = currentMediaId.isLocalMediaId() ||
+            player.currentMediaItem?.localConfiguration?.uri?.shouldBypassPlayerCache() == true
+        val (isFullyDownloadedMedia, hasAnyCachedData) = withContext(Dispatchers.IO) {
+            if (isLocalMedia || currentMediaId in cacheBypassMediaIds) {
+                false to false
+            } else {
+                try {
+                    downloadCache.isFullyCached(currentMediaId) to
+                        (downloadCache.getCachedSpans(currentMediaId).isNotEmpty() ||
+                            playerCache.getCachedSpans(currentMediaId).isNotEmpty())
+                } catch (failure: IOException) {
+                    Timber.tag("MusicService").w(failure, "Failed to inspect playback cache for %s", currentMediaId)
+                    false to true
+                }
+            }
+        }
+        if (player.currentMediaItem?.mediaId != currentMediaId || player.playerError !== error) return
+
+        if (!isLocalMedia && isCacheCorruptionError(error, hasAnyCachedData)) {
+            if (!isNetworkCurrentlyConnected()) {
+                waitOnNetworkError()
+                return
+            }
+            if (cacheBypassMediaIds.add(currentMediaId)) {
+                Timber.tag("MusicService").w(
+                    error,
+                    "Retrying %s from the network after a cache or truncated stream failure",
+                    currentMediaId,
+                )
+                resolveAudioStream.invalidate(currentMediaId)
+                YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+                withContext(Dispatchers.IO) {
+                    try {
+                        playerCache.removeResource(currentMediaId)
+                    } catch (failure: IOException) {
+                        Timber.tag("MusicService").w(failure, "Failed to remove damaged streaming cache for %s", currentMediaId)
+                    }
+                }
+                if (player.currentMediaItem?.mediaId != currentMediaId || player.playerError !== error) return
+                val retrySnapshot = capturePlaybackRecoverySnapshot() ?: return
+                player.stop()
+                if (preparePlaybackFromSnapshot(retrySnapshot)) return
+            }
+            if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+            return
+        }
+
+        if (!isLocalMedia && !isFullyDownloadedMedia && !isNetworkCurrentlyConnected()) {
+            waitOnNetworkError()
+            return
+        }
+
+        if (!isLocalMedia &&
+            !isFullyDownloadedMedia &&
+            error.isTransientNetworkFailure() &&
+            retryPlaybackAfterNetworkFailure(currentMediaId, isFullyDownloadedMedia)
+        ) {
+            return
+        }
+
+        if (!isLocalMedia &&
+            !isFullyDownloadedMedia &&
+            !hasAnyCachedData &&
+            error.isRemoteStreamReadFailure() &&
+            playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)
+        ) {
+            val recoverySnapshot = capturePlaybackRecoverySnapshot()
+            resolveAudioStream.invalidate(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+
+            Timber.tag("MusicService").i(
+                "Refreshing remote stream for %s after a truncated/read failure",
+                currentMediaId,
+            )
+
+            if (preparePlaybackFromSnapshot(recoverySnapshot)) {
+                return
+            }
+        }
+
+        val streamHttpFailure = findStreamHttpFailure(error)
+        if (streamHttpFailure != null) {
+            if (streamHttpFailure.responseCode in RETRYABLE_STREAM_RESPONSE_CODES &&
+                retryPlaybackAfterStreamFailure(currentMediaId, isFullyDownloadedMedia, streamHttpFailure)
+            ) {
+                return
+            }
+        }
+
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBotDetectionException(error)) {
+            val recoverySnapshot = capturePlaybackRecoverySnapshot()
+            resolveAudioStream.invalidate(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            YTPlayerUtils.clearPlaybackAuthCaches()
+            if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
+                Timber.tag("MusicService").i("Retrying playback for %s after bot-detection source error", currentMediaId)
+                if (preparePlaybackFromSnapshot(recoverySnapshot)) return
+            }
+        }
+
+        if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBadStreamPlayerResponseException(error)) {
+            resolveAudioStream.invalidate(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        YTPlayerUtils.recoverFromBadStreamPlayerResponse(currentMediaId)
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (failure: Exception) {
+                        Timber.tag("MusicService").w(
+                            failure,
+                            "Failed to refresh stream session for %s after all stream clients failed",
+                            currentMediaId,
+                        )
+                        reportException(failure)
+                    }
+                }
+                if (player.currentMediaItem?.mediaId != currentMediaId || player.playerError !== error) return
+                Timber.tag("MusicService").i(
+                    "Retrying playback for %s after refreshing stream session",
+                    currentMediaId,
+                )
+                if (preparePlaybackFromSnapshot(capturePlaybackRecoverySnapshot())) return
+            }
+        }
+
+        if (!isLocalMedia && !isFullyDownloadedMedia && isRetryableRemoteParserFailure(error)) {
+            val recoverySnapshot = capturePlaybackRecoverySnapshot()
+            resolveAudioStream.invalidate(currentMediaId)
+            YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
+            if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
+                Timber.tag("MusicService").i(
+                    "Retrying playback for %s after parser source error %d",
+                    currentMediaId,
+                    error.errorCode,
+                )
+                if (preparePlaybackFromSnapshot(recoverySnapshot)) return
+            }
+        }
+
+        if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
+            skipOnError()
+        } else {
+            stopOnError()
+        }
+    }
+
+    private suspend fun trimPlayerCacheToBytes(limitBytes: Long) {
+        if (limitBytes <= 0L) return
+
+        withContext(Dispatchers.IO) {
+            val cacheDir = StorageLocationRepository.cacheDirectory(this@MusicService, StorageFolderKind.SONG_CACHE)
+            val currentSpace = runCatching { playerCache.cacheSpace }.getOrNull() ?: 0L
+            var totalBytes = if (currentSpace > 0L) currentSpace else cacheDir.directorySizeBytes()
+            if (totalBytes <= limitBytes) return@withContext
+
+            data class Candidate(
+                val key: String,
+                val lastTouchTimestamp: Long,
+                val sizeBytes: Long,
+            )
+
+            val candidates =
+                runCatching {
+                    playerCache.keys
+                        .mapNotNull { key ->
+                            runCatching {
+                                val spans = playerCache.getCachedSpans(key)
+                                if (spans.isEmpty()) return@runCatching null
+                                val oldestTouch = spans.minOf { it.lastTouchTimestamp }
+                                val sizeBytes = spans.sumOf { it.length }
+                                Candidate(key = key, lastTouchTimestamp = oldestTouch, sizeBytes = sizeBytes)
+                            }.getOrNull()
+                        }.sortedBy { it.lastTouchTimestamp }
+                }.getOrNull().orEmpty()
+
+            for (candidate in candidates) {
+                if (totalBytes <= limitBytes) break
+                val removedSize = candidate.sizeBytes.coerceAtLeast(0L)
+                runCatching { playerCache.removeResource(candidate.key) }
+                totalBytes -= removedSize
+            }
+        }
+    }
+
+    private fun createPlayerCacheDataSourceFactory(cacheWriteEnabled: Boolean): CacheDataSource.Factory =
+        CacheDataSource
+            .Factory()
+            .setCache(playerCache)
+            .setUpstreamDataSourceFactory(createResolvedUpstreamDataSourceFactory())
+            .apply {
+                if (!cacheWriteEnabled) {
+                    setCacheWriteDataSinkFactory(null)
+                }
+            }.setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
+
+    private fun createDataSourceFactory(): DataSource.Factory {
+        val downloadedFactory =
+            CacheDataSource.Factory()
+                .setCache(downloadCache)
+                .setCacheWriteDataSinkFactory(null)
+        val streamingFactory = DataSource.Factory {
+            createPlayerCacheDataSourceFactory(
+                cacheWriteEnabled = !isLowDataModeActive(),
+            ).createDataSource()
+        }
+        val directFactory = createResolvedUpstreamDataSourceFactory()
+
+        return DataSource.Factory {
+            SchemeRoutingDataSource { dataSpec ->
+                val mediaId = dataSpec.key
+                when {
+                    dataSpec.uri.shouldBypassPlayerCache() || (mediaId != null && mediaId in cacheBypassMediaIds) -> directFactory
+                    else -> {
+                        if (mediaId != null) {
+                            database.getFormatByIdBlocking(mediaId)?.let { format ->
+                                format.toCastMimeType()?.let { castMimeTypeCache.put(mediaId, it) }
+                                audioNormalizationFactorCache[mediaId] =
+                                    calculateAudioNormalizationFactor(format, normalizeAudio = true)
+                            }
+                            scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+                        }
+                        if (mediaId != null && downloadCache.isFullyCached(mediaId)) {
+                            downloadedFactory
+                        } else {
+                            streamingFactory
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun Cache.isFullyCached(mediaId: String): Boolean {
+        val contentLength = ContentMetadata.getContentLength(getContentMetadata(mediaId))
+        return contentLength > 0L && isCached(mediaId, 0L, contentLength)
+    }
+
+    private fun createResolvedUpstreamDataSourceFactory(): DataSource.Factory {
+        val httpFactory = OkHttpDataSource.Factory(mediaOkHttpClient)
+        val chunkedFactory = DataSource.Factory {
+            ChunkedDataSource(httpFactory.createDataSource(), CHUNK_LENGTH)
+        }
+        val mediaFactory = DefaultDataSource.Factory(this, chunkedFactory)
+        return ResolvingDataSource.Factory(mediaFactory, ::resolvePlaybackDataSpec)
+    }
+
+    private fun String?.toCastMimeType(): String? {
+        val normalized = this?.trim()?.takeIf(String::isNotEmpty) ?: return null
+        val baseType = normalized.substringBefore(';').trim()
+        return normalized.takeIf {
+            baseType.contains('/') && !baseType.endsWith("/*")
+        }
+    }
+
+    private fun FormatEntity.toCastMimeType(): String? {
+        val normalizedMimeType = mimeType.toCastMimeType() ?: return null
+        val normalizedCodecs = codecs.trim()
+        return if (normalizedCodecs.isEmpty() || normalizedMimeType.contains("codecs=", ignoreCase = true)) {
+            normalizedMimeType
+        } else {
+            "$normalizedMimeType; codecs=\"$normalizedCodecs\""
+        }
+    }
+
+    private fun resolveMediaItemForCast(mediaItem: MediaItem): MediaItem {
+        val localConfiguration = mediaItem.localConfiguration ?: return mediaItem
+        val uri = localConfiguration.uri
+        if (uri.shouldBypassYouTubeResolver()) return mediaItem
+        val mediaId = localConfiguration.customCacheKey ?: mediaItem.mediaId
+        val lowDataModeActive = isLowDataModeActive()
+        val resolved =
+            resolveAudioStream.peek(
+                AudioStreamRequest(
+                    mediaId = mediaId,
+                    quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                    networkMetered = lowDataModeActive,
+                    purpose = StreamPurpose.PLAYBACK,
+                    authState = YouTube.currentPlaybackAuthState(),
+                ),
+            ) ?: return mediaItem
+        val resolvedMimeType =
+            localConfiguration.mimeType.toCastMimeType()
+                ?: castMimeTypeCache.get(mediaId)
+        return mediaItem
+            .buildUpon()
+            .setUri(resolved.url)
+            .apply { resolvedMimeType?.let(::setMimeType) }
+            .build()
+    }
+
+    private fun resolvePlaybackDataSpec(dataSpec: DataSpec): DataSpec {
+        if (dataSpec.uri.shouldBypassYouTubeResolver()) {
+            return dataSpec
+        }
+        val mediaId = dataSpec.key ?: return dataSpec
+        val storedFormat = database.getFormatByIdBlocking(mediaId)
+        storedFormat?.let { format ->
+            format.toCastMimeType()?.let { castMimeTypeCache.put(mediaId, it) }
+            audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(format, normalizeAudio = true)
+        }
+        val cachedMetadata =
+            if (mediaId !in cacheBypassMediaIds && playerCache.getCachedSpans(mediaId).isNotEmpty()) {
+                playerCache.getContentMetadata(mediaId)
+            } else {
+                null
+            }
+        val pinnedFormatId = cachedMetadata?.let { metadata ->
+            metadata.get(PLAYBACK_FORMAT_ID_METADATA_KEY, -1L).toInt().takeIf { it > 0 }
+                ?: storedFormat?.itag?.takeIf { it > 0 }
+        }
+
+        val lowDataModeActive = isLowDataModeActive()
+        var resolvedRequestHeaders: Map<String, String> = emptyMap()
+        val playbackData =
+            runCatching {
+                resolveAudioStream
+                    .resolveBlocking(
+                        AudioStreamRequest(
+                            mediaId = mediaId,
+                            quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                            networkMetered = lowDataModeActive,
+                            purpose = StreamPurpose.PLAYBACK,
+                            authState = YouTube.currentPlaybackAuthState(),
+                            pinnedFormatId = pinnedFormatId,
+                        ),
+                    ).also { resolved ->
+                        resolvedRequestHeaders = resolved.requestHeaders
+                    }.toPlaybackData(mediaId)
+            }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                when {
+                    throwable is YTPlayerUtils.InvalidPlaybackLoginContextException -> {
+                        promptLoginRecovery(mediaId, throwable.targetUrl)
+                        throw IOException(
+                            getString(R.string.playback_requires_youtube_music_login_refresh),
+                            throwable,
+                        )
+                    }
+
+                    throwable is YTPlayerUtils.LoginRequiredForPlaybackException -> {
+                        throw IOException(
+                            getString(R.string.playback_requires_youtube_music_confirmation),
+                            throwable,
+                        )
+                    }
+
+                    throwable is YTPlayerUtils.BotDetectionPlaybackException -> {
+                        throw IOException(
+                            getString(R.string.error_no_stream),
+                            throwable,
+                        )
+                    }
+
+                    throwable is YTPlayerUtils.BadStreamPlayerResponseException -> {
+                        throw PlaybackException(
+                            getString(R.string.error_no_stream),
+                            throwable,
+                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                        )
+                    }
+
+                    throwable is PlaybackException -> {
+                        throw throwable
+                    }
+
+                    throwable.isNetworkConnectionFailure() -> {
+                        throw PlaybackException(
+                            getString(R.string.playback_error_no_internet),
+                            throwable,
+                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                        )
+                    }
+
+                    throwable.isRequestTimeout() -> {
+                        throw PlaybackException(
+                            getString(R.string.error_timeout),
+                            throwable,
+                            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+                        )
+                    }
+
+                    else -> {
+                        throw PlaybackException(
+                            getString(R.string.playback_error_unknown),
+                            throwable,
+                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                        )
+                    }
+                }
+            }
+
+        val nonNullPlayback =
+            requireNotNull(playbackData) {
+                getString(R.string.playback_error_unknown)
+            }
+        nonNullPlayback.playbackTracking
+            ?.remotePlaybackTrackingUrl()
+            ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
+        val format = nonNullPlayback.format
+        format.mimeType.toCastMimeType()?.let { castMimeTypeCache.put(mediaId, it) }
+        val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb ?: storedFormat?.loudnessDb
+        val perceptualLoudnessDb =
+            nonNullPlayback.audioConfig?.perceptualLoudnessDb ?: storedFormat?.perceptualLoudnessDb
+        val resolvedContentLength =
+            format.contentLength?.takeIf { it > 0L } ?: 0L
+        val resolvedCodecs =
+            format.mimeType
+                .substringAfter("codecs=", "")
+                .removeSurrounding("\"")
+                .substringBefore("\"")
+                .ifBlank { storedFormat?.codecs.orEmpty() }
+        val cachedContentLength = cachedMetadata?.let(ContentMetadata::getContentLength)
+        if (cachedMetadata != null &&
+            ((pinnedFormatId != null && format.itag != pinnedFormatId) ||
+                (cachedContentLength != null && cachedContentLength > 0L &&
+                    resolvedContentLength > 0L && cachedContentLength != resolvedContentLength))
+        ) {
+            throw Cache.CacheException("Cached audio does not match the resolved stream")
+        }
+        if (mediaId !in cacheBypassMediaIds) {
+            val mutations = ContentMetadataMutations()
+                .set(PLAYBACK_FORMAT_ID_METADATA_KEY, format.itag.toLong())
+            if (resolvedContentLength > 0L) {
+                ContentMetadataMutations.setContentLength(mutations, resolvedContentLength)
+            }
+            playerCache.applyContentMetadataMutations(mediaId, mutations)
+        }
+
+        Timber
+            .tag(
+                "AudioNormalization",
+            ).d("Storing format for $mediaId with loudnessDb: $loudnessDb, perceptualLoudnessDb: $perceptualLoudnessDb")
+        if (loudnessDb == null && perceptualLoudnessDb == null) {
+            Timber.tag("AudioNormalization").w("No loudness data available from YouTube for video: $mediaId")
+        }
+
+        val formatEntity =
+            FormatEntity(
+                id = mediaId,
+                itag = format.itag.takeIf { it > 0 } ?: storedFormat?.itag ?: -1,
+                mimeType = format.mimeType.split(";")[0],
+                codecs = resolvedCodecs,
+                bitrate = format.bitrate.takeIf { it > 0 } ?: storedFormat?.bitrate ?: 0,
+                sampleRate = format.audioSampleRate ?: storedFormat?.sampleRate,
+                contentLength = resolvedContentLength,
+                loudnessDb = loudnessDb,
+                perceptualLoudnessDb = perceptualLoudnessDb,
+                playbackUrl =
+                    nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl
+                        ?: storedFormat?.playbackUrl,
+            )
+        val resolvedNormalizationFactor = calculateAudioNormalizationFactor(formatEntity, normalizeAudio = true)
+        audioNormalizationFactorCache[mediaId] = resolvedNormalizationFactor
+        scope.launch {
+            if (currentMediaMetadata.value?.id == mediaId &&
+                dataStore.get(AudioNormalizationKey, true)
+            ) {
+                normalizeFactor.value = resolvedNormalizationFactor
+            }
+        }
+
+        database.query {
+            upsert(
+                formatEntity,
+            )
+        }
+        scope.launch(Dispatchers.IO) { recoverSong(mediaId, nonNullPlayback) }
+
+        val streamUrl = nonNullPlayback.streamUrl
+
+        val resolvedDataSpec =
+            dataSpec
+                .buildUpon()
+                .setUri(streamUrl.toUri())
+                .setHttpRequestHeaders(dataSpec.httpRequestHeaders + resolvedRequestHeaders)
+                .build()
+        if (resolvedContentLength > 0L && dataSpec.position == resolvedContentLength) {
+            return resolvedDataSpec.buildUpon().setLength(C.LENGTH_UNSET.toLong()).build()
+        }
+        val remainingLength = (resolvedContentLength - dataSpec.position).takeIf { it > 0L }
+        val length = remainingLength?.let { remaining ->
+            if (dataSpec.length == C.LENGTH_UNSET.toLong()) remaining else minOf(dataSpec.length, remaining)
+        }
+        return length?.let { resolvedDataSpec.subrange(0L, it) } ?: resolvedDataSpec
+    }
+
+    private fun Uri.shouldBypassYouTubeResolver(): Boolean {
+        val normalizedScheme = scheme?.lowercase(Locale.US)
+        return normalizedScheme == "content" ||
+            normalizedScheme == "file" ||
+            normalizedScheme == "android.resource" ||
+            normalizedScheme == "http" ||
+            normalizedScheme == "https"
+    }
+
+    private fun Uri.shouldBypassPlayerCache(): Boolean {
+        val normalizedScheme = scheme?.lowercase(Locale.US)
+        return normalizedScheme == "content" ||
+            normalizedScheme == "file" ||
+            normalizedScheme == "android.resource"
+    }
+
+    private fun deviceSupportsMimeType(mimeType: String): Boolean =
+        runCatching {
+            val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
+            codecList.codecInfos.any { info ->
+                !info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
+            }
+        }.getOrDefault(false)
+
+    private fun createMediaSourceFactory() =
+        DefaultMediaSourceFactory(
+            createDataSourceFactory(),
+            DefaultExtractorsFactory(),
+        )
+
+    private class SchemeRoutingDataSource(
+        private val selectFactory: (DataSpec) -> DataSource.Factory,
+    ) : DataSource {
+        private val transferListeners = mutableListOf<TransferListener>()
+        private var delegate: DataSource? = null
+
+        override fun addTransferListener(transferListener: TransferListener) {
+            transferListeners += transferListener
+            delegate?.addTransferListener(transferListener)
+        }
+
+        override fun open(dataSpec: DataSpec): Long {
+            val selectedFactory = selectFactory(dataSpec)
+            val selectedDataSource = selectedFactory.createDataSource()
+            transferListeners.forEach(selectedDataSource::addTransferListener)
+            delegate = selectedDataSource
+            return selectedDataSource.open(dataSpec)
+        }
+
+        override fun read(
+            buffer: ByteArray,
+            offset: Int,
+            length: Int,
+        ): Int = checkNotNull(delegate).read(buffer, offset, length)
+
+        override fun getUri(): Uri? = delegate?.uri
+
+        override fun getResponseHeaders(): Map<String, List<String>> = delegate?.responseHeaders ?: emptyMap()
+
+        override fun close() {
+            val selected = delegate
+            delegate = null
+            selected?.close()
+        }
+    }
+
+    private fun updateAudioOffload(enabled: Boolean) {
+        val effectiveEnabled = enabled && !crossfadeEnabled
+        runCatching {
+            val builder = localPlayer.trackSelectionParameters.buildUpon()
+            val audioOffloadPrefsClass = Class.forName("androidx.media3.common.AudioOffloadPreferences")
+            val audioOffloadPrefsBuilderClass = Class.forName("androidx.media3.common.AudioOffloadPreferences\$Builder")
+
+            val modeFieldName = if (effectiveEnabled) "AUDIO_OFFLOAD_MODE_ENABLED" else "AUDIO_OFFLOAD_MODE_DISABLED"
+            val mode = audioOffloadPrefsClass.getField(modeFieldName).getInt(null)
+
+            val prefsBuilder = audioOffloadPrefsBuilderClass.getDeclaredConstructor().newInstance()
+            audioOffloadPrefsBuilderClass.getMethod("setAudioOffloadMode", Int::class.javaPrimitiveType).invoke(prefsBuilder, mode)
+            val prefs = audioOffloadPrefsBuilderClass.getMethod("build").invoke(prefsBuilder)
+
+            val setMethod =
+                builder.javaClass.methods.firstOrNull { method ->
+                    method.name == "setAudioOffloadPreferences" && method.parameterTypes.size == 1
+                }
+            if (setMethod != null) {
+                setMethod.invoke(builder, prefs)
+                localPlayer.trackSelectionParameters = builder.build()
+            }
+        }
+        localPlayer.setOffloadEnabled(effectiveEnabled)
+    }
+
+    private fun updateWakeLock() {
+        val wl = wakeLock ?: return
+        val shouldHold = wakelockEnabled && player.isPlaying
+        if (shouldHold && !wl.isHeld) {
+            wl.acquire()
+        } else if (!shouldHold && wl.isHeld) {
+            wl.release()
+        }
+    }
+
+    private fun createPrimaryLoadControl(): DefaultLoadControl =
+        DefaultLoadControl
+            .Builder()
+            .setBufferDurationsMs(
+                PRIMARY_MIN_BUFFER_MS,
+                PRIMARY_MAX_BUFFER_MS,
+                PRIMARY_BUFFER_FOR_PLAYBACK_MS,
+                PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+            ).setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+    private fun createCrossfadeLoadControl(): DefaultLoadControl =
+        DefaultLoadControl
+            .Builder()
+            .setBufferDurationsMs(
+                CROSSFADE_MIN_BUFFER_MS,
+                CROSSFADE_MAX_BUFFER_MS,
+                CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
+                CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
+            ).setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+    private fun createRenderersFactory() =
+        object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ) = DefaultAudioSink
+                .Builder(context)
+                .setEnableFloatOutput(false)
+                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                .setAudioProcessorChain(
+                    DefaultAudioSink.DefaultAudioProcessorChain(
+                        SilenceSkippingAudioProcessor(
+                            1_500_000L,
+                            0.35f,
+                            500_000L,
+                            10,
+                            150.toShort(),
+                        ),
+                        SonicAudioProcessor(),
+                    ),
+                ).build()
+        }
+
+    override fun onPlaybackStatsReady(
+        eventTime: AnalyticsListener.EventTime,
+        playbackStats: PlaybackStats,
+    ) {
+        val mediaItem = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem
+        val mediaId = mediaItem.mediaId
+        val thresholdMs = historyThresholdMs()
+        val pendingSession = popPendingHistoryFinalization(mediaId)
+        val alreadyPersistedForSession = pendingSession?.eventId != null || pendingSession?.remoteRegistered == true
+        val reachedHistoryThreshold =
+            playbackStats.totalPlayTimeMs >= thresholdMs &&
+                !dataStore.get(PauseListenHistoryKey, false)
+        val shouldPersistHistory = alreadyPersistedForSession || reachedHistoryThreshold
+        val fallbackMetadata = mediaItem.metadata
+
+        if (shouldPersistHistory) {
+            ioScope.launch {
+                val pendingResult =
+                    pendingSession?.let { session ->
+                        historyRecordingJobs[session.sessionToken]
+                            ?.let { deferred ->
+                                runCatching { deferred.await() }
+                                    .onFailure(::reportException)
+                                    .getOrNull()
+                            }?.let { result ->
+                                session.copy(
+                                    eventId = result.eventId ?: session.eventId,
+                                    remoteRegistered = session.remoteRegistered || result.remoteRegistered,
+                                )
+                            }
+                            ?: session
+                    }
+
+                val eventId =
+                    pendingResult?.eventId ?: insertPlaybackHistoryEvent(
+                        mediaId = mediaId,
+                        playTimeMs = playbackStats.totalPlayTimeMs,
+                        mediaMetadata = fallbackMetadata,
+                    )
+
+                if (eventId != null) {
+                    runCatching {
+                        database.updateEventPlayTime(eventId, playbackStats.totalPlayTimeMs)
+                    }.onFailure(::reportException)
+                }
+
+                try {
+                    database.withTransaction {
+                        incrementTotalPlayTime(mediaId, playbackStats.totalPlayTimeMs)
+                    }
+                } catch (_: SQLException) {
+                } catch (throwable: Throwable) {
+                    reportException(throwable)
+                }
+
+                if (pendingResult?.remoteRegistered != true) {
+                    registerRemotePlaybackHistory(mediaId)
+                }
+            }
+
+            if (fallbackMetadata?.isPodcast != true) {
+                ioScope.launch {
+                    try {
+                        val song =
+                            database.song(mediaId).first()
+                                ?: return@launch
+                        if (song.song.isPodcast) return@launch
+
+                        val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
+                        val lbToken = dataStore.get(ListenBrainzTokenKey, "")
+                        val historyPaused = dataStore.get(PauseListenHistoryKey, false)
+                        if (lbEnabled && !lbToken.isNullOrBlank() && !historyPaused) {
+                            val endMs = System.currentTimeMillis()
+                            val startMs = endMs - playbackStats.totalPlayTimeMs
+                            try {
+                                ListenBrainzManager.submitFinished(this@MusicService, lbToken, song, startMs, endMs)
+                            } catch (ie: Exception) {
+                                Timber.tag("MusicService").v(ie, "ListenBrainz finished submit failed")
+                            }
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
+    }
+
+    private fun currentPresenceSong(): Song? =
+        resolvePresenceSong(
+            dbSong = currentSong.value,
+            mediaMetadata = player.currentMetadata,
+            durationMs = player.duration,
+        )
+
+    private fun resolvePresenceSong(
+        dbSong: Song?,
+        mediaMetadata: MediaMetadata?,
+        durationMs: Long,
+    ): Song? {
+        if (mediaMetadata?.isPodcast == true || dbSong?.song?.isPodcast == true) return null
+        val metadataSong = mediaMetadata?.let { createTransientSongFromMedia(it) }
+        val song =
+            when {
+                dbSong == null -> metadataSong
+                metadataSong == null -> dbSong
+                else -> dbSong.withPresenceMetadata(metadataSong)
+            }
+
+        return song.withResolvedPresenceDuration(durationMs)
+    }
+
+    private fun Song.withPresenceMetadata(metadataSong: Song): Song {
+        val resolvedArtists =
+            metadataSong.artists
+                .takeIf { metadataArtists ->
+                    metadataArtists.any { it.hasRemotePresenceId() }
+                }?.map { metadataArtist ->
+                    val persistedArtist =
+                        artists.firstOrNull { artist ->
+                            artist.id == metadataArtist.id || artist.channelId == metadataArtist.id
+                        }
+                    metadataArtist.copy(
+                        thumbnailUrl = metadataArtist.thumbnailUrl ?: persistedArtist?.thumbnailUrl,
+                        channelId = metadataArtist.channelId ?: persistedArtist?.channelId,
+                    )
+                } ?: artists
+
+        return copy(
+            song =
+                song.copy(
+                    thumbnailUrl = song.thumbnailUrl ?: metadataSong.song.thumbnailUrl,
+                    albumId = song.albumId ?: metadataSong.song.albumId,
+                    albumName = song.albumName ?: metadataSong.song.albumName,
+                ),
+            artists = resolvedArtists,
+            album = album ?: metadataSong.album,
+        )
+    }
+
+    private fun Song?.withResolvedPresenceDuration(durationMs: Long): Song? {
+        val song = this ?: return null
+        if (song.song.duration > 0 || durationMs <= 0) return song
+        val durationSeconds =
+            (durationMs / 1000L)
+                .coerceAtLeast(1L)
+                .coerceAtMost(Int.MAX_VALUE.toLong())
+                .toInt()
+        return song.copy(song = song.song.copy(duration = durationSeconds))
+    }
+
+    private fun ArtistEntity.hasRemotePresenceId(): Boolean = channelId.isRemotePresenceId() || id.isRemotePresenceId()
+
+    private fun String?.isRemotePresenceId(): Boolean {
+        val id = this?.trim()?.takeIf { it.isNotBlank() } ?: return false
+        return !id.isLocalMediaId() &&
+            !id.startsWith("LOCAL_ARTIST_") &&
+            !id.startsWith("LA") &&
+            !id.contains("privately_owned_artist", ignoreCase = true)
+    }
+
+    // Create a transient Song object from current Player MediaMetadata when the DB doesn't have it.
+    private fun createTransientSongFromMedia(media: MediaMetadata): Song {
+        val songEntity =
+            SongEntity(
+                id = media.id,
+                title = media.title,
+                duration = media.duration,
+                thumbnailUrl = media.thumbnailUrl,
+                albumId = media.album?.id,
+                albumName = media.album?.title,
+                explicit = media.explicit,
+                isMusicVideo = media.isMusicVideo,
+                isPodcast = media.isPodcast,
+                isLocal = media.id.isLocalMediaId(),
+            )
+
+        val artists =
+            media.artists.map { artist ->
+                ArtistEntity(
+                    id = artist.id ?: "LA_unknown_${artist.name}",
+                    name = artist.name,
+                    thumbnailUrl = artist.thumbnailUrl,
+                    isLocal = artist.id == null || artist.id.isLocalMediaId(),
+                )
+            }
+
+        val album =
+            media.album?.let { alb ->
+                AlbumEntity(
+                    id = alb.id,
+                    playlistId = null,
+                    title = alb.title,
+                    year = null,
+                    thumbnailUrl = media.thumbnailUrl,
+                    themeColor = null,
+                    songCount = 1,
+                    duration = media.duration,
+                    isLocal = media.id.isLocalMediaId(),
+                )
+            }
+
+        return Song(
+            song = songEntity,
+            artists = artists,
+            album = album,
+            format = null,
+        )
+    }
+
+    private inline fun <reified T> readPersistentObject(fileName: String): T? {
+        val persistentFile = filesDir.resolve(fileName)
+        if (!persistentFile.exists() || !persistentFile.isFile) return null
+
+        return synchronized(persistentStateLock) {
+            runCatching {
+                persistentFile.inputStream().use { fis ->
+                    ObjectInputStream(fis).use { input ->
+                        val payload = input.readObject()
+                        check(payload is T) { "Unexpected persistent payload type for $fileName" }
+                        payload
+                    }
+                }
+            }.onFailure {
+                Timber.tag(TAG).w(it, "Failed to read persistent file: $fileName")
+            }.getOrNull()
+        }
+    }
+
+    private fun clearPersistedQueueFiles() {
+        persistentSaveGeneration.incrementAndGet()
+        synchronized(persistentStateLock) {
+            listOf(
+                PERSISTENT_QUEUE_FILE,
+                PERSISTENT_PLAYER_STATE_FILE,
+                PERSISTENT_AUTOMIX_FILE,
+            ).forEach { fileName ->
+                val persistentFile = filesDir.resolve(fileName)
+                val tempFile = filesDir.resolve("$fileName.tmp")
+                runCatching {
+                    if (persistentFile.exists() && !persistentFile.delete()) {
+                        Timber.tag(TAG).w("Failed to delete persistent file: $fileName")
+                    }
+                    if (tempFile.exists() && !tempFile.delete()) {
+                        Timber.tag(TAG).w("Failed to delete temporary persistent file: $fileName")
+                    }
+                }.onFailure {
+                    Timber.tag(TAG).w(it, "Failed to clear persistent file: $fileName")
+                }
+            }
+        }
+    }
+
+    private fun writePersistentObject(
+        fileName: String,
+        payload: Serializable,
+    ) {
+        val persistentFile = filesDir.resolve(fileName)
+        val tempFile = filesDir.resolve("$fileName.tmp")
+
+        synchronized(persistentStateLock) {
+            runCatching {
+                FileOutputStream(tempFile).use { fos ->
+                    ObjectOutputStream(fos).use { output ->
+                        output.writeObject(payload)
+                        output.flush()
+                    }
+                }
+
+                if (!tempFile.renameTo(persistentFile)) {
+                    if (persistentFile.exists() && !persistentFile.delete()) {
+                        error("Could not replace $fileName")
+                    }
+                    if (!tempFile.renameTo(persistentFile)) {
+                        error("Could not atomically move $fileName")
+                    }
+                }
+            }.onFailure {
+                runCatching { tempFile.delete() }
+                reportException(it)
+            }
+        }
+    }
+
+    private fun MediaItem.toPersistableMetadata(): moe.rukamori.archivetune.models.MediaMetadata? {
+        val tagged = metadata
+        if (tagged != null) return tagged
+
+        val id =
+            mediaId
+                .trim()
+                .ifBlank {
+                    localConfiguration
+                        ?.uri
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+                }.takeIf { it.isNotBlank() } ?: return null
+
+        val title =
+            mediaMetadata.title
+                ?.toString()
+                ?.trim()
+                .takeIf { !it.isNullOrBlank() }
+                ?: id
+
+        val artistText =
+            mediaMetadata.artist
+                ?.toString()
+                ?.trim()
+                .takeIf { !it.isNullOrBlank() }
+                ?: mediaMetadata.subtitle
+                    ?.toString()
+                    ?.trim()
+                    .takeIf { !it.isNullOrBlank() }
+
+        val artists =
+            artistText
+                ?.split(",")
+                ?.mapNotNull { it.trim().takeIf(String::isNotBlank) }
+                ?.map { name ->
+                    moe.rukamori.archivetune.models.MediaMetadata
+                        .Artist(id = null, name = name)
+                }.orEmpty()
+
+        val thumbnailUrl = mediaMetadata.artworkUri?.toString()
+        val albumTitle =
+            mediaMetadata.albumTitle
+                ?.toString()
+                ?.trim()
+                .takeIf { !it.isNullOrBlank() }
+        val album =
+            albumTitle?.let { titleValue ->
+                moe.rukamori.archivetune.models.MediaMetadata
+                    .Album(id = titleValue, title = titleValue)
+            }
+
+        return moe.rukamori.archivetune.models.MediaMetadata(
+            id = id,
+            title = title,
+            artists = artists,
+            duration = -1,
+            thumbnailUrl = thumbnailUrl,
+            album = album,
+            explicit = false,
+            liked = false,
+            likedDate = null,
+            inLibrary = null,
+        )
+    }
+
+    private suspend fun saveQueueToDisk() {
+        val saveGeneration = persistentSaveGeneration.get()
+        val snapshot =
+            withContext(Dispatchers.Main.immediate) {
+                if (
+                    saveGeneration != persistentSaveGeneration.get() ||
+                    isRestoringPersistentState ||
+                    isHydratingRestoredQueue
+                ) {
+                    return@withContext null
+                }
+
+                val mediaItemsSnapshot = player.mediaItems.mapNotNull { it.toPersistableMetadata() }
+                if (mediaItemsSnapshot.isEmpty()) return@withContext null
+
+                val currentMediaItemIndex = player.currentMediaItemIndex
+                val currentPosition = player.currentPosition
+                val persistQueue =
+                    currentQueue.toPersistQueue(
+                        title = queueTitle,
+                        items = mediaItemsSnapshot,
+                        mediaItemIndex = currentMediaItemIndex,
+                        position = currentPosition,
+                    )
+                val persistPlayerState =
+                    PersistPlayerState(
+                        playWhenReady = player.playWhenReady,
+                        repeatMode = player.repeatMode,
+                        shuffleModeEnabled = player.shuffleModeEnabled,
+                        volume = playerVolume.value,
+                        currentPosition = currentPosition,
+                        currentMediaItemIndex = currentMediaItemIndex,
+                        playbackState = player.playbackState,
+                    )
+
+                persistQueue to persistPlayerState
+            } ?: return
+
+        withContext(Dispatchers.IO) {
+            if (saveGeneration != persistentSaveGeneration.get()) return@withContext
+            writePersistentObject(PERSISTENT_QUEUE_FILE, snapshot.first)
+            if (saveGeneration != persistentSaveGeneration.get()) return@withContext
+            writePersistentObject(PERSISTENT_PLAYER_STATE_FILE, snapshot.second)
+        }
+    }
+
+    override fun onDestroy() {
+        equalizerPlaybackController.detach(this)
+        sponsorBlockPlaybackController.detach()
+        discordServiceStopping = true
+        requestDiscordSync(
+            reason = "service_destroy",
+            force = true,
+        )
+        super.onDestroy()
+        playbackErrorRecoveryJob?.cancel()
+        effectiveVolumeRampJob?.cancel()
+        effectiveVolumeRampJob = null
+        cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
+        audioRouteRecoveryJob?.cancel()
+        if (audioDeviceCallbackRegistered) {
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+            audioDeviceCallbackRegistered = false
+        }
+        unregisterBluetoothReceiver()
+        unregisterMuteRecoveryObserver()
+        if (aodScreenOffReceiver != null) {
+            try {
+                unregisterReceiver(aodScreenOffReceiver)
+            } catch (_: Exception) {
+            }
+            aodScreenOffReceiver = null
+        }
+        try {
+            scope.launch { stopTogetherInternal() }
+        } catch (_: Exception) {
+        }
+        try {
+            connectivityObserver.unregister()
+        } catch (_: Exception) {
+        }
+        abandonAudioFocus()
+        try {
+            releaseAudioEffects()
+        } catch (_: Exception) {
+        }
+        try {
+            if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
+                runBlocking {
+                    saveQueueToDisk()
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
+            mediaSession.release()
+        } catch (_: Exception) {
+        }
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (_: Exception) {
+        }
+        try {
+            localPlayer.removeListener(audioEffectPlayerListener)
+            player.removeListener(this)
+            player.removeListener(sleepTimer)
+            player.release()
+        } catch (_: Exception) {
+        }
+        nextStreamPreloader.cancel()
+        scopeJob.cancel()
+    }
+
+    override fun onBind(intent: Intent?): android.os.IBinder? {
+        hasBoundClients = true
+        cancelIdleStop()
+        val result = super.onBind(intent) ?: binder
+        if (player.mediaItemCount > 0 && player.currentMediaItem != null) {
+            currentMediaMetadata.value = player.currentMetadata
+            scope.launch {
+                delay(50)
+                updateNotification()
+            }
+        }
+        return result
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        hasBoundClients = false
+        scheduleStopIfIdle()
+        return super.onUnbind(intent)
+    }
+
+    override fun onRebind(intent: Intent?) {
+        hasBoundClients = true
+        cancelIdleStop()
+        super.onRebind(intent)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+
+        val stopMusicOnTaskClearEnabled = dataStore.get(StopMusicOnTaskClearKey, false)
+
+        try {
+            val state = togetherSessionState.value
+            val isHostSessionActive =
+                state is moe.rukamori.archivetune.together.TogetherSessionState.Hosting ||
+                    state is moe.rukamori.archivetune.together.TogetherSessionState.HostingOnline ||
+                    (
+                        state is moe.rukamori.archivetune.together.TogetherSessionState.Joined &&
+                            state.role is moe.rukamori.archivetune.together.TogetherRole.Host
+                    )
+
+            val isPlaybackInactive = player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0
+
+            if (shouldStopServiceOnTaskRemoved(stopMusicOnTaskClearEnabled, isHostSessionActive, isPlaybackInactive)) {
+                if (stopMusicOnTaskClearEnabled) {
+                    discordServiceStopping = true
+                    requestDiscordSync(
+                        reason = "task_removed_stop_music_on_task_clear",
+                        force = true,
+                    )
+                    runCatching { stopAndClearPlayback(clearPersistentState = true) }
+                    stopForegroundAndSelf()
+                    return
+                }
+
+                if (isHostSessionActive && isPlaybackInactive) {
+                    discordServiceStopping = true
+                    requestDiscordSync(
+                        reason = "task_removed_host_inactive",
+                        force = true,
+                    )
+                    runCatching { scope.launch { stopTogetherInternal() } }
+                    runCatching { togetherSessionState.value = moe.rukamori.archivetune.together.TogetherSessionState.Idle }
+                    stopSelf()
+                    return
+                }
+            }
+
+            if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
+                runBlocking { saveQueueToDisk() }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
+
+    private fun handleMediaNotificationDismissed(intent: Intent) {
+        val originalDeleteIntent =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(
+                    EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT,
+                    PendingIntent::class.java,
+                )
+            } else {
+                intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT)
+            }
+
+        val isForeground = isAppInForeground()
+        if (!player.isPlaying && !isForeground) {
+            pausedPresenceGate = PausedPresenceGate.HiddenByNotificationDismiss
+            requestDiscordSync(
+                reason = "notification_dismissed_while_paused_background",
+                force = true,
+            )
+        } else if (!player.isPlaying) {
+            Timber.tag(DISCORD_SYNC_TAG).d(
+                "notification dismissed while paused but app is foreground; keeping paused RPC visible",
+            )
+        }
+
+        runCatching {
+            originalDeleteIntent?.send()
+        }.onFailure {
+            Timber.tag(DISCORD_SYNC_TAG).w(it, "failed to forward original notification delete intent")
+        }
+    }
+
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
+        if (intent?.action == ACTION_MEDIA_NOTIFICATION_DISMISSED) {
+            handleMediaNotificationDismissed(intent)
+            return START_NOT_STICKY
+        }
+
+        ensureStartedAsForeground()
+        when (intent?.action) {
+            "moe.rukamori.archivetune.WIDGET_PLAY_PAUSE" -> {
+                if (player.isPlaying) player.pause() else player.play()
+            }
+
+            "moe.rukamori.archivetune.WIDGET_SKIP_NEXT" -> {
+                if (player.hasNextMediaItem()) {
+                    if (!manualSkipToNextWithCrossfade()) {
+                        player.seekToNext()
+                        if (player.playbackState == Player.STATE_IDLE ||
+                            player.playbackState == Player.STATE_ENDED
+                        ) {
+                            player.prepare()
+                        }
+                        player.playWhenReady = true
+                    }
+                }
+            }
+
+            "moe.rukamori.archivetune.WIDGET_SKIP_PREV" -> {
+                if (!manualSkipToPreviousWithCrossfade()) {
+                    player.seekToPrevious()
+                    if (player.playbackState == Player.STATE_IDLE ||
+                        player.playbackState == Player.STATE_ENDED
+                    ) {
+                        player.prepare()
+                    }
+                    player.playWhenReady = true
+                }
+            }
+        }
+        super.onStartCommand(intent, flags, startId)
+        return START_NOT_STICKY
+    }
+
+    override fun onUpdateNotification(
+        session: MediaSession,
+        startInForegroundRequired: Boolean,
+    ) {
+        val shouldShowNotification =
+            shouldShowPlaybackNotification(
+                startInForegroundRequired = startInForegroundRequired,
+                hasResumablePlayback = hasResumablePlaybackNotification(),
+            )
+        if (!shouldShowNotification) return
+
+        ensureStartedAsForeground()
+        runCatching { super.onUpdateNotification(session, true) }
+            .onFailure { reportException(it) }
+    }
+
+    // ── Widget Support ────────────────────────────────────────────────────────────
+
+    fun updateWidget() {
+        widgetUpdater.update()
+        widgetUpdater.updateProgressTracking()
+    }
+
+    inner class MusicBinder : Binder() {
+        val service: MusicService
+            get() = this@MusicService
+    }
+
+    companion object {
+        internal fun shouldStopServiceOnTaskRemoved(
+            stopMusicOnTaskClearEnabled: Boolean,
+            isHostSessionActive: Boolean,
+            isPlaybackInactive: Boolean,
+        ): Boolean = (isHostSessionActive && isPlaybackInactive) || stopMusicOnTaskClearEnabled
+
+        internal fun shouldShowPlaybackNotification(
+            startInForegroundRequired: Boolean,
+            hasResumablePlayback: Boolean,
+        ): Boolean = startInForegroundRequired || hasResumablePlayback
+
+        const val ROOT = "root"
+        const val HOME = "home"
+        const val HOME_QUICK_PICKS = "home_quick_picks"
+        const val HOME_FORGOTTEN_FAVORITES = "home_forgotten_favorites"
+        const val HOME_KEEP_LISTENING = "home_keep_listening"
+        const val HOME_SUGGESTED_SONGS = "home_suggested_songs"
+        const val HOME_MIXES_AND_RADIOS = "home_mixes_and_radios"
+        const val QUICK_PICKS = "quick_picks"
+        const val RECENT = "recent"
+        const val LIKED = "liked"
+        const val DOWNLOADED = "downloaded"
+        const val SONG = "song"
+        const val ARTIST = "artist"
+        const val ALBUM = "album"
+        const val PLAYLIST = "playlist"
+        const val ONLINE_PLAYLIST = "online_playlist"
+
+        private const val TAG = "MusicService"
+        private const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4
+        private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
+        private const val INFINITE_QUEUE_MAX_BOOTSTRAP_PAGES = 3
+        private const val DISCORD_SYNC_TAG = "DiscordSync"
+        private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
+        const val CHANNEL_ID = "music_channel_01"
+        const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
+            "moe.rukamori.archivetune.action.MEDIA_NOTIFICATION_DISMISSED"
+        const val EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT =
+            "moe.rukamori.archivetune.extra.MEDIA_NOTIFICATION_DELETE_INTENT"
+        const val NOTIFICATION_ID = 888
+        private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
+        private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
+        private const val TOGETHER_INACTIVITY_NOTIFICATION_ID = 892
+        private const val TOGETHER_HOST_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000L
+        const val ERROR_CODE_NO_STREAM = 1000001
+        private const val PLAYBACK_FORMAT_ID_METADATA_KEY = "archivetune_playback_format_id"
+        const val CHUNK_LENGTH = 8 * 1024 * 1024L
+        val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)
+        const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
+        const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
+        const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
+        const val MAX_CONSECUTIVE_ERR = 5
+        const val AUDIO_ROUTE_CHANGE_DEBOUNCE_MS = 350L
+        const val AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS = 200L
+        const val AUDIO_ROUTE_RECOVERY_MIN_INTERVAL_MS = 1_500L
+        const val AUDIO_ROUTE_RECOVERY_RESUME_DELAY_MS = 150L
+        const val DEVICE_MUTE_PLAYBACK_NOTICE_INTERVAL_MS = 1_200L
+        const val MIN_AUDIO_FOCUS_VOLUME_FACTOR = 0.2f
+        const val MIN_AUDIO_NORMALIZATION_FACTOR = 0.25f
+        const val MAX_AUDIO_NORMALIZATION_FACTOR = 1.414f
+        const val EFFECTIVE_VOLUME_RAMP_FRAME_MS = 16L
+        const val EFFECTIVE_VOLUME_RAMP_UP_MS = 350L
+        const val EFFECTIVE_VOLUME_RAMP_DOWN_MS = 180L
+        const val EFFECTIVE_VOLUME_RAMP_MIN_DELTA = 0.015f
+        const val MIN_CROSSFADE_DURATION_MS = 500L
+        private const val MANUAL_PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
+        const val CROSSFADE_END_GUARD_MS = 150L
+        // CROSSFADE2_MANUAL_TRANSITION_V3
+        // Manual song changes use the existing secondary player and existing
+        // equal-power fade/handoff code, but the incoming item must first have
+        // a real playback buffer. Remote media gets up to 90s to reach 10s of
+        // buffered media; media shorter than 10s naturally uses its remaining
+        // duration through awaitCrossfadePlayerReady()/hasBufferedForSmoothStart().
+        const val CROSSFADE2_MIN_BUFFER_MS = 10_000L
+        const val CROSSFADE2_READY_TIMEOUT_MS = 90_000L
+        const val CROSSFADE2_FRAME_MS = 16L
+        const val CROSSFADE2_PRIMARY_PREPARE_PROGRESS = 0.88f
+        const val CROSSFADE2_MIN_FADE_MS = 250L
+
+        // Manual crossfade must feel immediate. The auto (end-of-song)
+        // path can wait for a large buffer because it prepares the
+        // secondary player ~30s ahead. A manual selection needs to start
+        // fading as soon as we have a small safety margin.
+        const val CROSSFADE2_MANUAL_MIN_BUFFER_MS = 2_000L
+        const val CROSSFADE2_MANUAL_READY_TIMEOUT_MS = 15_000L
+        const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
+        const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
+        const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
+        const val CROSSFADE_HANDOFF_BUFFER_MS = 5_000L
+        const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
+        const val CROSSFADE_HANDOFF_MAX_DRIFT_MS = 75L
+        const val CROSSFADE_HANDOFF_DURATION_MS = 96L
+        const val CROSSFADE_HANDOFF_FRAME_MS = 8L
+        const val CROSSFADE_HANDOFF_POLL_MS = 10L
+        const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
+        const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = 12_500L
+        const val PRIMARY_MIN_BUFFER_MS = 20_000
+        const val PRIMARY_MAX_BUFFER_MS = 60_000
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 750
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_500
+        const val CROSSFADE_MIN_BUFFER_MS = 15_000
+        const val CROSSFADE_MAX_BUFFER_MS = 45_000
+        const val CROSSFADE_FRAME_MS = 32L
+        const val MIN_AUDIBLE_EFFECTIVE_VOLUME = 0.01f
+        const val STUCK_MUTED_VOLUME_EPSILON = 0.001f
+        const val AUDIBLE_PLAYBACK_VOLUME_CHECK_MS = 2_000L
+    }
+}
