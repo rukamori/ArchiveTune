@@ -3093,18 +3093,16 @@ class MusicService :
                 crossfadeHandoffInProgress = true
                 crossfadeHandoffProgress = 0f
 
-                // Critical manual-selection rule:
-                // keep B audible while the new primary B player becomes
-                // actually playable. Never pause the secondary merely because
-                // the stricter natural-crossfade readiness guard failed.
-                if (!awaitManualPrimaryCrossfadeHandoffReady(targetIndex, incomingPlayer)) {
-                    Timber.tag(TAG).w(
-                        "Crossfade2 manual primary did not become playable before timeout; keeping secondary active until cleanup",
-                    )
-                } else if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {
-                    Timber.tag(TAG).w(
-                        "Crossfade2 manual primary handoff animation did not complete",
-                    )
+                if (!awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
+                    Timber.tag(TAG).w("Crossfade2 primary handoff readiness check failed; keeping primary active")
+                    player.volume = crossfadeIncomingBaseVolume
+                    incomingPlayer.pause()
+                } else {
+                    if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {
+                        Timber.tag(TAG).w("Crossfade2 primary handoff animation did not complete; keeping primary active")
+                        player.volume = crossfadeIncomingBaseVolume
+                        incomingPlayer.pause()
+                    }
                 }
             }
 
@@ -3401,61 +3399,6 @@ class MusicService :
         applyEffectiveVolumeImmediately()
         updateAudiblePlaybackRecovery()
         scheduleCrossfade()
-    }
-
-    private suspend fun awaitManualPrimaryCrossfadeHandoffReady(
-        targetIndex: Int,
-        incomingPlayer: ExoPlayer,
-    ): Boolean {
-        val deadlineMs =
-            android.os.SystemClock.elapsedRealtime() +
-                CROSSFADE2_READY_TIMEOUT_MS.coerceAtMost(15_000L)
-
-        while (
-            kotlinx.coroutines.currentCoroutineContext().isActive &&
-                android.os.SystemClock.elapsedRealtime() < deadlineMs
-        ) {
-            if (player.currentMediaItemIndex != targetIndex) return false
-
-            // The secondary B player remains audible while primary B is
-            // preparing. Do not apply the strict natural-crossfade
-            // canHandoffWithoutRebuffer() rejection here, because that
-            // rejection used to mute B and caused the audible hole reported
-            // for manual selection.
-            if (player.playbackState == Player.STATE_IDLE) {
-                player.prepare()
-            }
-
-            if (
-                player.playbackState == Player.STATE_READY &&
-                    player.playWhenReady
-            ) {
-                if (!player.isPlaying) {
-                    player.play()
-                }
-
-                if (player.isPlaying) {
-                    val secondaryPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
-                    val primaryPosition = player.currentPosition.coerceAtLeast(0L)
-
-                    if (
-                        abs(primaryPosition - secondaryPosition) <=
-                            CROSSFADE_HANDOFF_MAX_DRIFT_MS
-                    ) {
-                        return true
-                    }
-
-                    player.seekTo(targetIndex, secondaryPosition)
-                }
-            }
-
-            delay(25L)
-        }
-
-        return player.currentMediaItemIndex == targetIndex &&
-            player.playbackState == Player.STATE_READY &&
-            player.playWhenReady &&
-            player.isPlaying
     }
 
     private suspend fun awaitPrimaryCrossfadeHandoffReady(incomingPlayer: ExoPlayer): Boolean {
@@ -4122,23 +4065,7 @@ class MusicService :
         return false
     }
 
-    
-private fun hasCachedContentForPlaybackError(): Boolean {
-    return try {
-        val mediaId = player.currentMediaItem?.mediaId ?: return false
-
-        val cache = cacheDataSourceFactory.cache
-        val metadata = cache.getContentMetadata(mediaId)
-
-        metadata.getContentLength() > 0L ||
-            cache.getCachedBytes(mediaId, 0L, Long.MAX_VALUE) > 0L
-    } catch (e: Throwable) {
-        Timber.tag(TAG).d(e, "Unable to determine cached playback content")
-        false
-    }
-}
-
-private fun isCacheCorruptionError(
+    private fun isCacheCorruptionError(
         error: PlaybackException,
         isContentCached: Boolean,
     ): Boolean {

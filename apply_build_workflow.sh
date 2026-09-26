@@ -1,0 +1,731 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+set -euo pipefail
+
+WORKFLOW=".github/workflows/build.yml"
+BACKUP=".github/workflows/build.yml.backup.$(date +%Y%m%d_%H%M%S)"
+
+echo "=============================================="
+echo " ArchiveTune_S - Build Workflow Installer"
+echo "=============================================="
+
+# -------------------------------------------------
+# 1. التأكد من أننا داخل المشروع
+# -------------------------------------------------
+
+if [ ! -d ".git" ]; then
+    echo "ERROR: شغّل السكربت من جذر مشروع Git."
+    exit 1
+fi
+
+if [ ! -f "gradlew" ]; then
+    echo "ERROR: لم يتم العثور على gradlew."
+    exit 1
+fi
+
+mkdir -p ".github/workflows"
+
+# -------------------------------------------------
+# 2. نسخة احتياطية
+# -------------------------------------------------
+
+if [ -f "$WORKFLOW" ]; then
+    cp "$WORKFLOW" "$BACKUP"
+    echo "[OK] Backup:"
+    echo "     $BACKUP"
+fi
+
+# -------------------------------------------------
+# 3. إنشاء Workflow جديد
+# -------------------------------------------------
+
+cat > "$WORKFLOW" <<'YAML'
+name: Build APKs
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - dev
+
+    paths-ignore:
+      - 'README.md'
+      - 'fastlane/**'
+      - 'assets/**'
+      - '.github/**/*.md'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+
+permissions:
+  contents: write
+  discussions: write
+  actions: write
+
+
+# =================================================
+# TELEGRAM NOTIFICATION
+# =================================================
+
+jobs:
+
+  notifyTelegram:
+    name: Notify Telegram
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests
+
+      - name: Send Telegram Notification
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+
+        run: |
+          python ./.github/workflows/notify_telegram.py
+
+        continue-on-error: true
+
+
+# =================================================
+# FULL VERSION
+# GMS MOBILE UNIVERSAL RELEASE
+# =================================================
+
+  build_full:
+
+    name: Build Full - GMS Mobile Universal
+
+    if: >
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]'
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - notifyTelegram
+
+    steps:
+
+      # ---------------------------------------------
+      # Checkout
+      # ---------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+
+      # ---------------------------------------------
+      # Python
+      # ---------------------------------------------
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+
+      # ---------------------------------------------
+      # Java
+      # ---------------------------------------------
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+
+      # ---------------------------------------------
+      # Gradle
+      # ---------------------------------------------
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
+
+
+      # ---------------------------------------------
+      # Gradle Permission
+      # ---------------------------------------------
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+
+      # ---------------------------------------------
+      # Build Hash
+      # ---------------------------------------------
+
+      - name: Resolve build hash
+        id: build_hash
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
+            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+
+      # ---------------------------------------------
+      # Build Full Release
+      # ---------------------------------------------
+
+      - name: Build Full Release APK
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          ./gradlew assembleGmsMobileUniversalRelease
+
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+
+
+      # ---------------------------------------------
+      # Locate Release APK
+      # ---------------------------------------------
+
+      - name: Resolve Release APK
+        id: release_apk
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          SEARCH_ROOT="app/build/outputs/apk"
+
+          echo "Searching for Universal Release APK..."
+
+          APK="$(find "$SEARCH_ROOT" \
+            -type f \
+            -name "*.apk" \
+            -path "*/release/*" \
+            | head -n 1 || true)"
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: Universal Release APK was not found."
+
+            echo ""
+            echo "Available APK files:"
+            find "$SEARCH_ROOT" -type f -name "*.apk" -print || true
+
+            exit 1
+          fi
+
+          echo "Found:"
+          echo "$APK"
+
+          mkdir -p "$SEARCH_ROOT/final"
+
+          FINAL_APK="$SEARCH_ROOT/final/app-gms-mobile-universal-full.apk"
+
+          cp "$APK" "$FINAL_APK"
+
+          echo "apk=$FINAL_APK" >> "$GITHUB_OUTPUT"
+
+
+      # ---------------------------------------------
+      # Sign Release APK
+      # ---------------------------------------------
+
+      - name: Sign Full APK
+        uses: ilharp/sign-android-release@v2.0.0
+
+        with:
+          releaseDir: app/build/outputs/apk/final/
+
+          signingKey: ${{ secrets.KEYSTORE }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
+
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+          buildToolsVersion: 35.0.0
+
+
+      # ---------------------------------------------
+      # Resolve Signed APK
+      # ---------------------------------------------
+
+      - name: Prepare Signed Full APK
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          DIR="app/build/outputs/apk/final"
+
+          SIGNED="$(find "$DIR" \
+            -type f \
+            -name "*-signed.apk" \
+            | head -n 1 || true)"
+
+          if [ -z "$SIGNED" ]; then
+            echo "ERROR: Signed APK was not found."
+
+            echo "Directory contents:"
+            find "$DIR" -type f -print || true
+
+            exit 1
+          fi
+
+          cp "$SIGNED" \
+            "$DIR/app-gms-mobile-universal-full.apk"
+
+          echo "Final Full APK:"
+          ls -lh "$DIR/app-gms-mobile-universal-full.apk"
+
+
+      # ---------------------------------------------
+      # Upload Full Artifact
+      # ---------------------------------------------
+
+      - name: Upload Full APK
+        uses: actions/upload-artifact@v7
+
+        with:
+          name: app-gms-mobile-universal-full
+
+          path: |
+            app/build/outputs/apk/final/app-gms-mobile-universal-full.apk
+
+
+# =================================================
+# TEST VERSION
+# GMS MOBILE UNIVERSAL DEBUG
+# =================================================
+
+  build_test:
+
+    name: Build Test - GMS Mobile Universal
+
+    if: >
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]'
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ---------------------------------------------
+      # Checkout
+      # ---------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+
+      # ---------------------------------------------
+      # Python
+      # ---------------------------------------------
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+
+      # ---------------------------------------------
+      # Java
+      # ---------------------------------------------
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+
+      # ---------------------------------------------
+      # Gradle
+      # ---------------------------------------------
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
+
+
+      # ---------------------------------------------
+      # Gradle Permission
+      # ---------------------------------------------
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+
+      # ---------------------------------------------
+      # Build Hash
+      # ---------------------------------------------
+
+      - name: Resolve build hash
+        id: build_hash
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
+            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+
+      # ---------------------------------------------
+      # Build Test Debug
+      # ---------------------------------------------
+
+      - name: Build Test Debug APK
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          ./gradlew assembleGmsMobileUniversalDebug
+
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+
+
+      # ---------------------------------------------
+      # Resolve Debug APK
+      # ---------------------------------------------
+
+      - name: Resolve Test APK
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          SEARCH_ROOT="app/build/outputs/apk"
+
+          echo "Searching for Universal Debug APK..."
+
+          APK="$(find "$SEARCH_ROOT" \
+            -type f \
+            -name "*.apk" \
+            -path "*/debug/*" \
+            | head -n 1 || true)"
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: Universal Debug APK was not found."
+
+            echo ""
+            echo "Available APK files:"
+            find "$SEARCH_ROOT" -type f -name "*.apk" -print || true
+
+            exit 1
+          fi
+
+          echo "Found:"
+          echo "$APK"
+
+          mkdir -p "$SEARCH_ROOT/test"
+
+          cp "$APK" \
+            "$SEARCH_ROOT/test/app-gms-mobile-universal-test.apk"
+
+
+      # ---------------------------------------------
+      # Upload Test Artifact
+      # ---------------------------------------------
+
+      - name: Upload Test APK
+        uses: actions/upload-artifact@v7
+
+        with:
+          name: app-gms-mobile-universal-test
+
+          path: |
+            app/build/outputs/apk/test/app-gms-mobile-universal-test.apk
+
+
+# =================================================
+# TELEGRAM - FULL APK ONLY
+# =================================================
+
+  aggregateAndSend:
+
+    name: Send Full APK to Telegram
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - build_full
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+
+      # ---------------------------------------------
+      # Download Full APK
+      # ---------------------------------------------
+
+      - name: Download Full Artifact
+        uses: actions/download-artifact@v8
+
+        with:
+          name: app-gms-mobile-universal-full
+          path: app/build/outputs/apk/download
+
+
+      # ---------------------------------------------
+      # Python
+      # ---------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+
+        with:
+          python-version: '3.x'
+
+
+      # ---------------------------------------------
+      # Dependencies
+      # ---------------------------------------------
+
+      - name: Install Dependencies
+        run: |
+          pip install telethon
+
+
+      # ---------------------------------------------
+      # Git Info
+      # ---------------------------------------------
+
+      - name: Get Git Commit Info
+        run: |
+          echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> "$GITHUB_ENV"
+          echo "COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')" >> "$GITHUB_ENV"
+
+
+      # ---------------------------------------------
+      # Telegram Session Cache
+      # ---------------------------------------------
+
+      - name: Restore Telegram session cache
+        uses: actions/cache@v6
+
+        id: telegram_session_cache
+
+        with:
+          path: bot_session.session
+          key: telegram-session-${{ runner.os }}-bot_session
+
+
+      # ---------------------------------------------
+      # Send Full APK
+      # ---------------------------------------------
+
+      - name: Send Full APK to Telegram
+
+        env:
+          API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+
+          APK_PATH: app/build/outputs/apk/download/*.apk
+
+        run: |
+          python ./.github/workflows/deploy_artifacts.py
+
+        continue-on-error: true
+
+
+# =================================================
+# NOTIFY USER
+# =================================================
+
+  notifyUser:
+
+    name: Notify referenced issues
+
+    if: >
+      github.ref == 'refs/heads/dev' &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]'
+
+    needs:
+      - build_full
+      - build_test
+      - aggregateAndSend
+
+    uses: ./.github/workflows/notify_user.yml
+
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+
+    secrets: inherit
+YAML
+
+echo ""
+echo "=============================================="
+echo " Workflow updated successfully"
+echo "=============================================="
+
+# -------------------------------------------------
+# 4. التحقق من وجود النسختين
+# -------------------------------------------------
+
+echo ""
+echo "Build types:"
+echo "  FULL : assembleGmsMobileUniversalRelease"
+echo "  TEST : assembleGmsMobileUniversalDebug"
+
+echo ""
+echo "Architectures:"
+echo "  UNIVERSAL ONLY"
+
+# -------------------------------------------------
+# 5. فحص عدم وجود Matrix أو ABI builds
+# -------------------------------------------------
+
+if grep -q "matrix:" "$WORKFLOW"; then
+    echo "ERROR: matrix still exists."
+    exit 1
+fi
+
+if grep -qE "assembleGmsMobile(Arm64|Armeabi|X86|X86_64)" "$WORKFLOW"; then
+    echo "ERROR: non-universal build task detected."
+    exit 1
+fi
+
+if grep -q "device: tv" "$WORKFLOW"; then
+    echo "ERROR: TV build detected."
+    exit 1
+fi
+
+if grep -q "distribution: foss" "$WORKFLOW"; then
+    echo "ERROR: FOSS build detected."
+    exit 1
+fi
+
+# -------------------------------------------------
+# 6. التحقق من المهام المطلوبة
+# -------------------------------------------------
+
+grep -q "assembleGmsMobileUniversalRelease" "$WORKFLOW" || {
+    echo "ERROR: Full build task missing."
+    exit 1
+}
+
+grep -q "assembleGmsMobileUniversalDebug" "$WORKFLOW" || {
+    echo "ERROR: Test build task missing."
+    exit 1
+}
+
+# -------------------------------------------------
+# 7. عرض الفرق
+# -------------------------------------------------
+
+echo ""
+echo "=============================================="
+echo " Git Diff"
+echo "=============================================="
+
+git diff -- "$WORKFLOW" || true
+
+# -------------------------------------------------
+# 8. فحص Git
+# -------------------------------------------------
+
+echo ""
+echo "=============================================="
+echo " Git Diff Check"
+echo "=============================================="
+
+git diff --check
+
+echo ""
+echo "=============================================="
+echo " DONE"
+echo "=============================================="
+
+echo ""
+echo "Backup:"
+echo "$BACKUP"
+
+echo ""
+echo "Workflow:"
+echo "$WORKFLOW"
+
+echo ""
+echo "Artifacts:"
+echo "  app-gms-mobile-universal-full"
+echo "  app-gms-mobile-universal-test"
+
+echo ""
+echo "APK names:"
+echo "  app-gms-mobile-universal-full.apk"
+echo "  app-gms-mobile-universal-test.apk"
+
+echo ""
+echo "الخطوة التالية:"
+echo ""
+echo "git add .github/workflows/build.yml"
+echo "git commit -m \"Build only universal full and test APKs\""
+echo "git push"
+echo ""
+

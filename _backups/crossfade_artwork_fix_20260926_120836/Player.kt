@@ -450,7 +450,7 @@ fun BottomSheetPlayer(
     val playerSwapState =
         rememberThumbnailSwapState(
             videoId = mediaMetadata?.id,
-            ytmUrl = mediaMetadata?.thumbnailUrl,
+            ytmUrl = mediaMetadata?.thumbnailUrl?.highRes(),
             lowDataMode = lowDataModeActive,
             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
         )

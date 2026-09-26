@@ -1,0 +1,108 @@
+[1mdiff --git a/app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt b/app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt[m
+[1mindex 3069096e1..ec729b786 100644[m
+[1m--- a/app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt[m
+[1m+++ b/app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt[m
+[36m@@ -3093,16 +3093,18 @@[m [mclass MusicService :[m
+                 crossfadeHandoffInProgress = true[m
+                 crossfadeHandoffProgress = 0f[m
+ [m
+[31m-                if (!awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {[m
+[31m-                    Timber.tag(TAG).w("Crossfade2 primary handoff readiness check failed; keeping primary active")[m
+[31m-                    player.volume = crossfadeIncomingBaseVolume[m
+[31m-                    incomingPlayer.pause()[m
+[31m-                } else {[m
+[31m-                    if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {[m
+[31m-                        Timber.tag(TAG).w("Crossfade2 primary handoff animation did not complete; keeping primary active")[m
+[31m-                        player.volume = crossfadeIncomingBaseVolume[m
+[31m-                        incomingPlayer.pause()[m
+[31m-                    }[m
+[32m+[m[32m                // Critical manual-selection rule:[m
+[32m+[m[32m                // keep B audible while the new primary B player becomes[m
+[32m+[m[32m                // actually playable. Never pause the secondary merely because[m
+[32m+[m[32m                // the stricter natural-crossfade readiness guard failed.[m
+[32m+[m[32m                if (!awaitManualPrimaryCrossfadeHandoffReady(targetIndex, incomingPlayer)) {[m
+[32m+[m[32m                    Timber.tag(TAG).w([m
+[32m+[m[32m                        "Crossfade2 manual primary did not become playable before timeout; keeping secondary active until cleanup",[m
+[32m+[m[32m                    )[m
+[32m+[m[32m                } else if (!performCrossfadeHandoff(targetIndex, incomingPlayer)) {[m
+[32m+[m[32m                    Timber.tag(TAG).w([m
+[32m+[m[32m                        "Crossfade2 manual primary handoff animation did not complete",[m
+[32m+[m[32m                    )[m
+                 }[m
+             }[m
+ [m
+[36m@@ -3401,6 +3403,61 @@[m [mclass MusicService :[m
+         scheduleCrossfade()[m
+     }[m
+ [m
+[32m+[m[32m    private suspend fun awaitManualPrimaryCrossfadeHandoffReady([m
+[32m+[m[32m        targetIndex: Int,[m
+[32m+[m[32m        incomingPlayer: ExoPlayer,[m
+[32m+[m[32m    ): Boolean {[m
+[32m+[m[32m        val deadlineMs =[m
+[32m+[m[32m            android.os.SystemClock.elapsedRealtime() +[m
+[32m+[m[32m                CROSSFADE2_READY_TIMEOUT_MS.coerceAtMost(15_000L)[m
+[32m+[m
+[32m+[m[32m        while ([m
+[32m+[m[32m            kotlinx.coroutines.currentCoroutineContext().isActive &&[m
+[32m+[m[32m                android.os.SystemClock.elapsedRealtime() < deadlineMs[m
+[32m+[m[32m        ) {[m
+[32m+[m[32m            if (player.currentMediaItemIndex != targetIndex) return false[m
+[32m+[m
+[32m+[m[32m            // The secondary B player remains audible while primary B is[m
+[32m+[m[32m            // preparing. Do not apply the strict natural-crossfade[m
+[32m+[m[32m            // canHandoffWithoutRebuffer() rejection here, because that[m
+[32m+[m[32m            // rejection used to mute B and caused the audible hole reported[m
+[32m+[m[32m            // for manual selection.[m
+[32m+[m[32m            if (player.playbackState == Player.STATE_IDLE) {[m
+[32m+[m[32m                player.prepare()[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            if ([m
+[32m+[m[32m                player.playbackState == Player.STATE_READY &&[m
+[32m+[m[32m                    player.playWhenReady[m
+[32m+[m[32m            ) {[m
+[32m+[m[32m                if (!player.isPlaying) {[m
+[32m+[m[32m                    player.play()[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m[32m                if (player.isPlaying) {[m
+[32m+[m[32m                    val secondaryPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)[m
+[32m+[m[32m                    val primaryPosition = player.currentPosition.coerceAtLeast(0L)[m
+[32m+[m
+[32m+[m[32m                    if ([m
+[32m+[m[32m                        abs(primaryPosition - secondaryPosition) <=[m
+[32m+[m[32m                            CROSSFADE_HANDOFF_MAX_DRIFT_MS[m
+[32m+[m[32m                    ) {[m
+[32m+[m[32m                        return true[m
+[32m+[m[32m                    }[m
+[32m+[m
+[32m+[m[32m                    player.seekTo(targetIndex, secondaryPosition)[m
+[32m+[m[32m                }[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            delay(25L)[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        return player.currentMediaItemIndex == targetIndex &&[m
+[32m+[m[32m            player.playbackState == Player.STATE_READY &&[m
+[32m+[m[32m            player.playWhenReady &&[m
+[32m+[m[32m            player.isPlaying[m
+[32m+[m[32m    }[m
+[32m+[m
+     private suspend fun awaitPrimaryCrossfadeHandoffReady(incomingPlayer: ExoPlayer): Boolean {[m
+         val deadlineMs = android.os.SystemClock.elapsedRealtime() + CROSSFADE_HANDOFF_READY_TIMEOUT_MS[m
+         while (kotlinx.coroutines.currentCoroutineContext().isActive && android.os.SystemClock.elapsedRealtime() < deadlineMs) {[m
+[1mdiff --git a/app/src/main/kotlin/moe/rukamori/archivetune/ui/player/Player.kt b/app/src/main/kotlin/moe/rukamori/archivetune/ui/player/Player.kt[m
+[1mindex 846fa1cef..22e4048f5 100644[m
+[1m--- a/app/src/main/kotlin/moe/rukamori/archivetune/ui/player/Player.kt[m
+[1m+++ b/app/src/main/kotlin/moe/rukamori/archivetune/ui/player/Player.kt[m
+[36m@@ -450,7 +450,7 @@[m [mfun BottomSheetPlayer([m
+     val playerSwapState =[m
+         rememberThumbnailSwapState([m
+             videoId = mediaMetadata?.id,[m
+[31m-            ytmUrl = mediaMetadata?.thumbnailUrl?.highRes(),[m
+[32m+[m[32m            ytmUrl = mediaMetadata?.thumbnailUrl,[m
+             lowDataMode = lowDataModeActive,[m
+             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,[m
+         )[m

@@ -4122,23 +4122,7 @@ class MusicService :
         return false
     }
 
-    
-private fun hasCachedContentForPlaybackError(): Boolean {
-    return try {
-        val mediaId = player.currentMediaItem?.mediaId ?: return false
-
-        val cache = cacheDataSourceFactory.cache
-        val metadata = cache.getContentMetadata(mediaId)
-
-        metadata.getContentLength() > 0L ||
-            cache.getCachedBytes(mediaId, 0L, Long.MAX_VALUE) > 0L
-    } catch (e: Throwable) {
-        Timber.tag(TAG).d(e, "Unable to determine cached playback content")
-        false
-    }
-}
-
-private fun isCacheCorruptionError(
+    private fun isCacheCorruptionError(
         error: PlaybackException,
         isContentCached: Boolean,
     ): Boolean {
