@@ -2961,6 +2961,69 @@ class MusicService :
         return true
     }
 
+    /**
+     * Resolves a MediaItem once and returns a new MediaItem whose URI points
+     * directly at the resolved stream URL, with the request headers baked in.
+     *
+     * Why this exists:
+     *  - During a manual crossfade, the secondary player must not trigger a
+     *    fresh YouTubei/NewPipe resolution in parallel with the primary. If
+     *    that resolution fails (e.g. Youtubei throws type=j25), the entire
+     *    crossfade is aborted and the user hears a hard cut instead.
+     *  - By resolving the target once and giving BOTH the secondary player and
+     *    the primary handoff the same direct URL, we avoid the double
+     *    resolution entirely. Uri.shouldBypassYouTubeResolver() treats http(s)
+     *    URIs as already-resolved and skips resolvePlaybackDataSpec().
+     *
+     * Returns the original item unchanged if:
+     *  - the URI already points at a direct source (http/https/content/file),
+     *  - the mediaId cannot be determined,
+     *  - or the resolution throws (caller falls back to immediate playback).
+     */
+    private suspend fun resolveMediaItemForCrossfade(mediaItem: MediaItem): MediaItem {
+        val config = mediaItem.localConfiguration ?: return mediaItem
+        val scheme = config.uri.scheme?.lowercase(java.util.Locale.US)
+        if (scheme == "http" || scheme == "https" ||
+            scheme == "content" || scheme == "file" || scheme == "android.resource"
+        ) {
+            return mediaItem
+        }
+
+        val mediaId = (config.customCacheKey ?: mediaItem.mediaId).trim()
+        if (mediaId.isEmpty()) return mediaItem
+
+        val lowDataModeActive = isLowDataModeActive()
+        return try {
+            val resolved = resolveAudioStream.resolveBlocking(
+                AudioStreamRequest(
+                    mediaId = mediaId,
+                    quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                    networkMetered = lowDataModeActive,
+                    purpose = StreamPurpose.PLAYBACK,
+                    authState = YouTube.currentPlaybackAuthState(),
+                    pinnedFormatId = null,
+                ),
+            )
+            Timber.tag(TAG).d(
+                "resolveMediaItemForCrossfade: resolved %s -> direct URL, headers=%d",
+                mediaId,
+                resolved.requestHeaders.size,
+            )
+            mediaItem
+                .buildUpon()
+                .setUri(resolved.url.toUri())
+                .setMimeType(resolved.mimeType)
+                .setCustomCacheKey(mediaId)
+                .setHttpRequestHeaders(resolved.requestHeaders)
+                .build()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Timber.tag(TAG).w(e, "resolveMediaItemForCrossfade failed for %s", mediaId)
+            mediaItem
+        }
+    }
+
     private fun prepareCrossfade2Incoming(mediaItem: MediaItem): ExoPlayer? {
         releaseSecondaryCrossfadePlayer()
         return runCatching {
@@ -3033,7 +3096,18 @@ class MusicService :
         isCrossfading = true
         localPlayer.pauseAtEndOfMediaItems = false
 
-        val incomingPlayer = prepareCrossfade2Incoming(targetItem) ?: run {
+        // ── Resolve the target ONCE before starting the crossfade ────────
+        // Without this, both the secondary player and the primary handoff
+        // would run their own YouTubei/NewPipe resolution. If that fails
+        // (type=j25, IOException, etc.) the crossfade is aborted and the
+        // user hears an immediate cut instead of a fade.
+        val resolvedTargetItemForCrossfade = resolveMediaItemForCrossfade(targetItem)
+        val resolvedTargetMediaIdForCrossfade =
+            resolvedTargetItemForCrossfade.localConfiguration
+                ?.customCacheKey
+                ?: resolvedTargetItemForCrossfade.mediaId
+
+        val incomingPlayer = prepareCrossfade2Incoming(resolvedTargetItemForCrossfade) ?: run {
             isCrossfading = false
             crossfadePlaybackRequested = false
             applyEffectiveVolumeImmediately()
@@ -3097,8 +3171,12 @@ class MusicService :
                 // playing, then hand B back to the primary player without a gap.
                 if (!primaryPrepared && crossfadeProgress >= CROSSFADE2_PRIMARY_PREPARE_PROGRESS) {
                     player.volume = 0f
+                    val handoffItemsEarly =
+                        initialStatus.items.toMutableList().also {
+                            it[targetIndex] = resolvedTargetItemForCrossfade
+                        }
                     player.setMediaItems(
-                        initialStatus.items,
+                        handoffItemsEarly,
                         targetIndex,
                         incomingPlayer.currentPosition.coerceAtLeast(0L),
                     )
@@ -3140,8 +3218,12 @@ class MusicService :
 
             if (!primaryPrepared) {
                 player.volume = 0f
+                val handoffItemsLate =
+                    initialStatus.items.toMutableList().also {
+                        it[targetIndex] = resolvedTargetItemForCrossfade
+                    }
                 player.setMediaItems(
-                    initialStatus.items,
+                    handoffItemsLate,
                     targetIndex,
                     incomingPlayer.currentPosition.coerceAtLeast(0L),
                 )
