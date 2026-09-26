@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
+import moe.rukamori.archivetune.constants.CrossfadeManualSelectionKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
@@ -235,6 +236,11 @@ fun PlayerSettings(navController: NavController) {
             CrossfadeGaplessKey,
             defaultValue = true,
         )
+    val (crossfadeManualSelection, onCrossfadeManualSelectionChange) =
+        rememberPreference(
+            CrossfadeManualSelectionKey,
+            defaultValue = true,
+        )
 
     val (artistSeparators, onArtistSeparatorsChange) =
         rememberPreference(
@@ -384,6 +390,17 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                         checked = crossfadeGapless,
                         onCheckedChange = onCrossfadeGaplessChange,
+                        isEnabled = crossfadeEnabled,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.crossfade_manual_selection_title)) },
+                        description = stringResource(R.string.crossfade_manual_selection_description),
+                        icon = { Icon(painterResource(R.drawable.animation), null) },
+                        checked = crossfadeManualSelection,
+                        onCheckedChange = onCrossfadeManualSelectionChange,
                         isEnabled = crossfadeEnabled,
                     )
                 }

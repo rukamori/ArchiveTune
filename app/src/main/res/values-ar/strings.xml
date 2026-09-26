@@ -1101,4 +1101,6 @@
     <string name="updates_channel_warning_artifact_unstable">تُوفر إصدارات Canary للاختبار والوصول المبكر فقط.\nالاستقرار، التوافق، والوظائف غير مضمونة.</string>
     <string name="updates_channel_warning_artifact_acknowledgement">ملاحظة: التنزيل مباشرة من GitHub يتجاوز أي فحص إضافي يجريه المتجر الذي ربما ثبّت التطبيق منه سابقًا.\nبالمتابعة، فإنك تقر بأن إصدارات Canary قد تكون غير مستقرة وتتحمل مسؤولية استخدامها.</string>
     <string name="updates_artifact_channel_confirmation">التبديل إلى قناة Canary لتلقي إصدارات التطوير.\n\nتُحمل إصدارات Canary تلقائيًا من أحدث فرع تطوير.\nملاحظة: التنزيل مباشرة من GitHub يتجاوز أي فحص إضافي يجريه المتجر الذي ربما ثبّت التطبيق منه سابقًا.</string>
+    <string name="crossfade_manual_selection_title">التلاشي المتقاطع عند اختيار أغنية</string>
+    <string name="crossfade_manual_selection_description">تطبيق نفس الانتقال السلس عند اختيار أغنية أخرى أثناء تشغيل الموسيقى.</string>
 </resources>
