@@ -4127,7 +4127,7 @@ private fun hasCachedContentForPlaybackError(): Boolean {
     return try {
         val mediaId = player.currentMediaItem?.mediaId ?: return false
 
-        val cache = cacheDataSourceFactory.cache
+        val cache = playerCache
         val metadata = cache.getContentMetadata(mediaId)
 
         metadata.getContentLength() > 0L ||
