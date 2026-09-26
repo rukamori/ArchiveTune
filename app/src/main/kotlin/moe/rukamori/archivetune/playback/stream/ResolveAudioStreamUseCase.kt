@@ -330,7 +330,30 @@ class ResolveAudioStreamUseCase
             deferredsToCancel.forEach { it.cancel() }
         }
 
+        /**
+         * Serializes all QuickJS-backed stream resolutions.
+         *
+         * YouTube's signature decipher runs inside QuickJS, which is not
+         * thread-safe in the native lib. When crossfade starts a second
+         * resolution while the primary is still resolving (both triggering
+         * ciphered URLs on different mediaIds), QuickJS executes on two
+         * threads concurrently and eventually hits a native stack overflow
+         * (SIGSEGV in libquickjs.so) that cannot be caught from Kotlin.
+         *
+         * This mutex guarantees that only one resolution (and therefore one
+         * QuickJS invocation) is in flight at any time.
+         */
+        private val quickJsResolutionMutex = kotlinx.coroutines.sync.Mutex()
+
         private suspend fun resolveUncached(
+            request: AudioStreamRequest,
+            priority: StreamResolutionPriority,
+        ): ResolvedAudioStream =
+            quickJsResolutionMutex.withLock {
+                resolveUncachedImpl(request, priority)
+            }
+
+        private suspend fun resolveUncachedImpl(
             request: AudioStreamRequest,
             priority: StreamResolutionPriority,
         ): ResolvedAudioStream {

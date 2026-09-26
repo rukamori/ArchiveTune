@@ -2622,22 +2622,41 @@ class MusicService :
      * Returns true when the secondary player was prepared and the crossfade job
      * was scheduled. Caller must not perform an instant seek when this is true.
      */
-    fun manualSkipToNextWithCrossfade(): Boolean {
+    private enum class CrossfadeSource {
+        SkipNext,
+        SkipPrev,
+        SeekIndex,
+    }
+
+    /**
+     * Unified in-queue crossfade entry point.
+     *
+     * All user-initiated in-queue crossfade sources (skip next, skip previous,
+     * seek to an index already in the queue) funnel through this function so
+     * the guards, logging and secondary-player setup exist in one place.
+     *
+     * Not unified here:
+     *   - Auto crossfade uses scheduleCrossfade() because it must prepare the
+     *     secondary player ahead of time (CROSSFADE_PREPARE_AHEAD_MS).
+     *   - playQueue uses runCrossfade2ManualSelection() because it replaces
+     *     the whole queue mid-fade instead of seeking within the current one.
+     */
+    private fun startInQueueCrossfade(
+        source: CrossfadeSource,
+        targetIndex: Int,
+        allowSameIndex: Boolean = false,
+    ): Boolean {
         if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
         if (!::player.isInitialized || !player.playWhenReady) return false
         if (player.currentMediaItem == null) return false
-
-        val targetIndex = when {
-            player.repeatMode == REPEAT_MODE_ONE -> player.currentMediaItemIndex
-            player.nextMediaItemIndex != C.INDEX_UNSET -> player.nextMediaItemIndex
-            else -> return false
-        }
         if (targetIndex !in 0 until player.mediaItemCount) return false
+        if (!allowSameIndex && targetIndex == player.currentMediaItemIndex) return false
 
         val targetItem = player.getMediaItemAt(targetIndex)
         val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
         if (target.mediaId.isBlank()) return false
-        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) return false
+        if (targetItem.metadata?.isPodcast == true) return false
+        if (player.currentMediaItem?.metadata?.isPodcast == true) return false
 
         if (prepareSecondaryCrossfadePlayer(target) == null) return false
 
@@ -2649,8 +2668,35 @@ class MusicService :
 
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
+        Timber.tag(TAG).d(
+            "startInQueueCrossfade source=%s targetIndex=%d durationMs=%d",
+            source,
+            targetIndex,
+            duration,
+        )
         startCrossfade(target, duration)
         return true
+    }
+
+    fun manualSkipToNextWithCrossfade(): Boolean {
+        if (!::player.isInitialized || !player.playWhenReady) return false
+        if (player.currentMediaItem == null) return false
+
+        val repeatCurrent = player.repeatMode == REPEAT_MODE_ONE
+        val targetIndex =
+            if (repeatCurrent) {
+                player.currentMediaItemIndex
+            } else {
+                val next = player.nextMediaItemIndex
+                if (next == C.INDEX_UNSET) return false
+                next
+            }
+
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SkipNext,
+            targetIndex = targetIndex,
+            allowSameIndex = repeatCurrent,
+        )
     }
 
     /**
@@ -2671,31 +2717,13 @@ class MusicService :
             return true
         }
 
-        if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
-        if (player.previousMediaItemIndex == C.INDEX_UNSET) return false
+        val previous = player.previousMediaItemIndex
+        if (previous == C.INDEX_UNSET) return false
 
-        val targetIndex = player.previousMediaItemIndex
-        if (targetIndex !in 0 until player.mediaItemCount) return false
-
-        val targetItem = player.getMediaItemAt(targetIndex)
-        val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
-        if (target.mediaId.isBlank()) return false
-        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) {
-            return false
-        }
-
-        if (prepareSecondaryCrossfadePlayer(target) == null) return false
-
-        val duration = effectiveCrossfadeDuration(player.duration) ?: crossfadeDurationMs
-        if (duration < MIN_CROSSFADE_DURATION_MS) {
-            releaseSecondaryCrossfadePlayer()
-            return false
-        }
-
-        crossfadeTriggerJob?.cancel()
-        crossfadeTriggerJob = null
-        startCrossfade(target, duration)
-        return true
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SkipPrev,
+            targetIndex = previous,
+        )
     }
 
     /**
@@ -2708,31 +2736,14 @@ class MusicService :
      * is true.
      */
     fun manualSeekToIndexWithCrossfade(targetIndex: Int): Boolean {
-        if (!crossfadeEnabled || isCrossfading || secondaryCrossfadePlayer != null) return false
-        if (!::player.isInitialized || !player.playWhenReady) return false
-        if (player.currentMediaItem == null) return false
+        if (!::player.isInitialized) return false
         if (targetIndex !in 0 until player.mediaItemCount) return false
         if (targetIndex == player.currentMediaItemIndex) return false
 
-        val targetItem = player.getMediaItemAt(targetIndex)
-        val target = CrossfadeTarget(targetIndex, targetItem.mediaId)
-        if (target.mediaId.isBlank()) return false
-        if (targetItem.metadata?.isPodcast == true || player.currentMediaItem?.metadata?.isPodcast == true) {
-            return false
-        }
-
-        if (prepareSecondaryCrossfadePlayer(target) == null) return false
-
-        val duration = effectiveCrossfadeDuration(player.duration) ?: crossfadeDurationMs
-        if (duration < MIN_CROSSFADE_DURATION_MS) {
-            releaseSecondaryCrossfadePlayer()
-            return false
-        }
-
-        crossfadeTriggerJob?.cancel()
-        crossfadeTriggerJob = null
-        startCrossfade(target, duration)
-        return true
+        return startInQueueCrossfade(
+            source = CrossfadeSource.SeekIndex,
+            targetIndex = targetIndex,
+        )
     }
 
     /**
