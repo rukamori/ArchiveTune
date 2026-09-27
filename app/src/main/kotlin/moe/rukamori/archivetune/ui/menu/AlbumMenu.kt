@@ -43,7 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +70,7 @@ import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import androidx.media3.exoplayer.offline.Download.STATE_STOPPED
 import androidx.media3.exoplayer.offline.DownloadService
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
@@ -119,7 +119,7 @@ fun AlbumMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val scope = rememberCoroutineScope()
-    val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
+    val libraryAlbum by database.album(originalAlbum.id).collectAsStateWithLifecycle(initialValue = originalAlbum)
     val album = libraryAlbum ?: originalAlbum
     var songs by remember {
         mutableStateOf(emptyList<Song>())
@@ -127,7 +127,7 @@ fun AlbumMenu(
 
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(album.id) {
         database.albumSongs(album.id).collect {
             songs = it
         }
@@ -137,13 +137,15 @@ fun AlbumMenu(
         mutableStateOf(STATE_STOPPED)
     }
 
-    LaunchedEffect(songs) {
-        if (songs.isEmpty()) return@LaunchedEffect
+    val remoteSongs = remember(songs) { songs.filterNot { it.song.isLocal } }
+
+    LaunchedEffect(remoteSongs, album.album.isLocal) {
+        if (album.album.isLocal || remoteSongs.isEmpty()) return@LaunchedEffect
         downloadUtil.downloads.collect { downloads ->
             downloadState =
-                if (songs.all { downloads[it.id]?.state == STATE_COMPLETED }) {
+                if (remoteSongs.all { downloads[it.id]?.state == STATE_COMPLETED }) {
                     STATE_COMPLETED
-                } else if (songs.all {
+                } else if (remoteSongs.all {
                         downloads[it.id]?.state == STATE_QUEUED ||
                             downloads[it.id]?.state == STATE_DOWNLOADING ||
                             downloads[it.id]?.state == STATE_COMPLETED
@@ -182,8 +184,8 @@ fun AlbumMenu(
     )
 
     val splitArtists =
-        remember(album.artists, artistSeparators) {
-            if (artistSeparators.isEmpty()) {
+        remember(album.artists, artistSeparators, isLocalAlbum) {
+            if (isLocalAlbum || artistSeparators.isEmpty()) {
                 album.artists.map { SplitArtist(it.name, it) }
             } else {
                 val separatorRegex = "[${Regex.escape(artistSeparators)}]".toRegex()
@@ -567,7 +569,7 @@ fun AlbumMenu(
             }
         }
 
-        if (!isLocalAlbum) {
+        if (!isLocalAlbum && remoteSongs.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(12.dp))
             }
@@ -592,7 +594,7 @@ fun AlbumMenu(
                                 },
                                 modifier =
                                     Modifier.clickable {
-                                        songs.forEach { song ->
+                                        remoteSongs.forEach { song ->
                                             DownloadService.sendRemoveDownload(
                                                 context,
                                                 ExoDownloadService::class.java,
@@ -615,7 +617,7 @@ fun AlbumMenu(
                                 },
                                 modifier =
                                     Modifier.clickable {
-                                        songs.forEach { song ->
+                                        remoteSongs.forEach { song ->
                                             DownloadService.sendRemoveDownload(
                                                 context,
                                                 ExoDownloadService::class.java,
@@ -642,7 +644,7 @@ fun AlbumMenu(
                                         sendAddMissingDownloads(
                                             context = context,
                                             songs =
-                                                songs.map { song ->
+                                                remoteSongs.map { song ->
                                                     HeaderDownloadItem(
                                                         id = song.id,
                                                         title = song.song.title,

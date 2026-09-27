@@ -13,6 +13,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +38,7 @@ import javax.inject.Inject
 sealed interface AlbumUiState {
     data object Loading : AlbumUiState
 
-    data object Content : AlbumUiState
+    data object Success : AlbumUiState
 
     data object Empty : AlbumUiState
 
@@ -84,16 +87,18 @@ class AlbumViewModel
             }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
         var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
 
+        private var fetchJob: Job? = null
+
         private val _fetchState = MutableStateFlow<FetchState>(FetchState.Pending)
 
         val uiState: StateFlow<AlbumUiState> =
             combine(albumWithSongs, _fetchState) { data, fetch ->
                 when {
-                    data != null && data.songs.isNotEmpty() -> AlbumUiState.Content
+                    data != null && data.songs.isNotEmpty() -> AlbumUiState.Success
                     fetch is FetchState.Pending -> AlbumUiState.Loading
                     fetch is FetchState.Failed && data == null -> AlbumUiState.Error(fetch.isNotFound)
-                    fetch is FetchState.Success && data != null && data.songs.isEmpty() -> AlbumUiState.Empty
-                    fetch is FetchState.Failed && data != null && data.songs.isNotEmpty() -> AlbumUiState.Content
+                    fetch is FetchState.Success -> AlbumUiState.Empty
+                    fetch is FetchState.Failed && data != null -> AlbumUiState.Empty
                     else -> AlbumUiState.Loading
                 }
             }.stateIn(viewModelScope, SharingStarted.Eagerly, AlbumUiState.Loading)
@@ -103,36 +108,37 @@ class AlbumViewModel
         }
 
         fun retry() {
-            viewModelScope.launch {
+            if (fetchJob?.isActive == true) return
+            fetchJob = viewModelScope.launch(Dispatchers.IO) {
                 _fetchState.value = FetchState.Pending
-                val album = database.album(albumId).first()
-                YouTube
-                    .album(albumId)
-                    .onSuccess {
-                        playlistId.value = it.album.playlistId
-                        val blockedArtistIds = database.getBlockedArtistIds().toSet()
-                        otherVersions.value =
-                            it.otherVersions.filter { version ->
-                                version.artists.orEmpty().none { artist -> artist.id in blockedArtistIds }
-                            }
-                        database.withTransaction {
-                            if (album == null) {
-                                insert(it)
-                            } else {
-                                update(album.album, it, album.artists)
-                            }
-                        }
+                try {
+                    val album = database.album(albumId).first()
+                    if (album?.album?.isLocal == true) {
                         _fetchState.value = FetchState.Success
-                    }.onFailure {
-                        reportException(it)
-                        val isNotFound = it.message?.contains("NOT_FOUND") == true
-                        if (isNotFound) {
-                            database.query {
-                                album?.album?.let(::delete)
-                            }
-                        }
-                        _fetchState.value = FetchState.Failed(isNotFound = isNotFound)
+                        return@launch
                     }
+                    val page = YouTube.album(album?.album?.id ?: albumId).getOrThrow()
+                    playlistId.value = page.album.playlistId
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    otherVersions.value = page.otherVersions.filter { version ->
+                        version.artists.orEmpty().none { artist -> artist.id in blockedArtistIds }
+                    }
+                    database.withTransaction {
+                        if (album == null) {
+                            insert(page)
+                        } else {
+                            update(album.album, page, album.artists)
+                        }
+                    }
+                    _fetchState.value = FetchState.Success
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (throwable: Throwable) {
+                    reportException(throwable)
+                    _fetchState.value = FetchState.Failed(
+                        isNotFound = throwable.message?.contains("NOT_FOUND") == true,
+                    )
+                }
             }
         }
     }

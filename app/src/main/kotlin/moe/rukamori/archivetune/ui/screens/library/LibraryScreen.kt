@@ -37,9 +37,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,10 +54,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -65,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.navigation.NavController
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.R
@@ -81,14 +87,19 @@ import moe.rukamori.archivetune.constants.toLibraryFilterOrder
 import moe.rukamori.archivetune.constants.toPlaylistTagOrder
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
+import moe.rukamori.archivetune.ui.utils.resetHeightOffset
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
 internal val LibraryHeaderContentPadding = 64.dp
 internal val LibraryPullToRefreshIndicatorOffset = 0.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(navController: NavController) {
+fun LibraryScreen(
+    navController: NavController,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
     val defaultFilter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
     val database = LocalDatabase.current
     val (selectedTagIds, onSelectedTagIdsChange) = rememberPlaylistTagFilterState(database)
@@ -140,6 +151,8 @@ fun LibraryScreen(navController: NavController) {
         modifier =
             Modifier
                 .fillMaxSize()
+                .clipToBounds()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .background(MaterialTheme.colorScheme.background),
     ) {
         if (!disableBlur) {
@@ -165,6 +178,18 @@ fun LibraryScreen(navController: NavController) {
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .layout { measurable, constraints ->
+                        val offset = scrollBehavior.state.heightOffset.roundToInt().coerceAtMost(0)
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minHeight = (constraints.minHeight - offset).coerceAtLeast(0),
+                                maxHeight = (constraints.maxHeight - offset).coerceAtLeast(0),
+                            ),
+                        )
+                        layout(placeable.width, constraints.maxHeight) {
+                            placeable.placeRelative(0, offset)
+                        }
+                    }
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(top = AppBarHeight),
         ) {
@@ -181,6 +206,7 @@ fun LibraryScreen(navController: NavController) {
 
             // Sync Pager -> Preference & lazy list centering
             LaunchedEffect(pagerState.currentPage, libraryFilters) {
+                scrollBehavior.state.resetHeightOffset()
                 val targetPage = pagerState.currentPage.coerceIn(0, libraryFilters.lastIndex)
                 val targetFilter = libraryFilters.getOrElse(targetPage) { LibraryFilter.LIBRARY }
 
@@ -189,6 +215,7 @@ fun LibraryScreen(navController: NavController) {
                     when (targetFilter) {
                         LibraryFilter.LIBRARY -> 116.dp
                         LibraryFilter.PLAYLISTS -> 132.dp
+                        LibraryFilter.PODCASTS -> 126.dp
                         LibraryFilter.SPOTIFY -> 168.dp
                         LibraryFilter.SONGS -> 102.dp
                         LibraryFilter.ARTISTS -> 116.dp
@@ -263,6 +290,10 @@ fun LibraryScreen(navController: NavController) {
                         LibrarySpotifyPlaylistsScreen(navController = navController)
                     }
 
+                    LibraryFilter.PODCASTS -> {
+                        LibraryPodcastsScreen(navController = navController)
+                    }
+
                     LibraryFilter.SONGS -> {
                         LibrarySongsScreen(
                             navController = navController,
@@ -318,6 +349,7 @@ fun LibraryScreen(navController: NavController) {
                             when (filter) {
                                 LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
                                 LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
+                                LibraryFilter.PODCASTS -> stringResource(R.string.podcast)
                                 LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
                                 LibraryFilter.SONGS -> stringResource(R.string.songs)
                                 LibraryFilter.ARTISTS -> stringResource(R.string.artists)
@@ -327,6 +359,7 @@ fun LibraryScreen(navController: NavController) {
                             when (filter) {
                                 LibraryFilter.LIBRARY -> R.drawable.graphic_eq
                                 LibraryFilter.PLAYLISTS -> R.drawable.queue_music
+                                LibraryFilter.PODCASTS -> R.drawable.mic
                                 LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
                                 LibraryFilter.SONGS -> R.drawable.music_note
                                 LibraryFilter.ARTISTS -> R.drawable.person

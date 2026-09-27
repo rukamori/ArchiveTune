@@ -34,12 +34,15 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AodModeEnabledKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -51,7 +54,7 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.player.AodPlayerScreen
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.reportException
 
 @AndroidEntryPoint
 class AodDreamService :
@@ -100,84 +103,96 @@ class AodDreamService :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
-        if (!dataStore.get(AodModeEnabledKey, false)) {
-            finish()
-            return
-        }
+        serviceScope.launch {
+            val isAodEnabled =
+                try {
+                    dataStore.data.first()[AodModeEnabledKey] ?: false
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    reportException(throwable)
+                    false
+                }
+            if (!isAodEnabled) {
+                finish()
+                return@launch
+            }
 
-        isInteractive = true
-        isFullscreen = true
-        isScreenBright = false
+            isInteractive = true
+            isFullscreen = true
+            isScreenBright = false
 
-        val composeView = ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@AodDreamService)
-            setViewTreeSavedStateRegistryOwner(this@AodDreamService)
-            setViewTreeOnBackPressedDispatcherOwner(this@AodDreamService)
-            setContent {
-                ArchiveTuneTheme {
-                    val conn = playerConnection
-                    val fallbackMetadata = remember { MutableStateFlow<MediaMetadata?>(null) }
-                    val fallbackPlaying = remember { MutableStateFlow(false) }
-                    val mediaMetadata by (conn?.mediaMetadata ?: fallbackMetadata).collectAsStateWithLifecycle()
-                    val isPlaying by (conn?.isPlaying ?: fallbackPlaying).collectAsStateWithLifecycle()
+            val composeView = ComposeView(this@AodDreamService).apply {
+                setViewTreeLifecycleOwner(this@AodDreamService)
+                setViewTreeSavedStateRegistryOwner(this@AodDreamService)
+                setViewTreeOnBackPressedDispatcherOwner(this@AodDreamService)
+                setContent {
+                    ArchiveTuneTheme {
+                        val conn = playerConnection
+                        val fallbackMetadata = remember { MutableStateFlow<MediaMetadata?>(null) }
+                        val fallbackPlaying = remember { MutableStateFlow(false) }
+                        val mediaMetadata by (conn?.mediaMetadata ?: fallbackMetadata).collectAsStateWithLifecycle()
+                        val isPlaying by (conn?.isPlaying ?: fallbackPlaying).collectAsStateWithLifecycle()
 
-                    var currentPos by remember { mutableLongStateOf(0L) }
-                    var songDuration by remember { mutableLongStateOf(0L) }
-                    var sliderPos by remember { mutableStateOf<Long?>(null) }
+                        var currentPos by remember { mutableLongStateOf(0L) }
+                        var songDuration by remember { mutableLongStateOf(0L) }
+                        var sliderPos by remember { mutableStateOf<Long?>(null) }
 
-                    LaunchedEffect(conn, isPlaying) {
-                        if (conn != null) {
-                            currentPos = (conn.player?.currentPosition ?: 0L).coerceAtLeast(0L)
-                            songDuration = conn.player?.duration?.coerceAtLeast(0L) ?: 0L
-                            while (isPlaying) {
+                        LaunchedEffect(conn, isPlaying) {
+                            if (conn != null) {
                                 currentPos = (conn.player?.currentPosition ?: 0L).coerceAtLeast(0L)
                                 songDuration = conn.player?.duration?.coerceAtLeast(0L) ?: 0L
-                                delay(1000L)
+                                while (isPlaying) {
+                                    currentPos = (conn.player?.currentPosition ?: 0L).coerceAtLeast(0L)
+                                    songDuration = conn.player?.duration?.coerceAtLeast(0L) ?: 0L
+                                    delay(1000L)
+                                }
                             }
                         }
+
+                        val fallbackSkip = remember { MutableStateFlow(true) }
+                        val canSkipPrev by (conn?.canSkipPrevious ?: fallbackSkip).collectAsStateWithLifecycle()
+                        val canSkipNxt by (conn?.canSkipNext ?: fallbackSkip).collectAsStateWithLifecycle()
+
+                        val fallbackLyrics = remember { MutableStateFlow<LyricsEntity?>(null) }
+                        val currentLyricsEntity by (conn?.currentLyrics ?: fallbackLyrics)
+                            .collectAsStateWithLifecycle(initialValue = null)
+
+                        val metadata = mediaMetadata ?: MediaMetadata(
+                            id = "",
+                            title = getString(R.string.app_name),
+                            artists = emptyList(),
+                            duration = 0,
+                        )
+                        AodPlayerScreen(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            position = currentPos,
+                            duration = songDuration,
+                            sliderPosition = sliderPos,
+                            canSkipPrevious = canSkipPrev,
+                            canSkipNext = canSkipNxt,
+                            thumbnailCornerRadius = 16f,
+                            onPlayPause = { conn?.player?.togglePlayPause() },
+                            onSkipPrevious = { conn?.seekToPrevious() },
+                            onSkipNext = { conn?.seekToNext() },
+                            onSeek = { sliderPos = it },
+                            onSeekFinished = {
+                                sliderPos?.let { pos ->
+                                    conn?.player?.seekTo(pos)
+                                    currentPos = pos
+                                    sliderPos = null
+                                }
+                            },
+                            onExit = { finish() },
+                            lyricsText = currentLyricsEntity?.lyrics,
+                        )
                     }
-
-                    val fallbackSkip = remember { MutableStateFlow(true) }
-                    val canSkipPrev by (conn?.canSkipPrevious ?: fallbackSkip).collectAsStateWithLifecycle()
-                    val canSkipNxt by (conn?.canSkipNext ?: fallbackSkip).collectAsStateWithLifecycle()
-
-                    val fallbackLyrics = remember { MutableStateFlow<LyricsEntity?>(null) }
-                    val currentLyricsEntity by (conn?.currentLyrics ?: fallbackLyrics).collectAsStateWithLifecycle(initialValue = null)
-
-                    val metadata = mediaMetadata ?: MediaMetadata(
-                        id = "",
-                        title = getString(R.string.app_name),
-                        artists = emptyList(),
-                        duration = 0,
-                    )
-                    AodPlayerScreen(
-                        mediaMetadata = metadata,
-                        isPlaying = isPlaying,
-                        position = currentPos,
-                        duration = songDuration,
-                        sliderPosition = sliderPos,
-                        canSkipPrevious = canSkipPrev,
-                        canSkipNext = canSkipNxt,
-                        thumbnailCornerRadius = 16f,
-                        onPlayPause = { conn?.player?.togglePlayPause() },
-                        onSkipPrevious = { conn?.seekToPrevious() },
-                        onSkipNext = { conn?.seekToNext() },
-                        onSeek = { sliderPos = it },
-                        onSeekFinished = {
-                            sliderPos?.let { pos ->
-                                conn?.player?.seekTo(pos)
-                                currentPos = pos
-                                sliderPos = null
-                            }
-                        },
-                        onExit = { finish() },
-                        lyricsText = currentLyricsEntity?.lyrics,
-                    )
                 }
             }
-        }
 
-        setContentView(composeView)
+            setContentView(composeView)
+        }
     }
 
     override fun onDetachedFromWindow() {

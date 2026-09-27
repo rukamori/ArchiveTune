@@ -81,7 +81,6 @@ class DiscordRPC(
     ) = runCatching {
         if (lastSongId != song.song.id) {
             translationCache.clear()
-            DiscordImageResolver.clearCache()
             lastSongId = song.song.id
         }
 
@@ -116,7 +115,8 @@ class DiscordRPC(
             ).toDiscordText(maxLength = 128, fallback = appName)
 
         val baseSongUrl = song.youtubeMusicUrl()
-        val resolvedImages = DiscordImageResolver.resolveImagesForSong(context, song)
+        val resolvedImages = DiscordImageResolver.getCachedImages(song.song.id)
+            ?: DiscordImageResolver.resolveImagesForSong(context, song)
         val largeImageType = context.dataStore[DiscordLargeImageTypeKey] ?: "thumbnail"
         val largeImageCustomUrl = context.dataStore[DiscordLargeImageCustomUrlKey] ?: ""
         val smallImageType = context.dataStore[DiscordSmallImageTypeKey] ?: "artist"

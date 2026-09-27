@@ -63,6 +63,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
@@ -122,9 +123,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
-import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
-import moe.rukamori.archivetune.constants.AodModeEnabledKey
+import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.androidauto.AndroidAutoConfiguration
+import moe.rukamori.archivetune.androidauto.AndroidAutoCustomAction
+import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsUseCases
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
@@ -219,6 +221,8 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
 import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
 import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
 import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
@@ -300,6 +304,9 @@ class MusicService :
     lateinit var mediaLibrarySessionCallback: MediaLibrarySessionCallback
 
     @Inject
+    lateinit var androidAutoSettings: AndroidAutoSettingsUseCases
+
+    @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
 
     @Inject
@@ -338,8 +345,6 @@ class MusicService :
     private var audiblePlaybackRecoveryJob: Job? = null
     private var lastAudioOutputDeviceSignature: String? = null
     private var lastAudioRouteRecoveryRealtimeMs = 0L
-    private var aodScreenOffReceiver: BroadcastReceiver? = null
-
     private lateinit var audioOutputResolver: AudioOutputResolver
 
     val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
@@ -360,7 +365,7 @@ class MusicService :
     private var scopeJob = SupervisorJob()
     private var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     private var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
-    private val binder = MusicBinder()
+    private val binder = MusicBinder(this)
     private var hasBoundClients = false
     private var idleStopJob: Job? = null
 
@@ -670,6 +675,7 @@ class MusicService :
         var current: Throwable? = this
         while (current != null) {
             if (current is SocketTimeoutException) return true
+            if (current is YoutubeiException && current.kind == YoutubeiFailureKind.TIMEOUT) return true
             if (current.message?.contains("Request timeout has expired", ignoreCase = true) == true) return true
             current = current.cause
         }
@@ -1214,61 +1220,25 @@ class MusicService :
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
         audioOutputResolver.refresh()
 
-        val screenOffFilter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        val screenReceiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
-                scope.launch {
-                    val preferences = dataStore.data.first()
-                    val aodEnabled = preferences[AodModeEnabledKey] ?: false
-                    val autoStartAod = preferences[AodAutoStartScreenOffKey] ?: true
-                    if (!aodEnabled || !autoStartAod || !player.isPlaying) return@launch
-
-                    val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
-                    val aodLaunchWl = pm?.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK,
-                        "ArchiveTune:AodAutoStart",
-                    )
-                    aodLaunchWl?.acquire(3000L)
-
-                    val aodIntent = Intent(this@MusicService, MainActivity::class.java).apply {
-                        action = ACTION_AOD_MODE
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    }
-                    try {
-                        startActivity(aodIntent)
-                    } finally {
-                        if (aodLaunchWl?.isHeld == true) aodLaunchWl.release()
-                    }
-                }
-            }
-        }
-        aodScreenOffReceiver = screenReceiver
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(screenReceiver, screenOffFilter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(screenReceiver, screenOffFilter)
-        }
-
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
+            carMediaButtonPreferences = ::buildAndroidAutoButtons
         }
-        mediaSession =
-            MediaLibrarySession
-                .Builder(this, player, mediaLibrarySessionCallback)
-                .setSessionActivity(
+        val mediaSessionBuilder = MediaLibrarySession.Builder(this, player, mediaLibrarySessionCallback)
+            .setBitmapLoader(CoilBitmapLoader(this, scope))
+        if (BuildConfig.DEVICE != "automotive") {
+            mediaSessionBuilder.setSessionActivity(
                     PendingIntent.getActivity(
                         this,
                         0,
                         Intent(this, MainActivity::class.java),
                         PendingIntent.FLAG_IMMUTABLE,
                     ),
-                ).setBitmapLoader(CoilBitmapLoader(this, scope))
-                .build()
+                )
+        }
+        mediaSession = mediaSessionBuilder.build()
         setMediaNotificationProvider(
             ArchiveTuneMediaNotificationProvider(
                 context = this,
@@ -1278,6 +1248,23 @@ class MusicService :
         addSession(mediaSession)
 
         updateNotification()
+        scope.launch {
+            combine(
+                androidAutoSettings.configuration,
+                androidAutoSettings.networkState,
+            ) { configuration, networkState -> configuration to networkState }
+                .collect { (configuration, networkState) ->
+                    updateAndroidAutoButtons(configuration)
+                    mediaSession.notifyChildrenChanged(ROOT, 4, null)
+                    val homeItemCount = if (
+                        configuration.onlineRecommendations &&
+                        networkState.online &&
+                        (configuration.meteredPlayback || !networkState.metered)
+                    ) 5 else 4
+                    mediaSession.notifyChildrenChanged(HOME, homeItemCount, null)
+                    mediaSession.notifyChildrenChanged(LIBRARY, 5, null)
+                }
+        }
         player.repeatMode = REPEAT_MODE_OFF
 
         scope.launch(Dispatchers.IO) {
@@ -3868,10 +3855,75 @@ class MusicService :
                         .build(),
                 )
             mediaSession.setCustomLayout(customLayout)
+            updateAndroidAutoButtons()
         } catch (e: Exception) {
             reportException(e)
         }
     }
+
+    private fun updateAndroidAutoButtons(
+        configuration: AndroidAutoConfiguration = androidAutoSettings.currentConfiguration(),
+    ) {
+        val buttons = buildAndroidAutoButtons(configuration)
+        mediaSession.connectedControllers
+            .filter { mediaLibrarySessionCallback.isCarController(mediaSession, it) }
+            .forEach { controller ->
+                mediaSession.setMediaButtonPreferences(controller, buttons)
+                mediaSession.setCustomLayout(controller, buttons)
+            }
+    }
+
+    private fun buildAndroidAutoButtons(configuration: AndroidAutoConfiguration): List<CommandButton> =
+        listOf(configuration.primaryAction, configuration.secondaryAction)
+            .filter { it != AndroidAutoCustomAction.NONE }
+            .distinct()
+            .map { action ->
+                when (action) {
+                    AndroidAutoCustomAction.LIKE -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(if (currentSong.value?.song?.liked == true) R.string.action_remove_like else R.string.action_like),
+                        )
+                        .setIconResId(
+                            if (currentSong.value?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border,
+                        )
+                        .setSessionCommand(CommandToggleLike)
+                        .setEnabled(currentSong.value != null)
+                        .build()
+                    AndroidAutoCustomAction.START_RADIO -> CommandButton.Builder()
+                        .setDisplayName(getString(R.string.start_radio))
+                        .setIconResId(R.drawable.radio)
+                        .setSessionCommand(CommandToggleStartRadio)
+                        .setEnabled(currentSong.value != null && currentMediaMetadata.value?.isPodcast != true)
+                        .build()
+                    AndroidAutoCustomAction.SHUFFLE -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
+                        )
+                        .setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
+                        .setSessionCommand(CommandToggleShuffle)
+                        .build()
+                    AndroidAutoCustomAction.REPEAT -> CommandButton.Builder()
+                        .setDisplayName(
+                            getString(
+                                when (player.repeatMode) {
+                                    REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                                    REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                                    else -> R.string.repeat_mode_off
+                                },
+                            ),
+                        )
+                        .setIconResId(
+                            when (player.repeatMode) {
+                                REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                                REPEAT_MODE_ALL -> R.drawable.repeat_on
+                                else -> R.drawable.repeat
+                            },
+                        )
+                        .setSessionCommand(CommandToggleRepeatMode)
+                        .build()
+                    AndroidAutoCustomAction.NONE -> error("None is not a media button")
+                }
+            }
 
     fun refreshPlaybackNotification() {
         updateNotification()
@@ -7610,19 +7662,23 @@ class MusicService :
                     }
 
                     throwable is YTPlayerUtils.BadStreamPlayerResponseException -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.error_no_stream),
                             throwable,
-                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                         )
                     }
 
                     throwable is PlaybackException -> {
-                        throw throwable
+                        throw DataSourceException(
+                            throwable.message,
+                            throwable,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                        )
                     }
 
                     throwable.isNetworkConnectionFailure() -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.playback_error_no_internet),
                             throwable,
                             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
@@ -7630,18 +7686,20 @@ class MusicService :
                     }
 
                     throwable.isRequestTimeout() -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.error_timeout),
                             throwable,
                             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
                         )
                     }
 
+                    throwable is IOException -> throw throwable
+
                     else -> {
-                        throw PlaybackException(
+                        throw DataSourceException(
                             getString(R.string.playback_error_unknown),
                             throwable,
-                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                         )
                     }
                 }
@@ -8287,6 +8345,7 @@ class MusicService :
     }
 
     override fun onDestroy() {
+        binder.release()
         equalizerPlaybackController.detach(this)
         sponsorBlockPlaybackController.detach()
         discordServiceStopping = true
@@ -8306,13 +8365,6 @@ class MusicService :
         }
         unregisterBluetoothReceiver()
         unregisterMuteRecoveryObserver()
-        if (aodScreenOffReceiver != null) {
-            try {
-                unregisterReceiver(aodScreenOffReceiver)
-            } catch (_: Exception) {
-            }
-            aodScreenOffReceiver = null
-        }
         try {
             scope.launch { stopTogetherInternal() }
         } catch (_: Exception) {
@@ -8334,6 +8386,7 @@ class MusicService :
             }
         } catch (_: Exception) {
         }
+        mediaLibrarySessionCallback.release()
         try {
             mediaSession.release()
         } catch (_: Exception) {
@@ -8520,9 +8573,16 @@ class MusicService :
         widgetUpdater.updateProgressTracking()
     }
 
-    inner class MusicBinder : Binder() {
+    class MusicBinder internal constructor(service: MusicService) : Binder() {
+        @Volatile
+        private var serviceReference: MusicService? = service
+
         val service: MusicService
-            get() = this@MusicService
+            get() = checkNotNull(serviceReference) { "MusicService has been destroyed" }
+
+        internal fun release() {
+            serviceReference = null
+        }
     }
 
     companion object {
@@ -8539,6 +8599,7 @@ class MusicService :
 
         const val ROOT = "root"
         const val HOME = "home"
+        const val LIBRARY = "library"
         const val HOME_QUICK_PICKS = "home_quick_picks"
         const val HOME_FORGOTTEN_FAVORITES = "home_forgotten_favorites"
         const val HOME_KEEP_LISTENING = "home_keep_listening"

@@ -10,9 +10,11 @@
 package moe.rukamori.archivetune
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -157,6 +159,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -175,6 +180,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -186,6 +192,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
+import moe.rukamori.archivetune.constants.AodAutoStartScreenOffKey
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AppLanguageKey
@@ -271,6 +278,7 @@ import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
+import moe.rukamori.archivetune.ui.screens.library.LibraryHeaderContentPadding
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
 import moe.rukamori.archivetune.ui.screens.LoginScreen
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -293,6 +301,7 @@ import moe.rukamori.archivetune.ui.theme.extractWallpaperThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
+import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -328,13 +337,18 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var syncUtils: SyncUtils
 
+    @Inject
+    lateinit var observeUpdateSettings: ObserveUpdateSettingsUseCase
+
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
     private var pendingDeepLinkQueue: Queue? = null
     private var pendingVoiceSearchQuery: String? = null
     private var pendingAodModeRequest = false
+    private var aodPreferenceReadJob: Job? = null
     private var pendingAodModeJob: Job? = null
     private var aodModeLaunchRequestCount by mutableIntStateOf(0)
+    private var isAodScreenOffReceiverRegistered = false
     private var pendingTogetherJoinLink: String? = null
     private var pendingBackupRestoreUri by mutableStateOf<Uri?>(null)
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -343,6 +357,18 @@ class MainActivity : ComponentActivity() {
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var isMusicServiceBound = false
     private var immersiveStatusBarsHidden = false
+
+    private val aodScreenOffReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
+                if (playerConnection?.player?.isPlaying != true) return
+                requestAodMode(requireAutoStart = true)
+            }
+        }
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -384,11 +410,43 @@ class MainActivity : ComponentActivity() {
         connection.playFromVoiceSearch(query)
     }
 
-    private fun requestAodMode() {
-        if (!dataStore.get(AodModeEnabledKey, false)) return
-        pendingAodModeRequest = true
-        startMusicServiceSafely()
-        openPendingAodModeIfReady()
+    private fun requestAodMode(requireAutoStart: Boolean = false) {
+        aodPreferenceReadJob?.cancel()
+        aodPreferenceReadJob =
+            lifecycleScope.launch {
+                try {
+                    val preferences = dataStore.data.first()
+                    val isAodEnabled = preferences[AodModeEnabledKey] ?: false
+                    val shouldAutoStart = preferences[AodAutoStartScreenOffKey] ?: true
+                    if (!isAodEnabled || (requireAutoStart && !shouldAutoStart)) return@launch
+
+                    pendingAodModeRequest = true
+                    startMusicServiceSafely()
+                    openPendingAodModeIfReady()
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    pendingAodModeRequest = false
+                    reportException(throwable)
+                }
+            }
+    }
+
+    private fun registerAodScreenOffReceiver() {
+        if (isAodScreenOffReceiverRegistered) return
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(aodScreenOffReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(aodScreenOffReceiver, filter)
+        }
+        isAodScreenOffReceiverRegistered = true
+    }
+
+    private fun unregisterAodScreenOffReceiver() {
+        if (!isAodScreenOffReceiverRegistered) return
+        unregisterReceiver(aodScreenOffReceiver)
+        isAodScreenOffReceiverRegistered = false
     }
 
     private fun openPendingAodModeIfReady() {
@@ -399,7 +457,7 @@ class MainActivity : ComponentActivity() {
         pendingAodModeJob =
             lifecycleScope.launch {
                 connection.queueRestoreCompleted.first { it }
-                if (awaitRestorablePlayback(connection)) {
+                if (hasRestorablePlayback(connection)) {
                     aodModeLaunchRequestCount++
                 }
             }
@@ -422,27 +480,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun awaitRestorablePlayback(connection: PlayerConnection): Boolean {
-        repeat(15) {
-            if (
-                connection.player.currentMediaItem != null ||
-                connection.player.mediaItemCount > 0 ||
-                connection.mediaMetadata.value != null
-            ) {
-                return true
-            }
-            delay(100)
-        }
-
-        return (
+    private fun hasRestorablePlayback(connection: PlayerConnection): Boolean =
+        (
             connection.player.currentMediaItem != null ||
                 connection.player.mediaItemCount > 0 ||
                 connection.mediaMetadata.value != null
         )
+
+    private suspend fun awaitRestorablePlayback(connection: PlayerConnection): Boolean {
+        repeat(15) {
+            if (hasRestorablePlayback(connection)) return true
+            delay(100)
+        }
+
+        return hasRestorablePlayback(connection)
     }
 
     override fun onStart() {
         super.onStart()
+        registerAodScreenOffReceiver()
         isMusicServiceBound =
             bindService(
                 Intent(this, MusicService::class.java),
@@ -466,6 +522,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        unregisterAodScreenOffReceiver()
         if (!isMusicServiceBound || playerConnection?.aodModeEnabled?.value == true) {
             super.onStop()
             return
@@ -475,6 +532,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        aodPreferenceReadJob?.cancel()
+        aodPreferenceReadJob = null
         super.onDestroy()
 
         val shouldStopOnTaskClear =
@@ -570,6 +629,11 @@ class MainActivity : ComponentActivity() {
             }
 
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
+            val updateSettingsFlow = remember(observeUpdateSettings) { observeUpdateSettings() }
+            val updateSettings by
+                updateSettingsFlow.collectAsStateWithLifecycle(
+                    initialValue = null,
+                )
 
             LaunchedEffect(Unit) {
                 while (playerConnection == null) {
@@ -613,25 +677,28 @@ class MainActivity : ComponentActivity() {
                     moe.rukamori.archivetune.utils.reportException(e)
                 }
 
+            }
+
+            LaunchedEffect(
+                updateSettings?.automaticChecksEnabled,
+                updateSettings?.notificationsEnabled,
+                updateChannel,
+            ) {
+                val currentUpdateSettings = updateSettings ?: return@LaunchedEffect
                 if (
+                    currentUpdateSettings.automaticChecksEnabled &&
                     BuildConfig.UPDATER_AVAILABLE &&
+                    updateChannel != UpdateChannel.ARTIFACT &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
                 ) {
-                    val channelString = withContext(Dispatchers.IO) { dataStore.data.first()[UpdateChannelKey] }
-                    val actualChannel = UpdateChannel.fromStoredName(channelString, defaultUpdateChannel)
-                    if (actualChannel != UpdateChannel.ARTIFACT) {
-                        val versionResult =
-                            when (actualChannel) {
-                                UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                            }
-                        versionResult.onSuccess {
-                            if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                                latestUpdateChannel = actualChannel
-                                latestVersionName = it
-                            }
+                    Updater.getLatestVersionName().onSuccess { latestVersion ->
+                        if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
+                            latestUpdateChannel = UpdateChannel.STABLE
+                            latestVersionName = latestVersion
                         }
                     }
                 }
+
                 moe.rukamori.archivetune.utils.UpdateNotificationManager
                     .checkForUpdates(this@MainActivity)
             }
@@ -926,7 +993,8 @@ class MainActivity : ComponentActivity() {
                     val allLocalItems by homeViewModel.allLocalItems.collectAsState()
                     val allYtItems by homeViewModel.allYtItems.collectAsState()
                     val networkBannerState by networkBannerViewModel.bannerState.collectAsStateWithLifecycle()
-                    val hasUnreadNews by newsViewModel.hasUnreadNews.collectAsStateWithLifecycle()
+                    val latestUnreadNewsTimestamp by newsViewModel.latestUnreadNewsTimestamp.collectAsStateWithLifecycle()
+                    val hasUnreadNews = latestUnreadNewsTimestamp != null
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
@@ -1093,7 +1161,7 @@ class MainActivity : ComponentActivity() {
                         val launchRequestCount = aodModeLaunchRequestCount
                         if (launchRequestCount == 0) return@LaunchedEffect
                         val connection = playerConnection ?: return@LaunchedEffect
-                        if (!awaitRestorablePlayback(connection)) return@LaunchedEffect
+                        if (!hasRestorablePlayback(connection)) return@LaunchedEffect
                         if (!playerBottomSheetState.isExpandedOrExpanding) {
                             playerBottomSheetState.expandSoft()
                         }
@@ -1260,6 +1328,13 @@ class MainActivity : ComponentActivity() {
                                     !playerBottomSheetState.isExpandedOrExpanding
                             },
                         )
+                    val libraryScrollBehavior =
+                        appBarScrollBehavior(
+                            canScroll = {
+                                navBackStackEntry?.destination?.route == Screens.Library.route &&
+                                    !playerBottomSheetState.isExpandedOrExpanding
+                            },
+                        )
                     val topAppBarScrollBehavior =
                         appBarScrollBehavior(
                             canScroll = {
@@ -1279,6 +1354,10 @@ class MainActivity : ComponentActivity() {
                                 when (screen) {
                                     Screens.Home -> {
                                         coroutineScope.launch { homeScrollBehavior.state.resetHeightOffset() }
+                                    }
+
+                                    Screens.Library -> {
+                                        coroutineScope.launch { libraryScrollBehavior.state.resetHeightOffset() }
                                     }
 
                                     else -> {}
@@ -1306,6 +1385,10 @@ class MainActivity : ComponentActivity() {
 
                                 Screens.Search.route -> {
                                     searchScrollBehavior.state.resetHeightOffset()
+                                }
+
+                                Screens.Library.route -> {
+                                    libraryScrollBehavior.state.resetHeightOffset()
                                 }
 
                                 else -> {}
@@ -1367,6 +1450,10 @@ class MainActivity : ComponentActivity() {
 
                                 Screens.Search.route -> {
                                     searchScrollBehavior.state.resetHeightOffset()
+                                }
+
+                                Screens.Library.route -> {
+                                    libraryScrollBehavior.state.resetHeightOffset()
                                 }
 
                                 else -> {}
@@ -1697,8 +1784,8 @@ class MainActivity : ComponentActivity() {
 
                                                 Screens.Search.route -> searchScrollBehavior
 
-                                                // Library hits else but is offset 0 (self-contained);
-                                                // sub-screens use the shared shell behavior.
+                                                Screens.Library.route -> libraryScrollBehavior
+
                                                 else -> topAppBarScrollBehavior
                                             }
                                         val isLibraryRoute = navBackStackEntry?.destination?.route == Screens.Library.route
@@ -1717,9 +1804,10 @@ class MainActivity : ComponentActivity() {
                                         // CURRENT route's state via LaunchedEffect so every route gets
                                         // its limit on entry (not just the first-measured one).
                                         var headerHeightPx by remember { mutableStateOf(0) }
-                                        LaunchedEffect(currentScrollBehavior, headerHeightPx) {
-                                            if (headerHeightPx > 0 && !isLibraryRoute) {
-                                                val limit = -headerHeightPx.toFloat()
+                                        val libraryChipHeightPx = with(LocalDensity.current) { LibraryHeaderContentPadding.toPx() }
+                                        LaunchedEffect(currentScrollBehavior, headerHeightPx, libraryChipHeightPx) {
+                                            if (headerHeightPx > 0) {
+                                                val limit = -(headerHeightPx + if (isLibraryRoute) libraryChipHeightPx else 0f)
                                                 val state = currentScrollBehavior.state
                                                 if (state.heightOffsetLimit != limit) {
                                                     state.heightOffsetLimit = limit
@@ -1737,12 +1825,7 @@ class MainActivity : ComponentActivity() {
                                                         IntOffset(
                                                             x = 0,
                                                             y =
-                                                                if (isLibraryRoute) {
-                                                                    0
-                                                                } else {
-                                                                    currentScrollBehavior.state.heightOffset
-                                                                        .roundToInt()
-                                                                },
+                                                                currentScrollBehavior.state.heightOffset.roundToInt(),
                                                         )
                                                     },
                                         ) {
@@ -1759,18 +1842,9 @@ class MainActivity : ComponentActivity() {
                                                     modifier =
                                                         Modifier
                                                             .offset {
-                                                                if (isLibraryRoute) {
-                                                                    // Library owns its scroll; the shell gradient
-                                                                    // stays static (mirrors the header Box above and
-                                                                    // matches upstream, which ships a static Library
-                                                                    // gradient). Keeping it rendered avoids the
-                                                                    // Libraryâ†’Home predictive-back scrim pop.
-                                                                    IntOffset(x = 0, y = 0)
-                                                                } else {
-                                                                    val raw = currentScrollBehavior.state.heightOffset
-                                                                    val clamped = raw.coerceAtLeast(-appBarHeightPx)
-                                                                    IntOffset(x = 0, y = (clamped - raw).roundToInt())
-                                                                }
+                                                                val raw = currentScrollBehavior.state.heightOffset
+                                                                val clamped = raw.coerceAtLeast(-appBarHeightPx)
+                                                                IntOffset(x = 0, y = (clamped - raw).roundToInt())
                                                             }.fillMaxWidth()
                                                             .height(
                                                                 AppBarHeight +
@@ -1830,6 +1904,24 @@ class MainActivity : ComponentActivity() {
                                                             contentDescription = stringResource(R.string.history),
                                                         )
                                                     }
+                                                    val newsTooltipState = rememberTooltipState()
+                                                    val newsLifecycleOwner = LocalLifecycleOwner.current
+                                                    LaunchedEffect(latestUnreadNewsTimestamp, newsLifecycleOwner, newsTooltipState) {
+                                                        val timestamp = latestUnreadNewsTimestamp
+                                                        if (timestamp == null) {
+                                                            newsTooltipState.dismiss()
+                                                            return@LaunchedEffect
+                                                        }
+                                                        newsLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                                                            if (newsViewModel.claimUnreadNewsTooltip(timestamp)) {
+                                                                try {
+                                                                    newsTooltipState.show()
+                                                                } finally {
+                                                                    newsTooltipState.dismiss()
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                     TooltipBox(
                                                         positionProvider =
                                                             if (hasUnreadNews) {
@@ -1850,10 +1942,13 @@ class MainActivity : ComponentActivity() {
                                                                 }
                                                             }
                                                         },
-                                                        state = rememberTooltipState(),
+                                                        state = newsTooltipState,
                                                     ) {
                                                         TranslucentTopAppBarIconButton(
-                                                            onClick = { navController.navigate("news") },
+                                                            onClick = {
+                                                                newsTooltipState.dismiss()
+                                                                navController.navigate("news")
+                                                            },
                                                         ) {
                                                             BadgedBox(badge = {
                                                                 if (hasUnreadNews) {
@@ -1897,15 +1992,7 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 scrollBehavior =
-                                                    if (navBackStackEntry?.destination?.route == Screens.Library.route ||
-                                                        shouldUseFloatingTopBar
-                                                    ) {
-                                                        // Library is fixed, and floating routes
-                                                        // (Home/Search) now slide rigidly via the
-                                                        // outer Box.offset â€” passing a behavior here
-                                                        // would make M3 collapse/co-render and
-                                                        // double-move the header. Only non-floating
-                                                        // sub-screens use M3's collapse behavior.
+                                                    if (shouldUseFloatingTopBar) {
                                                         null
                                                     } else {
                                                         topAppBarScrollBehavior
@@ -2131,8 +2218,6 @@ class MainActivity : ComponentActivity() {
                                 },
                                 bottomBar = {
                                     Box {
-                                        val showNavigationBarState = rememberUpdatedState(shouldShowNavigationBar)
-                                        val useRailState = rememberUpdatedState(useRail)
                                         val navigationProximityProvider: () -> Float =
                                             remember(playerBottomSheetState, bottomNavigationBarHeightState) {
                                                 {
@@ -2155,11 +2240,7 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         }
                                                     val sheetPresence = (1f - (swipeDeviation / morphThreshold)).coerceIn(0f, 1f)
-                                                    if (!showNavigationBarState.value || useRailState.value) {
-                                                        0f
-                                                    } else {
-                                                        navRatio * sheetPresence
-                                                    }
+                                                    navRatio * sheetPresence
                                                 }
                                             }
 
@@ -2460,15 +2541,6 @@ class MainActivity : ComponentActivity() {
                                                     Modifier
                                                 },
                                             ).nestedScroll(
-                                                // Step 2b: the NavHost-level connection now serves
-                                                // ONLY shell-driven sub-screens (Album/Artist/
-                                                // Playlist/...). Home and Search attach their own
-                                                // per-route connection inside their screen, so a
-                                                // departing screen's fling can no longer reach the
-                                                // incoming route's header state (fling carry-over is
-                                                // severed structurally). Library is self-contained
-                                                // and OnlineSearchResult is gated by canScroll=false,
-                                                // so routing them through this shared arm is harmless.
                                                 topAppBarScrollBehavior.nestedScrollConnection,
                                             ),
                                 ) {
@@ -2481,6 +2553,7 @@ class MainActivity : ComponentActivity() {
                                         onClearUpdateBadge = { latestVersionName = BuildConfig.VERSION_NAME },
                                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                                         searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
+                                        libraryScrollBehavior = libraryScrollBehavior,
                                         onlineSearchSort = onlineSearchSort,
                                     )
                                 }

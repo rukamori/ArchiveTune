@@ -11,12 +11,15 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
@@ -31,6 +34,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -40,6 +45,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.androidauto.AndroidAutoConfiguration
+import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsUseCases
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.MediaSessionConstants
@@ -71,19 +78,22 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.math.min
 
+@OptIn(UnstableApi::class)
 class MediaLibrarySessionCallback
     @Inject
     constructor(
         @ApplicationContext val context: Context,
         val database: MusicDatabase,
         val downloadUtil: DownloadUtil,
+        private val androidAutoSettings: AndroidAutoSettingsUseCases,
     ) : MediaLibrarySession.Callback {
-        private val scope = CoroutineScope(Dispatchers.Main) + Job()
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private var pendingSearchJob: Job? = null
         private val onlineSearchItemCache = ConcurrentHashMap<String, MediaItem>()
         var toggleLike: () -> Unit = {}
         var toggleStartRadio: () -> Unit = {}
         var toggleLibrary: () -> Unit = {}
+        var carMediaButtonPreferences: (AndroidAutoConfiguration) -> List<CommandButton> = { emptyList() }
 
         private data class AutoPlaylistSortOption(
             val sortType: PlaylistSongSortType,
@@ -122,17 +132,36 @@ class MediaLibrarySessionCallback
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
             val connectionResult = super.onConnect(session, controller)
-            return MediaSession.ConnectionResult.accept(
-                connectionResult.availableSessionCommands
-                    .buildUpon()
-                    .add(MediaSessionConstants.CommandToggleLike)
-                    .add(MediaSessionConstants.CommandToggleStartRadio)
-                    .add(MediaSessionConstants.CommandToggleLibrary)
-                    .add(MediaSessionConstants.CommandToggleShuffle)
-                    .add(MediaSessionConstants.CommandToggleRepeatMode)
-                    .build(),
-                connectionResult.availablePlayerCommands,
-            )
+            val availableSessionCommands = connectionResult.availableSessionCommands
+                .buildUpon()
+                .add(MediaSessionConstants.CommandToggleLike)
+                .add(MediaSessionConstants.CommandToggleStartRadio)
+                .add(MediaSessionConstants.CommandToggleLibrary)
+                .add(MediaSessionConstants.CommandToggleShuffle)
+                .add(MediaSessionConstants.CommandToggleRepeatMode)
+                .build()
+            return if (session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)) {
+                val carButtons = carMediaButtonPreferences(androidAutoSettings.currentConfiguration())
+                MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                    .setAvailableSessionCommands(availableSessionCommands)
+                    .setAvailablePlayerCommands(connectionResult.availablePlayerCommands)
+                    .setMediaButtonPreferences(carButtons)
+                    .setCustomLayout(carButtons)
+                    .build()
+            } else {
+                MediaSession.ConnectionResult.accept(
+                    availableSessionCommands,
+                    connectionResult.availablePlayerCommands,
+                )
+            }
+        }
+
+        fun isCarController(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+            session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)
+
+        fun release() {
+            pendingSearchJob?.cancel()
+            scope.cancel()
         }
 
         override fun onPlaybackResumption(
@@ -193,29 +222,37 @@ class MediaLibrarySessionCallback
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            when (customCommand.customAction) {
+            val handled = when (customCommand.customAction) {
                 MediaSessionConstants.ACTION_TOGGLE_LIKE -> {
                     toggleLike()
+                    true
                 }
 
                 MediaSessionConstants.ACTION_TOGGLE_START_RADIO -> {
                     toggleStartRadio()
+                    true
                 }
 
                 MediaSessionConstants.ACTION_TOGGLE_LIBRARY -> {
                     toggleLibrary()
+                    true
                 }
 
                 MediaSessionConstants.ACTION_TOGGLE_SHUFFLE -> {
                     session.player.shuffleModeEnabled =
                         !session.player.shuffleModeEnabled
+                    true
                 }
 
                 MediaSessionConstants.ACTION_TOGGLE_REPEAT_MODE -> {
                     session.player.toggleRepeatMode()
+                    true
                 }
+                else -> false
             }
-            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            return Futures.immediateFuture(
+                SessionResult(if (handled) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_NOT_SUPPORTED),
+            )
         }
 
         override fun onGetLibraryRoot(
@@ -241,6 +278,19 @@ class MediaLibrarySessionCallback
                 ),
             )
 
+        override fun onSubscribe(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            params: MediaLibraryService.LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> = Futures.immediateFuture(LibraryResult.ofVoid(params))
+
+        override fun onUnsubscribe(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+        ): ListenableFuture<LibraryResult<Void>> = Futures.immediateFuture(LibraryResult.ofVoid(null))
+
         override fun onSearch(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -252,20 +302,39 @@ class MediaLibrarySessionCallback
                 pendingSearchJob?.cancel()
                 pendingSearchJob =
                     scope.launch(Dispatchers.IO) {
+                        val isCarController = isCarController(session, browser)
+                        val configuration = if (isCarController) androidAutoSettings.currentConfiguration() else null
                         val count =
-                            runCatching {
+                            try {
                                 if (q.isBlank()) {
-                                    0
+                                    if (configuration == null) {
+                                        0
+                                    } else {
+                                        database.recentSongs(AUTO_BROWSE_LIMIT).first()
+                                            .availableForCar(
+                                                configuration.localSongs && androidAutoSettings.hasLocalAudioPermission(),
+                                                androidAutoSettings.isOnlinePlaybackAllowed(configuration),
+                                            ).size
+                                    }
                                 } else {
                                     val localCount =
-                                        searchOfflineSongs(q, previewSize = 25).count +
+                                        searchOfflineSongs(q, previewSize = 25, configuration = configuration).count +
                                             database.searchArtistsCount(q) +
                                             database.searchAlbumsCount(q) +
                                             database.searchPlaylistsCount(q)
-                                    val onlineCount = searchOnlineSongs(q, previewSize = 25).size
+                                    val onlineCount = searchOnlineSongs(
+                                        q,
+                                        previewSize = 25,
+                                        allowed = configuration == null ||
+                                            (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
+                                    ).size
                                     localCount + onlineCount
                                 }
-                            }.getOrElse { 0 }
+                            } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                                throw cancellation
+                            } catch (_: Exception) {
+                                0
+                            }
                         withContext(Dispatchers.Main) {
                             session.notifySearchResultChanged(browser, query, count, params)
                         }
@@ -284,19 +353,36 @@ class MediaLibrarySessionCallback
                 val q = query.trim()
                 val safePage = page.coerceAtLeast(0)
                 val safePageSize = pageSize.coerceIn(1, 50)
+                val isCarController = isCarController(session, browser)
+                val configuration = if (isCarController) androidAutoSettings.currentConfiguration() else null
                 if (q.isBlank()) {
-                    return@future LibraryResult.ofItemList(emptyList(), params)
+                    val recent = if (isCarController) {
+                        database.recentSongs(AUTO_BROWSE_LIMIT).first()
+                            .availableForCar(
+                                localSongsAllowed = configuration?.localSongs == true && androidAutoSettings.hasLocalAudioPermission(),
+                                onlineContentAllowed = configuration?.let(androidAutoSettings::isOnlinePlaybackAllowed) == true,
+                            )
+                            .map { it.toMediaItem(MusicService.RECENT) }
+                    } else {
+                        emptyList()
+                    }
+                    return@future LibraryResult.ofItemList(recent.take(safePageSize), params)
                 }
 
                 val requested = (safePage + 1) * safePageSize
                 val items = ArrayList<MediaItem>(min(requested, 200))
 
-                val offlineSongs = searchOfflineSongs(q, previewSize = requested)
+                val offlineSongs = searchOfflineSongs(q, previewSize = requested, configuration = configuration)
                 val existingSongIds =
                     offlineSongs.items
                         .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
                 val onlineSongs =
-                    searchOnlineSongs(q, previewSize = requested).filter { onlineItem ->
+                    searchOnlineSongs(
+                        q,
+                        previewSize = requested,
+                        allowed = configuration == null ||
+                            (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
+                    ).filter { onlineItem ->
                         existingSongIds.add(searchSongIdentity(onlineItem))
                     }
                 onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
@@ -362,6 +448,13 @@ class MediaLibrarySessionCallback
                         }
                 }
 
+                if (isCarController) {
+                    val artworkAllowed = configuration?.let(androidAutoSettings::isRemoteArtworkAllowed) == true
+                    return@future LibraryResult.ofItemList(
+                        items.take(AUTO_BROWSE_LIMIT).map { it.withCarArtworkPolicy(artworkAllowed) },
+                        params,
+                    )
+                }
                 val from = safePage * safePageSize
                 if (from >= items.size) return@future LibraryResult.ofItemList(emptyList(), params)
                 val to = min(from + safePageSize, items.size)
@@ -378,114 +471,203 @@ class MediaLibrarySessionCallback
             params: MediaLibraryService.LibraryParams?,
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
             scope.future(Dispatchers.IO) {
+                val isCarController = isCarController(session, browser)
+                val configuration = if (isCarController) {
+                    androidAutoSettings.currentConfiguration()
+                } else {
+                    AndroidAutoConfiguration()
+                }
+                val localSongsAllowed = !isCarController ||
+                    (configuration.localSongs && androidAutoSettings.hasLocalAudioPermission())
+                val onlineContentAllowed = !isCarController || androidAutoSettings.isOnlinePlaybackAllowed(configuration)
+                val onlineRecommendationsAllowed = configuration.onlineRecommendations && onlineContentAllowed
+                val remoteArtworkAllowed = !isCarController || androidAutoSettings.isRemoteArtworkAllowed(configuration)
                 val items =
                     when (parentId) {
                         MusicService.ROOT -> {
-                            listOf(
-                                browsableMediaItem(
-                                    MusicService.HOME,
-                                    context.getString(R.string.home),
-                                    null,
-                                    drawableUri(R.drawable.home_filled),
-                                    MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
-                                ),
-                                queueMediaItem(
-                                    MusicService.QUICK_PICKS,
-                                    context.getString(R.string.quick_picks),
-                                    null,
-                                    drawableUri(R.drawable.playlist_play),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.RECENT,
-                                    context.getString(R.string.history),
-                                    null,
-                                    drawableUri(R.drawable.history),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.LIKED,
-                                    context.getString(R.string.liked_songs),
-                                    null,
-                                    drawableUri(R.drawable.favorite),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.DOWNLOADED,
-                                    context.getString(R.string.downloaded_songs),
-                                    null,
-                                    drawableUri(R.drawable.download),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                browsableMediaItem(
-                                    MusicService.SONG,
-                                    context.getString(R.string.songs),
-                                    null,
-                                    drawableUri(R.drawable.music_note),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                browsableMediaItem(
-                                    MusicService.ARTIST,
-                                    context.getString(R.string.artists),
-                                    null,
-                                    drawableUri(R.drawable.artist),
-                                    MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
-                                ),
-                                browsableMediaItem(
-                                    MusicService.ALBUM,
-                                    context.getString(R.string.albums),
-                                    null,
-                                    drawableUri(R.drawable.album),
-                                    MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
-                                ),
-                                browsableMediaItem(
-                                    MusicService.PLAYLIST,
-                                    context.getString(R.string.playlists),
-                                    null,
-                                    drawableUri(R.drawable.queue_music),
-                                    MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
-                                ),
-                            )
+                            if (isCarController) {
+                                listOf(
+                                    browsableMediaItem(
+                                        MusicService.HOME,
+                                        context.getString(R.string.android_auto_for_you),
+                                        null,
+                                        drawableUri(R.drawable.home_filled),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.LIBRARY,
+                                        context.getString(R.string.android_auto_library),
+                                        null,
+                                        drawableUri(R.drawable.queue_music),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.DOWNLOADED,
+                                        context.getString(R.string.downloaded_songs),
+                                        null,
+                                        drawableUri(R.drawable.download),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.RECENT,
+                                        context.getString(R.string.history),
+                                        null,
+                                        drawableUri(R.drawable.history),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                )
+                            } else {
+                                listOf(
+                                    browsableMediaItem(
+                                        MusicService.HOME,
+                                        context.getString(R.string.home),
+                                        null,
+                                        drawableUri(R.drawable.home_filled),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
+                                    ),
+                                    queueMediaItem(
+                                        MusicService.QUICK_PICKS,
+                                        context.getString(R.string.quick_picks),
+                                        null,
+                                        drawableUri(R.drawable.playlist_play),
+                                    ),
+                                    queueMediaItem(
+                                        MusicService.RECENT,
+                                        context.getString(R.string.history),
+                                        null,
+                                        drawableUri(R.drawable.history),
+                                    ),
+                                    queueMediaItem(
+                                        MusicService.LIKED,
+                                        context.getString(R.string.liked_songs),
+                                        null,
+                                        drawableUri(R.drawable.favorite),
+                                    ),
+                                    queueMediaItem(
+                                        MusicService.DOWNLOADED,
+                                        context.getString(R.string.downloaded_songs),
+                                        null,
+                                        drawableUri(R.drawable.download),
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.SONG,
+                                        context.getString(R.string.songs),
+                                        null,
+                                        drawableUri(R.drawable.music_note),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.ARTIST,
+                                        context.getString(R.string.artists),
+                                        null,
+                                        drawableUri(R.drawable.artist),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.ALBUM,
+                                        context.getString(R.string.albums),
+                                        null,
+                                        drawableUri(R.drawable.album),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
+                                    ),
+                                    browsableMediaItem(
+                                        MusicService.PLAYLIST,
+                                        context.getString(R.string.playlists),
+                                        null,
+                                        drawableUri(R.drawable.queue_music),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                                    ),
+                                )
+                            }
                         }
 
+                        MusicService.LIBRARY -> listOf(
+                            queueMediaItem(
+                                MusicService.LIKED,
+                                context.getString(R.string.liked_songs),
+                                null,
+                                drawableUri(R.drawable.favorite),
+                            ),
+                            browsableMediaItem(
+                                MusicService.SONG,
+                                context.getString(R.string.songs),
+                                null,
+                                drawableUri(R.drawable.music_note),
+                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                            ),
+                            browsableMediaItem(
+                                MusicService.ARTIST,
+                                context.getString(R.string.artists),
+                                null,
+                                drawableUri(R.drawable.artist),
+                                MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
+                            ),
+                            browsableMediaItem(
+                                MusicService.ALBUM,
+                                context.getString(R.string.albums),
+                                null,
+                                drawableUri(R.drawable.album),
+                                MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
+                            ),
+                            browsableMediaItem(
+                                MusicService.PLAYLIST,
+                                context.getString(R.string.playlists),
+                                null,
+                                drawableUri(R.drawable.queue_music),
+                                MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                            ),
+                        )
+
                         MusicService.HOME -> {
-                            listOf(
-                                queueMediaItem(
-                                    MusicService.HOME_QUICK_PICKS,
-                                    context.getString(R.string.quick_picks),
-                                    null,
-                                    drawableUri(R.drawable.playlist_play),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.HOME_FORGOTTEN_FAVORITES,
-                                    context.getString(R.string.forgotten_favorites),
-                                    null,
-                                    drawableUri(R.drawable.favorite),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.HOME_KEEP_LISTENING,
-                                    context.getString(R.string.keep_listening),
-                                    null,
-                                    drawableUri(R.drawable.history),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                queueMediaItem(
-                                    MusicService.HOME_SUGGESTED_SONGS,
-                                    context.getString(R.string.android_auto_suggested_songs),
-                                    null,
-                                    drawableUri(R.drawable.music_note),
-                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                ),
-                                browsableMediaItem(
-                                    MusicService.HOME_MIXES_AND_RADIOS,
-                                    context.getString(R.string.android_auto_mixes_and_radios),
-                                    null,
-                                    drawableUri(R.drawable.radio),
-                                    MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
-                                ),
-                            )
+                            buildList {
+                                add(
+                                    queueMediaItem(
+                                        MusicService.HOME_QUICK_PICKS,
+                                        context.getString(R.string.quick_picks),
+                                        null,
+                                        drawableUri(R.drawable.playlist_play),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                )
+                                add(
+                                    queueMediaItem(
+                                        MusicService.HOME_FORGOTTEN_FAVORITES,
+                                        context.getString(R.string.forgotten_favorites),
+                                        null,
+                                        drawableUri(R.drawable.favorite),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                )
+                                add(
+                                    queueMediaItem(
+                                        MusicService.HOME_KEEP_LISTENING,
+                                        context.getString(R.string.keep_listening),
+                                        null,
+                                        drawableUri(R.drawable.history),
+                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                    ),
+                                )
+                                if (onlineRecommendationsAllowed) {
+                                    add(
+                                        queueMediaItem(
+                                            MusicService.HOME_SUGGESTED_SONGS,
+                                            context.getString(R.string.android_auto_suggested_songs),
+                                            null,
+                                            drawableUri(R.drawable.music_note),
+                                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                        ),
+                                    )
+                                }
+                                add(
+                                    browsableMediaItem(
+                                        MusicService.HOME_MIXES_AND_RADIOS,
+                                        context.getString(R.string.android_auto_mixes_and_radios),
+                                        null,
+                                        drawableUri(R.drawable.radio),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                                    ),
+                                )
+                            }
                         }
 
                         MusicService.HOME_QUICK_PICKS -> {
@@ -494,6 +676,7 @@ class MediaLibrarySessionCallback
                                 .first()
                                 .shuffled()
                                 .take(AUTO_BROWSE_LIMIT)
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
@@ -503,27 +686,30 @@ class MediaLibrarySessionCallback
                                 .first()
                                 .shuffled()
                                 .take(AUTO_BROWSE_LIMIT)
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
                         MusicService.HOME_KEEP_LISTENING -> {
                             homeKeepListeningSongs()
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
                         MusicService.HOME_SUGGESTED_SONGS -> {
-                            homeSuggestedSongs()
+                            (if (onlineRecommendationsAllowed) homeSuggestedSongs() else emptyList())
                                 .map { it.toMediaItem(parentId) }
                         }
 
                         MusicService.HOME_MIXES_AND_RADIOS -> {
-                            homeMixesAndRadios()
+                            homeMixesAndRadios(includeOnline = onlineRecommendationsAllowed)
                         }
 
                         MusicService.QUICK_PICKS -> {
                             database
                                 .quickPicks()
                                 .first()
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
@@ -531,6 +717,7 @@ class MediaLibrarySessionCallback
                             database
                                 .recentSongs(AUTO_BROWSE_LIMIT)
                                 .first()
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
@@ -540,6 +727,7 @@ class MediaLibrarySessionCallback
                                     SongSortType.CREATE_DATE,
                                     descending = true,
                                 ).first()
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
@@ -553,6 +741,7 @@ class MediaLibrarySessionCallback
                             database
                                 .songsByCreateDateAsc()
                                 .first()
+                                .availableForCar(localSongsAllowed, onlineContentAllowed)
                                 .map { it.toMediaItem(parentId) }
                         }
 
@@ -634,6 +823,7 @@ class MediaLibrarySessionCallback
                                     database
                                         .artistSongsByCreateDateAsc(parentId.removePrefix("${MusicService.ARTIST}/"))
                                         .first()
+                                        .availableForCar(localSongsAllowed, onlineContentAllowed)
                                         .map {
                                             it.toMediaItem(parentId)
                                         }
@@ -643,6 +833,7 @@ class MediaLibrarySessionCallback
                                     database
                                         .albumSongs(parentId.removePrefix("${MusicService.ALBUM}/"))
                                         .first()
+                                        .availableForCar(localSongsAllowed, onlineContentAllowed)
                                         .map {
                                             it.toMediaItem(parentId)
                                         }
@@ -652,11 +843,13 @@ class MediaLibrarySessionCallback
                                     playlistChildren(
                                         session = session,
                                         parentId = parentId,
+                                        localSongsAllowed = localSongsAllowed,
+                                        onlineContentAllowed = onlineContentAllowed,
                                     )
                                 }
 
                                 parentId.startsWith("${MusicService.ONLINE_PLAYLIST}/") -> {
-                                    onlinePlaylistChildren(parentId)
+                                    if (onlineContentAllowed) onlinePlaylistChildren(parentId) else emptyList()
                                 }
 
                                 else -> {
@@ -666,7 +859,12 @@ class MediaLibrarySessionCallback
                         }
                     }
 
-                LibraryResult.ofItemList(items.paged(page, pageSize), params)
+                val visibleItems = if (isCarController) {
+                    items.take(AUTO_BROWSE_LIMIT).map { it.withCarArtworkPolicy(remoteArtworkAllowed) }
+                } else {
+                    items.paged(page, pageSize)
+                }
+                LibraryResult.ofItemList(visibleItems, params)
             }
 
         override fun onGetItem(
@@ -675,6 +873,7 @@ class MediaLibrarySessionCallback
             mediaId: String,
         ): ListenableFuture<LibraryResult<MediaItem>> =
             scope.future(Dispatchers.IO) {
+                val isCarController = isCarController(session, browser)
                 when {
                     mediaId == MusicService.ROOT -> {
                         LibraryResult.ofItem(
@@ -698,7 +897,7 @@ class MediaLibrarySessionCallback
                         LibraryResult.ofItem(
                             browsableMediaItem(
                                 MusicService.HOME,
-                                context.getString(R.string.home),
+                                context.getString(if (isCarController) R.string.android_auto_for_you else R.string.home),
                                 null,
                                 drawableUri(R.drawable.home_filled),
                                 MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
@@ -707,9 +906,22 @@ class MediaLibrarySessionCallback
                         )
                     }
 
+                    mediaId == MusicService.LIBRARY -> {
+                        LibraryResult.ofItem(
+                            browsableMediaItem(
+                                MusicService.LIBRARY,
+                                context.getString(R.string.android_auto_library),
+                                null,
+                                drawableUri(R.drawable.queue_music),
+                                MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
+                            ),
+                            null,
+                        )
+                    }
+
                     mediaId == MusicService.HOME_QUICK_PICKS -> {
                         LibraryResult.ofItem(
-                            queueMediaItem(
+                            browsableMediaItem(
                                 MusicService.HOME_QUICK_PICKS,
                                 context.getString(R.string.quick_picks),
                                 null,
@@ -800,13 +1012,22 @@ class MediaLibrarySessionCallback
 
                     mediaId == MusicService.RECENT -> {
                         LibraryResult.ofItem(
-                            queueMediaItem(
-                                MusicService.RECENT,
-                                context.getString(R.string.history),
-                                null,
-                                drawableUri(R.drawable.history),
-                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                            ),
+                            if (isCarController) {
+                                browsableMediaItem(
+                                    MusicService.RECENT,
+                                    context.getString(R.string.history),
+                                    null,
+                                    drawableUri(R.drawable.history),
+                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                )
+                            } else {
+                                queueMediaItem(
+                                    MusicService.RECENT,
+                                    context.getString(R.string.history),
+                                    null,
+                                    drawableUri(R.drawable.history),
+                                )
+                            },
                             null,
                         )
                     }
@@ -826,13 +1047,22 @@ class MediaLibrarySessionCallback
 
                     mediaId == MusicService.DOWNLOADED -> {
                         LibraryResult.ofItem(
-                            queueMediaItem(
-                                MusicService.DOWNLOADED,
-                                context.getString(R.string.downloaded_songs),
-                                null,
-                                drawableUri(R.drawable.download),
-                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                            ),
+                            if (isCarController) {
+                                browsableMediaItem(
+                                    MusicService.DOWNLOADED,
+                                    context.getString(R.string.downloaded_songs),
+                                    null,
+                                    drawableUri(R.drawable.download),
+                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                )
+                            } else {
+                                queueMediaItem(
+                                    MusicService.DOWNLOADED,
+                                    context.getString(R.string.downloaded_songs),
+                                    null,
+                                    drawableUri(R.drawable.download),
+                                )
+                            },
                             null,
                         )
                     }
@@ -956,19 +1186,44 @@ class MediaLibrarySessionCallback
                 val defaultResult =
                     MediaSession.MediaItemsWithStartPosition(emptyList(), startIndex, startPositionMs)
                 val firstItem = mediaItems.firstOrNull() ?: return@future defaultResult
-                val voiceQuery =
-                    firstItem.requestMetadata.searchQuery
-                        ?.trim()
-                        .orEmpty()
-                if (voiceQuery.isNotBlank()) {
-                    val offlineSongs = searchOfflineSongs(voiceQuery, previewSize = 50)
-                    val existingSongIds =
-                        offlineSongs.items.mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
-                    val onlineSongs =
-                        searchOnlineSongs(voiceQuery, previewSize = 50).filter { onlineItem ->
+                val isCarController = isCarController(mediaSession, controller)
+                val configuration = if (isCarController) androidAutoSettings.currentConfiguration() else null
+                val localSongsAllowed = configuration == null ||
+                    (configuration.localSongs && androidAutoSettings.hasLocalAudioPermission())
+                val onlineContentAllowed = configuration == null || androidAutoSettings.isOnlinePlaybackAllowed(configuration)
+                val voicePlaylist = firstItem.requestMetadata.extras
+                    ?.getString(MediaStore.EXTRA_MEDIA_PLAYLIST)
+                    ?.trim()
+                    .orEmpty()
+                if (isCarController && voicePlaylist.isNotBlank()) {
+                    val playlist = database.searchPlaylists(voicePlaylist, previewSize = 1).first().firstOrNull()
+                    if (playlist != null) {
+                        val songs = playlistSongs(playlist.id)
+                            .availableForCar(localSongsAllowed, onlineContentAllowed)
+                        if (songs.isNotEmpty()) {
+                            return@future MediaSession.MediaItemsWithStartPosition(
+                                songs.map { it.toMediaItem() },
+                                0,
+                                startPositionMs,
+                            )
+                        }
+                    }
+                }
+                val voiceQuery = firstItem.voiceSearchQuery()
+                val isVoiceSearchRequest = firstItem.requestMetadata.searchQuery != null ||
+                    firstItem.requestMetadata.extras?.containsKey(MediaStore.EXTRA_MEDIA_FOCUS) == true
+                if (voiceQuery.isNotBlank() || (isCarController && isVoiceSearchRequest)) {
+                    val searchQueue = if (isCarController) {
+                        resolveVoiceMediaItems(voiceQuery)
+                    } else {
+                        val offlineSongs = searchOfflineSongs(voiceQuery, previewSize = 50)
+                        val existingSongIds = offlineSongs.items
+                            .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
+                        val onlineSongs = searchOnlineSongs(voiceQuery, previewSize = 50).filter { onlineItem ->
                             existingSongIds.add(searchSongIdentity(onlineItem))
                         }
-                    val searchQueue = interleaveMediaItems(offlineSongs.items, onlineSongs)
+                        interleaveMediaItems(offlineSongs.items, onlineSongs)
+                    }
                     if (searchQueue.isNotEmpty()) {
                         return@future MediaSession.MediaItemsWithStartPosition(
                             searchQueue,
@@ -986,6 +1241,7 @@ class MediaLibrarySessionCallback
                                 .first()
                                 .shuffled()
                                 .take(AUTO_BROWSE_LIMIT)
+                                .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
@@ -996,26 +1252,36 @@ class MediaLibrarySessionCallback
                                 .first()
                                 .shuffled()
                                 .take(AUTO_BROWSE_LIMIT)
+                                .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
                     MusicService.HOME_KEEP_LISTENING -> {
                         val songs = homeKeepListeningSongs()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
                     MusicService.HOME_SUGGESTED_SONGS -> {
-                        val songs = homeSuggestedSongs().map { it.toMediaItem() }
+                        val songs = if (configuration == null ||
+                            (configuration.onlineRecommendations && onlineContentAllowed)
+                        ) {
+                            homeSuggestedSongs().map { it.toMediaItem() }
+                        } else {
+                            emptyList()
+                        }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
                     MusicService.QUICK_PICKS -> {
                         val songs = database.quickPicks().first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
                     MusicService.RECENT -> {
                         val songs = database.recentSongs(AUTO_BROWSE_LIMIT).first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
@@ -1026,6 +1292,7 @@ class MediaLibrarySessionCallback
                                     SongSortType.CREATE_DATE,
                                     descending = true,
                                 ).first()
+                                .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
 
@@ -1037,6 +1304,7 @@ class MediaLibrarySessionCallback
                     MusicService.SONG -> {
                         val songId = path.getOrNull(1) ?: return@future defaultResult
                         val allSongs = database.songsByCreateDateAsc().first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         MediaSession.MediaItemsWithStartPosition(
                             allSongs.map { it.toMediaItem() },
                             allSongs.indexOfFirst { it.id == songId }.takeIf { it != -1 } ?: 0,
@@ -1048,6 +1316,7 @@ class MediaLibrarySessionCallback
                         val songId = path.getOrNull(2) ?: return@future defaultResult
                         val artistId = path.getOrNull(1) ?: return@future defaultResult
                         val songs = database.artistSongsByCreateDateAsc(artistId).first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         MediaSession.MediaItemsWithStartPosition(
                             songs.map { it.toMediaItem() },
                             songs.indexOfFirst { it.id == songId }.takeIf { it != -1 } ?: 0,
@@ -1060,9 +1329,11 @@ class MediaLibrarySessionCallback
                         val albumId = path.getOrNull(1) ?: return@future defaultResult
                         val albumWithSongs =
                             database.albumWithSongs(albumId).first() ?: return@future defaultResult
+                        val songs = albumWithSongs.songs
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         MediaSession.MediaItemsWithStartPosition(
-                            albumWithSongs.songs.map { it.toMediaItem() },
-                            albumWithSongs.songs.indexOfFirst { it.id == songId }.takeIf { it != -1 }
+                            songs.map { it.toMediaItem() },
+                            songs.indexOfFirst { it.id == songId }.takeIf { it != -1 }
                                 ?: 0,
                             startPositionMs,
                         )
@@ -1097,6 +1368,7 @@ class MediaLibrarySessionCallback
                             ).let { songs ->
                                 if (action == PLAYLIST_ACTION_SHUFFLE) songs.shuffled() else songs
                             }
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         if (action == PLAYLIST_ACTION_SHUFFLE) {
                             withContext(Dispatchers.Main.immediate) {
                                 mediaSession.player.shuffleModeEnabled = true
@@ -1112,6 +1384,7 @@ class MediaLibrarySessionCallback
                     }
 
                     MusicService.ONLINE_PLAYLIST -> {
+                        if (!onlineContentAllowed) return@future defaultResult
                         val playlistId = path.getOrNull(1) ?: return@future defaultResult
                         val action = path.getOrNull(2)
                         val selectedSongId =
@@ -1138,6 +1411,12 @@ class MediaLibrarySessionCallback
                     else -> {
                         val directMediaId = firstItem.mediaId.trim()
                         if (directMediaId.isNotBlank() && !directMediaId.contains("/")) {
+                            if (isCarController && !isMediaIdAvailableForCar(
+                                    directMediaId,
+                                    localSongsAllowed,
+                                    onlineContentAllowed,
+                                )
+                            ) return@future defaultResult
                             val selectedItem = onlineSearchItemCache[directMediaId] ?: firstItem
                             return@future MediaSession.MediaItemsWithStartPosition(
                                 listOf(selectedItem),
@@ -1153,8 +1432,10 @@ class MediaLibrarySessionCallback
                         if (query.isBlank()) return@future defaultResult
 
                         val matchedSongs = database.searchSongs(query, previewSize = 50).first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         val songId = matchedSongs.firstOrNull()?.id ?: return@future defaultResult
                         val allSongs = database.songsByCreateDateAsc().first()
+                            .let { if (isCarController) it.availableForCar(localSongsAllowed, onlineContentAllowed) else it }
                         MediaSession.MediaItemsWithStartPosition(
                             allSongs.map { it.toMediaItem() },
                             allSongs.indexOfFirst { it.id == songId }.takeIf { it != -1 } ?: 0,
@@ -1172,14 +1453,14 @@ class MediaLibrarySessionCallback
             scope.future(Dispatchers.IO) {
                 mediaItems
                     .flatMap { item ->
-                        val query =
-                            item.requestMetadata.searchQuery
-                                ?.trim()
-                                .orEmpty()
+                        val query = item.voiceSearchQuery()
                         if (query.isBlank()) {
                             listOf(item)
                         } else {
-                            val resolved = resolveVoiceMediaItems(query)
+                            val resolved = resolveVoiceMediaItems(
+                                query = query,
+                                applyAndroidAutoPolicy = isCarController(mediaSession, controller),
+                            )
                             resolved.ifEmpty { listOf(item) }
                         }
                     }.toMutableList()
@@ -1211,6 +1492,8 @@ class MediaLibrarySessionCallback
         private suspend fun playlistChildren(
             session: MediaLibrarySession,
             parentId: String,
+            localSongsAllowed: Boolean,
+            onlineContentAllowed: Boolean,
         ): List<MediaItem> {
             val path = parentId.pathSegments()
             val playlistId = path.getOrNull(1) ?: return emptyList()
@@ -1262,7 +1545,9 @@ class MediaLibrarySessionCallback
                                 )
                             }
                         }
-                    actionItems + playlistSongs(playlistId).map { it.toMediaItem(parentId) }
+                    actionItems + playlistSongs(playlistId)
+                        .availableForCar(localSongsAllowed, onlineContentAllowed)
+                        .map { it.toMediaItem(parentId) }
                 }
 
                 PLAYLIST_ACTION_SORT -> {
@@ -1280,12 +1565,17 @@ class MediaLibrarySessionCallback
                         val sortOption =
                             playlistSortOption(path.getOrNull(3), path.getOrNull(4))
                                 ?: return emptyList()
-                        playlistSongs(playlistId, sortOption).map { it.toMediaItem(parentId) }
+                        playlistSongs(playlistId, sortOption)
+                            .availableForCar(localSongsAllowed, onlineContentAllowed)
+                            .map { it.toMediaItem(parentId) }
                     }
                 }
 
                 PLAYLIST_ACTION_SHUFFLE -> {
-                    playlistSongs(playlistId).shuffled().map { it.toMediaItem(parentId) }
+                    playlistSongs(playlistId)
+                        .availableForCar(localSongsAllowed, onlineContentAllowed)
+                        .shuffled()
+                        .map { it.toMediaItem(parentId) }
                 }
 
                 else -> {
@@ -1526,7 +1816,7 @@ class MediaLibrarySessionCallback
                 .onEach { onlineSearchItemCache[it.id] = it.toMediaItem() }
         }
 
-        private suspend fun homeMixesAndRadios(): List<MediaItem> {
+        private suspend fun homeMixesAndRadios(includeOnline: Boolean): List<MediaItem> {
             val localPlaylists =
                 database
                     .playlists(PlaylistSortType.LAST_UPDATED, descending = true)
@@ -1545,7 +1835,7 @@ class MediaLibrarySessionCallback
                             MediaMetadata.MEDIA_TYPE_PLAYLIST,
                         )
                     }
-            val onlinePlaylists = homeOnlinePlaylists()
+            val onlinePlaylists = if (includeOnline) homeOnlinePlaylists() else emptyList()
             return localPlaylists + onlinePlaylists
         }
 
@@ -1796,6 +2086,20 @@ class MediaLibrarySessionCallback
 
         private fun String.pathSegments(): List<String> = split("/").filter { it.isNotBlank() }
 
+        private fun MediaItem.voiceSearchQuery(): String {
+            val extras = requestMetadata.extras
+            return listOfNotNull(
+                requestMetadata.searchQuery,
+                extras?.getString(MediaStore.EXTRA_MEDIA_TITLE),
+                extras?.getString(MediaStore.EXTRA_MEDIA_ARTIST),
+                extras?.getString(MediaStore.EXTRA_MEDIA_ALBUM),
+                extras?.getString(MediaStore.EXTRA_MEDIA_GENRE),
+            ).map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+                .joinToString(" ")
+        }
+
         private fun drawableUri(
             @DrawableRes id: Int,
         ) = Uri
@@ -1870,6 +2174,38 @@ class MediaLibrarySessionCallback
                         .build(),
                 ).build()
 
+        private fun MediaItem.withCarArtworkPolicy(remoteArtworkAllowed: Boolean): MediaItem {
+            val artworkUri = mediaMetadata.artworkUri ?: return this
+            if (remoteArtworkAllowed || (artworkUri.scheme != "http" && artworkUri.scheme != "https")) return this
+            return buildUpon()
+                .setMediaMetadata(mediaMetadata.buildUpon().setArtworkUri(null).build())
+                .build()
+        }
+
+        private fun List<Song>.availableForCar(
+            localSongsAllowed: Boolean,
+            onlineContentAllowed: Boolean,
+        ): List<Song> {
+            val cachedIds = if (onlineContentAllowed) emptySet() else cachedSongIds().toHashSet()
+            return filter { song ->
+                when {
+                    song.id.isLocalMediaId() -> localSongsAllowed
+                    onlineContentAllowed -> true
+                    else -> song.id in cachedIds
+                }
+            }
+        }
+
+        private fun isMediaIdAvailableForCar(
+            mediaId: String,
+            localSongsAllowed: Boolean,
+            onlineContentAllowed: Boolean,
+        ): Boolean = when {
+            mediaId.isLocalMediaId() -> localSongsAllowed
+            onlineContentAllowed -> true
+            else -> mediaId in cachedSongIds()
+        }
+
         @JvmName("songsToMediaItemsWithStartPosition")
         private fun List<Song>.toMediaItemsWithStartPosition(
             selectedSongId: String?,
@@ -1907,6 +2243,7 @@ class MediaLibrarySessionCallback
         private suspend fun searchOfflineSongs(
             query: String,
             previewSize: Int,
+            configuration: AndroidAutoConfiguration? = null,
         ): OfflineSongSearchResult {
             if (query.isBlank() || previewSize <= 0) {
                 return OfflineSongSearchResult(
@@ -1915,17 +2252,26 @@ class MediaLibrarySessionCallback
                 )
             }
 
+            val localSongsAllowed = configuration == null ||
+                (configuration.localSongs && androidAutoSettings.hasLocalAudioPermission())
+            val onlineContentAllowed = configuration == null || androidAutoSettings.isOnlinePlaybackAllowed(configuration)
             val librarySongs = database.searchSongs(query, previewSize = previewSize).first()
+                .let { songs ->
+                    if (configuration == null) songs else songs.availableForCar(localSongsAllowed, onlineContentAllowed)
+                }
             val libraryIds = librarySongs.mapTo(HashSet(librarySongs.size)) { it.id }
             val cachedOnlySongs = searchCachedOnlySongs(query, excludeIds = libraryIds)
+                .let { songs ->
+                    if (configuration == null) songs else songs.availableForCar(localSongsAllowed, onlineContentAllowed)
+                }
 
+            val items = interleaveMediaItems(
+                first = librarySongs.map { it.toMediaItem(MusicService.SONG) },
+                second = cachedOnlySongs.take(previewSize).map { it.toMediaItem() },
+            ).take(previewSize)
             return OfflineSongSearchResult(
-                items =
-                    interleaveMediaItems(
-                        first = librarySongs.map { it.toMediaItem(MusicService.SONG) },
-                        second = cachedOnlySongs.take(previewSize).map { it.toMediaItem() },
-                    ).take(previewSize),
-                count = database.searchSongsCount(query) + cachedOnlySongs.size,
+                items = items,
+                count = if (configuration == null) database.searchSongsCount(query) + cachedOnlySongs.size else items.size,
             )
         }
 
@@ -1990,13 +2336,31 @@ class MediaLibrarySessionCallback
         internal suspend fun resolveVoiceMediaItems(
             query: String,
             previewSize: Int = 50,
+            applyAndroidAutoPolicy: Boolean = true,
         ): List<MediaItem> {
             val q = query.trim()
-            if (q.isBlank()) return emptyList()
-            val offlineSongs = searchOfflineSongs(q, previewSize)
+            val configuration = androidAutoSettings.currentConfiguration().takeIf { applyAndroidAutoPolicy }
+            if (q.isBlank()) {
+                if (configuration == null) return emptyList()
+                val localSongsAllowed = configuration.localSongs && androidAutoSettings.hasLocalAudioPermission()
+                val onlineContentAllowed = androidAutoSettings.isOnlinePlaybackAllowed(configuration)
+                val recent = database.recentSongs(previewSize).first()
+                    .availableForCar(localSongsAllowed, onlineContentAllowed)
+                if (recent.isNotEmpty()) return recent.map { it.toMediaItem(MusicService.RECENT) }
+                return database.quickPicks().first()
+                    .availableForCar(localSongsAllowed, onlineContentAllowed)
+                    .take(previewSize)
+                    .map { it.toMediaItem(MusicService.QUICK_PICKS) }
+            }
+            val offlineSongs = searchOfflineSongs(q, previewSize, configuration)
             val existingIds = offlineSongs.items.mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
             val onlineSongs =
-                searchOnlineSongs(q, previewSize).filter { onlineItem ->
+                searchOnlineSongs(
+                    q,
+                    previewSize,
+                    allowed = configuration == null ||
+                        (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
+                ).filter { onlineItem ->
                     existingIds.add(searchSongIdentity(onlineItem))
                 }
             onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
@@ -2008,13 +2372,18 @@ class MediaLibrarySessionCallback
         private suspend fun searchOnlineSongs(
             query: String,
             previewSize: Int,
+            allowed: Boolean = true,
         ): List<MediaItem> {
-            if (query.isBlank() || previewSize <= 0) return emptyList()
+            if (!allowed || query.isBlank() || previewSize <= 0) return emptyList()
+            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            val hideVideo = context.dataStore.get(HideVideoKey, false)
             return YouTube
                 .search(query, YouTube.SearchFilter.FILTER_SONG)
                 .getOrNull()
                 ?.items
                 .orEmpty()
+                .filterExplicit(hideExplicit)
+                .filterVideo(hideVideo)
                 .asSequence()
                 .filterIsInstance<SongItem>()
                 .distinctBy { it.id }

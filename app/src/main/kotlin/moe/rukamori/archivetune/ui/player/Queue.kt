@@ -634,7 +634,7 @@ fun Queue(
                     )
                 }
 
-                PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
+                PlayerDesignStyle.V7 -> {
                     val audioDevice by playerConnection.service.activeAudioDevice.collectAsStateWithLifecycle()
 
                     val view = LocalView.current
@@ -648,6 +648,34 @@ fun Queue(
                     }
 
                     QueueCollapsedContentV7(
+                        textBackgroundColor = Color.White,
+                        onExpandQueue = openQueue,
+                        onShowLyrics = onShowLyrics,
+                        onDeviceClick = {
+                            SystemMediaControlResolver.openMediaOutputSwitcher(context)
+                        },
+                        onMusicTogetherClick = {
+                            playerBottomSheetState.collapseSoft()
+                            navController.navigate("settings/music_together")
+                        },
+                        device = audioDevice,
+                    )
+                }
+
+                PlayerDesignStyle.V8 -> {
+                    val audioDevice by playerConnection.service.activeAudioDevice.collectAsStateWithLifecycle()
+
+                    val view = LocalView.current
+                    DisposableEffect(view) {
+                        val listener =
+                            ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+                                if (hasFocus) playerConnection.service.refreshActiveDevice()
+                            }
+                        view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+                        onDispose { view.viewTreeObserver.removeOnWindowFocusChangeListener(listener) }
+                    }
+
+                    QueueCollapsedContentV8(
                         showCodecOnPlayer = showCodecOnPlayer,
                         currentFormat = currentFormat,
                         textBackgroundColor = TextBackgroundColor,

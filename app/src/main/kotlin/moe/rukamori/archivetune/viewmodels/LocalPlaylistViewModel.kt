@@ -188,6 +188,7 @@ class LocalPlaylistViewModel
 
         // Cache for current suggestion page
         private var currentSuggestionPage: PlaylistSuggestionPage? = null
+        private val visitedSuggestionPages = mutableMapOf<Int, PlaylistSuggestion>()
 
         private val _isRefreshing = MutableStateFlow(false)
         val isRefreshing = _isRefreshing.asStateFlow()
@@ -235,15 +236,6 @@ class LocalPlaylistViewModel
                 }.collect { (playlist, songs) ->
                     playlist?.let {
                         loadPlaylistSuggestions()
-                    }
-                }
-            }
-
-            // Auto-refresh suggestions when they become empty
-            viewModelScope.launch {
-                playlistSuggestions.collect { suggestions ->
-                    if (suggestions != null && suggestions.items.isEmpty() && suggestions.hasMore && !_isLoadingSuggestions.value) {
-                        loadMoreSuggestions()
                     }
                 }
             }
@@ -357,6 +349,7 @@ class LocalPlaylistViewModel
                     suggestedSongIds.value = suggestedSongIds.value + currentSongs.map { it.song.id }.toSet()
                     suggestionsCacheTimestamp.value = 0L
                     currentSuggestionPage = null
+                    visitedSuggestionPages.clear()
 
                     try {
                         val suggestionSource =
@@ -438,6 +431,55 @@ class LocalPlaylistViewModel
                     } finally {
                         _isLoadingSuggestions.value = false
                     }
+                }
+            }
+        }
+
+        fun changeSuggestionPage(direction: Int) {
+            if (direction != -1 && direction != 1) return
+            if (_isLoadingSuggestions.value) return
+            val current = _playlistSuggestions.value ?: return
+            val targetIndex = current.currentQueryIndex + direction
+            val query = suggestionQueries.value.getOrNull(targetIndex) ?: return
+            _isLoadingSuggestions.value = true
+
+            viewModelScope.launch {
+                try {
+                    suggestionLoadMutex.withLock {
+                        if (_playlistSuggestions.value !== current) return@withLock
+                        visitedSuggestionPages[current.currentQueryIndex] = current
+                        val target = visitedSuggestionPages[targetIndex] ?: withContext(Dispatchers.IO) {
+                            val result = YouTube.search(
+                                query = query.query,
+                                filter = YouTube.SearchFilter.FILTER_SONG,
+                                useAccountContext = false,
+                            ).getOrThrow()
+                            val items = filterSuggestionItems(result.items).shuffled().take(10)
+                            PlaylistSuggestion(
+                                items = items,
+                                continuation = result.continuation,
+                                currentQueryIndex = targetIndex,
+                                totalQueries = suggestionQueries.value.size,
+                                query = query.query,
+                                hasMore = result.continuation != null ||
+                                    targetIndex < suggestionQueries.value.lastIndex,
+                            )
+                        }
+                        visitedSuggestionPages[targetIndex] = target
+                        suggestedSongIds.value = suggestedSongIds.value + target.items.map { it.id }
+                        currentSuggestionQueryIndex.value = targetIndex
+                        currentSuggestionPage = PlaylistSuggestionPage(
+                            items = target.items,
+                            continuation = target.continuation,
+                        )
+                        _playlistSuggestions.value = target
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (exception: Exception) {
+                    reportException(exception)
+                } finally {
+                    _isLoadingSuggestions.value = false
                 }
             }
         }

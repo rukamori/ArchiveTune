@@ -7,17 +7,25 @@
 
 package moe.rukamori.archivetune.home
 
+import android.content.Context
 import androidx.compose.runtime.Immutable
 import com.google.common.collect.ImmutableList
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
+import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.innertube.pages.HomePage
 import java.util.Locale
 import javax.inject.Inject
 
@@ -49,6 +57,141 @@ data class HomePresentationPreferences(
     val quickPicksMode: QuickPicks,
     val showTonalBackdrop: Boolean,
 )
+
+data class PreparedCommunityHomePage(
+    val homePage: HomePage,
+    val communitySection: HomePage.Section?,
+)
+
+class PrepareCommunityHomePageUseCase
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+    ) {
+        private val localizedCommunityLabel = context.getString(R.string.filter_community_playlists)
+        private val localizedPlaylistLabel = context.getString(R.string.filter_playlists)
+
+        operator fun invoke(
+            homePage: HomePage,
+            allowStructuralFallback: Boolean,
+        ): PreparedCommunityHomePage {
+            val candidates =
+                homePage.sections.withIndex().filter { (_, section) ->
+                    section.featuredCards.isNotEmpty() || section.isPlaylistShelf()
+                }
+            val selected =
+                candidates.firstOrNull { (_, section) -> section.title.matchesCommunityLabel() }
+                    ?: candidates
+                        .filter { (_, section) -> allowStructuralFallback && section.endpoint == null }
+                        .singleOrNull()
+                    ?: return PreparedCommunityHomePage(homePage = homePage, communitySection = null)
+            val communitySection = selected.value.toFeaturedCommunitySection()
+            return PreparedCommunityHomePage(
+                homePage = homePage.copy(sections = homePage.sections.filterIndexed { index, _ -> index != selected.index }),
+                communitySection = communitySection,
+            )
+        }
+
+        private fun HomePage.Section.isPlaylistShelf(): Boolean =
+            items.size >= MINIMUM_COMMUNITY_PLAYLISTS && items.all { item -> item is PlaylistItem }
+
+        private fun HomePage.Section.toFeaturedCommunitySection(): HomePage.Section {
+            if (featuredCards.isNotEmpty()) return this
+            val playlists = items.filterIsInstance<PlaylistItem>()
+            return copy(
+                featuredCards =
+                    playlists.map { playlist ->
+                        HomePage.Section.FeaturedCard(
+                            id = playlist.id,
+                            title = playlist.title,
+                            subtitle =
+                                listOfNotNull(playlist.author?.name, playlist.songCountText)
+                                    .distinct()
+                                    .joinToString(separator = " • ")
+                                    .takeIf(String::isNotBlank),
+                            thumbnail = playlist.thumbnail,
+                            endpoint = null,
+                            playEndpoint = playlist.playEndpoint,
+                            shuffleEndpoint = playlist.shuffleEndpoint,
+                            radioEndpoint = playlist.radioEndpoint,
+                            itemIds = emptyList(),
+                        )
+                    },
+            )
+        }
+
+        private fun String.matchesCommunityLabel(): Boolean {
+            val normalizedTitle = lowercase(Locale.getDefault())
+            if (normalizedTitle.contains(ENGLISH_COMMUNITY_TOKEN)) return true
+            val titleTokens = normalizedTitle.tokens()
+            val localizedCommunityTokens =
+                localizedCommunityLabel
+                    .replace(localizedPlaylistLabel, newValue = "", ignoreCase = true)
+                    .lowercase(Locale.getDefault())
+                    .tokens()
+                    .ifEmpty { localizedCommunityLabel.lowercase(Locale.getDefault()).tokens() }
+            return titleTokens.any { titleToken ->
+                localizedCommunityTokens.any { labelToken ->
+                    titleToken == labelToken || titleToken.commonPrefixWith(labelToken).length >= MINIMUM_SHARED_PREFIX_LENGTH
+                }
+            }
+        }
+
+        private fun String.tokens(): List<String> =
+            split(TOKEN_SEPARATOR).filter { token -> token.length >= MINIMUM_TOKEN_LENGTH }
+
+        private companion object {
+            val TOKEN_SEPARATOR = Regex("[^\\p{L}\\p{N}]+")
+            const val ENGLISH_COMMUNITY_TOKEN = "community"
+            const val MINIMUM_COMMUNITY_PLAYLISTS = 2
+            const val MINIMUM_SHARED_PREFIX_LENGTH = 6
+            const val MINIMUM_TOKEN_LENGTH = 4
+        }
+    }
+
+class LoadCommunityPlaylistPreviewsUseCase
+    @Inject
+    constructor(
+        private val repository: HomeRepository,
+    ) {
+        suspend operator fun invoke(section: HomePage.Section): HomePage.Section =
+            supervisorScope {
+                val semaphore = Semaphore(PREVIEW_LOAD_CONCURRENCY)
+                val existingSongs = section.items.filterIsInstance<SongItem>().associateBy(SongItem::id)
+                val previews =
+                    section.featuredCards.map { card ->
+                        async {
+                            val currentPreview = card.itemIds.mapNotNull(existingSongs::get)
+                            if (currentPreview.isNotEmpty()) {
+                                card.id to currentPreview
+                            } else {
+                                val result =
+                                    semaphore.withPermit {
+                                        repository.loadPlaylistPreview(card.id, PREVIEW_SONG_COUNT)
+                                    }
+                                result.exceptionOrNull()?.let { throwable ->
+                                    if (throwable is CancellationException) throw throwable
+                                }
+                                card.id to result.getOrDefault(emptyList())
+                            }
+                        }
+                    }.awaitAll()
+                        .toMap()
+                val previewSongs = previews.values.flatten().distinctBy(SongItem::id)
+                section.copy(
+                    items = (section.items + previewSongs).distinctBy(YTItem::id),
+                    featuredCards =
+                        section.featuredCards.map { card ->
+                            card.copy(itemIds = previews[card.id].orEmpty().map(SongItem::id))
+                        },
+                )
+            }
+
+        private companion object {
+            const val PREVIEW_LOAD_CONCURRENCY = 3
+            const val PREVIEW_SONG_COUNT = 3
+        }
+    }
 
 @Immutable
 data class QuickPickSeed(

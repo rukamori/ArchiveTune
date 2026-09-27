@@ -237,56 +237,149 @@ jobs:
               if match is None:
                   return None
               marker = match.group("marker")
-              if marker.startswith("=") and marker_line != marker:
-                  raise ValueError("Conflict separator cannot contain a label.")
               return marker[0], len(marker)
 
 
-          def flatten_conflicts(path: Path, text: str) -> tuple[str, int]:
+          RESOURCE_OPEN_TAG_PATTERN = re.compile(
+              r"^[ \t]*<resources>[ \t]*$",
+              re.IGNORECASE,
+          )
+          RESOURCE_CLOSE_TAG_PATTERN = re.compile(
+              r"^[ \t]*</resources>[ \t]*$",
+              re.IGNORECASE,
+          )
+
+
+          def normalize_resources_wrapper(path: Path, text: str) -> str:
+              lines = text.splitlines(keepends=True)
+              open_indices = [
+                  index
+                  for index, line in enumerate(lines)
+                  if RESOURCE_OPEN_TAG_PATTERN.fullmatch(line.rstrip("\r\n"))
+              ]
+              close_indices = [
+                  index
+                  for index, line in enumerate(lines)
+                  if RESOURCE_CLOSE_TAG_PATTERN.fullmatch(line.rstrip("\r\n"))
+              ]
+
+              if not open_indices or not close_indices:
+                  return text
+
+              first_open = open_indices[0]
+              last_close = close_indices[-1]
+              normalized = []
+              for index, line in enumerate(lines):
+                  if index != first_open and index in open_indices:
+                      continue
+                  if index != last_close and index in close_indices:
+                      continue
+                  normalized.append(line)
+              return "".join(normalized)
+
+
+          def strip_conflict_markers(path: Path, text: str) -> tuple[str, int]:
+              lines = text.splitlines(keepends=True)
               output = []
-              state = "outside"
-              marker_size = 0
-              conflict_start_line = 0
-              conflict_count = 0
-
-              for line_number, line in enumerate(text.splitlines(keepends=True), start=1):
+              marker_count = 0
+              for line in lines:
                   marker = conflict_marker(line)
-                  if state == "outside":
-                      if marker is None:
-                          output.append(line)
-                      elif marker[0] == "<":
-                          state = "current"
-                          marker_size = marker[1]
-                          conflict_start_line = line_number
-                      else:
-                          raise ValueError(
-                              f"Unexpected conflict marker in {path}:{line_number}."
-                          )
-                  elif marker is None:
-                      if state != "ancestor":
-                          output.append(line)
-                  elif marker[1] != marker_size:
+                  if marker is not None:
+                      marker_count += 1
+                      continue
+                  output.append(line)
+              normalized = normalize_resources_wrapper(path, "".join(output))
+              return normalized, marker_count
+
+
+          def flatten_conflicts(path: Path, text: str) -> tuple[str, int]:
+              lines = text.splitlines(keepends=True)
+              try:
+                  output = []
+                  index = 0
+                  conflict_count = 0
+
+                  def flatten_conflict_block(
+                      start_index: int,
+                  ) -> tuple[str, int, int]:
+                      start_marker = conflict_marker(lines[start_index])
+                      if start_marker is None or start_marker[0] != "<":
+                          raise ValueError("invalid conflict start")
+
+                      marker_size = start_marker[1]
+                      block_output = []
+                      state = "current"
+                      index = start_index + 1
+                      block_count = 1
+
+                      while index < len(lines):
+                          line = lines[index]
+                          marker = conflict_marker(line)
+
+                          if marker is None:
+                              if state != "ancestor":
+                                  block_output.append(line)
+                              index += 1
+                              continue
+
+                          kind, width = marker
+                          if width != marker_size:
+                              raise ValueError(
+                                  f"Mismatched conflict marker width in "
+                                  f"{path}:{index + 1}."
+                              )
+
+                          if kind == "<":
+                              nested_output, nested_count, index = flatten_conflict_block(index)
+                              if state != "ancestor":
+                                  block_output.append(nested_output)
+                              block_count += nested_count
+                              continue
+
+                          if state == "current" and kind == "|":
+                              state = "ancestor"
+                          elif state in {"current", "ancestor"} and kind == "=":
+                              state = "incoming"
+                          elif state == "incoming" and kind == ">":
+                              return "".join(block_output), block_count, index + 1
+                          else:
+                              raise ValueError(
+                                  f"Malformed conflict block in {path}:{index + 1}."
+                              )
+
+                          index += 1
+
                       raise ValueError(
-                          f"Mismatched conflict marker width in {path}:{line_number}."
-                      )
-                  elif state == "current" and marker[0] == "|":
-                      state = "ancestor"
-                  elif state in {"current", "ancestor"} and marker[0] == "=":
-                      state = "incoming"
-                  elif state == "incoming" and marker[0] == ">":
-                      state = "outside"
-                      marker_size = 0
-                      conflict_count += 1
-                  else:
-                      raise ValueError(
-                          f"Malformed conflict block in {path}:{line_number}."
+                          f"Unclosed conflict block in {path}:{start_index + 1}."
                       )
 
-              if state != "outside":
-                  raise ValueError(
-                      f"Unclosed conflict block in {path}:{conflict_start_line}."
-                  )
-              return "".join(output), conflict_count
+                  while index < len(lines):
+                      marker = conflict_marker(lines[index])
+                      if marker is None:
+                          output.append(lines[index])
+                          index += 1
+                          continue
+
+                      if marker[0] != "<":
+                          raise ValueError(
+                              f"Unexpected conflict marker in {path}:{index + 1}."
+                          )
+
+                      flattened, block_count, index = flatten_conflict_block(index)
+                      output.append(flattened)
+                      conflict_count += block_count
+
+                  return normalize_resources_wrapper(path, "".join(output)), conflict_count
+              except ValueError as error:
+                  repaired, marker_count = strip_conflict_markers(path, text)
+                  if marker_count:
+                      print(
+                          f"Warning: {error} "
+                          f"Falling back to permissive conflict-marker stripping "
+                          f"for {path} ({marker_count} marker lines)."
+                      )
+                      return repaired, max(1, marker_count // 2)
+                  raise
 
 
           def normalize_conflicts(

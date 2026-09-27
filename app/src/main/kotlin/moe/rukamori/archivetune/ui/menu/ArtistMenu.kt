@@ -27,7 +27,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -69,7 +69,7 @@ fun ArtistMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val artistState = database.artist(originalArtist.id).collectAsState(initial = originalArtist)
+    val artistState = database.artist(originalArtist.id).collectAsStateWithLifecycle(initialValue = originalArtist)
     val artist = artistState.value ?: originalArtist
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
     val speedDialPins = remember(speedDialSongIds) { parseSpeedDialPins(speedDialSongIds) }
@@ -175,7 +175,7 @@ fun ArtistMenu(
                                 )
                             }
 
-                            if (artist.artist.isYouTubeArtist) {
+                            if (!artist.artist.isLocal && artist.artist.isYouTubeArtist) {
                                 add(
                                     NewAction(
                                         icon = {
@@ -223,9 +223,9 @@ fun ArtistMenu(
                                     if (artist.artist.bookmarkedAt !=
                                         null
                                     ) {
-                                        stringResource(R.string.subscribed)
+                                        stringResource(if (artist.artist.isLocal) R.string.remove_from_library else R.string.subscribed)
                                     } else {
-                                        stringResource(R.string.subscribe)
+                                        stringResource(if (artist.artist.isLocal) R.string.add_to_library else R.string.subscribe)
                                     },
                             )
                         },

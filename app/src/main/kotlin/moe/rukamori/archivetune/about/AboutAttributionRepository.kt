@@ -9,28 +9,15 @@ package moe.rukamori.archivetune.about
 
 import android.content.Context
 import androidx.compose.runtime.Immutable
-import androidx.datastore.preferences.core.edit
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.parameter
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.constants.GitHubTranslationContributorsJsonKey
-import moe.rukamori.archivetune.constants.GitHubTranslationContributorsLastCheckedAtKey
-import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.R
 import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -116,54 +103,19 @@ class AboutAttributionRepository
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        private val client =
-            HttpClient(OkHttp) {
-                engine {
-                    config {
-                        connectTimeout(15, TimeUnit.SECONDS)
-                        readTimeout(15, TimeUnit.SECONDS)
-                        writeTimeout(15, TimeUnit.SECONDS)
-                        retryOnConnectionFailure(false)
-                    }
-                }
-            }
-
         suspend fun translationContributors(): Result<AboutTranslationContributorCollection> =
             withContext(Dispatchers.IO) {
-                val preferences = context.dataStore.data.first()
-                val now = System.currentTimeMillis()
-                val cachedContributors =
-                    preferences[GitHubTranslationContributorsJsonKey]
-                        ?.takeIf(String::isNotBlank)
-                        ?.let(::parseTranslationContributorCollectionSafely)
-                        ?.takeIf { contributors -> !contributors.isEmpty }
-                val lastCheckedAt = preferences[GitHubTranslationContributorsLastCheckedAtKey] ?: 0L
-
-                if (cachedContributors != null && now - lastCheckedAt < TranslationContributorCacheTtlMs) {
-                    return@withContext Result.success(cachedContributors)
-                }
-
                 try {
-                    val languages = getTranslationLanguages()
-                    val contributorsByLanguage = getTranslationCommitContributors(languages)
-                    val contributors =
-                        buildTranslationContributorCollection(
-                            languages = languages,
-                            contributorsByLanguage = contributorsByLanguage,
-                        )
-                    if (contributors.isEmpty) {
-                        cachedContributors?.let { cached -> Result.success(cached) }
-                            ?: Result.failure(IllegalStateException("No translation contributors found"))
-                    } else {
-                        context.dataStore.edit { cache ->
-                            cache[GitHubTranslationContributorsJsonKey] = contributors.toCacheJson()
-                            cache[GitHubTranslationContributorsLastCheckedAtKey] = now
-                        }
-                        Result.success(contributors)
-                    }
-                } catch (throwable: Throwable) {
-                    if (throwable is CancellationException) throw throwable
-                    cachedContributors?.let { cached -> Result.success(cached) } ?: Result.failure(throwable)
+                    val json =
+                        context.resources
+                            .openRawResource(R.raw.translation_contributors)
+                            .bufferedReader(Charsets.UTF_8)
+                            .use { reader -> reader.readText() }
+                    Result.success(parseTranslationContributors(json))
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Result.failure(exception)
                 }
             }
 
@@ -202,226 +154,31 @@ class AboutAttributionRepository
                 }
             }
 
-        private suspend fun getGitHubCommitsJson(
-            path: String,
-            page: Int,
-        ): String {
-            val response: HttpResponse =
-                client.get(GitHubCommitsUrl) {
-                    headers {
-                        append("Accept", "application/vnd.github+json")
-                        append("User-Agent", "ArchiveTune")
-                    }
-                    parameter("path", path)
-                    parameter("per_page", GitHubCommitsPageSize)
-                    parameter("page", page)
+        private fun parseTranslationContributors(json: String): AboutTranslationContributorCollection {
+            val entries = JSONArray(json)
+            val contributors = ArrayList<AboutTranslationContributor>(entries.length())
+            for (index in 0 until entries.length()) {
+                val entry = entries.getJSONObject(index)
+                val qualifier = entry.getString("qualifier")
+                require(qualifier.isNotBlank()) { "Missing translation language" }
+                val names = entry.getJSONArray("contributors")
+                val contributorNames = ArrayList<String>(names.length())
+                for (nameIndex in 0 until names.length()) {
+                    val name = names.getString(nameIndex).trim()
+                    require(name.isNotBlank()) { "Missing translation contributor" }
+                    contributorNames.add(name)
                 }
-            if (response.status.value !in SuccessStatusCodes) {
-                throw IllegalStateException("GitHub commits request failed with HTTP ${response.status.value}")
-            }
-            return response.bodyAsText()
-        }
-
-        private suspend fun getGitHubTranslationResourceJson(): String {
-            val response: HttpResponse =
-                client.get(GitHubTranslationResourceUrl) {
-                    headers {
-                        append("Accept", "application/vnd.github+json")
-                        append("User-Agent", "ArchiveTune")
-                    }
-                }
-            if (response.status.value !in SuccessStatusCodes) {
-                throw IllegalStateException("GitHub resource request failed with HTTP ${response.status.value}")
-            }
-            return response.bodyAsText()
-        }
-
-        private suspend fun getTranslationLanguages(): List<TranslationLanguage> {
-            val resources = JSONArray(getGitHubTranslationResourceJson())
-            val languages = ArrayList<TranslationLanguage>(resources.length())
-            for (index in 0 until resources.length()) {
-                val resource = resources.getJSONObject(index)
-                val name = resource.optString("name")
-                if (resource.optString("type") != GitHubDirectoryType || !name.startsWith(TranslationResourcePrefix)) {
-                    continue
-                }
-                val resourceQualifier = name.removePrefix(TranslationResourcePrefix)
-                if (resourceQualifier.isBlank()) continue
-                val resourcePath =
-                    resource
-                        .optString("path")
-                        .ifBlank { "$TranslationResourceRoot/$name" }
-                languages.add(
-                    TranslationLanguage(
-                        resourceQualifier = resourceQualifier,
-                        name = resourceQualifier.toLanguageDisplayName(),
-                        resourcePath = resourcePath,
-                    ),
-                )
-            }
-            return languages.sortedBy { language -> language.name.lowercase() }
-        }
-
-        private suspend fun getTranslationCommitContributors(languages: List<TranslationLanguage>): Map<String, List<String>> {
-            val contributorsByLanguage = LinkedHashMap<String, LinkedHashSet<String>>()
-            for (language in languages) {
-                mergeContributorMaps(
-                    target = contributorsByLanguage,
-                    source = mapOf(language.resourceQualifier to getTranslationCommitContributors(language)),
-                )
-            }
-            return contributorsByLanguage.toLimitedContributorMap()
-        }
-
-        private suspend fun getTranslationCommitContributors(language: TranslationLanguage): List<String> {
-            val contributors = LinkedHashSet<String>()
-            var page = 1
-            while (contributors.size < MaxContributorsPerLanguage && page <= MaxCommitPagesPerLanguage) {
-                val commits =
-                    JSONArray(
-                        getGitHubCommitsJson(
-                            path = language.resourcePath,
-                            page = page,
-                        ),
-                    )
-                if (commits.length() == 0) break
-
-                for (index in 0 until commits.length()) {
-                    if (contributors.size == MaxContributorsPerLanguage) break
-                    val commit = commits.getJSONObject(index)
-                    if (!commit.isTranslationCommit()) continue
-                    val contributor =
-                        commit
-                            .translationCommitAuthorName()
-                            ?.takeUnless(::isIgnoredTranslationContributor)
-                            ?: continue
-                    contributors.add(contributor)
-                }
-                page++
-            }
-            return contributors.toList()
-        }
-
-        private fun buildTranslationContributorCollection(
-            languages: List<TranslationLanguage>,
-            contributorsByLanguage: Map<String, List<String>>,
-        ): AboutTranslationContributorCollection {
-            val values = ArrayList<AboutTranslationContributor>(languages.size)
-            for (language in languages) {
-                val contributors = contributorsByLanguage[language.resourceQualifier].orEmpty()
-                if (contributors.isEmpty()) continue
-                values.add(
+                require(contributorNames.isNotEmpty()) { "Missing translation contributors" }
+                contributors.add(
                     AboutTranslationContributor(
-                        language = language.name,
-                        contributors = AboutTranslationContributorNameCollection.from(contributors),
+                        language = qualifier.toLanguageDisplayName(),
+                        contributors = AboutTranslationContributorNameCollection.from(contributorNames.distinct()),
                     ),
                 )
             }
             return AboutTranslationContributorCollection.from(
-                values.sortedBy { contributor -> contributor.language.lowercase() },
+                contributors.sortedBy { contributor -> contributor.language.lowercase(Locale.ROOT) },
             )
-        }
-
-        private fun AboutTranslationContributorCollection.toCacheJson(): String {
-            val cachedContributors = JSONArray()
-            for (index in 0 until size) {
-                val contributor = this[index]
-                val contributorNames = JSONArray()
-                contributor.contributors.forEach { name ->
-                    contributorNames.put(name)
-                }
-                cachedContributors.put(
-                    JSONObject()
-                        .put(CacheLanguageKey, contributor.language)
-                        .put(CacheContributorsKey, contributorNames),
-                )
-            }
-            return cachedContributors.toString()
-        }
-
-        private fun parseTranslationContributorCollectionSafely(json: String): AboutTranslationContributorCollection =
-            try {
-                val cachedContributors = JSONArray(json)
-                val contributors = ArrayList<AboutTranslationContributor>(cachedContributors.length())
-                for (index in 0 until cachedContributors.length()) {
-                    val cachedContributor = cachedContributors.getJSONObject(index)
-                    val language = cachedContributor.optString(CacheLanguageKey).takeIf(String::isNotBlank) ?: continue
-                    val cachedContributorNames = cachedContributor.optJSONArray(CacheContributorsKey) ?: continue
-                    val contributorNames = ArrayList<String>(cachedContributorNames.length())
-                    for (nameIndex in 0 until cachedContributorNames.length()) {
-                        val contributorName =
-                            cachedContributorNames
-                                .optString(nameIndex)
-                                .trim()
-                                .takeIf(String::isNotBlank)
-                                ?.takeUnless(::isIgnoredTranslationContributor)
-                                ?: continue
-                        contributorNames.add(contributorName)
-                    }
-                    if (contributorNames.isEmpty()) continue
-                    contributors.add(
-                        AboutTranslationContributor(
-                            language = language,
-                            contributors = AboutTranslationContributorNameCollection.from(contributorNames.distinct()),
-                        ),
-                    )
-                }
-                AboutTranslationContributorCollection.from(contributors)
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
-                AboutTranslationContributorCollection.from(emptyList())
-            }
-
-        private fun mergeContributorMaps(
-            target: LinkedHashMap<String, LinkedHashSet<String>>,
-            source: Map<String, List<String>>,
-        ) {
-            for ((languageCode, contributors) in source) {
-                val targetContributors = target.getOrPut(languageCode) { LinkedHashSet() }
-                for (contributor in contributors) {
-                    val cleanContributor =
-                        contributor
-                            .trim()
-                            .takeIf(String::isNotBlank)
-                            ?.takeUnless(::isIgnoredTranslationContributor)
-                            ?: continue
-                    targetContributors.add(cleanContributor)
-                    if (targetContributors.size == MaxContributorsPerLanguage) break
-                }
-            }
-        }
-
-        private fun Map<String, LinkedHashSet<String>>.toLimitedContributorMap(): Map<String, List<String>> =
-            mapValues { (_, contributors) ->
-                contributors.take(MaxContributorsPerLanguage)
-            }.filterValues { contributors ->
-                contributors.isNotEmpty()
-            }
-
-        private fun isIgnoredTranslationContributor(name: String): Boolean =
-            IgnoredTranslationContributors.any { ignoredName ->
-                name.equals(ignoredName, ignoreCase = true)
-            }
-
-        private fun JSONObject.isTranslationCommit(): Boolean =
-            optJSONObject("commit")
-                ?.optString("message")
-                ?.startsWith(TranslationCommitMessagePrefix, ignoreCase = true)
-                ?: false
-
-        private fun JSONObject.translationCommitAuthorName(): String? {
-            val authorLogin =
-                optJSONObject("author")
-                    ?.optString("login")
-                    ?.takeIf(String::isNotBlank)
-            val commitAuthorName =
-                optJSONObject("commit")
-                    ?.optJSONObject("author")
-                    ?.optString("name")
-                    ?.takeIf(String::isNotBlank)
-            return (authorLogin ?: commitAuthorName)
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
         }
 
         private fun String.toLanguageDisplayName(): String {
@@ -464,20 +221,7 @@ class AboutAttributionRepository
                 else -> this
             }
 
-        private data class TranslationLanguage(
-            val resourceQualifier: String,
-            val name: String,
-            val resourcePath: String,
-        )
-
         private companion object {
-            const val GitHubCommitsUrl = "https://api.github.com/repos/rukamori/ArchiveTune/commits"
-            const val GitHubTranslationResourceUrl =
-                "https://api.github.com/repos/rukamori/ArchiveTune/contents/app/src/main/res"
-            const val TranslationResourceRoot = "app/src/main/res"
-            const val TranslationResourcePrefix = "values-"
-            const val TranslationCommitMessagePrefix = "Translated using Weblate"
-            const val GitHubDirectoryType = "dir"
             const val Bcp47ResourceQualifierPrefix = "b+"
             const val RegionQualifierPrefix = "r"
             const val LegacyIndonesianLanguageCode = "in"
@@ -486,18 +230,5 @@ class AboutAttributionRepository
             const val HebrewLanguageCode = "he"
             const val LegacyYiddishLanguageCode = "ji"
             const val YiddishLanguageCode = "yi"
-            const val GitHubCommitsPageSize = 100
-            const val MaxCommitPagesPerLanguage = 2
-            const val TranslationContributorCacheTtlMs = 7L * 24L * 60L * 60L * 1000L
-            const val CacheLanguageKey = "language"
-            const val CacheContributorsKey = "contributors"
-            const val WeblateCommitUser = "weblate:commit"
-            const val CodebergTranslateUser = "Codeberg Translate"
-            const val AnonymousUser = "anonymous"
-            const val MisspelledAnonymousUser = "anynymous"
-            const val MaxContributorsPerLanguage = 6
-            val SuccessStatusCodes = 200..299
-            val IgnoredTranslationContributors =
-                setOf(WeblateCommitUser, CodebergTranslateUser, AnonymousUser, MisspelledAnonymousUser)
         }
     }

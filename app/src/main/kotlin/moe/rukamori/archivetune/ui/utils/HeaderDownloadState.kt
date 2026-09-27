@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import moe.rukamori.archivetune.playback.ExoDownloadService
+import moe.rukamori.archivetune.utils.isLocalMediaId
 
 @Immutable
 sealed interface HeaderDownloadState {
@@ -38,15 +39,13 @@ fun headerDownloadState(
     songIds: List<String>,
     downloads: Map<String, Download>,
 ): HeaderDownloadState {
-    if (songIds.isEmpty()) return HeaderDownloadState.None
+    val distinctSongIds = songIds.filterNot { it.isLocalMediaId() }.distinct()
+    if (distinctSongIds.isEmpty()) return HeaderDownloadState.None
 
     var completedCount = 0
     var progressTotal = 0f
-    var hasAnyDownload = false
     var hasRunningDownload = false
     var hasPausedDownload = false
-
-    val distinctSongIds = songIds.distinct()
 
     distinctSongIds.forEach { songId ->
         val download = downloads[songId]
@@ -54,7 +53,6 @@ fun headerDownloadState(
             Download.STATE_COMPLETED -> {
                 completedCount++
                 progressTotal += 1f
-                hasAnyDownload = true
             }
 
             Download.STATE_QUEUED,
@@ -67,7 +65,6 @@ fun headerDownloadState(
                         ?.div(100f)
                         ?: 0f
                 progressTotal += progress.coerceIn(0f, 1f)
-                hasAnyDownload = true
                 hasRunningDownload = true
             }
 
@@ -79,7 +76,6 @@ fun headerDownloadState(
                             ?.div(100f)
                             ?: 0f
                     progressTotal += progress.coerceIn(0f, 1f)
-                    hasAnyDownload = true
                     hasPausedDownload =
                         hasPausedDownload || download.stopReason == COLLECTION_PAUSE_STOP_REASON
                 }
@@ -113,7 +109,7 @@ fun sendAddMissingDownloads(
 ) {
     songs
         .distinctBy { it.id }
-        .filter { item -> downloads[item.id]?.state.shouldRequestDownload() }
+        .filter { item -> !item.id.isLocalMediaId() && downloads[item.id]?.state.shouldRequestDownload() }
         .forEach { item ->
             val downloadRequest =
                 DownloadRequest
@@ -143,7 +139,7 @@ fun sendRemoveDownloads(
     } else {
         songIds.distinct()
     }
-    idsToRemove.forEach { songId ->
+    idsToRemove.filterNot { it.isLocalMediaId() }.forEach { songId ->
         DownloadService.sendRemoveDownload(
             context,
             ExoDownloadService::class.java,

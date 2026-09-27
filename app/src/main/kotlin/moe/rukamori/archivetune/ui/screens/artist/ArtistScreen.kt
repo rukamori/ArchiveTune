@@ -167,7 +167,7 @@ fun ArtistScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
-    val loadedArtistPage = viewModel.artistPage
+    val loadedArtistPage = viewModel.artistPage.collectAsStateWithLifecycle().value
     val libraryArtist by viewModel.libraryArtist.collectAsStateWithLifecycle()
     val loadedLibrarySongs by viewModel.librarySongs.collectAsStateWithLifecycle()
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
@@ -195,7 +195,7 @@ fun ArtistScreen(
 
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showLocal by rememberSaveable { mutableStateOf(false) }
+    val showLocal by viewModel.showLocal.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -236,10 +236,6 @@ fun ArtistScreen(
         derivedStateOf {
             lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
         }
-    }
-
-    LaunchedEffect(libraryArtist) {
-        showLocal = libraryArtist?.artist?.isLocal == true
     }
 
     val latestRelease =
@@ -283,6 +279,7 @@ fun ArtistScreen(
     val showArtistOverflowMenu: () -> Unit = {
         menuState.show {
             ArtistOverflowMenu(
+                canShare = libraryArtist?.artist?.let { !it.isLocal && it.isYouTubeArtist } ?: (artistPage != null),
                 isBlocked = isArtistBlocked,
                 blockActionEnabled =
                     blockState !is ArtistBlockState.Loading &&
@@ -505,6 +502,7 @@ fun ArtistScreen(
                             }
 
                             ArtistPrimaryActions(
+                                isLocalArtist = libraryArtist?.artist?.isLocal == true,
                                 isSubscribed = isSubscribed,
                                 contentColor = heroContentColor,
                                 contrastingColor = surfaceColor,
@@ -1004,8 +1002,7 @@ fun ArtistScreen(
             icon = if (showLocal) R.drawable.language else R.drawable.library_music,
             label = if (showLocal) stringResource(R.string.together_online) else stringResource(R.string.filter_library),
             onClick = {
-                showLocal = showLocal.not()
-                if (!showLocal && artistPage == null) viewModel.fetchArtistsFromYTM()
+                viewModel.toggleLibrary()
             },
         )
 
@@ -1077,6 +1074,7 @@ fun ArtistScreen(
 
 @Composable
 private fun ArtistOverflowMenu(
+    canShare: Boolean,
     isBlocked: Boolean,
     blockActionEnabled: Boolean,
     onAction: (ArtistAction) -> Unit,
@@ -1089,25 +1087,27 @@ private fun ArtistOverflowMenu(
                 .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        ArtistOverflowMenuItem(
-            text = stringResource(R.string.share),
-            iconRes = R.drawable.share,
-            index = 0,
-            count = ArtistOverflowMenuItemCount,
-            onClick = { onAction(ArtistAction.Share) },
-        )
-        ArtistOverflowMenuItem(
-            text = stringResource(R.string.copy_link),
-            iconRes = R.drawable.copy,
-            index = 1,
-            count = ArtistOverflowMenuItemCount,
-            onClick = { onAction(ArtistAction.CopyLink) },
-        )
+        if (canShare) {
+            ArtistOverflowMenuItem(
+                text = stringResource(R.string.share),
+                iconRes = R.drawable.share,
+                index = 0,
+                count = ArtistOverflowMenuItemCount,
+                onClick = { onAction(ArtistAction.Share) },
+            )
+            ArtistOverflowMenuItem(
+                text = stringResource(R.string.copy_link),
+                iconRes = R.drawable.copy,
+                index = 1,
+                count = ArtistOverflowMenuItemCount,
+                onClick = { onAction(ArtistAction.CopyLink) },
+            )
+        }
         ArtistOverflowMenuItem(
             text = stringResource(if (isBlocked) R.string.unblock_artist else R.string.block_artist),
             iconRes = R.drawable.block,
-            index = 2,
-            count = ArtistOverflowMenuItemCount,
+            index = if (canShare) 2 else 0,
+            count = if (canShare) ArtistOverflowMenuItemCount else 1,
             enabled = blockActionEnabled,
             onClick = { onAction(ArtistAction.ToggleBlock) },
         )
@@ -1175,6 +1175,7 @@ private data class ArtistReleaseUiModel(
 
 @Composable
 private fun ArtistPrimaryActions(
+    isLocalArtist: Boolean,
     isSubscribed: Boolean,
     contentColor: Color,
     contrastingColor: Color,
@@ -1190,8 +1191,8 @@ private fun ArtistPrimaryActions(
         isAdded = isSubscribed,
         contentColor = contentColor,
         contrastingColor = contrastingColor,
-        addContentDescription = R.string.subscribe,
-        removeContentDescription = R.string.subscribed,
+        addContentDescription = if (isLocalArtist) R.string.add_to_library else R.string.subscribe,
+        removeContentDescription = if (isLocalArtist) R.string.remove_from_library else R.string.subscribed,
         onShuffle = if (canShuffle) onShuffle else null,
         onPlay = if (canPlay) onPlay else null,
         onToggleAdd = onToggleSubscription,

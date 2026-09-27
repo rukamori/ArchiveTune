@@ -16,6 +16,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -35,6 +36,10 @@ data class MediaMetadata(
     val inLibrary: LocalDateTime? = null,
     val isMusicVideo: Boolean = false,
     val isPodcast: Boolean = false,
+    val albumArtist: String? = null,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
+    val year: Int? = null,
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L
@@ -67,6 +72,11 @@ data class MediaMetadata(
             thumbnailUrl = thumbnailUrl,
             albumId = album?.id,
             albumName = album?.title,
+            albumArtist = albumArtist,
+            trackNumber = trackNumber,
+            discNumber = discNumber,
+            year = year,
+            isLocal = id.isLocalMediaId(),
             explicit = explicit,
             isMusicVideo = isMusicVideo,
             isPodcast = isPodcast,
@@ -102,6 +112,10 @@ fun Song.toMediaMetadata() =
                     title = song.albumName.orEmpty(),
                 )
             },
+        albumArtist = song.albumArtist,
+        trackNumber = song.trackNumber,
+        discNumber = song.discNumber,
+        year = song.year,
         explicit = song.explicit,
         isMusicVideo = song.isMusicVideo,
         isPodcast = song.isPodcast,

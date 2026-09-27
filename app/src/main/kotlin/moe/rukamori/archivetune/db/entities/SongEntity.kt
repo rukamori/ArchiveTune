@@ -32,6 +32,9 @@ data class SongEntity(
     val thumbnailUrl: String? = null,
     val albumId: String? = null,
     val albumName: String? = null,
+    val albumArtist: String? = null,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
     @ColumnInfo(defaultValue = "0")
     val explicit: Boolean = false,
     val year: Int? = null,

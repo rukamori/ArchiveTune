@@ -12,6 +12,7 @@ enum class LibraryFilter {
     ARTISTS,
     ALBUMS,
     PLAYLISTS,
+    PODCASTS,
     SPOTIFY,
     LIBRARY,
 }
@@ -20,6 +21,7 @@ val DefaultLibraryFilterOrder =
     listOf(
         LibraryFilter.LIBRARY,
         LibraryFilter.PLAYLISTS,
+        LibraryFilter.PODCASTS,
         LibraryFilter.SPOTIFY,
         LibraryFilter.SONGS,
         LibraryFilter.ARTISTS,

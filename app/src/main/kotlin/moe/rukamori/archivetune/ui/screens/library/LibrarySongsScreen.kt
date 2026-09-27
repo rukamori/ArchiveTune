@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -79,7 +80,6 @@ import moe.rukamori.archivetune.constants.SongSortTypeKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -116,10 +116,12 @@ fun LibrarySongsScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
-    val songs by viewModel.allSongs.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val songs by viewModel.allSongs.collectAsStateWithLifecycle()
+    val refreshState by viewModel.refreshState.collectAsStateWithLifecycle()
 
     var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
+    val refreshLibrary = remember(viewModel, filter) { { viewModel.refresh(filter) } }
+    val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
     val lazyListState = rememberLazyListState()
     val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
 
@@ -163,9 +165,10 @@ fun LibrarySongsScreen(
             }
         }
 
-    ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refresh(filter) },
+    LibraryRefreshContainer(
+        state = refreshState,
+        onRefresh = refreshLibrary,
+        onErrorShown = onRefreshErrorShown,
         modifier = Modifier.fillMaxSize(),
         indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {

@@ -54,6 +54,7 @@ import moe.rukamori.archivetune.ui.screens.settings.AboutScreen
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettings
 import moe.rukamori.archivetune.ui.screens.settings.AiIntegrationSettings
 import moe.rukamori.archivetune.ui.screens.settings.AodCustomizedScreen
+import moe.rukamori.archivetune.ui.screens.settings.AndroidAutoSettings
 import moe.rukamori.archivetune.ui.screens.settings.CanvasSettings
 import moe.rukamori.archivetune.ui.screens.settings.AppearanceSettings
 import moe.rukamori.archivetune.ui.screens.settings.BackupAndRestore
@@ -92,6 +93,7 @@ fun NavGraphBuilder.navigationBuilder(
     homeScrollConnection: NestedScrollConnection? = null,
     searchScrollConnection: NestedScrollConnection? = null,
     onlineSearchSort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
+    libraryScrollBehavior: TopAppBarScrollBehavior,
 ) {
     composable(Screens.Home.route) {
         HomeScreen(
@@ -103,7 +105,7 @@ fun NavGraphBuilder.navigationBuilder(
     composable(
         Screens.Library.route,
     ) {
-        LibraryScreen(navController)
+        LibraryScreen(navController = navController, scrollBehavior = libraryScrollBehavior)
     }
     composable(Screens.Search.route) {
         SearchScreen(
@@ -184,7 +186,6 @@ fun NavGraphBuilder.navigationBuilder(
         BrowseScreen(
             navController,
             scrollBehavior,
-            it.arguments?.getString("browseId"),
         )
     }
     composable(
@@ -438,6 +439,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/canvas") {
         CanvasSettings(navController)
+    }
+    composable("settings/android_auto") {
+        AndroidAutoSettings(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController)

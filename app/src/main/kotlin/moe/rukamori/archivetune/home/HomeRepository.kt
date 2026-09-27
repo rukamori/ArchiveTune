@@ -30,6 +30,7 @@ import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.utils.dataStore
+import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
 
@@ -126,6 +127,18 @@ class HomeRepository
         }
 
         suspend fun loadLibrarySongIds(): Set<String> = database.librarySongIds().toSet()
+
+        suspend fun loadPlaylistPreview(
+            playlistId: String,
+            limit: Int,
+        ): Result<List<SongItem>> {
+            val result = YouTube.playlist(playlistId)
+            result.exceptionOrNull()?.let { throwable ->
+                if (throwable is CancellationException) throw throwable
+                Timber.w(throwable, "Failed to load Home playlist preview for %s", playlistId)
+            }
+            return result.map { page -> page.songs.take(limit.coerceAtLeast(0)) }
+        }
 
         private suspend fun loadRemoteQuickPickSeeds(limit: Int): List<QuickPickSeed> {
             val songs =

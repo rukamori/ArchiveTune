@@ -375,32 +375,15 @@ object YTPlayerUtils {
     suspend fun ensureYoutubeiPoTokensForPlayback(
         videoId: String,
         authState: PlaybackAuthState = YouTube.currentPlaybackAuthState(),
-        forceRefresh: Boolean = false,
     ): PlaybackAuthState {
         val contentBinding = authState.youtubeiContentBinding() ?: return authState
-        val requestAuthState =
-            if (forceRefresh) {
-                BotGuardTokenGenerator.invalidatePlayerToken(videoId)
-                authState.copy(
-                    poTokenGvs = null,
-                    poTokenGvsVideoId = null,
-                    poTokenPlayer = null,
-                    poTokenPlayerVideoId = null,
-                    poTokenSubs = null,
-                    poTokenSubsVideoId = null,
-                )
-            } else {
-                authState
-            }
         val tokenResult =
             BotGuardTokenGenerator.mintToken(
                 videoId = videoId,
                 sessionId = contentBinding,
                 maximumWaitMillis = YOUTUBEI_PO_TOKEN_RESOLUTION_BUDGET_MS,
-            ) ?: return requestAuthState
-        return requestAuthState
-            .withGeneratedPoTokens(videoId, tokenResult)
-            .copy(dataSyncId = contentBinding)
+            ) ?: return authState
+        return authState.withGeneratedPoTokens(videoId, tokenResult)
     }
 
     suspend fun preWarmYoutubeiPoTokens(authState: PlaybackAuthState) {

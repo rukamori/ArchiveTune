@@ -193,7 +193,7 @@ fun AlbumScreen(
     }
 
     LaunchedEffect(albumWithSongs) {
-        val songIds = albumWithSongs?.songs?.map { it.id }.orEmpty()
+        val songIds = albumWithSongs?.songs?.filterNot { it.song.isLocal }?.map { it.id }.orEmpty()
         if (songIds.isEmpty()) {
             downloads = emptyMap()
             downloadState = HeaderDownloadState.None
@@ -307,7 +307,7 @@ fun AlbumScreen(
                             }
                         },
                         additionalPrimaryActions = { contentColor ->
-                            if (albumWithSongs.songs.isNotEmpty()) {
+                            if (!albumWithSongs.album.isLocal && albumWithSongs.songs.any { !it.song.isLocal }) {
                                 MediaDetailAction(
                                     contentDescription =
                                         if (downloadState == HeaderDownloadState.Completed) {
@@ -413,7 +413,7 @@ fun AlbumScreen(
                 ) { index, songWrapper ->
                     SongListItem(
                         song = songWrapper.item,
-                        albumIndex = index + 1,
+                        albumIndex = songWrapper.item.song.trackNumber ?: (index + 1),
                         isActive = songWrapper.item.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         showInLibraryIcon = true,
@@ -507,7 +507,7 @@ fun AlbumScreen(
             } else {
                 when (val state = uiState) {
                     AlbumUiState.Loading,
-                    AlbumUiState.Content,
+                    AlbumUiState.Success,
                     -> {
                         item(key = "shimmer") {
                             ShimmerHost {

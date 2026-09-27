@@ -9,12 +9,14 @@
 
 package moe.rukamori.archivetune.ui.player
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,6 +49,11 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.OkHttpClient
 import timber.log.Timber
+import java.io.IOException
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.URI
+import java.net.SocketAddress
 import java.util.Locale
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
@@ -59,7 +67,9 @@ internal fun CanvasArtworkPlayer(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT,
+    onFrameCaptured: ((Bitmap?) -> Unit)? = null,
 ) {
+    val frameCallback by rememberUpdatedState(onFrameCaptured)
     val provider = source ?: return
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -80,19 +90,15 @@ internal fun CanvasArtworkPlayer(
 
     val okHttpClient =
         remember(provider) {
+            val streamProxy = YouTube.streamOkHttpProxy
             OkHttpClient
                 .Builder()
-                .proxy(YouTube.streamOkHttpProxy)
+                .proxySelector(CanvasPlaybackProxySelector(streamProxy))
                 .addInterceptor { chain -> CanvasNetworkAccess.intercept(chain, provider) }
                 .addInterceptor { chain ->
                     val request = chain.request()
                     val host = request.url.host
-                    val isYouTubeMediaHost =
-                        host.endsWith("googlevideo.com") ||
-                            host.endsWith("googleusercontent.com") ||
-                            host.endsWith("youtube.com") ||
-                            host.endsWith("youtube-nocookie.com") ||
-                            host.endsWith("ytimg.com")
+                    val isYouTubeMediaHost = host.isYouTubeMediaHost()
 
                     if (!isYouTubeMediaHost) {
                         return@addInterceptor chain.proceed(
@@ -219,6 +225,7 @@ internal fun CanvasArtworkPlayer(
                     Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed")
                     hasPlaybackFailed = true
                     isVideoReady = false
+                    frameCallback?.invoke(null)
                     val next =
                         when (currentUrl) {
                             primary -> fallback?.takeIf { it != currentUrl }
@@ -266,6 +273,7 @@ internal fun CanvasArtworkPlayer(
         val normalized = currentUrl.trim()
         isVideoReady = false
         hasPlaybackFailed = false
+        frameCallback?.invoke(null)
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
         val mimeType =
             when {
@@ -304,7 +312,21 @@ internal fun CanvasArtworkPlayer(
         label = "canvasAlpha",
     )
 
-    ContentFrame(
+    if (onFrameCaptured != null) {
+        key(exoPlayer, currentUrl) {
+            AndroidView(
+                factory = { viewContext ->
+                    CanvasSnapshotView(viewContext).apply {
+                        bind(exoPlayer) { bitmap ->
+                            if (!hasPlaybackFailed) frameCallback?.invoke(bitmap)
+                        }
+                    }
+                },
+                onRelease = { it.release() },
+                modifier = modifier.alpha(alpha),
+            )
+        }
+    } else ContentFrame(
         player = exoPlayer,
         surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
         contentScale = resizeMode.toContentScale(),
@@ -337,6 +359,27 @@ private fun ExoPlayer.setCanvasPlayback(isPlaying: Boolean) {
         pause()
     }
 }
+
+private class CanvasPlaybackProxySelector(streamProxy: Proxy) : ProxySelector() {
+    private val directRoute = listOf(Proxy.NO_PROXY)
+    private val streamRoute = listOf(streamProxy)
+
+    override fun select(uri: URI): List<Proxy> =
+        if (uri.host.orEmpty().isYouTubeMediaHost()) streamRoute else directRoute
+
+    override fun connectFailed(uri: URI, socketAddress: SocketAddress, error: IOException) {
+        Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas proxy connection failed for %s", uri.host)
+    }
+}
+
+private fun String.isYouTubeMediaHost(): Boolean =
+    isHostOrSubdomainOf("googlevideo.com") ||
+        isHostOrSubdomainOf("googleusercontent.com") ||
+        isHostOrSubdomainOf("youtube.com") ||
+        isHostOrSubdomainOf("youtube-nocookie.com") ||
+        isHostOrSubdomainOf("ytimg.com")
+
+private fun String.isHostOrSubdomainOf(domain: String): Boolean = this == domain || endsWith(".$domain")
 
 private const val CanvasPlaybackLogTag = "CanvasPlayback"
 private const val CanvasPlaybackUserAgent =

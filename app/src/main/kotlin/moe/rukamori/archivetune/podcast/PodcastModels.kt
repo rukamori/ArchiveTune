@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.podcast
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import com.google.common.collect.ImmutableList
+import com.google.common.collect.ImmutableSet
 import moe.rukamori.archivetune.models.MediaMetadata
 
 sealed interface PodcastScreenState {
@@ -36,8 +37,15 @@ data class PodcastUiState(
     val description: String?,
     val thumbnailUrl: String?,
     val episodes: ImmutableList<PodcastEpisodeUiModel>,
+    val isSaved: Boolean,
+    val isSavePending: Boolean,
     val isLoadingMore: Boolean,
     val canLoadMore: Boolean,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
+    val isFiltering: Boolean = false,
+    val visibleEpisodes: ImmutableList<PodcastEpisodeUiModel> = episodes,
+    @StringRes val paginationErrorResId: Int? = null,
 )
 
 @Immutable
@@ -50,6 +58,14 @@ data class PodcastEpisodeUiModel(
     val durationText: String?,
     val thumbnailUrl: String,
     val playbackMetadata: MediaMetadata,
+    val isInLibrary: Boolean,
+    val isLibraryPending: Boolean,
+)
+
+@Immutable
+data class PodcastLibraryMembership(
+    val isPodcastSaved: Boolean,
+    val episodeIds: ImmutableSet<String>,
 )
 
 @Immutable
@@ -64,9 +80,21 @@ sealed interface PodcastAction {
 
     data object LoadMore : PodcastAction
 
+    data object OpenSearch : PodcastAction
+
+    data object CloseSearch : PodcastAction
+
+    data class SearchQueryChanged(val query: String) : PodcastAction
+
     data object PlayAll : PodcastAction
 
+    data object TogglePodcastSave : PodcastAction
+
     data class PlayEpisode(
+        val episodeId: String,
+    ) : PodcastAction
+
+    data class ToggleEpisodeLibrary(
         val episodeId: String,
     ) : PodcastAction
 }

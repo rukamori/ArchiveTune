@@ -31,6 +31,6 @@ class ArtistAlbumsViewModel
 
         val albums =
             database
-                .artistAlbumsPreview(artistId)
+                .artistAlbumsPreview(artistId, previewSize = Int.MAX_VALUE)
                 .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }

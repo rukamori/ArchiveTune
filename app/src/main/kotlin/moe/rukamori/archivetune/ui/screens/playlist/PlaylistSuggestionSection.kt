@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,8 +70,8 @@ fun PlaylistSuggestionsSection(
     val isPlaying by playerConnection?.isPlaying?.collectAsState() ?: androidx.compose.runtime.mutableStateOf(false)
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: androidx.compose.runtime.mutableStateOf(null)
 
-    val playlistSuggestions by viewModel.playlistSuggestions.collectAsState()
-    val isLoading by viewModel.isLoadingSuggestions.collectAsState()
+    val playlistSuggestions by viewModel.playlistSuggestions.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoadingSuggestions.collectAsStateWithLifecycle()
 
     // State for duplicate check dialog
     var showDuplicateDialog by remember { mutableStateOf(false) }
@@ -78,7 +79,6 @@ fun PlaylistSuggestionsSection(
 
     val currentSuggestions = playlistSuggestions
     if (currentSuggestions == null && !isLoading) return
-    if (currentSuggestions != null && currentSuggestions.items.isEmpty() && !isLoading) return
 
     // Duplicate Check Dialog
     if (showDuplicateDialog && songToCheck != null) {
@@ -154,6 +154,27 @@ fun PlaylistSuggestionsSection(
                     },
                 modifier = Modifier.weight(1f),
             )
+            if (currentSuggestions != null && currentSuggestions.totalQueries > 1) {
+                androidx.compose.material3.IconButton(
+                    onClick = remember(viewModel) { { viewModel.changeSuggestionPage(-1) } },
+                    enabled = !isLoading && currentSuggestions.currentQueryIndex > 0,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_back),
+                        contentDescription = stringResource(R.string.widget_previous),
+                    )
+                }
+                androidx.compose.material3.IconButton(
+                    onClick = remember(viewModel) { { viewModel.changeSuggestionPage(1) } },
+                    enabled = !isLoading &&
+                        currentSuggestions.currentQueryIndex < currentSuggestions.totalQueries - 1,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_forward),
+                        contentDescription = stringResource(R.string.next),
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

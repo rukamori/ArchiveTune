@@ -83,13 +83,28 @@ class NewsViewModel
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NewsUiState.Loading)
 
-        val hasUnreadNews: StateFlow<Boolean> =
+        private var lastNotifiedNewsTimestamp = 0L
+
+        val latestUnreadNewsTimestamp: StateFlow<Long?> =
             combine(
                 _rawItems,
                 context.dataStore.data.map { prefs -> prefs[NewsLastReadTimestampKey] ?: 0L },
             ) { items, lastReadTimestamp ->
-                items.isNotEmpty() && items.maxOf { it.timestamp } > lastReadTimestamp
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+                items.maxOfOrNull { it.timestamp }?.takeIf { it > lastReadTimestamp }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+        val hasUnreadNews: StateFlow<Boolean> =
+            latestUnreadNewsTimestamp
+                .map { it != null }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+        fun claimUnreadNewsTooltip(timestamp: Long): Boolean {
+            if (timestamp != latestUnreadNewsTimestamp.value || timestamp <= lastNotifiedNewsTimestamp) {
+                return false
+            }
+            lastNotifiedNewsTimestamp = timestamp
+            return true
+        }
 
         init {
             fetchNews()

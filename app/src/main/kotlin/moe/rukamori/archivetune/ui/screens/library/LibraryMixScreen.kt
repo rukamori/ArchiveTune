@@ -93,6 +93,7 @@ import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryMixViewModel
+import moe.rukamori.archivetune.viewmodels.LibraryRefreshState
 import moe.rukamori.archivetune.viewmodels.LibraryTopMixEmptyReason
 import moe.rukamori.archivetune.viewmodels.LibraryTopMixUiModel
 import moe.rukamori.archivetune.viewmodels.LibraryTopMixesUiState
@@ -131,7 +132,9 @@ fun LibraryMixScreen(
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val refreshState by viewModel.refreshState.collectAsStateWithLifecycle()
+    val refreshLibrary = remember(viewModel) { { viewModel.syncAllLibrary() } }
+    val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
     val mostPlayedAlbumUiState by viewModel.mostPlayedAlbumUiState.collectAsStateWithLifecycle()
     val topMixesUiState by viewModel.topMixesUiState.collectAsStateWithLifecycle()
     val spotifyPlaylists by spotifyLibraryViewModel.playlists.collectAsStateWithLifecycle()
@@ -165,6 +168,11 @@ fun LibraryMixScreen(
             snackbarHostState.showSnackbar(message)
         }
     }
+    LibraryRefreshFeedbackEffect(
+        state = refreshState,
+        snackbarHostState = snackbarHostState,
+        onErrorShown = onRefreshErrorShown,
+    )
 
     val playerAwareBottomPadding =
         LocalPlayerAwareWindowInsets.current
@@ -174,8 +182,8 @@ fun LibraryMixScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         ExpressivePullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.syncAllLibrary() },
+            isRefreshing = refreshState is LibraryRefreshState.Loading,
+            onRefresh = refreshLibrary,
             modifier = Modifier.fillMaxSize(),
             indicatorOffset = LibraryPullToRefreshIndicatorOffset,
         ) {

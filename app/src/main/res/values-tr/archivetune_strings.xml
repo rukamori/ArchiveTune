@@ -627,6 +627,7 @@
     <string name="ai_custom_endpoint">Özel uç nokta</string>
     <string name="ai_api_key">API anahtarı</string>
     <string name="ai_api_key_missing">YZ özelliklerinin çalışabilmesinde gereklidir.</string>
+    <string name="ai_provider_openrouter"></string>
     <string name="ai_translation_menu">YZ Çeviri</string>
     <string name="about_lead_developer">Baş Geliştirici</string>
     <string name="about_archive_tune_team">Ekip</string>
@@ -679,7 +680,6 @@
     <string name="spotify_connect">Spotfiy\'ı Bağla</string>
     <string name="spotify_available_count">%1$d oynatma listesi mevcut</string>
     <string name="spotify_connected_as">%1$s olarak bağlanıldı</string>
-    <string name="ai_provider_openrouter">OpenRouter</string>
     <string name="ai_api_key_configured">Konfigüre edildi</string>
     <string name="ai_test_api">API\'ı Test et</string>
     <string name="ai_api_testing">Bağlantı test ediliyor…</string>

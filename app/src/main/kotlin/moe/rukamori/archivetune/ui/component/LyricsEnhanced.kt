@@ -17,12 +17,9 @@ import android.app.Activity
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -71,16 +68,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -90,7 +82,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mocharealm.accompanist.lyrics.core.model.ISyncedLine
@@ -101,9 +92,6 @@ import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -122,24 +110,15 @@ import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 private const val LRC_LEAD_MS = 300L
 private const val WORD_SYNC_LEAD_MS = 0L
-private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
-private const val MANUAL_SCROLL_DEBOUNCE_MS = 50L
-private const val LYRIC_FOCUS_ANCHOR_RATIO = 0.42f
-private const val LYRIC_LINE_SYNC_TOP_ANCHOR_RATIO = 0.35f
-private const val LYRIC_FOCUS_TOP_GUARD_RATIO = 0.18f
-private const val LYRIC_FOCUS_BOTTOM_GUARD_RATIO = 0.24f
-private const val LYRIC_FOCUS_MIN_SCROLL_PX = 6
-private const val LYRIC_FOCUS_ANIMATED_DISTANCE = 12
-private const val SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS = 80L
-private const val SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS = 180L
-private const val SMOOTH_PLAYBACK_DRIFT_CORRECTION = 0.55f
-private const val LYRIC_FOCUS_SCROLL_DURATION_MS = 520
+private const val SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS = 250.0
+private const val SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS = 250.0
+private const val SMOOTH_PLAYBACK_DRIFT_CORRECTION = 0.08
+private const val SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS = 2.0
 private const val MIN_KARAOKE_SYLLABLE_DURATION_MS = 1
 
 @Composable
@@ -245,34 +224,23 @@ fun LyricsEnhanced(
         remember(player) {
             mutableLongStateOf(player.currentPosition.coerceAtLeast(0L))
         }
-    var isManualScrolling by remember { mutableStateOf(false) }
-    var lastManualScrollTime by remember { mutableLongStateOf(0L) }
     val listState = key(lyricsSessionKey) { rememberLazyListState() }
 
     LaunchedEffect(lyricsSessionKey) {
         playbackPositionMs.longValue = player.currentPosition.coerceAtLeast(0L)
-        isManualScrolling = false
-        lastManualScrollTime = 0L
         isSelectionModeActive = false
         selectedLineKeys.clear()
     }
 
     LaunchedEffect(player, lyricsSessionKey, animationsDisabled, playbackParameters.speed) {
-        var wasSliderActive = false
-        var anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
-        var anchorFrameNanos = 0L
+        var smoothedPositionMs = player.currentPosition.coerceAtLeast(0L).toDouble()
+        var previousFrameNanos = 0L
         while (isActive) {
             val sliderPosition = latestSliderPositionProvider.value()
-            val isSliderActive = sliderPosition != null
-            if (isSliderActive && !wasSliderActive) {
-                isManualScrolling = false
-            }
-            wasSliderActive = isSliderActive
-
             val rawPosition = (sliderPosition ?: player.currentPosition).coerceAtLeast(0L)
             if (sliderPosition != null || !player.isPlaying || animationsDisabled) {
-                anchorPlayerPositionMs = rawPosition
-                anchorFrameNanos = 0L
+                smoothedPositionMs = rawPosition.toDouble()
+                previousFrameNanos = 0L
                 if (playbackPositionMs.longValue != rawPosition) {
                     playbackPositionMs.longValue = rawPosition
                 }
@@ -283,31 +251,34 @@ fun LyricsEnhanced(
                 }
             } else {
                 val frameNanos = withFrameNanos { frameTimeNanos -> frameTimeNanos }
-                if (anchorFrameNanos == 0L) {
-                    anchorFrameNanos = frameNanos
-                    anchorPlayerPositionMs = rawPosition
+                if (previousFrameNanos == 0L) {
+                    previousFrameNanos = frameNanos
+                    smoothedPositionMs = rawPosition.toDouble()
+                } else {
+                    val elapsedMs =
+                        ((frameNanos - previousFrameNanos).coerceAtLeast(0L) / 1_000_000.0) *
+                            latestPlaybackSpeed.value.toDouble()
+                    val projectedPositionMs = smoothedPositionMs + elapsedMs
+                    val driftMs = rawPosition.toDouble() - projectedPositionMs
+
+                    smoothedPositionMs =
+                        if (
+                            driftMs > SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS ||
+                            driftMs < -SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS
+                        ) {
+                            rawPosition.toDouble()
+                        } else {
+                            val correctionMs =
+                                (driftMs * SMOOTH_PLAYBACK_DRIFT_CORRECTION).coerceIn(
+                                    -SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS,
+                                    SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS,
+                                )
+                            projectedPositionMs + correctionMs
+                        }
+                    previousFrameNanos = frameNanos
                 }
 
-                val elapsedMs = ((frameNanos - anchorFrameNanos) / 1_000_000f) * latestPlaybackSpeed.value
-                val projectedPosition = anchorPlayerPositionMs + elapsedMs.roundToLong()
-                val driftMs = rawPosition - projectedPosition
-                val nextPosition =
-                    when {
-                        driftMs > SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS ||
-                            driftMs < -SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS -> {
-                            anchorPlayerPositionMs = rawPosition
-                            anchorFrameNanos = frameNanos
-                            rawPosition
-                        }
-
-                        driftMs != 0L -> {
-                            projectedPosition + (driftMs * SMOOTH_PLAYBACK_DRIFT_CORRECTION).roundToLong()
-                        }
-
-                        else -> {
-                            projectedPosition
-                        }
-                    }.coerceAtLeast(0L)
+                val nextPosition = smoothedPositionMs.roundToLong().coerceAtLeast(0L)
 
                 if (playbackPositionMs.longValue != nextPosition) {
                     playbackPositionMs.longValue = nextPosition
@@ -327,87 +298,6 @@ fun LyricsEnhanced(
                     .toInt()
             }
         }
-    val lineFocusPosition: () -> Int =
-        remember(syncedLyrics) {
-            {
-                syncedLyrics.positionForStableLineFocus(playbackSyncPosition())
-            }
-        }
-
-    val nestedScrollConnection =
-        remember {
-            var lastUserScrollEventMs = 0L
-            object : NestedScrollConnection {
-                private fun markManualScroll() {
-                    val now = System.currentTimeMillis()
-                    if (now - lastUserScrollEventMs >= MANUAL_SCROLL_DEBOUNCE_MS) {
-                        isManualScrolling = true
-                        lastManualScrollTime = now
-                        lastUserScrollEventMs = now
-                    }
-                }
-
-                override fun onPreScroll(
-                    available: Offset,
-                    source: NestedScrollSource,
-                ): Offset {
-                    if (!isSelectionModeActive && source == NestedScrollSource.UserInput) {
-                        markManualScroll()
-                    }
-                    return Offset.Zero
-                }
-
-                override suspend fun onPostFling(
-                    consumed: Velocity,
-                    available: Velocity,
-                ): Velocity {
-                    if (!isSelectionModeActive && isManualScrolling) {
-                        lastManualScrollTime = System.currentTimeMillis()
-                    }
-                    return Velocity.Zero
-                }
-            }
-        }
-
-    LaunchedEffect(isManualScrolling, lastManualScrollTime) {
-        if (isManualScrolling) {
-            delay(MANUAL_SCROLL_TIMEOUT_MS)
-            isManualScrolling = false
-        }
-    }
-
-    LaunchedEffect(lyricsSessionKey, syncedLyrics, isSynced) {
-        if (!isSynced || syncedLyrics.lines.isEmpty()) return@LaunchedEffect
-        snapshotFlow {
-            listState.layoutInfo.viewportEndOffset > listState.layoutInfo.viewportStartOffset
-        }.first { it }
-
-        var forceNextScroll = true
-        snapshotFlow {
-            if (isManualScrolling || isSelectionModeActive) {
-                null
-            } else {
-                syncedLyrics
-                    .getCurrentFirstHighlightLineIndexByTime(lineFocusPosition())
-                    .takeIf { index -> index in syncedLyrics.lines.indices }
-            }
-        }.distinctUntilChanged()
-            .collectLatest { index ->
-                if (index == null) {
-                    forceNextScroll = true
-                    return@collectLatest
-                }
-
-                listState.scrollLyricIntoFocus(
-                    index = index,
-                    animateToNearbyItem = !forceNextScroll,
-                    force = forceNextScroll,
-                    alignByItemCenter = isWordSyncedFormat,
-                )
-                forceNextScroll = false
-            }
-    }
-
     BackHandler(enabled = isSelectionModeActive) {
         isSelectionModeActive = false
         selectedLineKeys.clear()
@@ -607,10 +497,7 @@ fun LyricsEnhanced(
 
             else -> {
                 BoxWithConstraints(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(nestedScrollConnection),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     val lyricsViewportOffset = remember(maxHeight) { maxHeight * 0.38f }
 
@@ -1023,65 +910,6 @@ private fun LyricsSelectionLineItem(
     }
 }
 
-private suspend fun LazyListState.scrollLyricIntoFocus(
-    index: Int,
-    animateToNearbyItem: Boolean,
-    force: Boolean,
-    alignByItemCenter: Boolean,
-) {
-    val itemCount = layoutInfo.totalItemsCount
-    if (itemCount == 0) return
-
-    val targetIndex = index.coerceIn(0, itemCount - 1)
-    var itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { item -> item.index == targetIndex }
-    if (itemInfo == null) {
-        val distance = abs(targetIndex - firstVisibleItemIndex)
-        if (animateToNearbyItem && distance <= LYRIC_FOCUS_ANIMATED_DISTANCE) {
-            animateScrollToItem(targetIndex)
-        } else {
-            scrollToItem(targetIndex)
-        }
-        withFrameNanos { }
-        itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { item -> item.index == targetIndex }
-    }
-
-    itemInfo ?: return
-
-    val viewportStart = layoutInfo.viewportStartOffset
-    val viewportEnd = layoutInfo.viewportEndOffset
-    val viewportHeight = viewportEnd - viewportStart
-    if (viewportHeight <= 0) return
-
-    val itemFocusPoint =
-        if (alignByItemCenter) {
-            itemInfo.offset + itemInfo.size / 2
-        } else {
-            itemInfo.offset
-        }
-    val topGuard = viewportStart + (viewportHeight * LYRIC_FOCUS_TOP_GUARD_RATIO).roundToInt()
-    val bottomGuard = viewportEnd - (viewportHeight * LYRIC_FOCUS_BOTTOM_GUARD_RATIO).roundToInt()
-    if (!force && itemFocusPoint in topGuard..bottomGuard) return
-
-    val anchorRatio =
-        if (alignByItemCenter) {
-            LYRIC_FOCUS_ANCHOR_RATIO
-        } else {
-            LYRIC_LINE_SYNC_TOP_ANCHOR_RATIO
-        }
-    val targetFocusPoint = viewportStart + (viewportHeight * anchorRatio).roundToInt()
-    val scrollDelta = itemFocusPoint - targetFocusPoint
-    if (abs(scrollDelta) > LYRIC_FOCUS_MIN_SCROLL_PX) {
-        animateScrollBy(
-            value = scrollDelta.toFloat(),
-            animationSpec =
-                tween(
-                    durationMillis = LYRIC_FOCUS_SCROLL_DURATION_MS,
-                    easing = FastOutSlowInEasing,
-                ),
-        )
-    }
-}
-
 private fun ISyncedLine.lineText(): String =
     when (this) {
         is KaraokeLine -> syllables.joinToString("") { it.content }
@@ -1090,35 +918,6 @@ private fun ISyncedLine.lineText(): String =
     }
 
 private fun ISyncedLine.selectionKey(text: String = lineText()): String = "$start:$end:${text.hashCode()}"
-
-private fun SyncedLyrics.positionForStableLineFocus(time: Int): Int {
-    if (lines.isEmpty()) return time
-    val index = findLastStartedLineIndex(time)
-    if (index < 0) return time
-
-    val line = lines[index]
-    if (time < line.end) return time
-
-    return (line.end - 1).coerceAtLeast(line.start)
-}
-
-private fun SyncedLyrics.findLastStartedLineIndex(time: Int): Int {
-    var low = 0
-    var high = lines.lastIndex
-    var result = -1
-
-    while (low <= high) {
-        val mid = low + (high - low) / 2
-        if (lines[mid].start <= time) {
-            result = mid
-            low = mid + 1
-        } else {
-            high = mid - 1
-        }
-    }
-
-    return result
-}
 
 private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): List<KaraokeSyllable> =
     mapIndexed { index, word ->

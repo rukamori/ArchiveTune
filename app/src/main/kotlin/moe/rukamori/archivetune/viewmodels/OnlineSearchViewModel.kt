@@ -28,6 +28,7 @@ import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_ARTIST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_COMMUNITY_PLAYLIST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_FEATURED_PLAYLIST
+import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_PODCAST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_SONG
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_VIDEO
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -71,6 +72,7 @@ class OnlineSearchViewModel
                 FILTER_VIDEO,
                 FILTER_ALBUM,
                 FILTER_ARTIST,
+                FILTER_PODCAST,
                 FILTER_COMMUNITY_PLAYLIST,
                 FILTER_FEATURED_PLAYLIST,
             )

@@ -9,16 +9,30 @@ package moe.rukamori.archivetune.localmedia
 
 import android.content.ContentUris
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import androidx.core.content.FileProvider
+import androidx.compose.runtime.Immutable
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.IOException
+import java.nio.charset.StandardCharsets
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.Locale
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.db.LocalMusicIdentity
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.AlbumArtistMap
 import moe.rukamori.archivetune.db.entities.AlbumEntity
@@ -31,15 +45,6 @@ import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.lyrics.LyricsUtils
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.charset.StandardCharsets
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.util.Locale
-import java.util.UUID
-import javax.inject.Inject
 
 data class LocalSongScanConfig(
     val minimumDurationSeconds: Int = 0,
@@ -78,669 +83,505 @@ data class LocalSongScanConfig(
     }
 }
 
+@Immutable
 data class LocalSongScanSummary(
     val scannedSongs: Int,
     val removedSongs: Int,
+    val metadataLookupFailed: Boolean = false,
 )
 
-class LocalSongScanner
-    @Inject
-    constructor(
-        @ApplicationContext private val context: Context,
-        private val database: MusicDatabase,
-    ) {
-        suspend fun scanDevice(scanConfig: LocalSongScanConfig = LocalSongScanConfig()): LocalSongScanSummary =
-            withContext(Dispatchers.IO) {
-                val snapshot = queryTracks(scanConfig)
-                database.withTransaction {
-                    val existingLocalIds = localSongIds()
-                    val scannedIds = snapshot.tracks.map(LocalTrackRecord::id)
+@Singleton
+class LocalSongScanner @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val database: MusicDatabase,
+    private val metadataReader: LocalAudioMetadataReader,
+    private val metadataRepository: LocalMetadataRepository,
+) {
+    private val scanMutex = Mutex()
+
+    suspend fun scanDevice(scanConfig: LocalSongScanConfig = LocalSongScanConfig()): LocalSongScanSummary =
+        withContext(Dispatchers.IO) {
+            scanMutex.withLock {
+                val scanned = queryTracks(scanConfig)
+                val ids = scanned.map(LocalTrackRecord::id)
+                val enriched = enrichTracks(scanned, loadSongs(ids), loadFormats(ids))
+                val summary = database.withTransaction {
+                    val scannedIds = enriched.tracks.map(LocalTrackRecord::id)
                     val scannedIdSet = scannedIds.toSet()
-                    val removedIds = existingLocalIds.filterNot(scannedIdSet::contains)
-
-                    if (scannedIds.isEmpty()) {
-                        clearLocalSongs()
-                    } else {
-                        removedIds.chunked(SqlBatchSize).forEach(::deleteSongsByIds)
-                    }
-
+                    val removedIds = localSongIds().filterNot(scannedIdSet::contains)
+                    removedIds.chunked(SqlBatchSize).forEach(::deleteSongsByIds)
                     val existingSongs = loadSongs(scannedIds)
                     val existingLyrics = loadLyrics(scannedIds)
-                    val existingArtists = loadArtists(snapshot.artists.map(LocalArtistRecord::id))
-                    val existingAlbums = loadAlbums(snapshot.albums.map(LocalAlbumRecord::id))
-
-                    val existingFormats =
-                        scannedIds
-                            .chunked(SqlBatchSize)
-                            .flatMap { chunk -> database.getFormatsByIds(chunk) }
-                            .associateBy { it.id }
-
-                    snapshot.artists.forEach { artist ->
-                        val existingArtist = existingArtists[artist.id]
-                        upsert(
-                            ArtistEntity(
-                                id = artist.id,
-                                name = artist.name,
-                                thumbnailUrl = existingArtist?.thumbnailUrl,
-                                channelId = null,
-                                lastUpdateTime = existingArtist?.lastUpdateTime ?: LocalDateTime.now(),
-                                bookmarkedAt = existingArtist?.bookmarkedAt,
-                                isLocal = true,
-                            ),
+                    val existingFormats = loadFormats(scannedIds)
+                    val resolver = CatalogResolver()
+                    val artistCredits = enriched.tracks.flatMap { track ->
+                        (track.artists + albumArtistNames(track)).distinct().map { name -> name to track }
+                    }.groupBy { LocalMusicIdentity.normalize(it.first) }
+                    val artistIds = artistCredits.mapValues { (_, credits) ->
+                        currentCoroutineContext().ensureActive()
+                        val name = credits.first().first
+                        val matches = credits.map { it.second }.filter { it.matchedArtistName?.let { matched -> sameName(name, matched) } == true }
+                        resolver.resolveArtist(
+                            name,
+                            matches.mapNotNull { it.remoteArtistId }.distinct().singleOrNull(),
+                            matches.firstNotNullOfOrNull { it.artistThumbnailUrl },
                         )
                     }
-
-                    snapshot.albums.forEach { album ->
-                        val existingAlbum = existingAlbums[album.id]
-                        upsert(
-                            AlbumEntity(
-                                id = album.id,
-                                playlistId = null,
-                                title = album.title,
-                                year = album.year ?: existingAlbum?.year,
-                                thumbnailUrl = album.thumbnailUrl,
-                                themeColor = existingAlbum?.themeColor,
-                                songCount = album.songCount,
-                                duration = album.duration,
-                                explicit = false,
-                                lastUpdateTime = LocalDateTime.now(),
-                                bookmarkedAt = existingAlbum?.bookmarkedAt,
-                                likedDate = existingAlbum?.likedDate,
-                                inLibrary = existingAlbum?.inLibrary,
-                                isLocal = true,
-                            ),
-                        )
+                    val albumIds = mutableMapOf<String, String>()
+                    enriched.tracks.filter { it.albumName != null }.groupBy(::albumKey).forEach { (key, tracks) ->
+                        val albumArtistIds = albumArtistNames(tracks.first()).map { name ->
+                            artistIds.getValue(LocalMusicIdentity.normalize(name))
+                        }.distinct()
+                        val previousIds = tracks.mapNotNull { existingSongs[it.id]?.song?.albumId }.toSet()
+                        albumIds[key] = resolver.resolveAlbum(tracks, albumArtistIds, previousIds)
                     }
-
-                    snapshot.albums
-                        .map(LocalAlbumRecord::id)
-                        .distinct()
-                        .chunked(SqlBatchSize)
-                        .forEach(::deleteAlbumArtistMapsByAlbumIds)
-                    snapshot.albums.forEach { album ->
-                        album.artistIds.forEachIndexed { index, artistId ->
-                            insert(
-                                AlbumArtistMap(
-                                    albumId = album.id,
-                                    artistId = artistId,
-                                    order = index,
-                                ),
-                            )
-                        }
-                    }
-
-                    snapshot.tracks.forEach { track ->
-                        val existingSong = existingSongs[track.id]?.song
-                        val existingFormat = existingFormats[track.id]
-                        upsert(
-                            SongEntity(
-                                id = track.id,
-                                title = if (existingSong?.titleOverride == true) existingSong.title else track.title,
-                                titleOverride = existingSong?.titleOverride ?: false,
-                                duration = track.durationSeconds,
-                                thumbnailUrl = track.thumbnailUrl,
-                                albumId = track.albumId,
-                                albumName = track.albumName,
-                                explicit = existingSong?.explicit ?: false,
-                                year = track.year ?: existingSong?.year,
-                                date = existingSong?.date,
-                                dateModified = track.dateModified ?: existingSong?.dateModified,
-                                liked = existingSong?.liked ?: false,
-                                likedDate = existingSong?.likedDate,
-                                totalPlayTime = existingSong?.totalPlayTime ?: 0L,
-                                inLibrary = null,
-                                dateDownload = existingSong?.dateDownload,
-                                isLocal = true,
-                            ),
-                        )
-
-                        val isFileUnchanged =
-                            existingFormat != null &&
-                                existingFormat.contentLength == track.sizeBytes &&
-                                (track.dateModified == null || existingSong?.dateModified == track.dateModified)
-                        upsert(
-                            FormatEntity(
-                                id = track.id,
-                                itag = -1,
-                                mimeType = track.mimeType,
-                                codecs = if (isFileUnchanged) existingFormat!!.codecs else "",
-                                bitrate = if (isFileUnchanged && existingFormat!!.bitrate != 0) existingFormat.bitrate else 0,
-                                sampleRate = if (isFileUnchanged) existingFormat!!.sampleRate else null,
-                                contentLength = track.sizeBytes,
-                                loudnessDb = if (isFileUnchanged) existingFormat!!.loudnessDb else null,
-                                perceptualLoudnessDb = if (isFileUnchanged) existingFormat!!.perceptualLoudnessDb else null,
-                                playbackUrl = null,
-                            ),
-                        )
+                    enriched.tracks.forEach { track ->
+                        currentCoroutineContext().ensureActive()
+                        val existing = existingSongs[track.id]?.song
+                        val oldFormat = existingFormats[track.id]
+                        val albumId = track.albumName?.let { albumIds[albumKey(track)] }
+                        val base = existing ?: SongEntity(id = track.id, title = track.title, dateDownload = null)
+                        upsert(base.copy(
+                            title = if (base.titleOverride) base.title else track.title,
+                            duration = track.durationSeconds,
+                            thumbnailUrl = track.thumbnailUrl ?: albumId?.let { resolver.albumArtwork(it) } ?: track.mediaStoreThumbnailUrl,
+                            albumId = albumId,
+                            albumName = track.albumName,
+                            albumArtist = track.albumArtist,
+                            trackNumber = track.trackNumber,
+                            discNumber = track.discNumber,
+                            year = track.year,
+                            dateModified = track.dateModified,
+                            isLocal = true,
+                        ))
+                        val unchanged = isUnchanged(track, existing, oldFormat)
+                        upsert(FormatEntity(
+                            id = track.id,
+                            itag = -1,
+                            mimeType = track.mimeType,
+                            codecs = if (unchanged) oldFormat!!.codecs else "",
+                            bitrate = if (unchanged) oldFormat!!.bitrate else 0,
+                            sampleRate = if (unchanged) oldFormat!!.sampleRate else null,
+                            contentLength = track.sizeBytes,
+                            loudnessDb = if (unchanged) oldFormat!!.loudnessDb else null,
+                            perceptualLoudnessDb = if (unchanged) oldFormat!!.perceptualLoudnessDb else null,
+                            playbackUrl = null,
+                        ))
                         deleteSongArtistMaps(track.id)
-                        track.artists.forEachIndexed { index, artist ->
-                            insert(
-                                SongArtistMap(
-                                    songId = track.id,
-                                    artistId = artist.id,
-                                    position = index,
-                                ),
-                            )
+                        track.artists.map { artistIds.getValue(LocalMusicIdentity.normalize(it)) }.distinct().forEachIndexed { index, artistId ->
+                            insert(SongArtistMap(songId = track.id, artistId = artistId, position = index))
                         }
                         deleteSongAlbumMaps(track.id)
-                        track.albumId?.let { albumId ->
-                            insert(
-                                SongAlbumMap(
-                                    songId = track.id,
-                                    albumId = albumId,
-                                    index = 0,
-                                ),
-                            )
+                        if (albumId != null) {
+                            insert(SongAlbumMap(songId = track.id, albumId = albumId, index = track.trackNumber?.minus(1) ?: (Int.MAX_VALUE - 1)))
                         }
                         updateEmbeddedLyrics(track, existingLyrics[track.id])
                     }
-
+                    refreshLocalAlbumCounts()
                     pruneLocalAlbums()
                     pruneLocalArtists()
                     pruneFormats()
                     prunePlayCounts()
-
-                    LocalSongScanSummary(
-                        scannedSongs = snapshot.tracks.size,
-                        removedSongs = removedIds.size,
-                    )
+                    LocalSongScanSummary(enriched.tracks.size, removedIds.size, enriched.lookupFailed)
                 }
+                val retained = database.localArtworkUrls().mapNotNull { Uri.parse(it).lastPathSegment }.toSet()
+                pruneUnusedArtworkFiles(retained)
+                summary
             }
+        }
 
-        private suspend fun loadSongs(ids: List<String>): Map<String, Song> =
-            ids
-                .chunked(SqlBatchSize)
-                .flatMap { chunk -> database.getSongsByIds(chunk) }
-                .associateBy { item -> item.song.id }
-
-        private suspend fun loadLyrics(ids: List<String>): Map<String, LyricsEntity> =
-            ids
-                .chunked(SqlBatchSize)
-                .flatMap { chunk -> database.getLyricsByIds(chunk) }
-                .associateBy { item -> item.id }
-
-        private suspend fun loadArtists(ids: List<String>): Map<String, ArtistEntity> =
-            ids
-                .distinct()
-                .chunked(SqlBatchSize)
-                .flatMap { chunk -> database.getArtistEntitiesByIds(chunk) }
-                .associateBy { item -> item.id }
-
-        private suspend fun loadAlbums(ids: List<String>): Map<String, AlbumEntity> =
-            ids
-                .distinct()
-                .chunked(SqlBatchSize)
-                .flatMap { chunk -> database.getAlbumEntitiesByIds(chunk) }
-                .associateBy { item -> item.id }
-
-        @Suppress("DEPRECATION")
-        private fun queryTracks(scanConfig: LocalSongScanConfig): LocalScanSnapshot {
-            val sanitizedMinimumDurationMs = scanConfig.sanitizedMinimumDurationSeconds.toLong() * 1000L
-            val sanitizedIncludedFolders =
-                scanConfig.sanitizedIncludedFolders
-                    .map { it.lowercase(Locale.ROOT) }
-                    .toSet()
-            val sanitizedExcludedFolders =
-                scanConfig.sanitizedExcludedFolders
-                    .map { it.lowercase(Locale.ROOT) }
-                    .toSet()
-            val projection =
-                buildList {
-                    add(MediaStore.Audio.Media._ID)
-                    add(MediaStore.Audio.Media.TITLE)
-                    add(MediaStore.Audio.Media.DISPLAY_NAME)
-                    add(MediaStore.Audio.Media.ARTIST)
-                    add(MediaStore.Audio.Media.ARTIST_ID)
-                    add(MediaStore.Audio.Media.ALBUM)
-                    add(MediaStore.Audio.Media.ALBUM_ID)
-                    add(MediaStore.Audio.Media.DURATION)
-                    add(MediaStore.Audio.Media.YEAR)
-                    add(MediaStore.Audio.Media.DATE_MODIFIED)
-                    add(MediaStore.Audio.Media.SIZE)
-                    add(MediaStore.Audio.Media.MIME_TYPE)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        add(MediaStore.MediaColumns.RELATIVE_PATH)
-                    } else {
-                        add(MediaStore.MediaColumns.DATA)
-                    }
-                }.toTypedArray()
-            val selection =
-                buildList {
-                    add("${MediaStore.Audio.Media.SIZE} > 0")
-                    if (sanitizedMinimumDurationMs > 0L) {
-                        add("${MediaStore.Audio.Media.DURATION} >= $sanitizedMinimumDurationMs")
-                    } else {
-                        add("${MediaStore.Audio.Media.DURATION} > 0")
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        add("${MediaStore.MediaColumns.IS_PENDING} = 0")
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        add("is_trashed = 0")
-                    }
-                }.joinToString(" AND ")
-
-            val unknownArtist = context.getString(R.string.unknown_artist)
-            val unknownTitle = context.getString(R.string.unknown)
-            val tracks = mutableListOf<LocalTrackRecord>()
-            val retainedArtworkFileNames = linkedSetOf<String>()
-            val embeddedLyricsExtractor = EmbeddedLyricsExtractor(context.contentResolver)
-            context.contentResolver
-                .query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    projection,
-                    selection,
-                    null,
-                    "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC, ${MediaStore.Audio.Media._ID} ASC",
-                )?.use { cursor ->
-                    val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                    val titleIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                    val displayNameIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-                    val artistIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                    val artistIdIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
-                    val albumIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                    val albumIdIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
-                    val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                    val yearIndex = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR)
-                    val dateModifiedIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-                    val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-                    val mimeTypeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
-                    val relativePathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
-                    val dataPathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
-
-                    while (cursor.moveToNext()) {
-                        val mediaId = cursor.getLong(idIndex)
-                        val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaId)
-                        val normalizedFolderPath =
-                            resolveNormalizedFolderPath(
-                                relativePath = cursor.getStringOrNull(relativePathIndex),
-                                absolutePath = cursor.getStringOrNull(dataPathIndex),
-                            )
-                        if (!shouldIncludeFolder(normalizedFolderPath, sanitizedIncludedFolders)) {
-                            continue
-                        }
-                        if (shouldExcludeFolder(normalizedFolderPath, sanitizedExcludedFolders)) {
-                            continue
-                        }
-                        val displayName = cursor.getString(displayNameIndex)
-                        val mimeType = cursor.getString(mimeTypeIndex)?.takeIf(String::isNotBlank) ?: "audio/*"
-                        if (!SupportedLocalAudio.isSupported(displayName, mimeType)) {
-                            continue
-                        }
-                        val artistValue = normalizeArtistName(cursor.getString(artistIndex), unknownArtist)
-                        val splitArtists = splitArtistNames(artistValue).ifEmpty { listOf(unknownArtist) }
-                        val mediaStoreArtistId = cursor.getLongOrNull(artistIdIndex)
-                        val artists =
-                            splitArtists.mapIndexed { index, name ->
-                                LocalArtistRecord(
-                                    id = buildArtistId(mediaStoreArtistId, name, index, splitArtists.size),
-                                    name = name,
-                                )
-                            }
-                        val mediaStoreAlbumId = cursor.getLongOrNull(albumIdIndex)
-                        val albumName = normalizeAlbumName(cursor.getString(albumIndex))
-                        val title =
-                            normalizeTitle(
-                                title = cursor.getString(titleIndex),
-                                displayName = displayName,
-                                fallback = unknownTitle,
-                            )
-                        val dateModifiedSeconds = cursor.getLong(dateModifiedIndex)
-                        val sizeBytes = cursor.getLong(sizeIndex).coerceAtLeast(0L)
-                        val thumbnailUrl =
-                            resolveTrackThumbnail(
-                                contentUri = contentUri,
-                                albumName = albumName,
-                                mediaStoreAlbumId = mediaStoreAlbumId,
-                                dateModifiedSeconds = dateModifiedSeconds,
-                                sizeBytes = sizeBytes,
-                                retainedArtworkFileNames = retainedArtworkFileNames,
-                            )
-                        val embeddedLyrics =
-                            embeddedLyricsExtractor
-                                .extract(
-                                    contentUri = contentUri,
-                                    displayName = displayName,
-                                    mimeType = mimeType,
-                                )?.let(LyricsUtils::lyricsOrNotFound)
-                                ?.takeIf { lyrics -> lyrics != LyricsEntity.LYRICS_NOT_FOUND }
-                        tracks +=
-                            LocalTrackRecord(
-                                id = contentUri.toString(),
-                                title = title,
-                                artists = artists,
-                                albumId =
-                                    albumName?.let {
-                                        buildAlbumId(
-                                            mediaStoreAlbumId = mediaStoreAlbumId,
-                                            albumName = it,
-                                            primaryArtistId = artists.firstOrNull()?.id,
-                                        )
-                                    },
-                                albumName = albumName,
-                                durationSeconds =
-                                    (cursor.getLong(durationIndex).coerceAtLeast(0L) / 1000L)
-                                        .coerceAtMost(Int.MAX_VALUE.toLong())
-                                        .toInt(),
-                                year = cursor.getIntOrNull(yearIndex)?.takeIf { it > 0 },
-                                dateModified =
-                                    dateModifiedSeconds
-                                        .takeIf { it > 0L }
-                                        ?.let { LocalDateTime.ofInstant(Instant.ofEpochSecond(it), ZoneId.systemDefault()) },
-                                sizeBytes = sizeBytes,
-                                mimeType = mimeType,
-                                thumbnailUrl = thumbnailUrl,
-                                embeddedLyrics = embeddedLyrics,
-                            )
-                    }
-                }
-            pruneUnusedArtworkFiles(retainedArtworkFileNames)
-
-            val albums =
-                tracks
-                    .filter { !it.albumId.isNullOrBlank() && !it.albumName.isNullOrBlank() }
-                    .groupBy { it.albumId!! }
-                    .map { (albumId, albumTracks) ->
-                        LocalAlbumRecord(
-                            id = albumId,
-                            title = albumTracks.first().albumName.orEmpty(),
-                            year = albumTracks.mapNotNull(LocalTrackRecord::year).maxOrNull(),
-                            thumbnailUrl = albumTracks.mapNotNull(LocalTrackRecord::thumbnailUrl).firstOrNull(),
-                            songCount = albumTracks.size,
-                            duration = albumTracks.sumOf(LocalTrackRecord::durationSeconds),
-                            artistIds = albumTracks.flatMap { track -> track.artists.map(LocalArtistRecord::id) }.distinct(),
-                        )
-                    }
-
-            return LocalScanSnapshot(
-                tracks = tracks,
-                artists = tracks.flatMap(LocalTrackRecord::artists).distinctBy(LocalArtistRecord::id),
-                albums = albums,
+    private suspend fun enrichTracks(
+        tracks: List<LocalTrackRecord>,
+        previousSongs: Map<String, Song>,
+        previousFormats: Map<String, FormatEntity>,
+    ): EnrichedTracks {
+        val cache = mutableMapOf<LocalMetadataQuery, LocalMetadataMatch?>()
+        var lookupFailed = false
+        val unknownArtist = context.getString(R.string.unknown_artist)
+        val enriched = tracks.map { scanned ->
+            currentCoroutineContext().ensureActive()
+            val previous = previousSongs[scanned.id]
+            val unchanged = isUnchanged(scanned, previous?.song, previousFormats[scanned.id])
+            var track = if (unchanged && previous != null) {
+                scanned.copy(
+                    albumName = scanned.albumName ?: previous.song.albumName,
+                    albumArtist = scanned.albumArtist ?: previous.song.albumArtist,
+                    year = scanned.year ?: previous.song.year,
+                    thumbnailUrl = scanned.thumbnailUrl ?: previous.song.thumbnailUrl?.takeUnless { it.startsWith("content://media/") },
+                    trackNumber = scanned.trackNumber ?: previous.song.trackNumber,
+                    discNumber = scanned.discNumber ?: previous.song.discNumber,
+                    remoteAlbumId = previous.album?.takeUnless { it.isLocal }?.id,
+                )
+            } else scanned
+            val lookupArtist = track.albumArtist?.let(::splitArtistNames)?.firstOrNull()
+                ?: track.artists.firstOrNull { it != unknownArtist }
+            val hasTrackArtist = track.artists.any { it != unknownArtist }
+            val lookupAlbum = track.albumName != null && hasTrackArtist
+            val query = LocalMetadataQuery(
+                title = if (lookupAlbum) "" else track.title,
+                artist = lookupArtist,
+                albumArtist = track.albumArtist,
+                album = track.albumName,
+                durationSeconds = if (lookupAlbum) 0 else track.durationSeconds,
+                year = track.year,
             )
-        }
-
-        private fun normalizeTitle(
-            title: String?,
-            displayName: String?,
-            fallback: String,
-        ): String =
-            title?.trim()?.takeIf { it.isNotBlank() }
-                ?: displayName?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotBlank() }
-                ?: fallback
-
-        private fun resolveTrackThumbnail(
-            contentUri: Uri,
-            albumName: String?,
-            mediaStoreAlbumId: Long?,
-            dateModifiedSeconds: Long,
-            sizeBytes: Long,
-            retainedArtworkFileNames: MutableSet<String>,
-        ): String? =
-            extractEmbeddedArtwork(
-                contentUri = contentUri,
-                dateModifiedSeconds = dateModifiedSeconds,
-                sizeBytes = sizeBytes,
-                retainedArtworkFileNames = retainedArtworkFileNames,
-            ) ?: mediaStoreAlbumId
-                ?.takeIf { !albumName.isNullOrBlank() }
-                ?.takeIf { it > 0L }
-                ?.let { ContentUris.withAppendedId(AlbumArtUri, it).toString() }
-
-        private fun extractEmbeddedArtwork(
-            contentUri: Uri,
-            dateModifiedSeconds: Long,
-            sizeBytes: Long,
-            retainedArtworkFileNames: MutableSet<String>,
-        ): String? {
-            val retriever = MediaMetadataRetriever()
-            return try {
-                retriever.setDataSource(context, contentUri)
-                val artworkBytes = retriever.embeddedPicture ?: return null
-                val extension = artworkBytes.imageExtension() ?: return null
-                val fileName = "${stableHash("$contentUri|$dateModifiedSeconds|$sizeBytes")}.$extension"
-                val artworkDirectory = localArtworkDirectory()
-                val artworkFile = File(artworkDirectory, fileName)
-                retainedArtworkFileNames += fileName
-                if (!artworkFile.exists() || artworkFile.length() != artworkBytes.size.toLong()) {
-                    artworkDirectory.mkdirs()
-                    FileOutputStream(artworkFile).use { outputStream ->
-                        outputStream.write(artworkBytes)
-                    }
+            val needsLookup = !unchanged || track.albumArtist == null || track.year == null || track.thumbnailUrl == null || track.remoteAlbumId == null
+            val match = if (cache.containsKey(query)) {
+                cache[query]
+            } else if (!lookupFailed && lookupArtist != null && needsLookup) {
+                try {
+                    metadataRepository.find(query).also { cache[query] = it }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    lookupFailed = true
+                    Timber.tag(LogTag).w(error, "Optional local metadata lookup failed")
+                    null
                 }
-                FileProvider
-                    .getUriForFile(
-                        context,
-                        "${context.packageName}.FileProvider",
-                        artworkFile,
-                    ).toString()
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                Timber.tag(LogTag).w(error, "Failed to extract embedded artwork for %s", contentUri)
-                null
-            } finally {
-                runCatching { retriever.release() }
-                    .onFailure { error -> Timber.tag(LogTag).w(error, "Failed to release artwork retriever") }
+            } else null
+            if (match != null) {
+                track = track.copy(
+                    artists = if (hasTrackArtist) track.artists else match.artist?.let(::splitArtistNames)?.takeIf { it.isNotEmpty() } ?: track.artists,
+                    albumName = track.albumName ?: cleanTag(match.album),
+                    albumArtist = track.albumArtist ?: cleanTag(match.albumArtist),
+                    year = track.year ?: match.year,
+                    thumbnailUrl = track.thumbnailUrl ?: match.thumbnailUrl,
+                    trackNumber = track.trackNumber ?: match.trackNumber,
+                    remoteAlbumId = match.albumId ?: track.remoteAlbumId,
+                    remoteArtistId = match.artistId,
+                    matchedArtistName = lookupArtist,
+                    artistThumbnailUrl = match.artistThumbnailUrl,
+                )
             }
+            track
         }
+        return EnrichedTracks(enriched, lookupFailed)
+    }
 
-        private fun updateEmbeddedLyrics(
-            track: LocalTrackRecord,
-            existingLyrics: LyricsEntity?,
-        ) {
-            val embeddedLyrics = track.embeddedLyrics
-            if (embeddedLyrics != null) {
-                if (existingLyrics == null || existingLyrics.hasGenericSource()) {
-                    database.upsert(
-                        LyricsEntity(
-                            id = track.id,
-                            lyrics = embeddedLyrics,
-                            source = LyricsEntity.Source.EMBEDDED.value,
-                        ),
-                    )
-                }
-                return
+    private inner class CatalogResolver {
+        private val artists = database.catalogArtistEntities().associateByTo(linkedMapOf()) { it.id }
+        private val albums = database.catalogAlbumEntities().associateByTo(linkedMapOf()) { it.id }
+        private val albumArtists = database.catalogAlbumArtistMaps().groupBy { it.albumId }
+            .mapValuesTo(mutableMapOf()) { (_, links) ->
+                links.mapNotNull { artists[it.artistId]?.name?.let(LocalMusicIdentity::normalize) }.toSet()
             }
 
-            if (existingLyrics?.source == LyricsEntity.Source.EMBEDDED.value) {
-                database.delete(existingLyrics)
+        fun albumArtwork(id: String): String? = albums[id]?.thumbnailUrl
+
+        fun resolveArtist(name: String, remoteId: String?, thumbnailUrl: String?): String {
+            val candidates = artists.values.filter { sameName(it.name, name) }
+            val remote = candidates.filter { !it.isLocal && it.isYouTubeArtist }.singleOrNull()
+            val id = remoteId ?: remote?.id ?: candidates.firstOrNull { it.isLocal }?.id
+                ?: "LOCAL_ARTIST_${stableHash(LocalMusicIdentity.normalize(name))}"
+            val existing = artists[id]
+            val entity = existing?.copy(thumbnailUrl = existing.thumbnailUrl ?: thumbnailUrl)
+                ?: ArtistEntity(id = id, name = name, thumbnailUrl = thumbnailUrl, isLocal = remoteId == null && remote == null)
+            database.deleteLocalMusicAlias(id, "artist")
+            database.upsert(entity)
+            artists[id] = entity
+            candidates.filter { it.isLocal && it.id != id }.forEach { obsolete ->
+                database.mergeLocalArtist(obsolete.id, id)
+                artists.remove(obsolete.id)
             }
+            artists[id] = database.getArtistById(id) ?: entity
+            return id
         }
 
-        private fun pruneUnusedArtworkFiles(retainedArtworkFileNames: Set<String>) {
-            val artworkDirectory = localArtworkDirectory()
-            if (!artworkDirectory.exists()) return
-            artworkDirectory
-                .listFiles()
-                ?.filter { file -> file.isFile && file.name !in retainedArtworkFileNames }
-                ?.forEach { file ->
-                    if (!file.delete()) {
-                        Timber.tag(LogTag).w("Failed to delete stale local artwork: %s", file.name)
-                    }
-                }
-        }
-
-        private fun localArtworkDirectory(): File = File(context.filesDir, LocalArtworkDirectoryName)
-
-        private fun ByteArray.imageExtension(): String? =
-            when {
-                size >= 3 &&
-                    this[0] == 0xFF.toByte() &&
-                    this[1] == 0xD8.toByte() &&
-                    this[2] == 0xFF.toByte() -> "jpg"
-
-                size >= 8 &&
-                    this[0] == 0x89.toByte() &&
-                    this[1] == 0x50.toByte() &&
-                    this[2] == 0x4E.toByte() &&
-                    this[3] == 0x47.toByte() &&
-                    this[4] == 0x0D.toByte() &&
-                    this[5] == 0x0A.toByte() &&
-                    this[6] == 0x1A.toByte() &&
-                    this[7] == 0x0A.toByte() -> "png"
-
-                size >= 12 &&
-                    this[0] == 0x52.toByte() &&
-                    this[1] == 0x49.toByte() &&
-                    this[2] == 0x46.toByte() &&
-                    this[3] == 0x46.toByte() &&
-                    this[8] == 0x57.toByte() &&
-                    this[9] == 0x45.toByte() &&
-                    this[10] == 0x42.toByte() &&
-                    this[11] == 0x50.toByte() -> "webp"
-
-                else -> null
+        fun resolveAlbum(tracks: List<LocalTrackRecord>, artistIds: List<String>, previousIds: Set<String>): String {
+            val first = tracks.first()
+            val title = requireNotNull(first.albumName)
+            val names = albumArtistNames(first).map(LocalMusicIdentity::normalize).toSet()
+            val year = tracks.mapNotNull(LocalTrackRecord::year).firstOrNull()
+            val candidates = albums.values.filter { album ->
+                sameName(album.title, title) && (year == null || album.year == null || year == album.year) && albumArtists[album.id] == names
             }
-
-        private fun normalizeArtistName(
-            rawArtist: String?,
-            fallback: String,
-        ): String {
-            val normalized = rawArtist?.trim()?.takeIf { it.isNotBlank() && !it.equals("<unknown>", ignoreCase = true) }
-            return normalized ?: fallback
-        }
-
-        private fun normalizeAlbumName(rawAlbum: String?): String? =
-            rawAlbum?.trim()?.takeIf {
-                it.isNotBlank() && !it.equals("<unknown>", ignoreCase = true)
+            val remote = candidates.filter { !it.isLocal }.singleOrNull()
+            val remoteId = tracks.mapNotNull(LocalTrackRecord::remoteAlbumId).distinct().singleOrNull()
+            val local = candidates.firstOrNull { it.isLocal && it.id in previousIds } ?: candidates.firstOrNull { it.isLocal }
+            val id = remoteId ?: remote?.id ?: local?.id ?: "LOCAL_ALBUM_${stableHash(albumKey(first))}"
+            val existing = database.albumEntity(id)
+            val localAlbum = existing?.isLocal ?: (remoteId == null && remote == null)
+            val thumbnail = tracks.firstNotNullOfOrNull { it.thumbnailUrl }
+                ?: tracks.firstNotNullOfOrNull { it.mediaStoreThumbnailUrl }
+            val duration = tracks.sumOf { it.durationSeconds.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val entity = if (existing != null) {
+                if (existing.isLocal) existing.copy(
+                    title = title,
+                    year = year,
+                    thumbnailUrl = thumbnail ?: existing.thumbnailUrl,
+                    songCount = tracks.size,
+                    duration = duration,
+                ) else existing.copy(year = existing.year ?: year, thumbnailUrl = existing.thumbnailUrl ?: thumbnail)
+            } else AlbumEntity(
+                id = id,
+                title = title,
+                year = year,
+                thumbnailUrl = thumbnail,
+                songCount = tracks.size,
+                duration = duration,
+                isLocal = localAlbum,
+            )
+            database.deleteLocalMusicAlias(id, "album")
+            database.upsert(entity)
+            if (localAlbum || existing == null || database.albumArtistEntities(id).isEmpty()) {
+                if (localAlbum) database.deleteAlbumArtistMapsByAlbumIds(listOf(id))
+                artistIds.forEachIndexed { index, artistId -> database.insert(AlbumArtistMap(albumId = id, artistId = artistId, order = index)) }
             }
-
-        private fun splitArtistNames(rawArtist: String): List<String> =
-            rawArtist
-                .split(ArtistSeparators)
-                .map(String::trim)
-                .filter(String::isNotBlank)
-                .ifEmpty { listOf(rawArtist) }
-
-        private fun buildArtistId(
-            mediaStoreArtistId: Long?,
-            artistName: String,
-            index: Int,
-            totalArtists: Int,
-        ): String {
-            val stableId = mediaStoreArtistId?.takeIf { it > 0L }
-            return if (stableId != null && totalArtists == 1) {
-                "LOCAL_ARTIST_$stableId"
-            } else {
-                "LOCAL_ARTIST_${stableHash("$artistName|$index")}"
+            candidates.filter { it.isLocal && it.id != id }.forEach { obsolete ->
+                database.mergeLocalAlbum(obsolete.id, id)
+                albums.remove(obsolete.id)
+                albumArtists.remove(obsolete.id)
             }
-        }
-
-        private fun buildAlbumId(
-            mediaStoreAlbumId: Long?,
-            albumName: String,
-            primaryArtistId: String?,
-        ): String {
-            val stableId = mediaStoreAlbumId?.takeIf { it > 0L }
-            return if (stableId != null) {
-                "LOCAL_ALBUM_$stableId"
-            } else {
-                "LOCAL_ALBUM_${stableHash("$albumName|$primaryArtistId")}"
-            }
-        }
-
-        private fun stableHash(source: String): String =
-            UUID
-                .nameUUIDFromBytes(source.toByteArray(StandardCharsets.UTF_8))
-                .toString()
-                .replace("-", "")
-
-        private fun resolveNormalizedFolderPath(
-            relativePath: String?,
-            absolutePath: String?,
-        ): String? {
-            val relativeFolder = LocalSongScanConfig.normalizeFolderEntry(relativePath.orEmpty())
-            if (relativeFolder.isNotEmpty()) {
-                return relativeFolder.lowercase(Locale.ROOT)
-            }
-
-            val absoluteFolder =
-                absolutePath
-                    ?.replace('\\', '/')
-                    ?.substringBeforeLast('/', missingDelimiterValue = "")
-                    .orEmpty()
-            val normalizedAbsoluteFolder = LocalSongScanConfig.normalizeFolderEntry(absoluteFolder)
-            return normalizedAbsoluteFolder.takeIf(String::isNotEmpty)?.lowercase(Locale.ROOT)
-        }
-
-        private fun shouldIncludeFolder(
-            folderPath: String?,
-            includedFolders: Set<String>,
-        ): Boolean {
-            if (includedFolders.isEmpty()) return true
-            return matchesFolderEntry(folderPath, includedFolders)
-        }
-
-        private fun shouldExcludeFolder(
-            folderPath: String?,
-            excludedFolders: Set<String>,
-        ): Boolean {
-            if (excludedFolders.isEmpty()) return false
-            return matchesFolderEntry(folderPath, excludedFolders)
-        }
-
-        private fun matchesFolderEntry(
-            folderPath: String?,
-            folders: Set<String>,
-        ): Boolean {
-            if (folderPath.isNullOrEmpty()) return false
-            return folders.any { folder ->
-                folderPath == folder ||
-                    folderPath.startsWith("$folder/") ||
-                    folderPath.endsWith("/$folder") ||
-                    folderPath.contains("/$folder/")
-            }
-        }
-
-        private fun android.database.Cursor.getLongOrNull(columnIndex: Int): Long? =
-            if (columnIndex >= 0 && !isNull(columnIndex)) getLong(columnIndex) else null
-
-        private fun android.database.Cursor.getIntOrNull(columnIndex: Int): Int? =
-            if (columnIndex >= 0 && !isNull(columnIndex)) getInt(columnIndex) else null
-
-        private fun android.database.Cursor.getStringOrNull(columnIndex: Int): String? =
-            if (columnIndex >= 0 && !isNull(columnIndex)) getString(columnIndex) else null
-
-        private data class LocalScanSnapshot(
-            val tracks: List<LocalTrackRecord>,
-            val artists: List<LocalArtistRecord>,
-            val albums: List<LocalAlbumRecord>,
-        )
-
-        private data class LocalTrackRecord(
-            val id: String,
-            val title: String,
-            val artists: List<LocalArtistRecord>,
-            val albumId: String?,
-            val albumName: String?,
-            val durationSeconds: Int,
-            val year: Int?,
-            val dateModified: LocalDateTime?,
-            val sizeBytes: Long,
-            val mimeType: String,
-            val thumbnailUrl: String?,
-            val embeddedLyrics: String?,
-        )
-
-        private data class LocalArtistRecord(
-            val id: String,
-            val name: String,
-        )
-
-        private data class LocalAlbumRecord(
-            val id: String,
-            val title: String,
-            val year: Int?,
-            val thumbnailUrl: String?,
-            val songCount: Int,
-            val duration: Int,
-            val artistIds: List<String>,
-        )
-
-        private companion object {
-            val AlbumArtUri: Uri = Uri.parse("content://media/external/audio/albumart")
-            val ArtistSeparators = Regex("[,;/&]")
-            const val LocalArtworkDirectoryName = "local_music_artwork"
-            const val LogTag = "LocalSongScanner"
-            const val SqlBatchSize = 900
+            albums[id] = database.albumEntity(id) ?: entity
+            albumArtists[id] = database.albumArtistEntities(id).map { LocalMusicIdentity.normalize(it.name) }.toSet()
+            return id
         }
     }
+
+    private suspend fun loadSongs(ids: List<String>): Map<String, Song> =
+        ids.chunked(SqlBatchSize).flatMap { database.getSongsByIds(it) }.associateBy { it.song.id }
+
+    private suspend fun loadLyrics(ids: List<String>): Map<String, LyricsEntity> =
+        ids.chunked(SqlBatchSize).flatMap { database.getLyricsByIds(it) }.associateBy { it.id }
+
+    private suspend fun loadFormats(ids: List<String>): Map<String, FormatEntity> =
+        ids.chunked(SqlBatchSize).flatMap { database.getFormatsByIds(it) }.associateBy { it.id }
+
+    private fun isUnchanged(track: LocalTrackRecord, song: SongEntity?, format: FormatEntity?): Boolean =
+        song != null && format != null && track.dateModified != null &&
+            song.dateModified == track.dateModified && format.contentLength == track.sizeBytes
+
+    @Suppress("DEPRECATION")
+    private suspend fun queryTracks(scanConfig: LocalSongScanConfig): List<LocalTrackRecord> {
+        val included = scanConfig.sanitizedIncludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
+        val excluded = scanConfig.sanitizedExcludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
+        val projection = buildList {
+            add(MediaStore.Audio.Media._ID)
+            add(MediaStore.Audio.Media.TITLE)
+            add(MediaStore.Audio.Media.DISPLAY_NAME)
+            add(MediaStore.Audio.Media.ARTIST)
+            add(MediaStore.Audio.Media.ALBUM)
+            add(MediaStore.Audio.Media.ALBUM_ID)
+            add(MediaStore.Audio.Media.DURATION)
+            add(MediaStore.Audio.Media.YEAR)
+            add(MediaStore.Audio.Media.TRACK)
+            add(MediaStore.Audio.Media.DATE_MODIFIED)
+            add(MediaStore.Audio.Media.SIZE)
+            add(MediaStore.Audio.Media.MIME_TYPE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add(MediaStore.Audio.Media.ALBUM_ARTIST)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(MediaStore.MediaColumns.RELATIVE_PATH)
+            else add(MediaStore.MediaColumns.DATA)
+        }.toTypedArray()
+        val selection = buildList {
+            add("${MediaStore.Audio.Media.SIZE} > 0")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add("${MediaStore.MediaColumns.IS_PENDING} = 0")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add("${MediaStore.MediaColumns.IS_TRASHED} = 0")
+        }.joinToString(" AND ")
+        val unknownArtist = context.getString(R.string.unknown_artist)
+        val unknownTitle = context.getString(R.string.unknown)
+        val tracks = mutableListOf<LocalTrackRecord>()
+        val lyricsExtractor = EmbeddedLyricsExtractor(context.contentResolver)
+        val cursor = context.contentResolver.query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            null,
+            "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC, ${MediaStore.Audio.Media._ID} ASC",
+        ) ?: throw IOException("MediaStore returned no audio cursor")
+        cursor.use {
+            val idIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val displayNameIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+            val artistIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val albumIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val albumIdIndex = it.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
+            val albumArtistIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) it.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST) else -1
+            val durationIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val yearIndex = it.getColumnIndex(MediaStore.Audio.Media.YEAR)
+            val trackIndex = it.getColumnIndex(MediaStore.Audio.Media.TRACK)
+            val modifiedIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            val sizeIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val mimeIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+            val relativeIndex = it.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+            val dataIndex = it.getColumnIndex(MediaStore.MediaColumns.DATA)
+            while (it.moveToNext()) {
+                currentCoroutineContext().ensureActive()
+                val folder = resolveNormalizedFolderPath(it.getStringOrNull(relativeIndex), it.getStringOrNull(dataIndex))
+                if (!shouldIncludeFolder(folder, included) || shouldExcludeFolder(folder, excluded)) continue
+                val displayName = it.getStringOrNull(displayNameIndex)
+                val mime = it.getStringOrNull(mimeIndex)?.takeIf(String::isNotBlank) ?: "audio/*"
+                if (!SupportedLocalAudio.isSupported(displayName, mime)) continue
+                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, it.getLong(idIndex))
+                val modified = it.getLong(modifiedIndex)
+                val size = it.getLong(sizeIndex).coerceAtLeast(0L)
+                val metadata = metadataReader.read(uri, modified, size)
+                val duration = metadata.durationSeconds ?: (it.getLong(durationIndex).coerceAtLeast(0L) / 1000L)
+                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                if (duration < scanConfig.sanitizedMinimumDurationSeconds) continue
+                val artist = metadata.artist ?: cleanTag(it.getStringOrNull(artistIndex))
+                val album = metadata.album ?: cleanTag(it.getStringOrNull(albumIndex))
+                val encodedTrack = it.getIntOrNull(trackIndex)?.takeIf { value -> value > 0 }
+                val albumId = it.getLongOrNull(albumIdIndex)?.takeIf { value -> value > 0L }
+                tracks += LocalTrackRecord(
+                    id = uri.toString(),
+                    title = metadata.title ?: cleanTag(it.getStringOrNull(titleIndex))
+                        ?: displayName?.substringBeforeLast('.')?.takeIf(String::isNotBlank) ?: unknownTitle,
+                    artists = artist?.let(::splitArtistNames).orEmpty().ifEmpty { listOf(unknownArtist) },
+                    albumName = album,
+                    albumArtist = metadata.albumArtist ?: cleanTag(it.getStringOrNull(albumArtistIndex)),
+                    trackNumber = metadata.trackNumber ?: encodedTrack?.rem(1000)?.takeIf { value -> value > 0 },
+                    discNumber = metadata.discNumber ?: encodedTrack?.div(1000)?.takeIf { value -> value > 0 },
+                    durationSeconds = duration,
+                    year = metadata.year ?: it.getIntOrNull(yearIndex)?.takeIf { value -> value in 1..9999 },
+                    dateModified = modified.takeIf { value -> value > 0L }
+                        ?.let { value -> LocalDateTime.ofInstant(Instant.ofEpochSecond(value), ZoneId.systemDefault()) },
+                    sizeBytes = size,
+                    mimeType = mime,
+                    thumbnailUrl = metadata.thumbnailUrl,
+                    mediaStoreThumbnailUrl = albumId?.takeIf { album != null }
+                        ?.let { value -> ContentUris.withAppendedId(AlbumArtUri, value).toString() },
+                    embeddedLyrics = lyricsExtractor.extract(contentUri = uri, displayName = displayName, mimeType = mime)
+                        ?.let(LyricsUtils::lyricsOrNotFound)?.takeIf { value -> value != LyricsEntity.LYRICS_NOT_FOUND },
+                )
+            }
+        }
+        return tracks
+    }
+
+    private fun cleanTag(value: String?): String? = value?.trim()?.takeIf {
+        it.isNotEmpty() && it.lowercase(Locale.ROOT) !in UnknownTags
+    }
+
+    private fun splitArtistNames(value: String): List<String> =
+        value.split(';', '\u0000').mapNotNull(::cleanTag).distinctBy(LocalMusicIdentity::normalize)
+
+    private fun albumArtistNames(track: LocalTrackRecord): List<String> =
+        track.albumArtist?.let(::splitArtistNames)?.takeIf { it.isNotEmpty() } ?: track.artists
+
+    private fun albumKey(track: LocalTrackRecord): String =
+        "${LocalMusicIdentity.normalize(track.albumName.orEmpty())}|${albumArtistNames(track).map(LocalMusicIdentity::normalize).sorted().joinToString("\u0000")}"
+
+    private fun sameName(first: String, second: String): Boolean =
+        LocalMusicIdentity.normalize(first) == LocalMusicIdentity.normalize(second)
+
+    private fun stableHash(source: String): String =
+        UUID.nameUUIDFromBytes(source.toByteArray(StandardCharsets.UTF_8)).toString().replace("-", "")
+
+    private fun pruneUnusedArtworkFiles(retainedArtworkFileNames: Set<String>) {
+        val directory = File(context.filesDir, LocalArtworkDirectoryName)
+        directory.listFiles()?.filter { it.isFile && it.name !in retainedArtworkFileNames }?.forEach {
+            if (!it.delete()) Timber.tag(LogTag).w("Failed to delete stale local artwork: %s", it.name)
+        }
+    }
+
+    private fun updateEmbeddedLyrics(
+        track: LocalTrackRecord,
+        existingLyrics: LyricsEntity?,
+    ) {
+        val embeddedLyrics = track.embeddedLyrics
+        if (embeddedLyrics != null) {
+            if (existingLyrics == null || existingLyrics.hasGenericSource()) {
+                database.upsert(
+                    LyricsEntity(
+                        id = track.id,
+                        lyrics = embeddedLyrics,
+                        source = LyricsEntity.Source.EMBEDDED.value,
+                    ),
+                )
+            }
+            return
+        }
+
+        if (existingLyrics?.source == LyricsEntity.Source.EMBEDDED.value) {
+            database.delete(existingLyrics)
+        }
+    }
+
+    private fun resolveNormalizedFolderPath(
+        relativePath: String?,
+        absolutePath: String?,
+    ): String? {
+        val relativeFolder = LocalSongScanConfig.normalizeFolderEntry(relativePath.orEmpty())
+        if (relativeFolder.isNotEmpty()) {
+            return relativeFolder.lowercase(Locale.ROOT)
+        }
+
+        val absoluteFolder =
+            absolutePath
+                ?.replace('\\', '/')
+                ?.substringBeforeLast('/', missingDelimiterValue = "")
+                .orEmpty()
+        val normalizedAbsoluteFolder = LocalSongScanConfig.normalizeFolderEntry(absoluteFolder)
+        return normalizedAbsoluteFolder.takeIf(String::isNotEmpty)?.lowercase(Locale.ROOT)
+    }
+
+    private fun shouldIncludeFolder(
+        folderPath: String?,
+        includedFolders: Set<String>,
+    ): Boolean {
+        if (includedFolders.isEmpty()) return true
+        return matchesFolderEntry(folderPath, includedFolders)
+    }
+
+    private fun shouldExcludeFolder(
+        folderPath: String?,
+        excludedFolders: Set<String>,
+    ): Boolean {
+        if (excludedFolders.isEmpty()) return false
+        return matchesFolderEntry(folderPath, excludedFolders)
+    }
+
+    private fun matchesFolderEntry(
+        folderPath: String?,
+        folders: Set<String>,
+    ): Boolean {
+        if (folderPath.isNullOrEmpty()) return false
+        return folders.any { folder ->
+            folderPath == folder ||
+                folderPath.startsWith("$folder/") ||
+                folderPath.endsWith("/$folder") ||
+                folderPath.contains("/$folder/")
+        }
+    }
+
+    private fun android.database.Cursor.getLongOrNull(columnIndex: Int): Long? =
+        if (columnIndex >= 0 && !isNull(columnIndex)) getLong(columnIndex) else null
+
+    private fun android.database.Cursor.getIntOrNull(columnIndex: Int): Int? =
+        if (columnIndex >= 0 && !isNull(columnIndex)) getInt(columnIndex) else null
+
+    private fun android.database.Cursor.getStringOrNull(columnIndex: Int): String? =
+        if (columnIndex >= 0 && !isNull(columnIndex)) getString(columnIndex) else null
+
+    private data class EnrichedTracks(val tracks: List<LocalTrackRecord>, val lookupFailed: Boolean)
+
+    private data class LocalTrackRecord(
+        val id: String,
+        val title: String,
+        val artists: List<String>,
+        val albumName: String?,
+        val albumArtist: String?,
+        val trackNumber: Int?,
+        val discNumber: Int?,
+        val durationSeconds: Int,
+        val year: Int?,
+        val dateModified: LocalDateTime?,
+        val sizeBytes: Long,
+        val mimeType: String,
+        val thumbnailUrl: String?,
+        val mediaStoreThumbnailUrl: String?,
+        val embeddedLyrics: String?,
+        val remoteArtistId: String? = null,
+        val matchedArtistName: String? = null,
+        val artistThumbnailUrl: String? = null,
+        val remoteAlbumId: String? = null,
+    )
+
+    private companion object {
+        val AlbumArtUri: Uri = Uri.parse("content://media/external/audio/albumart")
+        val UnknownTags = setOf("<unknown>", "unknown", "unknown artist", "unknown album", "unknown title")
+        const val LocalArtworkDirectoryName = "local_music_artwork"
+        const val LogTag = "LocalSongScanner"
+        const val SqlBatchSize = 900
+    }
+}

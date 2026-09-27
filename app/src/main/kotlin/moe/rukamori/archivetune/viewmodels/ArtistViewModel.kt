@@ -10,9 +10,6 @@ package moe.rukamori.archivetune.viewmodels
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,7 +19,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -33,7 +35,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.artist.ArtistBlockRequest
 import moe.rukamori.archivetune.artist.ObserveArtistBlockedUseCase
@@ -107,7 +108,10 @@ class ArtistViewModel
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         val artistId = savedStateHandle.get<String>("artistId")!!
-        var artistPage by mutableStateOf<ArtistPage?>(null)
+        private val _artistPage = MutableStateFlow<ArtistPage?>(null)
+        val artistPage = _artistPage.asStateFlow()
+        private val showLibrary = MutableStateFlow(false)
+        private var fetchJob: Job? = null
         private val eventChannel = Channel<ArtistEvent>(capacity = Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
         private var blockJob: Job? = null
@@ -146,6 +150,15 @@ class ArtistViewModel
                     database.artistAlbumsPreview(artistId).map { it.filterExplicitAlbums(hideExplicit) }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+        val showLocal = combine(libraryArtist, librarySongs, artistPage, showLibrary) { artist, songs, page, selected ->
+            artist?.artist?.isLocal == true || selected || (page == null && songs.isNotEmpty())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+        fun toggleLibrary() {
+            showLibrary.value = !showLocal.value
+            if (!showLibrary.value && artistPage.value == null) fetchArtistsFromYTM()
+        }
+
         init {
             viewModelScope.launch {
                 context.dataStore.data
@@ -160,42 +173,41 @@ class ArtistViewModel
         }
 
         fun fetchArtistsFromYTM() {
-            viewModelScope.launch {
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val hideVideo = context.dataStore.get(HideVideoKey, false)
-                val blockedArtistIds = database.getBlockedArtistIds().toSet()
-                YouTube
-                    .artist(artistId)
-                    .onSuccess { page ->
-                        val filteredSections =
-                            page.sections
-                                .map { section ->
-                                    section.copy(
-                                        items =
-                                            section.items
-                                                .filterExplicit(hideExplicit)
-                                                .filterVideo(hideVideo)
-                                                .filterBlockedArtists(blockedArtistIds),
-                                    )
-                                }
-
-                        artistPage = page.copy(sections = filteredSections)
-
-                        withContext(Dispatchers.IO) {
-                            database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
-                                database.update(artistEntity, page)
-                            }
-                        }
-                    }.onFailure {
-                        reportException(it)
+            fetchJob?.cancel()
+            fetchJob = viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val storedArtist = database.artist(artistId).firstOrNull()?.artist
+                    if (storedArtist?.isLocal == true || storedArtist?.isYouTubeArtist == false) return@launch
+                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideVideo = context.dataStore.get(HideVideoKey, false)
+                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val page = YouTube.artist(storedArtist?.id ?: artistId).getOrThrow()
+                    val filteredSections = page.sections.map { section ->
+                        section.copy(
+                            items = section.items
+                                .filterExplicit(hideExplicit)
+                                .filterVideo(hideVideo)
+                                .filterBlockedArtists(blockedArtistIds),
+                        )
                     }
+                    currentCoroutineContext().ensureActive()
+                    _artistPage.value = page.copy(sections = filteredSections)
+                    database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
+                        database.update(artistEntity, page)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (throwable: Throwable) {
+                    reportException(throwable)
+                    eventChannel.send(ArtistEvent.ShowMessage(R.string.error_unknown))
+                }
             }
         }
 
         fun onAction(action: ArtistAction) {
             when (action) {
-                ArtistAction.Share -> eventChannel.trySend(ArtistEvent.Share(artistShareLink()))
-                ArtistAction.CopyLink -> eventChannel.trySend(ArtistEvent.CopyLink(artistShareLink()))
+                ArtistAction.Share -> artistShareLink()?.let { eventChannel.trySend(ArtistEvent.Share(it)) }
+                ArtistAction.CopyLink -> artistShareLink()?.let { eventChannel.trySend(ArtistEvent.CopyLink(it)) }
                 ArtistAction.ToggleBlock -> toggleBlocked()
             }
         }
@@ -203,7 +215,7 @@ class ArtistViewModel
         private fun toggleBlocked() {
             if (blockJob?.isActive == true) return
 
-            val pageArtist = artistPage?.artist
+            val pageArtist = artistPage.value?.artist
             val localArtist = libraryArtist.value?.artist
             val artistName = pageArtist?.title ?: localArtist?.name ?: return
             val currentlyBlocked = (blockState.value as? ArtistBlockState.Success)?.isBlocked == true
@@ -213,7 +225,7 @@ class ArtistViewModel
                     try {
                         setArtistBlocked(
                             ArtistBlockRequest(
-                                id = artistId,
+                                id = localArtist?.id ?: artistId,
                                 name = artistName,
                                 channelId = pageArtist?.channelId ?: localArtist?.channelId,
                                 thumbnailUrl = pageArtist?.thumbnail ?: localArtist?.thumbnailUrl,
@@ -229,5 +241,9 @@ class ArtistViewModel
                 }
         }
 
-        private fun artistShareLink(): String = artistPage?.artist?.shareLink ?: "https://music.youtube.com/channel/$artistId"
+        private fun artistShareLink(): String? {
+            val artist = libraryArtist.value?.artist
+            if (artist?.isLocal == true || artist?.isYouTubeArtist == false) return null
+            return artistPage.value?.artist?.shareLink ?: "https://music.youtube.com/channel/${artist?.id ?: artistId}"
+        }
     }

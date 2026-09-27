@@ -8,6 +8,10 @@
 package moe.rukamori.archivetune.podcast
 
 import com.google.common.collect.ImmutableList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
@@ -51,6 +55,8 @@ class LoadPodcastUseCase
                             description = page.description,
                             thumbnailUrl = page.podcast.thumbnail,
                             episodes = ImmutableList.copyOf(episodes),
+                            isSaved = page.isSaved,
+                            isSavePending = false,
                             isLoadingMore = false,
                             canLoadMore = !page.continuation.isNullOrBlank(),
                         ),
@@ -116,5 +122,64 @@ private fun EpisodeItem.toUiModel(
         durationText = durationText,
         thumbnailUrl = thumbnail,
         playbackMetadata = metadata,
+        isInLibrary = false,
+        isLibraryPending = false,
     )
 }
+
+class ObservePodcastLibraryMembershipUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        operator fun invoke(
+            browseId: String,
+            episodeIds: List<String>,
+        ): Flow<PodcastLibraryMembership> = repository.observeLibraryMembership(browseId, episodeIds)
+    }
+
+class TogglePodcastSaveUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        suspend operator fun invoke(
+            browseId: String,
+            save: Boolean,
+        ): Result<Unit> = repository.setPodcastSaved(browseId, save)
+    }
+
+class ToggleEpisodeLibraryUseCase
+    @Inject
+    constructor(
+        private val repository: PodcastRepository,
+    ) {
+        suspend operator fun invoke(
+            metadata: MediaMetadata,
+            addToLibrary: Boolean,
+        ): Result<Unit> = repository.setEpisodeInLibrary(metadata, addToLibrary)
+    }
+
+class SearchPodcastEpisodesUseCase
+    @Inject
+    constructor() {
+        private val whitespace = Regex("\\s+")
+
+        suspend operator fun invoke(
+            episodes: ImmutableList<PodcastEpisodeUiModel>,
+            query: String,
+        ): ImmutableList<PodcastEpisodeUiModel> =
+            withContext(Dispatchers.Default) {
+                val terms = query.trim().splitToSequence(whitespace).filter(String::isNotBlank).toList()
+                if (terms.isEmpty()) return@withContext episodes
+                ImmutableList.copyOf(
+                    episodes.filter { episode ->
+                        ensureActive()
+                        terms.all { term ->
+                            episode.title.contains(term, ignoreCase = true) ||
+                                episode.description?.contains(term, ignoreCase = true) == true
+                        }
+                    },
+                )
+            }
+    }

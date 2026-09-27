@@ -67,6 +67,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MenuState
@@ -415,6 +416,44 @@ private fun HomeContent(
                         }
                     }
 
+                    uiState.communitySection?.takeIf { section -> section.featuredCards.isNotEmpty() }?.let { section ->
+                        sectionSpacer("community")
+                        item(
+                            key = "home_community_header",
+                            contentType = "section_header",
+                        ) {
+                            val playAll =
+                                remember(section.playEndpoint, playerConnection) {
+                                    section.playEndpoint?.let { endpoint ->
+                                        { playerConnection.playQueue(YouTubeQueue.playlist(endpoint)) }
+                                    }
+                                }
+                            HomePageSectionTitle(
+                                section = section,
+                                navController = navController,
+                                onPlayAll = playAll,
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                        item(
+                            key = "home_community",
+                            contentType = "featured_playlist_shelf",
+                        ) {
+                            HomePageSectionContent(
+                                section = section,
+                                mediaMetadata = mediaMetadata,
+                                isPlaying = isPlaying,
+                                navController = navController,
+                                playerConnection = playerConnection,
+                                menuState = menuState,
+                                haptic = haptic,
+                                scope = scope,
+                                onOpenRemoteItem = { itemId -> onAction(HomeAction.OpenRemoteItem(itemId)) },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+
                     if (uiState.speedDialItems.isNotEmpty()) {
                         sectionSpacer("speed_dial")
                         item(
@@ -530,24 +569,14 @@ private fun HomeContent(
                         }
                     }
 
-                    uiState.similarRecommendations.forEach { recommendation ->
-                        sectionSpacer("similar_${recommendation.title.id}")
+                    if (uiState.similarRecommendations.isNotEmpty()) {
+                        sectionSpacer("similar_recommendations")
                         item(
-                            key = "home_similar_header_${recommendation.title.id}",
-                            contentType = "section_header",
-                        ) {
-                            SimilarRecommendationsTitle(
-                                recommendation = recommendation,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_similar_${recommendation.title.id}",
-                            contentType = "media_shelf",
+                            key = "home_similar_recommendations",
+                            contentType = "discovery_decks",
                         ) {
                             SimilarRecommendationsSection(
-                                recommendation = recommendation,
+                                recommendations = uiState.similarRecommendations,
                                 mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
                                 navController = navController,
@@ -567,9 +596,16 @@ private fun HomeContent(
                             key = "home_remote_header_$sectionKey",
                             contentType = "section_header",
                         ) {
+                            val playAll =
+                                remember(section.playEndpoint, playerConnection) {
+                                    section.playEndpoint?.let { endpoint ->
+                                        { playerConnection.playQueue(YouTubeQueue.playlist(endpoint)) }
+                                    }
+                                }
                             HomePageSectionTitle(
                                 section = section,
                                 navController = navController,
+                                onPlayAll = playAll,
                                 modifier = Modifier.animateItem(),
                             )
                         }
