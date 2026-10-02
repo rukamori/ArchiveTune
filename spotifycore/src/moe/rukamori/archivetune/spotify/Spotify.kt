@@ -400,6 +400,7 @@ object Spotify {
                 ?: trackData.str("_uri")
                 ?: ""
         val trackId = uri.substringAfterLast(":")
+        val isLocal = uri.startsWith("spotify:local:")
 
         val artists =
             trackData.obj("artists")?.arr("items")?.mapNotNull { elem ->
@@ -426,6 +427,7 @@ object Spotify {
             album = album,
             durationMs = parseGqlTrackDurationMs(trackData),
             uri = uri.ifEmpty { null },
+            isLocal = isLocal,
         )
     }
 
