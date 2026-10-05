@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -30,6 +31,29 @@ object SpotifyPlaybackResolver {
         }
 
     suspend fun resolveToMediaItem(track: SpotifyTrack): MediaItem? = resolveToMetadata(track)?.toMediaItem()
+
+    suspend fun resolveToSongItem(track: SpotifyTrack): SongItem? {
+        val meta = resolveToMetadata(track) ?: return null
+        if (meta.id.isBlank()) return null
+        return SongItem(
+            id = meta.id,
+            title = track.name.ifBlank { meta.title },
+            artists =
+                track.artists.map { moe.rukamori.archivetune.innertube.models.Artist(name = it.name, id = it.id) }
+                    .ifEmpty { meta.artists.map { moe.rukamori.archivetune.innertube.models.Artist(name = it.name, id = it.id) } },
+            album =
+                (track.album?.name ?: meta.album?.title)?.takeIf(String::isNotBlank)?.let { albumTitle ->
+                    moe.rukamori.archivetune.innertube.models.Album(
+                        name = albumTitle,
+                        id = meta.album?.id ?: track.album?.id.orEmpty(),
+                    )
+                },
+            duration = meta.duration.takeIf { it > 0 },
+            thumbnail = meta.thumbnailUrl.orEmpty(),
+            explicit = meta.explicit,
+            endpoint = WatchEndpoint(videoId = meta.id),
+        )
+    }
 
     suspend fun resolveToMetadata(track: SpotifyTrack): MediaMetadata? =
         withContext(Dispatchers.IO) {

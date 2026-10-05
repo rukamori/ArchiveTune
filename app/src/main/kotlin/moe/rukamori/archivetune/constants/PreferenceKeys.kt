@@ -189,11 +189,17 @@ enum class PlaylistSuggestionSource {
     BOTH,
 }
 
+enum class RecommendationSource {
+    YOUTUBE,
+    SPOTIFY,
+}
+
 val AppLanguageKey = stringPreferencesKey("appLanguage")
 val UseSystemLanguageKey = booleanPreferencesKey("useSystemLanguage")
 val ContentLanguageKey = stringPreferencesKey("contentLanguage")
 val ContentCountryKey = stringPreferencesKey("contentCountry")
 val PlaylistSuggestionSourceKey = stringPreferencesKey("playlistSuggestionSource")
+val RecommendationSourceKey = stringPreferencesKey("recommendationSource")
 val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")

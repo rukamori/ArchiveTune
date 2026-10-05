@@ -30,11 +30,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,6 +80,20 @@ fun ContentSettings(
                     context.startActivity(Intent(Intent.ACTION_VIEW, effect.url.toUri()))
                 }
             }
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+    val (spotifySpDc) = rememberPreference(key = SpotifySpDcKey, defaultValue = "")
+    val (recommendationSource, onRecommendationSourceChange) =
+        rememberEnumPreference(
+            key = RecommendationSourceKey,
+            defaultValue = RecommendationSource.YOUTUBE,
+        )
+
+    LaunchedEffect(spotifySpDc, recommendationSource) {
+        if (spotifySpDc.isBlank() && recommendationSource == RecommendationSource.SPOTIFY) {
+            onRecommendationSourceChange(RecommendationSource.YOUTUBE)
         }
     }
 
@@ -150,6 +166,33 @@ fun ContentSettings(
                             )
 
                         onContentCountryChange(newValue)
+                    },
+                )
+            }
+
+            item {
+                ListPreference(
+                    title = { Text(stringResource(R.string.recommendation_source)) },
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    selectedValue = if (spotifySpDc.isBlank()) RecommendationSource.YOUTUBE else recommendationSource,
+                    values = listOf(RecommendationSource.YOUTUBE, RecommendationSource.SPOTIFY),
+                    valueText = {
+                        when (it) {
+                            RecommendationSource.YOUTUBE -> stringResource(R.string.recommendation_source_youtube)
+                            RecommendationSource.SPOTIFY -> stringResource(R.string.recommendation_source_spotify)
+                        }
+                    },
+                    onValueSelected = { source ->
+                        if (source == RecommendationSource.SPOTIFY && spotifySpDc.isBlank()) {
+                            onRecommendationSourceChange(RecommendationSource.YOUTUBE)
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.spotify_recommendation_login_required),
+                                )
+                            }
+                            return@ListPreference
+                        }
+                        onRecommendationSourceChange(source)
                     },
                 )
             }

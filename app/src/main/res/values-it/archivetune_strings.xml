@@ -337,4 +337,8 @@
     <string name="aod_customize_show_exit_button">Mostra il tasto esci</string>
     <string name="aod_customize_show_lyric_ticker">Mostra il testo in tempo reale</string>
     <string name="aod_customize_thumbnail_shape">Mostra la thumbnail</string>
+    <string name="recommendation_source">Provider di raccomandazione</string>
+    <string name="recommendation_source_youtube">YouTube Music</string>
+    <string name="recommendation_source_spotify">Spotify</string>
+    <string name="spotify_recommendation_login_required">Spotify non è connesso. Collega il tuo account in Impostazioni > Integrazioni per usare le raccomandazioni di Spotify.</string>
 </resources>
