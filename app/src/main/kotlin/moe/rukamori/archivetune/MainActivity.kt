@@ -1233,11 +1233,25 @@ class MainActivity : ComponentActivity() {
                         mutableStateOf(false)
                     }
 
+                    val isDiscoverScreen = currentRoute == "discover"
+                    var wasDiscoverScreen by rememberSaveable { mutableStateOf(false) }
+
+                    LaunchedEffect(isDiscoverScreen) {
+                        if (isDiscoverScreen) {
+                            wasDiscoverScreen = true
+                            playerBottomSheetState.dismiss()
+                        } else if (wasDiscoverScreen) {
+                            wasDiscoverScreen = false
+                            playerBottomSheetState.dismiss()
+                        }
+                    }
+
                     LaunchedEffect(miniPlayerAnchor, isYearInMusicScreen, miniPlayerAnchorPersistenceEnabled) {
-                        if (!isYearInMusicScreen && miniPlayerAnchorPersistenceEnabled) {
+                        if (!isYearInMusicScreen && !isDiscoverScreen && miniPlayerAnchorPersistenceEnabled) {
                             setSavedMiniPlayerAnchor(miniPlayerAnchor)
                         }
                     }
+
 
                     var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableStateOf(-1) }
 
@@ -1501,6 +1515,9 @@ class MainActivity : ComponentActivity() {
 
                     val currentPlayerBottomSheetState = rememberUpdatedState(playerBottomSheetState)
                     val currentIsYearInMusicScreen = rememberUpdatedState(isYearInMusicScreen)
+                    val currentIsDiscoverScreen = rememberUpdatedState(isDiscoverScreen)
+                    val isDiscoverPlayback by playerConnection?.isDiscoverPlayback?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+                    val currentIsDiscoverPlayback = rememberUpdatedState(isDiscoverPlayback)
 
                     DisposableEffect(playerConnection) {
                         val player =
@@ -1515,9 +1532,20 @@ class MainActivity : ComponentActivity() {
                                         player.playbackState != Player.STATE_IDLE &&
                                         player.playbackState != Player.STATE_ENDED &&
                                         currentPlayerBottomSheetState.value.isDismissed &&
-                                        !currentIsYearInMusicScreen.value
+                                        !currentIsYearInMusicScreen.value &&
+                                        !currentIsDiscoverScreen.value &&
+                                        !currentIsDiscoverPlayback.value
                                     ) {
                                         currentPlayerBottomSheetState.value.collapseSoft()
+                                    }
+                                }
+
+                                private fun dismissMiniPlayerIfPlaybackEmpty() {
+                                    if (
+                                        player.mediaItemCount == 0 &&
+                                        !currentPlayerBottomSheetState.value.isDismissed
+                                    ) {
+                                        currentPlayerBottomSheetState.value.dismiss()
                                     }
                                 }
 
@@ -1525,25 +1553,41 @@ class MainActivity : ComponentActivity() {
                                     mediaItem: MediaItem?,
                                     reason: Int,
                                 ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
+                                    if (mediaItem == null || player.mediaItemCount == 0) {
+                                        dismissMiniPlayerIfPlaybackEmpty()
+                                    } else {
+                                        collapseDismissedMiniPlayerForActivePlayback()
+                                    }
                                 }
 
                                 override fun onTimelineChanged(
                                     timeline: Timeline,
                                     reason: Int,
                                 ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
+                                    if (player.mediaItemCount == 0) {
+                                        dismissMiniPlayerIfPlaybackEmpty()
+                                    } else {
+                                        collapseDismissedMiniPlayerForActivePlayback()
+                                    }
                                 }
 
                                 override fun onPlaybackStateChanged(playbackState: Int) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
+                                    if (player.mediaItemCount == 0 || playbackState == Player.STATE_IDLE) {
+                                        dismissMiniPlayerIfPlaybackEmpty()
+                                    } else {
+                                        collapseDismissedMiniPlayerForActivePlayback()
+                                    }
                                 }
 
                                 override fun onPlayWhenReadyChanged(
                                     playWhenReady: Boolean,
                                     reason: Int,
                                 ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
+                                    if (!playWhenReady && player.mediaItemCount == 0) {
+                                        dismissMiniPlayerIfPlaybackEmpty()
+                                    } else {
+                                        collapseDismissedMiniPlayerForActivePlayback()
+                                    }
                                 }
                             }
                         player.addListener(listener)
@@ -2244,12 +2288,14 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
 
-                                        BottomSheetPlayer(
-                                            state = playerBottomSheetState,
-                                            navController = navController,
-                                            pureBlack = pureBlack,
-                                            navigationProximityProvider = navigationProximityProvider,
-                                        )
+                                        if (!isDiscoverScreen) {
+                                            BottomSheetPlayer(
+                                                state = playerBottomSheetState,
+                                                navController = navController,
+                                                pureBlack = pureBlack,
+                                                navigationProximityProvider = navigationProximityProvider,
+                                            )
+                                        }
 
                                         if (useRail) return@Box
 

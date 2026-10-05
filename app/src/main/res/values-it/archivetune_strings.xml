@@ -337,4 +337,20 @@
     <string name="aod_customize_show_exit_button">Mostra il tasto esci</string>
     <string name="aod_customize_show_lyric_ticker">Mostra il testo in tempo reale</string>
     <string name="aod_customize_thumbnail_shape">Mostra la thumbnail</string>
+    <string name="discover_weekly">Discover Settimanale</string>
+    <string name="discover_weekly_desc">Scopri nuovi brani con le schede a scorrimento</string>
+    <string name="discover_loading">Preparazione Discover Settimanale…</string>
+    <string name="discover_empty_title">Nessun brano raccomandato al momento</string>
+    <string name="discover_empty_action">Ricarica Discover</string>
+    <string name="discover_completed_title">Discover completato!</string>
+    <string name="discover_completed_desc">Tutte le canzoni salvate sono pronte nella tua playlist Discover Settimanale.</string>
+    <string name="discover_like">LIKE</string>
+    <string name="discover_skip">SKIP</string>
+    <string name="discover_error_prefix">Impossibile caricare le raccomandazioni: %s</string>
+    <string name="discover_error_generic">Impossibile caricare le raccomandazioni. Verifica la connessione a Internet.</string>
+    <plurals name="discover_saved_count">
+        <item quantity="one">%d salvato</item>
+        <item quantity="many">%d salvati</item>
+        <item quantity="other">%d salvati</item>
+    </plurals>
 </resources>

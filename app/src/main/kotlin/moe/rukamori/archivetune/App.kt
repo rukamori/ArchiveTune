@@ -19,6 +19,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
+import coil3.map.Mapper
 import coil3.request.CachePolicy
 import coil3.request.allowHardware
 import coil3.request.crossfade
@@ -369,6 +370,17 @@ class App :
             .components {
                 add(playlistCoverInterceptor)
                 add(downloadedArtworkRepository.coilMapper())
+                add(
+                    Mapper<String, Int> { data, _ ->
+                        if (data.startsWith("res://")) {
+                            val resName = data.substringAfter("res://")
+                            val resId = this@App.resources.getIdentifier(resName, "drawable", this@App.packageName)
+                            if (resId != 0) resId else null
+                        } else {
+                            null
+                        }
+                    }
+                )
             }
             .build()
     }

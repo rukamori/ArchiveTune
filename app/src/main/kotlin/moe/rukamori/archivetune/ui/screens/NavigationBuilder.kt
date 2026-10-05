@@ -121,6 +121,10 @@ fun NavGraphBuilder.navigationBuilder(
     composable("local_songs") {
         LocalSongScreen(navController)
     }
+    composable("discover") {
+        DiscoverScreen(navController)
+    }
+
     composable("history") {
         HistoryScreen(navController)
     }
