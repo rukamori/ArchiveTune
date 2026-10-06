@@ -213,6 +213,13 @@ import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 import moe.rukamori.archivetune.utils.ImageBlurUtils
+<<<<<<< HEAD
+=======
+import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.ui.player.bitchord.BitChordPlayerContent
+import moe.rukamori.archivetune.ui.player.flamingo.FlamingoPlayerContent
+import moe.rukamori.archivetune.ui.player.tiktok.TikTokPlayerContent
+>>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -1668,10 +1675,156 @@ fun BottomSheetPlayer(
                                     .fillMaxSize()
                                     .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
+<<<<<<< HEAD
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                         ),
                                     )
+=======
+                                        WindowInsets(top = LocalStableSystemBarsTopPadding.current)
+                                            .union(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.SPATIALFLOW) {
+                    enrichedMetadata?.let { metadata ->
+                        SpatialFlowPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            positionProvider = { position },
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            appIsDark = useDarkTheme,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            floatingArtwork = true,
+                            onArtworkSlotPositioned = { rect ->
+                                spatialFlowFullArtworkRect.value = rect
+                            },
+                            onPagerArtworkActiveChange = { active ->
+                                spatialFlowPagerArtworkActive = active
+                            },
+                            onLyricsOpenChange = { open ->
+                                spatialFlowLyricsOpen = open
+                            },
+                            onQueueExpandedChange = { expanded ->
+                                spatialFlowQueueOpen = expanded
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.LOOPER) {
+                    enrichedMetadata?.let { metadata ->
+                        LooperPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            onLyricsClick = { isInlineLyricsOpen = !isInlineLyricsOpen },
+                            onQueueClick = openQueue,
+                            lyricsVisible = isInlineLyricsOpen,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.SIMPMUSIC) {
+                    enrichedMetadata?.let { metadata ->
+                        SimpMusicPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
+                    enrichedMetadata?.let { metadata ->
+                        FlamingoPlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            positionProvider = positionProvider,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentSongLiked = currentSongLiked,
+                            volume = deviceMusicVolumeController.volumeFraction,
+                            onVolumeChange = onPlayerVolumeChange,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            currentFormat = currentFormat,
+                            contentBottomPadding = queueSheetState.collapsedBound + 20.dp,
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            lyricsSyncOffset = lyricsSyncOffset,
+                            onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                            onLyricsVisibilityChange = { isAppleMusicInlineLyricsOpen = it },
+                            landscape = true,
+                            orientationRefreshEpoch = orientationRefreshEpoch,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+>>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
                                     .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
@@ -1962,10 +2115,156 @@ fun BottomSheetPlayer(
                                     .fillMaxSize()
                                     .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
+<<<<<<< HEAD
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                         ),
                                     )
+=======
+                                        WindowInsets(top = LocalStableSystemBarsTopPadding.current)
+                                            .union(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.SPATIALFLOW) {
+                    enrichedMetadata?.let { metadata ->
+                        SpatialFlowPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            positionProvider = { position },
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            appIsDark = useDarkTheme,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            floatingArtwork = true,
+                            onArtworkSlotPositioned = { rect ->
+                                spatialFlowFullArtworkRect.value = rect
+                            },
+                            onPagerArtworkActiveChange = { active ->
+                                spatialFlowPagerArtworkActive = active
+                            },
+                            onLyricsOpenChange = { open ->
+                                spatialFlowLyricsOpen = open
+                            },
+                            onQueueExpandedChange = { expanded ->
+                                spatialFlowQueueOpen = expanded
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.LOOPER) {
+                    enrichedMetadata?.let { metadata ->
+                        LooperPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            onLyricsClick = { isInlineLyricsOpen = !isInlineLyricsOpen },
+                            onQueueClick = openQueue,
+                            lyricsVisible = isInlineLyricsOpen,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+} else if (playerDesignStyle == PlayerDesignStyle.SIMPMUSIC) {
+                    enrichedMetadata?.let { metadata ->
+                        SimpMusicPlayerContent(
+                            mediaMetadata = metadata,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentFormat = currentFormat,
+                            onSeek = onSliderValueChange,
+                            onSeekFinished = onSliderValueChangeFinished,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+
+                                    .windowInsetsPadding(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
+                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
+                    enrichedMetadata?.let { metadata ->
+                        FlamingoPlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            positionProvider = positionProvider,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentSongLiked = currentSongLiked,
+                            volume = deviceMusicVolumeController.volumeFraction,
+                            onVolumeChange = onPlayerVolumeChange,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            currentFormat = currentFormat,
+                            contentBottomPadding = queueSheetState.collapsedBound + 20.dp,
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            lyricsSyncOffset = lyricsSyncOffset,
+                            onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                            onLyricsVisibilityChange = { isAppleMusicInlineLyricsOpen = it },
+                            orientationRefreshEpoch = orientationRefreshEpoch,
+
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+>>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
                                     .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }

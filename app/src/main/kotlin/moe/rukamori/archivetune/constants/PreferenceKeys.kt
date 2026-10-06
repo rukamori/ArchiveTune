@@ -701,6 +701,17 @@ enum class PlayerDesignStyle {
     V11,
 }
 
+/*
+ * Flamingo player settings (design ported from Flamingo, yos.music.player).
+ * Defaults mirror Flamingo's SettingLibrary initial values.
+ */
+val FlamingoTranslationKey = booleanPreferencesKey("flamingoNowPlayingTranslation")
+val FlamingoShowVolumeBarKey = booleanPreferencesKey("flamingoNowPlayingShowVolumeBar")
+val FlamingoBackgroundEffectKey = booleanPreferencesKey("flamingoNowPlayingBackgroundEffect")
+val FlamingoLyricBlurKey = booleanPreferencesKey("flamingoLyricBlurEffect")
+val FlamingoLyricFontWeightKey = stringPreferencesKey("flamingoLyricFontWeight")
+val FlamingoLyricLineBalanceKey = booleanPreferencesKey("flamingoLyricLineBalance")
+
 enum class PlayerBackgroundStyle {
     DEFAULT,
     GRADIENT,
