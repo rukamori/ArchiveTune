@@ -27,7 +27,7 @@ jobs:
           submodules: true
 
       - name: Set up Python 3
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
@@ -96,17 +96,17 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Generate translation contributor credits
         run: python scripts/generate_translation_contributors.py
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
-          java-version: '21'
+          java-version: '27'
           distribution: 'temurin'
       
       - name: Set Up Gradle
@@ -273,7 +273,7 @@ jobs:
           path: app/build/outputs/apk/download
 
       - name: Set up Python 3
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
@@ -316,17 +316,17 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Generate translation contributor credits
         run: python scripts/generate_translation_contributors.py
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
-          java-version: '21'
+          java-version: '27'
           distribution: 'temurin'
           
       - name: Set Up Gradle
