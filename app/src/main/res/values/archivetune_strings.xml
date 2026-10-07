@@ -777,4 +777,8 @@
     <string name="android_auto_settings_update_failed">Could not update Android Auto settings</string>
     <string name="android_auto_for_you">For You</string>
     <string name="android_auto_library">Library</string>
+    <string name="recommendation_source">Recommendation provider</string>
+    <string name="recommendation_source_youtube">YouTube Music</string>
+    <string name="recommendation_source_spotify">Spotify</string>
+    <string name="spotify_recommendation_login_required">Spotify is not connected. Connect your account in Settings > Integrations to use Spotify recommendations.</string>
 </resources>
