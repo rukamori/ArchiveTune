@@ -42,6 +42,10 @@ data class Playlist(
         get() {
             return if (playlist.thumbnailUrl != null) {
                 listOf(playlist.thumbnailUrl)
+            } else if (playlist.name.contains("Discover", ignoreCase = true)) {
+                listOf("res://discover_weekly_cover")
+            } else if (playlist.name.startsWith("Best of Discover", ignoreCase = true)) {
+                listOf("res://best_of_discover_cover")
             } else {
                 songThumbnails.filterNotNull()
             }

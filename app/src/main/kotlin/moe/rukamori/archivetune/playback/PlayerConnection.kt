@@ -93,6 +93,7 @@ class PlayerConnection(
     val canSkipNext = MutableStateFlow(true)
 
     val aodModeEnabled = MutableStateFlow(false)
+    val isDiscoverPlayback = MutableStateFlow(false)
 
     val error = MutableStateFlow<PlaybackException?>(null)
     private var dismissedPlaybackError: PlaybackException? = null

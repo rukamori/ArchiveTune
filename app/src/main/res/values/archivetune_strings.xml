@@ -777,4 +777,19 @@
     <string name="android_auto_settings_update_failed">Could not update Android Auto settings</string>
     <string name="android_auto_for_you">For You</string>
     <string name="android_auto_library">Library</string>
+    <string name="discover_weekly">Weekly Discover</string>
+    <string name="discover_weekly_desc">Discover new songs with swipe cards</string>
+    <string name="discover_loading">Preparing Weekly Discover…</string>
+    <string name="discover_empty_title">No recommendations available right now</string>
+    <string name="discover_empty_action">Reload Discover</string>
+    <string name="discover_completed_title">Discover completed!</string>
+    <string name="discover_completed_desc">All your saved songs are ready in your Weekly Discover playlist.</string>
+    <string name="discover_like">LIKE</string>
+    <string name="discover_skip">SKIP</string>
+    <string name="discover_error_prefix">Couldn’t load recommendations: %s</string>
+    <string name="discover_error_generic">Couldn’t load recommendations. Check your network connection.</string>
+    <plurals name="discover_saved_count">
+        <item quantity="one">%d saved</item>
+        <item quantity="other">%d saved</item>
+    </plurals>
 </resources>
