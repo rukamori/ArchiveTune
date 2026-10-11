@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -42,6 +43,10 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.hazeBlur
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -53,7 +58,9 @@ import moe.rukamori.archivetune.constants.FloatingBarStandaloneCornerRadius
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
+import moe.rukamori.archivetune.ui.component.LocalBackdropHazeState
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.rememberAppleMusicDesign
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
@@ -217,6 +224,7 @@ private fun NewMiniPlayer(
             MiniPlayerBackground(
                 style = effectiveBackgroundStyle,
                 palette = backgroundPalette,
+                hazeState = LocalBackdropHazeState.current,
                 modifier = Modifier.fillMaxSize(),
             )
             NewMiniPlayerContent(
@@ -285,13 +293,38 @@ private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): Mini
 private fun MiniPlayerBackground(
     style: MiniPlayerBackgroundStyle,
     palette: MiniPlayerBackgroundPalette?,
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier,
 ) {
+    val design = rememberAppleMusicDesign()
     when (style) {
         MiniPlayerBackgroundStyle.THEME -> {
-            Box(
-                modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            )
+            Box(modifier = modifier) {
+                // 不透明の地を敷いておくので、ブラーが効かない端末でも文字は読める。
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                )
+                if (hazeState != null) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .hazeBlur(
+                                    input = HazeInput.Sources(hazeState),
+                                    style =
+                                        HazeBlurStyle {
+                                            blurRadius(design.glass.miniPlayerBlurRadius)
+                                            backgroundColor(Color.Transparent)
+                                            alpha(design.glass.miniPlayerAlpha)
+                                            blurredEdgeTreatment(BlurredEdgeTreatment.Rectangle)
+                                        },
+                                ),
+                    )
+                }
+            }
         }
 
         MiniPlayerBackgroundStyle.GRADIENT -> {

@@ -118,6 +118,9 @@ fun NavGraphBuilder.navigationBuilder(
             headerScrollConnection = searchScrollConnection,
         )
     }
+    composable(Screens.Explore.route) {
+        ExploreScreen(navController = navController)
+    }
     composable("local_songs") {
         LocalSongScreen(navController)
     }

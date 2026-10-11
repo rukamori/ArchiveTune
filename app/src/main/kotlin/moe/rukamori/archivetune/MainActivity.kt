@@ -180,6 +180,8 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -267,6 +269,7 @@ import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalBackdropHazeState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
@@ -1150,7 +1153,7 @@ class MainActivity : ComponentActivity() {
                     )
                     val playerDesignStyle by rememberEnumPreference(
                         key = PlayerDesignStyleKey,
-                        defaultValue = PlayerDesignStyle.V4,
+                        defaultValue = PlayerDesignStyle.V8,
                     )
 
                     val aodModeEnabled by remember(playerConnection) {
@@ -1383,6 +1386,10 @@ class MainActivity : ComponentActivity() {
                                     homeScrollBehavior.state.resetHeightOffset()
                                 }
 
+                                Screens.Explore.route -> {
+                                    homeScrollBehavior.state.resetHeightOffset()
+                                }
+
                                 Screens.Search.route -> {
                                     searchScrollBehavior.state.resetHeightOffset()
                                 }
@@ -1445,6 +1452,10 @@ class MainActivity : ComponentActivity() {
                         if (active) {
                             when (currentRoute) {
                                 Screens.Home.route -> {
+                                    homeScrollBehavior.state.resetHeightOffset()
+                                }
+
+                                Screens.Explore.route -> {
                                     homeScrollBehavior.state.resetHeightOffset()
                                 }
 
@@ -1647,6 +1658,7 @@ class MainActivity : ComponentActivity() {
                         remember(navBackStackEntry) {
                             when (navBackStackEntry?.destination?.route) {
                                 Screens.Home.route -> R.string.home
+                                Screens.Explore.route -> R.string.explore
                                 Screens.Search.route -> R.string.search
                                 Screens.Library.route -> R.string.filter_library
                                 else -> null
@@ -1665,6 +1677,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                    // 背後の画面を捕捉して、浮遊ナビ/ミニプレイヤーのガラス面に使う。
+                    val hazeState = rememberHazeState()
+
                     CompositionLocalProvider(
                         LocalHapticFeedback provides customHaptic,
                         LocalAnimationsDisabled provides disableAnimations,
@@ -1677,6 +1692,7 @@ class MainActivity : ComponentActivity() {
                         LocalSyncUtils provides syncUtils,
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
+                        LocalBackdropHazeState provides hazeState,
                     ) {
                         Row {
                             AnimatedVisibility(
@@ -1769,6 +1785,7 @@ class MainActivity : ComponentActivity() {
                                         val shouldUseFloatingTopBar =
                                             remember(navBackStackEntry) {
                                                 navBackStackEntry?.destination?.route == Screens.Home.route ||
+                                                    navBackStackEntry?.destination?.route == Screens.Explore.route ||
                                                     navBackStackEntry?.destination?.route == Screens.Search.route ||
                                                     navBackStackEntry?.destination?.route == Screens.Library.route
                                             }
@@ -1781,6 +1798,8 @@ class MainActivity : ComponentActivity() {
                                         val currentScrollBehavior =
                                             when (navBackStackEntry?.destination?.route) {
                                                 Screens.Home.route -> homeScrollBehavior
+
+                                                Screens.Explore.route -> homeScrollBehavior
 
                                                 Screens.Search.route -> searchScrollBehavior
 
@@ -1887,8 +1906,12 @@ class MainActivity : ComponentActivity() {
                                                                     .size(35.dp)
                                                                     .padding(end = 3.dp),
                                                         )
+                                                        // トップレベル画面ではタブ名を大きく出す（Apple Music の Home 見出し相当）。
                                                         Text(
-                                                            text = stringResource(R.string.app_name),
+                                                            text =
+                                                                stringResource(
+                                                                    currentTitleRes ?: R.string.app_name,
+                                                                ),
                                                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                                             maxLines = 1,
                                                             overflow = TextOverflow.Ellipsis,
@@ -2542,7 +2565,7 @@ class MainActivity : ComponentActivity() {
                                                 },
                                             ).nestedScroll(
                                                 topAppBarScrollBehavior.nestedScrollConnection,
-                                            ),
+                                            ).hazeSource(hazeState),
                                 ) {
                                     navigationBuilder(
                                         navController,
