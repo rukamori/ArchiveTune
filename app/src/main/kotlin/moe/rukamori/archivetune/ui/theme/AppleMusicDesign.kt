@@ -8,13 +8,9 @@
 package moe.rukamori.archivetune.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +25,7 @@ import androidx.compose.ui.unit.sp
  * あるため、こちらは「既定の見た目の方向づけ」にとどめ、実際の色面は
  * [AppleMusicSurface] 経由で解決する。
  *
- * 画面は [LocalAppleMusicDesign] 経由でトークンを参照する。参照しない画面は
+ * 画面は [rememberAppleMusicDesign] でトークンを取得して使う。参照しない画面は
  * 従来どおり MaterialTheme を見るので、移行は画面単位で進められる。
  */
 
@@ -187,64 +183,15 @@ val LightAppleMusicDesign =
         shape = AppleMusicShape(),
     )
 
-val LocalAppleMusicDesign = staticCompositionLocalOf { DarkAppleMusicDesign }
-
 /**
  * 現在のテーマに合わせたデザイントークンを返す。
  *
  * 暗いテーマなら [DarkAppleMusicDesign]、明るいテーマなら [LightAppleMusicDesign]。
- * 既存の [ArchiveTuneTheme] は [LocalAppleMusicDesign] を供給しないため、
- * 画面はここで暗/明を解決すればよい。
+ * 既存の [ArchiveTuneTheme] はユーザーが選んだ色を尊重する必要があるため、
+ * トークン側はそちらに合わせて暗/明を解決する。
  */
 @Composable
 @ReadOnlyComposable
 fun rememberAppleMusicDesign(): AppleMusicDesign =
     if (isSystemInDarkTheme()) DarkAppleMusicDesign else LightAppleMusicDesign
 
-/** [ArchiveTuneTheme] が供給するアクセント。未供給なら既定のピンクレッド。 */
-val LocalAccentOverride = staticCompositionLocalOf { AppleMusicAccent }
-
-/** アクセント。ユーザーがテーマ色を設定していればそれを優先する。 */
-@Composable
-@ReadOnlyComposable
-fun currentAccent(): Color = LocalAccentOverride.current
-
-/** Apple Music の色面を MaterialTheme の ColorScheme として渡す補助。 */
-@Composable
-fun appleMusicColorScheme(dark: Boolean): androidx.compose.material3.ColorScheme {
-    val s = if (dark) DarkSurface else LightSurface
-    val accent = AppleMusicAccent
-    return if (dark) {
-        darkColorScheme(
-            primary = accent,
-            onPrimary = Color.White,
-            background = s.background,
-            onBackground = s.onBackground,
-            surface = s.elevated,
-            onSurface = s.onBackground,
-            surfaceVariant = s.elevatedHigh,
-            onSurfaceVariant = s.secondary,
-            outlineVariant = s.hairline,
-        )
-    } else {
-        lightColorScheme(
-            primary = accent,
-            onPrimary = Color.White,
-            background = s.background,
-            onBackground = s.onBackground,
-            surface = s.elevated,
-            onSurface = s.onBackground,
-            surfaceVariant = s.elevatedHigh,
-            onSurfaceVariant = s.secondary,
-            outlineVariant = s.hairline,
-        )
-    }
-}
-
-/** 現在の [MaterialTheme] が暗いテーマか。 */
-@Composable
-@ReadOnlyComposable
-fun isDarkSurface(): Boolean = MaterialTheme.colorScheme.background.luminanceValue() < 0.5f
-
-private fun Color.luminanceValue(): Float =
-    (0.299f * red + 0.587f * green + 0.114f * blue)
