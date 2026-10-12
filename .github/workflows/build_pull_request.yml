@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
 
       - name: Generate translation contributor credits
         run: python scripts/generate_translation_contributors.py
