@@ -7,16 +7,20 @@
 
   Material Symbols "arrow_forward_ios" の形状をそのまま使う。
   設定行の右端に置く小さな矢印（›）。このリポジトリには同名の
-  リソースが無かったため追加した。色はコード側の tint で決める。
+  リソースが無かったため追加した。
+
+  android:tint を持たせないこと。`?attr/colorControlNormal` は
+  AppCompat 由来の属性で、このアプリのテーマには定義が無く、
+  リソースリンクが落ちる（リリースジョブで実際に失敗した）。
+  色は必ずコード側の Icon(tint = ...) で与える。
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
-    android:autoMirrored="true"
-    android:tint="?attr/colorControlNormal">
+    android:autoMirrored="true">
     <path
-        android:fillColor="@android:color/white"
+        android:fillColor="#FFFFFFFF"
         android:pathData="M6.49,20.13l1.77,1.77l9.9,-9.9l-9.9,-9.9l-1.77,1.77l8.13,8.13z" />
 </vector>

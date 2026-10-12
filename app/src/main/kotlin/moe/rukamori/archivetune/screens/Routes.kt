@@ -47,4 +47,18 @@ object Routes {
 
     /** ボトムナビに載せるタブのルート順。 */
     val MainTabs = listOf(Home, New, Library, Search)
+
+    // ── 実際に navigate へ渡す文字列を組むヘルパ ─────────────────
+    // `{}` 付きの定数は NavHost に登録する**パターン**であり、そのまま
+    // navigate に渡すと IllegalArgumentException になる。必ずここを通す。
+
+    fun album(albumId: String) = "album/$albumId"
+
+    fun artist(artistId: String) = "artist/$artistId"
+
+    fun onlinePlaylist(playlistId: String) = "online_playlist/$playlistId"
+
+    fun localPlaylist(playlistId: String) = "local_playlist/$playlistId"
+
+    fun browse(browseId: String) = "browse/$browseId"
 }
