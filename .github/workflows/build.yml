@@ -231,14 +231,44 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
+      - name: Prepare signing material
+        id: signing
+        shell: bash
+        env:
+          SECRET_KEYSTORE: ${{ secrets.KEYSTORE }}
+        run: |
+          set -euo pipefail
+          # フォークには upstream の署名 secret が引き継がれない。
+          # secret が無いときは実行毎に捨て鍵を生成し、常にインストール可能な
+          # APK を出せるようにする。secret があれば従来どおりそちらを使う。
+          if [ -n "${SECRET_KEYSTORE:-}" ]; then
+            echo "mode=secret" >> "$GITHUB_OUTPUT"
+          else
+            KS="$RUNNER_TEMP/fork-release.jks"
+            keytool -genkeypair -noprompt \
+              -keystore "$KS" \
+              -storepass archivetune -keypass archivetune \
+              -alias archivetune \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=ArchiveTune Fork, OU=Dev, O=Fork, C=JP"
+            {
+              echo "mode=fallback"
+              echo "keystore=$(base64 -w0 "$KS")"
+              echo "alias=archivetune"
+              echo "storepass=archivetune"
+              echo "keypass=archivetune"
+            } >> "$GITHUB_OUTPUT"
+            echo "::notice::ANDROID signing secret absent - signing with an ephemeral per-run keystore."
+          fi
+
       - name: Sign APK
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
-          signingKey: ${{ secrets.KEYSTORE }}
-          keyAlias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+          signingKey: ${{ steps.signing.outputs.mode == 'fallback' && steps.signing.outputs.keystore || secrets.KEYSTORE }}
+          keyAlias: ${{ steps.signing.outputs.mode == 'fallback' && steps.signing.outputs.alias || secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ steps.signing.outputs.mode == 'fallback' && steps.signing.outputs.storepass || secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ steps.signing.outputs.mode == 'fallback' && steps.signing.outputs.keypass || secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
       
       - name: Move signed APK
