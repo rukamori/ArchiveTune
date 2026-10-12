@@ -112,6 +112,36 @@ fun LoadingState(modifier: Modifier = Modifier) {
 }
 
 /**
+ * 一覧の中に置く小さな空表示。
+ *
+ * 画面全体の空状態（[EmptyState]）とは分ける。一覧の末尾に「0件」とだけ出る場合、
+ * 大きな空状態を出すと見出しが2枚並ぶので、ここは1行に抑える。
+ */
+@Composable
+fun EmptyRow(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    val palette = applePalette()
+    val type = appleType()
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = appleMetrics().block.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = message,
+            style = type.callout,
+            color = palette.labelSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
  * 取得に失敗したときの状態。再試行の導線を持たせる。
  */
 @Composable
