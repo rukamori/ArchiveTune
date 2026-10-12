@@ -77,6 +77,7 @@ import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
+import moe.rukamori.archivetune.constants.DarkMode
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DefaultLibraryFilterOrder
 import moe.rukamori.archivetune.constants.DefaultLibraryFilterOrderPreference
@@ -1246,12 +1247,6 @@ private fun sliderStyleLabel(sliderStyle: SliderStyle): String =
         SliderStyle.Circular -> stringResource(R.string.slider_style_circular)
         SliderStyle.Simple -> stringResource(R.string.slider_style_simple)
     }
-
-enum class DarkMode {
-    ON,
-    OFF,
-    AUTO,
-}
 
 enum class NavigationTab {
     HOME,

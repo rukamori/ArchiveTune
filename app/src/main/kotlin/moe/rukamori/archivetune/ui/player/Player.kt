@@ -187,7 +187,7 @@ import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerScreen
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
-import moe.rukamori.archivetune.ui.screens.settings.DarkMode
+import moe.rukamori.archivetune.constants.DarkMode
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import android.widget.Toast
 import com.materialkolor.ktx.toHct
