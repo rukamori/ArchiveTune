@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ArchiveTune (2026)
+  © Rukamori — github.com/rukamori
+  GPL-3.0 License | Contributors: see git history
+  Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+
+  Material Symbols "arrow_forward_ios" の形状をそのまま使う。
+  設定行の右端に置く小さな矢印（›）。このリポジトリには同名の
+  リソースが無かったため追加した。色はコード側の tint で決める。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:autoMirrored="true"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M6.49,20.13l1.77,1.77l9.9,-9.9l-9.9,-9.9l-1.77,1.77l8.13,8.13z" />
+</vector>
