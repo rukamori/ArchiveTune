@@ -62,6 +62,7 @@ import moe.rukamori.archivetune.constants.FloatingBarOuterCornerRadius
 import moe.rukamori.archivetune.constants.FloatingBarStandaloneCornerRadius
 import moe.rukamori.archivetune.constants.NavigationBarHeight
 import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
+import moe.rukamori.archivetune.design.LocalBackdropHazeState
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.theme.rememberAppleMusicDesign
 

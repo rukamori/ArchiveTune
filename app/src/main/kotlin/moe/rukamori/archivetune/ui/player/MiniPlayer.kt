@@ -58,7 +58,7 @@ import moe.rukamori.archivetune.constants.FloatingBarStandaloneCornerRadius
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
-import moe.rukamori.archivetune.ui.component.LocalBackdropHazeState
+import moe.rukamori.archivetune.design.LocalBackdropHazeState
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.rememberAppleMusicDesign
 import moe.rukamori.archivetune.utils.rememberEnumPreference

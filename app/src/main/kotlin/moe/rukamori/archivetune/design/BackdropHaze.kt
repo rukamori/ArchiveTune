@@ -5,7 +5,7 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-package moe.rukamori.archivetune.ui.component
+package moe.rukamori.archivetune.design
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import dev.chrisbanes.haze.HazeState
@@ -15,7 +15,7 @@ import dev.chrisbanes.haze.HazeState
  *
  * 浮遊ナビゲーションやミニプレイヤーのように、共通シェルに組み込まれていて
  * 呼び出し元までパラメータを辿れないコンポーネントがこれを読む。
- * ルート側（MainActivity）が [dev.chrisbanes.haze.rememberHazeState] を作って供給する。
+ * シェル側が [dev.chrisbanes.haze.rememberHazeState] を作って供給する。
  * 供給がない環境では null のままなので、側は半透明の塗りに落ちる。
  */
 val LocalBackdropHazeState = staticCompositionLocalOf<HazeState?> { null }
