@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
@@ -44,6 +45,8 @@ import moe.rukamori.archivetune.design.appleMetrics
  * @param shape 面の輪郭。カプセルなら `RoundedCornerShape(percent = 50)`。
  * @param hazeState 背後コンテンツの捕捉結果。`null` ならブラーを省略する。
  * @param blurRadius ブラー半径。`0.dp` でブラーを明示的に無効化する。
+ * @param tint アートワーク由来の色など、既定のティントに上書きして重ねたい色。
+ *   `Color.Unspecified` なら面のモード（暗/明）に応じた既定のティントを使う。
  */
 @Composable
 fun GlassSurface(
@@ -51,6 +54,7 @@ fun GlassSurface(
     modifier: Modifier = Modifier,
     hazeState: HazeState? = LocalBackdropHazeState.current,
     blurRadius: Dp = appleMetrics().glassBlur.dp,
+    tint: Color = Color.Unspecified,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isDark = LocalAppleIsDark.current
@@ -64,12 +68,13 @@ fun GlassSurface(
             Color.White.copy(alpha = 0.78f)
         }
     // 3. ティント。暗い画面では白文字を立たせるためさらに黒を重ねる。
-    val tint =
+    val defaultTint =
         if (isDark) {
             Color.Black.copy(alpha = 0.20f)
         } else {
             Color.White.copy(alpha = 0.24f)
         }
+    val appliedTint = if (tint == Color.Unspecified) defaultTint else tint
     // 5. ヘアライン縁。
     val edge =
         if (isDark) {
@@ -112,7 +117,7 @@ fun GlassSurface(
             modifier =
                 Modifier
                     .matchParentSize()
-                    .background(tint),
+                    .background(appliedTint),
         )
 
         // 上端にだけ差し込む光。全周を囲む枠線に見えないよう、上端だけ濃くする。
