@@ -19,16 +19,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyLibraryViewModel
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.SpotifyLikedSongsListItem
 import moe.rukamori.archivetune.ui.component.SpotifyLibraryPlaylistListItem
 
 @Composable
@@ -38,7 +37,6 @@ fun LibrarySpotifyPlaylistsScreen(
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val refreshPlaylists = remember(viewModel) { viewModel::refreshPlaylists }
     val playerAwareBottomPadding =
         LocalPlayerAwareWindowInsets.current
             .only(WindowInsetsSides.Bottom)
@@ -63,14 +61,8 @@ fun LibrarySpotifyPlaylistsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            if (playlists.isEmpty()) {
-                item(key = "spotify_empty", contentType = "spotify_empty") {
-                    LibraryEmptyState(
-                        iconRes = R.drawable.spotify_icon,
-                        actionLabelRes = R.string.refresh,
-                        onAction = refreshPlaylists,
-                    )
-                }
+            item(key = "spotify_liked_songs", contentType = "spotify_liked_songs") {
+                SpotifyLikedSongsListItem(navController = navController)
             }
 
             items(

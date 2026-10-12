@@ -587,6 +587,8 @@
     <string name="audio_normalization">Audio normalization</string>
     <string name="audio_offload">Audio offload</string>
     <string name="audio_offload_desc">Let supported devices play audio using low-power hardware decoding. Some audio processing features are disabled.</string>
+    <string name="prevent_audio_interruptions">Prevent interruptions from other apps</string>
+    <string name="prevent_audio_interruptions_desc">Keep playing when another app starts audio</string>
     <string name="pause_on_device_mute">Pause when device volume is 0</string>
     <string name="pause_on_device_mute_desc">Pause at zero volume, explain play attempts, and resume when volume increases</string>
     <string name="device_mute_recovery_volume">Increase volume from 0</string>

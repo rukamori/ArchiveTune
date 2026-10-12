@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onStart
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -53,10 +54,10 @@ class Media3DownloadRepository
     ) : DownloadRepository {
         override fun observeDownloads(): Flow<DownloadRepositorySnapshot> =
             combine(
-                database.allSongs(),
-                database.allAlbumsForDownloads(),
-                database.allPlaylistsForDownloads(),
-                database.allPlaylistSongMapsForDownloads(),
+                database.allSongs().onStart { emit(emptyList()) },
+                database.allAlbumsForDownloads().onStart { emit(emptyList()) },
+                database.allPlaylistsForDownloads().onStart { emit(emptyList()) },
+                database.allPlaylistSongMapsForDownloads().onStart { emit(emptyList()) },
             ) { songs, albums, playlists, playlistSongMaps ->
                 DownloadRepositorySnapshot(
                     songs = songs,

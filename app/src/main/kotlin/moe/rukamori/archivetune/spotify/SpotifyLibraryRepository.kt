@@ -232,6 +232,27 @@ class SpotifyLibraryRepository
                 tracks
             }
 
+        suspend fun likedSongs(): List<SpotifyTrack> =
+            withContext(Dispatchers.IO) {
+                ensureAuthenticated()
+                val tracks = ArrayList<SpotifyTrack>()
+                var offset = 0
+                val limit = 50
+
+                while (true) {
+                    val page =
+                        spotifyCallWithTokenRetry {
+                            Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
+                        }
+                    if (page.items.isEmpty()) break
+                    tracks += page.items.map { savedTrack -> savedTrack.track }.filterNot(SpotifyTrack::isLocal)
+                    offset += page.items.size
+                    if (offset >= page.total || page.items.size < limit) break
+                }
+
+                tracks
+            }
+
         private suspend fun ensureAuthenticated() {
             val prefs = context.dataStore.data.first()
             val token = prefs[SpotifyAccessTokenKey].orEmpty()

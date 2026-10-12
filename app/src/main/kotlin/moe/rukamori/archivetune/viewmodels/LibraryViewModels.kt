@@ -92,6 +92,7 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
 import java.text.Collator
 import java.time.Duration
@@ -425,6 +426,7 @@ class LibraryPlaylistsViewModel
     constructor(
         @ApplicationContext context: Context,
         private val database: MusicDatabase,
+        private val downloadUtil: DownloadUtil,
         refreshLibrary: RefreshLibraryUseCase,
     ) : LibraryRefreshViewModel(refreshLibrary) {
         val allPlaylists =
@@ -438,6 +440,30 @@ class LibraryPlaylistsViewModel
                 .flatMapLatest { (sortType, descending) ->
                     database.playlists(sortType, descending)
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+        val downloadedPlaylistIds =
+            combine(
+                database.allPlaylistSongMapsForDownloads(),
+                downloadUtil.downloads,
+            ) { playlistSongMaps, downloads ->
+                playlistSongMaps
+                    .groupBy { it.playlistId }
+                    .mapNotNull { (playlistId, songMaps) ->
+                        val songIds =
+                            songMaps
+                                .asSequence()
+                                .map { it.songId }
+                                .filterNot { it.isLocalMediaId() }
+                                .distinct()
+                                .toList()
+                        playlistId.takeIf {
+                            songIds.isNotEmpty() &&
+                                songIds.all { songId ->
+                                    downloads[songId]?.state == Download.STATE_COMPLETED
+                                }
+                        }
+                    }.toSet()
+            }.stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
         fun sync() {
             refreshLibrary(LibrarySyncTarget.Playlists)

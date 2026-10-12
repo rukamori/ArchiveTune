@@ -96,12 +96,14 @@ class LocalSongScanner @Inject constructor(
     private val database: MusicDatabase,
     private val metadataReader: LocalAudioMetadataReader,
     private val metadataRepository: LocalMetadataRepository,
+    private val mediaIndexer: LocalMediaIndexer,
 ) {
     private val scanMutex = Mutex()
 
     suspend fun scanDevice(scanConfig: LocalSongScanConfig = LocalSongScanConfig()): LocalSongScanSummary =
         withContext(Dispatchers.IO) {
             scanMutex.withLock {
+                mediaIndexer.indexMissingAudio()
                 val scanned = queryTracks(scanConfig)
                 val ids = scanned.map(LocalTrackRecord::id)
                 val enriched = enrichTracks(scanned, loadSongs(ids), loadFormats(ids))

@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.home.HomeEvent
 import moe.rukamori.archivetune.home.HomePresentationPreferences
 import moe.rukamori.archivetune.home.HomeScreenState
 import moe.rukamori.archivetune.home.HomeUiState
+import moe.rukamori.archivetune.home.hasVisibleContent
 import moe.rukamori.archivetune.home.LoadCommunityPlaylistPreviewsUseCase
 import moe.rukamori.archivetune.home.LoadPersonalizedQuickPicksUseCase
 import moe.rukamori.archivetune.home.ObserveHomePresentationPreferencesUseCase
@@ -697,7 +698,7 @@ class HomeViewModel
                                                     aiContentFilterPolicy,
                                                 ),
                                         )
-                                    },
+                                    }.filter(HomePage.Section::hasVisibleContent),
                             )
                         val (pageWithoutQuickPicks, remoteQuickPicksFallback) = filteredPage.extractQuickPicks()
                         if (
@@ -941,7 +942,7 @@ class HomeViewModel
                                                 aiContentFilterPolicy,
                                             ),
                                     )
-                                },
+                                }.filter(HomePage.Section::hasVisibleContent),
                         )
                     val (pageWithoutQuickPicks, _) = mergedPage.extractQuickPicks()
                     applyRemoteHomePage(
@@ -1002,7 +1003,7 @@ class HomeViewModel
                                                 aiContentFilterPolicy,
                                             ),
                                     )
-                                },
+                                }.filter(HomePage.Section::hasVisibleContent),
                         )
                     val (pageWithoutQuickPicks, selectedQuickPicks) = filteredPage.extractQuickPicks()
                     remoteQuickPicks.value = selectedQuickPicks?.takeIf { it.items.isNotEmpty() }

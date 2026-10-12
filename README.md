@@ -33,19 +33,26 @@
     <img src="https://img.shields.io/github/downloads/rukamori/ArchiveTune/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
     <img src="https://img.shields.io/github/stars/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Stars" />
     <img src="https://img.shields.io/github/license/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e" alt="License" />
-    <img src="https://img.shields.io/badge/Architecture-MVVM-6366f1?style=for-the-badge&labelColor=1e1e2e&logo=kotlin" alt="MVVM Architecture" />
-    <img src="https://img.shields.io/badge/Language-Kotlin-7f52ff?style=for-the-badge&logo=kotlin&color=6366f1&labelColor=1e1e2e" alt="Kotlin Language" />
-    <img src="https://img.shields.io/badge/Toolkit-Jetpack_Compose-4285f4?style=for-the-badge&logo=jetpack-compose&color=6366f1&labelColor=1e1e2e" alt="Jetpack Compose Toolkit" />
-    <img src="https://img.shields.io/badge/Design-Material_3-000000?style=for-the-badge&logo=material-design&color=6366f1&labelColor=1e1e2e" alt="Material Design 3" />
     <a href="https://www.virustotal.com/gui/file/176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84/detection/f-176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84-1778840479" target="_blank"><img src="https://img.shields.io/badge/VirusTotal-SAFE-green?style=for-the-badge&logo=virustotal&logoColor=white&labelColor=1e1e2e&color=5865F2" alt="VirusTotal" /></a>
     <a href="https://t.me/ArchiveTuneGC"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" /></a>
     <a href="https://discord.gg/XF2fpb9rTq"><img src="https://img.shields.io/discord/1498315636714115224?style=for-the-badge&logo=discord&logoColor=ffffff&label=Discord&labelColor=6366f1&color=6366f1" alt="Discord" /></a>
   </div>
+
+<br />
+
+<div align="center>
   
-  <br />
+  <a href="https://fmhy.net/mobile#youtube-music" target="_blank">
+    <img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/fmhy/cozy.svg" alt="ArchiveTune | FMHY" />
+  </a>
+
+  <a href="https://kotlinlang.org" target="_blank">
+    <img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/built-with/kotlin/cozy.svg" alt="ArchiveTune | FMHY" />
+  </a>
+</div>
 
   <a href="https://trendshift.io/repositories/17521" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/17521" alt="ArchiveTune | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <img src="https://trendshift.io/api/badge/repositories/17521" alt="ArchiveTune | Trendshift" style="width: 250px; height: 55px;" width="250" height="55" />
   </a>
 </div>
 
@@ -56,7 +63,7 @@
 We do not provide support, maintenance, troubleshooting, or assistance for any forked version of this project.
 If you choose to use a fork, you do so at your own risk.
 
-**ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
+**ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made with kotlin and jetpack compose, because we think your music should stay private, look clean, and work exactly the way you expect.
 
 ---
 

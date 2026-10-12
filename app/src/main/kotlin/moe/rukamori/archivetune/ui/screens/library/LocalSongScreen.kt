@@ -110,7 +110,6 @@ import moe.rukamori.archivetune.constants.LocalSongsSortTypeKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.localmedia.LocalSongScanConfig
-import moe.rukamori.archivetune.localmedia.SupportedLocalAudio
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
@@ -246,15 +245,11 @@ fun LocalSongScreen(
     val visibleSongs by remember(songs, query, sortType, sortDescending, collator) {
         derivedStateOf {
             val normalizedQuery = query.trim()
-            val supportedSongs =
-                songs.filter { song ->
-                    SupportedLocalAudio.isSupportedMimeType(song.format?.mimeType)
-                }
             val filteredSongs =
                 if (normalizedQuery.isBlank()) {
-                    supportedSongs
+                    songs
                 } else {
-                    supportedSongs.filter { song ->
+                    songs.filter { song ->
                         song.song.title.contains(normalizedQuery, ignoreCase = true) ||
                             song.song.albumName
                                 .orEmpty()

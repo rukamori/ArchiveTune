@@ -30,8 +30,10 @@ import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -654,7 +656,8 @@ private class LocalCastMediaServer(
                                 call.respond(HttpStatusCode.NotFound)
                                 return@get
                             }
-                            val source = openSource(item, call.request.header(HttpHeaders.Range))
+                            val rangeHeader = call.request.header(HttpHeaders.Range)
+                            val source = withContext(Dispatchers.IO) { openSource(item, rangeHeader) }
                             if (source == null) {
                                 call.respond(HttpStatusCode.NotFound)
                                 return@get
@@ -822,7 +825,7 @@ private class LocalCastMediaServer(
         val resolved =
             item.resolvedMediaItem
                 ?: item.mediaItemResolver?.let { resolver ->
-                    runCatching { resolver.resolveForCast(item.mediaItem) }
+                    runCatching { resolver.resolveForCastBlocking(item.mediaItem) }
                         .onFailure { Timber.tag("Cast").w(it, "Unable to resolve media item for Cast") }
                         .getOrNull()
                 }?.also { item.resolvedMediaItem = it }

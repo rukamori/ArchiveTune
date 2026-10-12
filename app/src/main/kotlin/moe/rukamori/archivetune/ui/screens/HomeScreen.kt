@@ -63,6 +63,8 @@ import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomeEvent
 import moe.rukamori.archivetune.home.HomeScreenState
 import moe.rukamori.archivetune.home.HomeUiState
+import moe.rukamori.archivetune.home.hasVisibleContent
+import moe.rukamori.archivetune.innertube.pages.HomePage
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.PlayerConnection
@@ -589,44 +591,48 @@ private fun HomeContent(
                         }
                     }
 
-                    uiState.homePage?.sections.orEmpty().forEachIndexed { index, section ->
-                        val sectionKey = "${section.endpoint?.browseId ?: section.title}_$index"
-                        sectionSpacer("remote_$sectionKey")
-                        item(
-                            key = "home_remote_header_$sectionKey",
-                            contentType = "section_header",
-                        ) {
-                            val playAll =
-                                remember(section.playEndpoint, playerConnection) {
-                                    section.playEndpoint?.let { endpoint ->
-                                        { playerConnection.playQueue(YouTubeQueue.playlist(endpoint)) }
+                    uiState.homePage
+                        ?.sections
+                        .orEmpty()
+                        .filter(HomePage.Section::hasVisibleContent)
+                        .forEachIndexed { index, section ->
+                            val sectionKey = "${section.endpoint?.browseId ?: section.title}_$index"
+                            sectionSpacer("remote_$sectionKey")
+                            item(
+                                key = "home_remote_header_$sectionKey",
+                                contentType = "section_header",
+                            ) {
+                                val playAll =
+                                    remember(section.playEndpoint, playerConnection) {
+                                        section.playEndpoint?.let { endpoint ->
+                                            { playerConnection.playQueue(YouTubeQueue.playlist(endpoint)) }
+                                        }
                                     }
-                                }
-                            HomePageSectionTitle(
-                                section = section,
-                                navController = navController,
-                                onPlayAll = playAll,
-                                modifier = Modifier.animateItem(),
-                            )
+                                HomePageSectionTitle(
+                                    section = section,
+                                    navController = navController,
+                                    onPlayAll = playAll,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "home_remote_$sectionKey",
+                                contentType = "media_shelf",
+                            ) {
+                                HomePageSectionContent(
+                                    section = section,
+                                    mediaMetadata = mediaMetadata,
+                                    isPlaying = isPlaying,
+                                    navController = navController,
+                                    playerConnection = playerConnection,
+                                    menuState = menuState,
+                                    haptic = haptic,
+                                    scope = scope,
+                                    onOpenRemoteItem = { itemId -> onAction(HomeAction.OpenRemoteItem(itemId)) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
-                        item(
-                            key = "home_remote_$sectionKey",
-                            contentType = "media_shelf",
-                        ) {
-                            HomePageSectionContent(
-                                section = section,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                haptic = haptic,
-                                scope = scope,
-                                onOpenRemoteItem = { itemId -> onAction(HomeAction.OpenRemoteItem(itemId)) },
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
 
                     if (uiState.isLoadingMore) {
                         item(

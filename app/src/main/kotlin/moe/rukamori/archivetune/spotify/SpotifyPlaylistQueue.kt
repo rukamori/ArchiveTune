@@ -18,7 +18,7 @@ import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
 class SpotifyPlaylistQueue(
-    private val playlistId: String,
+    private val playlistId: String? = null,
     private val title: String? = null,
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
@@ -111,7 +111,7 @@ class SpotifyPlaylistQueue(
         val result =
             Spotify
                 .playlistTracks(
-                    playlistId = playlistId,
+                    playlistId = checkNotNull(playlistId),
                     limit = SPOTIFY_PAGE_SIZE,
                     offset = apiFetchOffset,
                 ).getOrThrow()

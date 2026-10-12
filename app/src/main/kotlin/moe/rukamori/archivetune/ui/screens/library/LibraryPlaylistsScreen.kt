@@ -136,6 +136,7 @@ fun LibraryPlaylistsScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(PlaylistSortDescendingKey, true)
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsStateWithLifecycle()
     val filteredPlaylistIds by database
         .playlistIdsByTags(
             if (selectedTagIds.isEmpty()) emptyList() else selectedTagIds.toList(),
@@ -485,6 +486,7 @@ fun LibraryPlaylistsScreen(
                     ) { playlist ->
                         PlaylistGridCard(
                             playlist = playlist,
+                            isDownloaded = playlist.id in downloadedPlaylistIds,
                             onClick = {
                                 openPlaylist(navController, playlist)
                             },
@@ -542,6 +544,7 @@ fun LibraryPlaylistsScreen(
                         ) {
                             PlaylistListCard(
                                 playlist = playlist,
+                                isDownloaded = playlist.id in downloadedPlaylistIds,
                                 onClick = {
                                     openPlaylist(navController, playlist)
                                 },
@@ -737,6 +740,7 @@ fun rememberArtworkCardColor(
 @Composable
 fun PlaylistListCard(
     playlist: Playlist,
+    isDownloaded: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onMenuClick: () -> Unit,
@@ -775,15 +779,25 @@ fun PlaylistListCard(
             null
         }
     val metadataTrailingContent: (@Composable RowScope.() -> Unit)? =
-        if (playlist.playlist.isHidden) {
+        if (isDownloaded || playlist.playlist.isHidden) {
             {
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    painter = painterResource(R.drawable.visibility_off),
-                    contentDescription = stringResource(R.string.hide_playlist),
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                )
+                if (isDownloaded) {
+                    Icon(
+                        painter = painterResource(R.drawable.offline),
+                        contentDescription = stringResource(R.string.downloaded_desc),
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (playlist.playlist.isHidden) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        painter = painterResource(R.drawable.visibility_off),
+                        contentDescription = stringResource(R.string.hide_playlist),
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                    )
+                }
             }
         } else {
             null
@@ -808,6 +822,7 @@ fun PlaylistListCard(
 @Composable
 fun PlaylistGridCard(
     playlist: Playlist,
+    isDownloaded: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onLongClick: () -> Unit,
@@ -860,6 +875,25 @@ fun PlaylistGridCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+            if (isDownloaded) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.offline),
+                        contentDescription = stringResource(R.string.downloaded_desc),
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
             // Play overlay on bottom right of grid cover
             Box(
                 modifier =

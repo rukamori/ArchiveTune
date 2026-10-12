@@ -68,6 +68,40 @@ fun SpotifyLibraryPlaylistListItem(
 }
 
 @Composable
+fun SpotifyLikedSongsListItem(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+) {
+    val openLikedSongs = remember(navController) { { navController.navigate("spotify_liked_songs") } }
+
+    ListItem(
+        title = stringResource(R.string.liked_songs),
+        subtitle = stringResource(R.string.spotify_account),
+        thumbnailContent = {
+            Icon(
+                painter = painterResource(R.drawable.favorite),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(ListThumbnailSize),
+            )
+        },
+        trailingContent = {
+            Icon(
+                painter = painterResource(R.drawable.spotify_icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .focusable()
+                .clickable(onClick = openLikedSongs),
+    )
+}
+
+@Composable
 fun SpotifyTrackListItem(
     track: SpotifyTrack,
     modifier: Modifier = Modifier,

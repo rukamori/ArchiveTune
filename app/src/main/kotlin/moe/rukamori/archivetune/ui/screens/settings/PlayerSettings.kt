@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.PreventAudioInterruptionsKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
@@ -194,6 +195,11 @@ fun PlayerSettings(navController: NavController) {
     val (pauseOnDeviceMute, onPauseOnDeviceMuteChange) =
         rememberPreference(
             PauseOnDeviceMuteKey,
+            defaultValue = false,
+        )
+    val (preventAudioInterruptions, onPreventAudioInterruptionsChange) =
+        rememberPreference(
+            PreventAudioInterruptionsKey,
             defaultValue = false,
         )
     val (
@@ -430,6 +436,16 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.arrow_forward), null) },
                         checked = seekExtraSeconds,
                         onCheckedChange = onSeekExtraSeconds,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.prevent_audio_interruptions)) },
+                        description = stringResource(R.string.prevent_audio_interruptions_desc),
+                        icon = { Icon(painterResource(R.drawable.volume_up), null) },
+                        checked = preventAudioInterruptions,
+                        onCheckedChange = onPreventAudioInterruptionsChange,
                     )
                 }
 

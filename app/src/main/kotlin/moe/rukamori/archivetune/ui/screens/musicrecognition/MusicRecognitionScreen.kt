@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -103,6 +102,7 @@ import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
@@ -296,7 +296,7 @@ private fun MusicRecognitionContent(
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = LocalPlayerAwareWindowInsets.current,
     ) { contentPadding ->
         Box(
             modifier =

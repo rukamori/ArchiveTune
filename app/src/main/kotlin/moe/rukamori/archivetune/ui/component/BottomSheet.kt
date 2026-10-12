@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -422,24 +423,18 @@ fun rememberBottomSheetState(
     var previousAnchor by rememberSaveable {
         mutableIntStateOf(initialAnchor)
     }
-    val animatable =
-        remember {
-            Animatable(0.dp, Dp.VectorConverter)
-        }
-
     val state =
-        remember(dismissedBound, expandedBound, coroutineScope, animationsDisabled) {
+        remember(dismissedBound, expandedBound, density, coroutineScope, animationsDisabled) {
+            val lowerBound = dismissedBound.coerceAtMost(expandedBound)
             val initialValue =
                 when (previousAnchor) {
                     EXPANDED_ANCHOR -> expandedBound
                     COLLAPSED_ANCHOR -> collapsedBound
                     DISMISSED_ANCHOR -> dismissedBound
                     else -> error("Unknown BottomSheet anchor")
-                }
-
-            animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                animatable.animateTo(initialValue, if (animationsDisabled) snap() else BottomSheetAnimationSpec)
+                }.coerceIn(lowerBound, expandedBound)
+            val animatable = Animatable(initialValue, Dp.VectorConverter).apply {
+                updateBounds(lowerBound, expandedBound)
             }
 
             BottomSheetState(
@@ -453,7 +448,7 @@ fun rememberBottomSheetState(
                 coroutineScope = coroutineScope,
                 animatable = animatable,
                 animationsDisabled = animationsDisabled,
-                collapsedBound = collapsedBound,
+                collapsedBound = collapsedBound.coerceIn(lowerBound, expandedBound),
                 initialAnchor = previousAnchor,
             )
         }
@@ -462,16 +457,18 @@ fun rememberBottomSheetState(
         state.updateTargetCollapsedBound(collapsedBound)
     }
 
-    val animationSpec = if (animationsDisabled) snap() else NavigationBarAnimationSpec
-    val animatedCollapsedBound by
-        animateDpAsState(
-            targetValue = collapsedBound,
-            animationSpec = animationSpec,
-            label = "SheetCollapsedBound",
-        )
-    LaunchedEffect(state) {
-        snapshotFlow { animatedCollapsedBound }.collect {
-            state.reanchorTo(it)
+    key(state) {
+        val animationSpec = if (animationsDisabled) snap() else NavigationBarAnimationSpec
+        val animatedCollapsedBound by
+            animateDpAsState(
+                targetValue = collapsedBound.coerceIn(state.dismissedBound, state.expandedBound),
+                animationSpec = animationSpec,
+                label = "SheetCollapsedBound",
+            )
+        LaunchedEffect(state) {
+            snapshotFlow { animatedCollapsedBound }.collect {
+                state.reanchorTo(it)
+            }
         }
     }
 

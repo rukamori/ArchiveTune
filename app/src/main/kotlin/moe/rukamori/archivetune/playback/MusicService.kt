@@ -176,6 +176,7 @@ import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
+import moe.rukamori.archivetune.constants.PreventAudioInterruptionsKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
 import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
 import moe.rukamori.archivetune.constants.ScrobbleDelaySecondsKey
@@ -330,6 +331,8 @@ class MusicService :
     private var audioFocusRequest: AudioFocusRequest? = null
     private var lastAudioFocusState = AudioManager.AUDIOFOCUS_NONE
     private var wasPlayingBeforeAudioFocusLoss = false
+    private var preventAudioInterruptionsEnabled = false
+    private var ignoringAudioFocusLoss = false
     private var pauseOnDeviceMuteEnabled = false
     private var deviceMutePlaybackRecoveryVolumePercent = 0
     private var wasAutoPausedByDeviceMute = false
@@ -1157,7 +1160,10 @@ class MusicService :
                     mediaItemResolver =
                         object : CastMediaItemResolver {
                             override fun resolveForCast(mediaItem: MediaItem): MediaItem =
-                                resolveMediaItemForCast(mediaItem)
+                                resolveMediaItemForCast(mediaItem, blocking = false)
+
+                            override fun resolveForCastBlocking(mediaItem: MediaItem): MediaItem =
+                                resolveMediaItemForCast(mediaItem, blocking = true)
 
                             override fun mimeTypeForCast(mediaItem: MediaItem): String? =
                                 mediaItem.localConfiguration?.mimeType
@@ -1365,6 +1371,16 @@ class MusicService :
                     unregisterMuteRecoveryObserver()
                 } else {
                     handleDeviceMuteStateChanged()
+                }
+            }
+
+        dataStore.data
+            .map { it[PreventAudioInterruptionsKey] ?: false }
+            .distinctUntilChanged()
+            .collectLatest(scope) { enabled ->
+                preventAudioInterruptionsEnabled = enabled
+                if (!enabled) {
+                    ignoringAudioFocusLoss = false
                 }
             }
 
@@ -3292,9 +3308,26 @@ class MusicService :
     }
 
     private fun handleAudioFocusChange(focusChange: Int) {
+        if (
+            preventAudioInterruptionsEnabled &&
+            (
+                focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+            )
+        ) {
+            hasAudioFocus = false
+            wasPlayingBeforeAudioFocusLoss = false
+            audioFocusVolumeFactor.value = 1f
+            ignoringAudioFocusLoss = true
+            lastAudioFocusState = focusChange
+            return
+        }
+
         when (focusChange) {
             AudioManager.AUDIOFOCUS_GAIN -> {
                 hasAudioFocus = true
+                ignoringAudioFocusLoss = false
                 audioFocusVolumeFactor.value = 1f
 
                 if (wasPlayingBeforeAudioFocusLoss) {
@@ -3307,6 +3340,7 @@ class MusicService :
 
             AudioManager.AUDIOFOCUS_LOSS -> {
                 hasAudioFocus = false
+                ignoringAudioFocusLoss = false
                 pauseForAudioFocusLoss(resumeWhenFocusReturns = false)
 
                 abandonAudioFocus()
@@ -3316,6 +3350,7 @@ class MusicService :
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 hasAudioFocus = false
+                ignoringAudioFocusLoss = false
                 pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
 
                 lastAudioFocusState = focusChange
@@ -3323,6 +3358,7 @@ class MusicService :
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 hasAudioFocus = false
+                ignoringAudioFocusLoss = false
                 pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
 
                 lastAudioFocusState = focusChange
@@ -3330,6 +3366,7 @@ class MusicService :
 
             AudioManager.AUDIOFOCUS_GAIN_TRANSIENT -> {
                 hasAudioFocus = true
+                ignoringAudioFocusLoss = false
                 audioFocusVolumeFactor.value = 1f
 
                 if (wasPlayingBeforeAudioFocusLoss) {
@@ -3342,6 +3379,7 @@ class MusicService :
 
             AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
                 hasAudioFocus = true
+                ignoringAudioFocusLoss = false
                 audioFocusVolumeFactor.value = 1f
 
                 lastAudioFocusState = focusChange
@@ -3350,6 +3388,8 @@ class MusicService :
     }
 
     private fun requestAudioFocus(): Boolean {
+        if (ignoringAudioFocusLoss) return true
+
         if (hasAudioFocus) {
             if (audioFocusVolumeFactor.value != 1f || lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
                 restoreAudioFocusVolume()
@@ -3375,6 +3415,7 @@ class MusicService :
                 hasAudioFocus = false
             }
         }
+        ignoringAudioFocusLoss = false
     }
 
     fun hasAudioFocusForPlayback(): Boolean = hasAudioFocus
@@ -7572,31 +7613,42 @@ class MusicService :
         }
     }
 
-    private fun resolveMediaItemForCast(mediaItem: MediaItem): MediaItem {
+    private fun resolveMediaItemForCast(
+        mediaItem: MediaItem,
+        blocking: Boolean,
+    ): MediaItem {
         val localConfiguration = mediaItem.localConfiguration ?: return mediaItem
         val uri = localConfiguration.uri
         if (uri.shouldBypassYouTubeResolver()) return mediaItem
         val mediaId = localConfiguration.customCacheKey ?: mediaItem.mediaId
         val lowDataModeActive = isLowDataModeActive()
+        val request =
+            AudioStreamRequest(
+                mediaId = mediaId,
+                quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                networkMetered = lowDataModeActive,
+                purpose = StreamPurpose.PLAYBACK,
+                authState = YouTube.currentPlaybackAuthState(),
+            )
         val resolved =
-            resolveAudioStream.peek(
-                AudioStreamRequest(
-                    mediaId = mediaId,
-                    quality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
-                    networkMetered = lowDataModeActive,
-                    purpose = StreamPurpose.PLAYBACK,
-                    authState = YouTube.currentPlaybackAuthState(),
-                ),
-            ) ?: return mediaItem
+            if (blocking) {
+                resolveAudioStream.resolveBlocking(request)
+            } else {
+                resolveAudioStream.peek(request) ?: return mediaItem
+            }
         val resolvedMimeType =
             localConfiguration.mimeType.toCastMimeType()
                 ?: castMimeTypeCache.get(mediaId)
+                ?: resolved.castMimeType()
         return mediaItem
             .buildUpon()
             .setUri(resolved.url)
             .apply { resolvedMimeType?.let(::setMimeType) }
             .build()
     }
+
+    private fun ResolvedAudioStream.castMimeType(): String? =
+        if (codecs.isBlank()) mimeType.toCastMimeType() else "$mimeType; codecs=\"$codecs\"".toCastMimeType()
 
     private fun resolvePlaybackDataSpec(dataSpec: DataSpec): DataSpec {
         if (dataSpec.uri.shouldBypassYouTubeResolver()) {

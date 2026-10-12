@@ -406,9 +406,15 @@ private fun ImmersiveBackdrop(
             )
         }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val rotatedBackdropWidth = maxHeight
-        val rotatedBackdropHeight = maxWidth
+    Box(modifier = Modifier.fillMaxSize()) {
+        val rotatedBackdropModifier =
+            remember {
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationZ = 180f
+                    }
+            }
         val stageFadeMask =
             remember {
                 Brush.verticalGradient(
@@ -427,43 +433,35 @@ private fun ImmersiveBackdrop(
                     .fillMaxSize()
                     .hazeSource(hazeState),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = rotatedBackdropWidth, height = rotatedBackdropHeight)
-                        .align(Alignment.Center)
-                        .graphicsLayer { rotationZ = ImmersiveBackdropBlurRotationDegrees },
-            ) {
-                if (canvasFrame != null && canvas != null) {
-                    Image(
-                        bitmap = canvasFrame,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    AsyncImage(
-                        model = artworkRequest,
-                        placeholder = artworkPlaceholder,
-                        error = artworkPlaceholder,
-                        fallback = artworkPlaceholder,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    AsyncImage(
-                        model = artworkRequest,
-                        placeholder = artworkPlaceholder,
-                        error = artworkPlaceholder,
-                        fallback = artworkPlaceholder,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier =
-                            Modifier
-                                .size(width = artWidth, height = artHeight)
-                                .align(Alignment.TopStart),
-                    )
-                }
+            if (canvasFrame != null && canvas != null) {
+                Image(
+                    bitmap = canvasFrame,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                AsyncImage(
+                    model = artworkRequest,
+                    placeholder = artworkPlaceholder,
+                    error = artworkPlaceholder,
+                    fallback = artworkPlaceholder,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = rotatedBackdropModifier,
+                )
+                AsyncImage(
+                    model = artworkRequest,
+                    placeholder = artworkPlaceholder,
+                    error = artworkPlaceholder,
+                    fallback = artworkPlaceholder,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(width = artWidth, height = artHeight)
+                            .align(Alignment.TopStart),
+                )
             }
         }
 

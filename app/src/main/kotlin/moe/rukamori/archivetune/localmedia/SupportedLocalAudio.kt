@@ -46,6 +46,20 @@ object SupportedLocalAudio {
             "wvc",
         )
 
+    private val blockedMimeTypes =
+        setOf(
+            "audio/x-ape",
+            "audio/x-dsd",
+            "audio/x-dsf",
+            "audio/x-ms-wma",
+            "audio/x-tta",
+            "audio/x-wavpack",
+            "audio/x-mpegurl",
+            "audio/mpegurl",
+            "audio/x-scpls",
+            "audio/x-flac+cue",
+        )
+
     private val supportedMimeTypes =
         setOf(
             "audio/aac",
@@ -93,17 +107,7 @@ object SupportedLocalAudio {
                 ?.lowercase(Locale.ROOT)
                 .orEmpty()
 
-        return normalizedMime in supportedMimeTypes
-    }
-
-    fun isSupportedMimeType(mimeType: String?): Boolean {
-        val normalizedMime =
-            mimeType
-                ?.substringBefore(';')
-                ?.trim()
-                ?.lowercase(Locale.ROOT)
-                .orEmpty()
-
-        return normalizedMime in supportedMimeTypes || normalizedMime == "audio/*"
+        if (normalizedMime in blockedMimeTypes) return false
+        return normalizedMime in supportedMimeTypes || normalizedMime.startsWith("audio/")
     }
 }
