@@ -35,7 +35,7 @@ import moe.rukamori.archivetune.mediainfo.MediaInfoTab
 import moe.rukamori.archivetune.mediainfo.MediaInfoUiModel
 import moe.rukamori.archivetune.mediainfo.ObserveMediaInfoUseCase
 import moe.rukamori.archivetune.mediainfo.asMediaInfoError
-import moe.rukamori.archivetune.ui.utils.numberFormatter
+import moe.rukamori.archivetune.utils.numberFormatter
 
 @HiltViewModel
 class MediaInfoViewModel @Inject constructor(

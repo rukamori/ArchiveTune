@@ -68,7 +68,7 @@ import moe.rukamori.archivetune.design.components.SectionHeader
 import moe.rukamori.archivetune.design.components.SongRow
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.models.toMediaMetadata
-import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
+import moe.rukamori.archivetune.screens.onlineSearchResultRoute
 import moe.rukamori.archivetune.viewmodels.LocalFilter
 import moe.rukamori.archivetune.viewmodels.LocalSearchViewModel
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState

@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
+import moe.rukamori.archivetune.playback.CanvasArtworkPlaybackCache
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton

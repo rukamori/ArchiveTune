@@ -51,8 +51,8 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.ui.player.AodPlayerScreen
-import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
+import moe.rukamori.archivetune.aod.AodPlayerScreen
+import moe.rukamori.archivetune.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
 

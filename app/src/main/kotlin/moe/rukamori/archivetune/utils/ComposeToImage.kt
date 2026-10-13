@@ -38,7 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.component.LyricsShareImageOptions
+import moe.rukamori.archivetune.design.components.LyricsShareImageOptions
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
@@ -192,11 +192,11 @@ object ComposeToImage {
         backgroundColor: Int? = null,
         textColor: Int? = null,
         secondaryTextColor: Int? = null,
-        glassStyle: moe.rukamori.archivetune.ui.component.LyricsGlassStyle? = null,
+        glassStyle: moe.rukamori.archivetune.design.components.LyricsGlassStyle? = null,
         shareOptions: LyricsShareImageOptions = LyricsShareImageOptions(),
     ): Bitmap =
         withContext(Dispatchers.Default) {
-            val style = glassStyle ?: moe.rukamori.archivetune.ui.component.LyricsGlassStyle.FrostedDark
+            val style = glassStyle ?: moe.rukamori.archivetune.design.components.LyricsGlassStyle.FrostedDark
             val canvasWidth = width.coerceAtLeast(1)
             val canvasHeight = height.coerceAtLeast(1)
             val baseSize = minOf(canvasWidth, canvasHeight)

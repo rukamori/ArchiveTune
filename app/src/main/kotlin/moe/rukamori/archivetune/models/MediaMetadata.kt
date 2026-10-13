@@ -14,8 +14,8 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
-import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
-import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.utils.resize
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import java.io.Serializable
 import java.time.LocalDateTime

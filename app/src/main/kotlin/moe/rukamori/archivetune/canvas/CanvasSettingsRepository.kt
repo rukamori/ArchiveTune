@@ -27,7 +27,7 @@ import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.CanvasWifiOnlyKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
+import moe.rukamori.archivetune.playback.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.dataStore
 import java.io.IOException
 import javax.inject.Inject

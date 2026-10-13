@@ -18,8 +18,8 @@ import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.db.entities.formattedSampleRate
 import moe.rukamori.archivetune.playback.ImmersivePlayerData
 import moe.rukamori.archivetune.playback.ImmersivePlayerRepository
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerArtist
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerUiModel
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerArtist
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerUiModel
 import java.util.Locale
 import javax.inject.Inject
 

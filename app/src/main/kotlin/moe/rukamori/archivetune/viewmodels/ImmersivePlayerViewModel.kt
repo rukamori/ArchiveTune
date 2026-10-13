@@ -25,10 +25,10 @@ import moe.rukamori.archivetune.domain.player.ObserveImmersivePlayerUseCase
 import moe.rukamori.archivetune.playback.ImmersivePlayerData
 import moe.rukamori.archivetune.playback.ImmersivePlayerRepository
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerAction
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerScreenState
-import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerUiModel
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerAction
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerEvent
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerScreenState
+import moe.rukamori.archivetune.domain.player.ImmersivePlayerUiModel
 import timber.log.Timber
 import javax.inject.Inject
 

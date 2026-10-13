@@ -243,8 +243,8 @@ import moe.rukamori.archivetune.sponsorblock.SponsorBlockPlaybackController
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.together.TogetherPlaybackSync
-import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
-import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
+import moe.rukamori.archivetune.playback.integrations.DiscordPresenceManager
+import moe.rukamori.archivetune.playback.integrations.ListenBrainzManager
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.StreamClientUtils

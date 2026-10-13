@@ -49,9 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import moe.rukamori.archivetune.ui.component.DefaultDialog
-import moe.rukamori.archivetune.ui.menu.LoadingScreen
-import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
+import moe.rukamori.archivetune.design.components.DefaultDialog
+import moe.rukamori.archivetune.design.components.LoadingScreen
+import moe.rukamori.archivetune.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.viewmodels.BackupCategory
 import moe.rukamori.archivetune.viewmodels.BackupRestoreViewModel
 

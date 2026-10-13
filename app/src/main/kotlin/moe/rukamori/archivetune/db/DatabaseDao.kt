@@ -69,8 +69,8 @@ import moe.rukamori.archivetune.innertube.pages.AlbumPage
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
-import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
-import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.utils.resize
 import java.text.Collator
 import java.time.LocalDateTime
 import java.time.ZoneOffset

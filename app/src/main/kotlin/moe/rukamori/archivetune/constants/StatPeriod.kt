@@ -7,7 +7,7 @@
 
 package moe.rukamori.archivetune.constants
 
-import moe.rukamori.archivetune.ui.screens.OptionStats
+import moe.rukamori.archivetune.models.OptionStats
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 

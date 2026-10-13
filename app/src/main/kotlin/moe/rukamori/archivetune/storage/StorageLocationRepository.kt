@@ -42,7 +42,7 @@ import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.playback.DownloadUtil
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
+import moe.rukamori.archivetune.playback.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.ArtworkStorage
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore

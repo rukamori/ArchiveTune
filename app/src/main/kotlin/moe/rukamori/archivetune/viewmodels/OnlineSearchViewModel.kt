@@ -37,8 +37,8 @@ import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.innertube.pages.SearchSummaryPage
 import moe.rukamori.archivetune.models.ItemsPage
-import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
-import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
+import moe.rukamori.archivetune.screens.OnlineSearchResultArgument
+import moe.rukamori.archivetune.screens.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException

@@ -260,49 +260,24 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.ui.component.BottomSheetMenu
-import moe.rukamori.archivetune.ui.component.BottomSheetPage
-import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
-import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
-import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
-import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.design.LocalBackdropHazeState
+import moe.rukamori.archivetune.design.AppleTheme
 import moe.rukamori.archivetune.screens.AppShell
-import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
-import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MarkdownText
-import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
-import moe.rukamori.archivetune.ui.component.StarDialog
-import moe.rukamori.archivetune.ui.component.TopSearch
-import moe.rukamori.archivetune.ui.component.TvNavigationRail
-import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
-import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
-import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
-import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
-import moe.rukamori.archivetune.ui.screens.library.LibraryHeaderContentPadding
-import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
-import moe.rukamori.archivetune.ui.screens.LoginScreen
-import moe.rukamori.archivetune.ui.screens.Screens
-import moe.rukamori.archivetune.ui.screens.buildLoginRoute
-import moe.rukamori.archivetune.ui.screens.navigationBuilder
-import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
-import moe.rukamori.archivetune.ui.screens.search.LocalSearchScreen
-import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
-import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
-import moe.rukamori.archivetune.ui.screens.search.OnlineSearchScreen
-import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
-import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
+import moe.rukamori.archivetune.screens.LocalSearchScreen
+import moe.rukamori.archivetune.screens.OnlineSearchResultArgument
+import moe.rukamori.archivetune.screens.OnlineSearchResultRoutePrefix
+import moe.rukamori.archivetune.screens.OnlineSearchScreen
+import moe.rukamori.archivetune.screens.decodeOnlineSearchQuery
+import moe.rukamori.archivetune.screens.onlineSearchResultRoute
 import moe.rukamori.archivetune.constants.DarkMode
-import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
-import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
-import moe.rukamori.archivetune.ui.theme.ColorSaver
-import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
-import moe.rukamori.archivetune.ui.theme.extractThemeColor
-import moe.rukamori.archivetune.ui.theme.extractWallpaperThemeColor
-import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
-import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.ui.utils.resetHeightOffset
+import moe.rukamori.archivetune.theme.ArchiveTuneTheme
+import moe.rukamori.archivetune.theme.ColorSaver
+import moe.rukamori.archivetune.theme.DefaultThemeColor
+import moe.rukamori.archivetune.theme.extractThemeColor
+import moe.rukamori.archivetune.theme.extractWallpaperThemeColor
+import moe.rukamori.archivetune.utils.appBarScrollBehavior
+import moe.rukamori.archivetune.utils.backToMain
+import moe.rukamori.archivetune.utils.resetHeightOffset
 import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -705,110 +680,6 @@ class MainActivity : ComponentActivity() {
                     .checkForUpdates(this@MainActivity)
             }
 
-            // Use remembered instances so the same state object is used everywhere
-            // (previously retrieving the composition local directly created different
-            // instances in different composition scopes which caused the update
-            // bottom sheet to not appear and overlay interactions to be blocked).
-            val bottomSheetPageState =
-                remember {
-                    moe.rukamori.archivetune.ui.component
-                        .BottomSheetPageState()
-                }
-            val menuState =
-                remember {
-                    moe.rukamori.archivetune.ui.component
-                        .MenuState()
-                }
-            val releaseNotesState = remember { mutableStateOf<String?>(null) }
-            val updateSheetContent: @Composable ColumnScope.() -> Unit = {
-                // receiver: ColumnScope
-                Text(
-                    text = stringResource(R.string.new_update_available),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 16.dp),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                androidx.compose.material3.OutlinedButton(
-                    onClick = {},
-                    contentPadding =
-                        androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 5.dp,
-                            vertical = 5.dp,
-                        ),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = latestVersionName, style = MaterialTheme.typography.labelLarge)
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
-                ) {
-                    val notes = releaseNotesState.value
-                    if (notes != null && notes.isNotBlank()) {
-                        MarkdownText(
-                            markdown = notes,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(end = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.release_notes_unavailable),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                androidx.compose.material3.Button(
-                    onClick = {
-                        bottomSheetPageState.dismiss()
-                        this@MainActivity.navController.navigate("settings/update") {
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.update_text))
-                }
-            }
-
-            // fetch release notes and show sheet when a new version is detected
-            LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel) {
-                if (
-                    BuildConfig.UPDATER_AVAILABLE &&
-                    latestUpdateChannel == updateChannel &&
-                    latestUpdateChannel != UpdateChannel.ARTIFACT &&
-                    Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
-                ) {
-                    val releaseNotesResult =
-                        when (latestUpdateChannel) {
-                            UpdateChannel.STABLE -> Updater.getLatestReleaseNotes()
-                            else -> return@LaunchedEffect
-                        }
-                    releaseNotesResult
-                        .onSuccess {
-                            releaseNotesState.value = it
-                        }.onFailure {
-                            releaseNotesState.value = null
-                        }
-
-                    bottomSheetPageState.show(updateSheetContent)
-                }
-            }
 
             val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
             val customThemeColorValue by rememberPreference(CustomThemeColorKey, defaultValue = "default")
@@ -834,13 +705,13 @@ class MainActivity : ComponentActivity() {
                     if (customThemeColorValue.startsWith("#")) {
                         null
                     } else if (customThemeColorValue.startsWith("seedPalette:")) {
-                        moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
+                        moe.rukamori.archivetune.theme.ThemeSeedPaletteCodec
                             .decodeFromPreference(customThemeColorValue)
                     } else {
-                        moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
+                        moe.rukamori.archivetune.theme.ThemePalettes
                             .findById(customThemeColorValue)
                             ?.let {
-                                moe.rukamori.archivetune.ui.theme.ThemeSeedPalette(
+                                moe.rukamori.archivetune.theme.ThemeSeedPalette(
                                     primary = it.primary,
                                     secondary = it.secondary,
                                     tertiary = it.tertiary,
@@ -876,91 +747,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(playerConnection, enableDynamicTheme, isSystemInDarkTheme, customThemeColor) {
-                val playerConnection = playerConnection
-                if (!enableDynamicTheme || playerConnection == null) {
-                    themeColor = if (!enableDynamicTheme) customThemeColor else DefaultThemeColor
-                    return@LaunchedEffect
-                }
-                playerConnection.service.currentMediaMetadata.collectLatest { song ->
-                    if (song != null) {
-                        withContext(Dispatchers.Default) {
-                            try {
-                                val result =
-                                    imageLoader.execute(
-                                        ImageRequest
-                                            .Builder(this@MainActivity)
-                                            .data(song.thumbnailUrl)
-                                            .allowHardware(false)
-                                            .build(),
-                                    )
-                                val extractedColor = result.image?.toBitmap()?.extractThemeColor()
-                                withContext(Dispatchers.Main) {
-                                    themeColor = extractedColor ?: DefaultThemeColor
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    themeColor = DefaultThemeColor
-                                }
-                            }
-                        }
-                    } else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            themeColor = DefaultThemeColor
-                        } else {
-                            val wallpaperColor = extractWallpaperThemeColor(this@MainActivity)
-                            themeColor = wallpaperColor ?: customThemeColor
-                            dataStore.edit { prefs ->
-                                prefs[WallpaperExtractionFailedKey] = wallpaperColor == null
-                            }
-                        }
-                    }
-                }
-            }
-
-            ArchiveTuneTheme(
-                darkTheme = useDarkTheme,
-                pureBlack = pureBlack,
-                themeColor = themeColor,
-                seedPalette = if (!enableDynamicTheme) customThemeSeedPalette else null,
-                disableAnimations = disableAnimations,
-                fontPreference = fontPreference,
-                customFontUri = customFontUri,
-            ) {
+            AppleTheme(darkTheme = useDarkTheme) {
                 val navController = rememberNavController()
-                val onboardingViewModel: OnboardingViewModel = hiltViewModel()
-                val onboardingState by onboardingViewModel.screenState.collectAsStateWithLifecycle()
-                var showOnboardingLogin by rememberSaveable { mutableStateOf(false) }
-                val shouldShowOnboarding =
-                    when (val state = onboardingState) {
-                        OnboardingScreenState.Loading -> true
-                        OnboardingScreenState.Empty -> true
-                        is OnboardingScreenState.Error -> false
-                        is OnboardingScreenState.Success -> state.uiState.shouldShowOnboarding
-                    }
-
-                if (shouldShowOnboarding) {
-                    if (showOnboardingLogin) {
-                        CompositionLocalProvider(
-                            LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
-                        ) {
-                            LoginScreen(
-                                navController = navController,
-                                onLoginComplete = {
-                                    onboardingViewModel.onLoginCompleted()
-                                    showOnboardingLogin = false
-                                },
-                                onNavigateBack = { showOnboardingLogin = false },
-                            )
-                        }
-                    } else {
-                        OnboardingRoute(
-                            viewModel = onboardingViewModel,
-                            onLoginRequested = { showOnboardingLogin = true },
-                        )
-                    }
-                    return@ArchiveTuneTheme
-                }
 
                 BoxWithConstraints(
                     modifier =

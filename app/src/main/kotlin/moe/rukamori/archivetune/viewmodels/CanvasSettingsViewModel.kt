@@ -35,7 +35,7 @@ import moe.rukamori.archivetune.canvas.CanvasConfiguration
 import moe.rukamori.archivetune.canvas.CanvasHealthStatus
 import moe.rukamori.archivetune.canvas.CanvasSettingsUseCases
 import moe.rukamori.archivetune.canvas.CanvasSource
-import moe.rukamori.archivetune.ui.utils.formatFileSize
+import moe.rukamori.archivetune.utils.formatFileSize
 import timber.log.Timber
 import javax.inject.Inject
 

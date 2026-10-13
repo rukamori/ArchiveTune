@@ -19,10 +19,10 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
-import moe.rukamori.archivetune.ui.utils.YTThumbQuality
-import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
-import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
-import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.YTThumbQuality
+import moe.rukamori.archivetune.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.utils.buildYTThumbnailUrl
+import moe.rukamori.archivetune.utils.resize
 import moe.rukamori.archivetune.utils.NotificationArtworkSizePx
 import moe.rukamori.archivetune.utils.isLocalMediaId
 

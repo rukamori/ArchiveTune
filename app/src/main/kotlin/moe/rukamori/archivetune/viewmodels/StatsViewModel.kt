@@ -35,7 +35,7 @@ import moe.rukamori.archivetune.db.entities.ListeningTotals
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.ui.screens.OptionStats
+import moe.rukamori.archivetune.models.OptionStats
 import moe.rukamori.archivetune.utils.reportException
 import java.time.Duration
 import java.time.LocalDateTime

@@ -49,9 +49,9 @@ import moe.rukamori.archivetune.playback.stream.YoutubeiStreamRepository
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
-import moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
-import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
-import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
+import moe.rukamori.archivetune.theme.ThemePalettes
+import moe.rukamori.archivetune.theme.ThemeSeedPalette
+import moe.rukamori.archivetune.theme.ThemeSeedPaletteCodec
 import moe.rukamori.archivetune.utils.PlaylistCoverInterceptor
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyUtils
