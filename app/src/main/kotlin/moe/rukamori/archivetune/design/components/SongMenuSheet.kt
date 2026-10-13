@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,7 +71,7 @@ fun SongMenuSheet(
         modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-        containerColor = palette.surface,
+        containerColor = Color.Transparent,
         contentColor = palette.onSurface,
         dragHandle = {
             Box(
@@ -89,51 +90,58 @@ fun SongMenuSheet(
             }
         },
     ) {
-        Column {
-            MenuHeader(song = song)
+        // 地はガラスにする。シートは別のウィンドウに出るため背後の捕捉は渡さず、
+        // 面の不透明度だけで透けるようにして、下の画面がうっすら残るようにする。
+        GlassSurface(
+            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+            hazeState = null,
+        ) {
+            Column {
+                MenuHeader(song = song)
 
-            Spacer(Modifier.height(metrics.xs.dp))
+                Spacer(Modifier.height(metrics.xs.dp))
 
-            onPlayNext?.let { action ->
-                MenuRow(
-                    icon = R.drawable.playlist_play,
-                    label = stringResource(R.string.play_next),
-                    onClick = { action(); onDismiss() },
-                )
-            }
-            onAddToQueue?.let { action ->
-                MenuRow(
-                    icon = R.drawable.playlist_add,
-                    label = stringResource(R.string.add_to_queue),
-                    onClick = { action(); onDismiss() },
-                )
-            }
-            onPlayRadio?.let { action ->
-                MenuRow(
-                    icon = R.drawable.radio,
-                    label = stringResource(R.string.start_radio),
-                    onClick = { action(); onDismiss() },
-                )
-            }
+                onPlayNext?.let { action ->
+                    MenuRow(
+                        icon = R.drawable.playlist_play,
+                        label = stringResource(R.string.play_next),
+                        onClick = { action(); onDismiss() },
+                    )
+                }
+                onAddToQueue?.let { action ->
+                    MenuRow(
+                        icon = R.drawable.playlist_add,
+                        label = stringResource(R.string.add_to_queue),
+                        onClick = { action(); onDismiss() },
+                    )
+                }
+                onPlayRadio?.let { action ->
+                    MenuRow(
+                        icon = R.drawable.radio,
+                        label = stringResource(R.string.start_radio),
+                        onClick = { action(); onDismiss() },
+                    )
+                }
 
-            MenuDivider()
+                MenuDivider()
 
-            onOpenArtist?.let { action ->
-                MenuRow(
-                    icon = R.drawable.artist,
-                    label = stringResource(R.string.artists),
-                    onClick = { action(); onDismiss() },
-                )
-            }
-            onOpenAlbum?.let { action ->
-                MenuRow(
-                    icon = R.drawable.album,
-                    label = stringResource(R.string.albums),
-                    onClick = { action(); onDismiss() },
-                )
-            }
+                onOpenArtist?.let { action ->
+                    MenuRow(
+                        icon = R.drawable.artist,
+                        label = stringResource(R.string.artists),
+                        onClick = { action(); onDismiss() },
+                    )
+                }
+                onOpenAlbum?.let { action ->
+                    MenuRow(
+                        icon = R.drawable.album,
+                        label = stringResource(R.string.albums),
+                        onClick = { action(); onDismiss() },
+                    )
+                }
 
-            Spacer(Modifier.height(metrics.sm.dp))
+                Spacer(Modifier.height(metrics.sm.dp))
+            }
         }
     }
 }

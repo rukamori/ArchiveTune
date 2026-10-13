@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.screens
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
@@ -27,14 +30,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 全画面プレイヤーの背景に敷く、アートワーク由来の2色グラデーション。
+ * 全画面プレイヤーの背景に敷く、アートワーク由来の面。
  *
- * Apple Music と同じく、ジャケットの色から上だけを抜き出して下端へ落とす。
- * 上がジャケットの色、下がほぼ黒なので、文字（曲名・操作系）は常に暗い面に乗る。
+ * Apple Music と同じく、ジャケットそのものを下に敷く。[top] と [bottom] は
+ * ジャケットから抜いた2色で、その上へ半透明で重ねて絵を沈める。上がジャケットの色、
+ * 下がほぼ黒なので、文字（曲名・操作系）は常に暗い面に乗る。
+ *
+ * @param artwork 背景に敷く下絵。画面いっぱいに引き伸ばし、その上へ
+ *   [top] から [bottom] へのグラデーションを半透明で重ねて使う。
  */
 data class ArtworkBackdrop(
     val top: Color,
     val bottom: Color,
+    val artwork: ImageBitmap? = null,
 )
 
 private val DefaultBackdrop =
@@ -95,7 +103,7 @@ fun rememberArtworkBackdrop(
     return backdrop
 }
 
-/** アートワークを縮小デコードしてパレットを取り、上・下2色へ落とす。 */
+/** アートワークを縮小デコードして、下絵と上・下2色を取り出す。 */
 private suspend fun extractBackdrop(
     context: Context,
     url: String,
@@ -119,6 +127,15 @@ private suspend fun extractBackdrop(
 
     val bitmap = result.image?.toBitmap() ?: return null
 
+    // 背景に敷く下絵。小さく縮めてから画面いっぱいに引き伸ばすので、
+    // 拡大のぶんだけ自然にぼやける。解析が失敗しても下絵は残せるようにする。
+    val artwork =
+        runCatching {
+            Bitmap.createScaledBitmap(bitmap, ART_SIZE, ART_SIZE, true).asImageBitmap()
+        }.getOrNull()
+
+    val fallback = ArtworkBackdrop(DefaultBackdrop.top, DefaultBackdrop.bottom, artwork)
+
     val palette =
         runCatching {
             withContext(Dispatchers.Default) {
@@ -128,14 +145,14 @@ private suspend fun extractBackdrop(
                     .resizeBitmapArea(BITMAP_AREA)
                     .generate()
             }
-        }.getOrNull() ?: return null
+        }.getOrNull() ?: return fallback
 
     val swatch =
         palette.vibrantSwatch
             ?: palette.dominantSwatch
             ?: palette.mutedSwatch
             ?: palette.darkVibrantSwatch
-            ?: return null
+            ?: return fallback
 
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(swatch.rgb, hsv)
@@ -155,10 +172,12 @@ private suspend fun extractBackdrop(
             ),
         )
 
-    if (abs(topValue - bottomValue) < 0.10f) return null
-    return ArtworkBackdrop(top = top, bottom = bottom)
+    if (abs(topValue - bottomValue) < 0.10f) return fallback
+    return ArtworkBackdrop(top = top, bottom = bottom, artwork = artwork)
 }
 
 private const val IMAGE_SIZE = 160
+/** 背景に敷く下絵の辺。小さく縮めるほど拡大のときに大きくぼやける。 */
+private const val ART_SIZE = 48
 private const val MAX_COLOR_COUNT = 16
 private const val BITMAP_AREA = 4096

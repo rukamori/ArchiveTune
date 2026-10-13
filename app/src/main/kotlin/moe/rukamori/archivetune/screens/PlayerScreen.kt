@@ -41,7 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.IntOffset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,9 +53,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToLong
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -186,11 +190,42 @@ fun PlayerScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(animatedTop, animatedBottom),
-                    ),
-                )
+                // 背景はジャケットそのもの。縮めた絵を画面いっぱいに引き伸ばして
+                // 敷き、2色グラデーションを半透明で重ねて沈める。文字は必ず
+                // グラデーションの上に乗るので、下端は必ず暗い面になる。
+                .drawWithContent {
+                    backdrop.artwork?.let { art ->
+                        // 画面を覆うぶんだけ引き伸ばし、はみ出しは端で切る。
+                        val scale =
+                            max(
+                                size.width / art.width.toFloat(),
+                                size.height / art.height.toFloat(),
+                            )
+                        val dstWidth = (art.width * scale).toInt()
+                        val dstHeight = (art.height * scale).toInt()
+                        drawImage(
+                            image = art,
+                            dstOffset =
+                                IntOffset(
+                                    ((size.width - dstWidth) / 2).toInt(),
+                                    ((size.height - dstHeight) / 2).toInt(),
+                                ),
+                            dstSize = IntSize(dstWidth, dstHeight),
+                        )
+                    }
+                    // 絵が透ける帯は中ほどだけ。上端はボタン、下端は操作系が
+                    // 乗るので、そこは重く落として文字の裏を一定に保つ。
+                    drawRect(
+                        brush =
+                            Brush.verticalGradient(
+                                0.00f to animatedTop.copy(alpha = 0.90f),
+                                0.28f to animatedTop.copy(alpha = 0.70f),
+                                0.62f to animatedTop.copy(alpha = 0.88f),
+                                1.00f to animatedBottom,
+                            ),
+                    )
+                    drawContent()
+                }
                 .windowInsetsPadding(windowInsets)
                 .padding(horizontal = metrics.gutter.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
