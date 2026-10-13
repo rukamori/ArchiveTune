@@ -354,16 +354,26 @@ private fun DiscoveryContent(
 
             if (data.moodAndGenres.isNotEmpty()) {
                 SectionHeader(title = stringResource(R.string.mood_and_genres))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = metrics.gutter.dp),
-                    horizontalArrangement = Arrangement.spacedBy(metrics.xs.dp),
+                // Apple Music の検索画面と同じく2列で並べる。item の中は縦スクロールしか
+                // 許されないので、行は手で組む。奇数個のときは空きを均等に割り付ける。
+                Column(
+                    modifier = Modifier.padding(horizontal = metrics.gutter.dp),
+                    verticalArrangement = Arrangement.spacedBy(metrics.sm.dp),
                 ) {
-                    items(items = data.moodAndGenres, key = { it.title }) { mood ->
-                        MoodTile(
-                            title = mood.title,
-                            stripeColor = mood.stripeColor,
-                            onClick = { onOpenBrowse(mood.endpoint.browseId) },
-                        )
+                    data.moodAndGenres.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(metrics.sm.dp)) {
+                            pair.forEach { mood ->
+                                MoodTile(
+                                    title = mood.title,
+                                    stripeColor = mood.stripeColor,
+                                    onClick = { onOpenBrowse(mood.endpoint.browseId) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (pair.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -421,6 +431,7 @@ private fun MoodTile(
     title: String,
     stripeColor: Long,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val palette = applePalette()
     val type = appleType()
@@ -428,16 +439,16 @@ private fun MoodTile(
 
     Box(
         modifier =
-            Modifier
-                .width(132.dp)
-                .height(72.dp)
+            modifier
+                .fillMaxWidth()
+                .height(76.dp)
                 .clip(RoundedCornerShape(metrics.cardCorner.dp))
                 .background(androidx.compose.ui.graphics.Color(stripeColor))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) { onClick() }
-                .padding(metrics.sm.dp),
+                .padding(metrics.md.dp),
         contentAlignment = Alignment.BottomStart,
     ) {
         Text(

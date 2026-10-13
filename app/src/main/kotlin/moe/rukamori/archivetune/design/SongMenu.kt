@@ -20,4 +20,4 @@ import moe.rukamori.archivetune.models.MediaMetadata
  * 供給されていない画面（`null`）では「…」自体を描画しない。
  * 個別に表示を切りたい画面は `onMoreClick` を明示的に渡す。
  */
-val LocalOpenSongMenu = staticCompositionLocalOf<((MediaMetadata) -> Unit)? { null }
+val LocalOpenSongMenu = staticCompositionLocalOf<((MediaMetadata) -> Unit)?> { null }

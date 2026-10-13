@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,8 +72,6 @@ fun SongMenuSheet(
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
         containerColor = palette.surface,
         contentColor = palette.onSurface,
-        // システムバー分は中の列が吸収するので、面そのものには乗せない。
-        windowInsets = WindowInsets(0, 0, 0, 0),
         dragHandle = {
             Box(
                 modifier =
@@ -93,7 +89,7 @@ fun SongMenuSheet(
             }
         },
     ) {
-        Column(modifier = Modifier.navigationBarsPadding()) {
+        Column {
             MenuHeader(song = song)
 
             Spacer(Modifier.height(metrics.xs.dp))
