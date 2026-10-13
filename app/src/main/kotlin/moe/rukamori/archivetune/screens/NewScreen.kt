@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,7 +36,9 @@ import moe.rukamori.archivetune.design.components.ErrorState
 import moe.rukamori.archivetune.design.components.LargeTitleHeader
 import moe.rukamori.archivetune.design.components.LoadingState
 import moe.rukamori.archivetune.design.components.MediaCard
+import moe.rukamori.archivetune.design.components.PinnedTitleBar
 import moe.rukamori.archivetune.design.components.SectionHeader
+import moe.rukamori.archivetune.design.components.rememberTitleCollapse
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.viewmodels.NewReleaseViewModel
 
@@ -60,80 +64,97 @@ fun NewScreen(
     val metrics = appleMetrics()
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(
+    // 大タイトルは先頭 item としてスクロールし、画面外へ出たら上部の
+    // 小さな見出しが同じ題を差し替える（Apple Music のナビバー相当）。
+    val listState = rememberLazyListState()
+    val titleCollapsed = rememberTitleCollapse(listState)
+
+    Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(palette.background)
-                .windowInsetsPadding(windowInsets),
+                .background(palette.background),
     ) {
-        when (val state = uiState) {
-            is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Loading -> {
-                Column(Modifier.fillMaxSize()) {
-                    LargeTitleHeader(title = stringResource(R.string.new_releases))
-                    LoadingState(Modifier.fillMaxWidth().weight(1f))
-                }
-            }
-
-            is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Error -> {
-                Column(Modifier.fillMaxSize()) {
-                    LargeTitleHeader(title = stringResource(R.string.new_releases))
-                    ErrorState(
-                        title = stringResource(R.string.new_releases),
-                        message = stringResource(R.string.no_results_found),
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        onRetry = { viewModel.retry() },
-                    )
-                }
-            }
-
-            is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Empty -> {
-                Column(Modifier.fillMaxSize()) {
-                    LargeTitleHeader(title = stringResource(R.string.new_releases))
-                    EmptyState(
-                        title = stringResource(R.string.new_releases),
-                        message = stringResource(R.string.no_results_found),
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        actionLabel = stringResource(R.string.refresh),
-                        onAction = { viewModel.retry() },
-                    )
-                }
-            }
-
-            is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Success -> {
-                val content = state.content
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = metrics.block.dp),
-                ) {
-                    item(key = "header") {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(windowInsets),
+        ) {
+            when (val state = uiState) {
+                is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Loading -> {
+                    Column(Modifier.fillMaxSize()) {
                         LargeTitleHeader(title = stringResource(R.string.new_releases))
+                        LoadingState(Modifier.fillMaxWidth().weight(1f))
                     }
+                }
 
-                    item(key = "albums") {
-                        ReleaseSection(
-                            label = stringResource(R.string.albums),
-                            releases = content.albums,
-                            onOpen = { navController.navigate(Routes.album(it.id)) },
+                is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Error -> {
+                    Column(Modifier.fillMaxSize()) {
+                        LargeTitleHeader(title = stringResource(R.string.new_releases))
+                        ErrorState(
+                            title = stringResource(R.string.new_releases),
+                            message = stringResource(R.string.no_results_found),
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            onRetry = { viewModel.retry() },
                         )
                     }
-                    item(key = "singles") {
-                        ReleaseSection(
-                            label = stringResource(R.string.singles),
-                            releases = content.singles,
-                            onOpen = { navController.navigate(Routes.album(it.id)) },
+                }
+
+                is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Empty -> {
+                    Column(Modifier.fillMaxSize()) {
+                        LargeTitleHeader(title = stringResource(R.string.new_releases))
+                        EmptyState(
+                            title = stringResource(R.string.new_releases),
+                            message = stringResource(R.string.no_results_found),
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            actionLabel = stringResource(R.string.refresh),
+                            onAction = { viewModel.retry() },
                         )
                     }
-                    item(key = "eps") {
-                        ReleaseSection(
-                            label = stringResource(R.string.ep),
-                            releases = content.eps,
-                            onOpen = { navController.navigate(Routes.album(it.id)) },
-                        )
+                }
+
+                is moe.rukamori.archivetune.viewmodels.NewReleaseUiState.Success -> {
+                    val content = state.content
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = metrics.block.dp),
+                    ) {
+                        item(key = "header") {
+                            LargeTitleHeader(title = stringResource(R.string.new_releases))
+                        }
+
+                        item(key = "albums") {
+                            ReleaseSection(
+                                label = stringResource(R.string.albums),
+                                releases = content.albums,
+                                onOpen = { navController.navigate(Routes.album(it.id)) },
+                            )
+                        }
+                        item(key = "singles") {
+                            ReleaseSection(
+                                label = stringResource(R.string.singles),
+                                releases = content.singles,
+                                onOpen = { navController.navigate(Routes.album(it.id)) },
+                            )
+                        }
+                        item(key = "eps") {
+                            ReleaseSection(
+                                label = stringResource(R.string.ep),
+                                releases = content.eps,
+                                onOpen = { navController.navigate(Routes.album(it.id)) },
+                            )
+                        }
                     }
                 }
             }
         }
+
+        PinnedTitleBar(
+            title = stringResource(R.string.new_releases),
+            visible = titleCollapsed,
+        )
     }
 }
 

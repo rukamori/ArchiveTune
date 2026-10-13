@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -52,8 +54,10 @@ import moe.rukamori.archivetune.design.components.ErrorState
 import moe.rukamori.archivetune.design.components.LargeTitleHeader
 import moe.rukamori.archivetune.design.components.LoadingState
 import moe.rukamori.archivetune.design.components.MediaCard
+import moe.rukamori.archivetune.design.components.PinnedTitleBar
 import moe.rukamori.archivetune.design.components.SectionHeader
 import moe.rukamori.archivetune.design.components.SongRow
+import moe.rukamori.archivetune.design.components.rememberTitleCollapse
 import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomeEvent
 import moe.rukamori.archivetune.home.HomeScreenState
@@ -99,130 +103,142 @@ fun HomeScreen(
         }
     }
 
-    Column(
+    // 大タイトルは先頭 item としてスクロールし、画面外へ出たら上部の
+    // 小さな見出しが同じ題を差し替える（Apple Music のナビバー相当）。
+    val listState = rememberLazyListState()
+    val titleCollapsed = rememberTitleCollapse(listState)
+
+    Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(palette.background)
-                .windowInsetsPadding(windowInsets),
+                .background(palette.background),
     ) {
-        when (val state = screenState) {
-            is HomeScreenState.Loading -> {
-                LoadingState(Modifier.fillMaxSize())
-            }
-
-            is HomeScreenState.Empty -> {
-                Column(Modifier.fillMaxSize()) {
-                    LargeTitleHeader(title = stringResource(R.string.home))
-                    EmptyState(
-                        title = stringResource(R.string.home),
-                        message = stringResource(R.string.no_results_found),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                        actionLabel = stringResource(R.string.refresh),
-                        onAction = { viewModel.onAction(HomeAction.Refresh) },
-                    )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(windowInsets),
+        ) {
+            when (val state = screenState) {
+                is HomeScreenState.Loading -> {
+                    LoadingState(Modifier.fillMaxSize())
                 }
-            }
 
-            is HomeScreenState.Error -> {
-                Column(Modifier.fillMaxSize()) {
-                    LargeTitleHeader(title = stringResource(R.string.home))
-                    ErrorState(
-                        title = stringResource(R.string.home),
-                        message = stringResource(state.messageResId),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                        onRetry = { viewModel.onAction(HomeAction.Refresh) },
-                    )
-                }
-            }
-
-            is HomeScreenState.Success -> {
-                val uiState = state.uiState
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = metrics.block.dp),
-                ) {
-                    item(key = "header") {
+                is HomeScreenState.Empty -> {
+                    Column(Modifier.fillMaxSize()) {
                         LargeTitleHeader(title = stringResource(R.string.home))
+                        EmptyState(
+                            title = stringResource(R.string.home),
+                            message = stringResource(R.string.no_results_found),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                            actionLabel = stringResource(R.string.refresh),
+                            onAction = { viewModel.onAction(HomeAction.Refresh) },
+                        )
                     }
+                }
 
-                    val chips = uiState.homePage?.chips.orEmpty()
-                    if (uiState.showCategoryChips && chips.isNotEmpty()) {
-                        item(key = "chips") {
-                            ChipRow(
-                                chips = chips,
-                                selected = uiState.selectedChip,
-                                onSelect = { viewModel.onAction(HomeAction.SelectChip(it)) },
-                            )
+                is HomeScreenState.Error -> {
+                    Column(Modifier.fillMaxSize()) {
+                        LargeTitleHeader(title = stringResource(R.string.home))
+                        ErrorState(
+                            title = stringResource(R.string.home),
+                            message = stringResource(state.messageResId),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                            onRetry = { viewModel.onAction(HomeAction.Refresh) },
+                        )
+                    }
+                }
+
+                is HomeScreenState.Success -> {
+                    val uiState = state.uiState
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = metrics.block.dp),
+                    ) {
+                        item(key = "header") {
+                            LargeTitleHeader(title = stringResource(R.string.home))
                         }
-                    }
 
-                    uiState.homePage?.sections.orEmpty().forEach { section ->
-                        if (section.items.isEmpty()) return@forEach
-                        item(key = "section:${section.title}:${section.items.size}") {
-                            HomeSection(
-                                section = section,
-                                onOpenItem = { item ->
-                                    if (item is SongItem) {
-                                        playerConnection?.playYtSong(item)
-                                    } else {
-                                        navController.openYtItem(item) { browseId ->
-                                            navController.navigate(Routes.browse(browseId))
+                        val chips = uiState.homePage?.chips.orEmpty()
+                        if (uiState.showCategoryChips && chips.isNotEmpty()) {
+                            item(key = "chips") {
+                                ChipRow(
+                                    chips = chips,
+                                    selected = uiState.selectedChip,
+                                    onSelect = { viewModel.onAction(HomeAction.SelectChip(it)) },
+                                )
+                            }
+                        }
+
+                        uiState.homePage?.sections.orEmpty().forEach { section ->
+                            if (section.items.isEmpty()) return@forEach
+                            item(key = "section:${section.title}:${section.items.size}") {
+                                HomeSection(
+                                    section = section,
+                                    onOpenItem = { item ->
+                                        if (item is SongItem) {
+                                            playerConnection?.playYtSong(item)
+                                        } else {
+                                            navController.openYtItem(item) { browseId ->
+                                                navController.navigate(Routes.browse(browseId))
+                                            }
                                         }
-                                    }
-                                },
-                                onPlayAll = { endpoint ->
-                                    playerConnection?.playQueue(YouTubeQueue.playlist(endpoint))
-                                },
-                            )
+                                    },
+                                    onPlayAll = { endpoint ->
+                                        playerConnection?.playQueue(YouTubeQueue.playlist(endpoint))
+                                    },
+                                )
+                            }
                         }
-                    }
 
-                    if (uiState.quickPicks.isNotEmpty()) {
-                        item(key = "quickPicks") {
-                            SectionHeader(title = stringResource(R.string.quick_picks))
-                            Column(Modifier.padding(horizontal = metrics.gutter.dp)) {
-                                uiState.quickPicks.forEachIndexed { index, song ->
-                                    SongRow(
-                                        song = song.toMediaMetadata(),
-                                        onClick = {
-                                            playerConnection?.playLocalSongs(
-                                                songs = uiState.quickPicks,
-                                                startIndex = index,
-                                            )
-                                        },
-                                    )
+                        if (uiState.quickPicks.isNotEmpty()) {
+                            item(key = "quickPicks") {
+                                SectionHeader(title = stringResource(R.string.quick_picks))
+                                Column(Modifier.padding(horizontal = metrics.gutter.dp)) {
+                                    uiState.quickPicks.forEachIndexed { index, song ->
+                                        SongRow(
+                                            song = song.toMediaMetadata(),
+                                            onClick = {
+                                                playerConnection?.playLocalSongs(
+                                                    songs = uiState.quickPicks,
+                                                    startIndex = index,
+                                                )
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    if (uiState.accountPlaylists.isNotEmpty()) {
-                        item(key = "accountPlaylists") {
-                            SectionHeader(title = stringResource(R.string.playlists))
-                            LazyRow(
-                                contentPadding =
-                                    PaddingValues(horizontal = metrics.gutter.dp),
-                            ) {
-                                items(
-                                    items = uiState.accountPlaylists,
-                                    key = { it.id },
-                                ) { playlist ->
-                                    MediaCard(
-                                        title = playlist.title,
-                                        thumbnailUrl = playlist.thumbnail,
-                                        subtitle = playlist.author?.name,
-                                        onClick = {
-                                            navController.navigate(Routes.onlinePlaylist(playlist.id))
-                                        },
-                                    )
+                        if (uiState.accountPlaylists.isNotEmpty()) {
+                            item(key = "accountPlaylists") {
+                                SectionHeader(title = stringResource(R.string.playlists))
+                                LazyRow(
+                                    contentPadding =
+                                        PaddingValues(horizontal = metrics.gutter.dp),
+                                ) {
+                                    items(
+                                        items = uiState.accountPlaylists,
+                                        key = { it.id },
+                                    ) { playlist ->
+                                        MediaCard(
+                                            title = playlist.title,
+                                            thumbnailUrl = playlist.thumbnail,
+                                            subtitle = playlist.author?.name,
+                                            onClick = {
+                                                navController.navigate(Routes.onlinePlaylist(playlist.id))
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -230,6 +246,11 @@ fun HomeScreen(
                 }
             }
         }
+
+        PinnedTitleBar(
+            title = stringResource(R.string.home),
+            visible = titleCollapsed,
+        )
     }
 }
 
