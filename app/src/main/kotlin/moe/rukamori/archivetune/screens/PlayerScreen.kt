@@ -65,7 +65,9 @@ import moe.rukamori.archivetune.design.applePalette
 import moe.rukamori.archivetune.design.appleType
 import moe.rukamori.archivetune.design.components.Artwork
 import moe.rukamori.archivetune.design.components.Scrubber
+import moe.rukamori.archivetune.design.components.SongMenuSheet
 import moe.rukamori.archivetune.design.components.formatDuration
+import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.extensions.toggleRepeatMode
 
@@ -82,7 +84,7 @@ import moe.rukamori.archivetune.extensions.toggleRepeatMode
  * @param onDismiss 下向き矢印。プレイヤーを閉じる。
  * @param onOpenLyrics 歌詞ボタン。
  * @param onOpenQueue キューボタン。
- * @param onMore 右上のメニュー。指定がなければボタンを出さない。
+ * 右上の「…」はこの中で曲メニュー（[SongMenuSheet]）を開く。
  */
 @Composable
 fun PlayerScreen(
@@ -90,7 +92,6 @@ fun PlayerScreen(
     onOpenLyrics: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
-    onMore: (() -> Unit)? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val windowInsets = LocalPlayerAwareWindowInsets.current
@@ -106,6 +107,9 @@ fun PlayerScreen(
     val repeatMode by playerConnection.repeatMode.collectAsState()
 
     val mediaId = mediaMetadata?.id
+
+    // 右上の「…」で開く曲メニュー。曲が入れ替わったら閉じておく。
+    var showSongMenu by remember(mediaId) { mutableStateOf(false) }
 
     var position by remember(mediaId) { mutableLongStateOf(playerConnection.player.currentPosition) }
     var duration by remember(mediaId) {
@@ -224,17 +228,13 @@ fun PlayerScreen(
                 }
             }
 
-            if (onMore != null) {
-                PlayerIconButton(onClick = onMore) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = stringResource(R.string.more),
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            } else {
-                Spacer(Modifier.size(44.dp))
+            PlayerIconButton(onClick = { showSongMenu = true }) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = stringResource(R.string.more),
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -445,6 +445,29 @@ fun PlayerScreen(
                     modifier = Modifier.size(22.dp),
                 )
             }
+        }
+    }
+
+    // 右上の「…」から一覧と同じ曲メニューを開く。全画面プレイヤーから
+    // アーティストやアルバムの画面へは移動しないため、再生に絞る操作だけ出す。
+    mediaMetadata?.let { song ->
+        if (showSongMenu) {
+            SongMenuSheet(
+                song = song,
+                onDismiss = { showSongMenu = false },
+                onPlayNext = {
+                    playerConnection.playNext(song.toMediaItem())
+                    showSongMenu = false
+                },
+                onAddToQueue = {
+                    playerConnection.addToQueue(song.toMediaItem())
+                    showSongMenu = false
+                },
+                onPlayRadio = {
+                    playerConnection.playRadioFrom(song)
+                    showSongMenu = false
+                },
+            )
         }
     }
 }
