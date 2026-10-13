@@ -120,7 +120,27 @@ fun QueueScreen(
                         )
                     }
                     item(key = "upNextHeader") {
-                        SectionHeader(title = stringResource(R.string.up_next))
+                        SectionHeader(
+                            title = stringResource(R.string.up_next),
+                            actionLabel =
+                                stringResource(R.string.clear).takeIf {
+                                    queueWindows.size > 1
+                                },
+                            onAction = {
+                                // Apple Music の Up Next 同様、再生中の 1 曲だけ残して
+                                // 残りのキューを空にする。Player の API を呼ぶだけで
+                                // 再生エンジン側のコードは変更しない。
+                                val player = playerConnection.player
+                                if (player.mediaItemCount == 0) return@SectionHeader
+                                val keep = player.currentMediaItemIndex.coerceIn(0, player.mediaItemCount - 1)
+                                if (player.mediaItemCount > keep + 1) {
+                                    player.removeMediaItems(keep + 1, player.mediaItemCount)
+                                }
+                                if (keep > 0) {
+                                    player.removeMediaItems(0, keep)
+                                }
+                            },
+                        )
                     }
                 }
 
