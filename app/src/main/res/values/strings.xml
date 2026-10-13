@@ -584,7 +584,6 @@
     <string name="sponsor_block_subscription_reminders">Subscription reminders</string>
     <string name="sponsor_block_hooks">Hook/Greetings</string>
     <string name="queue">Queue</string>
-    <string name="now_playing">Now Playing</string>
     <string name="up_next">Up Next</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
