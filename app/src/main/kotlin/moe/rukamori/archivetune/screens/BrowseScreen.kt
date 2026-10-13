@@ -38,11 +38,14 @@ import moe.rukamori.archivetune.design.components.ErrorState
 import moe.rukamori.archivetune.design.components.ListItemRow
 import moe.rukamori.archivetune.design.components.LoadingState
 import moe.rukamori.archivetune.design.components.SongRow
+import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
+import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.viewmodels.BrowseViewModel
 
 /**
@@ -145,6 +148,21 @@ fun BrowseScreen(
                                     subtitle = item.author?.name,
                                     thumbnailUrl = item.thumbnail,
                                     onClick = { onOpenPlaylist(item.id) },
+                                )
+
+                            // エピソードは専用画面を持たないので、単体再生に回す。
+                            // 旧UIと同じ経路（`YouTubeBrowseScreen`）で ListQueue に載せる。
+                            is EpisodeItem ->
+                                SongRow(
+                                    song = item.toMediaMetadata(),
+                                    onClick = {
+                                        playerConnection?.playQueue(
+                                            ListQueue(
+                                                title = item.podcast?.name ?: item.title,
+                                                items = listOf(item.toMediaItem()),
+                                            ),
+                                        )
+                                    },
                                 )
 
                             else -> Unit
