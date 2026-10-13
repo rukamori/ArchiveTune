@@ -25,12 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.foundation.layout.windowInsetsPadding
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.design.appleMetrics
 import moe.rukamori.archivetune.design.applePalette
 import moe.rukamori.archivetune.design.appleType
+import moe.rukamori.archivetune.design.components.EmptyRow
 import moe.rukamori.archivetune.design.components.DetailHero
 import moe.rukamori.archivetune.design.components.ErrorState
 import moe.rukamori.archivetune.design.components.LoadingState

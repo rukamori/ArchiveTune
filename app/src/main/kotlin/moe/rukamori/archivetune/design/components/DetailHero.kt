@@ -112,7 +112,7 @@ fun DetailHero(
             if (metadata != null) {
                 Text(
                     text = metadata,
-                    style = type.caption1,
+                    style = type.caption,
                     color = palette.labelTertiary,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
