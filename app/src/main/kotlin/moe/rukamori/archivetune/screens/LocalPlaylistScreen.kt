@@ -103,6 +103,8 @@ fun LocalPlaylistScreen(
             itemsIndexed(items = songs, key = { _, song -> song.map.id }) { index, song ->
                 SongRow(
                     song = song.song.toMediaMetadata(),
+                    // Apple Music のプレイリストと同じく、左端に1始まりの通し番号を出す。
+                    index = index + 1,
                     onClick = {
                         if (mediaItems.isNotEmpty()) {
                             playerConnection?.playQueue(

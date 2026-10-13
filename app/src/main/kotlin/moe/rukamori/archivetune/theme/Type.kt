@@ -140,7 +140,15 @@ private fun buildTypography(fontFamily: FontFamily) =
     )
 
 val AppFontFamily = FontFamily(Font(R.font.poppins))
-val LyricsFontFamily = FontFamily(Font(R.font.sfprodisplaybold))
+
+/**
+ * 歌詞表示に使うフォント。
+ *
+ * 過去には Apple の SF Pro（`res/font/sfprodisplaybold.ttf`）が割り当てられていたが、
+ * 同梱する権利のない Apple の資産であるため削除し、システムフォントに置き換えた。
+ * 以降は各端末の標準書体で描画される。
+ */
+val LyricsFontFamily: FontFamily = FontFamily.Default
 val AppTypography = buildTypography(AppFontFamily)
 val SystemTypography = buildTypography(FontFamily.Default)
 

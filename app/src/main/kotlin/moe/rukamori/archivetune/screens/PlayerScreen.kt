@@ -67,6 +67,7 @@ import moe.rukamori.archivetune.design.components.Artwork
 import moe.rukamori.archivetune.design.components.Scrubber
 import moe.rukamori.archivetune.design.components.formatDuration
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.extensions.toggleRepeatMode
 
 /**
  * 全画面プレイヤー（Now Playing）。
@@ -100,6 +101,9 @@ fun PlayerScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val playbackState by playerConnection.playbackState.collectAsState()
+    // シャッフル・リピートの現在値。再生エンジン側（PlayerConnection）の状態をそのまま映す。
+    val shuffleEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+    val repeatMode by playerConnection.repeatMode.collectAsState()
 
     val mediaId = mediaMetadata?.id
 
@@ -328,14 +332,28 @@ fun PlayerScreen(
         }
 
         // ── 搬送系 ───────────────────────────────────────
+        // Apple Music 同様、再生ボタンの外側にシャッフルとリピートを並べる。
+        // 有効なときだけアクセント色を付け、無効時は控えめな白で控える。
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .height(96.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
+            PlayerIconButton(
+                onClick = { playerConnection.player.shuffleModeEnabled = !shuffleEnabled },
+            ) {
+                Icon(
+                    painter = painterResource(if (shuffleEnabled) R.drawable.shuffle_on else R.drawable.shuffle),
+                    contentDescription =
+                        stringResource(if (shuffleEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
+                    tint = if (shuffleEnabled) palette.accent else Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+
             PlayerIconButton(onClick = { playerConnection.seekToPrevious() }) {
                 Icon(
                     painter = painterResource(R.drawable.skip_previous),
@@ -345,11 +363,7 @@ fun PlayerScreen(
                 )
             }
 
-            Spacer(Modifier.size(36.dp))
-
             PlayPauseButton(isPlaying = isPlaying, onClick = { playerConnection.player.togglePlayPause() })
-
-            Spacer(Modifier.size(36.dp))
 
             PlayerIconButton(onClick = { playerConnection.seekToNext() }) {
                 Icon(
@@ -357,6 +371,29 @@ fun PlayerScreen(
                     contentDescription = stringResource(R.string.next),
                     tint = Color.White,
                     modifier = Modifier.size(38.dp),
+                )
+            }
+
+            PlayerIconButton(onClick = { playerConnection.player.toggleRepeatMode() }) {
+                Icon(
+                    painter =
+                        painterResource(
+                            when {
+                                repeatMode == Player.REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                                repeatMode == Player.REPEAT_MODE_ALL -> R.drawable.repeat_on
+                                else -> R.drawable.repeat
+                            },
+                        ),
+                    contentDescription =
+                        stringResource(
+                            when (repeatMode) {
+                                Player.REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                                Player.REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                                else -> R.string.repeat_mode_off
+                            },
+                        ),
+                    tint = if (repeatMode != Player.REPEAT_MODE_OFF) palette.accent else Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }

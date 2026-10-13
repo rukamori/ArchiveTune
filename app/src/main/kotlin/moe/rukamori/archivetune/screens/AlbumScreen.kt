@@ -113,6 +113,8 @@ fun AlbumScreen(
                         itemsIndexed(items = current.songs, key = { _, song -> song.id }) { index, song ->
                             SongRow(
                                 song = song.toMediaMetadata(),
+                                // Apple Music のアルバム一覧と同じく、左端に1始まりのトラック番号を出す。
+                                index = index + 1,
                                 onClick = {
                                     // 行を押したときはその曲を先頭にして、同じ一覧を渡す。
                                     playerConnection?.playQueue(

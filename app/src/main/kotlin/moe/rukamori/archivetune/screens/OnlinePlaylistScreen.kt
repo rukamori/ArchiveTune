@@ -116,9 +116,11 @@ fun OnlinePlaylistScreen(
                 )
             }
 
-            itemsIndexed(items = songs, key = { _, song -> song.id }) { _, song ->
+            itemsIndexed(items = songs, key = { _, song -> song.id }) { index, song ->
                 SongRow(
                     song = song.toMediaMetadata(),
+                    // Apple Music のプレイリストと同じく、左端に1始まりの通し番号を出す。
+                    index = index + 1,
                     onClick = {
                         // 曲を直接起点にする。endpoint を持たない曲は videoId から組み立て、
                         // ここで一覧そのものは渡さない（続きの自動追加は endpoint 起点のみ）。
