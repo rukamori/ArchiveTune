@@ -531,6 +531,8 @@
     <string name="low_data_mode_title">低データモード</string>
     <string name="low_data_mode_description">低品質のストリームを使用し、従量制ネットワークでの再生キャッシュとキャンバスを無効にすることで、モバイルデータの使用量を削減します。</string>
     <string name="queue">キュー</string>
+    <string name="now_playing">再生中</string>
+    <string name="up_next">次に再生</string>
     <string name="persistent_queue">永続的なキュー</string>
     <string name="persistent_queue_desc">アプリの起動時に最後のキューを復元する</string>
     <string name="permanent_shuffle">永久シャッフルモード</string>

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Timeline
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -33,6 +34,7 @@ import moe.rukamori.archivetune.design.applePalette
 import moe.rukamori.archivetune.design.components.BackButton
 import moe.rukamori.archivetune.design.components.EmptyState
 import moe.rukamori.archivetune.design.components.LargeTitleHeader
+import moe.rukamori.archivetune.design.components.SectionHeader
 import moe.rukamori.archivetune.design.components.SongRow
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -107,37 +109,74 @@ fun QueueScreen(
                         bottom = metrics.gutter.dp,
                     ),
             ) {
-                itemsIndexed(
-                    items = queueWindows,
-                    key = { _, window -> window.uid.toString() },
-                ) { index, window ->
-                    val metadata = window.mediaItem.metadata
-                    val song =
-                        metadata ?: run {
-                            // メタデータが無い項目（外部スコープ等）でも
-                            // 行は潰さず、識別に使える文字だけ出す。
-                            MediaMetadata(
-                                id = window.mediaItem.mediaId,
-                                title = window.mediaItem.mediaId,
-                                artists = emptyList(),
-                                duration = 0,
-                            )
-                        }
+                val currentWindow = queueWindows.getOrNull(currentWindowIndex)
+                if (currentWindow != null) {
+                    item(key = "current-${currentWindow.uid}") {
+                        QueueRow(
+                            window = currentWindow,
+                            label = stringResource(R.string.now_playing),
+                            isPlaying = true,
+                            onClick = { playerConnection.player.togglePlayPause() },
+                        )
+                    }
+                    item(key = "upNextHeader") {
+                        SectionHeader(title = stringResource(R.string.up_next))
+                    }
+                }
 
-                    SongRow(
-                        song = song,
-                        isPlaying = index == currentWindowIndex,
+                itemsIndexed(
+                    items =
+                        queueWindows.filterIndexed { index, _ ->
+                            index != currentWindowIndex
+                        },
+                    key = { _, window -> window.uid.toString() },
+                ) { _, window ->
+                    QueueRow(
+                        window = window,
+                        label = null,
+                        isPlaying = false,
                         onClick = {
-                            if (index == currentWindowIndex) {
-                                playerConnection.player.togglePlayPause()
-                            } else {
-                                playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
-                                playerConnection.player.playWhenReady = true
-                            }
+                            playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
+                            playerConnection.player.playWhenReady = true
                         },
                     )
                 }
             }
         }
     }
+}
+
+/**
+ * キュー 1 行。再生中の行だけ [SectionHeader] を上に載せ、
+ * 残りは Apple Music の「次に再生」に合わせて見出しの下へ並べる。
+ */
+@Composable
+private fun QueueRow(
+    window: Timeline.Window,
+    label: String?,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+) {
+    if (label != null) {
+        SectionHeader(title = label)
+    }
+
+    val metadata = window.mediaItem.metadata
+    val song =
+        metadata ?: run {
+            // メタデータが無い項目（外部スコープ等）でも
+            // 行は潰さず、識別に使える文字だけ出す。
+            MediaMetadata(
+                id = window.mediaItem.mediaId,
+                title = window.mediaItem.mediaId,
+                artists = emptyList(),
+                duration = 0,
+            )
+        }
+
+    SongRow(
+        song = song,
+        isPlaying = isPlaying,
+        onClick = onClick,
+    )
 }
