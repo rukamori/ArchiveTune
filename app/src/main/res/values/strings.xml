@@ -503,6 +503,11 @@
     <string name="action_logout">Log out</string>
     <string name="action_login">Log in</string>
     <string name="login">Login</string>
+    <string name="youtube_login">YouTube sign-in</string>
+    <string name="youtube_login_summary">Paste the browser cookie when playback is blocked as a bot</string>
+    <string name="youtube_login_body">Sign in to youtube.com in a browser, copy the cookie value, and paste it below. No web view is opened; only what you paste is stored on this device.</string>
+    <string name="youtube_login_failed">Sign-in failed. Check the cookie and try again.</string>
+    <string name="youtube_login_done">Signed in as %1$s</string>
     <string name="not_logged_in">Not logged in</string>
     <string name="playback_confirmation_required" translatable="false">Playback confirmation required</string>
     <string name="playback_requires_youtube_music_confirmation" translatable="false">Confirm playback in YouTube Music, then return to ArchiveTune.</string>

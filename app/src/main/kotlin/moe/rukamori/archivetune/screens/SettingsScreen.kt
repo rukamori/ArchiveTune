@@ -11,19 +11,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
@@ -43,13 +52,17 @@ import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.design.appleMetrics
 import moe.rukamori.archivetune.design.applePalette
+import moe.rukamori.archivetune.design.appleType
 import moe.rukamori.archivetune.design.components.AppleSwitch
 import moe.rukamori.archivetune.design.components.BackButton
+import moe.rukamori.archivetune.design.components.DefaultDialog
 import moe.rukamori.archivetune.design.components.LargeTitleHeader
 import moe.rukamori.archivetune.design.components.SettingsGroup
 import moe.rukamori.archivetune.design.components.SettingsRow
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.LoginScreenState
+import moe.rukamori.archivetune.viewmodels.LoginViewModel
 
 /**
  * 設定（主要な系統だけ）。
@@ -269,7 +282,31 @@ private fun DownloadGroup() {
 private fun AccountGroup() {
     var ytmSync by rememberPreference(YtmSyncKey, defaultValue = false)
 
+    val loginViewModel: LoginViewModel = hiltViewModel()
+    val loginState by loginViewModel.screenState.collectAsState()
+    var showLoginDialog by remember { mutableStateOf(false) }
+
+    // composable の呼び出しは条件によらず同じ並びで行う必要があるため、
+    // 両方の文字列を先に取り、後から選ぶ。
+    val summary = stringResource(R.string.youtube_login_summary)
+    val signedInFormat = stringResource(R.string.youtube_login_done)
+    val subtitle =
+        (loginState as? LoginScreenState.Success)
+            ?.account
+            ?.name
+            ?.takeIf { it.isNotBlank() }
+            ?.let { signedInFormat.format(it) }
+            ?: summary
+
     SettingsGroup(title = stringResource(R.string.account)) {
+        // 再生が bot 判定されたときの解除手段。ウェブ画面は開かず、
+        // ブラウザで取得した cookie を貼り付けるだけの入口にする。
+        SettingsRow(
+            title = stringResource(R.string.youtube_login),
+            subtitle = subtitle,
+            showDivider = true,
+            onClick = { showLoginDialog = true },
+        )
         SettingsRow(
             title = stringResource(R.string.yt_sync),
             showDivider = false,
@@ -278,6 +315,108 @@ private fun AccountGroup() {
                 AppleSwitch(checked = ytmSync, onCheckedChange = { ytmSync = it })
             },
         )
+    }
+
+    if (showLoginDialog) {
+        YouTubeLoginDialog(
+            state = loginState,
+            onDismiss = { showLoginDialog = false },
+            onSubmit = { cookie -> loginViewModel.onCookiesCaptured(cookie) },
+        )
+    }
+}
+
+/**
+ * cookie を貼り付けて YouTube にログインする窓。
+ *
+ * ウェブ画面は開かない。貼り付けた値だけを [LoginViewModel] へ渡し、
+ * 結果（読み込み・失敗）を中に残す。成功したら自動で閉じる。
+ *
+ * @param state [LoginViewModel] の現在値。
+ * @param onSubmit cookie を切り出す。空文字はここで弾く。
+ */
+@Composable
+private fun YouTubeLoginDialog(
+    state: LoginScreenState,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit,
+) {
+    val palette = applePalette()
+    val type = appleType()
+    val metrics = appleMetrics()
+
+    var cookie by remember { mutableStateOf("") }
+    var submitted by remember { mutableStateOf(false) }
+
+    // 通りたら手を離す。失敗は閉じずに理由を残す。
+    LaunchedEffect(state) {
+        if (state is LoginScreenState.Success) onDismiss()
+    }
+
+    DefaultDialog(
+        onDismiss = onDismiss,
+        title = { Text(stringResource(R.string.youtube_login), style = type.title2) },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(R.string.cancel_button),
+                    color = palette.accent,
+                )
+            }
+            TextButton(
+                onClick = {
+                    submitted = true
+                    onSubmit(cookie.trim())
+                },
+                enabled = cookie.isNotBlank() && state !is LoginScreenState.Loading,
+            ) {
+                Text(
+                    text = stringResource(R.string.login),
+                    color = palette.accent,
+                )
+            }
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.youtube_login_body),
+            style = type.footnote,
+            color = palette.labelSecondary,
+        )
+
+        Spacer(Modifier.height(metrics.sm.dp))
+
+        OutlinedTextField(
+            value = cookie,
+            onValueChange = { cookie = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("SID=...; HSID=...; ...", style = type.footnote) },
+            textStyle = type.footnote,
+            minLines = 4,
+            maxLines = 6,
+        )
+
+        if (submitted) {
+            Spacer(Modifier.height(metrics.sm.dp))
+            when (state) {
+                is LoginScreenState.Loading -> {
+                    Text(
+                        text = stringResource(R.string.loading),
+                        style = type.footnote,
+                        color = palette.labelSecondary,
+                    )
+                }
+
+                is LoginScreenState.Error -> {
+                    Text(
+                        text = stringResource(R.string.youtube_login_failed),
+                        style = type.footnote,
+                        color = palette.accent,
+                    )
+                }
+
+                else -> Unit
+            }
+        }
     }
 }
 

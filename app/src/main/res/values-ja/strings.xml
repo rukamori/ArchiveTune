@@ -485,6 +485,11 @@
     <string name="action_logout">ログアウト</string>
     <string name="action_login">ログイン</string>
     <string name="login">ログイン</string>
+    <string name="youtube_login">YouTube にログイン</string>
+    <string name="youtube_login_summary">再生が bot 判定されたときの解除手段</string>
+    <string name="youtube_login_body">ブラウザで youtube.com にログインし、Cookie の値をコピーして下に貼り付けてください。ウェブ画面は開きません。貼り付けた内容だけをこの端末に保存します。</string>
+    <string name="youtube_login_failed">ログインに失敗しました。Cookie を確認して再試行してください。</string>
+    <string name="youtube_login_done">%1$s としてログイン中</string>
     <string name="not_logged_in">ログインしていません</string>
     <string name="content_language">デフォルトのコンテンツ言語</string>
     <string name="content_country">デフォルトのコンテンツの国</string>
