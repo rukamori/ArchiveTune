@@ -10,18 +10,31 @@ package moe.rukamori.archivetune.automotive
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.runtime.CompositionLocalProvider
 import dagger.hilt.android.AndroidEntryPoint
-import moe.rukamori.archivetune.ui.screens.settings.AndroidAutoSettingsRoute
-import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
+import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.design.AppleTheme
+import moe.rukamori.archivetune.screens.SettingsScreen
 
+/**
+ * Entry point for the automotive in-app preferences screen.
+ *
+ * The legacy `AndroidAutoSettingsRoute` was removed together with the old
+ * ArchiveTune settings UI; [SettingsScreen] now serves the same purpose.
+ */
 @AndroidEntryPoint
 class AutomotiveSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ArchiveTuneTheme(disableAnimations = true) {
-                AndroidAutoSettingsRoute(onBack = ::finish)
+            CompositionLocalProvider(LocalPlayerAwareWindowInsets provides WindowInsets.systemBars) {
+                AppleTheme {
+                    SettingsScreen(onBack = ::finish)
+                }
             }
         }
     }
 }
+

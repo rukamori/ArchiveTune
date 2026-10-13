@@ -263,10 +263,8 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.design.LocalBackdropHazeState
 import moe.rukamori.archivetune.design.AppleTheme
 import moe.rukamori.archivetune.screens.AppShell
-import moe.rukamori.archivetune.screens.LocalSearchScreen
 import moe.rukamori.archivetune.screens.OnlineSearchResultArgument
 import moe.rukamori.archivetune.screens.OnlineSearchResultRoutePrefix
-import moe.rukamori.archivetune.screens.OnlineSearchScreen
 import moe.rukamori.archivetune.screens.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.screens.onlineSearchResultRoute
 import moe.rukamori.archivetune.constants.DarkMode
@@ -275,9 +273,6 @@ import moe.rukamori.archivetune.theme.ColorSaver
 import moe.rukamori.archivetune.theme.DefaultThemeColor
 import moe.rukamori.archivetune.theme.extractThemeColor
 import moe.rukamori.archivetune.theme.extractWallpaperThemeColor
-import moe.rukamori.archivetune.utils.appBarScrollBehavior
-import moe.rukamori.archivetune.utils.backToMain
-import moe.rukamori.archivetune.utils.resetHeightOffset
 import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -970,11 +965,6 @@ class MainActivity : ComponentActivity() {
             pendingTogetherJoinLink = uri.toString()
             startMusicServiceSafely()
             joinPendingTogetherIfReady()
-            return
-        }
-
-        if (uri.scheme.equals("archivetune", ignoreCase = true) && authority == "login") {
-            navController.navigate(buildLoginRoute(uri.getQueryParameter(LOGIN_URL_ARGUMENT)))
             return
         }
 
