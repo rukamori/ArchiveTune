@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.design.LocalOpenSongMenu
 import moe.rukamori.archivetune.design.appleMetrics
 import moe.rukamori.archivetune.design.applePalette
 import moe.rukamori.archivetune.design.appleType
@@ -60,7 +61,9 @@ fun formatDuration(totalSeconds: Int): String? {
  * 再生中の行は [isPlaying] によりタイトルをアクセント色へ変える（色と字重が唯一の合図）。
  *
  * @param index 1始まりの通し番号。`null` なら番号欄を潰さない。
- * @param onMoreClick 指定すると右端にメニューボタンを出す。指定しなければ出さない。
+ * @param onMoreClick 指定すると右端にメニューボタンを出す。省略時はシェルが供給する
+ *   曲メニュー（[moe.rukamori.archivetune.design.LocalOpenSongMenu]）へ接続し、
+ *   それも無ければボタンを出さない。
  */
 @Composable
 fun SongRow(
@@ -147,8 +150,12 @@ fun SongRow(
             )
         }
 
-        if (onMoreClick != null) {
-            MoreButton(onClick = onMoreClick)
+        // 呼び出し側が明示的に指定していなければ、シェルが供給している曲メニューへ繋ぐ。
+        // 両方無ければ「…」は描画しない。
+        val shellMenu = LocalOpenSongMenu.current
+        val moreAction: (() -> Unit)? = onMoreClick ?: shellMenu?.let { open -> { open(song) } }
+        if (moreAction != null) {
+            MoreButton(onClick = moreAction)
         }
     }
 }

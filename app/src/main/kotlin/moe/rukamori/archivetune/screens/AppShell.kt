@@ -29,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -44,11 +46,15 @@ import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.design.LocalOpenSongMenu
 import moe.rukamori.archivetune.design.appleMetrics
 import moe.rukamori.archivetune.design.applePalette
 import moe.rukamori.archivetune.design.components.GlassNavigationBar
 import moe.rukamori.archivetune.design.components.MiniPlayer
 import moe.rukamori.archivetune.design.components.NavigationTab
+import moe.rukamori.archivetune.design.components.SongMenuSheet
+import moe.rukamori.archivetune.extensions.toMediaItem
+import moe.rukamori.archivetune.models.MediaMetadata
 
 /**
  * 新UIの共通シェル。
@@ -77,6 +83,10 @@ fun AppShell(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // 曲行右端の「…」で開く曲メニュー。開いている曲をシェルが一括で持ち、
+    // どの画面からでも同じシートを開けるようにする。
+    var menuSong by remember { mutableStateOf<MediaMetadata?>(null) }
 
     // `let` はインラインなので、中の collectAsState はそのまま composable の中で評価される。
     val hasTrack = connection?.let { it.mediaMetadata.collectAsState().value } != null
@@ -146,7 +156,11 @@ fun AppShell(
                 .fillMaxSize()
                 .background(palette.background),
     ) {
-        CompositionLocalProvider(LocalPlayerAwareWindowInsets provides contentInsets) {
+        CompositionLocalProvider(
+            LocalPlayerAwareWindowInsets provides contentInsets,
+            // 一覧の曲行から「…」を押すと、この合図で曲メニューを開く。
+            LocalOpenSongMenu provides { song -> menuSong = song },
+        ) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.Home,
@@ -271,6 +285,26 @@ fun AppShell(
                     },
                 )
             }
+        }
+
+        // 曲メニュー。浮遊ナビとミニプレイヤーの上に重ねて出す。
+        menuSong?.let { song ->
+            val conn = connection
+            SongMenuSheet(
+                song = song,
+                onDismiss = { menuSong = null },
+                onPlayNext = conn?.let { c -> { c.playNext(song.toMediaItem()) } },
+                onAddToQueue = conn?.let { c -> { c.addToQueue(song.toMediaItem()) } },
+                onPlayRadio = conn?.let { c -> { c.playRadioFrom(song) } },
+                onOpenArtist =
+                    song.artists.firstOrNull()?.id?.let { id ->
+                        { navController.navigate(Routes.artist(id)) }
+                    },
+                onOpenAlbum =
+                    song.album?.id?.let { id ->
+                        { navController.navigate(Routes.album(id)) }
+                    },
+            )
         }
     }
 }
