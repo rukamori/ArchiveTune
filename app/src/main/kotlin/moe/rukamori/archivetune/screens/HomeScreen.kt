@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.design.components.LoadingState
 import moe.rukamori.archivetune.design.components.MediaCard
 import moe.rukamori.archivetune.design.components.PinnedTitleBar
 import moe.rukamori.archivetune.design.components.SectionHeader
+import moe.rukamori.archivetune.design.components.SignInPrompt
 import moe.rukamori.archivetune.design.components.SongRow
 import moe.rukamori.archivetune.design.components.rememberTitleCollapse
 import moe.rukamori.archivetune.home.HomeAction
@@ -166,6 +167,12 @@ fun HomeScreen(
                     ) {
                         item(key = "header") {
                             LargeTitleHeader(title = stringResource(R.string.home))
+                        }
+
+                        // サインインしていないときだけ中身が現れる。再生の入口を
+                        // 設定に埋もれさせないため、ホームの先頭に置いておく。
+                        item(key = "signIn") {
+                            SignInPrompt()
                         }
 
                         val chips = uiState.homePage?.chips.orEmpty()
