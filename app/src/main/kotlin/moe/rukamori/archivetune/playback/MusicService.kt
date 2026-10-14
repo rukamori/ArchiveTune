@@ -996,31 +996,7 @@ class MusicService :
     private fun ensureStartedAsForeground() {
         if (hasCalledStartForeground) return
 
-        val notification =
-            try {
-                val contentIntent =
-                    PendingIntent.getActivity(
-                        this,
-                        0,
-                        Intent(this, MainActivity::class.java),
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                    )
-
-                NotificationCompat
-                    .Builder(this, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.small_icon)
-                    .setContentTitle(getString(R.string.music_player))
-                    .setContentText(getString(R.string.app_name))
-                    .setContentIntent(contentIntent)
-                    .setCategory(Notification.CATEGORY_SERVICE)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .setOngoing(true)
-                    .setOnlyAlertOnce(true)
-                    .build()
-            } catch (e: Exception) {
-                reportException(e)
-                return
-            }
+        val notification = buildForegroundNotification() ?: buildFallbackForegroundNotification()
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -1038,12 +1014,54 @@ class MusicService :
         }
     }
 
+    private fun buildForegroundNotification(): Notification? =
+        try {
+            val contentIntent =
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, MainActivity::class.java),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+
+            NotificationCompat
+                .Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.small_icon)
+                .setContentTitle(getString(R.string.music_player))
+                .setContentText(getString(R.string.app_name))
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .build()
+        } catch (e: Exception) {
+            reportException(e)
+            null
+        }
+
+    // Deliberately avoids strings and pending intents: a bare notification is still enough
+    // for startForeground(), while skipping startForeground() entirely after a
+    // startForegroundService() call kills the app with ForegroundServiceDidNotStartInTime.
+    private fun buildFallbackForegroundNotification(): Notification =
+        NotificationCompat
+            .Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.small_icon)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .build()
+
     private fun promoteToStartedForegroundService() {
         runCatching {
             ContextCompat.startForegroundService(
                 this,
                 Intent(this, MusicService::class.java),
             )
+            // media3 can take the service out of the foreground behind our back, leaving
+            // hasCalledStartForeground stale; after a fresh startForegroundService() the
+            // system requires another startForeground() even if we think we already ran it.
+            hasCalledStartForeground = false
         }
             .onFailure { reportException(it) }
     }
