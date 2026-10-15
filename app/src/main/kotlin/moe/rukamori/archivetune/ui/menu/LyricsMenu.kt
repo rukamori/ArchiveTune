@@ -335,11 +335,11 @@ fun LyricsMenu(
     }
 
     if (showLyricsSyncOffsetDialog) {
-        var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat()) }
+        var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)) }
 
         DefaultDialog(
             onDismiss = {
-                tempLyricsSyncOffset = lyricsSyncOffset.toFloat()
+                tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
                 showLyricsSyncOffsetDialog = false
             },
             icon = {
@@ -356,7 +356,7 @@ fun LyricsMenu(
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = {
-                        tempLyricsSyncOffset = lyricsSyncOffset.toFloat()
+                        tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
                         showLyricsSyncOffsetDialog = false
                     },
                     shapes = ButtonDefaults.shapes(),
@@ -365,7 +365,7 @@ fun LyricsMenu(
                 }
                 TextButton(
                     onClick = {
-                        onLyricsSyncOffsetChange(tempLyricsSyncOffset.roundToInt())
+                        onLyricsSyncOffsetChange(tempLyricsSyncOffset.roundToInt().coerceIn(-5000, 5000))
                         showLyricsSyncOffsetDialog = false
                         onDismiss()
                     },
@@ -388,8 +388,8 @@ fun LyricsMenu(
                 Slider(
                     value = tempLyricsSyncOffset,
                     onValueChange = { tempLyricsSyncOffset = it },
-                    valueRange = -1000f..1000f,
-                    steps = 79,
+                    valueRange = -5000f..5000f,
+                    steps = 199,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
