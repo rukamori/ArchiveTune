@@ -101,6 +101,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
+import moe.rukamori.archivetune.constants.calculateSquareThumbnailSize
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SwipeThumbnailKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
@@ -351,6 +352,7 @@ fun Thumbnail(
             ) {
                 val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
                 val containerMaxWidth = maxWidth
+                val thumbnailSize = calculateSquareThumbnailSize(containerMaxWidth, maxHeight)
 
                 LazyHorizontalGrid(
                     state = thumbnailLazyGridState,
@@ -427,7 +429,7 @@ fun Thumbnail(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(containerMaxWidth - (PlayerHorizontalPadding * 2))
+                                        .size(thumbnailSize)
                                         .clip(RoundedCornerShape(thumbnailCornerRadius.dp)),
                             ) {
                                 if (hidePlayerThumbnail) {
@@ -526,7 +528,10 @@ fun Thumbnail(
                                             fallbackUrl = fallbackCanvasUrl,
                                             isPlaying = isPlaying,
                                             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                                            modifier = Modifier.fillMaxSize(),
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it },
                                         )
                                     }
                                 }
