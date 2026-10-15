@@ -443,6 +443,14 @@ fun Queue(
                                     mediaMetadata = mediaMetadata,
                                     navController = navController,
                                     playerBottomSheetState = playerBottomSheetState,
+                                    sleepTimerEnabled = sleepTimerEnabled,
+                                    onSleepTimerClick = {
+                                        if (sleepTimerEnabled) {
+                                            playerConnection.service.sleepTimer.clear()
+                                        } else {
+                                            showSleepTimerDialog = true
+                                        }
+                                    },
                                     onShowDetailsDialog = {
                                         mediaMetadata?.id?.let {
                                             bottomSheetPageState.show {
@@ -479,6 +487,14 @@ fun Queue(
                                     mediaMetadata = mediaMetadata,
                                     navController = navController,
                                     playerBottomSheetState = playerBottomSheetState,
+                                    sleepTimerEnabled = sleepTimerEnabled,
+                                    onSleepTimerClick = {
+                                        if (sleepTimerEnabled) {
+                                            playerConnection.service.sleepTimer.clear()
+                                        } else {
+                                            showSleepTimerDialog = true
+                                        }
+                                    },
                                     onShowDetailsDialog = {
                                         mediaMetadata?.id?.let {
                                             bottomSheetPageState.show {
@@ -515,6 +531,14 @@ fun Queue(
                                     mediaMetadata = mediaMetadata,
                                     navController = navController,
                                     playerBottomSheetState = playerBottomSheetState,
+                                    sleepTimerEnabled = sleepTimerEnabled,
+                                    onSleepTimerClick = {
+                                        if (sleepTimerEnabled) {
+                                            playerConnection.service.sleepTimer.clear()
+                                        } else {
+                                            showSleepTimerDialog = true
+                                        }
+                                    },
                                     onShowDetailsDialog = {
                                         mediaMetadata?.id?.let {
                                             bottomSheetPageState.show {
@@ -612,6 +636,14 @@ fun Queue(
                                     mediaMetadata = mediaMetadata,
                                     navController = navController,
                                     playerBottomSheetState = playerBottomSheetState,
+                                    sleepTimerEnabled = sleepTimerEnabled,
+                                    onSleepTimerClick = {
+                                        if (sleepTimerEnabled) {
+                                            playerConnection.service.sleepTimer.clear()
+                                        } else {
+                                            showSleepTimerDialog = true
+                                        }
+                                    },
                                     onShowDetailsDialog = {
                                         mediaMetadata?.id?.let {
                                             bottomSheetPageState.show {
@@ -890,6 +922,14 @@ fun Queue(
                                 navController = navController,
                                 playerBottomSheetState = playerBottomSheetState,
                                 isQueueTrigger = true,
+                                sleepTimerEnabled = sleepTimerEnabled,
+                                onSleepTimerClick = {
+                                    if (sleepTimerEnabled) {
+                                        playerConnection.service.sleepTimer.clear()
+                                    } else {
+                                        showSleepTimerDialog = true
+                                    }
+                                },
                                 onRemoveFromQueue = {
                                     currentWindow?.let { onRemoveWithUndo(it) }
                                 },

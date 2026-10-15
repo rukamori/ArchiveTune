@@ -1362,6 +1362,14 @@ fun BottomSheetPlayer(
                                                 mediaMetadata = metadata,
                                                 navController = navController,
                                                 playerBottomSheetState = state,
+                                                sleepTimerEnabled = sleepTimerEnabled,
+                                                onSleepTimerClick = {
+                                                    if (sleepTimerEnabled) {
+                                                        playerConnection.service.sleepTimer.clear()
+                                                    } else {
+                                                        showSleepTimerDialog = true
+                                                    }
+                                                },
                                                 onShowDetailsDialog = {
                                                     bottomSheetPageState.show {
                                                         ShowMediaInfo(metadata.id)
@@ -1522,6 +1530,14 @@ fun BottomSheetPlayer(
                                         mediaMetadata = metadata,
                                         navController = navController,
                                         playerBottomSheetState = state,
+                                        sleepTimerEnabled = sleepTimerEnabled,
+                                        onSleepTimerClick = {
+                                            if (sleepTimerEnabled) {
+                                                playerConnection.service.sleepTimer.clear()
+                                            } else {
+                                                showSleepTimerDialog = true
+                                            }
+                                        },
                                         onShowDetailsDialog = {
                                             bottomSheetPageState.show {
                                                 ShowMediaInfo(metadata.id)
@@ -1654,6 +1670,14 @@ fun BottomSheetPlayer(
                                                     mediaMetadata = metadata,
                                                     navController = navController,
                                                     playerBottomSheetState = state,
+                                                    sleepTimerEnabled = sleepTimerEnabled,
+                                                    onSleepTimerClick = {
+                                                        if (sleepTimerEnabled) {
+                                                            playerConnection.service.sleepTimer.clear()
+                                                        } else {
+                                                            showSleepTimerDialog = true
+                                                        }
+                                                    },
                                                     onShowDetailsDialog = {
                                                         bottomSheetPageState.show {
                                                             ShowMediaInfo(metadata.id)
@@ -1813,6 +1837,14 @@ fun BottomSheetPlayer(
                                         mediaMetadata = metadata,
                                         navController = navController,
                                         playerBottomSheetState = state,
+                                        sleepTimerEnabled = sleepTimerEnabled,
+                                        onSleepTimerClick = {
+                                            if (sleepTimerEnabled) {
+                                                playerConnection.service.sleepTimer.clear()
+                                            } else {
+                                                showSleepTimerDialog = true
+                                            }
+                                        },
                                         onShowDetailsDialog = {
                                             bottomSheetPageState.show {
                                                 ShowMediaInfo(metadata.id)
