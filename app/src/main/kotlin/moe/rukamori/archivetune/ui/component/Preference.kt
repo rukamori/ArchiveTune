@@ -1073,7 +1073,7 @@ fun CrossfadeSliderPreference(
     }
 
     var sliderValue by remember {
-        mutableFloatStateOf(valueSeconds.coerceIn(0f, 10f))
+        mutableFloatStateOf(valueSeconds.coerceIn(0f, 20f))
     }
 
     if (showDialog) {
@@ -1095,13 +1095,13 @@ fun CrossfadeSliderPreference(
             onConfirm = {
                 val rounded =
                     ((sliderValue * 2f).roundToInt().toFloat() / 2f)
-                        .coerceIn(0f, 10f)
+                        .coerceIn(0f, 20f)
                 sliderValue = rounded
                 showDialog = false
                 onValueChange.invoke(rounded)
             },
             onCancel = {
-                sliderValue = valueSeconds.coerceIn(0f, 10f)
+                sliderValue = valueSeconds.coerceIn(0f, 20f)
                 showDialog = false
             },
             onReset = {
@@ -1111,7 +1111,7 @@ fun CrossfadeSliderPreference(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val rounded =
                         ((sliderValue * 2f).roundToInt().toFloat() / 2f)
-                            .coerceIn(0f, 10f)
+                            .coerceIn(0f, 20f)
                     val isWhole =
                         (rounded - rounded.roundToInt().toFloat()).let { delta ->
                             kotlin.math.abs(delta) < 0.001f
@@ -1141,15 +1141,15 @@ fun CrossfadeSliderPreference(
                     val crossfadeSliderState =
                         rememberControlledSliderState(
                             value = sliderValue,
-                            steps = 19,
-                            valueRange = 0f..10f,
+                            steps = 39,
+                            valueRange = 0f..20f,
                         )
 
                     Slider(
                         state = crossfadeSliderState,
                         onValueChange = { value ->
                             crossfadeSliderState.value = value
-                            sliderValue = value.coerceIn(0f, 10f)
+                            sliderValue = value.coerceIn(0f, 20f)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         track = {
@@ -1166,7 +1166,7 @@ fun CrossfadeSliderPreference(
 
     val rounded =
         ((valueSeconds * 2f).roundToInt().toFloat() / 2f)
-            .coerceIn(0f, 10f)
+            .coerceIn(0f, 20f)
     val isWhole =
         (rounded - rounded.roundToInt().toFloat()).let { delta ->
             kotlin.math.abs(delta) < 0.001f
