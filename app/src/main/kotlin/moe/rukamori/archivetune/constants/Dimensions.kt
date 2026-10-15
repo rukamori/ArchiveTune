@@ -44,6 +44,17 @@ val GridThumbnailCornerRadius = 8.dp
 
 val PlayerHorizontalPadding = 32.dp
 
+fun calculateSquareThumbnailSize(
+    containerMaxWidth: Dp,
+    containerMaxHeight: Dp,
+    padding: Dp = PlayerHorizontalPadding,
+): Dp =
+    minOf(
+        containerMaxWidth - (padding * 2),
+        containerMaxHeight - (padding * 2),
+    ).coerceAtLeast(0.dp)
+
+
 val NavigationBarAnimationSpec =
     spring<Dp>(
         dampingRatio = Spring.DampingRatioNoBouncy,
