@@ -107,6 +107,7 @@ import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.QueueEditLockKey
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
+import moe.rukamori.archivetune.extensions.buildRestoredShuffleOrderIndices
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -302,6 +303,7 @@ fun Queue(
         }
 
     val onRemoveWithUndo: (Timeline.Window) -> Unit = { window ->
+        val originalQueueTimelineIndices = queueWindows.map { it.firstPeriodIndex }
         val index = window.firstPeriodIndex
         playerConnection.player.removeMediaItem(index)
         dismissJob?.cancel()
@@ -318,17 +320,22 @@ fun Queue(
                         duration = SnackbarDuration.Short,
                     )
                 if (snackbarResult == SnackbarResult.ActionPerformed) {
-                    playerConnection.player.addMediaItem(window.mediaItem)
-                    playerConnection.player.moveMediaItem(
-                        playerConnection.player.mediaItemCount - 1,
-                        index,
-                    )
+                    playerConnection.player.addMediaItem(index, window.mediaItem)
+                    if (playerConnection.player.shuffleModeEnabled) {
+                        playerConnection.localPlayer.setShuffleOrder(
+                            DefaultShuffleOrder(
+                                buildRestoredShuffleOrderIndices(originalQueueTimelineIndices),
+                                System.currentTimeMillis(),
+                            ),
+                        )
+                    }
                 }
             }
     }
 
     val onRemoveMultipleWithUndo: (List<Timeline.Window>) -> Unit = { windows ->
         if (windows.isNotEmpty()) {
+            val originalQueueTimelineIndices = queueWindows.map { it.firstPeriodIndex }
             val sortedWindows = windows.sortedBy { it.firstPeriodIndex }
             var i = 0
             sortedWindows.forEach { window ->
@@ -356,10 +363,14 @@ fun Queue(
                         )
                     if (snackbarResult == SnackbarResult.ActionPerformed) {
                         sortedWindows.forEach { window ->
-                            playerConnection.player.addMediaItem(window.mediaItem)
-                            playerConnection.player.moveMediaItem(
-                                playerConnection.player.mediaItemCount - 1,
-                                window.firstPeriodIndex,
+                            playerConnection.player.addMediaItem(window.firstPeriodIndex, window.mediaItem)
+                        }
+                        if (playerConnection.player.shuffleModeEnabled) {
+                            playerConnection.localPlayer.setShuffleOrder(
+                                DefaultShuffleOrder(
+                                    buildRestoredShuffleOrderIndices(originalQueueTimelineIndices),
+                                    System.currentTimeMillis(),
+                                ),
                             )
                         }
                     }
