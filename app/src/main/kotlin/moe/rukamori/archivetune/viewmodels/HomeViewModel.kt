@@ -39,6 +39,8 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
+import moe.rukamori.archivetune.constants.RecommendationSource
+import moe.rukamori.archivetune.constants.RecommendationSourceKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -70,6 +72,7 @@ import moe.rukamori.archivetune.innertube.utils.completed
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.SimilarRecommendation
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.spotify.LoadSpotifyRecommendationsUseCase
 import moe.rukamori.archivetune.podcast.PodcastPlaybackRequest
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.SpeedDialPinType
@@ -213,6 +216,7 @@ class HomeViewModel
         private val loadPersonalizedQuickPicksUseCase: LoadPersonalizedQuickPicksUseCase,
         private val prepareCommunityHomePageUseCase: PrepareCommunityHomePageUseCase,
         private val loadCommunityPlaylistPreviewsUseCase: LoadCommunityPlaylistPreviewsUseCase,
+        private val loadSpotifyRecommendationsUseCase: LoadSpotifyRecommendationsUseCase,
     ) : ViewModel() {
         private val isRefreshing = MutableStateFlow(false)
         private val isLoading = MutableStateFlow(false)
@@ -743,6 +747,28 @@ class HomeViewModel
             val aiContentFilterPolicy = loadAiContentFilterPolicy()
             val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
+            val recommendationSource =
+                context.dataStore.data.first()[RecommendationSourceKey]
+                    .toEnum(RecommendationSource.YOUTUBE)
+
+            if (recommendationSource == RecommendationSource.SPOTIFY) {
+                val spotifyRecs =
+                    runCatching {
+                        loadSpotifyRecommendationsUseCase(
+                            hideExplicit = hideExplicit,
+                            blockedArtistIds = blockedArtistIds,
+                            aiContentFilterPolicy = aiContentFilterPolicy,
+                            fromTimeStamp = fromTimeStamp,
+                        )
+                    }.onFailure { reportException(it) }.getOrNull()
+
+                if (!spotifyRecs.isNullOrEmpty()) {
+                    similarRecommendations.value = spotifyRecs.shuffled()
+                    updateAllYtItems()
+                    return
+                }
+            }
+
             val artistRecommendations =
                 database
                     .mostPlayedMusicArtists(fromTimeStamp, limit = 10)
@@ -1150,6 +1176,16 @@ class HomeViewModel
                     .distinctUntilChanged()
                     .collect {
                         loadSpeedDialItems()
+                    }
+            }
+
+            viewModelScope.launch(Dispatchers.IO) {
+                context.dataStore.data
+                    .map { it[RecommendationSourceKey].toEnum(RecommendationSource.YOUTUBE) }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collect {
+                        loadSimilarRecommendations()
                     }
             }
 
