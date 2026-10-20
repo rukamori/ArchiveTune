@@ -65,6 +65,7 @@ fun FloatingNavigationToolbar(
     backgroundStyle: NavigationBarBackgroundStyle,
     hazeState: HazeState,
     modifier: Modifier = Modifier,
+    backdrop: BackdropSnapshot? = null,
     miniPlayerProximityProvider: () -> Float = { 0f },
     navigationBarMode: NavigationBarMode = NavigationBarMode.CONNECTED,
     isSelected: (Screens) -> Boolean,
@@ -124,6 +125,7 @@ fun FloatingNavigationToolbar(
                             isAcrylic = backgroundStyle == NavigationBarBackgroundStyle.ACRYLIC,
                             pureBlack = pureBlack,
                             modifier = Modifier.fillMaxSize(),
+                            backdrop = backdrop,
                         )
                     }
                     Row(

@@ -285,6 +285,8 @@ import moe.rukamori.archivetune.ui.component.StarDialog
 import moe.rukamori.archivetune.ui.component.TopAppBarOverflowMenu
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
+import moe.rukamori.archivetune.ui.component.backdropSnapshotSource
+import moe.rukamori.archivetune.ui.component.rememberBackdropSnapshot
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
@@ -1010,6 +1012,12 @@ class MainActivity : ComponentActivity() {
                     val menuAccountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
                     val menuHazeState = rememberHazeState()
                     val floatingBarsHazeState = rememberHazeState()
+                    val floatingBarsBackdrop = rememberBackdropSnapshot(blurRadius = 10f)
+                    val menuBackdrop = rememberBackdropSnapshot(blurRadius = 18f)
+                    LaunchedEffect(Unit) { floatingBarsBackdrop.active.value = true }
+                    LaunchedEffect(topAppBarOverflowExpanded) {
+                        menuBackdrop.active.value = topAppBarOverflowExpanded
+                    }
                     val navigationBarBackgroundStyle by rememberEnumPreference(
                         key = NavigationBarBackgroundStyleKey,
                         defaultValue = NavigationBarBackgroundStyle.THEME,
@@ -2026,6 +2034,7 @@ class MainActivity : ComponentActivity() {
                                                                     pureBlack = pureBlack,
                                                                     hasUnreadNews = hasUnreadNews,
                                                                     hasUpdateAvailable = hasUpdateAvailable,
+                                                                    backdrop = menuBackdrop,
                                                                     onDismissRequest = mainMenuViewModel::dismiss,
                                                                     onSelect = { destination ->
                                                                         newsTooltipState.dismiss()
@@ -2342,6 +2351,7 @@ class MainActivity : ComponentActivity() {
                                                     pureBlack = pureBlack,
                                                     backgroundStyle = navigationBarBackgroundStyle,
                                                     hazeState = floatingBarsHazeState,
+                                                    backdrop = floatingBarsBackdrop,
                                                     miniPlayerProximityProvider = navigationProximityProvider,
                                                     navigationBarMode = navigationBarMode,
                                                     modifier =
@@ -2498,7 +2508,8 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     },
-                                    modifier = Modifier.fillMaxSize().hazeSource(menuHazeState),
+                                    modifier = Modifier.fillMaxSize().hazeSource(menuHazeState)
+                                        .backdropSnapshotSource(menuBackdrop),
                                 ) {
                                     var transitionDirection =
                                         AnimatedContentTransitionScope.SlideDirection.Left
@@ -2621,6 +2632,7 @@ class MainActivity : ComponentActivity() {
                                         modifier =
                                             Modifier
                                                 .hazeSource(floatingBarsHazeState)
+                                                .backdropSnapshotSource(floatingBarsBackdrop)
                                                 .then(
                                                     if (isTvDevice) {
                                                         Modifier
