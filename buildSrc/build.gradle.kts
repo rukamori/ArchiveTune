@@ -11,5 +11,5 @@ repositories {
 dependencies {
     implementation(gradleApi())
     implementation(localGroovy())
-    implementation("org.apache.xmlgraphics:batik-all:1.19")
+    implementation("org.apache.xmlgraphics:batik-all:1.20")
 }
