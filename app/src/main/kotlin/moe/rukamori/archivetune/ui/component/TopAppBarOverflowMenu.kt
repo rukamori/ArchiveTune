@@ -9,11 +9,14 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import android.os.Build
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -67,6 +70,7 @@ fun TopAppBarOverflowMenu(
     pureBlack: Boolean,
     hasUnreadNews: Boolean,
     hasUpdateAvailable: Boolean,
+    backdrop: BackdropSnapshot? = null,
     onDismissRequest: () -> Unit,
     onSelect: (MainMenuDestination) -> Unit,
 ) {
@@ -86,59 +90,121 @@ fun TopAppBarOverflowMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
     ) {
-        Column(
-            modifier = Modifier
-                .width(264.dp)
-                .shadow(6.dp, shape)
-                .clip(shape)
-                .hazeBlur(input = hazeInput, style = blurStyle)
-                .background(surfaceColor.copy(alpha = 0.72f))
-                .border(1.dp, contentColor.copy(alpha = 0.08f), shape)
-                .semantics { paneTitle = menuTitle }
-                .heightIn(max = 560.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 8.dp),
-        ) {
-            MenuProfileHeader(
-                state = profileState,
-                accountImageUrl = accountImageUrl,
-                contentColor = contentColor,
-                onClick = remember(onSelect) { { onSelect(MainMenuDestination.Profile) } },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = contentColor.copy(alpha = 0.12f),
-            )
-            OverflowAction(
-                label = stringResource(R.string.new_releases),
-                iconRes = R.drawable.new_release,
-                contentColor = contentColor,
-                onClick = remember(onSelect) { { onSelect(MainMenuDestination.NewRelease) } },
-            )
-            OverflowAction(
-                label = stringResource(R.string.news),
-                iconRes = R.drawable.newspaper,
-                contentColor = contentColor,
-                hasBadge = hasUnreadNews,
-                badgeDescription = if (hasUnreadNews) stringResource(R.string.news_tooltip_title) else null,
-                onClick = remember(onSelect) { { onSelect(MainMenuDestination.News) } },
-            )
-            OverflowAction(
-                label = stringResource(R.string.history),
-                iconRes = R.drawable.history,
-                contentColor = contentColor,
-                onClick = remember(onSelect) { { onSelect(MainMenuDestination.History) } },
-            )
-            OverflowAction(
-                label = stringResource(R.string.settings),
-                iconRes = R.drawable.settings,
-                contentColor = contentColor,
-                hasBadge = hasUpdateAvailable,
-                badgeDescription = if (hasUpdateAvailable) stringResource(R.string.new_update_available) else null,
-                onClick = remember(onSelect) { { onSelect(MainMenuDestination.Settings) } },
-            )
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && backdrop != null) {
+            // Below API 31 Haze cannot blur live content; approximate it with a
+            // stack-blurred snapshot of what is behind the menu.
+            Box(
+                modifier = Modifier
+                    .width(264.dp)
+                    .shadow(6.dp, shape)
+                    .clip(shape)
+                    .border(1.dp, contentColor.copy(alpha = 0.08f), shape)
+                    .semantics { paneTitle = menuTitle },
+            ) {
+                val snapshot = backdrop.image
+                if (snapshot != null) {
+                    Image(
+                        bitmap = snapshot,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopEnd,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
+                Box(
+                    Modifier.matchParentSize()
+                        .background(surfaceColor.copy(alpha = 0.62f)),
+                )
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 560.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 8.dp),
+                ) {
+                    OverflowMenuItems(
+                        profileState = profileState,
+                        accountImageUrl = accountImageUrl,
+                        contentColor = contentColor,
+                        hasUnreadNews = hasUnreadNews,
+                        hasUpdateAvailable = hasUpdateAvailable,
+                        onSelect = onSelect,
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .width(264.dp)
+                    .shadow(6.dp, shape)
+                    .clip(shape)
+                    .hazeBlur(input = hazeInput, style = blurStyle)
+                    .background(surfaceColor.copy(alpha = 0.72f))
+                    .border(1.dp, contentColor.copy(alpha = 0.08f), shape)
+                    .semantics { paneTitle = menuTitle }
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp),
+            ) {
+                OverflowMenuItems(
+                    profileState = profileState,
+                    accountImageUrl = accountImageUrl,
+                    contentColor = contentColor,
+                    hasUnreadNews = hasUnreadNews,
+                    hasUpdateAvailable = hasUpdateAvailable,
+                    onSelect = onSelect,
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun ColumnScope.OverflowMenuItems(
+    profileState: MenuProfileState,
+    accountImageUrl: String?,
+    contentColor: Color,
+    hasUnreadNews: Boolean,
+    hasUpdateAvailable: Boolean,
+    onSelect: (MainMenuDestination) -> Unit,
+) {
+    MenuProfileHeader(
+        state = profileState,
+        accountImageUrl = accountImageUrl,
+        contentColor = contentColor,
+        onClick = remember(onSelect) { { onSelect(MainMenuDestination.Profile) } },
+    )
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        color = contentColor.copy(alpha = 0.12f),
+    )
+    OverflowAction(
+        label = stringResource(R.string.new_releases),
+        iconRes = R.drawable.new_release,
+        contentColor = contentColor,
+        onClick = remember(onSelect) { { onSelect(MainMenuDestination.NewRelease) } },
+    )
+    OverflowAction(
+        label = stringResource(R.string.news),
+        iconRes = R.drawable.newspaper,
+        contentColor = contentColor,
+        hasBadge = hasUnreadNews,
+        badgeDescription = if (hasUnreadNews) stringResource(R.string.news_tooltip_title) else null,
+        onClick = remember(onSelect) { { onSelect(MainMenuDestination.News) } },
+    )
+    OverflowAction(
+        label = stringResource(R.string.history),
+        iconRes = R.drawable.history,
+        contentColor = contentColor,
+        onClick = remember(onSelect) { { onSelect(MainMenuDestination.History) } },
+    )
+    OverflowAction(
+        label = stringResource(R.string.settings),
+        iconRes = R.drawable.settings,
+        contentColor = contentColor,
+        hasBadge = hasUpdateAvailable,
+        badgeDescription = if (hasUpdateAvailable) stringResource(R.string.new_update_available) else null,
+        onClick = remember(onSelect) { { onSelect(MainMenuDestination.Settings) } },
+    )
 }
 
 @Composable
