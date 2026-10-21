@@ -2,6 +2,8 @@
 <resources>
     <string name="explore">Explorer</string>
     <string name="local_history">Locale</string>
+    <string name="local_songs_tab">Local</string>
+    <string name="download_all_queue_items">Télécharger toutes les chansons de la file</string>
     <string name="remote_history">Distant</string>
     <string name="charts">Graphiques</string>
     <string name="back_button_desc">Retour</string>

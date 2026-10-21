@@ -60,8 +60,27 @@ data class LocalSongScanConfig(
     val sanitizedExcludedFolders: Set<String>
         get() = deduplicateFolderEntries(excludedFolders)
 
+    fun shouldScanFolder(folderPath: String?): Boolean {
+        val normalizedPath = normalizeFolderEntry(folderPath.orEmpty()).lowercase(Locale.ROOT)
+        val included = sanitizedIncludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
+        val excluded = sanitizedExcludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
+        val includedByDefault =
+            included.isEmpty() &&
+                normalizedPath.split('/').none { it == "android" }
+        val matchesIncluded = includedByDefault || matchesFolderEntry(normalizedPath, included)
+        return matchesIncluded && !matchesFolderEntry(normalizedPath, excluded)
+    }
+
     companion object {
         private val DuplicateSlashRegex = Regex("/+")
+        private fun matchesFolderEntry(folderPath: String, folders: Set<String>): Boolean =
+            folderPath.isNotEmpty() &&
+                folders.any { folder ->
+                    folderPath == folder ||
+                        folderPath.startsWith("$folder/") ||
+                        folderPath.endsWith("/$folder") ||
+                        folderPath.contains("/$folder/")
+                }
 
         fun normalizeFolderEntry(raw: String): String =
             raw
@@ -103,7 +122,7 @@ class LocalSongScanner @Inject constructor(
     suspend fun scanDevice(scanConfig: LocalSongScanConfig = LocalSongScanConfig()): LocalSongScanSummary =
         withContext(Dispatchers.IO) {
             scanMutex.withLock {
-                mediaIndexer.indexMissingAudio()
+                mediaIndexer.indexMissingAudio(scanConfig)
                 val scanned = queryTracks(scanConfig)
                 val ids = scanned.map(LocalTrackRecord::id)
                 val enriched = enrichTracks(scanned, loadSongs(ids), loadFormats(ids))
@@ -154,7 +173,9 @@ class LocalSongScanner @Inject constructor(
                             discNumber = track.discNumber,
                             year = track.year,
                             dateModified = track.dateModified,
+                            dateAdded = track.dateAdded,
                             isLocal = true,
+                            exportedDownloadId = track.exportedDownloadId,
                         ))
                         val unchanged = isUnchanged(track, existing, oldFormat)
                         upsert(FormatEntity(
@@ -355,8 +376,6 @@ class LocalSongScanner @Inject constructor(
 
     @Suppress("DEPRECATION")
     private suspend fun queryTracks(scanConfig: LocalSongScanConfig): List<LocalTrackRecord> {
-        val included = scanConfig.sanitizedIncludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
-        val excluded = scanConfig.sanitizedExcludedFolders.map { it.lowercase(Locale.ROOT) }.toSet()
         val projection = buildList {
             add(MediaStore.Audio.Media._ID)
             add(MediaStore.Audio.Media.TITLE)
@@ -368,20 +387,30 @@ class LocalSongScanner @Inject constructor(
             add(MediaStore.Audio.Media.YEAR)
             add(MediaStore.Audio.Media.TRACK)
             add(MediaStore.Audio.Media.DATE_MODIFIED)
+            add(MediaStore.Audio.Media.DATE_ADDED)
             add(MediaStore.Audio.Media.SIZE)
             add(MediaStore.Audio.Media.MIME_TYPE)
+            add(MediaStore.MediaColumns.DATA)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add(MediaStore.Audio.Media.ALBUM_ARTIST)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(MediaStore.MediaColumns.RELATIVE_PATH)
-            else add(MediaStore.MediaColumns.DATA)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                add(MediaStore.MediaColumns.RELATIVE_PATH)
+                add(MediaStore.MediaColumns.VOLUME_NAME)
+            }
         }.toTypedArray()
+        val minDurationSec = scanConfig.sanitizedMinimumDurationSeconds
+        val minDurationMs = minDurationSec * 1000L
         val selection = buildList {
             add("${MediaStore.Audio.Media.SIZE} > 0")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add("${MediaStore.MediaColumns.IS_PENDING} = 0")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add("${MediaStore.MediaColumns.IS_TRASHED} = 0")
+            if (minDurationMs > 0) {
+                add("(${MediaStore.Audio.Media.DURATION} >= $minDurationMs OR ${MediaStore.Audio.Media.DURATION} = 0 OR ${MediaStore.Audio.Media.DURATION} IS NULL)")
+            }
         }.joinToString(" AND ")
         val unknownArtist = context.getString(R.string.unknown_artist)
         val unknownTitle = context.getString(R.string.unknown)
         val tracks = mutableListOf<LocalTrackRecord>()
+        val seenPaths = mutableSetOf<String>()
         val lyricsExtractor = EmbeddedLyricsExtractor(context.contentResolver)
         val cursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -402,24 +431,38 @@ class LocalSongScanner @Inject constructor(
             val yearIndex = it.getColumnIndex(MediaStore.Audio.Media.YEAR)
             val trackIndex = it.getColumnIndex(MediaStore.Audio.Media.TRACK)
             val modifiedIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            val addedIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val sizeIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
             val mimeIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
             val relativeIndex = it.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+            val volumeIndex = it.getColumnIndex(MediaStore.MediaColumns.VOLUME_NAME)
             val dataIndex = it.getColumnIndex(MediaStore.MediaColumns.DATA)
             while (it.moveToNext()) {
                 currentCoroutineContext().ensureActive()
                 val folder = resolveNormalizedFolderPath(it.getStringOrNull(relativeIndex), it.getStringOrNull(dataIndex))
-                if (!shouldIncludeFolder(folder, included) || shouldExcludeFolder(folder, excluded)) continue
+                if (!scanConfig.shouldScanFolder(folder)) continue
                 val displayName = it.getStringOrNull(displayNameIndex)
                 val mime = it.getStringOrNull(mimeIndex)?.takeIf(String::isNotBlank) ?: "audio/*"
                 if (!SupportedLocalAudio.isSupported(displayName, mime)) continue
+                val path = it.getStringOrNull(dataIndex)
+                    ?.let { value -> runCatching { File(value).canonicalPath }.getOrDefault(File(value).absolutePath) }
+                    ?: listOfNotNull(it.getStringOrNull(volumeIndex), it.getStringOrNull(relativeIndex), displayName)
+                        .joinToString("/")
+                if (!seenPaths.add(path)) continue
+
+                val mediaStoreDurationMs = it.getLongOrNull(durationIndex)?.coerceAtLeast(0L) ?: 0L
+                val mediaStoreDurationSec = (mediaStoreDurationMs / 1000L).toInt()
+                if (minDurationSec > 0 && mediaStoreDurationMs > 0 && mediaStoreDurationSec < minDurationSec) {
+                    continue
+                }
+
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, it.getLong(idIndex))
                 val modified = it.getLong(modifiedIndex)
+                val added = it.getLong(addedIndex)
                 val size = it.getLong(sizeIndex).coerceAtLeast(0L)
                 val metadata = metadataReader.read(uri, modified, size)
-                val duration = metadata.durationSeconds ?: (it.getLong(durationIndex).coerceAtLeast(0L) / 1000L)
-                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-                if (duration < scanConfig.sanitizedMinimumDurationSeconds) continue
+                val duration = metadata.durationSeconds ?: mediaStoreDurationSec
+                if (minDurationSec > 0 && duration < minDurationSec) continue
                 val artist = metadata.artist ?: cleanTag(it.getStringOrNull(artistIndex))
                 val album = metadata.album ?: cleanTag(it.getStringOrNull(albumIndex))
                 val encodedTrack = it.getIntOrNull(trackIndex)?.takeIf { value -> value > 0 }
@@ -437,6 +480,8 @@ class LocalSongScanner @Inject constructor(
                     year = metadata.year ?: it.getIntOrNull(yearIndex)?.takeIf { value -> value in 1..9999 },
                     dateModified = modified.takeIf { value -> value > 0L }
                         ?.let { value -> LocalDateTime.ofInstant(Instant.ofEpochSecond(value), ZoneId.systemDefault()) },
+                    dateAdded = added.takeIf { value -> value > 0L }
+                        ?.let { value -> LocalDateTime.ofInstant(Instant.ofEpochSecond(value), ZoneId.systemDefault()) },
                     sizeBytes = size,
                     mimeType = mime,
                     thumbnailUrl = metadata.thumbnailUrl,
@@ -444,6 +489,7 @@ class LocalSongScanner @Inject constructor(
                         ?.let { value -> ContentUris.withAppendedId(AlbumArtUri, value).toString() },
                     embeddedLyrics = lyricsExtractor.extract(contentUri = uri, displayName = displayName, mimeType = mime)
                         ?.let(LyricsUtils::lyricsOrNotFound)?.takeIf { value -> value != LyricsEntity.LYRICS_NOT_FOUND },
+                    exportedDownloadId = displayName?.let(LocalMusicIdentity::downloadIdFromExportedFilename),
                 )
             }
         }
@@ -517,35 +563,6 @@ class LocalSongScanner @Inject constructor(
         return normalizedAbsoluteFolder.takeIf(String::isNotEmpty)?.lowercase(Locale.ROOT)
     }
 
-    private fun shouldIncludeFolder(
-        folderPath: String?,
-        includedFolders: Set<String>,
-    ): Boolean {
-        if (includedFolders.isEmpty()) return true
-        return matchesFolderEntry(folderPath, includedFolders)
-    }
-
-    private fun shouldExcludeFolder(
-        folderPath: String?,
-        excludedFolders: Set<String>,
-    ): Boolean {
-        if (excludedFolders.isEmpty()) return false
-        return matchesFolderEntry(folderPath, excludedFolders)
-    }
-
-    private fun matchesFolderEntry(
-        folderPath: String?,
-        folders: Set<String>,
-    ): Boolean {
-        if (folderPath.isNullOrEmpty()) return false
-        return folders.any { folder ->
-            folderPath == folder ||
-                folderPath.startsWith("$folder/") ||
-                folderPath.endsWith("/$folder") ||
-                folderPath.contains("/$folder/")
-        }
-    }
-
     private fun android.database.Cursor.getLongOrNull(columnIndex: Int): Long? =
         if (columnIndex >= 0 && !isNull(columnIndex)) getLong(columnIndex) else null
 
@@ -568,6 +585,7 @@ class LocalSongScanner @Inject constructor(
         val durationSeconds: Int,
         val year: Int?,
         val dateModified: LocalDateTime?,
+        val dateAdded: LocalDateTime?,
         val sizeBytes: Long,
         val mimeType: String,
         val thumbnailUrl: String?,
@@ -577,6 +595,7 @@ class LocalSongScanner @Inject constructor(
         val matchedArtistName: String? = null,
         val artistThumbnailUrl: String? = null,
         val remoteAlbumId: String? = null,
+        val exportedDownloadId: String? = null,
     )
 
     private companion object {

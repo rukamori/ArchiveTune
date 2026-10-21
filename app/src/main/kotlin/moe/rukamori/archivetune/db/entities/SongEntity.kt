@@ -40,6 +40,7 @@ data class SongEntity(
     val year: Int? = null,
     val date: LocalDateTime? = null, // ID3 tag property
     val dateModified: LocalDateTime? = null, // file property
+    val dateAdded: LocalDateTime? = null,
     val liked: Boolean = false,
     val likedDate: LocalDateTime? = null,
     val totalPlayTime: Long = 0, // in milliseconds
@@ -51,6 +52,7 @@ data class SongEntity(
     val isPodcast: Boolean = false,
     @ColumnInfo(name = "isLocal", defaultValue = "0")
     val isLocal: Boolean = false,
+    val exportedDownloadId: String? = null,
 ) {
     fun localToggleLike() =
         copy(

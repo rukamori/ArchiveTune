@@ -9,6 +9,9 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,6 +115,14 @@ fun StorageSettings(
     val screenState by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val storagePickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val downloadFolderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+            uri?.let(viewModel::setDownloadFolder)
+        }
+    val downloadFolderName =
+        (screenState as? StorageSettingsScreenState.Success)
+            ?.model
+            ?.downloadFolderName
 
     LaunchedEffect(viewModel, context) {
         viewModel.effects.collect { effect ->
@@ -296,6 +307,21 @@ fun StorageSettings(
             )
 
             PreferenceGroup(title = stringResource(R.string.downloaded_songs)) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.download_folder)) },
+                        description =
+                            downloadFolderName
+                                ?: stringResource(R.string.download_folder_default_description),
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.snippet_folder),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = { downloadFolderPicker.launch(null) },
+                    )
+                }
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_all_downloads)) },

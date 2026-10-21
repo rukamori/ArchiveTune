@@ -9,6 +9,8 @@ package moe.rukamori.archivetune.ui.component
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,17 +19,20 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -47,6 +52,7 @@ inline fun <reified T : Enum<T>> SortHeader(
     crossinline sortTypeText: (T) -> Int,
     modifier: Modifier = Modifier,
     showDescending: Boolean? = true,
+    compact: Boolean = false,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val allowDescending =
@@ -62,7 +68,37 @@ inline fun <reified T : Enum<T>> SortHeader(
     )
 
     Box(modifier = modifier.padding(vertical = 8.dp)) {
-        if (showSortDirection) {
+        if (compact) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = { menuExpanded = true },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.heightIn(min = 36.dp),
+                ) {
+                    Text(
+                        text = stringResource(sortTypeText(sortType)),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (showSortDirection) {
+                    IconButton(
+                        onClick = { onSortDescendingChange(!sortDescending) },
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_downward),
+                            contentDescription =
+                                stringResource(
+                                    if (sortDescending) R.string.sort_order_descending else R.string.sort_order_ascending,
+                                ),
+                            modifier = Modifier.size(18.dp).rotate(sortDirectionRotation),
+                        )
+                    }
+                }
+            }
+        } else if (showSortDirection) {
             SplitButtonLayout(
                 leadingButton = {
                     SplitButtonDefaults.TonalLeadingButton(

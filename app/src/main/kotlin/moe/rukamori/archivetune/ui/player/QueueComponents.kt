@@ -36,6 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -109,6 +110,8 @@ fun CurrentSongHeader(
     infiniteQueueLoading: Boolean,
     backgroundColor: Color,
     onBackgroundColor: Color,
+    showDownloadQueue: Boolean,
+    onDownloadQueueClick: () -> Unit,
     onToggleLike: () -> Unit,
     onMenuClick: () -> Unit,
     onClearQueueClick: () -> Unit,
@@ -287,6 +290,27 @@ fun CurrentSongHeader(
                 color = onBackgroundColor.copy(alpha = 0.55f),
                 modifier = Modifier.padding(end = 14.dp),
             )
+        }
+
+        if (showDownloadQueue) {
+            Spacer(modifier = Modifier.height(10.dp))
+            FilledTonalButton(
+                onClick = onDownloadQueueClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = onBackgroundColor.copy(alpha = 0.12f),
+                        contentColor = onBackgroundColor,
+                    ),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.download),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.download_all_queue_items))
+            }
         }
 
         Spacer(modifier = Modifier.height(14.dp))

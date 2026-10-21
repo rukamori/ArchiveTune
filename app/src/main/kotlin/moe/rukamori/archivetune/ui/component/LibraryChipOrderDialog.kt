@@ -140,6 +140,7 @@ fun LibraryChipOrderDialog(
 private fun LibraryFilter.labelResId(): Int =
     when (this) {
         LibraryFilter.LIBRARY -> R.string.filter_library
+        LibraryFilter.LOCAL -> R.string.local_songs_tab
         LibraryFilter.PLAYLISTS -> R.string.playlists
         LibraryFilter.PODCASTS -> R.string.podcast
         LibraryFilter.SPOTIFY -> R.string.spotify_playlists

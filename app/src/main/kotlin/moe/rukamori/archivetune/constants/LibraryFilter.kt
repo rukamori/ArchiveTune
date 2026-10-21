@@ -14,12 +14,14 @@ enum class LibraryFilter {
     PLAYLISTS,
     PODCASTS,
     SPOTIFY,
+    LOCAL,
     LIBRARY,
 }
 
 val DefaultLibraryFilterOrder =
     listOf(
         LibraryFilter.LIBRARY,
+        LibraryFilter.LOCAL,
         LibraryFilter.PLAYLISTS,
         LibraryFilter.PODCASTS,
         LibraryFilter.SPOTIFY,
@@ -36,9 +38,36 @@ fun String.toLibraryFilterOrder(): List<LibraryFilter> {
         split(",")
             .mapNotNull { savedFilter ->
                 DefaultLibraryFilterOrder.firstOrNull { it.name == savedFilter.trim() }
-            }.distinct()
+            }.distinct().toMutableList()
 
-    return savedOrder + DefaultLibraryFilterOrder.filterNot(savedOrder::contains)
+    if (LibraryFilter.LOCAL !in savedOrder) {
+        val libraryIndex = savedOrder.indexOf(LibraryFilter.LIBRARY)
+        if (libraryIndex != -1) {
+            savedOrder.add(libraryIndex + 1, LibraryFilter.LOCAL)
+        } else {
+            savedOrder.add(0, LibraryFilter.LOCAL)
+        }
+    } else {
+        val oldDefaultWithLocalAtEnd =
+            listOf(
+                LibraryFilter.LIBRARY,
+                LibraryFilter.PLAYLISTS,
+                LibraryFilter.PODCASTS,
+                LibraryFilter.SPOTIFY,
+                LibraryFilter.SONGS,
+                LibraryFilter.ARTISTS,
+                LibraryFilter.ALBUMS,
+                LibraryFilter.LOCAL,
+            )
+        if (savedOrder == oldDefaultWithLocalAtEnd) {
+            savedOrder.remove(LibraryFilter.LOCAL)
+            savedOrder.add(1, LibraryFilter.LOCAL)
+        }
+    }
+
+    val missing = DefaultLibraryFilterOrder.filterNot(savedOrder::contains)
+    savedOrder.addAll(missing)
+    return savedOrder
 }
 
 fun List<LibraryFilter>.toLibraryFilterPreference(): String {

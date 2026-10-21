@@ -88,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Timeline
+import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +98,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
@@ -120,7 +122,10 @@ import moe.rukamori.archivetune.ui.component.MediaMetadataListItem
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
+import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.oem.SystemMediaControlResolver
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -142,6 +147,7 @@ fun Queue(
     textButtonColor: Color,
     iconButtonColor: Color,
     onShowLyrics: () -> Unit = {},
+    onQueueLongClick: () -> Unit = {},
     pureBlack: Boolean,
 ) {
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -162,6 +168,7 @@ fun Queue(
 
     val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
     val queueTitle by playerConnection.queueTitle.collectAsState()
+    val downloads by LocalDownloadUtil.current.downloads.collectAsStateWithLifecycle()
 
     val selectedSongs = remember { mutableStateListOf<MediaMetadata>() }
     val selectedItems = remember { mutableStateListOf<Timeline.Window>() }
@@ -372,14 +379,19 @@ fun Queue(
             }
         }
     }
+    LaunchedEffect(state.isExpanded, state.isExpandedOrExpanding, currentWindowIndex, queueWindows.size) {
+        QueueOpenDiagnostics.recordCurrent(
+            "Queue composable state: expanded=${state.isExpanded}, " +
+                "targetExpanded=${state.isExpandedOrExpanding}, currentIndex=$currentWindowIndex, " +
+                "itemCount=${queueWindows.size}.",
+        )
+    }
     var scrollToCurrentRequested by remember { mutableStateOf(true) }
     val openQueue =
-        remember(playerBottomSheetState, state) {
+        remember(playerBottomSheetState, state, coroutineScope) {
             {
                 scrollToCurrentRequested = true
-                if (!playerBottomSheetState.isExpandedOrExpanding) {
-                    playerBottomSheetState.expandSoft()
-                }
+                playerBottomSheetState.expandSoft()
                 state.expandSoft()
             }
         }
@@ -389,6 +401,7 @@ fun Queue(
         backgroundColor = Color.Unspecified,
         modifier = modifier,
         onCollapsedContentClick = openQueue,
+        onCollapsedContentLongClick = onQueueLongClick,
         collapsedContent = {
             when (playerDesignStyle) {
                 PlayerDesignStyle.V2 -> {
@@ -721,6 +734,28 @@ fun Queue(
         },
     ) {
         val queueWindows by playerConnection.queueWindows.collectAsState()
+        val downloadQueueItems =
+            remember(queueWindows) {
+                queueWindows.mapNotNull { window ->
+                    window.mediaItem.metadata?.let { metadata ->
+                        HeaderDownloadItem(id = metadata.id, title = metadata.title)
+                    }
+                }.distinctBy(HeaderDownloadItem::id)
+            }
+        val showDownloadQueue =
+            downloadQueueItems.any { item ->
+                val state = downloads[item.id]?.state
+                !item.id.isLocalMediaId() &&
+                    when (state) {
+                        Download.STATE_COMPLETED,
+                        Download.STATE_QUEUED,
+                        Download.STATE_DOWNLOADING,
+                        Download.STATE_RESTARTING,
+                        -> false
+
+                        else -> true
+                    }
+            }
         val mutableQueueWindows =
             remember {
                 mutableStateListOf<Timeline.Window>().apply {
@@ -887,6 +922,10 @@ fun Queue(
                     infiniteQueueLoading = infiniteQueueLoading,
                     backgroundColor = backgroundColor,
                     onBackgroundColor = onBackgroundColor,
+                    showDownloadQueue = showDownloadQueue,
+                    onDownloadQueueClick = {
+                        sendAddMissingDownloads(context, downloadQueueItems, downloads)
+                    },
                     onToggleLike = {
                         playerConnection.service.toggleLike()
                     },

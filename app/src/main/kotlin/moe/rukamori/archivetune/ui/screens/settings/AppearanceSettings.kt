@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.google.common.collect.ImmutableList
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
@@ -443,6 +444,7 @@ fun AppearanceSettings(navController: NavController) {
                     SliderStyle.Thick,
                     SliderStyle.Circular,
                     SliderStyle.Simple,
+                    SliderStyle.Waveform,
                 )
             }
         DefaultDialog(
@@ -1101,6 +1103,7 @@ fun AppearanceSettings(navController: NavController) {
                                 LibraryFilter.PODCASTS -> stringResource(R.string.podcast)
                                 LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
                                 LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
+                                LibraryFilter.LOCAL -> stringResource(R.string.local_songs_tab)
                             }
                         },
                         onValueSelected = onDefaultChipChange,
@@ -1265,6 +1268,7 @@ private fun SliderStyleOptionCard(
     ) {
         StyledPlaybackSlider(
             sliderStyle = sliderStyle,
+            waveformAmplitudes = if (sliderStyle == SliderStyle.Waveform) SliderStyleWaveformPreview else null,
             value = sliderValue,
             valueRange = 0f..1f,
             onValueChange = { sliderValue = it },
@@ -1292,7 +1296,24 @@ private fun sliderStyleLabel(sliderStyle: SliderStyle): String =
         SliderStyle.Thick -> stringResource(R.string.slider_style_thick)
         SliderStyle.Circular -> stringResource(R.string.slider_style_circular)
         SliderStyle.Simple -> stringResource(R.string.slider_style_simple)
+        SliderStyle.Waveform -> stringResource(R.string.slider_style_waveform)
     }
+
+private val SliderStyleWaveformPreview =
+    ImmutableList.of(
+        0.18f,
+        0.9f,
+        0.32f,
+        0.86f,
+        0.94f,
+        0.42f,
+        0.78f,
+        0.28f,
+        0.64f,
+        0.36f,
+        0.82f,
+        0.24f,
+    )
 
 enum class DarkMode {
     ON,

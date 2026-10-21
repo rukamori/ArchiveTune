@@ -29,10 +29,10 @@ import timber.log.Timber
 class LocalMediaIndexer @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    suspend fun indexMissingAudio() {
+    suspend fun indexMissingAudio(scanConfig: LocalSongScanConfig? = null) {
         withContext(Dispatchers.IO) {
             val indexed = indexedPaths()
-            val missing = findAudioFiles().filter { it.absolutePath !in indexed }.map(File::getAbsolutePath)
+            val missing = findAudioFiles(scanConfig).filter { it.absolutePath !in indexed }.map(File::getAbsolutePath)
             if (missing.isEmpty()) return@withContext
             currentCoroutineContext().ensureActive()
             val failed = scan(missing)
@@ -60,23 +60,37 @@ class LocalMediaIndexer @Inject constructor(
     }
 
     @Suppress("DEPRECATION")
-    private suspend fun findAudioFiles(): List<File> {
-        val root = Environment.getExternalStorageDirectory()
-        val androidDirectory = File(root, "Android")
-        val files = mutableListOf<File>()
-        root.walkTopDown()
-            .onEnter { directory ->
-                directory != androidDirectory &&
-                    (directory == root || !directory.name.startsWith('.')) &&
-                    !File(directory, NoMediaFileName).exists()
+    private suspend fun findAudioFiles(scanConfig: LocalSongScanConfig? = null): List<File> {
+        val root = Environment.getExternalStorageDirectory().canonicalFile
+        val config = scanConfig ?: LocalSongScanConfig()
+        val includedFolders = config.sanitizedIncludedFolders
+        val targetDirs =
+            if (includedFolders.isNotEmpty()) {
+                includedFolders
+                    .map { File(root, it).canonicalFile }
+                    .filter { it.toPath().startsWith(root.toPath()) && it.exists() && it.isDirectory }
+                    .distinct()
+            } else {
+                listOf(root)
             }
-            .forEach { file ->
-                currentCoroutineContext().ensureActive()
-                if (file.isFile && file.extension.lowercase(Locale.ROOT) in IndexableExtensions && file.length() > 0L) {
-                    files += file
+        if (includedFolders.isNotEmpty() && targetDirs.isEmpty()) return emptyList()
+
+        val files = linkedMapOf<String, File>()
+        for (targetDir in targetDirs) {
+            targetDir.walkTopDown()
+                .onEnter { directory ->
+                    (directory == targetDir || !directory.name.startsWith('.')) &&
+                        config.shouldScanFolder(directory.relativeTo(root).invariantSeparatorsPath) &&
+                        !File(directory, NoMediaFileName).exists()
                 }
-            }
-        return files
+                .forEach { file ->
+                    currentCoroutineContext().ensureActive()
+                    if (file.isFile && file.extension.lowercase(Locale.ROOT) in IndexableExtensions && file.length() > 0L) {
+                        files.putIfAbsent(file.canonicalPath, file)
+                    }
+                }
+        }
+        return files.values.toList()
     }
 
     private suspend fun scan(paths: List<String>): Int = suspendCancellableCoroutine { continuation ->

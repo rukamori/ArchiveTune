@@ -18,11 +18,19 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
 import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_ALBUM
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_ARTIST
@@ -38,6 +46,8 @@ import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.innertube.pages.SearchSummaryPage
 import moe.rukamori.archivetune.models.ItemsPage
+import moe.rukamori.archivetune.playback.DownloadUtil
+import androidx.media3.exoplayer.offline.Download
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.utils.dataStore
@@ -58,6 +68,8 @@ class OnlineSearchViewModel
         savedStateHandle: SavedStateHandle,
         private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
         private val filterAiContent: FilterAiContentUseCase,
+        private val database: MusicDatabase,
+        downloadUtil: DownloadUtil,
     ) : ViewModel() {
         val query =
             decodeOnlineSearchQuery(
@@ -66,6 +78,32 @@ class OnlineSearchViewModel
         val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
         var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
         val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
+        private val downloadedSongs =
+            downloadUtil.downloads
+                .map { downloads ->
+                    downloads.values
+                        .filter { download -> download.state == Download.STATE_COMPLETED }
+                        .map { download -> download.request.id }
+                        .distinct()
+                }.distinctUntilChanged()
+                .flatMapLatest { songIds ->
+                    val songFlows = songIds.chunked(MAX_SONG_IDS_PER_QUERY).map(database::songsByIds)
+                    if (songFlows.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        combine(songFlows) { songGroups -> songGroups.flatMap { it } }
+                    }
+                }.map { songs -> songs.filterNot { song -> song.song.isLocal } }
+        val localSongs =
+            combine(database.localSongs(), downloadedSongs) { deviceSongs, downloads ->
+                (deviceSongs + downloads).distinctBy { song -> song.id }
+            }.map { songs ->
+                songs.filter { song ->
+                        song.song.title.contains(query, ignoreCase = true) ||
+                            song.song.albumName.orEmpty().contains(query, ignoreCase = true) ||
+                            song.artists.any { artist -> artist.name.contains(query, ignoreCase = true) }
+                    }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         private val allModeFilters =
             listOf(
@@ -79,6 +117,10 @@ class OnlineSearchViewModel
             )
         private var isSummaryLoading = false
         private val loadingFilters = mutableSetOf<String>()
+
+        companion object {
+            private const val MAX_SONG_IDS_PER_QUERY = 900
+        }
 
         init {
             viewModelScope.launch {

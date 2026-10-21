@@ -2,6 +2,8 @@
 <resources>
     <string name="explore">تصفح</string>
     <string name="local_history">على الجهاز</string>
+    <string name="local_songs_tab">الملفات المحلية</string>
+    <string name="download_all_queue_items">تنزيل جميع الأغاني في قائمة الانتظار</string>
     <string name="remote_history">عن بعد</string>
     <string name="charts">القوائم</string>
     <string name="back_button_desc">رجوع</string>

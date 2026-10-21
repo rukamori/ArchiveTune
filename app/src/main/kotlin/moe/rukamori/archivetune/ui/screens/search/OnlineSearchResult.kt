@@ -87,6 +87,7 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.ChipsRow
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -116,6 +117,9 @@ fun OnlineSearchResult(
     val lazyListState = rememberLazyListState()
 
     val searchFilter by viewModel.filter.collectAsStateWithLifecycle()
+    val localSongs by viewModel.localSongs.collectAsStateWithLifecycle()
+    val localQueueItems = remember(localSongs) { localSongs.map { it.toMediaItem() } }
+    val showLocalSongs = searchFilter == null || searchFilter == FILTER_SONG
     val searchSummary = viewModel.summaryPage
     val itemsPage by remember(searchFilter) {
         derivedStateOf {
@@ -343,6 +347,68 @@ fun OnlineSearchResult(
                     .asPaddingValues(),
             modifier = Modifier.weight(1f),
         ) {
+            if (showLocalSongs && localSongs.isNotEmpty()) {
+                item(key = "local_results_header", contentType = "section_header") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .width(3.dp)
+                                    .height(18.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.on_device),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                itemsIndexed(
+                    items = localSongs,
+                    key = { _, song -> "local_${song.id}" },
+                    contentType = { _, _ -> "local_search_result" },
+                ) { index, song ->
+                    SongListItem(
+                        song = song,
+                        isActive = mediaMetadata?.id == song.id,
+                        isPlaying = isPlaying,
+                        modifier =
+                            Modifier
+                                .combinedClickable(
+                                    onClick = {
+                                        if (mediaMetadata?.id == song.id) {
+                                            playerConnection.player.togglePlayPause()
+                                        } else {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = viewModel.query,
+                                                    items = localQueueItems,
+                                                    startIndex = index,
+                                                ),
+                                            )
+                                        }
+                                    },
+                                    onLongClick = null,
+                                ).animateItem(),
+                    )
+                }
+                item(key = "local_results_divider", contentType = "divider") {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    )
+                }
+            }
+
             if (searchFilter == null) {
                 allModeSections.forEachIndexed { index, summary ->
                     if (index > 0) {

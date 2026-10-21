@@ -16,6 +16,7 @@ import android.util.Base64
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -54,6 +55,7 @@ import kotlin.math.min
 val DefaultThemeColor = Color(0xFFED5564)
 val LocalArchiveTuneFontPreference = staticCompositionLocalOf { AppFontPreference.DEFAULT }
 val LocalArchiveTuneFontFamily = staticCompositionLocalOf { AppFontFamily }
+private const val ThemeColorTransitionDurationMs = 650
 
 @Composable
 fun rememberArchiveTuneLyricsFontFamily(): FontFamily {
@@ -160,7 +162,7 @@ fun ArchiveTuneTheme(
         } else {
             animateColorScheme(
                 targetColorScheme = colorScheme,
-                animationSpec = motionScheme.defaultEffectsSpec(),
+                animationSpec = tween(durationMillis = ThemeColorTransitionDurationMs),
             )
         }
 

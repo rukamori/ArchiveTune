@@ -14,6 +14,7 @@ import androidx.media3.common.C
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.ResolvingDataSource
@@ -33,16 +34,18 @@ import androidx.media3.exoplayer.offline.DownloadProgress
 import androidx.media3.exoplayer.offline.DownloaderFactory
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -54,6 +57,7 @@ import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
+import moe.rukamori.archivetune.downloads.ExportCompletedDownloadUseCase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
@@ -63,6 +67,7 @@ import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.isLowDataModeActive
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import timber.log.Timber
@@ -86,6 +91,7 @@ class DownloadUtil
         @PlayerCache val playerCache: Cache,
         private val downloadedArtworkRepository: DownloadedArtworkRepository,
         private val resolveAudioStream: ResolveAudioStreamUseCase,
+        private val exportCompletedDownload: ExportCompletedDownloadUseCase,
     ) {
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -93,6 +99,7 @@ class DownloadUtil
         private val artworkJobs = mutableMapOf<String, Job>()
         private val downloadPreloadLock = Any()
         private val playbackCacheReuseIds = ConcurrentHashMap.newKeySet<String>()
+        private val exportingDownloadIds = ConcurrentHashMap.newKeySet<String>()
         private val persistedMetadata = ConcurrentHashMap<String, DownloadMetadataSignature>()
 
         private var downloadPreloadTargetId: String? = null
@@ -226,7 +233,20 @@ class DownloadUtil
                             }
                             if (download.state == Download.STATE_COMPLETED) {
                                 scheduleDownloadedArtwork(download.request.id)
+                                exportDownloadedAudio(download)
                                 playbackCacheReuseIds.remove(download.request.id)
+                                downloadScope.launch {
+                                    val song = database.getSongByIdBlocking(download.request.id)?.song
+                                    if (song != null) {
+                                        val now = LocalDateTime.now()
+                                        database.update(
+                                            song.copy(
+                                                dateDownload = song.dateDownload ?: now,
+                                                dateAdded = song.dateAdded ?: now,
+                                            ),
+                                        )
+                                    }
+                                }
                             } else if (download.state == Download.STATE_FAILED) {
                                 playbackCacheReuseIds.remove(download.request.id)
                                 invalidateResolvedStream(download.request.id)
@@ -274,6 +294,7 @@ class DownloadUtil
                 for (download in result.values) {
                     if (download.state == Download.STATE_COMPLETED) {
                         scheduleDownloadedArtwork(download.request.id).join()
+                        exportDownloadedAudio(download)
                     }
                 }
             }
@@ -293,6 +314,21 @@ class DownloadUtil
                     activeDownloads.forEach { download ->
                         set(download.request.id, download.toProgressSnapshot())
                     }
+                }
+            }
+        }
+
+        private fun exportDownloadedAudio(download: Download) {
+            if (!exportingDownloadIds.add(download.request.id)) return
+            downloadScope.launch {
+                try {
+                    exportCompletedDownload(download)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Timber.tag(TAG).e(exception, "Unable to export completed download %s", download.request.id)
+                } finally {
+                    exportingDownloadIds.remove(download.request.id)
                 }
             }
         }
@@ -369,6 +405,34 @@ class DownloadUtil
         }
 
         fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
+
+        suspend fun generateWaveform(
+            mediaId: String,
+            durationMs: Int,
+        ): ByteArray =
+            withContext(Dispatchers.IO) {
+                val dataSourceFactory =
+                    if (mediaId.isLocalMediaId()) {
+                        DefaultDataSource.Factory(context)
+                    } else {
+                        CacheDataSource.Factory()
+                            .setCache(downloadCache)
+                            .setUpstreamDataSourceFactory(invalidatingNetworkDataSourceFactory)
+                            .setCacheWriteDataSinkFactory(null)
+                    }
+                val dataSpec =
+                    DataSpec
+                        .Builder()
+                        .setUri(mediaId.toUri())
+                        .apply {
+                            if (!mediaId.isLocalMediaId()) setKey(mediaId)
+                        }.build()
+                AudioWaveformAnalyzer.generate(
+                    dataSourceFactory = dataSourceFactory,
+                    dataSpec = dataSpec,
+                    fallbackDurationMs = durationMs,
+                )
+            }
 
         private fun resolveDownloadAudioQuality(lowDataModeActive: Boolean): AudioQuality =
             if (lowDataModeActive) AudioQuality.LOW else audioQuality

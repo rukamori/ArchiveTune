@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore">استكشف</string>
+    <string name="local_songs_tab">الملفات المحلية</string>
+    <string name="download_all_queue_items">تنزيل كل الأغاني في قائمة الانتظار</string>
     <string name="music_recognition_tap_to_listen">دوس عشان تسمع</string>
     <string name="music_recognition_listening">بنسمع…</string>
     <string name="music_recognition_processing">بنحلل…</string>

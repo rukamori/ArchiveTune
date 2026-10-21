@@ -10,7 +10,14 @@
 package moe.rukamori.archivetune.ui.menu
 
 import android.content.Intent
+import android.app.Activity
+import android.app.RecoverableSecurityException
+import android.os.Build
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -30,6 +37,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,6 +48,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -138,6 +147,14 @@ fun SongMenu(
         .getDownload(originalSong.id)
         .collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
+    var showDeleteLocalConfirm by rememberSaveable { mutableStateOf(false) }
+    val deleteLocalFileLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                database.query { deleteSongsByIds(listOf(song.id)) }
+                onDismiss()
+            }
+        }
     val syncUtils = LocalSyncUtils.current
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
 
@@ -269,6 +286,51 @@ fun SongMenu(
                 }
             },
             onDismiss = { showEditDialog = false },
+        )
+    }
+
+    if (showDeleteLocalConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteLocalConfirm = false },
+            title = { Text(stringResource(R.string.delete_local_file)) },
+            text = { Text(stringResource(R.string.delete_local_file_confirm, song.song.title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteLocalConfirm = false
+                        val uri = song.id.toUri()
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val request = MediaStore.createDeleteRequest(context.contentResolver, listOf(uri))
+                                deleteLocalFileLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
+                            } else {
+                                val deleted = context.contentResolver.delete(uri, null, null)
+                                if (deleted > 0) {
+                                    database.query { deleteSongsByIds(listOf(song.id)) }
+                                    onDismiss()
+                                } else {
+                                    Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (error: SecurityException) {
+                            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q && error is RecoverableSecurityException) {
+                                deleteLocalFileLauncher.launch(
+                                    IntentSenderRequest.Builder(error.userAction.actionIntent.intentSender).build(),
+                                )
+                            } else {
+                                Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteLocalConfirm = false }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            },
         )
     }
 
@@ -441,6 +503,7 @@ fun SongMenu(
     val addToPlaylistText = stringResource(R.string.add_to_playlist)
     val shareText = stringResource(R.string.share)
     val editText = stringResource(R.string.edit)
+    val deleteLocalFileText = stringResource(R.string.delete_local_file)
 
     val primaryActions =
         remember(
@@ -451,6 +514,7 @@ fun SongMenu(
             addToPlaylistText,
             shareText,
             editText,
+            deleteLocalFileText,
             isLocalSong,
             onDismiss,
             playerConnection,
@@ -564,6 +628,22 @@ fun SongMenu(
                         onClick = { showEditDialog = true },
                     ),
                 )
+                if (isLocalSong) {
+                    add(
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.delete),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            text = deleteLocalFileText,
+                            onClick = { showDeleteLocalConfirm = true },
+                        ),
+                    )
+                }
             }
         }
 

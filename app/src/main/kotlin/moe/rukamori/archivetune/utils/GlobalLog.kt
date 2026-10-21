@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
@@ -66,7 +67,7 @@ class GlobalLogTree : Timber.DebugTree() {
         t: Throwable?,
     ) {
         try {
-            val final = if (t != null) "$message\n$t" else message
+            val final = if (t != null) "$message\n${Log.getStackTraceString(t)}" else message
             GlobalLog.append(priority, tag, final)
         } catch (_: Exception) {
             // swallow

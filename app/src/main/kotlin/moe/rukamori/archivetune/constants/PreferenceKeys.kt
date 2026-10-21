@@ -175,6 +175,7 @@ enum class SliderStyle {
     Thick,
     Circular,
     Simple,
+    Waveform,
 }
 
 const val SYSTEM_DEFAULT = "SYSTEM_DEFAULT"
@@ -356,6 +357,8 @@ val StorageFolderIdKey = stringPreferencesKey("storageFolderId")
 val StorageFolderTreeUriKey = stringPreferencesKey("storageFolderTreeUri")
 val StorageFolderPathKey = stringPreferencesKey("storageFolderPath")
 val StorageFolderDisplayNameKey = stringPreferencesKey("storageFolderDisplayName")
+val DownloadFolderTreeUriKey = stringPreferencesKey("downloadFolderTreeUri")
+val DownloadFolderDisplayNameKey = stringPreferencesKey("downloadFolderDisplayName")
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
@@ -904,7 +907,7 @@ val CountryCodeToName =
         "AE" to "United Arab Emirates",
     )
 
-// App rating / star prompt preferences
+// Onboarding launch tracking and app rating prompt preferences
 val LaunchCountKey = intPreferencesKey("launch_count")
 val OnboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
 val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")

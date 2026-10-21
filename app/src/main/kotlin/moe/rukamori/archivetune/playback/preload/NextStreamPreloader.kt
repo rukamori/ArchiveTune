@@ -21,7 +21,7 @@ import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,53 +38,66 @@ class NextStreamPreloader
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val lock = Any()
 
-        private var target: Target? = null
-        private var job: Job? = null
+        private val jobs = mutableMapOf<Target, Job>()
+        private val completedTargets = mutableSetOf<Target>()
 
-        fun updateTarget(request: AudioStreamRequest) {
-            val nextTarget = Target(request)
-            lateinit var preloadFailure: AtomicReference<Throwable?>
-            val jobToStart =
+        fun updateTargets(requests: List<AudioStreamRequest>) {
+            val targets = requests.map(::Target).toSet()
+            val jobsToStart =
                 synchronized(lock) {
-                    if (target == nextTarget) return
+                    jobs.keys.filterNot(targets::contains).toList().forEach { target ->
+                        jobs.remove(target)?.cancel()
+                    }
+                    completedTargets.retainAll(targets)
 
-                    val previousJob = job
-                    preloadFailure = AtomicReference()
-                    val nextJob =
-                        scope.launch(start = CoroutineStart.LAZY) {
-                            try {
-                                preload(nextTarget)
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (throwable: Throwable) {
-                                Timber.tag(LOG_TAG).w(
-                                    throwable,
-                                    "Failed to preload resolved stream for %s",
-                                    request.mediaId,
-                                )
-                                preloadFailure.set(throwable)
+                    targets.mapNotNull { target ->
+                        if (target in jobs || target in completedTargets) {
+                            null
+                        } else {
+                            val preloadSucceeded = AtomicBoolean()
+                            val job =
+                                scope.launch(start = CoroutineStart.LAZY) {
+                                    try {
+                                        preload(target)
+                                        preloadSucceeded.set(true)
+                                    } catch (cancellation: CancellationException) {
+                                        throw cancellation
+                                    } catch (throwable: Throwable) {
+                                        Timber.tag(LOG_TAG).w(
+                                            throwable,
+                                            "Failed to preload resolved stream for %s",
+                                            target.request.mediaId,
+                                        )
+                                    }
+                                }
+                            jobs[target] = job
+                            job.invokeOnCompletion { cause ->
+                                synchronized(lock) {
+                                    if (jobs[target] === job) {
+                                        jobs.remove(target)
+                                        if (cause == null && preloadSucceeded.get()) {
+                                            completedTargets.add(target)
+                                        }
+                                    }
+                                }
                             }
+                            job
                         }
-
-                    target = nextTarget
-                    job = nextJob
-                    previousJob?.cancel()
-                    nextJob
+                    }
                 }
 
-            jobToStart.invokeOnCompletion { cause ->
-                complete(nextTarget, jobToStart, preloadFailure.get() ?: cause)
-            }
-            jobToStart.start()
+            jobsToStart.forEach(Job::start)
         }
 
         fun cancel() {
-            val jobToCancel =
+            val jobsToCancel =
                 synchronized(lock) {
-                    target = null
-                    job.also { job = null }
+                    jobs.values.toList().also {
+                        jobs.clear()
+                        completedTargets.clear()
+                    }
                 }
-            jobToCancel?.cancel()
+            jobsToCancel.forEach(Job::cancel)
         }
 
         private suspend fun preload(target: Target) {
@@ -94,21 +107,6 @@ class NextStreamPreloader
             if (playerCache.isFullyCached(cacheKey) || downloadCache.isFullyCached(cacheKey)) return
 
             resolveAudioStream.preload(target.request)
-        }
-
-        private fun complete(
-            completedTarget: Target,
-            completedJob: Job,
-            cause: Throwable?,
-        ) {
-            synchronized(lock) {
-                if (target != completedTarget || job !== completedJob) return
-
-                job = null
-                if (cause != null && cause !is CancellationException) {
-                    target = null
-                }
-            }
         }
 
         private fun Cache.isFullyCached(key: String): Boolean {

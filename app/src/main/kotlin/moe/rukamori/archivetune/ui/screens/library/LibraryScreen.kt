@@ -12,6 +12,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -84,9 +85,11 @@ import moe.rukamori.archivetune.constants.PlaylistTagOrderKey
 import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.toLibraryFilterOrder
+import moe.rukamori.archivetune.constants.toLibraryFilterPreference
 import moe.rukamori.archivetune.constants.toPlaylistTagOrder
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
+import moe.rukamori.archivetune.ui.component.LibraryChipOrderDialog
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -107,13 +110,14 @@ fun LibraryScreen(
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
     val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = false)
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
-    val (libraryChipOrderPreference) =
+    val (libraryChipOrderPreference, onLibraryChipOrderPreferenceChange) =
         rememberPreference(
             LibraryChipOrderKey,
             defaultValue = DefaultLibraryFilterOrderPreference,
         )
     val (playlistTagOrderPreference) = rememberPreference(PlaylistTagOrderKey, defaultValue = "")
     var showTagsManagementDialog by rememberSaveable { mutableStateOf(false) }
+    var showLibraryChipOrderDialog by rememberSaveable { mutableStateOf(false) }
     val activeSelectedTagIds = if (showTagsInLibrary) selectedTagIds else emptySet()
     val orderedTags =
         remember(allTags, playlistTagOrderPreference) {
@@ -132,6 +136,17 @@ fun LibraryScreen(
     if (showTagsManagementDialog) {
         TagsManagementDialog(
             onDismiss = { showTagsManagementDialog = false },
+        )
+    }
+
+    if (showLibraryChipOrderDialog) {
+        LibraryChipOrderDialog(
+            initialOrder = libraryChipOrderPreference.toLibraryFilterOrder(),
+            onDismiss = { showLibraryChipOrderDialog = false },
+            onConfirm = { order ->
+                onLibraryChipOrderPreferenceChange(order.toLibraryFilterPreference())
+                showLibraryChipOrderDialog = false
+            },
         )
     }
 
@@ -214,6 +229,7 @@ fun LibraryScreen(
                 val tabWidth =
                     when (targetFilter) {
                         LibraryFilter.LIBRARY -> 116.dp
+                        LibraryFilter.LOCAL -> 112.dp
                         LibraryFilter.PLAYLISTS -> 132.dp
                         LibraryFilter.PODCASTS -> 126.dp
                         LibraryFilter.SPOTIFY -> 168.dp
@@ -264,6 +280,10 @@ fun LibraryScreen(
                                 }
                             },
                         )
+                    }
+
+                    LibraryFilter.LOCAL -> {
+                        LibraryLocalSongsScreen(navController = navController)
                     }
 
                     LibraryFilter.PLAYLISTS -> {
@@ -348,6 +368,7 @@ fun LibraryScreen(
                         val label =
                             when (filter) {
                                 LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
+                                LibraryFilter.LOCAL -> stringResource(R.string.local_songs_tab)
                                 LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
                                 LibraryFilter.PODCASTS -> stringResource(R.string.podcast)
                                 LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
@@ -358,6 +379,7 @@ fun LibraryScreen(
                         val iconRes =
                             when (filter) {
                                 LibraryFilter.LIBRARY -> R.drawable.graphic_eq
+                                LibraryFilter.LOCAL -> R.drawable.music_note
                                 LibraryFilter.PLAYLISTS -> R.drawable.queue_music
                                 LibraryFilter.PODCASTS -> R.drawable.mic
                                 LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
@@ -374,6 +396,7 @@ fun LibraryScreen(
                                     pagerState.animateScrollToPage(page)
                                 }
                             },
+                            onLongClick = { showLibraryChipOrderDialog = true },
                         )
                     }
                 }
@@ -543,6 +566,7 @@ fun ExpressiveTabChip(
     iconRes: Int,
     selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -590,10 +614,11 @@ fun ExpressiveTabChip(
                     scaleY = scale
                 }.clip(CircleShape)
                 .background(bgColor)
-                .clickable(
+                .combinedClickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = onClick,
+                    onLongClick = onLongClick,
                 ).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,

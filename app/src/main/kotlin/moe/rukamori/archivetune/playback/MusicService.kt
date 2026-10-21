@@ -112,6 +112,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -171,6 +172,7 @@ import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleLik
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleRepeatMode
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleShuffle
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleStartRadio
+import moe.rukamori.archivetune.constants.MediaSessionConstants
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
@@ -443,6 +445,7 @@ class MusicService :
     }
 
     private var currentQueue: Queue = EmptyQueue
+    private var queueLoadJob: Job? = null
     var queueTitle: String? = null
     private var blockedArtistIds: Set<String> = emptySet()
     private var hideMusicVideos = false
@@ -508,10 +511,17 @@ class MusicService :
     val queueRestoreCompleted = MutableStateFlow(false)
     val infiniteQueueLoading = MutableStateFlow(false)
     private val playerInitialized = MutableStateFlow(false)
+    private val preloadedSongs = ConcurrentHashMap<String, Song>()
+    @Volatile private var preloadedNextSongId: String? = null
+    private var nextSongPreloadJob: Job? = null
     private val currentSong =
         currentMediaMetadata
             .flatMapLatest { mediaMetadata ->
-                database.song(mediaMetadata?.id)
+                val mediaId = mediaMetadata?.id
+                val preloaded = mediaId?.let(preloadedSongs::remove)
+                database.song(mediaId).onStart {
+                    if (preloaded != null) emit(preloaded)
+                }
             }.flowOn(Dispatchers.IO)
             .stateIn(scope, SharingStarted.Lazily, null)
     private val currentFormat =
@@ -1258,6 +1268,10 @@ class MusicService :
             toggleLike = ::toggleLike
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
+            dismissPlayback = {
+                stopAndClearPlayback(clearPersistentState = true)
+                stopForegroundAndSelf()
+            }
             carMediaButtonPreferences = ::buildAndroidAutoButtons
         }
         val mediaSessionBuilder = MediaLibrarySession.Builder(this, player, mediaLibrarySessionCallback)
@@ -3841,6 +3855,12 @@ class MusicService :
                 listOf(
                     CommandButton
                         .Builder()
+                        .setDisplayName(getString(R.string.dismiss_player))
+                        .setIconResId(R.drawable.close)
+                        .setSessionCommand(MediaSessionConstants.CommandDismissPlayback)
+                        .build(),
+                    CommandButton
+                        .Builder()
                         .setDisplayName(
                             getString(
                                 if (currentSong.value?.song?.liked == true) {
@@ -4086,95 +4106,108 @@ class MusicService :
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
-        currentQueue = queue
-        queueTitle = null
-        val permanentShuffle = dataStore.get(PermanentShuffleKey, false)
-        if (!permanentShuffle) {
-            player.shuffleModeEnabled = false
-        }
-
         clearAutomix()
         autoAddedMediaIds.clear()
-        scope.launch(SilentHandler) {
-            val hideExplicit = dataStore.get(HideExplicitKey, false)
-            val hideVideo = dataStore.get(HideVideoKey, false)
-            val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
-            val preloadItem =
-                queue.preloadItem
-                    ?.toMediaItem()
-                    ?.takeUnless { item ->
-                        item.hasBlockedArtist(loadBlockedArtistIds())
-                    }
-            if (preloadItem != null) {
-                player.setMediaItem(preloadItem)
-                player.prepare()
-                player.playWhenReady = playWhenReady
-            }
-            var initialStatus =
-                withContext(Dispatchers.IO) {
-                    queue
-                        .getInitialStatus()
-                        .filterPlaybackContent(hideExplicit, hideVideo)
-                }
-            if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
-                val expandedItems = initialStatus.items.toMutableList()
-                var pagesLoaded = 0
-                while (queue.hasNextPage() && pagesLoaded < 200) {
-                    pagesLoaded++
-                    val nextItems =
-                        withContext(Dispatchers.IO) {
-                            queue
-                                .nextPage()
-                                .filterPlaybackContent(hideExplicit, hideVideo)
+        queueLoadJob?.cancel()
+        queueLoadJob =
+            scope.launch(SilentHandler) {
+                val hideExplicit = dataStore.get(HideExplicitKey, false)
+                val hideVideo = dataStore.get(HideVideoKey, false)
+                val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
+                val preloadItem =
+                    queue.preloadItem
+                        ?.toMediaItem()
+                        ?.takeUnless { item ->
+                            item.hasBlockedArtist(loadBlockedArtistIds())
                         }
-                    if (nextItems.isNotEmpty()) {
-                        expandedItems += nextItems
+                if (preloadItem != null) {
+                    currentQueue = EmptyQueue
+                    queueTitle = null
+                    player.setMediaItems(listOf(preloadItem), 0, 0L)
+                    player.prepare()
+                    player.playWhenReady = playWhenReady
+                }
+                var initialStatus =
+                    withContext(Dispatchers.IO) {
+                        queue
+                            .getInitialStatus()
+                            .filterPlaybackContent(hideExplicit, hideVideo)
                     }
+                if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
+                    val expandedItems = initialStatus.items.toMutableList()
+                    var pagesLoaded = 0
+                    while (queue.hasNextPage() && pagesLoaded < 200) {
+                        pagesLoaded++
+                        val nextItems =
+                            withContext(Dispatchers.IO) {
+                                queue
+                                    .nextPage()
+                                    .filterPlaybackContent(hideExplicit, hideVideo)
+                            }
+                        if (nextItems.isNotEmpty()) {
+                            expandedItems += nextItems
+                        }
+                    }
+                    initialStatus = initialStatus.copy(items = expandedItems)
                 }
-                initialStatus = initialStatus.copy(items = expandedItems)
-            }
-            if (initialStatus.title != null) {
+                val items = initialStatus.items.toMutableList()
+                var startIndex = initialStatus.mediaItemIndex
+                if (preloadItem != null) {
+                    val preloadMediaId = preloadItem.mediaId.trim()
+                    val insertionIndex =
+                        initialStatus.mediaItemIndex.coerceIn(0, items.size)
+                    val itemsBeforeCurrent =
+                        items
+                            .subList(0, insertionIndex)
+                            .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                    val itemsAfterCurrent =
+                        items
+                            .subList(insertionIndex, items.size)
+                            .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                    items.clear()
+                    items.addAll(itemsBeforeCurrent)
+                    startIndex = items.size
+                    items.add(preloadItem)
+                    items.addAll(itemsAfterCurrent)
+                }
+                if (items.isEmpty()) return@launch
+
+                currentQueue = queue
                 queueTitle = initialStatus.title
-            }
-            if (initialStatus.items.isEmpty()) return@launch
-            if (preloadItem != null) {
-                val preloadMediaId = preloadItem.mediaId.trim()
-                val insertionIndex =
-                    initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
-                val itemsBeforeCurrent =
-                    initialStatus.items
-                        .subList(0, insertionIndex)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
-                val itemsAfterCurrent =
-                    initialStatus.items
-                        .subList(insertionIndex, initialStatus.items.size)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
-
-                player.addMediaItems(0, itemsBeforeCurrent)
-                player.addMediaItems(itemsAfterCurrent)
+                if (!dataStore.get(PermanentShuffleKey, false)) {
+                    player.shuffleModeEnabled = false
+                }
+                val seededItemIsStillCurrent =
+                    preloadItem != null &&
+                        player.mediaItemCount == 1 &&
+                        player.currentMediaItem?.mediaId == preloadItem.mediaId
+                if (seededItemIsStillCurrent) {
+                    val safeStartIndex = startIndex.coerceIn(items.indices)
+                    if (safeStartIndex > 0) {
+                        player.addMediaItems(0, items.subList(0, safeStartIndex))
+                    }
+                    val currentIndex = player.currentMediaItemIndex
+                    val itemsAfterCurrent = items.drop(safeStartIndex + 1)
+                    if (itemsAfterCurrent.isNotEmpty()) {
+                        player.addMediaItems(currentIndex + 1, itemsAfterCurrent)
+                    }
+                } else {
+                    player.setMediaItems(items, startIndex.coerceIn(items.indices), initialStatus.position)
+                    player.prepare()
+                    player.playWhenReady = playWhenReady
+                }
                 if (player.shuffleModeEnabled) {
                     applyCurrentFirstShuffleOrder()
                 }
-            } else {
-                val items = initialStatus.items
-                val index = initialStatus.mediaItemIndex
 
-                player.setMediaItems(items, index, initialStatus.position)
-                player.prepare()
-                player.playWhenReady = playWhenReady
-                if (player.shuffleModeEnabled) {
-                    applyCurrentFirstShuffleOrder()
+                if (
+                    autoLoadMoreEnabled &&
+                    player.currentMetadata?.isPodcast != true &&
+                    !queue.hasNextPage() &&
+                    player.mediaItemCount - player.currentMediaItemIndex <= 3
+                ) {
+                    onInfiniteQueueEnabled()
                 }
-            }
-
-            if (
-                autoLoadMoreEnabled &&
-                player.currentMetadata?.isPodcast != true &&
-                !queue.hasNextPage() &&
-                player.mediaItemCount - player.currentMediaItemIndex <= 3
-            ) {
-                onInfiniteQueueEnabled()
-            }
         }
     }
 
@@ -4404,6 +4437,8 @@ class MusicService :
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = true
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        queueLoadJob?.cancel()
+        queueLoadJob = null
         clearAutomix()
         currentQueue = EmptyQueue
         queueTitle = null
@@ -6988,48 +7023,79 @@ class MusicService :
             return
         }
 
-        val nextMediaItemIndex = player.nextMediaItemIndex
-        if (nextMediaItemIndex == C.INDEX_UNSET ||
-            nextMediaItemIndex == player.currentMediaItemIndex ||
-            nextMediaItemIndex !in 0 until player.mediaItemCount
-        ) {
-            nextStreamPreloader.cancel()
-            return
-        }
-
-        val nextMediaItem = player.getMediaItemAt(nextMediaItemIndex)
-        val nextMediaId =
-            (nextMediaItem.localConfiguration?.customCacheKey ?: nextMediaItem.mediaId)
-                .trim()
-                .takeIf(String::isNotEmpty)
+        val timeline = player.currentTimeline
+        val currentIndex = player.currentMediaItemIndex
         val currentMediaId =
             player.currentMediaItem
                 ?.let { mediaItem -> mediaItem.localConfiguration?.customCacheKey ?: mediaItem.mediaId }
                 ?.trim()
                 ?.takeIf(String::isNotEmpty)
-        val nextUri = nextMediaItem.localConfiguration?.uri
-        if (nextMediaId == null ||
-            nextMediaId == currentMediaId ||
-            nextMediaId.isLocalMediaId() ||
-            nextUri == null ||
-            nextUri.shouldBypassYouTubeResolver()
-        ) {
-            nextStreamPreloader.cancel()
+        if (currentIndex !in 0 until timeline.windowCount || currentMediaId == null) {
+            nextStreamPreloader.updateTargets(emptyList())
             return
         }
 
-        nextStreamPreloader.updateTarget(
-            request =
+        val previousIndex =
+            timeline.getPreviousWindowIndex(
+                currentIndex,
+                player.repeatMode,
+                player.shuffleModeEnabled,
+            )
+        val candidateIndexes = listOf(previousIndex, player.nextMediaItemIndex).distinct()
+        val requests =
+            candidateIndexes.mapNotNull { index ->
+                if (index !in 0 until player.mediaItemCount || index == currentIndex) return@mapNotNull null
+
+                val mediaItem = player.getMediaItemAt(index)
+                val mediaId =
+                    (mediaItem.localConfiguration?.customCacheKey ?: mediaItem.mediaId)
+                        .trim()
+                        .takeIf(String::isNotEmpty)
+                val uri = mediaItem.localConfiguration?.uri
+                if (mediaId == null ||
+                    mediaId == currentMediaId ||
+                    mediaId.isLocalMediaId() ||
+                    uri == null ||
+                    uri.shouldBypassYouTubeResolver()
+                ) {
+                    return@mapNotNull null
+                }
+
                 AudioStreamRequest(
-                    mediaId = nextMediaId,
+                    mediaId = mediaId,
                     playlistId = null,
                     quality = configuration.quality,
                     networkMetered = false,
                     purpose = StreamPurpose.PLAYBACK,
                     authState = configuration.authState,
                     pinnedFormatId = null,
-                ),
-        )
+                )
+            }
+        nextStreamPreloader.updateTargets(requests)
+    }
+
+    private fun preloadNextSongSnapshot() {
+        val nextIndex = player.nextMediaItemIndex
+        if (nextIndex !in 0 until player.mediaItemCount) {
+            nextSongPreloadJob?.cancel()
+            nextSongPreloadJob = null
+            preloadedNextSongId?.let(preloadedSongs::remove)
+            preloadedNextSongId = null
+            return
+        }
+
+        val nextSongId = player.getMediaItemAt(nextIndex).mediaId
+        if (nextSongId == preloadedNextSongId) return
+
+        nextSongPreloadJob?.cancel()
+        preloadedNextSongId?.let(preloadedSongs::remove)
+        preloadedNextSongId = nextSongId
+        nextSongPreloadJob = scope.launch(Dispatchers.IO) {
+            val song = database.song(nextSongId).first() ?: return@launch
+            if (preloadedNextSongId == nextSongId) {
+                preloadedSongs[nextSongId] = song
+            }
+        }
     }
 
     override fun onEvents(
@@ -7045,6 +7111,7 @@ class MusicService :
             )
         ) {
             updateNextStreamPreload()
+            preloadNextSongSnapshot()
         }
         val currentMediaId = player.currentMediaItem?.mediaId
         if (currentMediaId == null && currentHistoryMediaId != null) {
@@ -7501,12 +7568,22 @@ class MusicService :
             }
         }
 
+        if (isLocalMedia && error.hasMissingLocalMediaCause()) {
+            Timber.tag("MusicService").w(error, "Skipping unavailable local media item %s", currentMediaId)
+            skipOnError()
+            return
+        }
+
         if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
             skipOnError()
         } else {
             stopOnError()
         }
     }
+
+    private fun PlaybackException.hasMissingLocalMediaCause(): Boolean =
+        generateSequence<Throwable>(this) { throwable -> throwable.cause }
+            .any { throwable -> throwable is java.io.FileNotFoundException }
 
     private suspend fun trimPlayerCacheToBytes(limitBytes: Long) {
         if (limitBytes <= 0L) return
@@ -8056,12 +8133,16 @@ class MusicService :
                 if (eventId != null) {
                     runCatching {
                         database.updateEventPlayTime(eventId, playbackStats.totalPlayTimeMs)
+                        if (database.song(mediaId).first() != null) {
+                            database.incrementPlayCount(mediaId)
+                        }
                     }.onFailure(::reportException)
                 }
 
                 try {
                     database.withTransaction {
                         incrementTotalPlayTime(mediaId, playbackStats.totalPlayTimeMs)
+
                     }
                 } catch (_: SQLException) {
                 } catch (throwable: Throwable) {

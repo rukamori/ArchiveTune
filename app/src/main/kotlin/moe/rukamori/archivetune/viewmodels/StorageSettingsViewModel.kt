@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.viewmodels
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,6 +41,10 @@ import moe.rukamori.archivetune.storage.StorageLocationOption
 import moe.rukamori.archivetune.storage.StorageLocationOptions
 import moe.rukamori.archivetune.storage.StorageMigrationPhase
 import moe.rukamori.archivetune.storage.StorageMigrationProgress
+import moe.rukamori.archivetune.downloads.DownloadFolderSelection
+import moe.rukamori.archivetune.downloads.ObserveDownloadFolderUseCase
+import moe.rukamori.archivetune.downloads.SetDownloadFolderUseCase
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed interface StorageSettingsScreenState {
@@ -61,6 +66,7 @@ data class StorageSettingsUiModel(
     val folder: StorageFolderUiModel,
     val storageOptions: StorageLocationUiOptions,
     val picker: StorageLocationPickerUiModel,
+    val downloadFolderName: String?,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
 )
@@ -138,7 +144,9 @@ class StorageSettingsViewModel
     @Inject
     constructor(
         observeStorageFolders: ObserveStorageFoldersUseCase,
+        observeDownloadFolder: ObserveDownloadFolderUseCase,
         private val setStorageFolder: SetStorageFolderUseCase,
+        private val setDownloadFolderUseCase: SetDownloadFolderUseCase,
         private val clearStorageCache: ClearStorageCacheUseCase,
     ) : ViewModel() {
         private val _effects = MutableSharedFlow<StorageSettingsEffect>(extraBufferCapacity = 1)
@@ -154,7 +162,8 @@ class StorageSettingsViewModel
                 pickerState,
                 migrationState,
                 cacheClearState,
-            ) { selection, picker, migration, cacheClear ->
+                observeDownloadFolder(),
+            ) { selection, picker, migration, cacheClear, downloadFolder ->
                 val selectedOptionId =
                     picker.selectedOptionId
                         ?.takeIf { optionId ->
@@ -167,6 +176,7 @@ class StorageSettingsViewModel
                     picker = normalizedPicker,
                     migration = migration,
                     cacheClear = cacheClear,
+                    downloadFolder = downloadFolder,
                 )
             }.map<StorageSettingsStatePayload, StorageSettingsScreenState> { payload ->
                 StorageSettingsScreenState.Success(
@@ -174,6 +184,7 @@ class StorageSettingsViewModel
                         folder = payload.selection.toUiModel(),
                         storageOptions = payload.selection.options.toUiOptions(),
                         picker = payload.picker,
+                        downloadFolderName = payload.downloadFolder.displayName,
                         migration = payload.migration,
                         cacheClear = payload.cacheClear,
                     ),
@@ -220,6 +231,30 @@ class StorageSettingsViewModel
                 picker.copy(visible = false)
             }
             selectStorageLocation(optionId)
+        }
+
+        fun setDownloadFolder(uri: Uri) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    setDownloadFolderUseCase(uri)
+                    _effects.emit(
+                        StorageSettingsEffect(
+                            messageResId = R.string.download_folder_saved,
+                            restartApp = false,
+                        ),
+                    )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Timber.e(exception, "Unable to save the selected download folder")
+                    _effects.emit(
+                        StorageSettingsEffect(
+                            messageResId = R.string.download_folder_save_failed,
+                            restartApp = false,
+                        ),
+                    )
+                }
+            }
         }
 
         fun clearSongCache(showFeedback: Boolean = true) {
@@ -365,4 +400,5 @@ private data class StorageSettingsStatePayload(
     val picker: StorageLocationPickerUiModel,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
+    val downloadFolder: DownloadFolderSelection,
 )

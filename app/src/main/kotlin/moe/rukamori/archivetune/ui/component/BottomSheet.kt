@@ -17,6 +17,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -88,6 +89,7 @@ fun BottomSheet(
     backgroundColor: Color,
     onDismiss: (() -> Unit)? = null,
     onCollapsedContentClick: (() -> Unit)? = null,
+    onCollapsedContentLongClick: (() -> Unit)? = null,
     backHandlerEnabled: Boolean = true,
     collapsedContent: @Composable BoxScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
@@ -136,10 +138,11 @@ fun BottomSheet(
                     Modifier
                         .graphicsLayer {
                             alpha = 1f - (state.progress * 4).coerceAtMost(1f)
-                        }.clickable(
+                        }.combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = onCollapsedContentClick ?: state::expandSoft,
+                            onLongClick = onCollapsedContentLongClick,
                         ).fillMaxWidth()
                         .height(state.collapsedBound),
                 content = collapsedContent,

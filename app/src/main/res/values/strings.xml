@@ -172,6 +172,9 @@
     <string name="remove_download">Remove download</string>
     <string name="remove_download_confirm">Are you sure you want to remove this downloaded item? This action cannot be undone.</string>
     <string name="remove_download_section_confirm">Are you sure you want to remove all downloads in this section? This action cannot be undone.</string>
+    <string name="delete_local_file">Delete file</string>
+    <string name="delete_local_file_confirm">Delete \u0022%1$s\u0022 from this device? This cannot be undone.</string>
+    <string name="dismiss_player">Dismiss player</string>
     <string name="download_progress_percent">%1$d%%</string>
     <string name="import_playlist">Import playlist</string>
     <string name="import_failed">Import failed</string>
@@ -490,6 +493,7 @@
     <string name="slider_style_thick">Thick</string>
     <string name="slider_style_circular">Circular</string>
     <string name="slider_style_simple">Simple</string>
+    <string name="slider_style_waveform">Waveform</string>
     <string name="misc">Misc</string>
     <string name="haptics">Vibration</string>
     <string name="haptics_desc">Enable haptic feedback on interactive elements</string>

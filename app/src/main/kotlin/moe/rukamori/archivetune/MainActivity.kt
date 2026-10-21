@@ -93,11 +93,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -1950,6 +1952,22 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     },
                                                     actions = {
+                                                        TranslucentTopAppBarIconButton(
+                                                            onClick = { navController.navigate("history") },
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.history),
+                                                                contentDescription = stringResource(R.string.history),
+                                                            )
+                                                        }
+                                                        TranslucentTopAppBarIconButton(
+                                                            onClick = { navController.navigate("new_release") },
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.new_release),
+                                                                contentDescription = stringResource(R.string.new_releases),
+                                                            )
+                                                        }
                                                         val hasUpdateAvailable =
                                                             BuildConfig.UPDATER_AVAILABLE &&
                                                                 latestUpdateChannel == updateChannel &&
@@ -2119,115 +2137,113 @@ class MainActivity : ComponentActivity() {
                                                                     navController.backToMain()
                                                                 }
 
-                                                                else -> {}
-                                                            }
-                                                        },
-                                                    ) {
-                                                        Icon(
-                                                            painterResource(
-                                                                if (active ||
-                                                                    !navigationItems.fastAny {
-                                                                        it.route == navBackStackEntry?.destination?.route
-                                                                    }
-                                                                ) {
-                                                                    R.drawable.arrow_back
-                                                                } else {
-                                                                    R.drawable.search
-                                                                },
-                                                            ),
-                                                            contentDescription = null,
-                                                        )
-                                                    }
-                                                },
-                                                trailingIcon = {
-                                                    Row {
-                                                        if (active) {
-                                                            if (query.text.isNotEmpty()) {
-                                                                IconButton(
-                                                                    onClick = {
-                                                                        onQueryChange(
-                                                                            TextFieldValue(
-                                                                                "",
-                                                                            ),
-                                                                        )
-                                                                    },
-                                                                ) {
-                                                                    Icon(
-                                                                        painter = painterResource(R.drawable.close),
-                                                                        contentDescription = null,
-                                                                    )
+                                                            else -> {}
+                                                        }
+                                                    },
+                                                ) {
+                                                    Icon(
+                                                        painterResource(
+                                                            if (active ||
+                                                                !navigationItems.fastAny {
+                                                                    it.route == navBackStackEntry?.destination?.route
                                                                 }
-                                                            }
+                                                            ) {
+                                                                R.drawable.arrow_back
+                                                            } else {
+                                                                R.drawable.search
+                                                            },
+                                                        ),
+                                                        contentDescription = null,
+                                                    )
+                                                }
+                                            },
+                                            trailingIcon = {
+                                                Row {
+                                                    if (active) {
+                                                        if (query.text.isNotEmpty()) {
                                                             IconButton(
                                                                 onClick = {
-                                                                    searchSource =
-                                                                        if (searchSource ==
-                                                                            SearchSource.ONLINE
-                                                                        ) {
-                                                                            SearchSource.LOCAL
-                                                                        } else {
-                                                                            SearchSource.ONLINE
-                                                                        }
+                                                                    onQueryChange(
+                                                                        TextFieldValue(
+                                                                            "",
+                                                                        ),
+                                                                    )
                                                                 },
                                                             ) {
                                                                 Icon(
-                                                                    painter =
-                                                                        painterResource(
-                                                                            when (searchSource) {
-                                                                                SearchSource.LOCAL -> R.drawable.library_music
-                                                                                SearchSource.ONLINE -> R.drawable.language
-                                                                            },
-                                                                        ),
+                                                                    painter = painterResource(R.drawable.close),
                                                                     contentDescription = null,
                                                                 )
                                                             }
-                                                        } else if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true) {
-                                                            OnlineSearchSortMenu(
-                                                                selectedSort = onlineSearchSort,
-                                                                onSortSelected = { onlineSearchSort = it },
-                                                            )
                                                         }
+                                                    } else if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true) {
+                                                        OnlineSearchSortMenu(
+                                                            selectedSort = onlineSearchSort,
+                                                            onSortSelected = { onlineSearchSort = it },
+                                                        )
                                                     }
+                                                }
+                                            },
+                                            modifier =
+                                                Modifier
+                                                    .focusRequester(searchBarFocusRequester)
+                                                    .let { with(this@BoxWithConstraints) { it.align(Alignment.TopCenter) } },
+                                            focusRequester = searchBarFocusRequester,
+                                            leftFocusRequester = tvRailFocusRequester,
+                                            colors =
+                                                if (pureBlack && active) {
+                                                    SearchBarDefaults.colors(
+                                                        containerColor = Color.Black,
+                                                        dividerColor = Color.DarkGray,
+                                                        inputFieldColors =
+                                                            TextFieldDefaults.colors(
+                                                                focusedTextColor = Color.White,
+                                                                unfocusedTextColor = Color.Gray,
+                                                                focusedContainerColor = Color.Transparent,
+                                                                unfocusedContainerColor = Color.Transparent,
+                                                                cursorColor = Color.White,
+                                                                focusedIndicatorColor = Color.Transparent,
+                                                                unfocusedIndicatorColor = Color.Transparent,
+                                                            ),
+                                                    )
+                                                } else {
+                                                    SearchBarDefaults.colors(
+                                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                                    )
                                                 },
+                                        ) {
+                                            Column(
                                                 modifier =
                                                     Modifier
-                                                        .focusRequester(searchBarFocusRequester)
-                                                        .let { with(this@BoxWithConstraints) { it.align(Alignment.TopCenter) } },
-                                                focusRequester = searchBarFocusRequester,
-                                                leftFocusRequester = tvRailFocusRequester,
-                                                colors =
-                                                    if (pureBlack && active) {
-                                                        SearchBarDefaults.colors(
-                                                            containerColor = Color.Black,
-                                                            dividerColor = Color.DarkGray,
-                                                            inputFieldColors =
-                                                                TextFieldDefaults.colors(
-                                                                    focusedTextColor = Color.White,
-                                                                    unfocusedTextColor = Color.Gray,
-                                                                    focusedContainerColor = Color.Transparent,
-                                                                    unfocusedContainerColor = Color.Transparent,
-                                                                    cursorColor = Color.White,
-                                                                    focusedIndicatorColor = Color.Transparent,
-                                                                    unfocusedIndicatorColor = Color.Transparent,
-                                                                ),
-                                                        )
-                                                    } else {
-                                                        SearchBarDefaults.colors(
-                                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                                        )
-                                                    },
+                                                        .fillMaxSize()
+                                                        .padding(
+                                                            bottom = if (!playerBottomSheetState.isDismissed) MiniPlayerHeight else 0.dp,
+                                                        ).navigationBarsPadding(),
                                             ) {
+                                                val searchTabs =
+                                                    listOf(
+                                                        SearchSource.LOCAL to R.string.search_library,
+                                                        SearchSource.ONLINE to R.string.search_yt_music,
+                                                    )
+                                                PrimaryTabRow(
+                                                    selectedTabIndex =
+                                                        searchTabs.indexOfFirst { (source, _) ->
+                                                            source == searchSource
+                                                        },
+                                                ) {
+                                                    searchTabs.forEach { (source, titleResId) ->
+                                                        Tab(
+                                                            selected = searchSource == source,
+                                                            onClick = { searchSource = source },
+                                                            text = { Text(stringResource(titleResId)) },
+                                                        )
+                                                    }
+                                                }
                                                 Crossfade(
                                                     targetState = searchSource,
                                                     animationSpec = tween(durationMillis = if (disableAnimations) 0 else 300),
                                                     label = "",
-                                                    modifier =
-                                                        Modifier
-                                                            .fillMaxSize()
-                                                            .hazeSource(floatingBarsHazeState, zIndex = 1f)
-                                                            .padding(
-                                                                bottom = if (!playerBottomSheetState.isDismissed) MiniPlayerHeight else 0.dp,
-                                                            ).navigationBarsPadding(),
+                                                    modifier = Modifier.weight(1f),
                                                 ) { searchSource ->
                                                     when (searchSource) {
                                                         SearchSource.LOCAL -> {
@@ -2260,34 +2276,35 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
-                                    },
-                                    bottomBar = {
-                                        Box {
-                                            val navigationProximityProvider: () -> Float =
-                                                remember(playerBottomSheetState, bottomNavigationBarHeightState) {
-                                                    {
-                                                        val navRatio =
-                                                            (bottomNavigationBarHeightState.value / navVisibleHeight).coerceIn(0f, 1f)
-                                                        val isNavTransitioning =
-                                                            bottomNavigationBarHeightState.value > 0.dp &&
-                                                                bottomNavigationBarHeightState.value < navVisibleHeight
-                                                        val morphThreshold = MiniPlayerHeight + MiniPlayerBottomSpacing
-                                                        val swipeDeviation =
-                                                            if (isNavTransitioning && playerBottomSheetState.targetAnchor == COLLAPSED_ANCHOR) {
-                                                                0.dp
-                                                            } else {
-                                                                playerBottomSheetState.value.let { v ->
-                                                                    if (v < playerBottomSheetState.collapsedBound) {
-                                                                        playerBottomSheetState.collapsedBound - v
-                                                                    } else {
-                                                                        v - playerBottomSheetState.collapsedBound
-                                                                    }
+                                    }
+                                },
+                                bottomBar = {
+                                    Box {
+                                        val navigationProximityProvider: () -> Float =
+                                            remember(playerBottomSheetState, bottomNavigationBarHeightState) {
+                                                {
+                                                    val navRatio =
+                                                        (bottomNavigationBarHeightState.value / navVisibleHeight).coerceIn(0f, 1f)
+                                                    val isNavTransitioning =
+                                                        bottomNavigationBarHeightState.value > 0.dp &&
+                                                            bottomNavigationBarHeightState.value < navVisibleHeight
+                                                    val morphThreshold = MiniPlayerHeight + MiniPlayerBottomSpacing
+                                                    val swipeDeviation =
+                                                        if (isNavTransitioning && playerBottomSheetState.targetAnchor == COLLAPSED_ANCHOR) {
+                                                            0.dp
+                                                        } else {
+                                                            playerBottomSheetState.value.let { v ->
+                                                                if (v < playerBottomSheetState.collapsedBound) {
+                                                                    playerBottomSheetState.collapsedBound - v
+                                                                } else {
+                                                                    v - playerBottomSheetState.collapsedBound
                                                                 }
                                                             }
-                                                        val sheetPresence = (1f - (swipeDeviation / morphThreshold)).coerceIn(0f, 1f)
-                                                        navRatio * sheetPresence
-                                                    }
+                                                        }
+                                                    val sheetPresence = (1f - (swipeDeviation / morphThreshold)).coerceIn(0f, 1f)
+                                                    navRatio * sheetPresence
                                                 }
+                                            }
 
                                             CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides playerBackDispatcherOwner) {
                                                 BottomSheetPlayer(

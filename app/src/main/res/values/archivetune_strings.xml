@@ -62,6 +62,9 @@
     <string name="clear_selection">Clear selection</string>
     <string name="scan_device">Scan device</string>
     <string name="scanning_device">Scanning device…</string>
+    <string name="local_songs_tab">Local</string>
+    <string name="download_all_queue_items">Download all queued songs</string>
+    <string name="queue_open_diagnostics_title">Queue opening diagnostics</string>
     <string name="local_songs_ready_desc">Play local songs on this device.</string>
     <string name="local_songs_permission_body">Allow storage access to scan audio files stored on this device.</string>
     <string name="local_songs_empty_title">No local songs found</string>
@@ -409,6 +412,10 @@
     <string name="swipe_sensitivity">Mini player swipe sensitivity</string>
     <string name="storage_folder">Storage folder</string>
     <string name="storage_folder_pick">Choose folder</string>
+    <string name="download_folder">Download location</string>
+    <string name="download_folder_default_description">Downloads stay in app storage until you choose a folder.</string>
+    <string name="download_folder_saved">Download folder saved.</string>
+    <string name="download_folder_save_failed">Unable to save this download folder.</string>
     <string name="storage_location_sheet_title">Storage location</string>
     <string name="storage_location_internal">Internal storage</string>
     <string name="storage_location_removable">SD card</string>

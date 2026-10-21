@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -32,6 +33,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -78,9 +80,11 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -120,6 +124,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -143,8 +148,13 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -154,6 +164,8 @@ import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackViewModel
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackState
 import moe.rukamori.archivetune.viewmodels.ImmersivePlayerViewModel
+import moe.rukamori.archivetune.viewmodels.PlaybackWaveformState
+import moe.rukamori.archivetune.viewmodels.PlaybackWaveformViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -179,6 +191,7 @@ import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import timber.log.Timber
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
@@ -304,6 +317,7 @@ fun BottomSheetPlayer(
     navigationBarMode: NavigationBarMode = NavigationBarMode.CONNECTED,
     canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
     immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
+    waveformViewModel: PlaybackWaveformViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -312,6 +326,8 @@ fun BottomSheetPlayer(
 
     val playerConnection = LocalPlayerConnection.current ?: return
     val immersivePlayerState by immersivePlayerViewModel.state.collectAsStateWithLifecycle()
+    val showQueueDiagnostics by QueueOpenDiagnostics.dialogVisible.collectAsState()
+    val openQueueDiagnostics: () -> Unit = { QueueOpenDiagnostics.showDialog() }
     DisposableEffect(immersivePlayerViewModel, playerConnection) {
         immersivePlayerViewModel.bind(playerConnection)
         onDispose { immersivePlayerViewModel.unbind(playerConnection) }
@@ -449,6 +465,21 @@ fun BottomSheetPlayer(
             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
         )
     val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.Standard)
+    val waveformState by waveformViewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(sliderStyle, mediaMetadata?.id, mediaMetadata?.duration) {
+        if (sliderStyle == SliderStyle.Waveform) {
+            mediaMetadata?.let { metadata ->
+                waveformViewModel.load(metadata.id, metadata.duration * 1_000)
+            }
+        } else {
+            waveformViewModel.cancel()
+        }
+    }
+    val waveformAmplitudes =
+        (waveformState as? PlaybackWaveformState.Ready)
+            ?.takeIf { it.mediaId == mediaMetadata?.id }
+            ?.waveform
+            ?.amplitudes
     val canvasState by canvasViewModel.state.collectAsStateWithLifecycle()
     val canvasRequest = remember(mediaMetadata, playerDesignStyle, aodModeEnabled) {
         mediaMetadata?.takeIf {
@@ -974,11 +1005,25 @@ fun BottomSheetPlayer(
     var isLyricsScreenVisible by rememberSaveable {
         mutableStateOf(false)
     }
-    val openQueue =
-        remember(state, queueSheetState) {
+    val queueDiagnosticsScope = rememberCoroutineScope()
+    val openQueue: () -> Unit =
+        remember(state, queueSheetState, playerConnection, mediaMetadata, playerDesignStyle, currentRoute) {
             {
+                val attemptId =
+                    QueueOpenDiagnostics.begin(
+                        "style=$playerDesignStyle, route=${currentRoute ?: "unknown"}, " +
+                            "mediaId=${mediaMetadata?.id ?: "none"}",
+                    )
+                QueueOpenDiagnostics.record(
+                    attemptId,
+                    "Before request: playerExpanded=${state.isExpanded}, " +
+                        "playerTargetExpanded=${state.isExpandedOrExpanding}, " +
+                        "queueExpanded=${queueSheetState.isExpanded}, " +
+                        "queueTargetExpanded=${queueSheetState.isExpandedOrExpanding}, " +
+                        "queueSize=${playerConnection.player.mediaItemCount}",
+                )
                 isLyricsScreenVisible = false
-                if (!state.isExpandedOrExpanding) {
+                try {
                     state.expandSoft()
                 }
                 queueSheetState.expandSoft()
@@ -1252,6 +1297,7 @@ fun BottomSheetPlayer(
                 mediaMetadata = mediaMetadata,
                 playerDesignStyle = playerDesignStyle,
                 sliderStyle = sliderStyle,
+                waveformAmplitudes = waveformAmplitudes,
                 playbackState = playbackState,
                 isPlaying = isPlaying,
                 isLoading = isLoading,
@@ -1362,6 +1408,7 @@ fun BottomSheetPlayer(
                                     onCollapse = state::collapseSoft,
                                     onToggleLike = playerConnection::toggleLike,
                                     onExpandQueue = openQueue,
+                                    onQueueLongClick = openQueueDiagnostics,
                                     onMenuClick = {
                                         menuState.show {
                                             PlayerMenu(
@@ -1482,6 +1529,7 @@ fun BottomSheetPlayer(
                             canvasFallbackUrl = artworkCanvas?.videoUrl,
                             onCollapseClick = { state.collapseSoft() },
                             onQueueClick = openQueue,
+                            onQueueLongClick = openQueueDiagnostics,
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
@@ -1518,6 +1566,7 @@ fun BottomSheetPlayer(
                             iconButtonColor = iconButtonColor,
                             onCollapseClick = { state.collapseSoft() },
                             onQueueClick = openQueue,
+                            onQueueLongClick = openQueueDiagnostics,
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
@@ -1655,6 +1704,7 @@ fun BottomSheetPlayer(
                                         onCollapse = state::collapseSoft,
                                         onToggleLike = playerConnection::toggleLike,
                                         onExpandQueue = openQueue,
+                                        onQueueLongClick = openQueueDiagnostics,
                                         onMenuClick = {
                                             menuState.show {
                                                 PlayerMenu(
@@ -1775,6 +1825,7 @@ fun BottomSheetPlayer(
                             canvasFallbackUrl = artworkCanvas?.videoUrl,
                             onCollapseClick = { state.collapseSoft() },
                             onQueueClick = openQueue,
+                            onQueueLongClick = openQueueDiagnostics,
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
@@ -1810,6 +1861,7 @@ fun BottomSheetPlayer(
                             iconButtonColor = iconButtonColor,
                             onCollapseClick = { state.collapseSoft() },
                             onQueueClick = openQueue,
+                            onQueueLongClick = openQueueDiagnostics,
                             onLyricsClick = { isLyricsScreenVisible = true },
                             onSliderValueChange = onSliderValueChange,
                             onSliderValueChangeFinished = onSliderValueChangeFinished,
@@ -1915,6 +1967,7 @@ fun BottomSheetPlayer(
             state = queueSheetState,
             playerBottomSheetState = state,
             navController = navController,
+            modifier = Modifier.fillMaxSize().zIndex(1f),
             backgroundColor =
                 if (useBlackBackground) {
                     Color.Black
@@ -1926,8 +1979,13 @@ fun BottomSheetPlayer(
             textButtonColor = textButtonColor,
             iconButtonColor = iconButtonColor,
             onShowLyrics = { isLyricsScreenVisible = true },
+            onQueueLongClick = openQueueDiagnostics,
             pureBlack = pureBlack,
         )
+
+        if (showQueueDiagnostics) {
+            QueueOpenDiagnosticsDialog(onDismiss = QueueOpenDiagnostics::dismissDialog)
+        }
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
@@ -2246,6 +2304,7 @@ private fun LittlePlayerContent(
     onCollapse: () -> Unit,
     onToggleLike: () -> Unit,
     onExpandQueue: () -> Unit,
+    onQueueLongClick: () -> Unit,
     onMenuClick: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -2410,10 +2469,9 @@ private fun LittlePlayerContent(
                     modifier =
                         Modifier
                             .size(iconSize)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                            .combinedClickable(
                                 onClick = onExpandQueue,
+                                onLongClick = onQueueLongClick,
                             ),
                 )
 
