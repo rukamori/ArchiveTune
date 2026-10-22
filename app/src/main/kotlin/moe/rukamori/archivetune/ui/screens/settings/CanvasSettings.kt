@@ -294,7 +294,7 @@ private fun CanvasHealthPreferences(
         canvasHealthPreference(
             titleRes = R.string.canvas_spotify,
             health = model.health.spotify,
-            iconRes = R.drawable.spotify_icon,
+            iconRes = R.drawable.spotify,
         )
     }
 }

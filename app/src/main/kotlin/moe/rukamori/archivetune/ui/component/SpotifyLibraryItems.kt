@@ -48,7 +48,7 @@ fun SpotifyLibraryPlaylistListItem(
     }
     val trailing: @Composable RowScope.() -> Unit = {
         Icon(
-            painter = painterResource(R.drawable.spotify_icon),
+            painter = painterResource(R.drawable.spotify),
             contentDescription = stringResource(R.string.spotify_account),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp),
@@ -87,7 +87,7 @@ fun SpotifyLikedSongsListItem(
         },
         trailingContent = {
             Icon(
-                painter = painterResource(R.drawable.spotify_icon),
+                painter = painterResource(R.drawable.spotify),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp),

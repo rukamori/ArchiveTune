@@ -799,7 +799,7 @@ private fun SpotifyPlaylistCompactCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.spotify_icon),
+                    painter = painterResource(id = R.drawable.spotify),
                     contentDescription = stringResource(R.string.spotify_account),
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(14.dp),

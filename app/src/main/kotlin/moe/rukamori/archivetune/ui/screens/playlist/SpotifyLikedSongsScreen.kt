@@ -211,7 +211,7 @@ private fun SpotifyLikedSongsContent(
                 SpotifyLikedSongsScreenState.Error -> {
                     item(key = "error", contentType = "error") {
                         EmptyPlaceholder(
-                            icon = R.drawable.spotify_icon,
+                            icon = R.drawable.spotify,
                             text = stringResource(R.string.error_unknown),
                         )
                     }

@@ -263,7 +263,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
             PreferenceEntry(
                 title = { Text(stringResource(R.string.spotify_connect)) },
                 description = stringResource(R.string.spotify_not_connected),
-                icon = { Icon(painterResource(R.drawable.spotify_icon), null) },
+                icon = { Icon(painterResource(R.drawable.spotify), null) },
                 trailingContent = {
                     AnimatedVisibility(visible = state.isLoading) {
                         CircularWavyProgressIndicator(
@@ -316,7 +316,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
         SwitchPreference(
             title = { Text(stringResource(R.string.spotify_show_playlist)) },
             description = stringResource(R.string.spotify_show_playlist_desc),
-            icon = { Icon(painterResource(R.drawable.spotify_icon), null) },
+            icon = { Icon(painterResource(R.drawable.spotify), null) },
             checked = showPlaylists,
             onCheckedChange = onShowPlaylistsChange,
             isEnabled = !state.isLoading,
@@ -347,7 +347,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
 private fun SpotifyAccountIcon(avatarUrl: String?) {
     val context = LocalContext.current
     val requestSize = with(LocalDensity.current) { SpotifyAccountIconSize.roundToPx() }
-    val accountIcon = painterResource(R.drawable.spotify_icon)
+    val accountIcon = painterResource(R.drawable.spotify)
     val imageRequest =
         remember(context, avatarUrl, requestSize) {
             avatarUrl
