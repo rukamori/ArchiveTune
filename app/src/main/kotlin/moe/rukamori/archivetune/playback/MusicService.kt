@@ -1480,7 +1480,7 @@ class MusicService :
                     crossfadeSuppressedMediaId = null
                 }
                 crossfadeDurationMs =
-                    (config.durationSeconds.coerceIn(0f, 10f) * 1000f)
+                    (config.durationSeconds.coerceIn(0f, 20f) * 1000f)
                         .roundToLong()
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
