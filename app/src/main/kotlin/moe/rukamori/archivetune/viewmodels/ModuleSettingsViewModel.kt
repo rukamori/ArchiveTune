@@ -129,11 +129,15 @@ sealed interface ModuleSettingsEvent {
 }
 
 @HiltViewModel
-class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSettingsUseCases) : ViewModel() {
+class ModuleSettingsViewModel @Inject constructor(
+    private val useCases: ModuleSettingsUseCases,
+    savedStateHandle: androidx.lifecycle.SavedStateHandle,
+) : ViewModel() {
     private val mutableState = MutableStateFlow<ModuleSettingsState>(ModuleSettingsState.Loading)
     val state = mutableState.asStateFlow()
     private val eventChannel = Channel<ModuleSettingsEvent>(Channel.BUFFERED)
     val events = eventChannel.receiveAsFlow()
+    private var initialModuleId: String? = savedStateHandle["moduleId"]
     private var registry = ModuleRegistry()
     private var health: Map<String, ModuleHealth> = emptyMap()
     private var observer: Job? = null
@@ -227,7 +231,17 @@ class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSe
         observer = viewModelScope.launch {
             try {
                 combine(useCases.state, useCases.health) { data, checks -> data to checks }.collect { (data, checks) ->
-                    registry = data; health = checks; render()
+                    registry = data
+                    health = checks
+                    initialModuleId?.let { id ->
+                        initialModuleId = null
+                        registry.modules.firstOrNull { it.id == id }?.let { module ->
+                            selectedId = id
+                            page = ModuleSettingsPage.MODULE
+                            draft = module.configuration.toMap()
+                        }
+                    }
+                    render()
                 }
             } catch (error: CancellationException) { throw error }
             catch (_: Exception) { mutableState.value = ModuleSettingsState.Error(R.string.modules_load_failed) }

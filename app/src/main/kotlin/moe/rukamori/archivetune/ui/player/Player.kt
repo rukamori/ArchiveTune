@@ -305,6 +305,34 @@ fun BottomSheetPlayer(
     canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
     immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
 ) {
+    ModuleSourcePillProvider(navController = navController, onNavigate = { state.collapseSoft() }) {
+        BottomSheetPlayerContent(
+            state = state,
+            navController = navController,
+            hazeState = hazeState,
+            modifier = modifier,
+            pureBlack = pureBlack,
+            navigationProximityProvider = navigationProximityProvider,
+            navigationBarMode = navigationBarMode,
+            canvasViewModel = canvasViewModel,
+            immersivePlayerViewModel = immersivePlayerViewModel,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BottomSheetPlayerContent(
+    state: BottomSheetState,
+    navController: NavController,
+    hazeState: HazeState,
+    modifier: Modifier = Modifier,
+    pureBlack: Boolean,
+    navigationProximityProvider: () -> Float = { 0f },
+    navigationBarMode: NavigationBarMode = NavigationBarMode.CONNECTED,
+    canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
+    immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
+) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
 
@@ -2347,6 +2375,7 @@ private fun LittlePlayerContent(
 
                 Spacer(Modifier.width((16f * scale).dp))
 
+                Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = timeText,
                     color = timeColor,
@@ -2356,6 +2385,8 @@ private fun LittlePlayerContent(
                     maxLines = 1,
                     modifier = Modifier.widthIn(min = (140f * scale).dp),
                 )
+                    ModuleSourcePill(foreground = textColor)
+                }
             }
 
             Spacer(Modifier.height((14f * scale).dp))

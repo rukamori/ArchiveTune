@@ -42,6 +42,7 @@ internal class ModuleMediaSourceFactory(
     private val storage: ModuleMediaStorage,
     private val completedDownload: (String) -> Boolean,
     private val selected: (String, ModuleAudioSelection?) -> Unit,
+    private val resolving: (String) -> Unit,
 ) : MediaSource.Factory by delegate {
     override fun setDrmSessionManagerProvider(drmSessionManagerProvider: DrmSessionManagerProvider): MediaSource.Factory {
         delegate.setDrmSessionManagerProvider(drmSessionManagerProvider)
@@ -56,8 +57,11 @@ internal class ModuleMediaSourceFactory(
     override fun createMediaSource(mediaItem: MediaItem): MediaSource {
         val configuration = mediaItem.localConfiguration ?: return delegate.createMediaSource(mediaItem)
         if (configuration.uri.scheme in listOf("content", "file", "android.resource", "http", "https") ||
-            mediaItem.metadata?.let { !it.moduleMatchMetadata().eligible } == true) return delegate.createMediaSource(mediaItem)
-        return ModuleMediaSource(mediaItem, delegate, resolver, bindings, storage, completedDownload, selected)
+            mediaItem.metadata?.let { !it.moduleMatchMetadata().eligible } == true) {
+            selected(mediaItem.mediaId, null)
+            return delegate.createMediaSource(mediaItem)
+        }
+        return ModuleMediaSource(mediaItem, delegate, resolver, bindings, storage, completedDownload, selected, resolving)
     }
 }
 
@@ -69,6 +73,7 @@ private class ModuleMediaSource(
     private val storage: ModuleMediaStorage,
     private val completedDownload: (String) -> Boolean,
     private val selected: (String, ModuleAudioSelection?) -> Unit,
+    private val resolving: (String) -> Unit,
 ) : CompositeMediaSource<Unit>() {
     private var scope: CoroutineScope? = null
     private var child: MediaSource? = null
@@ -78,6 +83,7 @@ private class ModuleMediaSource(
 
     override fun prepareSourceInternal(mediaTransferListener: TransferListener?) {
         super.prepareSourceInternal(mediaTransferListener)
+        resolving(item.mediaId)
         val owner = CoroutineScope(SupervisorJob() + Handler(checkNotNull(Looper.myLooper())).asCoroutineDispatcher())
         scope = owner
         owner.launch {

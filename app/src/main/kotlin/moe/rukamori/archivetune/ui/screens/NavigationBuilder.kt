@@ -438,7 +438,14 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/player") {
         PlayerSettings(navController)
     }
-    composable("settings/modules") {
+    composable(
+        "settings/modules?moduleId={moduleId}",
+        arguments = listOf(androidx.navigation.navArgument("moduleId") {
+            type = androidx.navigation.NavType.StringType
+            nullable = true
+            defaultValue = null
+        }),
+    ) {
         moe.rukamori.archivetune.ui.screens.settings.ModulesSettings(navController)
     }
     composable("settings/canvas") {
