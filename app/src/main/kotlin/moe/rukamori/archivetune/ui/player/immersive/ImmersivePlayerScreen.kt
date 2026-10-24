@@ -80,6 +80,9 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import moe.rukamori.archivetune.ui.player.LocalModuleSourcePill
+import moe.rukamori.archivetune.ui.player.ModuleSourcePill
+import moe.rukamori.archivetune.ui.player.ModuleSourceTimeRow
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.canvas.CanvasVideo
@@ -652,37 +655,25 @@ private fun ProgressSection(
         onValueChange = { onAction(ImmersivePlayerAction.PreviewSeek(it)) },
         onValueChangeFinished = { onAction(ImmersivePlayerAction.CommitSeek) },
     )
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = makeTimeString(displayPosition),
-            color = ImmersiveSecondaryContentColor,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        if (showCodecOnPlayer && model.formatDetails.isNotBlank()) {
-            Icon(
-                imageVector = model.outputDevice.type.imageVector,
-                contentDescription = null,
-                tint = ImmersiveContentColor,
-                modifier = Modifier.size(17.dp),
-            )
-            Text(
-                text = model.formatDetails.substringBefore(" · "),
-                color = ImmersiveContentColor,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(start = 5.dp),
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        }
-        Text(
-            text = stringResource(R.string.remaining_time, makeTimeString((model.durationMs - displayPosition).coerceAtLeast(0L))),
-            color = ImmersiveSecondaryContentColor,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
+    ModuleSourceTimeRow(
+        position = makeTimeString(displayPosition),
+        duration = stringResource(R.string.remaining_time, makeTimeString((model.durationMs - displayPosition).coerceAtLeast(0L))),
+        foreground = ImmersiveContentColor,
+        timeColor = ImmersiveSecondaryContentColor,
+        style = MaterialTheme.typography.bodyMedium,
+        centerContent = {
+            if (LocalModuleSourcePill.current != null) {
+                ModuleSourcePill(foreground = ImmersiveContentColor)
+            } else if (showCodecOnPlayer && model.formatDetails.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = model.outputDevice.type.imageVector, contentDescription = null,
+                        tint = ImmersiveContentColor, modifier = Modifier.size(17.dp))
+                    Text(text = model.formatDetails.substringBefore(" · "), color = ImmersiveContentColor,
+                        style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 5.dp))
+                }
+            }
+        },
+    )
 }
 
 @Composable

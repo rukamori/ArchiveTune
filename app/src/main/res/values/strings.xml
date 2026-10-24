@@ -1137,4 +1137,7 @@
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
     <string name="gatekeeper_connection_blocked">Connection blocked by ArchiveTune Remote. This app could not be verified as an official ArchiveTune build. Install an official build from https://github.com/rukamori/ArchiveTune or https://t.me/ArchiveTuneGC.</string>
     <string name="local_songs_metadata_unavailable">Imported %1$d songs. Online metadata is unavailable; file tags were kept.</string>
+    <string name="playback_source_local">Local</string>
+    <string name="module_source_youtube" translatable="false">YouTube</string>
+    <string name="module_source_open_settings">Open %1$s settings</string>
 </resources>

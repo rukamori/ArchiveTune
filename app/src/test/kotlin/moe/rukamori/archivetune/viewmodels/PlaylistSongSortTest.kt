@@ -32,7 +32,7 @@ class PlaylistSongSortTest {
                     Song(
                         song = SongEntity(id = "s1", title = "Track 1"),
                         artists = listOf(ArtistEntity(id = "a1", name = "Zoe")),
-                        album = AlbumEntity(id = "alb1", title = "AAA Album"),
+                        album = AlbumEntity(id = "alb1", title = "AAA Album", songCount = 1, duration = 0),
                     ),
             )
         val songAlice =
@@ -42,7 +42,7 @@ class PlaylistSongSortTest {
                     Song(
                         song = SongEntity(id = "s2", title = "Track 2"),
                         artists = listOf(ArtistEntity(id = "a2", name = "Alice")),
-                        album = AlbumEntity(id = "alb2", title = "ZZZ Album"),
+                        album = AlbumEntity(id = "alb2", title = "ZZZ Album", songCount = 1, duration = 0),
                     ),
             )
 

@@ -908,49 +908,22 @@ fun PlayerTimeLabel(
     showRemainingTime: Boolean = false,
     centerContent: @Composable (() -> Unit)? = null,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding + 4.dp),
-    ) {
-        Text(
-            text = makeTimeString(sliderPosition ?: position),
-            style = MaterialTheme.typography.labelMedium,
-            color = textBackgroundColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.CenterStart),
-        )
-
-        if (centerContent != null) {
-            Box(
-                modifier = Modifier.align(Alignment.Center),
-                contentAlignment = Alignment.Center,
-            ) {
-                centerContent()
-            }
-        }
-
-        Text(
-            text =
-                if (duration != C.TIME_UNSET) {
-                    if (showRemainingTime) {
-                        val remaining = duration - (sliderPosition ?: position)
-                        "-${makeTimeString(remaining.coerceAtLeast(0))}"
-                    } else {
-                        makeTimeString(duration)
-                    }
-                } else {
-                    ""
-                },
-            style = MaterialTheme.typography.labelMedium,
-            color = textBackgroundColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
-    }
+    ModuleSourceTimeRow(
+        position = makeTimeString(sliderPosition ?: position),
+        duration = if (duration == C.TIME_UNSET) {
+            ""
+        } else if (showRemainingTime) {
+            "-${makeTimeString((duration - (sliderPosition ?: position)).coerceAtLeast(0))}"
+        } else {
+            makeTimeString(duration)
+        },
+        foreground = textBackgroundColor,
+        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding + 4.dp),
+        centerContent = {
+            if (LocalModuleSourcePill.current != null) ModuleSourcePill(foreground = textBackgroundColor)
+            else centerContent?.invoke()
+        },
+    )
 }
 
 @Composable
@@ -2819,38 +2792,17 @@ private fun V8PlaybackProgress(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-        ) {
-            Text(
-                text = makeTimeString(sliderPosition ?: position),
-                style = MaterialTheme.typography.labelMedium,
-                color = foreground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.CenterStart),
-            )
-
-            if (currentFormat != null) {
-                V8QualityChip(
-                    currentFormat = currentFormat,
-                    foreground = foreground,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            }
-
-            Text(
-                text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                style = MaterialTheme.typography.labelMedium,
-                color = foreground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.CenterEnd),
-            )
-        }
+        ModuleSourceTimeRow(
+            position = makeTimeString(sliderPosition ?: position),
+            duration = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
+            foreground = foreground,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(top = 8.dp),
+            centerContent = {
+                if (LocalModuleSourcePill.current != null) ModuleSourcePill(foreground = foreground)
+                else if (currentFormat != null) V8QualityChip(currentFormat = currentFormat, foreground = foreground)
+            },
+        )
     }
 }
 
@@ -3430,29 +3382,14 @@ private fun V9PortraitContent(
                         .height(36.dp),
                 )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = makeTimeString(sliderPosition ?: displayedPosition.value),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textBackgroundColor.copy(alpha = 0.78f),
-                        maxLines = 1,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    )
-
-                    Text(
-                        text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textBackgroundColor.copy(alpha = 0.78f),
-                        maxLines = 1,
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    )
-                }
+                ModuleSourceTimeRow(
+                    position = makeTimeString(sliderPosition ?: displayedPosition.value),
+                    duration = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
+                    foreground = textBackgroundColor,
+                    timeColor = textBackgroundColor.copy(alpha = 0.78f),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
 
             Spacer(Modifier.height(if (compactHeight) 16.dp else 24.dp))
@@ -3833,31 +3770,14 @@ private fun V9PlaybackProgress(
                 .height(36.dp),
         )
 
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = makeTimeString(sliderPosition ?: displayedPosition.value),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor.copy(alpha = 0.78f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor.copy(alpha = 0.78f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        ModuleSourceTimeRow(
+            position = makeTimeString(sliderPosition ?: displayedPosition.value),
+            duration = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
+            foreground = textColor,
+            timeColor = textColor.copy(alpha = 0.78f),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -4956,21 +4876,13 @@ fun V10PlayerContent(
                         )
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = formatEditorialTime(displayedProgress.coerceAtLeast(0L)),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = accent.copy(alpha = 0.8f)
-                        )
-                        Text(
-                            text = formatEditorialTime(duration.coerceAtLeast(0L)),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = accent.copy(alpha = 0.8f)
-                        )
-                    }
+                    ModuleSourceTimeRow(
+                        position = formatEditorialTime(displayedProgress.coerceAtLeast(0L)),
+                        duration = formatEditorialTime(duration.coerceAtLeast(0L)),
+                        foreground = accent,
+                        timeColor = accent.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
                 }
             }
 
