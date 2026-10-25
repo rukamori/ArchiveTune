@@ -127,6 +127,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1096,6 +1097,7 @@ class MainActivity : ComponentActivity() {
                     val searchBarFocusRequester = remember { FocusRequester() }
                     val tvRailFocusRequester = remember { FocusRequester() }
                     val contentAreaFocusRequester = remember { FocusRequester() }
+                    val railToContentFocusRequester = remember { FocusRequester() }
 
                     LaunchedEffect(onlineSearchEncodedQuery) {
                         onlineSearchSort = OnlineSearchSort.DEFAULT
@@ -1515,6 +1517,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    LaunchedEffect(isTvDevice, active, playerBottomSheetState.isExpandedOrExpanding, currentRoute) {
+                        if (!isTvDevice) return@LaunchedEffect
+                        if (active) {
+                            searchBarFocusRequester.requestFocus()
+                        } else if (playerBottomSheetState.isExpandedOrExpanding) {
+                            // Focus stays on player bottom sheet (handled by Player.kt)
+                        } else if (currentRoute in topLevelScreens) {
+                            tvRailFocusRequester.requestFocus()
+                        }
+                    }
+
                     var restoredMiniPlayerAnchor by remember(playerConnection) { mutableStateOf(false) }
 
                     LaunchedEffect(playerConnection, savedMiniPlayerAnchor, isYearInMusicScreen, playerBottomSheetState) {
@@ -1760,6 +1773,7 @@ class MainActivity : ComponentActivity() {
                                                 } else {
                                                     contentAreaFocusRequester
                                                 },
+                                            railToContentFocusRequester = railToContentFocusRequester,
                                             onItemClick = { screen ->
                                                 val wasPlayerActive = playerBottomSheetState.isExpandedOrExpanding
                                                 if (wasPlayerActive) {
@@ -2195,6 +2209,7 @@ class MainActivity : ComponentActivity() {
                                                         .let { with(this@BoxWithConstraints) { it.align(Alignment.TopCenter) } },
                                                 focusRequester = searchBarFocusRequester,
                                                 leftFocusRequester = tvRailFocusRequester,
+                                                rightFocusRequester = contentAreaFocusRequester,
                                                 colors =
                                                     if (pureBlack && active) {
                                                         SearchBarDefaults.colors(
@@ -2627,6 +2642,9 @@ class MainActivity : ComponentActivity() {
                                                             .focusRequester(contentAreaFocusRequester)
                                                             .focusGroup()
                                                             .focusable()
+                                                            .focusProperties {
+                                                                left = tvRailFocusRequester
+                                                            }
                                                     } else {
                                                         Modifier
                                                     },

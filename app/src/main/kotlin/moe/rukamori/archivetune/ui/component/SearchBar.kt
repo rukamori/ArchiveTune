@@ -110,6 +110,7 @@ fun TopSearch(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     focusRequester: FocusRequester = remember { FocusRequester() },
     leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val animationProgress: Float by animateFloatAsState(
@@ -236,6 +237,7 @@ fun TopSearch(
                     interactionSource = interactionSource,
                     focusRequester = focusRequester,
                     leftFocusRequester = leftFocusRequester,
+                    rightFocusRequester = rightFocusRequester,
                 )
 
                 if (animationProgress > 0) {
@@ -270,6 +272,7 @@ private fun SearchBarInputField(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     focusRequester: FocusRequester = remember { FocusRequester() },
     leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
 ) {
     val coercedQuery = remember(query) { query.coerceTextRanges() }
     val focused = interactionSource.collectIsFocusedAsState().value
@@ -301,6 +304,15 @@ private fun SearchBarInputField(
                         if (leftFocusRequester != null) {
                             Modifier.focusProperties {
                                 left = leftFocusRequester
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(
+                        if (rightFocusRequester != null) {
+                            Modifier.focusProperties {
+                                right = rightFocusRequester
                             }
                         } else {
                             Modifier

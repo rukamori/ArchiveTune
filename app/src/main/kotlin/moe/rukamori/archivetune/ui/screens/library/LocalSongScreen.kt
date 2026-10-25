@@ -26,7 +26,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -114,6 +113,7 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LocalSongsScanState
@@ -511,7 +511,7 @@ fun LocalSongScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
                                             playerConnection.player.togglePlayPause()
@@ -1269,7 +1269,7 @@ private fun LocalSongScanSettingCard(
                                     Modifier
                                         .heightIn(min = 48.dp)
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
-                                        .combinedClickable(onClick = onActionClick),
+                                        .tvCombinedClickable(onClick = onActionClick),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.add),
@@ -1328,9 +1328,9 @@ private fun LocalSongFolderChip(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier =
-                        Modifier
-                            .size(24.dp)
-                            .combinedClickable(enabled = enabled, onClick = onRemove),
+                            Modifier
+                                .size(24.dp)
+                                .tvCombinedClickable(enabled = enabled, onClick = onRemove),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.close),

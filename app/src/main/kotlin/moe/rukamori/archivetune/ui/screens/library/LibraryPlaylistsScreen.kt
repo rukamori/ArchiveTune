@@ -14,6 +14,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +105,7 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -269,6 +271,7 @@ fun LibraryPlaylistsScreen(
                                 Modifier
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .focusable()
                                     .clickable { showSortMenu = true }
                                     .padding(horizontal = 14.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -395,11 +398,12 @@ fun LibraryPlaylistsScreen(
                     ) {
                         Box(
                             modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (!isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { isGridView = false },
+                                    Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(if (!isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                        .focusable()
+                                        .clickable { isGridView = false },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -411,11 +415,12 @@ fun LibraryPlaylistsScreen(
                         }
                         Box(
                             modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { isGridView = true },
+                                    Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                        .focusable()
+                                        .clickable { isGridView = true },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -853,9 +858,7 @@ fun PlaylistGridCard(
                     alpha = hiddenAlpha
                 }.clip(RoundedCornerShape(32.dp))
                 .background(cardBgColor)
-                .combinedClickable(
-                    interactionSource = interactionSource,
-                    indication = null,
+                .tvCombinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ).padding(12.dp),
@@ -903,6 +906,7 @@ fun PlaylistGridCard(
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
+                        .focusable()
                         .clickable(onClick = onPlay),
                 contentAlignment = Alignment.Center,
             ) {

@@ -11,6 +11,7 @@ package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
@@ -306,6 +307,6 @@ private fun SpotifyLikedSongListItem(
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.focusable().clickable(onClick = onClick),
     )
 }

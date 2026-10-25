@@ -19,7 +19,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,6 +135,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
@@ -610,7 +611,7 @@ fun ArtistScreen(
                                         .fillMaxWidth()
                                         .widthIn(max = ArtistContentMaxWidth)
                                         .padding(horizontal = ArtistHorizontalPadding, vertical = 12.dp)
-                                        .combinedClickable(
+                                        .tvCombinedClickable(
                                             onClick = { isExpanded = !isExpanded },
                                             onLongClick = {},
                                         ),
@@ -682,7 +683,7 @@ fun ArtistScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .combinedClickable(
+                                        .tvCombinedClickable(
                                             onClick = {
                                                 if (song.id == mediaMetadata?.id) {
                                                     playerConnection.player.togglePlayPause()
@@ -774,7 +775,7 @@ fun ArtistScreen(
                                         coroutineScope = coroutineScope,
                                         modifier =
                                             Modifier
-                                                .combinedClickable(
+                                                .tvCombinedClickable(
                                                     onClick = {
                                                         navController.navigateToAlbum(album.id)
                                                     },
@@ -845,7 +846,7 @@ fun ArtistScreen(
                                     },
                                     modifier =
                                         Modifier
-                                            .combinedClickable(
+                                            .tvCombinedClickable(
                                                 onClick = {
                                                     if (song.id == mediaMetadata?.id) {
                                                         playerConnection.player.togglePlayPause()
@@ -915,7 +916,7 @@ fun ArtistScreen(
                                             coroutineScope = coroutineScope,
                                             modifier =
                                                 Modifier
-                                                    .combinedClickable(
+                                                    .tvCombinedClickable(
                                                         onClick = {
                                                             when (item) {
                                                                 is SongItem -> {

@@ -23,7 +23,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -122,6 +122,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.SelectionMediaMetadataMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
@@ -753,7 +754,7 @@ private fun LocalHistoryFeed(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .combinedClickable(
+                                    .tvCombinedClickable(
                                         onClick = {
                                             if (isSelectionMode) {
                                                 onToggleSelection(event.event.id)
@@ -905,7 +906,7 @@ private fun RemoteHistoryFeed(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
+                                            .tvCombinedClickable(
                                                 onClick = { onSongClick(song) },
                                                 onLongClick = { onSongMenu(song) },
                                             ),
@@ -1294,6 +1295,7 @@ private fun HistoryToolbarAction(
         modifier =
             Modifier
                 .clip(MaterialTheme.shapes.large)
+                .focusable()
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,6 +86,7 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
@@ -233,6 +235,7 @@ fun LibraryAlbumsScreen(
                                 Modifier
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .focusable()
                                     .clickable { showSortMenu = true }
                                     .padding(horizontal = 14.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -300,6 +303,7 @@ fun LibraryAlbumsScreen(
                             Modifier
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .focusable()
                                 .clickable { onSortDescendingChange(!sortDescending) }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                     ) {
@@ -385,10 +389,11 @@ fun LibraryAlbumsScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(36.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer)
-                                        .clickable {
-                                            navController.navigateToAlbum(album.id)
-                                        }.padding(20.dp),
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .focusable()
+                                .clickable {
+                                    navController.navigateToAlbum(album.id)
+                                }.padding(20.dp),
                             ) {
                                 Column {
                                     Row(
@@ -514,7 +519,7 @@ fun LibraryAlbumsScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .combinedClickable(
+                                    .tvCombinedClickable(
                                         onClick = { navController.navigateToAlbum(album.id) },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -552,6 +557,7 @@ fun LibraryAlbumsScreen(
                                             .size(24.dp)
                                             .clip(CircleShape)
                                             .background(MaterialTheme.colorScheme.primary)
+                                            .focusable()
                                             .clickable {
                                                 coroutineScope.launch {
                                                     database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
@@ -611,7 +617,7 @@ fun LibraryAlbumsScreen(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(28.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                    .combinedClickable(
+                                    .tvCombinedClickable(
                                         onClick = { navController.navigateToAlbum(album.id) },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

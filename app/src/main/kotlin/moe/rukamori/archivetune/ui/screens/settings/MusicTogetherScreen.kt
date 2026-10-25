@@ -19,6 +19,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1167,7 +1168,7 @@ private fun SettingsRow(
         modifier =
             Modifier
                 .clip(MaterialTheme.shapes.large)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+                .then(if (onClick != null) Modifier.focusable().clickable(onClick = onClick) else Modifier),
         colors =
             androidx.compose.material3.ListItemDefaults
                 .colors(containerColor = Color.Transparent),

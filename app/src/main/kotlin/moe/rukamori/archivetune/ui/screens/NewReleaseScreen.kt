@@ -17,7 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +89,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
@@ -371,7 +372,7 @@ private fun NewReleaseGridContent(
                     modifier =
                         Modifier
                             .animateItem()
-                            .combinedClickable(
+                            .tvCombinedClickable(
                                 onClick = { onReleaseClick(album) },
                                 onLongClick = { onReleaseLongClick(album) },
                             ),
@@ -440,7 +441,7 @@ private fun NewReleaseHorizontalSection(
                 modifier =
                     Modifier
                         .animateItem()
-                        .combinedClickable(
+                        .tvCombinedClickable(
                             onClick = { onReleaseClick(album) },
                             onLongClick = { onReleaseLongClick(album) },
                         ),

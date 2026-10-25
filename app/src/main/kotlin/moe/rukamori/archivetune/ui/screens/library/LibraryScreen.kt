@@ -13,6 +13,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -502,6 +503,7 @@ private fun PlaylistTagFilterChip(
                 }.heightIn(min = 48.dp)
                 .clip(CircleShape)
                 .background(containerColor)
+                .focusable()
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -590,6 +592,7 @@ fun ExpressiveTabChip(
                     scaleY = scale
                 }.clip(CircleShape)
                 .background(bgColor)
+                .focusable()
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,

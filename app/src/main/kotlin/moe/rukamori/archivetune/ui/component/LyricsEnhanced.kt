@@ -20,7 +20,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -720,7 +720,7 @@ private fun PlainLyricLineItem(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .combinedClickable(
+                .tvCombinedClickable(
                     onClick = { onLineClicked(line.selectionId) },
                     onLongClick = { onLinePressed(line.selectionId) },
                 ).padding(horizontal = 12.dp, vertical = 8.dp),

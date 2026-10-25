@@ -88,6 +88,7 @@ fun SettingsProfileHeader(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                .focusable()
                 .clickable(onClick = onClick),
         shape = RoundedCornerShape(SettingsDimensions.BannerCardCornerRadius),
         colors =
@@ -726,6 +727,7 @@ fun SettingsFlatItem(
         modifier =
             modifier
                 .fillMaxWidth()
+                .focusable()
                 .clickable(onClick = item.onClick),
         color = Color.Transparent,
     ) {

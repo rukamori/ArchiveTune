@@ -83,6 +83,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
@@ -525,7 +526,7 @@ private fun SuggestedSongsSection(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .combinedClickable(
+                            .tvCombinedClickable(
                                 onClick = {
                                     if (isActive) {
                                         playerConnection.player.togglePlayPause()
@@ -604,7 +605,7 @@ private fun TrendingAlbumsSection(
                 coroutineScope = coroutineScope,
                 modifier =
                     Modifier
-                        .combinedClickable(
+                        .tvCombinedClickable(
                             onClick = {
                                 navController.navigateToAlbum(album.id)
                             },
@@ -652,7 +653,7 @@ private fun SuggestedArtistsSection(
                 item = artist,
                 modifier =
                     Modifier
-                        .combinedClickable(
+                        .tvCombinedClickable(
                             onClick = {
                                 navController.navigateToArtist(artist.id)
                             },

@@ -21,7 +21,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,6 +102,7 @@ import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.utils.ComposeToImage
@@ -480,7 +481,7 @@ private fun RecapCardFrame(
         }
 
     Surface(
-        modifier = modifier.clickable(enabled = canAdvance, onClick = onCardClick),
+        modifier = modifier.focusable().clickable(enabled = canAdvance, onClick = onCardClick),
         color = RecapBlack,
     ) {
         Box(
@@ -775,7 +776,7 @@ private fun TopSongRecapCard(
         modifier =
             Modifier
                 .fillMaxSize()
-                .combinedClickable(
+                .tvCombinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
@@ -899,7 +900,7 @@ private fun RankedArtistsRecapCard(
                     rank = index + 1,
                     artist = artist,
                     modifier =
-                        Modifier.combinedClickable(
+                        Modifier.tvCombinedClickable(
                             onClick = {},
                             onLongClick = { onArtistLongClick(artist) },
                         ),

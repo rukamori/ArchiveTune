@@ -9,7 +9,7 @@ package moe.rukamori.archivetune.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -262,7 +263,7 @@ fun ChartsScreen(
                                             modifier =
                                                 Modifier
                                                     .width(horizontalLazyGridItemWidth)
-                                                    .combinedClickable(
+                                                    .tvCombinedClickable(
                                                         onClick = {
                                                             if (song.id == mediaMetadata?.id) {
                                                                 playerConnection.player.togglePlayPause()
@@ -319,7 +320,7 @@ fun ChartsScreen(
                                         coroutineScope = coroutineScope,
                                         modifier =
                                             Modifier
-                                                .combinedClickable(
+                                                .tvCombinedClickable(
                                                     onClick = {
                                                         if (video.id == mediaMetadata?.id) {
                                                             playerConnection.player.togglePlayPause()

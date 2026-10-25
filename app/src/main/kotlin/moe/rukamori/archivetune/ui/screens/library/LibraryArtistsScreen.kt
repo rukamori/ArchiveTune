@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,6 +84,7 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
@@ -172,6 +174,7 @@ fun LibraryArtistsScreen(
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(36.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
+                                .focusable()
                                 .clickable {
                                     topArtist?.let { navController.navigateToArtist(it.artist.id) }
                                 }.padding(16.dp),
@@ -296,6 +299,7 @@ fun LibraryArtistsScreen(
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(36.dp))
                                 .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .focusable()
                                 .clickable {
                                     filter = if (filter == ArtistFilter.LIKED) ArtistFilter.LIBRARY else ArtistFilter.LIKED
                                 }.padding(16.dp),
@@ -398,6 +402,7 @@ fun LibraryArtistsScreen(
                                     Modifier
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                        .focusable()
                                         .clickable { showSortMenu = true }
                                         .padding(horizontal = 14.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -517,7 +522,7 @@ fun LibraryArtistsScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(28.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .combinedClickable(
+                            .tvCombinedClickable(
                                 onClick = { navController.navigateToArtist(artist.id) },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -624,6 +629,7 @@ fun LibraryArtistsScreen(
                                 modifier =
                                     Modifier
                                         .width(72.dp)
+                                        .focusable()
                                         .clickable {
                                             navController.navigateToArtist(artist.id)
                                         },

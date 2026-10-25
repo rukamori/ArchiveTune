@@ -12,7 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -110,6 +110,7 @@ import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -512,7 +513,7 @@ fun StatsScreen(
                                 modifier =
                                     Modifier
                                         .width(164.dp)
-                                        .combinedClickable(
+                                        .tvCombinedClickable(
                                             onClick = { navController.navigateToArtist(artist.id) },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -560,22 +561,22 @@ fun StatsScreen(
                                     thumbnailUrl = album.album.thumbnailUrl,
                                     isActive = album.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
-                                    modifier =
-                                        Modifier
-                                            .width(172.dp)
-                                            .combinedClickable(
-                                                onClick = { navController.navigateToAlbum(album.id) },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        AlbumMenu(
-                                                            originalAlbum = album,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                },
-                                            ).animateItem(),
+                                modifier =
+                                    Modifier
+                                        .width(172.dp)
+                                        .tvCombinedClickable(
+                                            onClick = { navController.navigateToAlbum(album.id) },
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                menuState.show {
+                                                    AlbumMenu(
+                                                        originalAlbum = album,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            },
+                                        ).animateItem(),
                                 )
                             }
                         }

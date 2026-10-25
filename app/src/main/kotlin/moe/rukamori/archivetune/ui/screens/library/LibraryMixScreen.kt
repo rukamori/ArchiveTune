@@ -13,6 +13,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -340,6 +341,7 @@ fun LibraryMixScreen(
                                         modifier =
                                             Modifier
                                                 .width(110.dp)
+                                                .focusable()
                                                 .clickable {
                                                     playerConnection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
                                                 },
@@ -446,6 +448,7 @@ fun LibraryMixScreen(
                                     modifier =
                                         Modifier
                                             .clip(CircleShape)
+                                            .focusable()
                                             .clickable { onTabSelected(LibraryFilter.PLAYLISTS) }
                                             .padding(horizontal = 8.dp, vertical = 4.dp),
                                 )
@@ -483,25 +486,26 @@ fun LibraryMixScreen(
                                     Column(
                                         modifier =
                                             Modifier
-                                                .width(130.dp)
-                                                .graphicsLayer {
-                                                    scaleX = scale
-                                                    scaleY = scale
-                                                }.clip(RoundedCornerShape(32.dp))
-                                                .background(cardBgColor)
-                                                .clickable(
-                                                    interactionSource = interactionSource,
-                                                    indication = null,
-                                                    onClick = {
-                                                        if (!playlist.playlist.isEditable && playlist.songCount == 0 &&
-                                                            playlist.playlist.remoteSongCount != 0
-                                                        ) {
-                                                            navController.navigate("online_playlist/${playlist.playlist.browseId}")
-                                                        } else {
-                                                            navController.navigate("local_playlist/${playlist.id}")
-                                                        }
-                                                    },
-                                                ).padding(12.dp),
+                                                    .width(130.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = scale
+                                                        scaleY = scale
+                                                    }.clip(RoundedCornerShape(32.dp))
+                                                    .background(cardBgColor)
+                                                    .focusable()
+                                                    .clickable(
+                                                        interactionSource = interactionSource,
+                                                        indication = null,
+                                                        onClick = {
+                                                            if (!playlist.playlist.isEditable && playlist.songCount == 0 &&
+                                                                playlist.playlist.remoteSongCount != 0
+                                                            ) {
+                                                                navController.navigate("online_playlist/${playlist.playlist.browseId}")
+                                                            } else {
+                                                                navController.navigate("local_playlist/${playlist.id}")
+                                                            }
+                                                        },
+                                                    ).padding(12.dp),
                                     ) {
                                         Box(
                                             modifier =
@@ -524,6 +528,7 @@ fun LibraryMixScreen(
                                                         .size(28.dp)
                                                         .clip(CircleShape)
                                                         .background(MaterialTheme.colorScheme.primary)
+                                                        .focusable()
                                                         .clickable {
                                                             playerConnection.let { conn ->
                                                                 coroutineScope.launch {
@@ -585,6 +590,7 @@ fun LibraryMixScreen(
                                             Modifier
                                                 .width(130.dp)
                                                 .height(168.dp)
+                                                .focusable()
                                                 .clip(RoundedCornerShape(32.dp))
                                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                                                 .clickable {
@@ -646,10 +652,11 @@ fun LibraryMixScreen(
                                             color = MaterialTheme.colorScheme.primary,
                                         ),
                                     modifier =
-                                        Modifier
-                                            .clip(CircleShape)
-                                            .clickable { onTabSelected(LibraryFilter.ARTISTS) }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    Modifier
+                                        .clip(CircleShape)
+                                        .focusable()
+                                        .clickable { onTabSelected(LibraryFilter.ARTISTS) }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
                                 )
                             }
                             LazyRow(
@@ -664,6 +671,7 @@ fun LibraryMixScreen(
                                         modifier =
                                             Modifier
                                                 .width(80.dp)
+                                                .focusable()
                                                 .clickable {
                                                     navController.navigateToArtist(artist.id)
                                                 },
@@ -696,6 +704,7 @@ fun LibraryMixScreen(
                                         modifier =
                                             Modifier
                                                 .width(80.dp)
+                                                .focusable()
                                                 .clickable {
                                                     onTabSelected(LibraryFilter.ARTISTS)
                                                 },
@@ -770,6 +779,7 @@ private fun SpotifyPlaylistCompactCard(
                     scaleY = scale
                 }.clip(RoundedCornerShape(32.dp))
                 .background(cardBgColor)
+                .focusable()
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -1060,7 +1070,8 @@ private fun LibraryTopMixCard(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                }.clickable(
+                }.focusable()
+                .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = onPlay,
@@ -1189,6 +1200,7 @@ private fun MostPlayedAlbumSpotlightCard(
                 .padding(horizontal = 24.dp)
                 .clip(RoundedCornerShape(32.dp))
                 .background(backgroundBrush)
+                .focusable()
                 .clickable(onClick = onOpenAlbum)
                 .padding(16.dp),
     ) {
@@ -1372,6 +1384,7 @@ fun ShortcutCard(
                     scaleY = scale
                 }.clip(RoundedCornerShape(26.dp))
                 .background(finalBgColor)
+                .focusable()
                 .clickable(
                     interactionSource = interactionSource,
                     onClick = onClick,

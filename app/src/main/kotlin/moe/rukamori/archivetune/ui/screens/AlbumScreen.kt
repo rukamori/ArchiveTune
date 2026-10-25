@@ -12,7 +12,7 @@ package moe.rukamori.archivetune.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +95,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -442,7 +443,7 @@ fun AlbumScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     onClick = {
                                         if (!selection) {
                                             if (songWrapper.item.id == mediaMetadata?.id) {
@@ -488,7 +489,7 @@ fun AlbumScreen(
                                     coroutineScope = scope,
                                     modifier =
                                         Modifier
-                                            .combinedClickable(
+                                            .tvCombinedClickable(
                                                 onClick = { navController.navigateToAlbum(item.id) },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)

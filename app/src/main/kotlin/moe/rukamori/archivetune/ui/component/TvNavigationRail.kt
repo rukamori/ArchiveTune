@@ -60,6 +60,7 @@ fun TvNavigationRail(
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester? = null,
     contentFocusRequester: FocusRequester? = null,
+    railToContentFocusRequester: FocusRequester? = null,
     onItemClick: (Screens) -> Unit,
 ) {
     LaunchedEffect(firstItemFocusRequester) {
@@ -80,21 +81,32 @@ fun TvNavigationRail(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             items.forEachIndexed { index, screen ->
+                val isFirst = index == 0
+                val isLast = index == items.lastIndex
+
                 TvNavigationRailItem(
                     screen = screen,
                     selected = selectedItemRoute == screen.route,
                     modifier =
                         Modifier
                             .then(
-                                if (index == 0 && firstItemFocusRequester != null) {
+                                if (isFirst && firstItemFocusRequester != null) {
                                     Modifier.focusRequester(firstItemFocusRequester)
                                 } else {
                                     Modifier
                                 },
                             ).then(
-                                if (contentFocusRequester != null) {
+                                if (isLast && contentFocusRequester != null) {
                                     Modifier.focusProperties {
                                         right = contentFocusRequester
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ).then(
+                                if (isFirst && railToContentFocusRequester != null) {
+                                    Modifier.focusProperties {
+                                        left = railToContentFocusRequester
                                     }
                                 } else {
                                     Modifier

@@ -10,7 +10,7 @@
 package moe.rukamori.archivetune.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
@@ -97,7 +98,7 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     onClick = {
                                         navController.navigate("online_playlist/${item.id}")
                                     },
@@ -134,7 +135,7 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     onClick = {
                                         navController.navigateToAlbum(item.id)
                                     },
@@ -171,7 +172,7 @@ fun AccountScreen(
                         fillMaxWidth = true,
                         modifier =
                             Modifier
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     onClick = {
                                         navController.navigateToArtist(item.id)
                                     },

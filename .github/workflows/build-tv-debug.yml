@@ -1,0 +1,55 @@
+name: Build TV Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ 'main', 'dev', 'kilo/**' ]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build-tv-debug:
+    name: Build TV Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build TV Debug APK
+        run: ./gradlew assembleGmsTvUniversalDebug --no-daemon --console=plain
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+      - name: Upload TV Debug APK
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-gms-tv-universal-debug
+          path: |
+            app/build/outputs/apk/tv/gms/universal/debug/*.apk

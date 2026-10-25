@@ -26,6 +26,7 @@ import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1451,6 +1452,7 @@ private fun SelectableMiniPalette(
         Surface(
             modifier =
                 Modifier
+                    .focusable()
                     .clickable(onClick = onClick)
                     .padding(16.dp)
                     .size(48.dp),
@@ -1592,6 +1594,7 @@ private fun SeedChip(
         modifier =
             modifier
                 .clip(RoundedCornerShape(999.dp))
+                .focusable()
                 .clickable(onClick = onClick),
         color = container,
         contentColor = content,

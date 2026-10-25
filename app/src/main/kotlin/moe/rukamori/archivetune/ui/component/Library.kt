@@ -9,7 +9,6 @@ package moe.rukamori.archivetune.ui.component
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -81,15 +80,15 @@ fun LibraryArtistGridItem(
 ) = ArtistGridItem(
     artist = artist,
     fillMaxWidth = true,
-    modifier =
-        modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = {
-                    navController.navigateToArtist(artist.id)
-                },
-                onLongClick = {
-                    menuState.show {
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .tvCombinedClickable(
+                    onClick = {
+                        navController.navigateToArtist(artist.id)
+                    },
+                    onLongClick = {
+                        menuState.show {
                         ArtistMenu(
                             originalArtist = artist,
                             coroutineScope = coroutineScope,
@@ -157,7 +156,7 @@ fun LibraryAlbumGridItem(
     modifier =
         modifier
             .fillMaxWidth()
-            .combinedClickable(
+            .tvCombinedClickable(
                 onClick = {
                     navController.navigateToAlbum(album.id)
                 },

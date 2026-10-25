@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -82,6 +83,7 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.screens.library.rememberArtworkGradient
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -243,6 +245,7 @@ fun LibrarySongsScreen(
                             Modifier
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .focusable()
                                 .clickable { showSortMenu = true }
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -297,6 +300,7 @@ fun LibrarySongsScreen(
                         Modifier
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .focusable()
                             .clickable { onSortDescendingChange(!sortDescending) }
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                 ) {
@@ -463,7 +467,7 @@ fun LibrarySongsScreen(
                                 .clip(RoundedCornerShape(cornerRadius))
                                 .background(
                                     if (isActive) activeCardColor else inactiveCardColor,
-                                ).combinedClickable(
+                                ).tvCombinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
                                             playerConnection.player.togglePlayPause()
@@ -625,6 +629,7 @@ fun SongSubFilterChip(
             Modifier
                 .clip(CircleShape)
                 .background(bgColor)
+                .focusable()
                 .clickable(onClick = onClick)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {

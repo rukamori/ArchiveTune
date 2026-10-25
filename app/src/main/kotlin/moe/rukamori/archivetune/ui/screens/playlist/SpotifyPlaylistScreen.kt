@@ -12,6 +12,7 @@ package moe.rukamori.archivetune.ui.screens.playlist
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -536,6 +537,7 @@ fun SpotifyPlaylistScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .focusable()
                             .clickable(enabled = resolvingTrackId == null || trackIsActive) {
                                 if (trackIsActive) {
                                     playerConnection?.player?.togglePlayPause()

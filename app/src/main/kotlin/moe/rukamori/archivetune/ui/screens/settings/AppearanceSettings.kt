@@ -21,6 +21,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -1260,7 +1261,8 @@ private fun SliderStyleOptionCard(
                     1.dp,
                     if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                     RoundedCornerShape(16.dp),
-                ).clickable(onClick = onClick)
+                ).focusable()
+                .clickable(onClick = onClick)
                 .padding(16.dp),
     ) {
         StyledPlaybackSlider(

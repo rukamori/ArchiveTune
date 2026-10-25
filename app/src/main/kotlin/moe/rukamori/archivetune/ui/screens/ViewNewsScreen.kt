@@ -20,6 +20,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -290,6 +291,7 @@ private fun ViewNewsCarousel(
                     .padding(horizontal = 24.dp)
                     .clip(MaterialTheme.shapes.extraLarge)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .focusable()
                     .clickable(role = Role.Image) { onImageClick(imageUrls.first()) },
         )
         return
@@ -323,6 +325,7 @@ private fun ViewNewsCarousel(
                     .fillMaxSize()
                     .maskClip(MaterialTheme.shapes.extraLarge)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .focusable()
                     .clickable(role = Role.Image) { onImageClick(imageUrl) },
         )
     }
@@ -419,6 +422,7 @@ private fun ViewNewsFullImageDialog(
                 Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.96f))
+                    .focusable()
                     .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center,
         ) {

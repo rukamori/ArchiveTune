@@ -93,6 +93,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import android.view.KeyEvent.KEYCODE_DPAD_CENTER
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -147,6 +148,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.CanvasPlaybackRequest
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
@@ -1017,31 +1019,44 @@ fun BottomSheetPlayer(
                     if (keyEvent.type != KeyEventType.KeyDown || state.isCollapsed) return@onKeyEvent false
 
                     when (keyEvent.key) {
+                        Key(KEYCODE_DPAD_CENTER.toLong()), Key.Enter -> {
+                            playerConnection.player.togglePlayPause()
+                            true
+                        }
+
                         Key.DirectionLeft -> {
-                            val now = SystemClock.uptimeMillis()
-                            if (incrementalSeekSkipEnabled && now - lastKeyboardTapTime < 1000) {
-                                keyboardSkipMultiplier++
+                            if (BuildConfig.DEVICE == "tv") {
+                                playerConnection.seekToPrevious()
                             } else {
-                                keyboardSkipMultiplier = 1
+                                val now = SystemClock.uptimeMillis()
+                                if (incrementalSeekSkipEnabled && now - lastKeyboardTapTime < 1000) {
+                                    keyboardSkipMultiplier++
+                                } else {
+                                    keyboardSkipMultiplier = 1
+                                }
+                                lastKeyboardTapTime = now
+                                val skipAmount = 5000L * keyboardSkipMultiplier
+                                playerConnection.player.seekTo((playerConnection.player.currentPosition - skipAmount).coerceAtLeast(0))
                             }
-                            lastKeyboardTapTime = now
-                            val skipAmount = 5000L * keyboardSkipMultiplier
-                            playerConnection.player.seekTo((playerConnection.player.currentPosition - skipAmount).coerceAtLeast(0))
                             true
                         }
 
                         Key.DirectionRight -> {
-                            val now = SystemClock.uptimeMillis()
-                            if (incrementalSeekSkipEnabled && now - lastKeyboardTapTime < 1000) {
-                                keyboardSkipMultiplier++
+                            if (BuildConfig.DEVICE == "tv") {
+                                playerConnection.seekToNext()
                             } else {
-                                keyboardSkipMultiplier = 1
+                                val now = SystemClock.uptimeMillis()
+                                if (incrementalSeekSkipEnabled && now - lastKeyboardTapTime < 1000) {
+                                    keyboardSkipMultiplier++
+                                } else {
+                                    keyboardSkipMultiplier = 1
+                                }
+                                lastKeyboardTapTime = now
+                                val skipAmount = 5000L * keyboardSkipMultiplier
+                                playerConnection.player.seekTo(
+                                    (playerConnection.player.currentPosition + skipAmount).coerceAtMost(playerConnection.player.duration),
+                                )
                             }
-                            lastKeyboardTapTime = now
-                            val skipAmount = 5000L * keyboardSkipMultiplier
-                            playerConnection.player.seekTo(
-                                (playerConnection.player.currentPosition + skipAmount).coerceAtMost(playerConnection.player.duration),
-                            )
                             true
                         }
 

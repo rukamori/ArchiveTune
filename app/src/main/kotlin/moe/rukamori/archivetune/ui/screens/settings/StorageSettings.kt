@@ -11,6 +11,7 @@ package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -745,6 +746,7 @@ private fun StorageLocationOptionRow(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .focusable()
                 .clickable(onClick = onClick),
     ) {
         Row(

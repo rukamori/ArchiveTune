@@ -79,7 +79,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
+import android.view.KeyEvent.KEYCODE_DPAD_CENTER
+import android.view.KeyEvent.KEYCODE_ENTER
+import android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -132,6 +140,7 @@ import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SpeedDialGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.tvCombinedClickable
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
@@ -170,39 +179,54 @@ fun HomeCategoryChips(
     ) {
         chips.forEach { chip ->
             val selected = chip == selectedChip
-            FilterChip(
-                selected = selected,
-                onClick = { onChipSelected(chip) },
-                label = {
-                    Text(
-                        text = chip.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                leadingIcon =
-                    if (selected) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.done),
-                                contentDescription = null,
-                                modifier = Modifier.size(FilterChipDefaults.IconSize),
-                            )
+            Box(
+                modifier = Modifier
+                    .focusable()
+                    .onKeyEvent { keyEvent ->
+                        if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+                        when (keyEvent.key) {
+                            Key(KEYCODE_DPAD_CENTER.toLong()), Key(KEYCODE_ENTER.toLong()), Key(KEYCODE_NUMPAD_ENTER.toLong()) -> {
+                                onChipSelected(chip)
+                                true
+                            }
+                            else -> false
                         }
-                    } else {
-                        null
                     },
-                shapes = FilterChipDefaults.shapes(),
-                colors =
-                    FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
-                border = null,
-            )
+            ) {
+                FilterChip(
+                    selected = selected,
+                    onClick = { onChipSelected(chip) },
+                    label = {
+                        Text(
+                            text = chip.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    leadingIcon =
+                        if (selected) {
+                            {
+                                Icon(
+                                    painter = painterResource(R.drawable.done),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    shapes = FilterChipDefaults.shapes(),
+                    colors =
+                        FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    border = null,
+                )
+            }
         }
     }
 }
@@ -224,7 +248,7 @@ fun HomeSectionHeader(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 64.dp)
-                .then(if (onClick != null && actionContent == null) Modifier.clickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null && actionContent == null) Modifier.focusable().clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         thumbnail?.invoke()
@@ -234,7 +258,7 @@ fun HomeSectionHeader(
                 Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
-                    .then(if (onClick != null && actionContent != null) Modifier.clickable(onClick = onClick) else Modifier),
+                    .then(if (onClick != null && actionContent != null) Modifier.focusable().clickable(onClick = onClick) else Modifier),
         ) {
             label?.let {
                 Text(
@@ -336,8 +360,7 @@ fun QuickPicksSection(
                                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
                                     ),
                                     MaterialTheme.shapes.extraLarge,
-                                ).focusable()
-                                .combinedClickable(
+                                ).tvCombinedClickable(
                                     onClick = {
                                         if (isActive) {
                                             playerConnection.player.togglePlayPause()
@@ -493,7 +516,7 @@ fun QuickPicksSection(
                             modifier =
                                 Modifier
                                     .width(itemWidth)
-                                    .combinedClickable(
+                                    .tvCombinedClickable(
                                         onClick = {
                                             if (song.id == mediaMetadata?.id) {
                                                 playerConnection.player.togglePlayPause()
@@ -599,8 +622,7 @@ fun RemoteQuickPicksSection(
                                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
                                     ),
                                     MaterialTheme.shapes.extraLarge,
-                                ).focusable()
-                                .combinedClickable(
+                                ).tvCombinedClickable(
                                     onClick = {
                                         if (isActive) {
                                             playerConnection.player.togglePlayPause()
@@ -752,7 +774,7 @@ fun RemoteQuickPicksSection(
                             modifier =
                                 Modifier
                                     .width(itemWidth)
-                                    .combinedClickable(
+                                    .tvCombinedClickable(
                                         onClick = {
                                             if (song.id == mediaMetadata?.id) {
                                                 playerConnection.player.togglePlayPause()
@@ -1018,13 +1040,12 @@ fun SpeedDialSection(
                                             val songIndex =
                                                 if (localItem is Song) speedDialSongIndexById[localItem.id] ?: 0 else 0
 
-                                            Box(
+                                                    Box(
                                                 modifier =
                                                     Modifier
                                                         .size(tileSize)
                                                         .clip(MaterialTheme.shapes.large)
-                                                        .focusable()
-                                                        .combinedClickable(
+                                                        .tvCombinedClickable(
                                                             onClick = {
                                                                 when (localItem) {
                                                                     is Song -> {
@@ -1159,7 +1180,7 @@ private fun SpeedDialRandomTile(
         modifier =
             modifier
                 .aspectRatio(1f)
-                .combinedClickable(onClick = onClick),
+                .tvCombinedClickable(onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Column(
@@ -1353,11 +1374,10 @@ private fun KeepListeningResumeCard(
             },
         shape = MaterialTheme.shapes.extraLarge,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier =
+                modifier =
             modifier
                 .heightIn(min = 120.dp)
-                .focusable()
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+                .tvCombinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1524,25 +1544,24 @@ fun ForgottenFavoritesSection(
                         )
                     }
                 },
-                modifier =
-                    Modifier
-                        .width(horizontalLazyGridItemWidth)
-                        .focusable()
-                        .combinedClickable(
-                            onClick = {
-                                if (song.id == mediaMetadata?.id) {
-                                    playerConnection.player.togglePlayPause()
-                                } else {
-                                    playerConnection.playQueue(
-                                        if (song.song.isLocal) {
-                                            ListQueue(items = listOf(song.toMediaItem()))
-                                        } else {
-                                            YouTubeQueue.radio(song.toMediaMetadata())
-                                        },
-                                    )
-                                }
-                            },
-                            onLongClick = {
+                    modifier =
+                        Modifier
+                            .width(horizontalLazyGridItemWidth)
+                            .tvCombinedClickable(
+                                onClick = {
+                                    if (song.id == mediaMetadata?.id) {
+                                        playerConnection.player.togglePlayPause()
+                                    } else {
+                                        playerConnection.playQueue(
+                                            if (song.song.isLocal) {
+                                                ListQueue(items = listOf(song.toMediaItem()))
+                                            } else {
+                                                YouTubeQueue.radio(song.toMediaMetadata())
+                                            },
+                                        )
+                                    }
+                                },
+                                onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 menuState.show {
                                     SongMenu(
@@ -1898,7 +1917,7 @@ private fun FeaturedPlaylistCard(
                         .fillMaxWidth()
                         .heightIn(min = 96.dp)
                         .then(
-                            Modifier.combinedClickable(
+                            Modifier.tvCombinedClickable(
                                 onClick = openPlaylist,
                                 onLongClick = showPlaylistMenu,
                             ),
@@ -1994,7 +2013,7 @@ private fun FeaturedPlaylistCard(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .combinedClickable(
+                            .tvCombinedClickable(
                                 onClick = playSong,
                                 onLongClick = {
                                     menuState.show {
@@ -2096,8 +2115,7 @@ private fun YouTubeGridItemWrapper(
         fillMaxWidth = fillMaxWidth,
         modifier =
             modifier
-                .focusable()
-                .combinedClickable(
+                .tvCombinedClickable(
                     onClick = {
                         when (item) {
                             is SongItem -> {

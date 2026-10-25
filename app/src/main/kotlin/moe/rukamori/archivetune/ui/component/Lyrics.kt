@@ -31,7 +31,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -962,7 +962,7 @@ fun Lyrics(
                             Modifier
                                 .fillMaxWidth()
                                 // Removed .clip() to prevent glow clipping
-                                .combinedClickable(
+                                .tvCombinedClickable(
                                     enabled = true,
                                     onClick = {
                                         if (isSelectionModeActive) {
