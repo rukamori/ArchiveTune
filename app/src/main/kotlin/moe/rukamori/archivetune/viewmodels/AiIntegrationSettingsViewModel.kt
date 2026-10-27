@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ai.AiIntegrationSettingsData
 import moe.rukamori.archivetune.ai.AiModelOption
+import moe.rukamori.archivetune.ai.AiRequestParameters
 import moe.rukamori.archivetune.ai.AiServiceConfig
 import moe.rukamori.archivetune.ai.FetchAiModelsUseCase
 import moe.rukamori.archivetune.ai.ObserveAiIntegrationSettingsUseCase
@@ -39,6 +40,7 @@ import moe.rukamori.archivetune.ai.TestAiIntegrationUseCase
 import moe.rukamori.archivetune.ai.UpdateAiIntegrationSettingsUseCase
 import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiProvider
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -62,6 +64,7 @@ enum class AiSettingsEditorField {
     CUSTOM_ENDPOINT,
     CUSTOM_MODEL,
     CUSTOM_PROMPT,
+    REQUEST_PARAMETERS,
 }
 
 @Immutable
@@ -69,6 +72,7 @@ data class AiSettingsEditorUiModel(
     val field: AiSettingsEditorField? = null,
     val value: String = "",
     val canSave: Boolean = false,
+    @StringRes val errorMessageResId: Int? = null,
 ) {
     val visible: Boolean
         get() = this.field != null
@@ -90,6 +94,7 @@ data class AiIntegrationSettingsUiModel(
     val selectedModel: String,
     val customModel: String,
     val customPrompt: String,
+    val requestParameters: String,
     val availableModels: ImmutableList<AiModelOption>,
     val isTesting: Boolean,
     val isFetchingModels: Boolean,
@@ -154,6 +159,7 @@ class AiIntegrationSettingsViewModel
         private var fetchModelsJob: Job? = null
         private var testApiJob: Job? = null
         private val fetchModelsRequestId = AtomicInteger()
+        private val testApiRequestId = AtomicInteger()
 
         val state: StateFlow<AiIntegrationSettingsScreenState> =
             combine(observeSettings(), transientState) { settings, transient ->
@@ -186,6 +192,7 @@ class AiIntegrationSettingsViewModel
                     AiSettingsEditorField.CUSTOM_ENDPOINT -> model.customEndpoint
                     AiSettingsEditorField.CUSTOM_MODEL -> model.customModel
                     AiSettingsEditorField.CUSTOM_PROMPT -> model.customPrompt
+                    AiSettingsEditorField.REQUEST_PARAMETERS -> model.requestParameters
                 }
             transientState.update { state ->
                 state.copy(editor = editorModel(field = field, value = value))
@@ -228,6 +235,10 @@ class AiIntegrationSettingsViewModel
 
                 AiSettingsEditorField.CUSTOM_PROMPT -> {
                     updateSetting { updateSettings.setCustomPrompt(editor.value) }
+                }
+
+                AiSettingsEditorField.REQUEST_PARAMETERS -> {
+                    updateSetting { updateSettings.setRequestParameters(editor.value) }
                 }
             }
         }
@@ -304,21 +315,25 @@ class AiIntegrationSettingsViewModel
             transientState.update {
                 it.copy(isTesting = true, errorMessage = null, apiTestError = null)
             }
+            val requestId = testApiRequestId.incrementAndGet()
             testApiJob =
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        testAiIntegration()
-                        _events.emit(R.string.ai_api_connected)
+                        if (testAiIntegration() && requestId == testApiRequestId.get()) {
+                            _events.emit(R.string.ai_api_connected)
+                        }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         val details = e.apiTestErrorDetails()
-                        transientState.update {
-                            it.copy(apiTestError = details)
+                        if (requestId == testApiRequestId.get()) {
+                            transientState.update { it.copy(apiTestError = details) }
                         }
                     } finally {
-                        transientState.update { it.copy(isTesting = false) }
-                        testApiJob = null
+                        if (requestId == testApiRequestId.get()) {
+                            transientState.update { it.copy(isTesting = false) }
+                            testApiJob = null
+                        }
                     }
                 }
         }
@@ -343,6 +358,10 @@ class AiIntegrationSettingsViewModel
         }
 
         private fun updateSetting(update: suspend () -> Unit) {
+            testApiRequestId.incrementAndGet()
+            testApiJob?.cancel()
+            testApiJob = null
+            transientState.update { it.copy(isTesting = false, apiTestError = null) }
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     update()
@@ -363,8 +382,14 @@ class AiIntegrationSettingsViewModel
         private fun editorModel(
             field: AiSettingsEditorField,
             value: String,
-        ): AiSettingsEditorUiModel =
-            AiSettingsEditorUiModel(
+        ): AiSettingsEditorUiModel {
+            val invalidParameters = field == AiSettingsEditorField.REQUEST_PARAMETERS &&
+                runCatching { AiRequestParameters.normalize(value) }.isFailure
+            val invalidEndpoint = field == AiSettingsEditorField.CUSTOM_ENDPOINT &&
+                value.trim().toHttpUrlOrNull()?.let {
+                    it.username.isEmpty() && it.password.isEmpty() && it.fragment == null
+                } != true
+            return AiSettingsEditorUiModel(
                 field = field,
                 value = value,
                 canSave =
@@ -373,12 +398,18 @@ class AiIntegrationSettingsViewModel
                         AiSettingsEditorField.CUSTOM_MODEL,
                         -> value.isNotBlank()
 
-                        AiSettingsEditorField.CUSTOM_ENDPOINT ->
-                            value.startsWith("https://") || value.startsWith("http://")
+                        AiSettingsEditorField.CUSTOM_ENDPOINT -> !invalidEndpoint
 
                         AiSettingsEditorField.CUSTOM_PROMPT -> true
+                        AiSettingsEditorField.REQUEST_PARAMETERS -> !invalidParameters
                     },
+                errorMessageResId = when {
+                    invalidParameters -> R.string.ai_request_parameters_invalid
+                    invalidEndpoint -> R.string.ai_custom_endpoint_invalid
+                    else -> null
+                },
             )
+        }
 
         private fun Throwable.shortMessage(@StringRes fallbackResId: Int): String {
             val fallback = context.getString(fallbackResId)
@@ -435,6 +466,7 @@ private fun AiIntegrationSettingsData.toUiModel(
         selectedModel = selectedModel,
         customModel = customModel,
         customPrompt = customPrompt,
+        requestParameters = requestParameters,
         availableModels = transient.availableModels,
         isTesting = transient.isTesting,
         isFetchingModels = transient.isFetchingModels,

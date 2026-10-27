@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +48,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -79,6 +82,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -111,6 +115,8 @@ import moe.rukamori.archivetune.utils.TranslatorLanguages
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LyricsMenuViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
+import moe.rukamori.archivetune.viewmodels.LyricsRenderViewModel
 import moe.rukamori.archivetune.viewmodels.LyricsSearchResultUiModel
 import moe.rukamori.archivetune.viewmodels.LyricsSearchScreenState
 import moe.rukamori.archivetune.viewmodels.LyricsTranslationError
@@ -133,10 +139,28 @@ fun LyricsMenu(
     showPlayerControlsState: State<Boolean>,
     onShowPlayerControlsChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
+    lyricsRenderViewModel: LyricsRenderViewModel,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val showPlayerControls by showPlayerControlsState
+    val renderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
+    val preparedLyrics = (renderState as? LyricsRenderScreenState.Success)?.lyrics
+    val hasTranslations = preparedLyrics?.hasTranslations == true
+    val showTranslations = hasTranslations && preparedLyrics?.preferences?.showTranslations == true
+    val onShowTranslationsChange = remember(lyricsRenderViewModel) {
+        lyricsRenderViewModel::onShowTranslationsChanged
+    }
+    val translationSwitchModifier = remember(hasTranslations, showTranslations, onShowTranslationsChange) {
+        Modifier
+            .padding(horizontal = 8.dp)
+            .toggleable(
+                value = showTranslations,
+                enabled = hasTranslations,
+                role = Role.Switch,
+                onValueChange = onShowTranslationsChange,
+            )
+    }
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
@@ -333,11 +357,11 @@ fun LyricsMenu(
     }
 
     if (showLyricsSyncOffsetDialog) {
-        var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat()) }
+        var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)) }
 
         DefaultDialog(
             onDismiss = {
-                tempLyricsSyncOffset = lyricsSyncOffset.toFloat()
+                tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
                 showLyricsSyncOffsetDialog = false
             },
             icon = {
@@ -354,7 +378,7 @@ fun LyricsMenu(
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = {
-                        tempLyricsSyncOffset = lyricsSyncOffset.toFloat()
+                        tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
                         showLyricsSyncOffsetDialog = false
                     },
                     shapes = ButtonDefaults.shapes(),
@@ -363,7 +387,7 @@ fun LyricsMenu(
                 }
                 TextButton(
                     onClick = {
-                        onLyricsSyncOffsetChange(tempLyricsSyncOffset.roundToInt())
+                        onLyricsSyncOffsetChange(tempLyricsSyncOffset.roundToInt().coerceIn(-5000, 5000))
                         showLyricsSyncOffsetDialog = false
                         onDismiss()
                     },
@@ -386,8 +410,8 @@ fun LyricsMenu(
                 Slider(
                     value = tempLyricsSyncOffset,
                     onValueChange = { tempLyricsSyncOffset = it },
-                    valueRange = -1000f..1000f,
-                    steps = 79,
+                    valueRange = -5000f..5000f,
+                    steps = 199,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -528,7 +552,10 @@ fun LyricsMenu(
                                     },
                                     modifier =
                                         Modifier
-                                            .menuAnchor()
+                                            .menuAnchor(
+                                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                                enabled = !isTranslationInProgress,
+                                            )
                                             .fillMaxWidth(),
                                 )
 
@@ -581,7 +608,10 @@ fun LyricsMenu(
                                     },
                                     modifier =
                                         Modifier
-                                            .menuAnchor()
+                                            .menuAnchor(
+                                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                                enabled = !isTranslationInProgress,
+                                            )
                                             .fillMaxWidth(),
                                 )
 
@@ -745,6 +775,18 @@ fun LyricsMenu(
                             ),
                         ),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                )
+                NewMenuItem(
+                    headlineContent = { Text(stringResource(R.string.show_lyrics_translation)) },
+                    trailingContent = {
+                        Switch(
+                            checked = showTranslations,
+                            onCheckedChange = null,
+                            enabled = hasTranslations,
+                        )
+                    },
+                    enabled = hasTranslations,
+                    modifier = translationSwitchModifier,
                 )
                 NewMenuItem(
                     headlineContent = {

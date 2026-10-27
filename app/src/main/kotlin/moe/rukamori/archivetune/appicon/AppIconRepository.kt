@@ -15,6 +15,8 @@ import androidx.annotation.DrawableRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -28,7 +30,6 @@ data class AppIcon(
     val author: String?,
     val githubAuthorUrl: String?,
     @DrawableRes val previewDrawableResId: Int,
-    val aliasClassName: String,
     val isDefault: Boolean,
 )
 
@@ -48,6 +49,12 @@ private data class GeneratedAppIcon(
     val aliasClassName: String,
 )
 
+private data class LauncherAlias(
+    val id: String,
+    val componentName: ComponentName,
+    val isDefault: Boolean,
+)
+
 @Singleton
 class AppIconRepository
     @Inject
@@ -56,63 +63,76 @@ class AppIconRepository
     ) {
         private val packageManager: PackageManager = context.packageManager
         private val json = Json { ignoreUnknownKeys = true }
+        private val stateLock = Mutex()
 
         suspend fun loadCatalog(): AppIconCatalog =
             withContext(Dispatchers.IO) {
-                val icons = loadIcons()
-                val selectedIcon = findSelectedIcon(icons)
-                if (!isSelectionApplied(icons, selectedIcon)) {
-                    applySelection(icons, selectedIcon)
+                stateLock.withLock {
+                    val generatedIcons = readGeneratedIcons()
+                    val selectedAlias = reconcileLauncherEntry(launcherAliases(generatedIcons))
+                    AppIconCatalog(
+                        icons = appIcons(generatedIcons),
+                        selectedIconId = selectedAlias.id,
+                    )
                 }
-                AppIconCatalog(
-                    icons = icons,
-                    selectedIconId = selectedIcon.id,
-                )
             }
+
+        suspend fun restoreLauncherEntry() {
+            withContext(Dispatchers.IO) {
+                stateLock.withLock {
+                    reconcileLauncherEntry(launcherAliases(readGeneratedIcons()))
+                }
+            }
+        }
 
         suspend fun selectIcon(iconId: String): AppIconCatalog =
             withContext(Dispatchers.IO + NonCancellable) {
-                val icons = loadIcons()
-                val selectedIcon =
-                    icons.firstOrNull { icon -> icon.id == iconId }
-                        ?: throw IllegalArgumentException("Unknown app icon ID.")
-                if (!isSelectionApplied(icons, selectedIcon)) {
-                    applySelection(icons, selectedIcon)
+                stateLock.withLock {
+                    val generatedIcons = readGeneratedIcons()
+                    val aliases = launcherAliases(generatedIcons)
+                    val selectedAlias =
+                        aliases.firstOrNull { alias -> alias.id == iconId }
+                            ?: throw IllegalArgumentException("Unknown app icon ID.")
+                    if (!isSelectionApplied(aliases, selectedAlias)) {
+                        applySelection(aliases, selectedAlias)
+                    }
+                    AppIconCatalog(
+                        icons = appIcons(generatedIcons),
+                        selectedIconId = selectedAlias.id,
+                    )
                 }
-                AppIconCatalog(
-                    icons = icons,
-                    selectedIconId = selectedIcon.id,
-                )
             }
 
-        private fun loadIcons(): List<AppIcon> {
-            val generatedIcons =
-                context.assets
-                    .open(CatalogAssetPath)
-                    .bufferedReader()
-                    .use { reader -> json.decodeFromString<List<GeneratedAppIcon>>(reader.readText()) }
-                    .map { generated ->
-                        val drawableResId =
-                            context.resources.getIdentifier(
-                                generated.drawableResourceName,
-                                "drawable",
-                                context.packageName,
-                            )
-                        check(drawableResId != 0) {
-                            "Missing generated drawable ${generated.drawableResourceName} for ${generated.source}."
-                        }
-                        AppIcon(
-                            id = generated.id,
-                            name = generated.name,
-                            author = generated.author,
-                            githubAuthorUrl = generated.githubAuthorUrl.takeIf(String::isNotBlank),
-                            previewDrawableResId = drawableResId,
-                            aliasClassName = generated.aliasClassName,
-                            isDefault = false,
-                        )
-                    }
+        private fun readGeneratedIcons(): List<GeneratedAppIcon> =
+            context.assets
+                .open(CatalogAssetPath)
+                .bufferedReader()
+                .use { reader -> json.decodeFromString<List<GeneratedAppIcon>>(reader.readText()) }
 
-            return buildList(generatedIcons.size + 1) {
+        private fun launcherAliases(generatedIcons: List<GeneratedAppIcon>): List<LauncherAlias> =
+            buildList(generatedIcons.size + 1) {
+                add(
+                    LauncherAlias(
+                        id = DefaultIconId,
+                        componentName =
+                            ComponentName(
+                                context.packageName,
+                                "${context.packageName}.launcher.DefaultIconAlias",
+                            ),
+                        isDefault = true,
+                    ),
+                )
+                generatedIcons.mapTo(this) { generated ->
+                    LauncherAlias(
+                        id = generated.id,
+                        componentName = ComponentName(context.packageName, generated.aliasClassName),
+                        isDefault = false,
+                    )
+                }
+            }
+
+        private fun appIcons(generatedIcons: List<GeneratedAppIcon>): List<AppIcon> =
+            buildList(generatedIcons.size + 1) {
                 add(
                     AppIcon(
                         id = DefaultIconId,
@@ -120,45 +140,71 @@ class AppIconRepository
                         author = null,
                         githubAuthorUrl = null,
                         previewDrawableResId = R.drawable.app_icon_small,
-                        aliasClassName = "${context.packageName}.launcher.DefaultIconAlias",
                         isDefault = true,
                     ),
                 )
-                addAll(generatedIcons)
+                generatedIcons.mapTo(this) { generated -> communityAppIcon(generated) }
             }
+
+        private fun communityAppIcon(generated: GeneratedAppIcon): AppIcon {
+            val drawableResId =
+                context.resources.getIdentifier(
+                    generated.drawableResourceName,
+                    "drawable",
+                    context.packageName,
+                )
+            check(drawableResId != 0) {
+                "Missing generated drawable ${generated.drawableResourceName} for ${generated.source}."
+            }
+            return AppIcon(
+                id = generated.id,
+                name = generated.name,
+                author = generated.author,
+                githubAuthorUrl = generated.githubAuthorUrl.takeIf(String::isNotBlank),
+                previewDrawableResId = drawableResId,
+                isDefault = false,
+            )
         }
 
-        private fun findSelectedIcon(icons: List<AppIcon>): AppIcon =
-            icons.firstOrNull { icon ->
-                packageManager.getComponentEnabledSetting(icon.componentName()) ==
+        private fun reconcileLauncherEntry(aliases: List<LauncherAlias>): LauncherAlias {
+            val selectedAlias = findSelectedAlias(aliases)
+            if (!isSelectionApplied(aliases, selectedAlias)) {
+                applySelection(aliases, selectedAlias)
+            }
+            return selectedAlias
+        }
+
+        private fun findSelectedAlias(aliases: List<LauncherAlias>): LauncherAlias =
+            aliases.firstOrNull { alias ->
+                packageManager.getComponentEnabledSetting(alias.componentName) ==
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             }
-                ?: icons.first { icon -> icon.id == DefaultIconId }
+                ?: aliases.first(LauncherAlias::isDefault)
 
         private fun isSelectionApplied(
-            icons: List<AppIcon>,
-            selectedIcon: AppIcon,
+            aliases: List<LauncherAlias>,
+            selectedAlias: LauncherAlias,
         ): Boolean =
-            icons.count(::isEffectivelyEnabled) == 1 &&
-                isEffectivelyEnabled(selectedIcon)
+            aliases.count(::isEffectivelyEnabled) == 1 &&
+                isEffectivelyEnabled(selectedAlias)
 
-        private fun isEffectivelyEnabled(icon: AppIcon): Boolean =
-            when (packageManager.getComponentEnabledSetting(icon.componentName())) {
+        private fun isEffectivelyEnabled(alias: LauncherAlias): Boolean =
+            when (packageManager.getComponentEnabledSetting(alias.componentName)) {
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
-                PackageManager.COMPONENT_ENABLED_STATE_DEFAULT -> icon.isDefault
+                PackageManager.COMPONENT_ENABLED_STATE_DEFAULT -> alias.isDefault
                 else -> false
             }
 
         private fun applySelection(
-            icons: List<AppIcon>,
-            selectedIcon: AppIcon,
+            aliases: List<LauncherAlias>,
+            selectedAlias: LauncherAlias,
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.setComponentEnabledSettings(
-                    icons.map { icon ->
+                    aliases.map { alias ->
                         PackageManager.ComponentEnabledSetting(
-                            icon.componentName(),
-                            if (icon.id == selectedIcon.id) {
+                            alias.componentName,
+                            if (alias.id == selectedAlias.id) {
                                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                             } else {
                                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
@@ -169,30 +215,30 @@ class AppIconRepository
                 )
             } else {
                 val previousStates =
-                    icons.associateWith { icon ->
-                        packageManager.getComponentEnabledSetting(icon.componentName())
+                    aliases.associateWith { alias ->
+                        packageManager.getComponentEnabledSetting(alias.componentName)
                     }
                 try {
                     packageManager.setComponentEnabledSetting(
-                        selectedIcon.componentName(),
+                        selectedAlias.componentName,
                         PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                         PackageManager.DONT_KILL_APP,
                     )
-                    icons
+                    aliases
                         .asSequence()
-                        .filterNot { icon -> icon.id == selectedIcon.id }
-                        .forEach { icon ->
+                        .filterNot { alias -> alias.id == selectedAlias.id }
+                        .forEach { alias ->
                             packageManager.setComponentEnabledSetting(
-                                icon.componentName(),
+                                alias.componentName,
                                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                                 PackageManager.DONT_KILL_APP,
                             )
                         }
                 } catch (error: RuntimeException) {
-                    previousStates.forEach { (icon, state) ->
+                    previousStates.forEach { (alias, state) ->
                         runCatching {
                             packageManager.setComponentEnabledSetting(
-                                icon.componentName(),
+                                alias.componentName,
                                 state,
                                 PackageManager.DONT_KILL_APP,
                             )
@@ -202,12 +248,10 @@ class AppIconRepository
                 }
             }
 
-            check(isSelectionApplied(icons, selectedIcon)) {
-                "Unable to apply launcher icon ${selectedIcon.id} exclusively."
+            check(isSelectionApplied(aliases, selectedAlias)) {
+                "Unable to apply launcher icon ${selectedAlias.id} exclusively."
             }
         }
-
-        private fun AppIcon.componentName(): ComponentName = ComponentName(context.packageName, aliasClassName)
 
         private companion object {
             const val CatalogAssetPath = "icon_pack/catalog.json"

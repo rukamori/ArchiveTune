@@ -16,6 +16,17 @@ data class PersistQueue(
     val position: Long,
     val queueType: QueueType = QueueType.LIST,
     val queueData: QueueData? = null,
+    val entryMetadata: List<PersistQueueEntry>? = null,
+    val recommendationData: QueueData.YouTubeData? = null,
+) : Serializable {
+    companion object {
+        private const val serialVersionUID = 1L
+    }
+}
+
+data class PersistQueueEntry(
+    val id: String,
+    val recommended: Boolean,
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L
@@ -46,6 +57,7 @@ sealed class QueueData : Serializable {
         val playlistId: String? = null,
         val endpointParams: String? = null,
         val followAutomixPreview: Boolean = false,
+        val continuation: String? = null,
     ) : QueueData() {
         companion object {
             private const val serialVersionUID = 2L

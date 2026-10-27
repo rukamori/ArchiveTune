@@ -11,9 +11,13 @@ import androidx.media3.common.MediaItem
 import moe.rukamori.archivetune.extensions.ExtraIsMusicVideo
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.innertube.pages.QueueChip
 
 interface Queue {
     val preloadItem: MediaMetadata?
+    val isRadio: Boolean get() = false
+    val recommendationOnlyContinuation: Boolean get() = isRadio
+    val queueChips: List<QueueChip> get() = emptyList()
 
     suspend fun getInitialStatus(): Status
 

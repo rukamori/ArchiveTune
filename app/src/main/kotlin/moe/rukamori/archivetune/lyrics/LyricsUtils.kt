@@ -772,6 +772,17 @@ object LyricsUtils {
                 return@forEach
             }
 
+            if (existing.text.isBlank() && entry.text.isNotBlank()) {
+                mergedByTime[entry.time] = entry.copy(
+                    providerTranslationText = existing.providerTranslationText ?: entry.providerTranslationText,
+                )
+                return@forEach
+            }
+
+            if (entry.text.isBlank()) {
+                return@forEach
+            }
+
             val translatedText =
                 entry.text
                     .replace(WHITESPACE_REGEX, " ")

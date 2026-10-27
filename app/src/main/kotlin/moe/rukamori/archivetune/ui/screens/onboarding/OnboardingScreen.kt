@@ -889,26 +889,39 @@ private fun PermissionRow(
                 .heightIn(min = 88.dp),
         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        leadingContent = {
-            PermissionIcon(permission = permission)
-        },
-        supportingContent = {
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PermissionIcon(permission = permission)
+                Text(
+                    text = stringResource(permission.titleResId),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             Text(
                 text = stringResource(permission.descriptionResId),
+                modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        },
-        trailingContent = {
-            PermissionStatusAction(
-                permission = permission,
-                onPermissionAction = onPermissionAction,
-            )
-        },
-    ) {
-        Text(
-            text = stringResource(permission.titleResId),
-            style = MaterialTheme.typography.titleMedium,
-        )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                PermissionStatusAction(
+                    permission = permission,
+                    onPermissionAction = onPermissionAction,
+                )
+            }
+        }
     }
 }
 

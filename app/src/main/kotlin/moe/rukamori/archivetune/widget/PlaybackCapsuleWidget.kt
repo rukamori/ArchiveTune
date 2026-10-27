@@ -8,18 +8,14 @@
 package moe.rukamori.archivetune.widget
 
 import android.content.Context
-import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -37,10 +33,6 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import moe.rukamori.archivetune.R
 
 class PlaybackCapsuleWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -58,123 +50,68 @@ class PlaybackCapsuleWidget : GlanceAppWidget() {
 
 @Composable
 private fun PlaybackCapsuleContent(context: Context) {
-    val prefs = currentState<Preferences>()
-    val state = prefs.toWidgetPlaybackState(context)
+    val state = currentState<Preferences>().toWidgetPlaybackState(context)
+    val size = LocalSize.current
+    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
+    val tall = size.height >= 120.dp + 48.dp * textScale
+    val showArtwork = size.width >= 240.dp || tall
+    val artworkSize = if (tall) 64.dp else 48.dp
 
-    GlanceTheme(
-        colors =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                GlanceTheme.colors
-            } else {
-                ArchiveTuneWidgetColors.providers
-            },
-    ) {
-        val palette = rememberWidgetPalette(state.dominantColor)
-        val size = LocalSize.current
-        val compact = size.width < 292.dp || size.height < 82.dp
-
+    WidgetTheme(state.dominantColor) { palette ->
         Box(
-            modifier =
-                GlanceModifier
-                    .fillMaxSize()
-                    .background(palette.surface)
-                    .cornerRadius(30.dp)
-                    .padding(if (compact) 6.dp else 8.dp)
-                    .clickable(openArchiveTuneAction(context)),
+            modifier = GlanceModifier.fillMaxSize()
+                .background(palette.primaryContainer)
+                .cornerRadius(if (tall) 28.dp else size.height / 2)
+                .clickable(openArchiveTuneAction(context))
+                .padding(8.dp),
         ) {
-            PlaybackCapsuleLayout(
-                state = state,
-                palette = palette,
-                context = context,
-                compact = compact,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaybackCapsuleLayout(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    context: Context,
-    compact: Boolean,
-) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        Row(
-            modifier =
-                GlanceModifier
-                    .fillMaxWidth()
-                    .defaultWeight(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val artworkSize = if (compact) 50.dp else 58.dp
-            WidgetArtwork(
-                artPath = state.artPath,
-                context = context,
-                contentDescription = context.getString(R.string.album_cover_desc),
-                targetSize = artworkSize,
-                cornerRadius = if (compact) 17.dp else 20.dp,
-                palette = palette,
-                modifier = GlanceModifier.size(artworkSize),
-            )
-
-            Spacer(GlanceModifier.width(if (compact) 10.dp else 12.dp))
-
-            Column(
-                modifier = GlanceModifier.defaultWeight(),
-                verticalAlignment = Alignment.Vertical.CenterVertically,
-            ) {
-                Text(
-                    text = state.title,
-                    style =
-                        TextStyle(
-                            color = palette.onSurface,
-                            fontSize = if (compact) 14.sp else 16.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    maxLines = 1,
-                )
-                Spacer(GlanceModifier.height(2.dp))
-                Text(
-                    text = state.artist,
-                    style =
-                        TextStyle(
-                            color = palette.onSurfaceVariant,
-                            fontSize = if (compact) 12.sp else 13.sp,
-                        ),
-                    maxLines = 1,
-                )
+            if (tall) {
+                Column(modifier = GlanceModifier.fillMaxSize()) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        WidgetArtwork(
+                            artPath = state.artPath, context = context, contentDescription = null,
+                            targetSize = artworkSize, cornerRadius = artworkSize / 2,
+                            palette = palette, modifier = GlanceModifier.size(artworkSize), circular = true,
+                        )
+                        Spacer(GlanceModifier.width(12.dp))
+                        WidgetTrackInfo(
+                            state, palette, GlanceModifier.defaultWeight(),
+                            titleLines = if (size.height >= 220.dp * textScale) 2 else 1,
+                        )
+                    }
+                    if (state.isAvailable) {
+                        Spacer(GlanceModifier.height(8.dp))
+                        WidgetPlaybackProgress(state, palette)
+                        Spacer(GlanceModifier.height(8.dp))
+                        WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                    }
+                }
+            } else {
+                Row(
+                    modifier = GlanceModifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (showArtwork) {
+                        WidgetArtwork(
+                            artPath = state.artPath, context = context, contentDescription = null,
+                            targetSize = artworkSize, cornerRadius = artworkSize / 2,
+                            palette = palette, modifier = GlanceModifier.size(artworkSize), circular = true,
+                        )
+                        Spacer(GlanceModifier.width(10.dp))
+                    }
+                    WidgetTrackInfo(
+                        state, palette, GlanceModifier.defaultWeight(), titleSize = 14,
+                        showArtist = size.height - 16.dp >= 40.dp * textScale,
+                    )
+                    if (state.isAvailable) {
+                        Spacer(GlanceModifier.width(8.dp))
+                        WidgetPlayPauseButton(state, palette, context)
+                    }
+                }
             }
-
-            if (state.isAvailable) {
-                Spacer(GlanceModifier.width(if (compact) 8.dp else 10.dp))
-                WidgetControlButton(
-                    modifier = GlanceModifier.size(if (compact) 50.dp else 56.dp),
-                    action = playPauseAction(),
-                    icon = if (state.isPlaying) R.drawable.pause else R.drawable.play,
-                    contentDescription =
-                        context.getString(
-                            if (state.isPlaying) R.string.widget_pause else R.string.play,
-                        ),
-                    backgroundColor = palette.primaryContainer,
-                    contentColor = palette.onPrimaryContainer,
-                    cornerRadius = if (state.isPlaying) 15.dp else 28.dp,
-                    iconSize = if (compact) 24.dp else 28.dp,
-                )
-            }
-        }
-
-        if (state.isAvailable && state.playbackPosition > 0f) {
-            LinearProgressIndicator(
-                progress = state.playbackPosition,
-                color = palette.progress,
-                backgroundColor = palette.progressTrack,
-                modifier =
-                    GlanceModifier
-                        .fillMaxWidth()
-                        .height(if (compact) 5.dp else 6.dp)
-                        .cornerRadius(3.dp),
-            )
         }
     }
 }

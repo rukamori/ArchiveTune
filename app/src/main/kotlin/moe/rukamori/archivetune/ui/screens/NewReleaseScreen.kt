@@ -91,6 +91,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.viewmodels.NewReleaseContent
 import moe.rukamori.archivetune.viewmodels.NewReleaseUiState
 import moe.rukamori.archivetune.viewmodels.NewReleaseViewModel
@@ -164,7 +165,7 @@ fun NewReleaseScreen(
                         activeAlbumId = mediaMetadata?.album?.id,
                         isPlaying = isPlaying,
                         coroutineScope = coroutineScope,
-                        onReleaseClick = { album -> navController.navigate("album/${album.id}") },
+                        onReleaseClick = { album -> navController.navigateToAlbum(album.id) },
                         onReleaseLongClick = { album ->
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             menuState.show {

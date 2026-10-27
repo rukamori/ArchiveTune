@@ -32,6 +32,8 @@ import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 
 @Composable
 fun LibraryArtistListItem(
@@ -64,7 +66,7 @@ fun LibraryArtistListItem(
         modifier
             .fillMaxWidth()
             .clickable {
-                navController.navigate("artist/${artist.id}")
+                navController.navigateToArtist(artist.id)
             },
 )
 
@@ -84,7 +86,7 @@ fun LibraryArtistGridItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {
-                    navController.navigate("artist/${artist.id}")
+                    navController.navigateToArtist(artist.id)
                 },
                 onLongClick = {
                     menuState.show {
@@ -132,7 +134,7 @@ fun LibraryAlbumListItem(
         modifier
             .fillMaxWidth()
             .clickable {
-                navController.navigate("album/${album.id}")
+                navController.navigateToAlbum(album.id)
             },
 )
 
@@ -157,7 +159,7 @@ fun LibraryAlbumGridItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {
-                    navController.navigate("album/${album.id}")
+                    navController.navigateToAlbum(album.id)
                 },
                 onLongClick = {
                     menuState.show {

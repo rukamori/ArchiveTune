@@ -30,11 +30,18 @@ fun BigSeekBar(
     color: Color = MaterialTheme.colorScheme.primary,
     steps: Int = 19,
 ) {
+    val sliderState =
+        rememberControlledSliderState(
+            value = progressProvider(),
+            valueRange = 0f..1f,
+            steps = steps,
+        )
     Slider(
-        value = progressProvider(),
-        onValueChange = onProgressChange,
-        valueRange = 0f..1f,
-        steps = steps,
+        state = sliderState,
+        onValueChange = { value ->
+            sliderState.value = value
+            onProgressChange(value)
+        },
         colors =
             SliderDefaults.colors(
                 activeTrackColor = color,

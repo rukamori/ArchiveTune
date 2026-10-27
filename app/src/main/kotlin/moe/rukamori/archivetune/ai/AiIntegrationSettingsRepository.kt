@@ -22,6 +22,7 @@ import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiCustomPromptKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
+import moe.rukamori.archivetune.constants.AiRequestParametersKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.utils.dataStore
@@ -36,6 +37,7 @@ data class AiIntegrationSettingsData(
     val selectedModel: String,
     val customModel: String,
     val customPrompt: String,
+    val requestParameters: String,
 ) {
     fun toServiceConfig(): AiServiceConfig =
         AiServiceConfig(
@@ -43,6 +45,7 @@ data class AiIntegrationSettingsData(
             apiKey = apiKey,
             customEndpoint = customEndpoint,
             model = if (provider == AiProvider.CUSTOM) customModel else selectedModel,
+            requestParameters = requestParameters,
         )
 }
 
@@ -103,10 +106,23 @@ class AiIntegrationSettingsRepository
             }
         }
 
-        suspend fun setValidationStatus(status: AiApiValidationStatus) {
+        suspend fun setRequestParameters(value: String) {
+            val normalized = AiRequestParameters.normalize(value)
             context.dataStore.edit { preferences ->
-                preferences[AiApiValidationStatusKey] = status.name
+                preferences[AiRequestParametersKey] = normalized
+                preferences[AiApiValidationStatusKey] = AiApiValidationStatus.UNKNOWN.name
             }
+        }
+
+        suspend fun setValidationStatus(status: AiApiValidationStatus, config: AiServiceConfig): Boolean {
+            var updated = false
+            context.dataStore.edit { preferences ->
+                if (settingsFromPreferences(preferences).toServiceConfig() == config) {
+                    preferences[AiApiValidationStatusKey] = status.name
+                    updated = true
+                }
+            }
+            return updated
         }
 
         suspend fun fetchModels(config: AiServiceConfig): List<AiModelOption> =
@@ -126,5 +142,6 @@ class AiIntegrationSettingsRepository
                 selectedModel = preferences[AiSelectedModelKey].orEmpty(),
                 customModel = preferences[AiCustomModelKey].orEmpty(),
                 customPrompt = preferences[AiCustomPromptKey].orEmpty(),
+                requestParameters = preferences[AiRequestParametersKey].orEmpty(),
             )
     }

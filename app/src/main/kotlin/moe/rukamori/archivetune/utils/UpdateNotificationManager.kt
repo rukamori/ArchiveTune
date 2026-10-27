@@ -28,9 +28,6 @@ import moe.rukamori.archivetune.constants.AutomaticUpdateCheckKey
 import moe.rukamori.archivetune.constants.EnableUpdateNotificationKey
 import moe.rukamori.archivetune.constants.LastNotifiedVersionKey
 import moe.rukamori.archivetune.constants.LastUpdateCheckKey
-import moe.rukamori.archivetune.constants.UpdateChannel
-import moe.rukamori.archivetune.constants.UpdateChannelKey
-import moe.rukamori.archivetune.defaultUpdateChannel
 import moe.rukamori.archivetune.updates.UpdateCheckScheduler
 
 object UpdateNotificationManager {
@@ -85,9 +82,6 @@ object UpdateNotificationManager {
                 val notificationsEnabled = preferences[EnableUpdateNotificationKey] ?: false
                 if (!notificationsEnabled) return@withContext
 
-                val updateChannel =
-                    UpdateChannel.fromStoredName(preferences[UpdateChannelKey], defaultUpdateChannel)
-
                 val lastCheck = preferences[LastUpdateCheckKey] ?: 0L
                 val now = System.currentTimeMillis()
 
@@ -95,14 +89,10 @@ object UpdateNotificationManager {
 
                 dataStore.edit { it[LastUpdateCheckKey] = now }
 
-                val latestVersion =
-                    when (updateChannel) {
-                        UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
-                        UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                    }.getOrElse { throw it }
+                val latestVersion = Updater.getLatestVersionName().getOrElse { throw it }
 
                 if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
-                    notifyIfNewVersion(context, latestVersion, updateChannel)
+                    notifyIfNewVersion(context, latestVersion)
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -115,7 +105,6 @@ object UpdateNotificationManager {
     suspend fun notifyIfNewVersion(
         context: Context,
         latestVersion: String,
-        updateChannel: UpdateChannel = UpdateChannel.STABLE,
     ) {
         if (!BuildConfig.UPDATER_AVAILABLE) return
 
@@ -127,7 +116,7 @@ object UpdateNotificationManager {
             val lastNotified = preferences[LastNotifiedVersionKey].orEmpty()
 
             if (latestVersion != lastNotified && Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
-                showUpdateNotification(context, latestVersion, updateChannel)
+                showUpdateNotification(context, latestVersion)
                 dataStore.edit { it[LastNotifiedVersionKey] = latestVersion }
             }
         } catch (exception: CancellationException) {
@@ -140,7 +129,6 @@ object UpdateNotificationManager {
     private fun showUpdateNotification(
         context: Context,
         newVersion: String,
-        updateChannel: UpdateChannel = UpdateChannel.STABLE,
     ) {
         createNotificationChannel(context)
 
@@ -157,11 +145,7 @@ object UpdateNotificationManager {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
-        val downloadUrl =
-            when (updateChannel) {
-                UpdateChannel.ARTIFACT -> Updater.getLatestCanaryDownloadUrl()
-                UpdateChannel.STABLE -> Updater.getLatestDownloadUrl()
-            }
+        val downloadUrl = Updater.getLatestDownloadUrl()
         val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
         val downloadPendingIntent =
             PendingIntent.getActivity(

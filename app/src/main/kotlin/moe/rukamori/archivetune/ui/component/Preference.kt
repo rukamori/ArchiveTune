@@ -65,7 +65,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -443,8 +442,7 @@ fun <T : Any> MultiSelectListPreference(
                 coroutineScope
                     .launch {
                         sheetState.hide()
-                    }.invokeOnCompletion {
-                        completion()
+                        if (!sheetState.isVisible) completion()
                     }
             }
         }
@@ -536,6 +534,7 @@ private fun <T : Any> MultiSelectPreferenceBottomSheet(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .weight(1f, fill = false)
                         .heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 12.dp),
@@ -1027,16 +1026,17 @@ fun SliderPreference(
                     Spacer(Modifier.height(16.dp))
 
                     val sliderState =
-                        rememberSliderState(
+                        rememberControlledSliderState(
                             value = sliderValue,
                             valueRange = HISTORY_DURATION_RANGE,
-                            onValueChangeFinished = {},
                         )
-                    sliderState.onValueChange = { sliderValue = it }
-                    sliderState.value = sliderValue
 
                     Slider(
                         state = sliderState,
+                        onValueChange = { value ->
+                            sliderState.value = value
+                            sliderValue = value
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         track = {
                             SliderDefaults.Track(
@@ -1139,17 +1139,18 @@ fun CrossfadeSliderPreference(
                     Spacer(Modifier.height(16.dp))
 
                     val crossfadeSliderState =
-                        rememberSliderState(
+                        rememberControlledSliderState(
                             value = sliderValue,
                             steps = 19,
                             valueRange = 0f..10f,
-                            onValueChangeFinished = {},
                         )
-                    crossfadeSliderState.onValueChange = { sliderValue = it.coerceIn(0f, 10f) }
-                    crossfadeSliderState.value = sliderValue
 
                     Slider(
                         state = crossfadeSliderState,
+                        onValueChange = { value ->
+                            crossfadeSliderState.value = value
+                            sliderValue = value.coerceIn(0f, 10f)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         track = {
                             SliderDefaults.Track(
@@ -1244,19 +1245,18 @@ fun NumberPickerPreference(
                     Spacer(Modifier.height(16.dp))
 
                     val pickerSliderState =
-                        rememberSliderState(
+                        rememberControlledSliderState(
                             value = sliderValue,
                             steps = maxValue - minValue - 1,
                             valueRange = minValue.toFloat()..maxValue.toFloat(),
-                            onValueChangeFinished = {},
                         )
-                    pickerSliderState.onValueChange = {
-                        sliderValue = it.coerceIn(minValue.toFloat(), maxValue.toFloat())
-                    }
-                    pickerSliderState.value = sliderValue
 
                     Slider(
                         state = pickerSliderState,
+                        onValueChange = { value ->
+                            pickerSliderState.value = value
+                            sliderValue = value.coerceIn(minValue.toFloat(), maxValue.toFloat())
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         track = {
                             SliderDefaults.Track(

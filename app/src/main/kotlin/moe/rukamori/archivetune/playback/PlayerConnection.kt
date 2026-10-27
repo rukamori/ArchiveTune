@@ -246,6 +246,13 @@ class PlayerConnection(
         service.moveQueueItemToNext(mediaItemIndex)
     }
 
+    internal fun removeQueueItems(windows: List<Timeline.Window>): QueueRemoval? =
+        service.removeQueueItems(windows)
+
+    internal fun restoreQueueItems(removal: QueueRemoval): Boolean = service.restoreQueueItems(removal)
+
+    internal fun discardQueueRemoval(removal: QueueRemoval) = service.discardQueueRemoval(removal)
+
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
 
     fun addToQueue(items: List<MediaItem>) {

@@ -31,6 +31,7 @@ import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_PODCAST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_SONG
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_VIDEO
+import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -200,7 +201,11 @@ class OnlineSearchViewModel
                         .withIndex()
                         .sortedWith(
                             compareByDescending<IndexedValue<YTItem>> {
-                                (it.value as? SongItem)?.viewCount ?: Long.MIN_VALUE
+                                when (val item = it.value) {
+                                    is SongItem -> item.viewCount
+                                    is PlaylistItem -> item.viewCount
+                                    else -> null
+                                } ?: Long.MIN_VALUE
                             }.thenBy { it.index },
                         ).map { it.value }
                 }

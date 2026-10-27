@@ -14,9 +14,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.constants.AutomaticUpdateCheckKey
-import moe.rukamori.archivetune.constants.UpdateChannel
-import moe.rukamori.archivetune.constants.UpdateChannelKey
-import moe.rukamori.archivetune.defaultUpdateChannel
 
 class UpdateCheckWorker(
     context: Context,
@@ -34,20 +31,12 @@ class UpdateCheckWorker(
             val automaticChecksEnabled = preferences[AutomaticUpdateCheckKey] ?: true
             if (!automaticChecksEnabled) return Result.success()
 
-            val updateChannel =
-                UpdateChannel.fromStoredName(preferences[UpdateChannelKey], defaultUpdateChannel)
-
-            val latestVersion =
-                when (updateChannel) {
-                    UpdateChannel.ARTIFACT -> Updater.getLatestCanaryVersionName()
-                    UpdateChannel.STABLE -> Updater.getLatestVersionName()
-                }.getOrElse { throw it }
+            val latestVersion = Updater.getLatestVersionName().getOrElse { throw it }
 
             if (Updater.isUpdateAvailable(latestVersion, BuildConfig.VERSION_NAME)) {
                 UpdateNotificationManager.notifyIfNewVersion(
                     applicationContext,
                     latestVersion,
-                    updateChannel,
                 )
             }
 

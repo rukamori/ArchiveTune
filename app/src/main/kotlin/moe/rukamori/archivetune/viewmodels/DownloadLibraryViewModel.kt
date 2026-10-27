@@ -40,13 +40,31 @@ enum class DownloadLibraryTab {
     PROGRESS,
 }
 
+enum class DownloadLibrarySortField {
+    NAME,
+    DATE_MODIFIED,
+}
+
+enum class DownloadLibrarySortOrder {
+    ASCENDING,
+    DESCENDING,
+}
+
+@Immutable
+data class DownloadLibrarySort(
+    val field: DownloadLibrarySortField = DownloadLibrarySortField.DATE_MODIFIED,
+    val order: DownloadLibrarySortOrder = DownloadLibrarySortOrder.DESCENDING,
+)
+
 sealed interface DownloadLibraryScreenState {
     val pendingRemoval: DownloadRemovalConfirmation?
+    val sort: DownloadLibrarySort
 
     data class Loading(
         val selectedTab: DownloadLibraryTab,
         val query: String,
         val isSearchActive: Boolean,
+        override val sort: DownloadLibrarySort,
         override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
@@ -55,6 +73,7 @@ sealed interface DownloadLibraryScreenState {
         val library: DownloadLibraryUiModel,
         val query: String,
         val isSearchActive: Boolean,
+        override val sort: DownloadLibrarySort,
         override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
@@ -62,6 +81,7 @@ sealed interface DownloadLibraryScreenState {
         val selectedTab: DownloadLibraryTab,
         val query: String,
         val isSearchActive: Boolean,
+        override val sort: DownloadLibrarySort,
         override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 
@@ -70,6 +90,7 @@ sealed interface DownloadLibraryScreenState {
         @StringRes val messageRes: Int,
         val query: String,
         val isSearchActive: Boolean,
+        override val sort: DownloadLibrarySort,
         override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 }
@@ -118,10 +139,27 @@ class DownloadLibraryViewModel
             )
         private val query = MutableStateFlow("")
         private val isSearchActive = MutableStateFlow(false)
+        private val sort = MutableStateFlow(DownloadLibrarySort())
         private val pendingRemoval = MutableStateFlow<DownloadRemovalConfirmation?>(null)
         private val actionJobs = ConcurrentHashMap<String, Job>()
         private val eventChannel = Channel<DownloadLibraryEvent>(Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
+        private val screenControls =
+            combine(
+                selectedTab,
+                query,
+                isSearchActive,
+                sort,
+                pendingRemoval,
+            ) { tab, currentQuery, searchActive, currentSort, removalConfirmation ->
+                DownloadLibraryScreenControls(
+                    selectedTab = tab,
+                    query = currentQuery,
+                    isSearchActive = searchActive,
+                    sort = currentSort,
+                    pendingRemoval = removalConfirmation,
+                )
+            }
 
         val screenState =
             combine(
@@ -131,38 +169,38 @@ class DownloadLibraryViewModel
                     .catch {
                         emit(DownloadLibraryResult.Failure)
                     },
-                selectedTab,
-                query,
-                isSearchActive,
-                pendingRemoval,
-            ) { result, tab, currentQuery, searchActive, removalConfirmation ->
+                screenControls,
+            ) { result, controls ->
                 when (result) {
                     is DownloadLibraryResult.Data -> {
                         if (result.library.isEmpty) {
                             DownloadLibraryScreenState.Empty(
-                                selectedTab = tab,
-                                query = currentQuery,
-                                isSearchActive = searchActive,
-                                pendingRemoval = removalConfirmation,
+                                selectedTab = controls.selectedTab,
+                                query = controls.query,
+                                isSearchActive = controls.isSearchActive,
+                                sort = controls.sort,
+                                pendingRemoval = controls.pendingRemoval,
                             )
                         } else {
                             DownloadLibraryScreenState.Success(
-                                selectedTab = tab,
-                                library = result.library.filteredBy(currentQuery),
-                                query = currentQuery,
-                                isSearchActive = searchActive,
-                                pendingRemoval = removalConfirmation,
+                                selectedTab = controls.selectedTab,
+                                library = result.library.filteredBy(controls.query).sortedBy(controls.sort),
+                                query = controls.query,
+                                isSearchActive = controls.isSearchActive,
+                                sort = controls.sort,
+                                pendingRemoval = controls.pendingRemoval,
                             )
                         }
                     }
 
                     DownloadLibraryResult.Failure -> {
                         DownloadLibraryScreenState.Error(
-                            selectedTab = tab,
+                            selectedTab = controls.selectedTab,
                             messageRes = R.string.downloads_load_failed,
-                            query = currentQuery,
-                            isSearchActive = searchActive,
-                            pendingRemoval = removalConfirmation,
+                            query = controls.query,
+                            isSearchActive = controls.isSearchActive,
+                            sort = controls.sort,
+                            pendingRemoval = controls.pendingRemoval,
                         )
                     }
                 }
@@ -174,6 +212,7 @@ class DownloadLibraryViewModel
                         selectedTab = selectedTab.value,
                         query = "",
                         isSearchActive = false,
+                        sort = sort.value,
                     ),
             )
 
@@ -202,6 +241,14 @@ class DownloadLibraryViewModel
             query.value = ""
         }
 
+        fun selectSortField(field: DownloadLibrarySortField) {
+            sort.value = sort.value.copy(field = field)
+        }
+
+        fun selectSortOrder(order: DownloadLibrarySortOrder) {
+            sort.value = sort.value.copy(order = order)
+        }
+
         fun open(entry: DownloadEntryUiModel) {
             val event =
                 entry.destinationRoute?.let { DownloadLibraryEvent.Navigate(it) }
@@ -212,13 +259,17 @@ class DownloadLibraryViewModel
 
         private fun createPlaySongEvent(entry: DownloadEntryUiModel): DownloadLibraryEvent.PlaySong? {
             val selectedMetadata = entry.playbackMetadata ?: return null
-            val downloadedSongQueue = currentDownloadedSongQueue()
-            val startIndex = downloadedSongQueue.indexOfFirst { metadata -> metadata.id == selectedMetadata.id }
+            val downloadedSongQueue =
+                currentDownloadedSongEntries()
+                    .mapNotNull { queueEntry ->
+                        queueEntry.playbackMetadata?.let { metadata -> queueEntry.id to metadata }
+                    }
+            val startIndex = downloadedSongQueue.indexOfFirst { (entryId) -> entryId == entry.id }
 
             return if (startIndex >= 0) {
                 DownloadLibraryEvent.PlaySong(
                     metadata = selectedMetadata,
-                    queue = downloadedSongQueue,
+                    queue = ImmutableList.copyOf(downloadedSongQueue.map { (_, metadata) -> metadata }),
                     startIndex = startIndex,
                 )
             } else {
@@ -230,17 +281,14 @@ class DownloadLibraryViewModel
             }
         }
 
-        private fun currentDownloadedSongQueue(): ImmutableList<MediaMetadata> {
-            val state = screenState.value as? DownloadLibraryScreenState.Success ?: return ImmutableList.of()
-            if (state.selectedTab != DownloadLibraryTab.DOWNLOADED) return ImmutableList.of()
+        private fun currentDownloadedSongEntries(): List<DownloadEntryUiModel> {
+            val state = screenState.value as? DownloadLibraryScreenState.Success ?: return emptyList()
+            if (state.selectedTab != DownloadLibraryTab.DOWNLOADED) return emptyList()
 
-            val metadata =
-                state.library.downloadedSections
-                    .firstOrNull { section -> section.mediaType == DownloadMediaType.SONG }
-                    ?.entries
-                    .orEmpty()
-                    .mapNotNull { entry -> entry.playbackMetadata }
-            return ImmutableList.copyOf(metadata)
+            return state.library.downloadedSections
+                .firstOrNull { section -> section.mediaType == DownloadMediaType.SONG }
+                ?.entries
+                .orEmpty()
         }
 
         fun pause(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.pause(entry.songIds) }
@@ -300,6 +348,14 @@ class DownloadLibraryViewModel
             data object Failure : DownloadLibraryResult
         }
 
+        private data class DownloadLibraryScreenControls(
+            val selectedTab: DownloadLibraryTab,
+            val query: String,
+            val isSearchActive: Boolean,
+            val sort: DownloadLibrarySort,
+            val pendingRemoval: DownloadRemovalConfirmation?,
+        )
+
         private fun DownloadLibraryUiModel.filteredBy(query: String): DownloadLibraryUiModel {
             val normalizedQuery = query.trim()
             if (normalizedQuery.isEmpty()) return this
@@ -317,6 +373,34 @@ class DownloadLibraryViewModel
             return copy(
                 downloadedSections = downloadedSections.filteredSections(),
                 progressSections = progressSections.filteredSections(),
+            )
+        }
+
+        private fun DownloadLibraryUiModel.sortedBy(sort: DownloadLibrarySort): DownloadLibraryUiModel {
+            fun List<DownloadEntryUiModel>.sortedEntries(): List<DownloadEntryUiModel> {
+                val comparator: Comparator<DownloadEntryUiModel> =
+                    when (sort.field) {
+                        DownloadLibrarySortField.NAME ->
+                            Comparator { first, second ->
+                                String.CASE_INSENSITIVE_ORDER.compare(first.title, second.title)
+                            }
+
+                        DownloadLibrarySortField.DATE_MODIFIED -> compareBy(DownloadEntryUiModel::modifiedAtMs)
+                    }.thenBy(DownloadEntryUiModel::id)
+                val sortedEntries = sortedWith(comparator)
+                return if (sort.order == DownloadLibrarySortOrder.ASCENDING) sortedEntries else sortedEntries.asReversed()
+            }
+
+            fun List<DownloadSectionUiModel>.sortedSections(): List<DownloadSectionUiModel> =
+                map { section ->
+                    section.copy(
+                        entries = section.entries.sortedEntries(),
+                    )
+                }
+
+            return copy(
+                downloadedSections = downloadedSections.sortedSections(),
+                progressSections = progressSections.sortedSections(),
             )
         }
 

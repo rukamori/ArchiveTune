@@ -220,6 +220,7 @@
     <string name="remove_from_queue">Remove from queue</string>
     <string name="removed_song_from_queue">Removed \"%s\" from queue</string>
     <string name="removed_n_songs_from_queue">Removed %d songs from queue</string>
+    <string name="queue_undo_unavailable">Queue changed. Unable to undo.</string>
     <string name="search_online">Search online</string>
     <string name="tempo_and_pitch">Tempo and Pitch</string>
     <string name="tempo">Tempo</string>
@@ -511,7 +512,7 @@
     <string name="playback_error_unknown" translatable="false">Unknown error</string>
     <string name="playback_error_no_internet" translatable="false">No network connection</string>
     <string name="playback_error_details" translatable="false">Details</string>
-    <string name="playback_error_reporting_hint">Before reporting this issue in the support server or group, update to the latest nightly or artifact build and try again.</string>
+    <string name="playback_error_reporting_hint">Before reporting this issue in the support server or group, update to the latest release and try again.</string>
     <string name="playback_error_app_version" translatable="false">App version: %1$s (%2$d)</string>
     <string name="playback_error_code" translatable="false">Code</string>
     <string name="playback_error_http" translatable="false">HTTP</string>
@@ -545,10 +546,11 @@
     <string name="enable_betterlyrics">Enable BetterLyrics</string>
     <string name="enable_betterlyrics_portato">Enable BetterLyrics Portato</string>
     <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
+    <string name="enable_binimum_lyrics">Enable Binimum lyrics</string>
+    <string name="binimum_lyrics" translatable="false">Binimum Lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
     <string name="enable_megalobiz_lyrics">Enable Megalobiz lyrics</string>
-    <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
     <string name="paxsenix_api_key">Paxsenix API key</string>
     <string name="paxsenix_api_key_configured">Configured</string>
     <string name="paxsenix_api_key_missing">Required for authenticated Paxsenix requests</string>
@@ -561,7 +563,7 @@
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
     <string name="low_data_mode_title">Low Data Mode</string>
-    <string name="low_data_mode_description">Reduces mobile data usage by using low-quality streams and disabling playback cache and canvas on metered networks</string>
+    <string name="low_data_mode_description">Uses lower-quality YouTube streams and disables playback cache and canvas on metered networks. Module audio quality stays unchanged.</string>
     <string name="preload_next_song_title">Preload Mode</string>
     <string name="preload_next_song_warning">Uses additional data, battery, and processing in the background.</string>
     <string name="sponsor_block_group">Sponsor Block</string>
@@ -579,6 +581,17 @@
     <string name="sponsor_block_subscription_reminders">Subscription reminders</string>
     <string name="sponsor_block_hooks">Hook/Greetings</string>
     <string name="queue">Queue</string>
+    <string name="queue_empty">Your queue is empty</string>
+    <string name="queue_action_failed">Couldn’t update the queue. Try again.</string>
+    <string name="queue_recommendations_failed">Couldn’t load recommendations</string>
+    <string name="queue_lock">Lock queue editing</string>
+    <string name="queue_unlock">Unlock queue editing</string>
+    <string name="queue_reorder">Reorder song</string>
+    <string name="queue_move_up">Move up</string>
+    <string name="queue_move_down">Move down</string>
+    <string name="queue_select_song">Select song</string>
+    <string name="queue_select_all">Select all</string>
+    <string name="queue_deselect_all">Deselect all</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
     <string name="permanent_shuffle">Permanent shuffle mode</string>
@@ -681,6 +694,7 @@
     <string name="total_requests">Total Requests</string>
     <string name="success_rate">Success Rate</string>
     <string name="providers">Providers</string>
+    <string name="lyrics_enabled_providers">Enabled providers</string>
     <string name="paxsenix_status_operational">Operational</string>
     <string name="paxsenix_status_degraded">Degraded</string>
     <string name="paxsenix_status_down">Down</string>
@@ -836,6 +850,7 @@
     <string name="language_label">Language</string>
     <string name="lyrics">Lyrics</string>
     <string name="translation_success">Translation saved</string>
+    <string name="show_lyrics_translation">Show translation</string>
     <string name="translation_failed">Translation failed</string>
     <string name="discord_button_options">Button Options</string>
     <string name="discord_image_options">Image Options</string>
@@ -905,29 +920,21 @@
     <string name="about">About</string>
     <string name="new_version_available">New version available</string>
     <string name="updates">Updates</string>
-    <string name="updates_subtitle_artifact">Artifact builds from GitHub Actions workflow</string>
     <string name="current_version">Current Version</string>
     <string name="latest_version_format">Latest: %s</string>
     <string name="updates_status_checking">Checking for the latest release</string>
     <string name="updates_status_current">You are on the latest available release</string>
     <string name="automatic_update_checks">Automatic Updates Check</string>
-    <string name="automatic_update_checks_desc">Check the selected channel automatically for new releases</string>
+    <string name="automatic_update_checks_desc">Check automatically for new releases</string>
     <string name="enable_update_notification">Enable Update Notification</string>
-    <string name="enable_update_notification_channel_desc">Get notified when a new release is available on the selected channel</string>
+    <string name="enable_update_notification_channel_desc">Get notified when a new release is available</string>
     <string name="update_channel">Update Channel</string>
-    <string name="update_channel_desc">Choose between tested releases and development snapshots.</string>
-    <string name="channel_artifact">Artifact</string>
+    <string name="update_channel_release">Release</string>
+    <string name="update_channel_release_desc">Tested updates from official GitHub Releases.</string>
+    <string name="early_access_programs">Early access programs</string>
+    <string name="early_access_programs_desc">Try upcoming features before release and help shape ArchiveTune with your feedback. Join the Discord community to take part.</string>
+    <string name="early_access_open_failed">Could not open the Discord invitation. Check that a browser or Discord is installed.</string>
     <string name="recent_commits">Recent Commits</string>
-    <string name="updates_artifact_hosting_description">Artifact builds are fetched directly from GitHub Actions workflow runs.</string>
-    <string name="updates_channel_warning_intro">ArchiveTune provides two download channels for builds:</string>
-    <string name="updates_channel_warning_stable_title">Stable builds</string>
-    <string name="updates_channel_warning_stable_source">Distributed via official GitHub Releases.</string>
-    <string name="updates_channel_warning_stable_desc">These versions are tested and recommended for most users.</string>
-    <string name="updates_channel_warning_artifact_title">Artifact builds</string>
-    <string name="updates_channel_warning_artifact_risk">Artifact builds may include experimental features, unfinished changes, or temporary regressions.</string>
-    <string name="updates_channel_warning_artifact_unstable">Artifact builds are provided for testing and early access only.\nStability, compatibility, and functionality are not guaranteed.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">Note: downloading directly from GitHub bypasses any additional screening performed by the store you might have originally installed the app from.\nBy continuing, you acknowledge that Artifact builds may be unstable and use them at your own risk.</string>
-    <string name="updates_artifact_channel_confirmation">Switch to the Artifact channel to receive development builds.\n\nArtifact builds are fetched directly from GitHub Actions workflow runs.\nNote: downloading directly from GitHub bypasses any additional screening performed by the store you might have originally installed the app from.</string>
     <string name="updates_loading_commits">Loading recent commits</string>
     <string name="updates_recent_commits_count">%1$d recent commits</string>
     <string name="updates_no_commits">No recent commits found</string>
@@ -1130,4 +1137,7 @@
     <string name="scheduled_backup_update_failed">Scheduled backup settings could not be saved</string>
     <string name="gatekeeper_connection_blocked">Connection blocked by ArchiveTune Remote. This app could not be verified as an official ArchiveTune build. Install an official build from https://github.com/rukamori/ArchiveTune or https://t.me/ArchiveTuneGC.</string>
     <string name="local_songs_metadata_unavailable">Imported %1$d songs. Online metadata is unavailable; file tags were kept.</string>
+    <string name="modules_session_verify">Verify connection</string>
+    <string name="modules_session_connected">Module connection verified</string>
+    <string name="modules_session_failed">Module verification failed or expired. Open module settings to try again.</string>
 </resources>

@@ -482,7 +482,6 @@
     <string name="enable_betterlyrics">Ativar BetterLyrics</string>
     <string name="enable_unison_lyrics">Ativar letras do Unison</string>
     <string name="enable_simpmusic_lyrics">Ativar letras do SimpMusic</string>
-    <string name="enable_paxsenix_lyrics">Ativar letras do Paxsenix</string>
     <string name="player_and_audio">Player e áudio</string>
     <string name="audio_quality">Qualidade de áudio</string>
     <string name="audio_quality_auto">Automático</string>
@@ -767,12 +766,7 @@
     <string name="updates_status_current">Você está na versão mais recente disponível</string>
     <string name="enable_update_notification">Ativar notificação de atualização</string>
     <string name="update_channel">Canal de atualização</string>
-    <string name="update_channel_desc">Escolha entre versões testadas e snapshots de desenvolvimento.</string>
     <string name="recent_commits">Commits recentes</string>
-    <string name="updates_channel_warning_intro">O ArchiveTune oferece dois canais de download para builds:</string>
-    <string name="updates_channel_warning_stable_title">Builds estáveis</string>
-    <string name="updates_channel_warning_stable_source">Distribuídas pelas GitHub Releases oficiais.</string>
-    <string name="updates_channel_warning_stable_desc">Essas versões são testadas e recomendadas para a maioria dos usuários.</string>
     <string name="updates_loading_commits">Carregando commits recentes</string>
     <string name="updates_recent_commits_count">%1$d commits recentes</string>
     <string name="updates_no_commits">Nenhum commit recente encontrado</string>
@@ -959,15 +953,7 @@
     <string name="copy_log_entry">Copiar registro do log</string>
     <string name="export_logs_failed">Não foi possível exportar os registros</string>
     <string name="export">Exportar</string>
-    <string name="updates_subtitle_artifact">Lançamentos da versão Canary e commits recentes de desenvolvimento</string>
     <string name="enable_update_notification_channel_desc">Receba uma notificação quando uma nova versão estiver disponível no canal selecionado</string>
-    <string name="channel_artifact">Canary</string>
-    <string name="updates_artifact_hosting_description">As versões Canary são publicadas automaticamente a partir do ramo de desenvolvimento mais recente.</string>
-    <string name="updates_channel_warning_artifact_title">Lançamentos canary</string>
-    <string name="updates_channel_warning_artifact_risk">As versões Canary podem incluir recursos experimentais, alterações ainda não finalizadas ou regressões temporárias.</string>
-    <string name="updates_channel_warning_artifact_unstable">As versões Canary são fornecidas exclusivamente para testes e acesso antecipado.\nA estabilidade, a compatibilidade e a funcionalidade não são garantidas.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">Observação: o download direto do GitHub ignora qualquer verificação adicional realizada pela loja na qual você possa ter instalado o aplicativo originalmente.\nAo continuar, você reconhece que as versões Canary podem ser instáveis e que as utiliza por sua própria conta e risco.</string>
-    <string name="updates_artifact_channel_confirmation">Mude para o canal Canary para receber versões de desenvolvimento.\n\nAs versões Canary são publicadas automaticamente a partir do ramo de desenvolvimento mais recente.\nObservação: o download direto do GitHub ignora qualquer verificação adicional realizada pela loja na qual você possa ter instalado o aplicativo originalmente.</string>
     <string name="onboarding_permission_device_audio_capture_title">Reconhecimento de áudio no próprio dispositivo</string>
     <string name="onboarding_permission_device_audio_capture_desc">Reconheça músicas que estão tocando em outros aplicativos sem usar o microfone. O Android solicita autorização para capturar a tela e o áudio a cada vez, enquanto o ArchiveTune processa apenas o áudio.</string>
     <string name="remove_playlist_cover">Remover capa personalizada</string>

@@ -632,7 +632,6 @@
     <string name="external_downloader_not_configured">Не настроено ни одного внешнего загрузчика. Настройте один в Настройки → Плеер.</string>
     <string name="updates_status_checking">Проверка последнего релиза</string>
     <string name="updates_status_current">Вы на последней версии релиза</string>
-    <string name="update_channel_desc">Выбирайте между тестированными релизами и снапшотами разработки.</string>
     <string name="updates_loading_commits">Загрузка последних коммитов</string>
     <string name="updates_recent_commits_count">%1$d последних коммитов</string>
     <string name="updates_no_commits">Не найдено последних коммитов</string>

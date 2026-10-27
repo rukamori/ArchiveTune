@@ -51,7 +51,7 @@ internal class BrowserSupportPageRepository
         }
 
         private companion object {
-            val SUPPORT_PAGE_URI: Uri = Uri.parse("https://archivetune.koiiverse.cloud/support")
+            val SUPPORT_PAGE_URI: Uri = Uri.parse("https://archivetune.miuka.moe/support")
         }
     }
 

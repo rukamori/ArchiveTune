@@ -131,8 +131,9 @@ class MediaLibrarySessionCallback
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
-            val connectionResult = super.onConnect(session, controller)
-            val availableSessionCommands = connectionResult.availableSessionCommands
+            val builder = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+            val defaults = builder.build()
+            val availableSessionCommands = defaults.availableSessionCommands
                 .buildUpon()
                 .add(MediaSessionConstants.CommandToggleLike)
                 .add(MediaSessionConstants.CommandToggleStartRadio)
@@ -140,20 +141,14 @@ class MediaLibrarySessionCallback
                 .add(MediaSessionConstants.CommandToggleShuffle)
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
                 .build()
-            return if (session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)) {
+            builder.setAvailableSessionCommands(availableSessionCommands)
+            if (isCarController(session, controller)) {
                 val carButtons = carMediaButtonPreferences(androidAutoSettings.currentConfiguration())
-                MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                    .setAvailableSessionCommands(availableSessionCommands)
-                    .setAvailablePlayerCommands(connectionResult.availablePlayerCommands)
+                builder
                     .setMediaButtonPreferences(carButtons)
                     .setCustomLayout(carButtons)
-                    .build()
-            } else {
-                MediaSession.ConnectionResult.accept(
-                    availableSessionCommands,
-                    connectionResult.availablePlayerCommands,
-                )
             }
+            return builder.build()
         }
 
         fun isCarController(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =

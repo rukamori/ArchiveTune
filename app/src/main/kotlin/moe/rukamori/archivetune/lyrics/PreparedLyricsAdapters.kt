@@ -41,7 +41,7 @@ fun PreparedLyrics.toLyricsEntries(): List<LyricsEntry> =
             durationMs = (line.endMs - line.startMs).coerceAtLeast(0L),
             providerRomanizedText = line.romanizedText,
             providerRomanizedWords = providerWords,
-            providerTranslationText = line.translation,
+            providerTranslationText = line.translation.takeIf { preferences.showTranslations },
             isRtl = line.direction == LyricsTextDirection.RTL,
             romanizedTextFlow = MutableStateFlow(line.romanizedText),
         )

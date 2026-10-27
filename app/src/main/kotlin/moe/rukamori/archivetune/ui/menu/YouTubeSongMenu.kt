@@ -95,6 +95,8 @@ import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.utils.ExternalDownloaderLaunchResult
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
@@ -211,7 +213,7 @@ fun YouTubeSongMenu(
                             .height(ListItemHeight)
                             .clickable {
                                 splitArtist.originalArtist?.let { artist ->
-                                    navController.navigate("artist/${artist.id}")
+                                    navController.navigateToArtist(artist.id)
                                     showSelectArtistDialog = false
                                     onDismiss()
                                 }
@@ -734,7 +736,7 @@ fun YouTubeSongMenu(
                                 modifier =
                                     Modifier.clickable {
                                         if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                                            navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                                            navController.navigateToArtist(splitArtists[0].originalArtist!!.id)
                                             onDismiss()
                                         } else {
                                             showSelectArtistDialog = true
@@ -762,7 +764,7 @@ fun YouTubeSongMenu(
                                 },
                                 modifier =
                                     Modifier.clickable {
-                                        navController.navigate("album/${album.id}")
+                                        navController.navigateToAlbum(album.id)
                                         onDismiss()
                                     },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),

@@ -14,14 +14,23 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.innertube.pages.QueueChip
+import moe.rukamori.archivetune.innertube.pages.NextResult
+import moe.rukamori.archivetune.playback.withQueueEntry
 
 class YouTubeQueue(
     internal var endpoint: WatchEndpoint,
     override val preloadItem: MediaMetadata? = null,
     internal val followAutomixPreview: Boolean = false,
     private val expandToFullQueueWhenAutoLoadMoreDisabled: Boolean = false,
+    initialContinuation: String? = null,
 ) : Queue {
-    private var continuation: String? = null
+    internal var continuation: String? = initialContinuation
+        private set
+    override val isRadio: Boolean = followAutomixPreview || endpoint.playlistId?.startsWith("RD") == true
+    var chips: List<QueueChip> = emptyList()
+        private set
+    override val queueChips: List<QueueChip> get() = chips
 
     override suspend fun getInitialStatus(): Queue.Status {
         val nextResult =
@@ -35,9 +44,10 @@ class YouTubeQueue(
             }
         endpoint = nextResult.endpoint
         continuation = nextResult.continuation
+        chips = nextResult.queueChips
         return Queue.Status(
             title = nextResult.title,
-            items = nextResult.items.map { it.toMediaItem() },
+            items = nextResult.items.map { it.toMediaItem().withQueueEntry(recommended = isRadio) },
             mediaItemIndex = nextResult.currentIndex ?: 0,
         )
     }
@@ -47,21 +57,38 @@ class YouTubeQueue(
     override fun shouldExpandToFullQueueWhenAutoLoadMoreDisabled(): Boolean = expandToFullQueueWhenAutoLoadMoreDisabled
 
     override suspend fun nextPage(): List<MediaItem> {
-        val nextResult =
-            withContext(IO) {
-                YouTube
-                    .next(
-                        endpoint = endpoint,
-                        continuation = continuation,
-                        followAutomixPreview = followAutomixPreview,
-                    ).getOrThrow()
-            }
+        val nextResult = fetchNextPage()
+        acceptNextPage(nextResult)
+        return nextResult.items.map { it.toMediaItem().withQueueEntry(recommended = isRadio) }
+    }
+
+    internal suspend fun fetchNextPage(): NextResult = withContext(IO) {
+        YouTube.next(endpoint = endpoint, continuation = continuation, followAutomixPreview = followAutomixPreview).getOrThrow()
+    }
+
+    internal fun updateChips(values: List<QueueChip>) {
+        chips = values
+    }
+
+    internal fun acceptNextPage(nextResult: NextResult) {
         endpoint = nextResult.endpoint
         continuation = nextResult.continuation
-        return nextResult.items.map { it.toMediaItem() }
+        if (nextResult.queueChips.isNotEmpty()) chips = nextResult.queueChips
     }
 
     companion object {
+        fun shuffledPlaylist(
+            playlistId: String,
+            endpoint: WatchEndpoint,
+        ): Queue {
+            val normalizedId = playlistId.removePrefix("VL")
+            return if (normalizedId.startsWith("RD")) {
+                playlist(endpoint)
+            } else {
+                YouTubePlaylistShuffleQueue(normalizedId)
+            }
+        }
+
         fun playlist(
             endpoint: WatchEndpoint,
             preloadItem: MediaMetadata? = null,

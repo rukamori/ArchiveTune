@@ -71,6 +71,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -109,7 +110,6 @@ import moe.rukamori.archivetune.constants.LocalSongsSortTypeKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.localmedia.LocalSongScanConfig
-import moe.rukamori.archivetune.localmedia.SupportedLocalAudio
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
@@ -189,6 +189,12 @@ fun LocalSongScreen(
         )
     }
 
+    LaunchedEffect(viewModel, hasStoragePermission) {
+        if (hasStoragePermission) {
+            viewModel.scanDevice(scanConfig)
+        }
+    }
+
     val permissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
@@ -239,15 +245,11 @@ fun LocalSongScreen(
     val visibleSongs by remember(songs, query, sortType, sortDescending, collator) {
         derivedStateOf {
             val normalizedQuery = query.trim()
-            val supportedSongs =
-                songs.filter { song ->
-                    SupportedLocalAudio.isSupportedMimeType(song.format?.mimeType)
-                }
             val filteredSongs =
                 if (normalizedQuery.isBlank()) {
-                    supportedSongs
+                    songs
                 } else {
-                    supportedSongs.filter { song ->
+                    songs.filter { song ->
                         song.song.title.contains(normalizedQuery, ignoreCase = true) ||
                             song.song.albumName
                                 .orEmpty()

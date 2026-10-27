@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -82,12 +83,14 @@ import dev.chrisbanes.haze.rememberHazeState
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.canvas.CanvasVideo
+import moe.rukamori.archivetune.ui.player.LandscapePlayerControls
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.rememberOfflineArtworkImageRequest
 import moe.rukamori.archivetune.utils.makeTimeString
 
 private val ImmersiveContentColor = Color.White
 private val ImmersiveSecondaryContentColor = Color.White.copy(alpha = 0.7f)
+private const val ImmersiveBackdropBlurRotationDegrees = -90f
 
 @Composable
 fun ImmersivePlayerScreen(
@@ -226,6 +229,7 @@ private fun ImmersivePortrait(
                 isPlaying = model.isPlaying,
                 artWidth = maxWidth,
                 artHeight = stageHeight,
+                backdropOffsetY = stageHeight,
                 disableBlur = disableBlur,
                 backdropBlurAmount = backdropBlurAmount,
             )
@@ -312,26 +316,36 @@ private fun ImmersiveLandscape(
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Start))
                     .padding(start = 24.dp)
                     .statusBarsPadding()
                     .padding(top = 18.dp),
         )
-        Column(
+        LandscapePlayerControls(
             modifier =
                 Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(0.52f)
                     .align(Alignment.CenterEnd)
-                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.End + WindowInsetsSides.Top))
+                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
                     .padding(
-                        start = 30.dp,
-                        top = 18.dp,
-                        end = 30.dp,
-                        bottom = contentBottomPadding + 18.dp,
+                        start = 16.dp,
+                        top = 8.dp,
+                        end = 16.dp,
+                        bottom = contentBottomPadding + 8.dp,
                     ),
+            playbackContent = {
+                TransportControls(
+                    isPlaying = model.isPlaying,
+                    isBuffering = model.isBuffering,
+                    canSkipPrevious = model.canSkipPrevious,
+                    canSkipNext = model.canSkipNext,
+                    onAction = onAction,
+                )
+            },
         ) {
             FormatSeam(if (showCodecOnPlayer) model.formatDetails else "")
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             MetadataRow(
                 title = model.title,
                 artists = model.artists,
@@ -339,24 +353,16 @@ private fun ImmersiveLandscape(
                 albumId = model.albumId,
                 onAction = onAction,
             )
-            Spacer(modifier = Modifier.weight(1f))
+            if (showVolumeBar) {
+                Spacer(modifier = Modifier.height(4.dp))
+                VolumeControls(volume = model.volume, onAction = onAction)
+            }
             ProgressSection(
                 model = model,
                 showCodecOnPlayer = showCodecOnPlayer,
                 onAction = onAction,
             )
-            Spacer(modifier = Modifier.height(18.dp))
-            TransportControls(
-                isPlaying = model.isPlaying,
-                isBuffering = model.isBuffering,
-                canSkipPrevious = model.canSkipPrevious,
-                canSkipNext = model.canSkipNext,
-                onAction = onAction,
-            )
-            if (showVolumeBar) {
-                Spacer(modifier = Modifier.height(20.dp))
-                VolumeControls(volume = model.volume, onAction = onAction)
-            }
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
@@ -373,6 +379,7 @@ private fun ImmersiveBackdrop(
     artHeight: Dp,
     disableBlur: Boolean,
     backdropBlurAmount: Int,
+    backdropOffsetY: Dp = 0.dp,
 ) {
     val hazeState = rememberHazeState()
     val artworkRequest = rememberOfflineArtworkImageRequest(artworkUrl)
@@ -405,7 +412,16 @@ private fun ImmersiveBackdrop(
             )
         }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        val rotatedBackdropModifier =
+            remember(backdropOffsetY) {
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationZ = 180f
+                        translationY = backdropOffsetY.toPx()
+                    }
+            }
         val stageFadeMask =
             remember {
                 Brush.verticalGradient(
@@ -422,6 +438,7 @@ private fun ImmersiveBackdrop(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .clipToBounds()
                     .hazeSource(hazeState),
         ) {
             if (canvasFrame != null && canvas != null) {
@@ -429,7 +446,16 @@ private fun ImmersiveBackdrop(
                     bitmap = canvasFrame,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = rotatedBackdropModifier,
+                )
+                Image(
+                    bitmap = canvasFrame,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(width = artWidth, height = artHeight)
+                            .align(Alignment.TopStart),
                 )
             } else {
                 AsyncImage(
@@ -439,7 +465,7 @@ private fun ImmersiveBackdrop(
                     fallback = artworkPlaceholder,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = rotatedBackdropModifier,
                 )
                 AsyncImage(
                     model = artworkRequest,

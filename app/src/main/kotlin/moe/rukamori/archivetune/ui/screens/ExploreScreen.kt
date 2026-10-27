@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.viewmodels.ChartsViewModel
 import moe.rukamori.archivetune.viewmodels.ExploreViewModel
 
@@ -345,7 +346,7 @@ fun ExploreScreen(
                                     Modifier
                                         .combinedClickable(
                                             onClick = {
-                                                navController.navigate("album/${album.id}")
+                                                navController.navigateToAlbum(album.id)
                                             },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

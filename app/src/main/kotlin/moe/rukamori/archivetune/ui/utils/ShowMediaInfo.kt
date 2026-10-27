@@ -270,7 +270,7 @@ private fun MediaInfoContent(
                                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                             },
                         colors =
-                            ToggleButtonDefaults.toggleButtonColors(
+                            ToggleButtonDefaults.colors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,

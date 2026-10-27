@@ -1871,9 +1871,45 @@ interface DatabaseDao {
         mediaMetadata: MediaMetadata,
         block: (SongEntity) -> SongEntity = { it },
     ) {
-        if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) return
+        val existing =
+            if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) {
+                getSongByIdBlocking(mediaMetadata.id)
+            } else {
+                null
+            }
+        if (existing?.song?.isLocal == true) return
 
-        if (mediaMetadata.setVideoId != null) {
+        if (existing != null) {
+            val song = existing.song
+            val updatedSong =
+                song.copy(
+                    title =
+                        if (!song.titleOverride && (song.title.isBlank() || song.title == song.id)) {
+                            mediaMetadata.title
+                        } else {
+                            song.title
+                        },
+                    duration = mediaMetadata.duration.takeIf { song.duration <= 0 && it > 0 } ?: song.duration,
+                    thumbnailUrl = song.thumbnailUrl?.takeIf { it.isNotBlank() } ?: mediaMetadata.thumbnailUrl,
+                    albumId = song.albumId ?: mediaMetadata.album?.id,
+                    albumName =
+                        if (song.albumId == null || song.albumId == mediaMetadata.album?.id) {
+                            song.albumName?.takeIf { it.isNotBlank() } ?: mediaMetadata.album?.title
+                        } else {
+                            song.albumName
+                        },
+                    albumArtist = song.albumArtist ?: mediaMetadata.albumArtist,
+                    trackNumber = song.trackNumber ?: mediaMetadata.trackNumber,
+                    discNumber = song.discNumber ?: mediaMetadata.discNumber,
+                    year = song.year ?: mediaMetadata.year,
+                    explicit = song.explicit || mediaMetadata.explicit,
+                    isMusicVideo = song.isMusicVideo || mediaMetadata.isMusicVideo,
+                    isPodcast = song.isPodcast || mediaMetadata.isPodcast,
+                )
+            if (updatedSong != song) update(updatedSong)
+        }
+
+        if (existing == null && mediaMetadata.setVideoId != null) {
             insert(
                 SetVideoIdEntity(
                     videoId = mediaMetadata.id,
@@ -1882,16 +1918,25 @@ interface DatabaseDao {
             )
         }
 
-        mediaMetadata.artists.forEachIndexed { index, artist ->
-            val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+        if (existing?.artists?.any { it.name.isNotBlank() } == true) return
+        val artists = mediaMetadata.artists.filter { it.name.isNotBlank() }
+        if (artists.isEmpty()) return
+        if (existing != null) deleteSongArtistMaps(mediaMetadata.id)
 
-            insert(
-                ArtistEntity(
-                    id = artistId,
-                    name = artist.name,
-                    channelId = artist.id,
-                ),
-            )
+        artists.forEachIndexed { index, artist ->
+            val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+            val existingArtist = existing?.artists?.firstOrNull { it.id == artistId }
+            if (existingArtist != null && existingArtist.name.isBlank()) {
+                update(existingArtist.copy(name = artist.name))
+            } else {
+                insert(
+                    ArtistEntity(
+                        id = artistId,
+                        name = artist.name,
+                        channelId = artist.id,
+                    ),
+                )
+            }
 
             insert(
                 SongArtistMap(
@@ -1971,8 +2016,10 @@ interface DatabaseDao {
                 isPodcast = mediaMetadata.isPodcast,
             ),
         )
+        val artists = mediaMetadata.artists.filter { it.name.isNotBlank() }
+        if (artists.isEmpty()) return
         songArtistMap(song.id).forEach(::delete)
-        mediaMetadata.artists.forEachIndexed { index, artist ->
+        artists.forEachIndexed { index, artist ->
             val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
 
             insert(

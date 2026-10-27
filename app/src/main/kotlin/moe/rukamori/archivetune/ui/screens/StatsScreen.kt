@@ -114,6 +114,8 @@ import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.viewmodels.StatsScreenState
@@ -511,7 +513,7 @@ fun StatsScreen(
                                     Modifier
                                         .width(164.dp)
                                         .combinedClickable(
-                                            onClick = { navController.navigate("artist/${artist.id}") },
+                                            onClick = { navController.navigateToArtist(artist.id) },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 menuState.show {
@@ -562,7 +564,7 @@ fun StatsScreen(
                                         Modifier
                                             .width(172.dp)
                                             .combinedClickable(
-                                                onClick = { navController.navigate("album/${album.id}") },
+                                                onClick = { navController.navigateToAlbum(album.id) },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     menuState.show {
@@ -1104,7 +1106,7 @@ private fun StatsHighlightsSection(
                 ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
                 imageUrl = topArtist.artist.thumbnailUrl,
                 useCircleShape = true,
-                onClick = { navController.navigate("artist/${topArtist.id}") },
+                onClick = { navController.navigateToArtist(topArtist.id) },
             )
         }
         if (topSong != null && topSongEntity != null) {

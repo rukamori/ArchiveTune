@@ -17,6 +17,7 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.withQueueEntry
 
 fun Queue.toPersistQueue(
     title: String?,
@@ -48,6 +49,7 @@ fun Queue.toPersistQueue(
                         playlistId = endpoint.playlistId,
                         endpointParams = endpoint.params,
                         followAutomixPreview = followAutomixPreview,
+                        continuation = continuation,
                     ),
             )
         }
@@ -95,13 +97,15 @@ fun Queue.toPersistQueue(
         }
     }
 
-fun PersistQueue.toQueue(): Queue =
-    ListQueue(
-        title = title,
-        items = items.map { it.toMediaItem() },
-        startIndex = mediaItemIndex,
-        position = position,
-    )
+fun PersistQueue.toQueue(): Queue {
+    val identities = mutableSetOf<String>()
+    val restored = items.mapIndexed { index, item ->
+        val entry = entryMetadata?.getOrNull(index)
+        val id = entry?.id?.takeIf { it.isNotBlank() && identities.add(it) } ?: java.util.UUID.randomUUID().toString().also(identities::add)
+        item.toMediaItem().withQueueEntry(recommended = entry?.recommended == true, id = id)
+    }
+    return ListQueue(title = title, items = restored, startIndex = mediaItemIndex, position = position)
+}
 
 fun PersistQueue.toContinuationQueue(): Queue =
     when (queueType) {
@@ -126,6 +130,7 @@ fun PersistQueue.toContinuationQueue(): Queue =
                         params = data.endpointParams,
                     ),
                 followAutomixPreview = data.followAutomixPreview,
+                initialContinuation = data.continuation,
             )
         }
 

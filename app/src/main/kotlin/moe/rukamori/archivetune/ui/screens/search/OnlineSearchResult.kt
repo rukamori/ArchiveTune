@@ -94,6 +94,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 
@@ -143,7 +145,7 @@ fun OnlineSearchResult(
                     ?.items
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { items ->
-                        add(SearchSummary(title = sectionTitle, items = viewModel.sortedItems(items, searchSort)))
+                        add(SearchSummary(title = sectionTitle, items = items))
                     }
             }
         }
@@ -252,11 +254,11 @@ fun OnlineSearchResult(
                                 }
 
                                 is AlbumItem -> {
-                                    navController.navigate("album/${item.id}")
+                                    navController.navigateToAlbum(item.id)
                                 }
 
                                 is ArtistItem -> {
-                                    navController.navigate("artist/${item.id}")
+                                    navController.navigateToArtist(item.id)
                                 }
 
                                 is PlaylistItem -> {

@@ -603,7 +603,6 @@
     <string name="disable_animations_desc">Désactivez la plupart des animations de l\'application. Recommandé pour les appareils bas de gamme</string>
     <string name="updates_status_checking">Vérification de la dernière version</string>
     <string name="updates_status_current">Vous utilisez la dernière version disponible</string>
-    <string name="update_channel_desc">Choisissez entre les versions testées et les versions de développement.</string>
     <string name="updates_loading_commits">Chargement des modifications récentes</string>
     <string name="updates_recent_commits_count">%1$d modifications récentes</string>
     <string name="updates_no_commits">Aucune modification récente n\'a été trouvée</string>
@@ -630,7 +629,6 @@
     <string name="testing_proxy_connection">Vérification de la connexion au proxy</string>
     <string name="proxy_connection_success">Connexion via le proxy établie !</string>
     <string name="proxy_connection_failed">Échec de la connexion au serveur proxy : %s</string>
-    <string name="enable_paxsenix_lyrics">Activer les paroles de Paxsenix</string>
     <string name="clear_lyrics_cache">Vider le cache des paroles</string>
     <string name="clear_lyrics_cache_confirm">Êtes-vous sûr de vouloir vider tout le cache des paroles ?</string>
     <string name="paxsenix_stats">Statistiques de l\'API Paxsenix</string>
@@ -862,10 +860,6 @@
     <string name="lastfm_login_api_key_suspended">Clé API suspendue.</string>
     <string name="lastfm_login_network_error">Erreur réseau. Vérifiez votre connexion.</string>
     <string name="lastfm_login_failed">Échec de la connexion. Veuillez réessayer.</string>
-    <string name="updates_channel_warning_intro">ArchiveTune propose deux canaux de téléchargement pour les versions :</string>
-    <string name="updates_channel_warning_stable_title">Versions stables</string>
-    <string name="updates_channel_warning_stable_source">Distribué via les versions officielles de GitHub.</string>
-    <string name="updates_channel_warning_stable_desc">Ces versions ont été testées et sont recommandées pour la plupart des utilisateurs.</string>
     <string name="onboarding_version_label">Version %1$s</string>
     <string name="onboarding_permission_unavailable">Indisponible</string>
     <string name="onboarding_permission_notifications_title">Notifications</string>
@@ -958,15 +952,7 @@
     <string name="copy_log_entry">Copier l\'entrée du journal</string>
     <string name="export_logs_failed">Impossible d\'exporter les journaux</string>
     <string name="export">Exporter</string>
-    <string name="updates_subtitle_artifact">Versions Canary et commits de développement récents</string>
     <string name="enable_update_notification_channel_desc">Recevez une notification lorsqu\'une nouvelle version est disponible sur le canal sélectionné</string>
-    <string name="channel_artifact">Canary</string>
-    <string name="updates_artifact_hosting_description">Les versions « Canary » sont publiées automatiquement à partir de la dernière branche de développement.</string>
-    <string name="updates_channel_warning_artifact_title">Versions Canary</string>
-    <string name="updates_channel_warning_artifact_risk">Les versions « Canary » peuvent inclure des fonctionnalités expérimentales, des modifications non finalisées ou des régressions temporaires.</string>
-    <string name="updates_channel_warning_artifact_unstable">Les versions « Canary » sont fournies uniquement à des fins de test et d\'accès anticipé.\nLa stabilité, la compatibilité et les fonctionnalités ne sont pas garanties.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">Remarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.\nEn poursuivant, vous reconnaissez que les versions Canary peuvent être instables et que vous les utilisez à vos propres risques.</string>
-    <string name="updates_artifact_channel_confirmation">Passez sur le canal Canary pour recevoir les versions de développement.\n\nLes versions Canary sont publiées automatiquement à partir de la dernière branche de développement.\nRemarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.</string>
     <string name="onboarding_permission_device_audio_capture_title">Reconnaissance audio intégrée à l\'appareil</string>
     <string name="onboarding_permission_device_audio_capture_desc">Identifiez la musique diffusée dans d\'autres applications sans utiliser le microphone. Android vous demande à chaque fois l\'autorisation de capturer l\'écran et le son, tandis qu\'ArchiveTune traite uniquement le son.</string>
     <string name="remove_playlist_cover">Retirer la pochette personnalisée</string>

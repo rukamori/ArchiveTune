@@ -123,6 +123,7 @@ import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -381,9 +382,7 @@ fun OnlinePlaylistScreen(
                                             if (artist.id != null) {
                                                 withLink(
                                                     LinkAnnotation.Clickable(artist.id!!) {
-                                                        navController.navigate(
-                                                            "artist/${artist.id}",
-                                                        )
+                                                        navController.navigateToArtist(artist.id)
                                                     },
                                                 ) {
                                                     append(artist.name)
@@ -412,7 +411,7 @@ fun OnlinePlaylistScreen(
                                     playlist.shuffleEndpoint?.let { shuffleEndpoint ->
                                         {
                                             playerConnection.playQueue(
-                                                YouTubeQueue.playlist(shuffleEndpoint),
+                                                YouTubeQueue.shuffledPlaylist(playlist.id, shuffleEndpoint),
                                             )
                                         }
                                     },
@@ -610,7 +609,7 @@ fun OnlinePlaylistScreen(
                                             contentColor = contentColor,
                                             onClick = {
                                                 playerConnection.playQueue(
-                                                    YouTubeQueue.playlist(mixEndpoint),
+                                                    YouTubeQueue.shuffledPlaylist(playlist.id, mixEndpoint),
                                                 )
                                             },
                                         )

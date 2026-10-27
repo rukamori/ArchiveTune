@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
+import moe.rukamori.archivetune.constants.EnableBinimumLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
 import moe.rukamori.archivetune.constants.EnableMegalobizLyricsKey
@@ -67,6 +68,7 @@ class LyricsHelper
                 BetterLyricsProvider,
                 BetterLyricsPortatoProvider,
                 YouLyPlusLyricsProvider,
+                BinimumLyricsProvider,
                 LrcLibLyricsProvider,
                 KuGouLyricsProvider,
                 MegalobizLyricsProvider,
@@ -84,6 +86,7 @@ class LyricsHelper
                 BetterLyricsProvider to EnableBetterLyricsKey,
                 BetterLyricsPortatoProvider to EnableBetterLyricsPortatoKey,
                 YouLyPlusLyricsProvider to EnableYouLyPlusLyricsKey,
+                BinimumLyricsProvider to EnableBinimumLyricsKey,
                 LrcLibLyricsProvider to EnableLrcLibKey,
                 KuGouLyricsProvider to EnableKugouKey,
                 MegalobizLyricsProvider to EnableMegalobizLyricsKey,
@@ -399,6 +402,7 @@ class LyricsHelper
                     PreferredLyricsProvider.BETTER_LYRICS to BetterLyricsProvider,
                     PreferredLyricsProvider.BETTER_LYRICS_PORTATO to BetterLyricsPortatoProvider,
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
+                    PreferredLyricsProvider.BINIMUM to BinimumLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to PaxsenixAppleMusicLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_SPOTIFY to PaxsenixSpotifyLyricsProvider,

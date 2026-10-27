@@ -517,7 +517,6 @@
     <string name="proxy_connection_failed">Connessione al proxy non riuscita: %s</string>
     <string name="stream_bypass_proxy">Bypassa il prosy per lo stream</string>
     <string name="stream_bypass_proxy_desc">Usa il tuo IP diretto per la riproduzione stream per evitare IP mismatch</string>
-    <string name="enable_paxsenix_lyrics">Abilita testi Paxsenix</string>
     <string name="audio_offload">Offload audio</string>
     <string name="audio_offload_desc">Consenti ai dispositivi supportati di riprodurre l’audio utilizzando la decodifica hardware a basso consumo energetico. Alcune funzionalità di elaborazione audio sono disattivate.</string>
     <string name="pause_on_device_mute">Pausa quando il volume del dispositivo è 0</string>

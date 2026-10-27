@@ -464,7 +464,6 @@
     <string name="enable_youlyplus_lyrics">啟用 YouLyPlus 歌詞來源</string>
     <string name="enable_unison_lyrics">啟用 Unison 歌詞來源</string>
     <string name="enable_simpmusic_lyrics">啟用 SimpMusic 歌詞來源</string>
-    <string name="enable_paxsenix_lyrics">啟用 Paxsenix 歌詞來源</string>
     <string name="player_and_audio">播放器與音訊</string>
     <string name="audio_quality">音訊品質</string>
     <string name="audio_quality_auto">自動</string>
@@ -749,12 +748,7 @@
     <string name="updates_status_current">您目前使用的是最新版本</string>
     <string name="enable_update_notification">啟用更新通知</string>
     <string name="update_channel">更新頻道</string>
-    <string name="update_channel_desc">在穩定版本和開發版本之間進行選擇。</string>
     <string name="recent_commits">近期提交</string>
-    <string name="updates_channel_warning_intro">ArchiveTune 為建置版本提供了兩個下載管道：</string>
-    <string name="updates_channel_warning_stable_title">穩定版本</string>
-    <string name="updates_channel_warning_stable_source">透過官方 GitHub Releases 分發。</string>
-    <string name="updates_channel_warning_stable_desc">這些版本已通過測試，並推薦給大多數用戶使用。</string>
     <string name="updates_loading_commits">正在加載最近的提交</string>
     <string name="updates_recent_commits_count">%1$d 次最近的提交</string>
     <string name="updates_no_commits">未找到最近的提交</string>
@@ -1003,15 +997,7 @@
     <string name="copy_log_entry">複製日誌</string>
     <string name="export_logs_failed">無法匯出日誌</string>
     <string name="export">匯出</string>
-    <string name="updates_subtitle_artifact">測試版發布與近期開發提交</string>
     <string name="enable_update_notification_channel_desc">當所選頻道有新版本發佈時接收通知</string>
-    <string name="channel_artifact">測試版</string>
-    <string name="updates_artifact_hosting_description">測試版本會根據最新的開發分支自動發布。</string>
-    <string name="updates_channel_warning_artifact_title">測試版發布</string>
-    <string name="updates_channel_warning_artifact_risk">測試版可能包含實驗性功能、未完成的變更或暫時性的功能退化。</string>
-    <string name="updates_channel_warning_artifact_unstable">測試版僅供測試和搶先體驗使用。\n不保證其穩定性、相容性及功能性。</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">注意：直接從 GitHub 下載會繞過您最初安裝應用程式的商店可能進行的任何額外審核。\n繼續操作即表示您承認測試版可能不穩定，並自行承擔使用風險。</string>
-    <string name="updates_artifact_channel_confirmation">切換到測試頻道以取得開發版本。\n\n測試版會根據最新的開發分支自動發布。\n注意：直接從 GitHub 下載會繞過您最初安裝應用程式時所使用的應用程式商店可能進行的額外審查。</string>
     <string name="downloads">下載</string>
     <string name="download_in_progress">下載中</string>
     <string name="no_downloads">尚未下載音樂</string>

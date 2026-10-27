@@ -72,6 +72,12 @@
             android:theme="@style/Theme.ArchiveTune"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.INFO" />
+            </intent-filter>
+
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.MUSIC_PLAYER" />
 
@@ -183,6 +189,19 @@
         </activity>
 
         <activity
+            android:name=".modules.ModuleAuthorizationActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.ArchiveTune.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="archivetune" android:host="module-session" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".musicrecognition.MusicRecognitionTileActionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
@@ -285,8 +304,17 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".appicon.LauncherEntryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 <receiver
     android:name=".widget.MusicWidgetReceiver"
+    android:label="@string/widget_player_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -298,6 +326,7 @@
 
 <receiver
     android:name=".widget.AlbumArtWidgetReceiver"
+    android:label="@string/widget_album_art_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -309,6 +338,7 @@
 
 <receiver
     android:name=".widget.NowPlayingCardWidgetReceiver"
+    android:label="@string/widget_now_playing_card_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -320,6 +350,7 @@
 
 <receiver
     android:name=".widget.PlaybackDeckWidgetReceiver"
+    android:label="@string/widget_playback_deck_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -331,6 +362,7 @@
 
 <receiver
     android:name=".widget.PlaybackCapsuleWidgetReceiver"
+    android:label="@string/widget_playback_capsule_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -342,6 +374,7 @@
 
 <receiver
     android:name=".widget.PlaybackSpotlightWidgetReceiver"
+    android:label="@string/widget_playback_spotlight_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -353,6 +386,7 @@
 
 <receiver
     android:name=".widget.PlaybackCommandWidgetReceiver"
+    android:label="@string/widget_playback_command_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -364,6 +398,7 @@
 
 <receiver
     android:name=".widget.ListeningInsightsWidgetReceiver"
+    android:label="@string/widget_listening_insights_name"
     android:exported="true">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -65,6 +65,9 @@ import moe.rukamori.archivetune.playlistexport.ExportablePlaylist
 import moe.rukamori.archivetune.playlistexport.ObserveExportablePlaylistsUseCase
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
+import moe.rukamori.archivetune.modules.ModuleRepository
+import moe.rukamori.archivetune.modules.RestoreModuleBackupUseCase
+import moe.rukamori.archivetune.modules.readModuleBytes
 import org.xmlpull.v1.XmlPullParser
 import java.io.FileOutputStream
 import java.io.InputStreamReader
@@ -255,6 +258,7 @@ class BackupRestoreViewModel
         private val updateScheduledBackup: UpdateScheduledBackupUseCase,
         private val observeExportablePlaylists: ObserveExportablePlaylistsUseCase,
         private val exportPlaylistAsCsv: ExportPlaylistAsCsvUseCase,
+        private val restoreModuleBackup: RestoreModuleBackupUseCase,
     ) : ViewModel() {
         private val _backupRestoreProgress = MutableStateFlow<BackupRestoreProgressUi?>(null)
         val backupRestoreProgress: StateFlow<BackupRestoreProgressUi?> = _backupRestoreProgress.asStateFlow()
@@ -604,7 +608,7 @@ class BackupRestoreViewModel
 
                         val restoreEntries =
                             entryNames.filter { name ->
-                                (includeSettings && (name == SETTINGS_XML_FILENAME || name == SETTINGS_FILENAME)) ||
+                                (includeSettings && (name == SETTINGS_XML_FILENAME || name == SETTINGS_FILENAME || name == ModuleRepository.BACKUP_ENTRY)) ||
                                     (
                                         includeLibrary && (
                                             name == InternalDatabase.DB_NAME ||
@@ -653,6 +657,10 @@ class BackupRestoreViewModel
                                             continue
                                         }
                                         when (name) {
+                                            ModuleRepository.BACKUP_ENTRY -> {
+                                                emit(context.getString(R.string.restore_step_restoring_settings), indeterminate = true)
+                                                restoreModuleBackup(zip.readModuleBytes(ModuleRepository.MAX_REGISTRY_BYTES))
+                                            }
                                             SETTINGS_XML_FILENAME -> {
                                                 emit(context.getString(R.string.restore_step_restoring_settings), indeterminate = true)
                                                 restoreSettingsFromXml(context, zip, settingsExcludedKeys)

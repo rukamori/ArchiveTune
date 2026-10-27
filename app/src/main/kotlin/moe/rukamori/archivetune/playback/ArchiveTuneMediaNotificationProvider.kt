@@ -35,37 +35,29 @@ class ArchiveTuneMediaNotificationProvider(
             setSmallIcon(smallIconResId)
         }
 
+    @Volatile
+    var latestNotification: MediaNotification? = null
+        private set
+
+    fun clearLatestNotification() {
+        latestNotification = null
+    }
+
     override fun createNotification(
         mediaSession: MediaSession,
         mediaButtonPreferences: ImmutableList<CommandButton>,
         actionFactory: MediaNotification.ActionFactory,
         onNotificationChangedCallback: MediaNotification.Provider.Callback,
-    ): MediaNotification {
-        val mediaNotification =
+    ): MediaNotification =
+        decorate(
             delegate.createNotification(
                 mediaSession,
                 mediaButtonPreferences,
                 actionFactory,
-                onNotificationChangedCallback,
-            )
-
-        val originalDeleteIntent = mediaNotification.notification.deleteIntent ?: return mediaNotification
-        mediaNotification.notification.deleteIntent =
-            PendingIntent.getService(
-                context,
-                mediaNotification.notificationId,
-                Intent(context, MusicService::class.java).apply {
-                    action = MusicService.ACTION_MEDIA_NOTIFICATION_DISMISSED
-                    putExtra(
-                        MusicService.EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT,
-                        originalDeleteIntent,
-                    )
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        return mediaNotification
-    }
+            ) { updatedNotification ->
+                onNotificationChangedCallback.onNotificationChanged(decorate(updatedNotification))
+            },
+        )
 
     override fun handleCustomCommand(
         session: MediaSession,
@@ -74,4 +66,25 @@ class ArchiveTuneMediaNotificationProvider(
     ): Boolean = delegate.handleCustomCommand(session, action, extras)
 
     override fun getNotificationChannelInfo(): MediaNotification.Provider.NotificationChannelInfo = delegate.notificationChannelInfo
+
+    private fun decorate(mediaNotification: MediaNotification): MediaNotification {
+        val notification = mediaNotification.notification
+        notification.deleteIntent?.let { originalDeleteIntent ->
+            notification.deleteIntent =
+                PendingIntent.getService(
+                    context,
+                    mediaNotification.notificationId,
+                    Intent(context, MusicService::class.java).apply {
+                        action = MusicService.ACTION_MEDIA_NOTIFICATION_DISMISSED
+                        putExtra(
+                            MusicService.EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT,
+                            originalDeleteIntent,
+                        )
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+        }
+        latestNotification = mediaNotification
+        return mediaNotification
+    }
 }

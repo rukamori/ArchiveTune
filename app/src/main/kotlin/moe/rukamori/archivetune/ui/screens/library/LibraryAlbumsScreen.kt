@@ -87,6 +87,7 @@ import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.screens.Screens
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryAlbumsViewModel
@@ -386,7 +387,7 @@ fun LibraryAlbumsScreen(
                                         .clip(RoundedCornerShape(36.dp))
                                         .background(MaterialTheme.colorScheme.primaryContainer)
                                         .clickable {
-                                            navController.navigate("album/${album.id}")
+                                            navController.navigateToAlbum(album.id)
                                         }.padding(20.dp),
                             ) {
                                 Column {
@@ -514,7 +515,7 @@ fun LibraryAlbumsScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
-                                        onClick = { navController.navigate("album/${album.id}") },
+                                        onClick = { navController.navigateToAlbum(album.id) },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             menuState.show {
@@ -611,7 +612,7 @@ fun LibraryAlbumsScreen(
                                     .clip(RoundedCornerShape(28.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                                     .combinedClickable(
-                                        onClick = { navController.navigate("album/${album.id}") },
+                                        onClick = { navController.navigateToAlbum(album.id) },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             menuState.show {

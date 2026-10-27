@@ -263,6 +263,15 @@ private fun AiIntegrationSettingsContent(
                 )
             }
 
+            item(visible = model.provider != AiProvider.NONE && model.provider != AiProvider.GEMINI) {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.ai_request_parameters)) },
+                    description = stringResource(R.string.ai_request_parameters_desc),
+                    icon = { Icon(painterResource(R.drawable.edit), null) },
+                    onClick = { onOpenEditor(AiSettingsEditorField.REQUEST_PARAMETERS) },
+                )
+            }
+
             item {
                 val testVisualState =
                     when {
@@ -444,12 +453,15 @@ private fun AiSettingsEditorDialog(
 ) {
     val field = editor.field ?: return
     val isCustomPrompt = field == AiSettingsEditorField.CUSTOM_PROMPT
+    val isRequestParameters = field == AiSettingsEditorField.REQUEST_PARAMETERS
+    val isMultiline = isCustomPrompt || isRequestParameters
     val titleResId =
         when (field) {
             AiSettingsEditorField.API_KEY -> R.string.ai_api_key
             AiSettingsEditorField.CUSTOM_ENDPOINT -> R.string.ai_custom_endpoint
             AiSettingsEditorField.CUSTOM_MODEL -> R.string.ai_model
             AiSettingsEditorField.CUSTOM_PROMPT -> R.string.ai_custom_prompt
+            AiSettingsEditorField.REQUEST_PARAMETERS -> R.string.ai_request_parameters
         }
     val iconResId =
         when (field) {
@@ -457,6 +469,7 @@ private fun AiSettingsEditorDialog(
             AiSettingsEditorField.CUSTOM_ENDPOINT -> R.drawable.website
             AiSettingsEditorField.CUSTOM_MODEL -> R.drawable.auto_awesome
             AiSettingsEditorField.CUSTOM_PROMPT -> R.drawable.edit
+            AiSettingsEditorField.REQUEST_PARAMETERS -> R.drawable.edit
         }
     val visualTransformation =
         remember(field) {
@@ -475,7 +488,7 @@ private fun AiSettingsEditorDialog(
                     } else {
                         KeyboardCapitalization.None
                     },
-                imeAction = if (isCustomPrompt) ImeAction.Default else ImeAction.Done,
+                imeAction = if (isMultiline) ImeAction.Default else ImeAction.Done,
             )
         }
 
@@ -500,14 +513,19 @@ private fun AiSettingsEditorDialog(
             value = editor.value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            singleLine = !isCustomPrompt,
-            minLines = if (isCustomPrompt) 4 else 1,
-            maxLines = if (isCustomPrompt) 8 else 1,
+            singleLine = !isMultiline,
+            minLines = if (isMultiline) 4 else 1,
+            maxLines = if (isMultiline) 8 else 1,
+            isError = editor.errorMessageResId != null,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             label = { Text(stringResource(titleResId)) },
             supportingText =
-                if (isCustomPrompt) {
+                if (editor.errorMessageResId != null) {
+                    { Text(stringResource(editor.errorMessageResId)) }
+                } else if (isRequestParameters) {
+                    { Text(stringResource(R.string.ai_request_parameters_desc)) }
+                } else if (isCustomPrompt) {
                     { Text(stringResource(R.string.ai_custom_prompt_desc)) }
                 } else {
                     null

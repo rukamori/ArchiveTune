@@ -9,12 +9,31 @@ package moe.rukamori.archivetune.musicrecognition
 
 import android.media.projection.MediaProjection
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.BuildConfig
 import timber.log.Timber
 import javax.inject.Inject
+
+class DecodeRecognitionDetailsUseCase @Inject constructor() {
+    suspend operator fun invoke(encodedTrack: String): Result<RecognizedTrack?> =
+        withContext(Dispatchers.Default) {
+            if (encodedTrack.isBlank()) {
+                Result.success(null)
+            } else {
+                try {
+                    val track = decodeRecognizedTrack(encodedTrack)
+                    require(track.title.isNotBlank())
+                    Result.success(track)
+                } catch (exception: IllegalArgumentException) {
+                    Result.failure(exception)
+                }
+            }
+        }
+}
 
 class RecognizeMusicUseCase
     @Inject

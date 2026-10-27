@@ -630,7 +630,6 @@
     <string name="testing_proxy_connection">Перевірка з\'єднання з проксі-сервером…</string>
     <string name="proxy_connection_success">Підключення через проксі-сервер встановлено!</string>
     <string name="proxy_connection_failed">Помилка підключення через проксі-сервер: %s</string>
-    <string name="enable_paxsenix_lyrics">Увімкнути тексти пісень Paxsenix</string>
     <string name="clear_lyrics_cache">Очистити кеш текстів пісень</string>
     <string name="clear_lyrics_cache_confirm">Ви впевнені, що хочете очистити весь кеш текстів пісень?</string>
     <string name="paxsenix_stats">Статистика API Paxsenix</string>
@@ -640,7 +639,6 @@
     <string name="providers">Провайдери</string>
     <string name="updates_status_checking">Перевірка наявності останньої версії</string>
     <string name="updates_status_current">Ви використовуєте останню доступну версію</string>
-    <string name="update_channel_desc">Виберіть між перевіреними версіями та знімками з розробки.</string>
     <string name="updates_loading_commits">Завантаження останніх комітів</string>
     <string name="updates_recent_commits_count">%1$d останніх комітів</string>
     <string name="updates_no_commits">Не знайдено останніх комітів</string>

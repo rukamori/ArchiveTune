@@ -17,6 +17,7 @@ enum class StreamPurpose {
 
 enum class StreamSource {
     YOUTUBEI,
+    MODULE,
 }
 
 data class AudioStreamRequest(
@@ -28,6 +29,8 @@ data class AudioStreamRequest(
     val authState: PlaybackAuthState,
     val pinnedFormatId: Int? = null,
     val requiresSongMetadata: Boolean = false,
+    val moduleMetadata: moe.rukamori.archivetune.modules.ModuleMatchMetadata? = null,
+    val allowModules: Boolean = true,
 )
 
 data class ResolvedAudioStream(
@@ -49,4 +52,21 @@ data class ResolvedAudioStream(
     val loudnessDb: Double? = null,
     val perceptualLoudnessDb: Double? = null,
     val playbackTrackingUrl: String? = null,
+    val moduleSelection: moe.rukamori.archivetune.modules.ModuleAudioSelection? = null,
+)
+
+fun moe.rukamori.archivetune.modules.ModuleAudioSelection.toResolvedAudioStream() = ResolvedAudioStream(
+    url = stream.url,
+    requestHeaders = stream.headers,
+    formatId = -1,
+    mimeType = stream.mimeType,
+    codecs = stream.codecs,
+    bitrate = stream.bitrate,
+    sampleRate = stream.sampleRate,
+    contentLength = stream.contentLength,
+    expiresAtMs = stream.expiresAtMs,
+    authFingerprint = module.revision,
+    source = StreamSource.MODULE,
+    runtimeVersion = module.manifest.version,
+    moduleSelection = this,
 )

@@ -30,17 +30,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const nightlyLinks = [
-              {
-                label: "GMS",
-                url: "https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release"
-              },
-              {
-                label: "FOSS",
-                url: "https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-foss-mobile-universal-release"
-              }
-            ];
-            const nightlyUrls = nightlyLinks.map((link) => link.url);
             const labelName = process.env.ISSUE_LABEL;
             const labelColor = process.env.ISSUE_LABEL_COLOR;
             const labelDescription = process.env.ISSUE_LABEL_DESCRIPTION;
@@ -172,12 +161,7 @@ jobs:
                 const body = [
                   commentMarker,
                   `Hey @${author}, This issue was referenced on commit [\`${commitSha}\`](${commitUrl}).`,
-                  "",
-                  "Make sure to try the latest nightly version:",
-                  "",
-                  ...nightlyLinks.map((link) => `${link.label}: ${link.url}`),
-                  "",
-                  "This issue is being closed automatically after the referenced fix commit."
+                  "This issue is being closed automatically after the referenced commit."
                 ].join("\n");
 
                 await github.rest.issues.createComment({

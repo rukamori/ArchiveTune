@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheetState
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 
 /**
  * Centralized *behavior* for the title/artist block shared by every player design style.
@@ -65,13 +67,13 @@ fun rememberPlayerTitleActions(
                     // without animation and left the anchor stale, so tapping the title from the
                     // home screen failed to collapse the player reliably.)
                     state.collapseSoft()
-                    navController.navigate("album/${album.id}")
+                    navController.navigateToAlbum(album.id)
                 }
             },
             onArtistClick = { artistId ->
                 if (artistId.isNotBlank()) {
                     state.collapseSoft()
-                    navController.navigate("artist/$artistId")
+                    navController.navigateToArtist(artistId)
                 }
             },
             onCopyTitle = {

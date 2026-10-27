@@ -125,7 +125,8 @@ fun Thumbnail(
     sliderPositionProvider: () -> Long?,
     canvas: CanvasVideo?,
     modifier: Modifier = Modifier,
-    isPlayerExpanded: Boolean = true, // Add parameter to control swipe based on player state
+    isPlayerExpanded: Boolean = true,
+    applyStatusBarPadding: Boolean = true,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -317,7 +318,7 @@ fun Thumbnail(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .statusBarsPadding(),
+                    .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Now Playing header
@@ -350,7 +351,7 @@ fun Thumbnail(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
-                val containerMaxWidth = maxWidth
+                val artworkSize = minOf(maxWidth - PlayerHorizontalPadding * 2, maxHeight).coerceAtLeast(0.dp)
 
                 LazyHorizontalGrid(
                     state = thumbnailLazyGridState,
@@ -427,7 +428,7 @@ fun Thumbnail(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(containerMaxWidth - (PlayerHorizontalPadding * 2))
+                                        .size(artworkSize)
                                         .clip(RoundedCornerShape(thumbnailCornerRadius.dp)),
                             ) {
                                 if (hidePlayerThumbnail) {

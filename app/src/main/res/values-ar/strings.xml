@@ -722,7 +722,6 @@
     <string name="enable_youlyplus_lyrics">تفعيل كلمات YouLyPlus</string>
     <string name="enable_unison_lyrics">تفعيل كلمات Unison</string>
     <string name="enable_megalobiz_lyrics">تفعيل كلمات Megalobiz</string>
-    <string name="enable_paxsenix_lyrics">تفعيل كلمات Paxsenix</string>
     <string name="low_data_mode_title">وضع توفير البيانات</string>
     <string name="low_data_mode_description">يقلل استخدام بيانات الجوال باستخدام بث منخفض الجودة وتعطيل ذاكرة التشغيل والشاشة التفاعلية على شبكات الهاتف</string>
     <string name="permanent_shuffle">وضع التشغيل العشوائي الدائم</string>
@@ -891,7 +890,6 @@
     <string name="about">حول</string>
     <string name="new_version_available">إصدار جديد متوفر</string>
     <string name="updates">التحديثات</string>
-    <string name="updates_subtitle_artifact">إصدارات Canary والتغييرات الحديثة في التطوير</string>
     <string name="current_version">الإصدار الحالي</string>
     <string name="latest_version_format">الأحدث: %s</string>
     <string name="updates_status_checking">جاري التحقق من أحدث إصدار</string>
@@ -899,16 +897,7 @@
     <string name="enable_update_notification">تفعيل إشعارات التحديث</string>
     <string name="enable_update_notification_channel_desc">تلقي إشعارات عند توفر إصدار جديد في القناة المحددة</string>
     <string name="update_channel">قناة التحديث</string>
-    <string name="update_channel_desc">اختر بين الإصدارات المختبرة ولقطات التطوير.</string>
-    <string name="channel_artifact">تجريبي (Canary)</string>
     <string name="recent_commits">التغييرات الأخيرة</string>
-    <string name="updates_artifact_hosting_description">تُنشر إصدارات Canary تلقائيًا من أحدث فرع تطوير.</string>
-    <string name="updates_channel_warning_intro">يوفر ArchiveTune قناتي تنزيل للبناءات:</string>
-    <string name="updates_channel_warning_stable_title">البناءات المستقرة</string>
-    <string name="updates_channel_warning_stable_source">موزعة عبر إصدارات GitHub الرسمية.</string>
-    <string name="updates_channel_warning_stable_desc">هذه الإصدارات مختبرة وموصى بها لغالبية المستخدمين.</string>
-    <string name="updates_channel_warning_artifact_title">إصدارات Canary</string>
-    <string name="updates_channel_warning_artifact_risk">قد تتضمن إصدارات Canary ميزات تجريبية، تغييرات غير مكتملة، أو تراجع مؤقت في الأداء.</string>
     <string name="updates_loading_commits">جاري تحميل التغييرات الأخيرة</string>
     <string name="updates_recent_commits_count">%1$d التغييرات الأخيرة</string>
     <string name="updates_no_commits">لم يتم العثور على تغييرات حديثة</string>
@@ -1098,7 +1087,4 @@
     <string name="scheduled_backup_load_failed">تعذر تحميل إعدادات النسخ الاحتياطي المجدول</string>
     <string name="scheduled_backup_update_failed">تعذر حفظ إعدادات النسخ الاحتياطي المجدول</string>
     <string name="gatekeeper_connection_blocked">تم حظر الاتصال بواسطة ArchiveTune Remote. لم يتم التحقق من هذا التطبيق كإصدار رسمي من ArchiveTune. قم بتثبيت إصدار رسمي من https://github.com/rukamori/ArchiveTune أو https://t.me/ArchiveTuneGC.</string>
-    <string name="updates_channel_warning_artifact_unstable">تُوفر إصدارات Canary للاختبار والوصول المبكر فقط.\nالاستقرار، التوافق، والوظائف غير مضمونة.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">ملاحظة: التنزيل مباشرة من GitHub يتجاوز أي فحص إضافي يجريه المتجر الذي ربما ثبّت التطبيق منه سابقًا.\nبالمتابعة، فإنك تقر بأن إصدارات Canary قد تكون غير مستقرة وتتحمل مسؤولية استخدامها.</string>
-    <string name="updates_artifact_channel_confirmation">التبديل إلى قناة Canary لتلقي إصدارات التطوير.\n\nتُحمل إصدارات Canary تلقائيًا من أحدث فرع تطوير.\nملاحظة: التنزيل مباشرة من GitHub يتجاوز أي فحص إضافي يجريه المتجر الذي ربما ثبّت التطبيق منه سابقًا.</string>
 </resources>

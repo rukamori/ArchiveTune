@@ -14,11 +14,13 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -53,7 +55,13 @@ data class UpdateSettingsUiModel(
 sealed interface UpdateSettingsAction {
     data class SetAutomaticChecksEnabled(val enabled: Boolean) : UpdateSettingsAction
     data class SetNotificationsEnabled(val enabled: Boolean) : UpdateSettingsAction
+    data object JoinEarlyAccess : UpdateSettingsAction
+    data object EarlyAccessLinkFailed : UpdateSettingsAction
     data object DismissError : UpdateSettingsAction
+}
+
+sealed interface UpdateSettingsEvent {
+    data class OpenUri(val uri: String) : UpdateSettingsEvent
 }
 
 @HiltViewModel
@@ -66,6 +74,8 @@ class UpdateSettingsViewModel
         private val error = MutableStateFlow<Int?>(null)
         private var automaticChecksJob: Job? = null
         private var notificationsJob: Job? = null
+        private val eventChannel = Channel<UpdateSettingsEvent>(Channel.CONFLATED)
+        val events = eventChannel.receiveAsFlow()
 
         val state: StateFlow<UpdateSettingsScreenState> =
             combine(observeSettings(), error) { settings, errorRes ->
@@ -95,6 +105,11 @@ class UpdateSettingsViewModel
             when (action) {
                 is UpdateSettingsAction.SetAutomaticChecksEnabled -> setAutomaticChecksEnabled(action.enabled)
                 is UpdateSettingsAction.SetNotificationsEnabled -> setNotificationsEnabled(action.enabled)
+                UpdateSettingsAction.JoinEarlyAccess ->
+                    eventChannel.trySend(
+                        UpdateSettingsEvent.OpenUri("https://discord.gg/archivetune-1498315636714115224"),
+                    )
+                UpdateSettingsAction.EarlyAccessLinkFailed -> error.value = R.string.early_access_open_failed
                 UpdateSettingsAction.DismissError -> error.value = null
             }
         }

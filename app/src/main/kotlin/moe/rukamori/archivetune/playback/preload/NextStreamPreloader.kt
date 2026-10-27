@@ -32,6 +32,7 @@ class NextStreamPreloader
         private val resolveAudioStream: ResolveAudioStreamUseCase,
         @PlayerCache private val playerCache: Cache,
         @DownloadCache private val downloadCache: Cache,
+        private val moduleAudio: moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase,
     ) {
         private data class Target(val request: AudioStreamRequest)
 
@@ -46,7 +47,9 @@ class NextStreamPreloader
             lateinit var preloadFailure: AtomicReference<Throwable?>
             val jobToStart =
                 synchronized(lock) {
-                    if (target == nextTarget) return
+                    if (target == nextTarget || (moduleAudio.enabled() && target?.request?.let {
+                            it.mediaId == request.mediaId && it.moduleMetadata == request.moduleMetadata && it.purpose == request.purpose
+                        } == true)) return
 
                     val previousJob = job
                     preloadFailure = AtomicReference()
@@ -89,6 +92,11 @@ class NextStreamPreloader
 
         private suspend fun preload(target: Target) {
             if (resolveAudioStream.peek(target.request) != null) return
+
+            if (moduleAudio.enabled() && target.request.allowModules) {
+                resolveAudioStream.preload(target.request)
+                return
+            }
 
             val cacheKey = target.request.mediaId
             if (playerCache.isFullyCached(cacheKey) || downloadCache.isFullyCached(cacheKey)) return

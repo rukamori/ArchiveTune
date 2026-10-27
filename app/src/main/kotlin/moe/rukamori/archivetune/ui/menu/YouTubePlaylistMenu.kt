@@ -474,6 +474,7 @@ fun YouTubePlaylistMenu(
 
     val primaryActions =
         remember(
+            playlist.id,
             playlist.playEndpoint,
             playlist.shuffleEndpoint,
             playlist.radioEndpoint,
@@ -516,7 +517,7 @@ fun YouTubePlaylistMenu(
                             },
                             text = shuffleText,
                             onClick = {
-                                playerConnection.playQueue(YouTubeQueue.playlist(shuffleEndpoint))
+                                playerConnection.playQueue(YouTubeQueue.shuffledPlaylist(playlist.id, shuffleEndpoint))
                                 onDismiss()
                             },
                         ),

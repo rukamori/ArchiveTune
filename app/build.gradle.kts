@@ -121,7 +121,6 @@ android {
                 ?: "ArchiveTune"
         buildConfigField("String", "GITHUB_OWNER", githubOwner.asBuildConfigString())
         buildConfigField("String", "GITHUB_REPO", githubRepo.asBuildConfigString())
-        buildConfigField("boolean", "IS_NIGHTLY_BUILD", "false")
 
         val releaseGithubOwner =
             System.getenv("RELEASE_GITHUB_OWNER")?.trim()
@@ -236,19 +235,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("boolean", "LEAK_CANARY_TOGGLE_AVAILABLE", "true")
-            buildConfigField("boolean", "IS_NIGHTLY_BUILD", "true")
             matchingFallbacks += listOf("release")
-
-            val nightlyReleaseOwner =
-                System.getenv("NIGHTLY_RELEASE_GITHUB_OWNER")?.trim()
-                    ?: localProperties.getProperty("NIGHTLY_RELEASE_GITHUB_OWNER")?.trim()
-                    ?: "rukamori"
-            val nightlyReleaseRepo =
-                System.getenv("NIGHTLY_RELEASE_GITHUB_REPO")?.trim()
-                    ?: localProperties.getProperty("NIGHTLY_RELEASE_GITHUB_REPO")?.trim()
-                    ?: "canary"
-            buildConfigField("String", "RELEASE_GITHUB_OWNER", nightlyReleaseOwner.asBuildConfigString())
-            buildConfigField("String", "RELEASE_GITHUB_REPO", nightlyReleaseRepo.asBuildConfigString())
         }
     }
 
@@ -338,6 +325,7 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.haze)
     implementation(libs.haze.blur)
+    implementation(libs.haze.glass)
     implementation(libs.androidx.graphics.shapes)
     implementation(libs.palette)
     implementation(libs.androidsvg)
@@ -358,9 +346,9 @@ dependencies {
     implementation(libs.shimmer)
 
     // Glance Widget support
-    implementation("androidx.glance:glance:1.1.1")
-    implementation("androidx.glance:glance-appwidget:1.1.1")
-    implementation("androidx.glance:glance-material3:1.1.1")
+    implementation("androidx.glance:glance:1.2.0")
+    implementation("androidx.glance:glance-appwidget:1.2.0")
+    implementation("androidx.glance:glance-material3:1.2.0")
 
     implementation(libs.media3)
     implementation("androidx.media3:media3-exoplayer-hls:${libs.versions.media3.get()}")
@@ -372,7 +360,6 @@ dependencies {
     add("gmsImplementation", libs.media3.cast)
     add("gmsImplementation", libs.mediarouter)
     add("gmsImplementation", "com.google.android.gms:play-services-auth:22.0.0")
-    implementation(libs.squigglyslider)
 
 
     implementation(libs.room.runtime)
@@ -401,7 +388,9 @@ dependencies {
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
     implementation(project(":morideobfuscator"))
-    implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
+    implementation(project(":modules"))
+    implementation("androidx.media3:media3-exoplayer-dash:${libs.versions.media3.get()}")
+    implementation("com.materialkolor:material-kolor:5.0.1")
 
     implementation(libs.webkit)
     implementation(libs.ktor.client.core)
@@ -420,14 +409,14 @@ dependencies {
     testImplementation(libs.turbine)
     implementation(libs.translator)
     implementation("androidx.lifecycle:lifecycle-process:2.11.0")
-    implementation("androidx.compose.material3.adaptive:adaptive:1.3.0-rc01")
+    implementation("androidx.compose.material3.adaptive:adaptive:1.4.0-alpha03")
     implementation(libs.accompanist.lyrics.ui)
     implementation(libs.accompanist.lyrics.core)
 }
 
 androidComponents {
     onVariants(selector().all()) { variant ->
-        if ("automotive" in variant.name) return@onVariants
+        if (variant.productFlavors.any { (_, flavor) -> flavor == "automotive" }) return@onVariants
         val capitalizedVariantName =
             variant.name.replaceFirstChar { character ->
                 if (character.isLowerCase()) character.titlecase() else character.toString()

@@ -119,6 +119,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
 import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
+import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -338,6 +339,7 @@ fun LyricsScreen(
                 showPlayerControlsState = showPlayerControlsState,
                 onShowPlayerControlsChange = onShowPlayerControlsChange,
                 onDismiss = menuState::dismiss,
+                lyricsRenderViewModel = lyricsRenderViewModel,
             )
         }
     }
@@ -987,11 +989,18 @@ private fun AppleMusicSlider(
             thumbColor = Color.Transparent,
             inactiveTrackColor = inactiveColor,
         )
+    val sliderState =
+        rememberControlledSliderState(
+            value = value.coerceIn(safeRange),
+            valueRange = safeRange,
+        )
 
     Slider(
-        value = value.coerceIn(safeRange),
-        valueRange = safeRange,
-        onValueChange = onValueChange,
+        state = sliderState,
+        onValueChange = { updated ->
+            sliderState.value = updated
+            onValueChange(updated)
+        },
         onValueChangeFinished = onValueChangeFinished,
         colors = sliderColors,
         thumb = { Spacer(modifier = Modifier.size(0.dp)) },

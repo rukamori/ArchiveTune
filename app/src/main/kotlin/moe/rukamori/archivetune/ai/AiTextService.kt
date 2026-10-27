@@ -17,6 +17,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import moe.rukamori.archivetune.constants.AiProvider
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -52,7 +53,7 @@ object AiTextService {
                 systemPrompt = "You are a health check endpoint. Reply with OK only.",
                 userPrompt = "Reply exactly OK.",
                 temperature = 0.0,
-                maxTokens = 32,
+                maxTokens = 8192,
             ).trim()
         if (!response.contains("OK", ignoreCase = true)) {
             throw AiServiceException("AI API returned an unexpected test response")
@@ -88,7 +89,10 @@ object AiTextService {
             )
         val array = extractJsonArray(response)
         require(array.length() == lines.size) { "AI response changed the lyric segment count" }
-        return List(array.length()) { index -> array.optString(index) }
+        return List(array.length()) { index ->
+            array.get(index) as? String
+                ?: throw AiServiceException("AI response contained a non-text lyric segment")
+        }
     }
 
     private fun String.appendCustomPrompt(customPrompt: String): String {
@@ -115,6 +119,7 @@ object AiTextService {
                     userPrompt = userPrompt,
                     temperature = temperature,
                     maxTokens = maxTokens,
+                    requestParameters = config.requestParameters,
                 )
             }
 
@@ -127,6 +132,7 @@ object AiTextService {
                     userPrompt = userPrompt,
                     temperature = temperature,
                     maxTokens = maxTokens,
+                    requestParameters = config.requestParameters,
                 )
             }
 
@@ -139,6 +145,7 @@ object AiTextService {
                     userPrompt = userPrompt,
                     temperature = temperature,
                     maxTokens = maxTokens,
+                    requestParameters = config.requestParameters,
                 )
             }
 
@@ -178,35 +185,74 @@ object AiTextService {
         userPrompt: String,
         temperature: Double,
         maxTokens: Int,
+        requestParameters: String,
     ): String {
         val messages =
             JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", userPrompt))
+        val reasoningModel = isReasoningModel(model)
         val body =
             JSONObject()
-                .put("model", model)
+                .put("model", model.trim())
                 .put("messages", messages)
-                .put("temperature", temperature)
-                .put("max_tokens", maxTokens)
-                .toString()
+                .put(if (reasoningModel) "max_completion_tokens" else "max_tokens", maxTokens)
+        if (!reasoningModel) body.put("temperature", temperature)
+        AiRequestParameters.applyTo(body, requestParameters)
         val response =
-            client.post(endpoint.trim()) {
+            client.post(chatCompletionEndpoint(endpoint)) {
                 header("Authorization", "Bearer ${apiKey.trim()}")
                 contentType(ContentType.Application.Json)
-                setBody(body)
+                setBody(body.toString())
             }
         val raw = response.bodyAsText()
         if (response.status.value !in 200..299) throw apiException(response.status.value, raw)
         val json = JSONObject(raw)
-        val content =
-            json
-                .optJSONArray("choices")
-                ?.optJSONObject(0)
-                ?.optJSONObject("message")
-                ?.optString("content")
-                ?.takeIf { it.isNotBlank() }
-        return content ?: throw AiServiceException("AI API returned an empty response")
+        val choice = json.optJSONArray("choices")?.optJSONObject(0)
+            ?: throw AiServiceException("AI API returned no completion choices")
+        when (choice.optString("finish_reason")) {
+            "length" -> throw AiServiceException("AI response exceeded the token limit. Increase the token limit in request parameters.")
+            "content_filter" -> throw AiServiceException("AI provider filtered the response")
+        }
+        val message = choice.optJSONObject("message")
+            ?: throw AiServiceException("AI API returned no completion message")
+        val content = when (val value = message.opt("content")) {
+            is String -> value
+            is JSONArray -> buildString {
+                for (index in 0 until value.length()) {
+                    val part = value.optJSONObject(index) ?: continue
+                    if (part.optString("type") == "text") append(part.optString("text", ""))
+                }
+            }
+            else -> ""
+        }
+        if (content.isBlank()) {
+            if (!message.isNull("refusal")) throw AiServiceException("AI provider refused the request")
+            throw AiServiceException("AI API returned no text. Check the model and its token or reasoning parameters.")
+        }
+        return content
+    }
+
+    private fun isReasoningModel(model: String): Boolean {
+        val name = model.trim().substringAfterLast('/').lowercase()
+        if (name.startsWith("gpt-")) {
+            return name.removePrefix("gpt-").takeWhile(Char::isDigit).toIntOrNull()?.let { it >= 5 } == true
+        }
+        return name.startsWith('o') && name.drop(1).substringBefore('-').toIntOrNull()?.let { it > 0 } == true
+    }
+
+    private fun chatCompletionEndpoint(endpoint: String): String {
+        val url = endpoint.trim().toHttpUrlOrNull()
+            ?: throw AiServiceException("AI endpoint must be an HTTP or HTTPS URL")
+        if (url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) {
+            throw AiServiceException("AI endpoint cannot contain credentials or a fragment")
+        }
+        val path = url.encodedPath.trimEnd('/')
+        return when {
+            path.isEmpty() -> url.newBuilder().encodedPath("/v1/chat/completions").build().toString()
+            path.endsWith("/v1") -> url.newBuilder().encodedPath("$path/chat/completions").build().toString()
+            else -> url.toString()
+        }
     }
 
     private suspend fun completeGemini(

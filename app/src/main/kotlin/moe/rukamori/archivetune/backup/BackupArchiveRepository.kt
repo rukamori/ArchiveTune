@@ -47,6 +47,7 @@ class BackupArchiveRepository
         @ApplicationContext private val context: Context,
         private val database: MusicDatabase,
         private val operationCoordinator: BackupOperationCoordinator,
+        private val modules: moe.rukamori.archivetune.modules.ModuleRepository,
     ) {
         suspend fun createBackup(
             uri: Uri,
@@ -71,7 +72,7 @@ class BackupArchiveRepository
                         emptyList()
                     }
 
-                val totalUnits = (if (includeSettings) 1 else 0) + (if (includeLibrary) 1 else 0) + dbFiles.size
+                val totalUnits = (if (includeSettings) 2 else 0) + (if (includeLibrary) 1 else 0) + dbFiles.size
                 val unitSpan = 100f / totalUnits.coerceAtLeast(1)
                 var completedUnits = 0
                 var lastProgress: BackupArchiveProgress? = null
@@ -106,6 +107,10 @@ class BackupArchiveRepository
                         emit(BackupArchiveStep.EXPORT_SETTINGS, indeterminate = true)
                         zipStream.putNextEntry(ZipEntry(SETTINGS_XML_FILENAME))
                         writeSettingsToXml(zipStream, settingsExcludedKeys)
+                        zipStream.closeEntry()
+                        completedUnits++
+                        zipStream.putNextEntry(ZipEntry(moe.rukamori.archivetune.modules.ModuleRepository.BACKUP_ENTRY))
+                        zipStream.write(modules.exportPortable())
                         zipStream.closeEntry()
                         completedUnits++
                     }

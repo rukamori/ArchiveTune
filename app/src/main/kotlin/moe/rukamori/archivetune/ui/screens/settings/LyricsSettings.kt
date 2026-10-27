@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -70,18 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
-import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
-import moe.rukamori.archivetune.constants.EnableKugouKey
-import moe.rukamori.archivetune.constants.EnableLrcLibKey
-import moe.rukamori.archivetune.constants.EnableMegalobizLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixAppleMusicLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixSpotifyLyricsKey
-import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
-import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
-import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
 import moe.rukamori.archivetune.constants.LyricsClickKey
 import moe.rukamori.archivetune.constants.LyricsLineBlurKey
 import moe.rukamori.archivetune.constants.LyricsLineSpacingKey
@@ -105,6 +94,7 @@ import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.MultiSelectListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -113,6 +103,8 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ContentSettingsViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsProviderSettingsState
+import moe.rukamori.archivetune.viewmodels.LyricsProviderSettingsViewModel
 import moe.rukamori.archivetune.viewmodels.PaxsenixStatsState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -122,7 +114,9 @@ import kotlin.math.roundToInt
 fun LyricsSettings(
     navController: NavController,
     viewModel: ContentSettingsViewModel = hiltViewModel(),
+    providerViewModel: LyricsProviderSettingsViewModel = hiltViewModel(),
 ) {
+    val providerState by providerViewModel.state.collectAsStateWithLifecycle()
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showPaxsenixStatsDialog by remember { mutableStateOf(false) }
     var showPaxsenixApiKeyDialog by rememberSaveable { mutableStateOf(false) }
@@ -160,37 +154,11 @@ fun LyricsSettings(
     val (lyricsTextSize, onLyricsTextSizeChange) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
     val (lyricsLineSpacing, onLyricsLineSpacingChange) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
     val (lyricsMode, onLyricsModeChange) = rememberEnumPreference(LyricsModeKey, defaultValue = LyricsMode.ENHANCED)
-    val (enableLrclib, onEnableLrclibChange) = rememberPreference(key = EnableLrcLibKey, defaultValue = true)
-    val (enableKugou, onEnableKugouChange) = rememberPreference(key = EnableKugouKey, defaultValue = true)
-    val (enableBetterLyrics, onEnableBetterLyricsChange) = rememberPreference(key = EnableBetterLyricsKey, defaultValue = true)
-    val (enableBetterLyricsPortato, onEnableBetterLyricsPortatoChange) =
-        rememberPreference(key = EnableBetterLyricsPortatoKey, defaultValue = true)
-    val (enableYouLyPlusLyrics, onEnableYouLyPlusLyricsChange) =
-        rememberPreference(key = EnableYouLyPlusLyricsKey, defaultValue = true)
-    val (enableSimpMusicLyrics, onEnableSimpMusicLyricsChange) = rememberPreference(key = EnableSimpMusicLyricsKey, defaultValue = true)
-    val (enableMegalobizLyrics, onEnableMegalobizLyricsChange) = rememberPreference(key = EnableMegalobizLyricsKey, defaultValue = true)
-    val (enablePaxsenixLyrics, onEnablePaxsenixLyricsChange) = rememberPreference(key = EnablePaxsenixLyricsKey, defaultValue = true)
     val (paxsenixApiKey, onPaxsenixApiKeyChange) =
         rememberPreference(
             key = PaxsenixApiKeyKey,
             defaultValue = "",
         )
-    val (enablePaxsenixAppleMusicLyrics, onEnablePaxsenixAppleMusicLyricsChange) =
-        rememberPreference(
-            key = EnablePaxsenixAppleMusicLyricsKey,
-            defaultValue = true,
-        )
-    val (enablePaxsenixSpotifyLyrics, onEnablePaxsenixSpotifyLyricsChange) =
-        rememberPreference(
-            key = EnablePaxsenixSpotifyLyricsKey,
-            defaultValue = true,
-        )
-    val (enablePaxsenixMusixmatchLyrics, onEnablePaxsenixMusixmatchLyricsChange) =
-        rememberPreference(
-            key = EnablePaxsenixMusixmatchLyricsKey,
-            defaultValue = true,
-        )
-    val (enableUnisonLyrics, onEnableUnisonLyricsChange) = rememberPreference(key = EnableUnisonLyricsKey, defaultValue = true)
     val (providerOrderStr, onProviderOrderStrChange) =
         rememberPreference(
             key = LyricsProviderOrderKey,
@@ -465,87 +433,17 @@ fun LyricsSettings(
 
         PreferenceGroup(title = stringResource(R.string.providers)) {
             item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_betterlyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableBetterLyrics,
-                    onCheckedChange = onEnableBetterLyricsChange,
+                LyricsProviderPreference(
+                    state = providerState,
+                    onOpen = providerViewModel::openSheet,
+                    onDismiss = providerViewModel::dismissSheet,
+                    onCheckedChange = providerViewModel::setProviderChecked,
+                    onConfirm = providerViewModel::confirmSelection,
+                    onRetry = providerViewModel::retry,
                 )
             }
 
             item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_betterlyrics_portato)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableBetterLyricsPortato,
-                    onCheckedChange = onEnableBetterLyricsPortatoChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_youlyplus_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableYouLyPlusLyrics,
-                    onCheckedChange = onEnableYouLyPlusLyricsChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_lrclib)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableLrclib,
-                    onCheckedChange = onEnableLrclibChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_kugou)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableKugou,
-                    onCheckedChange = onEnableKugouChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_unison_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableUnisonLyrics,
-                    onCheckedChange = onEnableUnisonLyricsChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_simpmusic_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableSimpMusicLyrics,
-                    onCheckedChange = onEnableSimpMusicLyricsChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_megalobiz_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enableMegalobizLyrics,
-                    onCheckedChange = onEnableMegalobizLyricsChange,
-                )
-            }
-
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.enable_paxsenix_lyrics)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enablePaxsenixLyrics,
-                    onCheckedChange = onEnablePaxsenixLyricsChange,
-                )
-            }
-
-            item(visible = enablePaxsenixLyrics) {
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.paxsenix_api_key)) },
                     description =
@@ -559,38 +457,11 @@ fun LyricsSettings(
                 )
             }
 
-            item(visible = enablePaxsenixLyrics) {
+            item {
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.paxsenix_stats)) },
                     icon = { Icon(painterResource(R.drawable.stats), null) },
                     onClick = { showPaxsenixStatsDialog = true },
-                )
-            }
-
-            item(visible = enablePaxsenixLyrics) {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.paxsenix_apple_music)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enablePaxsenixAppleMusicLyrics,
-                    onCheckedChange = onEnablePaxsenixAppleMusicLyricsChange,
-                )
-            }
-
-            item(visible = enablePaxsenixLyrics) {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.paxsenix_spotify)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enablePaxsenixSpotifyLyrics,
-                    onCheckedChange = onEnablePaxsenixSpotifyLyricsChange,
-                )
-            }
-
-            item(visible = enablePaxsenixLyrics) {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.paxsenix_musixmatch)) },
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    checked = enablePaxsenixMusixmatchLyrics,
-                    onCheckedChange = onEnablePaxsenixMusixmatchLyricsChange,
                 )
             }
 
@@ -679,6 +550,69 @@ fun LyricsSettings(
     )
 }
 
+@Composable
+private fun LyricsProviderPreference(
+    state: LyricsProviderSettingsState,
+    onOpen: () -> Unit,
+    onDismiss: () -> Unit,
+    onCheckedChange: (PreferredLyricsProvider, Boolean) -> Unit,
+    onConfirm: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    if (state is LyricsProviderSettingsState.Success) {
+        val data = state.data
+        MultiSelectListPreference(
+            title = { Text(stringResource(R.string.lyrics_enabled_providers)) },
+            icon = { Icon(painterResource(R.drawable.lyrics), null) },
+            values = data.providers,
+            checkedValues = data.draftProviders,
+            selectionText = pluralStringResource(
+                R.plurals.n_selected,
+                data.selectedProviders.size,
+                data.selectedProviders.size,
+            ),
+            valueText = { provider -> provider.enableLabel() },
+            isBottomSheetVisible = data.isSheetVisible,
+            onOpen = onOpen,
+            onDismiss = onDismiss,
+            onValueCheckedChange = onCheckedChange,
+            onConfirm = onConfirm,
+            isEnabled = !data.isSaving,
+        )
+    } else {
+        PreferenceEntry(
+            title = { Text(stringResource(R.string.lyrics_enabled_providers)) },
+            description = (state as? LyricsProviderSettingsState.Error)?.let { stringResource(it.messageRes) },
+            icon = { Icon(painterResource(R.drawable.lyrics), null) },
+            trailingContent = if (state is LyricsProviderSettingsState.Error) {
+                { Text(stringResource(R.string.retry)) }
+            } else {
+                null
+            },
+            onClick = onRetry.takeIf { state is LyricsProviderSettingsState.Error },
+            isEnabled = state is LyricsProviderSettingsState.Error,
+        )
+    }
+}
+
+@Composable
+private fun PreferredLyricsProvider.enableLabel(): String = stringResource(
+    when (this) {
+        PreferredLyricsProvider.BETTER_LYRICS -> R.string.enable_betterlyrics
+        PreferredLyricsProvider.BETTER_LYRICS_PORTATO -> R.string.enable_betterlyrics_portato
+        PreferredLyricsProvider.YOULY_PLUS -> R.string.enable_youlyplus_lyrics
+        PreferredLyricsProvider.BINIMUM -> R.string.enable_binimum_lyrics
+        PreferredLyricsProvider.LRCLIB -> R.string.enable_lrclib
+        PreferredLyricsProvider.KUGOU -> R.string.enable_kugou
+        PreferredLyricsProvider.MEGALOBIZ -> R.string.enable_megalobiz_lyrics
+        PreferredLyricsProvider.SIMPMUSIC -> R.string.enable_simpmusic_lyrics
+        PreferredLyricsProvider.UNISON -> R.string.enable_unison_lyrics
+        PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> R.string.paxsenix_apple_music
+        PreferredLyricsProvider.PAXSENIX_SPOTIFY -> R.string.paxsenix_spotify
+        PreferredLyricsProvider.PAXSENIX_MUSIXMATCH -> R.string.paxsenix_musixmatch
+    },
+)
+
 private enum class PaxsenixServerStatus { Operational, Degraded, Down }
 
 @Composable
@@ -690,6 +624,7 @@ private fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.BETTER_LYRICS -> "BetterLyrics"
         PreferredLyricsProvider.BETTER_LYRICS_PORTATO -> "BetterLyrics Portato"
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
+        PreferredLyricsProvider.BINIMUM -> stringResource(R.string.binimum_lyrics)
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> stringResource(R.string.paxsenix_apple_music)
         PreferredLyricsProvider.PAXSENIX_SPOTIFY -> stringResource(R.string.paxsenix_spotify)

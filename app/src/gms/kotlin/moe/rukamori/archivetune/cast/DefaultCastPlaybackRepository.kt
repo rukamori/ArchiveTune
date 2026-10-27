@@ -20,6 +20,7 @@ import androidx.media3.cast.DefaultMediaItemConverter
 import androidx.media3.cast.MediaItemConverter
 import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.PlayerTransferState
 import androidx.media3.common.util.UnstableApi
@@ -29,6 +30,10 @@ import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -44,8 +49,6 @@ import io.ktor.server.response.respondOutputStream
 import io.ktor.server.routing.get
 import io.ktor.server.routing.options
 import io.ktor.server.routing.routing
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -61,6 +64,13 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
 import com.google.android.gms.cast.MediaMetadata as CastMetadata
+
+private const val MaxCastTransferPayloadBytes = 48 * 1024
+private const val CastTransferMessageOverheadBytes = 2 * 1024
+private const val CastMediaItemResolutionOverheadBytes = 512
+private const val MaxCastTransferItems = 100
+private const val MaxCastMetadataTextLength = 512
+private const val MaxCastArtworkUriLength = 2_048
 
 class DefaultCastPlaybackRepository(
     context: Context,
@@ -108,7 +118,7 @@ class DefaultCastPlaybackRepository(
             .Builder(context.applicationContext)
             .setLocalPlayer(localPlayer)
             .setRemotePlayer(remotePlayer)
-            .setTransferCallback(SafeCastTransferCallback(localPlayer))
+            .setTransferCallback(SafeCastTransferCallback(localPlayer, converter))
             .build()
     }
 
@@ -211,17 +221,83 @@ class DefaultCastPlaybackRepository(
 
 private class SafeCastTransferCallback(
     private val localPlayer: Player,
+    private val mediaItemConverter: GmsCastMediaItemConverter,
 ) : CastPlayer.TransferCallback {
+    private var castTransferWindow: CastTransferWindow? = null
+
     override fun transferState(
         sourcePlayer: Player,
         targetPlayer: Player,
     ) {
         val transferState = PlayerTransferState.fromPlayer(sourcePlayer)
         if (targetPlayer !== localPlayer) {
-            transferState.setToPlayer(targetPlayer)
+            val sourceItems = transferState.mediaItems
+            if (sourcePlayer !== localPlayer || sourceItems.isEmpty()) {
+                castTransferWindow = null
+                transferState.setToPlayer(targetPlayer)
+                return
+            }
+
+            val currentIndex =
+                transferState.currentMediaItemIndex
+                    .takeIf { it in sourceItems.indices }
+                    ?: 0
+            val castItems = ArrayList<MediaItem>(minOf(MaxCastTransferItems, sourceItems.size - currentIndex))
+            var estimatedPayloadBytes = CastTransferMessageOverheadBytes
+
+            for (index in currentIndex until sourceItems.size) {
+                if (castItems.size == MaxCastTransferItems) break
+
+                val mediaItem = sourceItems[index]
+                val itemSizeBytes = mediaItemConverter.estimatedSerializedCastItemBytes(mediaItem)
+                if (castItems.isNotEmpty() &&
+                    estimatedPayloadBytes + itemSizeBytes > MaxCastTransferPayloadBytes
+                ) {
+                    break
+                }
+
+                castItems += mediaItem
+                estimatedPayloadBytes += itemSizeBytes
+                if (estimatedPayloadBytes > MaxCastTransferPayloadBytes) {
+                    Timber.tag("Cast").w("The current Cast item exceeds the transfer payload budget")
+                    break
+                }
+            }
+
+            val endIndex = currentIndex + castItems.size
+            val transferWindow =
+                CastTransferWindow(
+                    originalItemCount = sourceItems.size,
+                    startIndex = currentIndex,
+                    endIndexExclusive = endIndex,
+                )
+            val wasLimited = currentIndex != 0 || endIndex != sourceItems.size
+            val boundedTransferState =
+                if (wasLimited) {
+                    transferState
+                        .buildUpon()
+                        .setMediaItems(castItems)
+                        .setCurrentMediaItemIndex(0)
+                        .build()
+                } else {
+                    transferState
+                }
+            boundedTransferState.setToPlayer(targetPlayer)
+            castTransferWindow = transferWindow.takeIf { wasLimited }
+
+            if (wasLimited) {
+                Timber.tag("Cast").w(
+                    "Limited Cast transfer to %d of %d queued media items (%d estimated bytes)",
+                    castItems.size,
+                    sourceItems.size,
+                    estimatedPayloadBytes,
+                )
+            }
             return
         }
 
+        val transferWindow = castTransferWindow
+        castTransferWindow = null
         val localItems = localPlayer.mediaItems()
         val sourceCurrentIndex = transferState.currentMediaItemIndex
         val repairedItems = ArrayList<MediaItem>(transferState.mediaItems.size)
@@ -253,24 +329,63 @@ private class SafeCastTransferCallback(
             }
         }
 
+        val usedLocalItemsAsFallback = repairedItems.isEmpty()
         val playableItems =
-            repairedItems.ifEmpty {
+            if (usedLocalItemsAsFallback) {
                 localItems.filter { it.localConfiguration != null }
+            } else {
+                repairedItems
             }
-        if (repairedItems.isEmpty()) {
-            repairedCurrentIndex = sourceCurrentIndex
+        val matchingTransferWindow =
+            transferWindow?.takeIf {
+                it.originalItemCount == localItems.size &&
+                    it.startIndex in 0..localItems.size &&
+                    it.endIndexExclusive in it.startIndex..localItems.size
+            }
+        if (transferWindow != null && matchingTransferWindow == null) {
+            Timber.tag("Cast").w("The local queue changed before the Cast queue was restored")
         }
+        val omittedPrefix =
+            if (!usedLocalItemsAsFallback && matchingTransferWindow != null) {
+                localItems.subList(0, matchingTransferWindow.startIndex)
+                    .filter { it.localConfiguration != null }
+            } else {
+                emptyList()
+            }
+        val omittedSuffix =
+            if (!usedLocalItemsAsFallback && matchingTransferWindow != null) {
+                localItems.subList(matchingTransferWindow.endIndexExclusive, localItems.size)
+                    .filter { it.localConfiguration != null }
+            } else {
+                emptyList()
+            }
+        val currentIndexInPlayableItems =
+            if (usedLocalItemsAsFallback && matchingTransferWindow != null) {
+                matchingTransferWindow.startIndex + sourceCurrentIndex.coerceAtLeast(0)
+            } else {
+                repairedCurrentIndex
+            }
         val safeCurrentIndex =
             if (playableItems.isEmpty()) {
                 0
             } else {
-                repairedCurrentIndex.coerceIn(playableItems.indices)
+                currentIndexInPlayableItems.coerceIn(playableItems.indices)
+            }
+        val restoredItems =
+            if (omittedPrefix.isEmpty() && omittedSuffix.isEmpty()) {
+                playableItems
+            } else {
+                buildList(omittedPrefix.size + playableItems.size + omittedSuffix.size) {
+                    addAll(omittedPrefix)
+                    addAll(playableItems)
+                    addAll(omittedSuffix)
+                }
             }
 
         transferState
             .buildUpon()
-            .setMediaItems(playableItems)
-            .setCurrentMediaItemIndex(safeCurrentIndex)
+            .setMediaItems(restoredItems)
+            .setCurrentMediaItemIndex(omittedPrefix.size + safeCurrentIndex)
             .build()
             .setToPlayer(targetPlayer)
     }
@@ -283,6 +398,12 @@ private class SafeCastTransferCallback(
     }
 }
 
+private data class CastTransferWindow(
+    val originalItemCount: Int,
+    val startIndex: Int,
+    val endIndexExclusive: Int,
+)
+
 private class GmsCastMediaItemConverter(
     private val mediaItemResolver: CastMediaItemResolver,
     private val localMediaServer: LocalCastMediaServer,
@@ -290,9 +411,17 @@ private class GmsCastMediaItemConverter(
     private val delegate = DefaultMediaItemConverter()
 
     override fun toMediaQueueItem(mediaItem: MediaItem): MediaQueueItem {
-        val castMediaItem = mediaItem.resolveForReceiver()
+        val castMediaItem = mediaItem.withCompactCastMetadata().resolveForReceiver()
         return delegate.toMediaQueueItem(castMediaItem)
     }
+
+    fun estimatedSerializedCastItemBytes(mediaItem: MediaItem): Int =
+        delegate
+            .toMediaQueueItem(mediaItem.withCompactCastMetadata())
+            .toJson()
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+            .size + CastMediaItemResolutionOverheadBytes
 
     override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem =
         try {
@@ -301,6 +430,30 @@ private class GmsCastMediaItemConverter(
             Timber.tag("Cast").w(error, "Falling back to manual Cast media item conversion")
             mediaQueueItem.toFallbackMediaItem()
         }
+
+    private fun MediaItem.withCompactCastMetadata(): MediaItem {
+        val metadata = mediaMetadata
+        val artworkUri =
+            metadata.artworkUri?.takeIf {
+                it.toString().length <= MaxCastArtworkUriLength
+            }
+        val compactMetadata =
+            MediaMetadata
+                .Builder()
+                .setTitle(metadata.title?.toString()?.take(MaxCastMetadataTextLength))
+                .setSubtitle(metadata.subtitle?.toString()?.take(MaxCastMetadataTextLength))
+                .setArtist(metadata.artist?.toString()?.take(MaxCastMetadataTextLength))
+                .setAlbumTitle(metadata.albumTitle?.toString()?.take(MaxCastMetadataTextLength))
+                .setAlbumArtist(metadata.albumArtist?.toString()?.take(MaxCastMetadataTextLength))
+                .setArtworkUri(artworkUri)
+                .setTrackNumber(metadata.trackNumber)
+                .setDiscNumber(metadata.discNumber)
+                .setReleaseYear(metadata.releaseYear)
+                .setMediaType(metadata.mediaType)
+                .setIsPlayable(metadata.isPlayable)
+                .build()
+        return buildUpon().setMediaMetadata(compactMetadata).build()
+    }
 
     private fun MediaItem.resolveForReceiver(): MediaItem {
         val localConfiguration = localConfiguration ?: return this
@@ -503,7 +656,8 @@ private class LocalCastMediaServer(
                                 call.respond(HttpStatusCode.NotFound)
                                 return@get
                             }
-                            val source = openSource(item, call.request.header(HttpHeaders.Range))
+                            val rangeHeader = call.request.header(HttpHeaders.Range)
+                            val source = withContext(Dispatchers.IO) { openSource(item, rangeHeader) }
                             if (source == null) {
                                 call.respond(HttpStatusCode.NotFound)
                                 return@get
@@ -671,7 +825,7 @@ private class LocalCastMediaServer(
         val resolved =
             item.resolvedMediaItem
                 ?: item.mediaItemResolver?.let { resolver ->
-                    runCatching { resolver.resolveForCast(item.mediaItem) }
+                    runCatching { resolver.resolveForCastBlocking(item.mediaItem) }
                         .onFailure { Timber.tag("Cast").w(it, "Unable to resolve media item for Cast") }
                         .getOrNull()
                 }?.also { item.resolvedMediaItem = it }

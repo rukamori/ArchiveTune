@@ -98,6 +98,7 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.SpeedDialPin
@@ -302,7 +303,7 @@ fun AlbumMenu(
                             .height(ListItemHeight)
                             .clickable {
                                 splitArtist.originalArtist?.let { artist ->
-                                    navController.navigate("artist/${artist.id}")
+                                    navController.navigateToArtist(artist.id)
                                     showSelectArtistDialog = false
                                     onDismiss()
                                 }
@@ -679,7 +680,7 @@ fun AlbumMenu(
                         modifier =
                             Modifier.clickable {
                                 if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                                    navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                                    navController.navigateToArtist(splitArtists[0].originalArtist!!.id)
                                     onDismiss()
                                 } else {
                                     showSelectArtistDialog = true

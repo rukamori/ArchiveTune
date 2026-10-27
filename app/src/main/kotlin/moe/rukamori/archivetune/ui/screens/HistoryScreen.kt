@@ -1136,7 +1136,7 @@ private fun HistorySourceSelector(
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
                 colors =
-                    ToggleButtonDefaults.toggleButtonColors(
+                    ToggleButtonDefaults.colors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,

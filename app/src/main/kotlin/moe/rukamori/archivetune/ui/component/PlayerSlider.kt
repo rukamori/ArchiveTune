@@ -15,6 +15,8 @@ import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
@@ -24,6 +26,27 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rememberControlledSliderState(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+): SliderState {
+    val sliderState =
+        remember(valueRange, steps) {
+            SliderState(
+                value = value.coerceIn(valueRange),
+                steps = steps,
+                trackRange = valueRange,
+            )
+        }
+    LaunchedEffect(sliderState, value) {
+        sliderState.value = value.coerceIn(valueRange)
+    }
+    return sliderState
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +60,7 @@ fun PlayerSliderTrack(
     val activeTrackColor = colors.activeTrackColor
     val inactiveTickColor = colors.inactiveTickColor
     val activeTickColor = colors.activeTickColor
-    val valueRange = sliderState.valueRange
+    val valueRange = sliderState.trackRange
     Canvas(
         modifier
             .fillMaxWidth()

@@ -378,7 +378,6 @@
     <string name="player_background_style_v8_v9_desc">אינו זמין עם סגנונות נגן V8 וV9</string>
     <string name="slider_style_circular">מעוגל</string>
     <string name="song_artists">אמני שיר</string>
-    <string name="enable_paxsenix_lyrics">הפעלת Paxsenix lyrics</string>
     <string name="palette_lavender_dream">לוונדר</string>
     <string name="file_size">גודל קובץ</string>
     <string name="pin_to_speed_dial">הצמדה להפעלה מהירה</string>
@@ -726,7 +725,6 @@
     <string name="updates_status_current">אתה נמצא בגרסה הזמינה האחרונה</string>
     <string name="enable_update_notification">הפעל התראות עדכון</string>
     <string name="update_channel">עדכון ערוץ</string>
-    <string name="update_channel_desc">בחרו בין גרסאות שנבדקו לבין תמונות מצב של פיתוח.</string>
     <string name="recent_commits">שינויים אחרונים</string>
     <string name="updates_loading_commits">טוען את השינויים האחרונים</string>
     <string name="updates_recent_commits_count">%1$d שינויים אחרונים</string>
@@ -859,10 +857,6 @@
     <string name="discord_reauthorize_required_title">סשן Discord פג תוקפו</string>
     <string name="discord_reauthorize_required_description">לא ניתן להציג את Rich Presence עד שתאשר שוב את Discord.</string>
     <string name="discord_reauthorize_action">הרשאה מחדש</string>
-    <string name="updates_channel_warning_intro">ArchiveTune מספקת שני ערוצי הורדה עבור גרסאות הפצה:</string>
-    <string name="updates_channel_warning_stable_title">גרסאות הפצה יציבות</string>
-    <string name="updates_channel_warning_stable_source">מופץ דרך גרסאות GitHub רשמיות.</string>
-    <string name="updates_channel_warning_stable_desc">גרסאות אלו נבדקו ומומלצות עבור רוב המשתמשים.</string>
     <string name="download_complete">ההורדה הושלמה</string>
     <string name="onboarding_welcome_title">ברוכים הבאים ל- ArchiveTune</string>
     <string name="onboarding_welcome_subtitle">הגדר השמעה, מוזיקה מקומית ועדכון הרשאות לפני שתתחיל להאזין.</string>

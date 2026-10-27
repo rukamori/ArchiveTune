@@ -62,7 +62,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 37
+private const val CURRENT_VERSION = 38
 
 class MusicDatabase(
     private val delegate: InternalDatabase,

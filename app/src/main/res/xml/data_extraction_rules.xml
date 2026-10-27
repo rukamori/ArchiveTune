@@ -5,6 +5,7 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="file" path="./modules" />
         <exclude
             domain="file"
             path="./exoplayer" />
@@ -16,6 +17,7 @@
             path="exoplayer_internal.db" />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="file" path="./modules" />
         <exclude
             domain="file"
             path="./exoplayer" />

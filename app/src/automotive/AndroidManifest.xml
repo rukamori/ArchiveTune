@@ -49,6 +49,7 @@
         <service android:name=".aod.AodModeTileService" tools:node="remove" />
         <service android:name=".aod.AodDreamService" tools:node="remove" />
 
+        <receiver android:name=".appicon.LauncherEntryReceiver" tools:node="remove" />
         <receiver android:name=".widget.MusicWidgetReceiver" tools:node="remove" />
         <receiver android:name=".widget.AlbumArtWidgetReceiver" tools:node="remove" />
         <receiver android:name=".widget.NowPlayingCardWidgetReceiver" tools:node="remove" />

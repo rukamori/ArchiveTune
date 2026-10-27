@@ -32,6 +32,10 @@ class PrepareLyricsUseCase
     constructor(
         private val repository: LyricsRenderingRepository,
     ) {
+        suspend fun setShowTranslations(show: Boolean) {
+            repository.setShowTranslations(show)
+        }
+
         fun observe(
             mediaId: String,
             durationMs: Long,

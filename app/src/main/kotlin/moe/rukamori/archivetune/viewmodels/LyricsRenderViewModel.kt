@@ -51,8 +51,44 @@ class LyricsRenderViewModel
         private val _state = MutableStateFlow<LyricsRenderScreenState>(LyricsRenderScreenState.Loading)
         val state: StateFlow<LyricsRenderScreenState> = _state.asStateFlow()
 
+        private val _playbackPositionMs = MutableStateFlow(0L)
+        val playbackPositionMs: StateFlow<Long> = _playbackPositionMs.asStateFlow()
+        private val playbackClock = LyricsPlaybackClock()
+
         private var observationJob: Job? = null
         private var binding: Binding? = null
+        private var translationVisibilityJob: Job? = null
+
+        fun onShowTranslationsChanged(show: Boolean) {
+            val lyrics = (_state.value as? LyricsRenderScreenState.Success)?.lyrics ?: return
+            if (!lyrics.hasTranslations) return
+            translationVisibilityJob?.cancel()
+            translationVisibilityJob = viewModelScope.launch {
+                try {
+                    prepareLyrics.setShowTranslations(show)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    reportException(exception)
+                    _state.value = LyricsRenderScreenState.Error(LyricsRenderError.INVALID_LYRICS)
+                }
+            }
+        }
+
+        fun onPlaybackPositionChanged(positionMs: Long) {
+            _playbackPositionMs.value = playbackClock.reset(positionMs)
+        }
+
+        fun onPlaybackFrame(
+            positionMs: Long,
+            sampleTimeNanos: Long,
+            playbackSpeed: Float,
+            isAdvancing: Boolean,
+            durationMs: Long,
+        ) {
+            _playbackPositionMs.value =
+                playbackClock.update(positionMs, sampleTimeNanos, playbackSpeed, isAdvancing, durationMs)
+        }
 
         fun bind(
             mediaId: String,

@@ -22,6 +22,7 @@ import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
+import moe.rukamori.archivetune.constants.AiRequestParametersKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toEnum
@@ -85,6 +86,7 @@ class RefreshLibraryTopMixesUseCase
                 provider = provider,
                 apiKey = prefs[AiApiKeyKey].orEmpty(),
                 customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
+                requestParameters = prefs[AiRequestParametersKey].orEmpty(),
                 model =
                     if (provider == AiProvider.CUSTOM) {
                         prefs[AiCustomModelKey].orEmpty()

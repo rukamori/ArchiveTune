@@ -17,16 +17,11 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import moe.rukamori.archivetune.App
 import moe.rukamori.archivetune.BuildConfig
-import moe.rukamori.archivetune.constants.CanaryReleasesEtagKey
-import moe.rukamori.archivetune.constants.CanaryReleasesFingerprintKey
-import moe.rukamori.archivetune.constants.CanaryReleasesJsonKey
-import moe.rukamori.archivetune.constants.CanaryReleasesLastCheckedAtKey
 import moe.rukamori.archivetune.constants.GitHubReleasesEtagKey
 import moe.rukamori.archivetune.constants.GitHubReleasesFingerprintKey
 import moe.rukamori.archivetune.constants.GitHubReleasesJsonKey
 import moe.rukamori.archivetune.constants.GitHubReleasesLastCheckedAtKey
 import org.json.JSONArray
-import org.json.JSONObject
 
 data class GitCommit(
     val sha: String,
@@ -56,10 +51,6 @@ object Updater {
     private val client = HttpClient()
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
 
-    private val githubOwner: String
-        get() = BuildConfig.GITHUB_OWNER
-    private val githubRepo: String
-        get() = BuildConfig.GITHUB_REPO
     private val releaseOwner: String
         get() = BuildConfig.RELEASE_GITHUB_OWNER
     private val releaseRepo: String
@@ -69,14 +60,10 @@ object Updater {
 
     private val stableReleaseBaseUrl: String
         get() = "https://github.com/$releaseOwner/$releaseRepo/releases"
-    private val artifactWorkflowRunsUrl: String
-        get() = "https://api.github.com/repos/$githubOwner/$githubRepo/actions/workflows/build.yml/runs" +
-            "?branch=dev&status=success&per_page=1&exclude_pull_requests=true"
     var lastCheckTime = -1L
         private set
     private var latestReleaseTag: String? = null
     private var latestReleaseDownloadUrl: String? = null
-    private var latestCanaryDownloadUrl: String? = null
 
     private val isUpdaterDistribution: Boolean
         get() =
@@ -98,23 +85,7 @@ object Updater {
             }
 
     private fun stableReleaseArtifactName(): String =
-        if (BuildConfig.IS_NIGHTLY_BUILD) {
-            "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-nightly.apk"
-        } else {
-            "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
-        }
-
-    private fun artifactReleaseArtifactName(): String =
-        "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release"
-
-    private fun workflowArtifactName(): String =
-        "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release"
-
-    private fun workflowArtifactDownloadUrl(): String {
-        val artifactUrl =
-            "https://nightly.link/$githubOwner/$githubRepo/workflows/build/dev/${workflowArtifactName()}"
-        return if (canDownloadUpdatesDirectly) "$artifactUrl.zip" else artifactUrl
-    }
+        "app-$releaseArtifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
 
     private data class SemVer(
         val major: Int,
@@ -178,7 +149,6 @@ object Updater {
 
     private val semVerRegex =
         Regex("""(?i)\bv?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?\b""")
-    private val canaryTagRegex = Regex("""N\d{8}""")
 
     private fun parseSemVerOrNull(text: String): SemVer? {
         val match = semVerRegex.find(text) ?: return null
@@ -252,14 +222,6 @@ object Updater {
         return candidates.maxWithOrNull(compareBy({ it.first }, { it.second.publishedAt }))?.second
     }
 
-    internal fun findLatestCanaryRelease(releases: List<ReleaseInfo>): ReleaseInfo? {
-        if (releases.isEmpty()) return null
-        return releases.maxWithOrNull(compareByDescending<ReleaseInfo> { release ->
-            val dateTag = release.tagName.removePrefix("N").takeWhile { it.isDigit() }
-            dateTag.toLongOrNull() ?: 0L
-        }.thenByDescending { it.publishedAt })
-    }
-
     private fun preferredReleaseVersionNameOrNull(release: ReleaseInfo): String? =
         parseReleaseSemVerOrNull(release)?.normalizedName()
 
@@ -303,22 +265,6 @@ object Updater {
         }
         return releases
     }
-
-    private fun encodeReleasesJson(releases: List<ReleaseInfo>): String =
-        JSONArray().apply {
-            releases.forEach { release ->
-                put(
-                    JSONObject().apply {
-                        put("tag_name", release.tagName)
-                        put("name", release.name)
-                        put("body", release.body ?: JSONObject.NULL)
-                        put("published_at", release.publishedAt)
-                        put("html_url", release.htmlUrl)
-                        put("download_url", release.downloadUrl ?: JSONObject.NULL)
-                    },
-                )
-            }
-        }.toString()
 
     private fun getTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
         val latest = findLatestRelease(releases) ?: return ""
@@ -447,162 +393,6 @@ object Updater {
             return "$stableReleaseBaseUrl/download/$tag/$artifactName"
         }
         return "$stableReleaseBaseUrl/latest/download/$artifactName"
-    }
-
-    suspend fun getLatestCanaryVersionName(): Result<String> =
-        getLatestArtifactReleaseInfo().map(::getReleaseVersionName)
-
-    suspend fun getLatestCanaryReleaseNotes(): Result<String?> = getLatestArtifactReleaseInfo().map { it.body }
-
-    suspend fun getLatestArtifactReleaseInfo(forceRefresh: Boolean = false): Result<ReleaseInfo> =
-        runCatchingCancellable {
-            if (!isUpdaterDistribution) {
-                throw IllegalStateException("Updater is not available for this distribution")
-            }
-
-            val releases = getAllArtifactReleases(forceRefresh = forceRefresh).getOrThrow()
-            val latest =
-                findLatestCanaryRelease(releases)
-                    ?: throw IllegalStateException("No Artifact releases found")
-            lastCheckTime = System.currentTimeMillis()
-            latestCanaryDownloadUrl = latest.downloadUrl
-            latest
-        }
-
-    suspend fun getCachedArtifactReleases(): List<ReleaseInfo> {
-        if (!isUpdaterDistribution) {
-            return emptyList()
-        }
-
-        val cachedJson = App.instance.dataStore.getAsync(CanaryReleasesJsonKey)
-        return cachedJson
-            ?.takeIf { it.isNotBlank() }
-            ?.let { runCatching { parseReleasesJson(it, artifactReleaseArtifactName()) }.getOrNull() }
-            ?: emptyList()
-    }
-
-    suspend fun getAllArtifactReleases(
-        forceRefresh: Boolean = false,
-    ): Result<List<ReleaseInfo>> {
-        if (!isUpdaterDistribution) {
-            return Result.success(emptyList())
-        }
-
-        return runCatchingCancellable {
-            val now = System.currentTimeMillis()
-            val cachedJson = App.instance.dataStore.getAsync(CanaryReleasesJsonKey)
-            val lastCheckedAt = App.instance.dataStore.getAsync(CanaryReleasesLastCheckedAtKey, 0L)
-            val cachedFingerprint = App.instance.dataStore.getAsync(CanaryReleasesFingerprintKey)
-            val cachedReleases =
-                cachedJson
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { runCatching { parseReleasesJson(it, artifactReleaseArtifactName()) }.getOrNull() }
-            val cachedArtifactReleases =
-                cachedReleases?.takeIf { releases ->
-                    releases.isNotEmpty() && releases.all { it.downloadUrl?.startsWith("https://nightly.link/") == true }
-                }
-
-            val shouldCheckNetwork =
-                forceRefresh ||
-                    cachedArtifactReleases == null ||
-                    (now - lastCheckedAt) >= ReleaseCacheCheckIntervalMs
-
-            if (!shouldCheckNetwork) {
-                lastCheckTime = now
-                return@runCatchingCancellable cachedArtifactReleases
-            }
-
-            val workflowRelease =
-                try {
-                    fetchLatestWorkflowRelease()
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Exception) {
-                    null
-                }
-
-            if (workflowRelease != null) {
-                val workflowReleases = listOf(workflowRelease)
-                val newFingerprint = getCanaryTopReleaseFingerprint(workflowReleases)
-                val hasTopReleaseChanged = cachedFingerprint != newFingerprint
-                val cachedWorkflowJson = encodeReleasesJson(cachedArtifactReleases ?: emptyList())
-                val hasPayloadChanged = cachedJson != cachedWorkflowJson
-
-                App.instance.dataStore.edit { settings ->
-                    settings[CanaryReleasesLastCheckedAtKey] = now
-                    settings.remove(CanaryReleasesEtagKey)
-                    if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
-                        settings[CanaryReleasesJsonKey] = encodeReleasesJson(workflowReleases)
-                        settings[CanaryReleasesFingerprintKey] = newFingerprint
-                    }
-                }
-                lastCheckTime = now
-                return@runCatchingCancellable workflowReleases
-            }
-
-            cachedArtifactReleases?.let {
-                lastCheckTime = now
-                return@runCatchingCancellable it
-            }
-            throw IllegalStateException("No Artifact workflow run is currently available")
-        }
-    }
-
-    private suspend fun fetchLatestWorkflowRelease(): ReleaseInfo? {
-        val response: HttpResponse =
-            client.get(artifactWorkflowRunsUrl) {
-                headers {
-                    append("Accept", "application/vnd.github+json")
-                    append("User-Agent", "ArchiveTune")
-                }
-            }
-        val responseBody = response.bodyAsText()
-        if (response.status.value !in 200..299) return null
-
-        val workflowRun =
-            JSONObject(responseBody)
-                .optJSONArray("workflow_runs")
-                ?.optJSONObject(0)
-                ?: return null
-        val publishedAt =
-            workflowRun
-                .optString("run_started_at")
-                .ifBlank { workflowRun.optString("created_at") }
-        val headSha = workflowRun.optString("head_sha", "").take(7)
-        if (headSha.isBlank()) return null
-
-        return ReleaseInfo(
-            tagName = headSha,
-            name = headSha,
-            body = null,
-            publishedAt = publishedAt,
-            htmlUrl = workflowRun.optString("html_url"),
-            downloadUrl = workflowArtifactDownloadUrl(),
-        )
-    }
-
-    private fun getCanaryTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
-        val latest = findLatestCanaryRelease(releases) ?: return ""
-        return listOf(
-            latest.tagName,
-            latest.name,
-            latest.publishedAt,
-            latest.body.orEmpty(),
-            latest.htmlUrl,
-        ).joinToString("||")
-    }
-
-    fun getLatestCanaryDownloadUrl(): String {
-        if (!isUpdaterDistribution) {
-            return ""
-        }
-
-        // Artifact builds are published by build.yml as workflow run artifacts,
-        // not as GitHub Release assets.
-        latestCanaryDownloadUrl
-            ?.takeIf { it.startsWith("https://nightly.link/") }
-            ?.let { return it }
-        return workflowArtifactDownloadUrl()
     }
 
     suspend fun getAllReleases(

@@ -515,7 +515,6 @@
     <string name="enable_unison_lyrics">Aktifkan lirik Unison</string>
     <string name="enable_simpmusic_lyrics">Aktifkan lirik SimpMusic</string>
     <string name="enable_megalobiz_lyrics">Aktifkan lirik Megalobiz</string>
-    <string name="enable_paxsenix_lyrics">Aktifkan lirik Paxsenix</string>
     <string name="player_and_audio">Pemutar dan audio</string>
     <string name="audio_quality">Kualitas audio</string>
     <string name="audio_quality_auto">Otomatis</string>
@@ -866,7 +865,6 @@
     <string name="about">Tentang</string>
     <string name="new_version_available">Versi baru tersedia</string>
     <string name="updates">Pembaruan</string>
-    <string name="updates_subtitle_artifact">Artefak build dari workflow GitHub Action</string>
     <string name="current_version">Versi Saat Ini</string>
     <string name="latest_version_format">Terbaru: %s</string>
     <string name="updates_status_checking">Memeriksa rilis terbaru</string>
@@ -874,19 +872,7 @@
     <string name="enable_update_notification">Aktifkan Pemberitahuan Pembaruan</string>
     <string name="enable_update_notification_channel_desc">Dapatkan pemberitahuan ketika rilis baru tersedia di saluran yang dipilih</string>
     <string name="update_channel">Saluran Pembaruan</string>
-    <string name="update_channel_desc">Pilih antara rilis teruji dan cuplikan pengembangan.</string>
-    <string name="channel_artifact">Artefak</string>
     <string name="recent_commits">Commit Terbaru</string>
-    <string name="updates_artifact_hosting_description">Artefak build yang diambil langsung dari eksekusi workflow GitHub Actions.</string>
-    <string name="updates_channel_warning_intro">ArchiveTune menyediakan dua saluran unduhan untuk build:</string>
-    <string name="updates_channel_warning_stable_title">Build Stabil</string>
-    <string name="updates_channel_warning_stable_source">Didistribusikan melalui Rilis GitHub resmi.</string>
-    <string name="updates_channel_warning_stable_desc">Versi ini telah diuji dan direkomendasikan untuk sebagian besar pengguna.</string>
-    <string name="updates_channel_warning_artifact_title">Build Artefak</string>
-    <string name="updates_channel_warning_artifact_risk">Build artefak mungkin menyertakan fitur eksperimental, perubahan yang belum selesai, atau regresi sementara.</string>
-    <string name="updates_channel_warning_artifact_unstable">Build artefak disediakan untuk pengujian dan akses awal saja.\nStabilitas, kompatibilitas, dan fungsionalitas tidak dijamin.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">Catatan: mengunduh langsung dari GitHub melewati pemeriksaan tambahan apa pun yang dilakukan oleh toko tempat Anda mungkin pertama kali menginstal aplikasi.\nDengan melanjutkan, Anda mengakui bahwa Build artefak mungkin tidak stabil dan menggunakannya dengan risiko Anda sendiri.</string>
-    <string name="updates_artifact_channel_confirmation">Beralih ke saluran Artefak untuk menerima rilis pengembangan.\n\nBuild artefak dipublikasikan secara otomatis dari cabang pengembangan terbaru.\nCatatan: mengunduh langsung dari GitHub melewati pemeriksaan tambahan yang dilakukan oleh toko tempat Anda menginstal aplikasi.</string>
     <string name="updates_loading_commits">Memuat commit terbaru</string>
     <string name="updates_recent_commits_count">%1$d commit terbaru</string>
     <string name="updates_no_commits">Tidak ada commit terbaru yang ditemukan</string>

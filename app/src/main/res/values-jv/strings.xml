@@ -340,7 +340,6 @@
     <string name="enable_betterlyrics">Aktifkan BetterLyrics</string>
     <string name="enable_unison_lyrics">Aktifkan lirik Unison</string>
     <string name="enable_simpmusic_lyrics">Aktifkan lirik SimpMusic</string>
-    <string name="enable_paxsenix_lyrics">Aktifkan lirik Paxsenix</string>
     <string name="player_and_audio">Pemutar dan audio</string>
     <string name="audio_quality">Kualitas audio</string>
     <string name="audio_quality_auto">Otomatis</string>
@@ -595,7 +594,6 @@
     <string name="updates_status_current">Kowe sedang menggunakan rilis terbaru yang tersedia</string>
     <string name="enable_update_notification">Aktifkan Pemberitahuan Pembaruan</string>
     <string name="update_channel">Saluran Pembaruan</string>
-    <string name="update_channel_desc">Pilih antara rilis teruji dan cuplikan pengembangan.</string>
     <string name="recent_commits">Commit Terbaru</string>
     <string name="updates_loading_commits">Ngisi commit terbaru</string>
     <string name="updates_recent_commits_count">%1$d commit terbaru</string>

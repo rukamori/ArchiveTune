@@ -68,7 +68,7 @@ fun StarDialog(
 
             Button(
                 onClick = {
-                    uriHandler.openUri("https://koiiverse.cloud/donate")
+                    uriHandler.openUri("https://miuka.moe/donate")
                     onSupport()
                 },
                 modifier = Modifier.fillMaxWidth(),

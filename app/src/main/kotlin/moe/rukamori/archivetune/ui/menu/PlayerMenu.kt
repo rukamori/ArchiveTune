@@ -98,6 +98,7 @@ import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.playback.CanvasArtworkRefetchResult
 import moe.rukamori.archivetune.playback.ExoDownloadService
 import moe.rukamori.archivetune.ui.component.BottomSheetState
@@ -106,6 +107,8 @@ import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.utils.ExternalDownloaderLaunchResult
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
@@ -289,7 +292,7 @@ fun PlayerMenu(
                             .fillMaxWidth()
                             .clickable {
                                 splitArtist.originalArtist?.let { artist ->
-                                    navController.navigate("artist/${artist.id}")
+                                    navController.navigateToArtist(artist.id)
                                     showSelectArtistDialog = false
                                     playerBottomSheetState.collapseSoft()
                                     onDismiss()
@@ -709,7 +712,7 @@ fun PlayerMenu(
                                         if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
                                             onDismiss()
                                             playerBottomSheetState.collapseSoft()
-                                            navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                                            navController.navigateToArtist(splitArtists[0].originalArtist!!.id)
                                         } else {
                                             showSelectArtistDialog = true
                                         }
@@ -738,7 +741,7 @@ fun PlayerMenu(
                                     Modifier.clickable {
                                         onDismiss()
                                         playerBottomSheetState.collapseSoft()
-                                        navController.navigate("album/${mediaMetadata.album.id}")
+                                        navController.navigateToAlbum(mediaMetadata.album.id)
                                     },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             )
@@ -1087,17 +1090,22 @@ private fun VolumeSliderL(
     LaunchedEffect(safeValue) {
         if (!isDragging) sliderValue = safeValue
     }
+    val sliderState =
+        rememberControlledSliderState(
+            value = sliderValue,
+            valueRange = 0f..1f,
+        )
 
     Slider(
-        value = sliderValue,
+        state = sliderState,
         onValueChange = { updated ->
             isDragging = true
             val coerced = updated.coerceIn(0f, 1f)
+            sliderState.value = coerced
             sliderValue = coerced
             onValueChange(coerced)
         },
         onValueChangeFinished = { isDragging = false },
-        valueRange = 0f..1f,
         modifier = modifier.height(36.dp),
         thumb = {
             Box(

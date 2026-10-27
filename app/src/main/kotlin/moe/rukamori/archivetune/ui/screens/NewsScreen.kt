@@ -596,7 +596,7 @@ private fun NewsImageCarousel(
     Box(modifier = modifier) {
         HorizontalCenteredHeroCarousel(
             state = carouselState,
-            maxItemWidth = 336.dp,
+            preferredItemWidth = 336.dp,
             itemSpacing = 8.dp,
             contentPadding = PaddingValues(horizontal = 14.dp),
             modifier = Modifier.fillMaxSize(),

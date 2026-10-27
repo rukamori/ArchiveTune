@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.appicon.RestoreLauncherEntryUseCase
 import moe.rukamori.archivetune.canvas.StartCanvasPolicyUseCase
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
@@ -92,6 +93,9 @@ class App :
     @Inject
     lateinit var startCanvasPolicy: StartCanvasPolicyUseCase
 
+    @Inject
+    lateinit var restoreLauncherEntry: RestoreLauncherEntryUseCase
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile private var isInitialized = false
@@ -132,6 +136,21 @@ class App :
         initializeGatekeeper()
         initializeCriticalSync()
         initializeDeferredAsync()
+        initializeLauncherEntry()
+    }
+
+    private fun initializeLauncherEntry() {
+        if (BuildConfig.DEVICE == "automotive") return
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                restoreLauncherEntry()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                Timber.e(error, "Unable to restore launcher entry")
+                reportException(error)
+            }
+        }
     }
 
     private fun initializeGatekeeper() {

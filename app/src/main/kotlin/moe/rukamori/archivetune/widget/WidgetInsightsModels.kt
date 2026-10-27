@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.widget
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import androidx.datastore.preferences.core.Preferences
 import moe.rukamori.archivetune.R
@@ -35,12 +36,19 @@ internal data class WidgetInsightsSnapshot(
 }
 
 @Immutable
+internal data class WidgetInsightSection(
+    @StringRes val title: Int,
+    @StringRes val emptyMessage: Int,
+    val lines: List<String>,
+)
+
+@Immutable
 internal data class WidgetInsightsState(
     val listeningTime: String,
     val totalPlays: String,
-    val recentSongs: List<String>,
-    val genres: List<String>,
-    val recommendations: List<String>,
+    val recentSongs: WidgetInsightSection,
+    val genres: WidgetInsightSection,
+    val recommendations: WidgetInsightSection,
     val topSongSummary: String?,
 )
 
@@ -54,9 +62,21 @@ internal fun Preferences.toWidgetInsightsState(context: Context): WidgetInsights
             this[MusicWidgetKeys.TOTAL_PLAYS]
                 ?.takeIf { it.isNotBlank() }
                 ?: context.resources.getQuantityString(R.plurals.widget_total_plays, 0, 0),
-        recentSongs = this[MusicWidgetKeys.RECENT_SONGS].toWidgetList(),
-        genres = this[MusicWidgetKeys.GENRES].toWidgetList(),
-        recommendations = this[MusicWidgetKeys.RECOMMENDATIONS].toWidgetList(),
+        recentSongs = WidgetInsightSection(
+            title = R.string.recently_played,
+            emptyMessage = R.string.widget_no_recent_songs,
+            lines = this[MusicWidgetKeys.RECENT_SONGS].toWidgetList(),
+        ),
+        genres = WidgetInsightSection(
+            title = R.string.mood_and_genres,
+            emptyMessage = R.string.widget_no_genres,
+            lines = this[MusicWidgetKeys.GENRES].toWidgetList(),
+        ),
+        recommendations = WidgetInsightSection(
+            title = R.string.widget_recommendations,
+            emptyMessage = R.string.widget_no_recommendations,
+            lines = this[MusicWidgetKeys.RECOMMENDATIONS].toWidgetList(),
+        ),
         topSongSummary = this[MusicWidgetKeys.TOP_SONG_SUMMARY]?.takeIf { it.isNotBlank() },
     )
 

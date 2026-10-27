@@ -26,6 +26,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -43,7 +45,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -141,7 +142,6 @@ import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import me.saket.squiggles.SquigglySlider
 import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
@@ -159,6 +159,7 @@ import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
+import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.component.ResizableIconButton
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
@@ -801,26 +802,43 @@ fun StyledPlaybackSlider(
         }
 
         SliderStyle.Wavy -> {
-            SquigglySlider(
-                value = value,
-                valueRange = valueRange,
-                onValueChange = onValueChange,
+            val sliderState =
+                rememberControlledSliderState(
+                    value = value,
+                    valueRange = valueRange,
+                )
+            Slider(
+                state = sliderState,
+                onValueChange = { updated ->
+                    sliderState.value = updated
+                    onValueChange(updated)
+                },
                 onValueChangeFinished = onValueChangeFinished,
                 colors = PlayerSliderColors.wavySliderColors(activeColor),
+                thumb = { Spacer(modifier = Modifier.size(0.dp)) },
+                track = { sliderState ->
+                    PlayerSliderTrack(
+                        sliderState = sliderState,
+                        colors = PlayerSliderColors.wavySliderColors(activeColor),
+                        trackHeight = if (isPlaying) 6.dp else 3.dp,
+                    )
+                },
                 modifier = modifier,
-                squigglesSpec =
-                    SquigglySlider.SquigglesSpec(
-                        amplitude = if (isPlaying) 2.dp else 0.dp,
-                        strokeWidth = 6.dp,
-                    ),
             )
         }
 
         SliderStyle.Thick -> {
+            val sliderState =
+                rememberControlledSliderState(
+                    value = value,
+                    valueRange = valueRange,
+                )
             Slider(
-                value = value,
-                valueRange = valueRange,
-                onValueChange = onValueChange,
+                state = sliderState,
+                onValueChange = { updated ->
+                    sliderState.value = updated
+                    onValueChange(updated)
+                },
                 onValueChangeFinished = onValueChangeFinished,
                 colors = PlayerSliderColors.thickSliderColors(activeColor),
                 thumb = { Spacer(modifier = Modifier.size(0.dp)) },
@@ -836,26 +854,35 @@ fun StyledPlaybackSlider(
         }
 
         SliderStyle.Circular -> {
-            SquigglySlider(
-                value = value,
-                valueRange = valueRange,
-                onValueChange = onValueChange,
+            val sliderState =
+                rememberControlledSliderState(
+                    value = value,
+                    valueRange = valueRange,
+                )
+            Slider(
+                state = sliderState,
+                onValueChange = { updated ->
+                    sliderState.value = updated
+                    onValueChange(updated)
+                },
                 onValueChangeFinished = onValueChangeFinished,
                 colors = PlayerSliderColors.circularSliderColors(activeColor),
                 modifier = modifier,
-                squigglesSpec =
-                    SquigglySlider.SquigglesSpec(
-                        amplitude = if (isPlaying) 2.dp else 0.dp,
-                        strokeWidth = 6.dp,
-                    ),
             )
         }
 
         SliderStyle.Simple -> {
+            val sliderState =
+                rememberControlledSliderState(
+                    value = value,
+                    valueRange = valueRange,
+                )
             Slider(
-                value = value,
-                valueRange = valueRange,
-                onValueChange = onValueChange,
+                state = sliderState,
+                onValueChange = { updated ->
+                    sliderState.value = updated
+                    onValueChange(updated)
+                },
                 onValueChangeFinished = onValueChangeFinished,
                 colors = PlayerSliderColors.simpleSliderColors(activeColor),
                 thumb = { Spacer(modifier = Modifier.size(0.dp)) },
@@ -1840,6 +1867,7 @@ fun PlayerControlsContent(
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
     currentFormat: FormatEntity? = null,
+    landscape: Boolean = false,
 ) {
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val currentSongLiked = currentSong?.song?.liked == true
@@ -1850,121 +1878,143 @@ fun PlayerControlsContent(
         label = "playPauseRoundness",
     )
 
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            PlayerTitleSection(
+    PlayerControlsLayout(
+        landscape = landscape,
+        playbackContent = {
+            PlayerPlaybackControls(
+                    playerDesignStyle = playerDesignStyle,
+                    playbackState = playbackState,
+                    isPlaying = isPlaying,
+                    isLoading = isLoading,
+                    repeatMode = repeatMode,
+                    canSkipPrevious = canSkipPrevious,
+                    canSkipNext = canSkipNext,
+                    textButtonColor = textButtonColor,
+                    iconButtonColor = iconButtonColor,
+                    textBackgroundColor = textBackgroundColor,
+                    icBackgroundColor = icBackgroundColor,
+                    playPauseRoundness = playPauseRoundness,
+                    playerConnection = playerConnection,
+                    currentSongLiked = currentSongLiked,
+                )
+            },
+        ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PlayerHorizontalPadding),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PlayerTitleSection(
+                    mediaMetadata = mediaMetadata,
+                    textBackgroundColor = textBackgroundColor,
+                    navController = navController,
+                    state = state,
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            PlayerTopActions(
                 mediaMetadata = mediaMetadata,
+                playerDesignStyle = playerDesignStyle,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
                 textBackgroundColor = textBackgroundColor,
+                playerConnection = playerConnection,
                 navController = navController,
+                menuState = menuState,
                 state = state,
+                bottomSheetPageState = bottomSheetPageState,
+                context = context,
+                currentSongLiked = currentSongLiked,
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        PlayerTopActions(
-            mediaMetadata = mediaMetadata,
-            playerDesignStyle = playerDesignStyle,
+        Spacer(Modifier.height(12.dp))
+        PlayerSlider(
+            sliderStyle = sliderStyle,
+            sliderPosition = sliderPosition,
+            position = position,
+            duration = duration,
+            isPlaying = isPlaying,
             textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            textBackgroundColor = textBackgroundColor,
-            playerConnection = playerConnection,
-            navController = navController,
-            menuState = menuState,
-            state = state,
-            bottomSheetPageState = bottomSheetPageState,
-            context = context,
-            currentSongLiked = currentSongLiked,
+            onValueChange = onSliderValueChange,
+            onValueChangeFinished = onSliderValueChangeFinished,
         )
-    }
 
-    Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
 
-    PlayerSlider(
-        sliderStyle = sliderStyle,
-        sliderPosition = sliderPosition,
-        position = position,
-        duration = duration,
-        isPlaying = isPlaying,
-        textButtonColor = textButtonColor,
-        onValueChange = onSliderValueChange,
-        onValueChangeFinished = onSliderValueChangeFinished,
-    )
-
-    Spacer(Modifier.height(4.dp))
-
-    PlayerTimeLabel(
-        sliderPosition = sliderPosition,
-        position = position,
-        duration = duration,
-        textBackgroundColor = textBackgroundColor,
-        showRemainingTime = playerDesignStyle == PlayerDesignStyle.V7,
-        centerContent =
-            if (playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null) {
-                {
-                    val codec = currentFormat.mimeType.substringAfter("/").uppercase()
-                    val label =
-                        when {
-                            codec.contains("FLAC") || codec.contains("ALAC") -> "Lossless"
-                            codec.contains("OPUS") -> codec
-                            codec.contains("AAC") -> codec
-                            codec.contains("MP4A") -> "AAC"
-                            codec.contains("VORBIS") -> "Vorbis"
-                            else -> codec
-                        }
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = textBackgroundColor.copy(alpha = 0.12f),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        PlayerTimeLabel(
+            sliderPosition = sliderPosition,
+            position = position,
+            duration = duration,
+            textBackgroundColor = textBackgroundColor,
+            showRemainingTime = playerDesignStyle == PlayerDesignStyle.V7,
+            centerContent =
+                if (playerDesignStyle == PlayerDesignStyle.V7 && currentFormat != null) {
+                    {
+                        val codec = currentFormat.mimeType.substringAfter("/").uppercase()
+                        val label =
+                            when {
+                                codec.contains("FLAC") || codec.contains("ALAC") -> "Lossless"
+                                codec.contains("OPUS") -> codec
+                                codec.contains("AAC") -> codec
+                                codec.contains("MP4A") -> "AAC"
+                                codec.contains("VORBIS") -> "Vorbis"
+                                else -> codec
+                            }
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = textBackgroundColor.copy(alpha = 0.12f),
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.graphic_eq),
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = textBackgroundColor.copy(alpha = 0.8f),
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = textBackgroundColor.copy(alpha = 0.8f),
-                            )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.graphic_eq),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = textBackgroundColor.copy(alpha = 0.8f),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = textBackgroundColor.copy(alpha = 0.8f),
+                                    )
+                                }
+                            }
                         }
-                    }
-                }
-            } else {
-                null
-            },
-    )
+                    } else {
+                        null
+                    },
+            )
 
-    Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
+    }
+}
 
-    PlayerPlaybackControls(
-        playerDesignStyle = playerDesignStyle,
-        playbackState = playbackState,
-        isPlaying = isPlaying,
-        isLoading = isLoading,
-        repeatMode = repeatMode,
-        canSkipPrevious = canSkipPrevious,
-        canSkipNext = canSkipNext,
-        textButtonColor = textButtonColor,
-        iconButtonColor = iconButtonColor,
-        textBackgroundColor = textBackgroundColor,
-        icBackgroundColor = icBackgroundColor,
-        playPauseRoundness = playPauseRoundness,
-        playerConnection = playerConnection,
-        currentSongLiked = currentSongLiked,
-    )
+@Composable
+private fun PlayerControlsLayout(
+    landscape: Boolean,
+    playbackContent: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    if (landscape) {
+        LandscapePlayerControls(playbackContent = { playbackContent() }) {
+            content()
+        }
+    } else {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            content()
+            playbackContent()
+        }
+    }
 }
 
 @Composable
@@ -2482,10 +2532,10 @@ private fun V8LandscapeContent(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val horizontalPadding = 36.dp
-        val contentGap = 36.dp
+        val horizontalPadding = 16.dp
+        val contentGap = 24.dp
         val artworkSize =
-            (maxHeight - 48.dp)
+            (maxHeight - 16.dp)
                 .coerceAtMost((maxWidth - horizontalPadding * 2 - contentGap) * 0.44f)
                 .coerceAtLeast(0.dp)
 
@@ -2493,7 +2543,7 @@ private fun V8LandscapeContent(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = horizontalPadding, vertical = 24.dp),
+                    .padding(horizontal = horizontalPadding, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(contentGap),
         ) {
@@ -2506,13 +2556,21 @@ private fun V8LandscapeContent(
                 size = artworkSize,
             )
 
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .heightIn(min = 320.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            LandscapePlayerControls(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                playbackContent = {
+                    V8TransportControls(
+                        playbackState = playbackState,
+                        isPlaying = isPlaying,
+                        isLoading = isLoading,
+                        canSkipPrevious = canSkipPrevious,
+                        canSkipNext = canSkipNext,
+                        foreground = foreground,
+                        onPreviousClick = onPreviousClick,
+                        onPlayPauseClick = onPlayPauseClick,
+                        onNextClick = onNextClick,
+                    )
+                },
             ) {
                 V8Header(
                     title = stringResource(R.string.now_playing),
@@ -2521,7 +2579,7 @@ private fun V8LandscapeContent(
                     secondaryForeground = secondaryForeground,
                 )
 
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(4.dp))
 
                 V8MetadataActions(
                     title = mediaMetadata.title,
@@ -2535,8 +2593,18 @@ private fun V8LandscapeContent(
                     onArtistClick = onArtistClick,
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(4.dp))
 
+                if (showVolumeBar) {
+                    Spacer(Modifier.height(4.dp))
+
+                    V8VolumeControls(
+                        volume = volume,
+                        foreground = foreground,
+                        secondaryForeground = secondaryForeground,
+                        onVolumeChange = onVolumeChange,
+                    )
+                }
                 V8PlaybackProgress(
                     sliderPosition = sliderPosition,
                     position = position,
@@ -2547,30 +2615,8 @@ private fun V8LandscapeContent(
                     onSliderValueChangeFinished = onSliderValueChangeFinished,
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(4.dp))
 
-                V8TransportControls(
-                    playbackState = playbackState,
-                    isPlaying = isPlaying,
-                    isLoading = isLoading,
-                    canSkipPrevious = canSkipPrevious,
-                    canSkipNext = canSkipNext,
-                    foreground = foreground,
-                    onPreviousClick = onPreviousClick,
-                    onPlayPauseClick = onPlayPauseClick,
-                    onNextClick = onNextClick,
-                )
-
-                if (showVolumeBar) {
-                    Spacer(Modifier.height(18.dp))
-
-                    V8VolumeControls(
-                        volume = volume,
-                        foreground = foreground,
-                        secondaryForeground = secondaryForeground,
-                        onVolumeChange = onVolumeChange,
-                    )
-                }
             }
         }
     }
@@ -2851,7 +2897,7 @@ private fun V8QualityChip(
 }
 
 @Composable
-private fun V8TransportControls(
+internal fun V8TransportControls(
     playbackState: Int,
     isPlaying: Boolean,
     isLoading: Boolean,
@@ -3030,11 +3076,18 @@ private fun V8FlatSlider(
             thumbColor = Color.Transparent,
             inactiveTrackColor = inactiveColor,
         )
+    val sliderState =
+        rememberControlledSliderState(
+            value = value.coerceIn(safeRange),
+            valueRange = safeRange,
+        )
 
     Slider(
-        value = value.coerceIn(safeRange),
-        valueRange = safeRange,
-        onValueChange = onValueChange,
+        state = sliderState,
+        onValueChange = { updated ->
+            sliderState.value = updated
+            onValueChange(updated)
+        },
         onValueChangeFinished = onValueChangeFinished,
         enabled = enabled,
         colors = colors,
@@ -3467,17 +3520,17 @@ private fun V9LandscapeContent(
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val artworkSize =
-            (maxHeight * 0.74f)
+            (maxHeight - 16.dp)
                 .coerceAtMost(maxWidth * 0.4f)
-                .coerceAtLeast(236.dp)
+                .coerceAtLeast(0.dp)
 
         Row(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(26.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             V9Artwork(
                 artworkUrl = artworkUrl,
@@ -3489,12 +3542,28 @@ private fun V9LandscapeContent(
                 placeholderColor = textBackgroundColor.copy(alpha = 0.08f),
             )
 
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            LandscapePlayerControls(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                playbackContent = {
+                    val motionScheme = remember { MotionScheme.standard() }
+                    val controlSpatialSpec = remember { motionScheme.fastSpatialSpec<Float>() }
+                    V9AnimatedPlaybackControls(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        isPlayingProvider = { isPlaying },
+                        onPrevious = onPreviousClick,
+                        onPlayPause = onPlayPauseClick,
+                        onNext = onNextClick,
+                        height = 64.dp,
+                        pressAnimationSpec = controlSpatialSpec,
+                        releaseDelay = 220L,
+                        colorOtherButtons = textBackgroundColor.copy(alpha = 0.08f),
+                        colorPlayPause = textBackgroundColor,
+                        tintPlayPauseIcon = if ((textBackgroundColor.red + textBackgroundColor.green + textBackgroundColor.blue) > 1.5f) Color.Black else Color.White,
+                        tintOtherIcons = textBackgroundColor,
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+                },
             ) {
                 V9Header(
                     textColor = textBackgroundColor,
@@ -3505,7 +3574,7 @@ private fun V9LandscapeContent(
                     onQueueClick = onQueueClick,
                 )
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(4.dp))
 
                 V9Metadata(
                     title = title,
@@ -3516,40 +3585,7 @@ private fun V9LandscapeContent(
                     onArtistClick = onArtistClick,
                 )
 
-                Spacer(Modifier.height(12.dp))
-
-                V9PlaybackProgress(
-                    sliderPosition = sliderPosition,
-                    position = position,
-                    duration = duration,
-                    isPlaying = isPlaying,
-                    activeColor = textBackgroundColor,
-                    inactiveColor = textBackgroundColor.copy(alpha = 0.24f),
-                    textColor = textBackgroundColor,
-                    onSliderValueChange = onSliderValueChange,
-                    onSliderValueChangeFinished = onSliderValueChangeFinished,
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                val motionScheme = remember { MotionScheme.standard() }
-                val controlSpatialSpec = remember { motionScheme.fastSpatialSpec<Float>() }
-                V9AnimatedPlaybackControls(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    isPlayingProvider = { isPlaying },
-                    onPrevious = onPreviousClick,
-                    onPlayPause = onPlayPauseClick,
-                    onNext = onNextClick,
-                    height = 64.dp,
-                    pressAnimationSpec = controlSpatialSpec,
-                    releaseDelay = 220L,
-                    colorOtherButtons = textBackgroundColor.copy(alpha = 0.08f),
-                    colorPlayPause = textBackgroundColor,
-                    tintPlayPauseIcon = if ((textBackgroundColor.red + textBackgroundColor.green + textBackgroundColor.blue) > 1.5f) Color.Black else Color.White,
-                    tintOtherIcons = textBackgroundColor,
-                )
-
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(4.dp))
 
                 V9BottomToggleRow(
                     shuffleModeEnabled = shuffleModeEnabled,
@@ -3565,6 +3601,20 @@ private fun V9LandscapeContent(
                         .fillMaxWidth()
                         .height(54.dp),
                 )
+                V9PlaybackProgress(
+                    sliderPosition = sliderPosition,
+                    position = position,
+                    duration = duration,
+                    isPlaying = isPlaying,
+                    activeColor = textBackgroundColor,
+                    inactiveColor = textBackgroundColor.copy(alpha = 0.24f),
+                    textColor = textBackgroundColor,
+                    onSliderValueChange = onSliderValueChange,
+                    onSliderValueChangeFinished = onSliderValueChangeFinished,
+                )
+
+                Spacer(Modifier.height(4.dp))
+
             }
         }
     }
@@ -4485,6 +4535,126 @@ fun V10PlayerContent(
     val accent = textBackgroundColor
     val field = textButtonColor
 
+    if (landscape) {
+        LandscapePlayerLayout(
+            modifier = modifier,
+            artwork = {
+                EditorialDieCutArt(
+                    artworkUrl = artworkUrl,
+                    mediaMetadataId = mediaMetadata.id,
+                    isPlaying = isPlaying,
+                    onTap = onPlayPauseClick,
+                    accent = accent,
+                    field = field,
+                    canSkipPrevious = canSkipPrevious,
+                    canSkipNext = canSkipNext,
+                    onSkipPrevious = playerConnection::seekToPrevious,
+                    onSkipNext = playerConnection::seekToNext,
+                )
+            },
+            controls = {
+                LandscapePlayerControls(
+                    playbackContent = {
+                        V8TransportControls(
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            foreground = accent,
+                            onPreviousClick = playerConnection::seekToPrevious,
+                            onPlayPauseClick = onPlayPauseClick,
+                            onNextClick = playerConnection::seekToNext,
+                        )
+                    },
+                ) {
+                    V9Header(
+                        textColor = accent,
+                        containerColor = accent.copy(alpha = 0.16f),
+                        iconColor = accent,
+                        onCollapseClick = onCollapseClick,
+                        onLyricsClick = onLyricsClick,
+                        onQueueClick = onQueueClick,
+                    )
+                    PlayerTitleText(
+                        title = mediaMetadata.title,
+                        explicit = mediaMetadata.explicit,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontFamily = FontFamily.Serif,
+                            fontStyle = FontStyle.Italic,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onTitleClick),
+                    )
+                    ClickableArtists(
+                        artists = mediaMetadata.artists,
+                        onArtistClick = onArtistClick,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = accent.copy(alpha = 0.8f),
+                        modifier = Modifier.fillMaxWidth().basicMarquee(),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        V10ToggleButton(
+                            checked = liked,
+                            onClick = onToggleLike,
+                            accent = accent,
+                            field = field,
+                            iconResId = if (liked) R.drawable.favorite else R.drawable.favorite_border,
+                            contentDescription = stringResource(if (liked) R.string.action_remove_like else R.string.action_like),
+                        )
+                        V10ToggleButton(
+                            checked = false,
+                            onClick = onAddToPlaylistClick,
+                            accent = accent,
+                            field = field,
+                            iconResId = R.drawable.library_add,
+                            contentDescription = stringResource(R.string.add_to_playlist),
+                        )
+                        IconButton(onClick = onSleepTimerClick) {
+                            Icon(
+                                painter = painterResource(R.drawable.bedtime),
+                                contentDescription = stringResource(R.string.sleep_timer),
+                                tint = accent,
+                            )
+                        }
+                        if (sleepTimerEnabled) {
+                            Text(
+                                text = makeTimeString(sleepTimerTimeLeft.coerceAtLeast(0L)),
+                                color = accent,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                        IconButton(onClick = onMenuClick) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = stringResource(R.string.more_label),
+                                tint = accent,
+                            )
+                        }
+                    }
+                    V9PlaybackProgress(
+                        sliderPosition = sliderPosition,
+                        position = position,
+                        duration = duration,
+                        isPlaying = isPlaying,
+                        activeColor = accent,
+                        inactiveColor = accent.copy(alpha = 0.24f),
+                        textColor = accent,
+                        onSliderValueChange = onSliderValueChange,
+                        onSliderValueChangeFinished = onSliderValueChangeFinished,
+                    )
+                }
+            },
+        )
+        return
+    }
+
     // ========== MAIN LAYOUT (EditorialNowPlayingView) ==========
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -5106,4 +5276,3 @@ internal fun formatEditorialTime(durationMs: Long): String {
     val seconds = totalSeconds % 60
     return String.format("%d:%02d", minutes, seconds)
 }
-

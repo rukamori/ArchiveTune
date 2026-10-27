@@ -337,7 +337,6 @@
     <string name="enable_betterlyrics">BetterLyrics 가사 플러그인 사용</string>
     <string name="enable_unison_lyrics">Unison 가사 엔진 활성화</string>
     <string name="enable_simpmusic_lyrics">SimpMusic 가사 원본 사용</string>
-    <string name="enable_paxsenix_lyrics">Paxsenix 가사 원본 사용</string>
     <string name="player_and_audio">재생 및 오디오 품질 설정</string>
     <string name="audio_quality">기본 오디오 품질</string>
     <string name="audio_quality_auto">자동 조절</string>
@@ -563,7 +562,6 @@
     <string name="updates_status_current">사용 가능한 가장 최신의 릴리즈 버전을 사용하고 있습니다.</string>
     <string name="enable_update_notification">신규 업데이트 푸시 알림 받기</string>
     <string name="update_channel">업데이트 채널</string>
-    <string name="update_channel_desc">철저하게 테스트를 마친 정식 릴리즈와, 실시간 스냅샷 채널 중에서 수집 형태를 선택하세요.</string>
     <string name="recent_commits">최근 수집된 커밋 이력</string>
     <string name="updates_loading_commits">최근 실시간 커밋 데이터를 로드하는 중</string>
     <string name="updates_recent_commits_count">최근 수집된 기여 내용 %1$d개</string>
@@ -833,10 +831,6 @@
     <string name="lastfm_login_failed">로그인 실패 다시 시도해주세요.</string>
     <string name="duration_seconds_short">%1$d초</string>
     <string name="percent_format">%1$d%%</string>
-    <string name="updates_channel_warning_intro">경고: 업데이트 채널을 변경하려고 합니다.</string>
-    <string name="updates_channel_warning_stable_title">안정(Stable) 채널로 변경</string>
-    <string name="updates_channel_warning_stable_source">공식 배포 버전을 통해 가장 안정적인 기능만을 제공합니다.</string>
-    <string name="updates_channel_warning_stable_desc">새로운 기능 적용은 다소 늦어질 수 있으나, 버그나 비정상 종료 우려 없이 편안하게 이용 가능합니다.</string>
     <string name="download_complete">오프라인 저장 완료</string>
     <string name="onboarding_welcome_title">ArchiveTune에 오신 것을 환영합니다</string>
     <string name="onboarding_welcome_subtitle">당신만의 특별한 음악 보관함을 함께 완성해 보세요.</string>

@@ -323,7 +323,8 @@ fun PlayerSettings(navController: NavController) {
             PreferenceGroup(title = stringResource(R.string.player)) {
                 item {
                     EnumListPreference(
-                        title = { Text(stringResource(R.string.audio_quality)) },
+                        title = { Text(stringResource(R.string.modules_youtube_quality)) },
+                        description = stringResource(R.string.modules_youtube_quality_description),
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         selectedValue = audioQuality,
                         onValueSelected = onAudioQualityChange,

@@ -14,6 +14,7 @@
 package moe.rukamori.archivetune.ui.component
 
 import android.app.Activity
+import android.os.SystemClock
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -58,10 +59,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,16 +83,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.media3.common.Player
 import com.mocharealm.accompanist.lyrics.core.model.ISyncedLine
 import com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeAlignment
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeLine
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
+import com.mocharealm.accompanist.lyrics.ui.composable.list.rememberLyricsLazyListState
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
-import kotlinx.coroutines.delay
+import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.LyricsAnchor
 import kotlinx.coroutines.isActive
-import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
@@ -110,15 +115,10 @@ import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
+import moe.rukamori.archivetune.viewmodels.LyricsRenderViewModel
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 private const val LRC_LEAD_MS = 300L
-private const val WORD_SYNC_LEAD_MS = 0L
-private const val SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS = 250.0
-private const val SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS = 250.0
-private const val SMOOTH_PLAYBACK_DRIFT_CORRECTION = 0.08
-private const val SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS = 2.0
 private const val MIN_KARAOKE_SYLLABLE_DURATION_MS = 1
 
 @Composable
@@ -129,14 +129,14 @@ fun LyricsEnhanced(
     modifier: Modifier = Modifier,
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
+    lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
     val context = LocalContext.current
-    val animationsDisabled = LocalAnimationsDisabled.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val playbackParameters by playerConnection.playbackParameters.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val preparedLyrics = (lyricsState as? LyricsRenderScreenState.Success)?.lyrics
     val preferences = preparedLyrics?.preferences
@@ -164,7 +164,7 @@ fun LyricsEnhanced(
     var showShareImageDialog by remember { mutableStateOf(false) }
 
     val showTranslations =
-        preparedLyrics?.lines?.any { line -> line.translation != null } == true
+        preparedLyrics?.hasTranslations == true && preferences?.showTranslations == true
     val showPhonetics =
         preparedLyrics?.lines?.any { line -> line.romanizedText != null || line.phonetics.isNotEmpty() } == true
     val baseLayoutDirection = LocalLayoutDirection.current
@@ -210,88 +210,65 @@ fun LyricsEnhanced(
         }
 
     val leadMs =
-        when {
-            preparedLyrics?.sourceFormat == LyricsSourceFormat.TTML -> WORD_SYNC_LEAD_MS
-            isWordSyncedFormat -> WORD_SYNC_LEAD_MS
-            else -> LRC_LEAD_MS
-        }
+        if (isWordSyncedFormat || preparedLyrics?.sourceFormat == LyricsSourceFormat.TTML) 0L else LRC_LEAD_MS
 
     val latestSliderPositionProvider = rememberUpdatedState(sliderPositionProvider)
     val latestLyricsSyncOffset = rememberUpdatedState(lyricsSyncOffset)
     val latestLeadMs = rememberUpdatedState(leadMs)
-    val latestPlaybackSpeed = rememberUpdatedState(playbackParameters.speed)
-    val playbackPositionMs =
-        remember(player) {
-            mutableLongStateOf(player.currentPosition.coerceAtLeast(0L))
-        }
-    val listState = key(lyricsSessionKey) { rememberLazyListState() }
+    val playbackPositionMs = lyricsRenderViewModel.playbackPositionMs.collectAsStateWithLifecycle()
+    val plainLyricsListState = key(lyricsSessionKey) { rememberLazyListState() }
+    val karaokeLyricsListState = key(lyricsSessionKey) { rememberLyricsLazyListState() }
 
     LaunchedEffect(lyricsSessionKey) {
-        playbackPositionMs.longValue = player.currentPosition.coerceAtLeast(0L)
         isSelectionModeActive = false
         selectedLineKeys.clear()
     }
 
-    LaunchedEffect(player, lyricsSessionKey, animationsDisabled, playbackParameters.speed) {
-        var smoothedPositionMs = player.currentPosition.coerceAtLeast(0L).toDouble()
-        var previousFrameNanos = 0L
-        while (isActive) {
-            val sliderPosition = latestSliderPositionProvider.value()
-            val rawPosition = (sliderPosition ?: player.currentPosition).coerceAtLeast(0L)
-            if (sliderPosition != null || !player.isPlaying || animationsDisabled) {
-                smoothedPositionMs = rawPosition.toDouble()
-                previousFrameNanos = 0L
-                if (playbackPositionMs.longValue != rawPosition) {
-                    playbackPositionMs.longValue = rawPosition
+    DisposableEffect(player, lyricsRenderViewModel) {
+        val listener =
+            object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) {
+                    if (
+                        events.contains(Player.EVENT_POSITION_DISCONTINUITY) ||
+                        events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) ||
+                        events.contains(Player.EVENT_IS_PLAYING_CHANGED) ||
+                        events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)
+                    ) {
+                        lyricsRenderViewModel.onPlaybackPositionChanged(
+                            latestSliderPositionProvider.value() ?: player.currentPosition,
+                        )
+                    }
                 }
-                if (sliderPosition == null) {
-                    delay(100L)
-                } else {
-                    withFrameNanos { }
-                }
-            } else {
-                val frameNanos = withFrameNanos { frameTimeNanos -> frameTimeNanos }
-                if (previousFrameNanos == 0L) {
-                    previousFrameNanos = frameNanos
-                    smoothedPositionMs = rawPosition.toDouble()
-                } else {
-                    val elapsedMs =
-                        ((frameNanos - previousFrameNanos).coerceAtLeast(0L) / 1_000_000.0) *
-                            latestPlaybackSpeed.value.toDouble()
-                    val projectedPositionMs = smoothedPositionMs + elapsedMs
-                    val driftMs = rawPosition.toDouble() - projectedPositionMs
+            }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
 
-                    smoothedPositionMs =
-                        if (
-                            driftMs > SMOOTH_PLAYBACK_MAX_FORWARD_DRIFT_MS ||
-                            driftMs < -SMOOTH_PLAYBACK_MAX_BACKWARD_DRIFT_MS
-                        ) {
-                            rawPosition.toDouble()
-                        } else {
-                            val correctionMs =
-                                (driftMs * SMOOTH_PLAYBACK_DRIFT_CORRECTION).coerceIn(
-                                    -SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS,
-                                    SMOOTH_PLAYBACK_MAX_CORRECTION_PER_FRAME_MS,
-                                )
-                            projectedPositionMs + correctionMs
-                        }
-                    previousFrameNanos = frameNanos
-                }
-
-                val nextPosition = smoothedPositionMs.roundToLong().coerceAtLeast(0L)
-
-                if (playbackPositionMs.longValue != nextPosition) {
-                    playbackPositionMs.longValue = nextPosition
+    LaunchedEffect(player, lifecycleOwner, lyricsRenderViewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            lyricsRenderViewModel.onPlaybackPositionChanged(
+                latestSliderPositionProvider.value() ?: player.currentPosition,
+            )
+            while (isActive) {
+                withFrameNanos {
+                    val sliderPosition = latestSliderPositionProvider.value()
+                    lyricsRenderViewModel.onPlaybackFrame(
+                        positionMs = sliderPosition ?: player.currentPosition,
+                        sampleTimeNanos = SystemClock.elapsedRealtimeNanos(),
+                        playbackSpeed = player.playbackParameters.speed,
+                        isAdvancing = player.isPlaying && sliderPosition == null,
+                        durationMs = player.duration,
+                    )
                 }
             }
         }
     }
 
     val playbackSyncPosition: () -> Int =
-        remember {
+        remember(playbackPositionMs) {
             {
                 (
-                    playbackPositionMs.longValue +
+                    playbackPositionMs.value +
                         latestLyricsSyncOffset.value.toLong() +
                         latestLeadMs.value
                 ).coerceIn(0L, Int.MAX_VALUE.toLong())
@@ -474,7 +451,7 @@ fun LyricsEnhanced(
             !isSynced -> {
                 PlainLyricsView(
                     lines = plainLyrics,
-                    listState = listState,
+                    listState = plainLyricsListState,
                     selectedLineKeys = selectedLineKeySet,
                     textColor = textColor,
                     textStyle = normalTextStyle,
@@ -499,12 +476,12 @@ fun LyricsEnhanced(
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    val lyricsViewportOffset = remember(maxHeight) { maxHeight * 0.38f }
+                    val lyricsViewportAnchor = remember(maxHeight) { LyricsAnchor.Fixed(maxHeight * 0.38f) }
 
                     CompositionLocalProvider(LocalLayoutDirection provides lyricsLayoutDirection) {
                         key(lyricsSessionKey, syncedLyrics) {
                             KaraokeLyricsView(
-                                listState = listState,
+                                listState = karaokeLyricsListState,
                                 lyrics = syncedLyrics,
                                 currentPosition = playbackSyncPosition,
                                 onLineClicked = { line ->
@@ -533,7 +510,7 @@ fun LyricsEnhanced(
                                 useBlurEffect = lyricsLineBlur,
                                 showTranslation = showTranslations,
                                 showPhonetic = showPhonetics,
-                                offset = lyricsViewportOffset,
+                                anchor = lyricsViewportAnchor,
                                 keepAliveZone = 72.dp,
                                 modifier = Modifier.fillMaxSize(),
                             )

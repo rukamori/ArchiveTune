@@ -128,14 +128,11 @@ class LocalPlaylistViewModel
                     PlaylistSongSortType.ARTIST -> {
                         val collator = Collator.getInstance(Locale.getDefault())
                         collator.strength = Collator.PRIMARY
-                        visibleSongs
-                            .sortedWith(compareBy(collator) { song -> song.song.artists.joinToString("") { artist -> artist.name } })
-                            .groupBy { it.song.album?.title }
-                            .flatMap { (_, songsByAlbum) ->
-                                songsByAlbum.sortedBy { playlistSong ->
-                                    playlistSong.song.artists.joinToString("") { artist -> artist.name }
-                                }
-                            }
+                        visibleSongs.sortedWith(
+                            compareBy(collator) { song ->
+                                song.song.artists.joinToString("") { artist -> artist.name }
+                            },
+                        )
                     }
 
                     PlaylistSongSortType.PLAY_TIME -> {

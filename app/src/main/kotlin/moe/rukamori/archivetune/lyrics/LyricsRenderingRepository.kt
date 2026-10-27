@@ -8,6 +8,7 @@
 package moe.rukamori.archivetune.lyrics
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -26,6 +27,7 @@ import moe.rukamori.archivetune.constants.LyricsV2BounceFactorKey
 import moe.rukamori.archivetune.constants.LyricsV2FillTransitionWidthKey
 import moe.rukamori.archivetune.constants.LyricsV2GlowFactorKey
 import moe.rukamori.archivetune.constants.LyricsV2LrcBounceEnabledKey
+import moe.rukamori.archivetune.constants.TranslateLyricsKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.utils.dataStore
 import javax.inject.Inject
@@ -38,7 +40,12 @@ class LyricsRenderingRepository
         private val database: MusicDatabase,
         @ApplicationContext context: Context,
     ) {
-        private val preferences = context.dataStore.data
+        private val dataStore = context.dataStore
+        private val preferences = dataStore.data
+
+        suspend fun setShowTranslations(show: Boolean) {
+            dataStore.edit { values -> values[TranslateLyricsKey] = show }
+        }
 
         fun observeLyrics(mediaId: String): Flow<String?> =
             database
@@ -51,6 +58,7 @@ class LyricsRenderingRepository
                 .map { values ->
                     LyricsRenderingPreferences(
                         clickEnabled = values[LyricsClickKey] ?: true,
+                        showTranslations = values[TranslateLyricsKey] ?: true,
                         scrollEnabled = values[LyricsScrollKey] ?: true,
                         textSizeSp = values[LyricsTextSizeKey] ?: 26f,
                         lineSpacing = values[LyricsLineSpacingKey] ?: 1.3f,

@@ -20,9 +20,9 @@
   </p>
 
   <p align="center">
-    <a href="https://archivetune.koiiverse.cloud"><b>Official Website</b></a> •
+    <a href="https://archivetune.miuka.moe"><b>Official Website</b></a> •
     <a href="#features"><b>Features</b></a> •
-    <a href="https://archivetune.koiiverse.cloud/privacy"><b>Privacy</b></a> •
+    <a href="https://archivetune.miuka.moe/privacy"><b>Privacy</b></a> •
     <a href="#download-now"><b>Download</b></a> •
     <a href="#screenshots"><b>Screenshots</b></a> •
     <a href="https://github.com/rukamori/ArchiveTune/issues/new/choose"><b>Support</b></a>
@@ -33,19 +33,26 @@
     <img src="https://img.shields.io/github/downloads/rukamori/ArchiveTune/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
     <img src="https://img.shields.io/github/stars/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Stars" />
     <img src="https://img.shields.io/github/license/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e" alt="License" />
-    <img src="https://img.shields.io/badge/Architecture-MVVM-6366f1?style=for-the-badge&labelColor=1e1e2e&logo=kotlin" alt="MVVM Architecture" />
-    <img src="https://img.shields.io/badge/Language-Kotlin-7f52ff?style=for-the-badge&logo=kotlin&color=6366f1&labelColor=1e1e2e" alt="Kotlin Language" />
-    <img src="https://img.shields.io/badge/Toolkit-Jetpack_Compose-4285f4?style=for-the-badge&logo=jetpack-compose&color=6366f1&labelColor=1e1e2e" alt="Jetpack Compose Toolkit" />
-    <img src="https://img.shields.io/badge/Design-Material_3-000000?style=for-the-badge&logo=material-design&color=6366f1&labelColor=1e1e2e" alt="Material Design 3" />
     <a href="https://www.virustotal.com/gui/file/176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84/detection/f-176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84-1778840479" target="_blank"><img src="https://img.shields.io/badge/VirusTotal-SAFE-green?style=for-the-badge&logo=virustotal&logoColor=white&labelColor=1e1e2e&color=5865F2" alt="VirusTotal" /></a>
     <a href="https://t.me/ArchiveTuneGC"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" /></a>
-    <a href="https://discord.gg/XF2fpb9rTq"><img src="https://img.shields.io/discord/1498315636714115224?style=for-the-badge&logo=discord&logoColor=ffffff&label=Discord&labelColor=6366f1&color=6366f1" alt="Discord" /></a>
+    <a href="https://discord.gg/archivetune"><img src="https://img.shields.io/discord/1498315636714115224?style=for-the-badge&logo=discord&logoColor=ffffff&label=Discord&labelColor=6366f1&color=6366f1" alt="Discord" /></a>
   </div>
+
+<br />
+
+<div align="center>
   
-  <br />
+  <a href="https://fmhy.net/mobile#youtube-music" target="_blank">
+    <img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/fmhy/cozy.svg" alt="ArchiveTune | FMHY" />
+  </a>
+
+  <a href="https://kotlinlang.org" target="_blank">
+    <img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/built-with/kotlin/cozy.svg" alt="ArchiveTune | FMHY" />
+  </a>
+</div>
 
   <a href="https://trendshift.io/repositories/17521" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/17521" alt="ArchiveTune | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <img src="https://trendshift.io/api/badge/repositories/17521" alt="ArchiveTune | Trendshift" style="width: 250px; height: 55px;" width="250" height="55" />
   </a>
 </div>
 
@@ -56,7 +63,7 @@
 We do not provide support, maintenance, troubleshooting, or assistance for any forked version of this project.
 If you choose to use a fork, you do so at your own risk.
 
-**ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
+**ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made with kotlin and jetpack compose, because we think your music should stay private, look clean, and work exactly the way you expect.
 
 ---
 
@@ -172,6 +179,10 @@ If you choose to use a fork, you do so at your own risk.
 
 ---
 
+## Module development
+
+ArchiveTune supports `.arch` provider packages installed from a file, a direct URL, or a catalog. See the public [module authoring guide](MODULES.md) for the package specification, JavaScript API, configuration schema, lossless stream results, packaging command, and publishing instructions.
+
 ## 📥 Download Now
 
 <div align="center" id="download-now">
@@ -189,7 +200,7 @@ If you choose to use a fork, you do so at your own risk.
     <tr>
       <td align="center">
         <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/rukamori/ArchiveTune/">
-          <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" height="50" alt="Get ArchiveTune on Obtainium">
+          <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" height="65" alt="Get ArchiveTune on Obtainium">
         </a>
       </td>
       <td align="center">
@@ -208,57 +219,22 @@ If you choose to use a fork, you do so at your own risk.
         </a>
       </td>
     </tr>
-    <tr>
-      <th align="center">OpenAPK</th>
-      <th align="center">Unclouded</th>
-    </tr>
-    <tr>
-      <td align="center">
-        <a href="https://www.openapk.net/archivetune/moe.rukamori.archivetune/">
-          <img src="https://www.openapk.net/images/openapk-badge.png" height="75" alt="Get ArchiveTune on OpenAPK">
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://unclouded.app/apps/archivetune/">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_unclouded.png" height="50" alt="Get ArchiveTune on Unclouded">
-        </a>
-      </td>
-    </tr>
   </tbody>
 </table>
 
-<h2>Development Build</h2>
-
+<h2>Early Access Programs</h2>
+<p>Join the early access programs to get a new features, fixes and improvements</p>
 <table>
   <thead>
     <tr>
-      <th align="center">GitHub Actions</th>
+      <th align="center">Early Access</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td align="center">
-        <a href="https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune development build">
-        </a>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-<h2>Nightly Build</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th align="center">GitHub Releases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/rukamori/Nightly/releases/latest">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune nightly build">
+        <a href="https://discord.gg/archivetune">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/ArchiveTune_Early_Access_Button.png" height="65" alt="Join early access">
         </a>
       </td>
     </tr>
@@ -273,7 +249,7 @@ If you choose to use a fork, you do so at your own risk.
 Join Our Telegram Channels or Discord Servers for Support and Discussion.
 
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/ArchiveTuneGC)
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/XF2fpb9rTq)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/archivetune)
 
 ---
 

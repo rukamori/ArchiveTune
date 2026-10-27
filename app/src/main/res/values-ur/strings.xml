@@ -475,7 +475,6 @@
     <string name="enable_betterlyrics">BetterLyrics کو فاعل کریں</string>
     <string name="enable_unison_lyrics">Unison کے بول کو فاعل کریں</string>
     <string name="enable_simpmusic_lyrics">SimpMusic کے بول کو فاعل کریں</string>
-    <string name="enable_paxsenix_lyrics">Paxsenix کے بول کو فاعل کریں</string>
     <string name="source">مصدر</string>
     <string name="enable_youlyplus_lyrics">YouLyPlus کے بول کو فاعل کریں</string>
     <string name="audio_quality">معیار سامعہ</string>
@@ -798,7 +797,6 @@
     <string name="eq_midrange">مڈرینج</string>
     <string name="eq_treble">ٹریبل</string>
     <string name="eq_bands_description">آلہ کے ہر ظاہر شدہ تعدد بینڈ کو مرتب کیا جائے</string>
-    <string name="updates_channel_warning_intro">‫ArchiveTune تعمیرات کے دو ڈاؤنلوڈ چینل فراہم کرتا ہے:</string>
     <string name="update_notification_text">‫%s ArchiveTune اب دستیاب ہے‬</string>
     <string name="permissions_title">‫ArchiveTune کو بہترین کام کرنے کی اجازت دیں</string>
     <string name="onboarding_welcome_title">‫ArchiveTune میں خوش آمدید</string>
@@ -851,7 +849,6 @@
     <string name="about">بحوالہ</string>
     <string name="new_version_available">نیا نسخہ دستیاب ہے</string>
     <string name="updates">پیش رفتات</string>
-    <string name="updates_subtitle_artifact">‫Canary اشعات اور حالیہ تعمراتی کام</string>
     <string name="recent_commits">حالیہ کام</string>
     <string name="current_version">موجودہ نسخہ</string>
     <string name="latest_version_format">‫تازہ ترین: %s‬</string>
@@ -860,17 +857,6 @@
     <string name="enable_update_notification">پیش رفت کی اطلاعات کو فعل کریں</string>
     <string name="enable_update_notification_channel_desc">اطلاع حاصل کریں جب کوئی نیا شائع مقررہ چینل پر دستیاب ہو</string>
     <string name="update_channel">چینل کی پیش رفت</string>
-    <string name="update_channel_desc">آزمودہ اشعات اور تعمیراتی سنیپشاٹس میں انتخاب کریں۔</string>
-    <string name="channel_artifact">‫تجربی (Canary)</string>
-    <string name="updates_artifact_hosting_description">‫Canary اشعات خودکاری سے تازہ ترین تعمیراتی شاخ سے شائع ہوتے ہیں۔</string>
-    <string name="updates_channel_warning_stable_title">مستحکم تعمیرات</string>
-    <string name="updates_channel_warning_stable_source">‫آفیشل GitHub اشعات کے ذریعے سے باٹا جاتا ہے۔</string>
-    <string name="updates_channel_warning_stable_desc">یہ نسخے آزمودہ ہیں اور زیادہ تر صارفیں کے لئے صلہ شدہ ہیں۔</string>
-    <string name="updates_channel_warning_artifact_title">Canary اشعات</string>
-    <string name="updates_channel_warning_artifact_risk">‫Canary اشعات میں تجربی خوبیاں، نامکمل بدلاؤ یا وقتی رجعت شامل ہو سکتے ہیں۔</string>
-    <string name="updates_channel_warning_artifact_unstable">‫Canary اشعات صرف آزمانے اور ابتدائ رسائ کے لئے فراہم کی جاتی ہیں۔\nمستحکمی، مطابقت, اور تفاعلی کی کوئی ضمانت نہیں۔</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">‫توجہ: سیدھا GitHub سے ڈاؤنلوڈ کرنے پر جس دکان سے آپ نے اولا ایپ نصب کیا تھا اس کی جانب سے کسی بھی قسم کی ادھیک پَردَہ اندازی سے ضمنی گزر گاہ اختیار کرلی جائے گی۔‬\n‫قائم رہ کر آپ یہ تسلیم کرتے ہیں کہ Canary اشعات نامستحکم ہو سکتی ہیں اور اپنے خود کے جوکھوں پر استعمال کر رہے ہیں۔</string>
-    <string name="updates_artifact_channel_confirmation">تعمیراتی اشعات کو پانے کے لئے Canary چینل پر تبدیل کریں۔\n\n‫Canary اشعات خودکاری سے تازہ ترین تعمیراتی شاخ سے شائع ہوتے ہیں۔\n‫توجہ: سیدھا GitHub سے ڈاؤنلوڈ کرنے پر جس دکان سے آپ نے اولا ایپ نصب کیا تھا اس کی جانب سے کسی بھی قسم کی ادھیک پَردَہ اندازی سے ضمنی گزر گاہ اختیار کرلی جائے گی۔</string>
     <string name="updates_loading_commits">حالیہ کام کو لادیں</string>
     <string name="updates_recent_commits_count">‫%1$d حالیہ کام</string>
     <string name="updates_no_commits">کوئی حالیہ کام نہیں مل سکا</string>

@@ -115,3 +115,7 @@ fun Player.findNextMediaItemById(mediaId: String): MediaItem? {
     }
     return null
 }
+
+fun buildRestoredShuffleOrderIndices(originalQueueTimelineIndices: List<Int>): IntArray =
+    originalQueueTimelineIndices.toIntArray()
+

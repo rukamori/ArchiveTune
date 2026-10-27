@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.21"
 }
 
 repositories {
@@ -11,5 +11,5 @@ repositories {
 dependencies {
     implementation(gradleApi())
     implementation(localGroovy())
-    implementation("org.apache.xmlgraphics:batik-all:1.19")
+    implementation("org.apache.xmlgraphics:batik-all:1.20")
 }

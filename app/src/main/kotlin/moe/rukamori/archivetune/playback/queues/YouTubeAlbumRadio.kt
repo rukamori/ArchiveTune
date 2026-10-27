@@ -14,11 +14,16 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.withQueueEntry
+import moe.rukamori.archivetune.innertube.pages.QueueChip
 
 class YouTubeAlbumRadio(
     internal val playlistId: String,
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
+    override val recommendationOnlyContinuation: Boolean = true
+    override var queueChips: List<QueueChip> = emptyList()
+        private set
 
     private val endpoint: WatchEndpoint
         get() =
@@ -63,12 +68,13 @@ class YouTubeAlbumRadio(
     override suspend fun nextPage(): List<MediaItem> =
         withContext(IO) {
             val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
+            if (nextResult.queueChips.isNotEmpty()) queueChips = nextResult.queueChips
             continuation = nextResult.continuation
             if (!firstTimeLoaded) {
                 firstTimeLoaded = true
-                nextResult.items.subList(albumSongCount, nextResult.items.size).map { it.toMediaItem() }
+                nextResult.items.drop(albumSongCount).map { it.toMediaItem().withQueueEntry(recommended = true) }
             } else {
-                nextResult.items.map { it.toMediaItem() }
+                nextResult.items.map { it.toMediaItem().withQueueEntry(recommended = true) }
             }
         }
 }

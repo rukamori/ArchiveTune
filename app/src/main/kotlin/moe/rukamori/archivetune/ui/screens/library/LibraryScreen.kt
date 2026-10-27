@@ -360,7 +360,7 @@ fun LibraryScreen(
                                 LibraryFilter.LIBRARY -> R.drawable.graphic_eq
                                 LibraryFilter.PLAYLISTS -> R.drawable.queue_music
                                 LibraryFilter.PODCASTS -> R.drawable.mic
-                                LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
+                                LibraryFilter.SPOTIFY -> R.drawable.spotify
                                 LibraryFilter.SONGS -> R.drawable.music_note
                                 LibraryFilter.ARTISTS -> R.drawable.person
                                 LibraryFilter.ALBUMS -> R.drawable.album

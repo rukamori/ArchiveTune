@@ -33,6 +33,7 @@ class ResolveAudioStreamUseCase
     @Inject
     constructor(
         private val youtubeiRepository: YoutubeiStreamRepository,
+        private val moduleAudio: moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase,
     ) {
         private data class CacheKey(
             val mediaId: String,
@@ -85,6 +86,9 @@ class ResolveAudioStreamUseCase
             request: AudioStreamRequest,
             consumer: ResolutionConsumer,
         ): ResolvedAudioStream {
+            if (request.allowModules && request.pinnedFormatId == null) {
+                moduleAudio.resolve(request.mediaId, request.moduleMetadata)?.let { return it.toResolvedAudioStream() }
+            }
             val key = request.cacheKey()
             val priority = request.resolutionPriority(consumer)
             val lease = acquireResolution(key, request, consumer, priority)
@@ -295,6 +299,9 @@ class ResolveAudioStreamUseCase
         }
 
         fun peek(request: AudioStreamRequest): ResolvedAudioStream? {
+            if (request.allowModules && request.pinnedFormatId == null && moduleAudio.enabled()) {
+                return moduleAudio.peek(request.mediaId, request.moduleMetadata)?.toResolvedAudioStream()
+            }
             val key = request.cacheKey()
             val resolved = cache[key] ?: return null
             if (isFresh(resolved)) return resolved
@@ -316,14 +323,10 @@ class ResolveAudioStreamUseCase
             priority: StreamResolutionPriority,
         ): ResolvedAudioStream {
             val resolvedAuthState =
-                if (request.authState.hasLoginCookie) {
-                    YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
-                        videoId = request.mediaId,
-                        authState = request.authState,
-                    )
-                } else {
-                    request.authState
-                }
+                YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
+                    videoId = request.mediaId,
+                    authState = request.authState,
+                )
             return youtubeiRepository.resolve(
                 request = request.copy(authState = resolvedAuthState),
                 priority = priority,

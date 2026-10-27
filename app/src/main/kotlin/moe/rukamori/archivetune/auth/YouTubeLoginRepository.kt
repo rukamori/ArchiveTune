@@ -12,7 +12,10 @@ import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
@@ -47,6 +50,12 @@ data class YouTubeLoginSession(
     val accountChannelHandle: String,
 )
 
+data class AccountIdentity(
+    val isLoggedIn: Boolean,
+    val name: String,
+    val email: String,
+)
+
 class MissingYouTubeDataSyncIdException : IllegalStateException("YouTube DataSyncId is missing")
 
 @Singleton
@@ -55,6 +64,16 @@ class YouTubeLoginRepository
     constructor(
         @ApplicationContext private val context: Context,
     ) {
+        fun observeAccountIdentity(): Flow<AccountIdentity> =
+            context.dataStore.data
+                .map { preferences ->
+                    AccountIdentity(
+                        isLoggedIn = hasYouTubeLoginCookie(preferences[InnerTubeCookieKey]),
+                        name = preferences[AccountNameKey].orEmpty(),
+                        email = preferences[AccountEmailKey].orEmpty(),
+                    )
+                }.distinctUntilChanged()
+
         suspend fun completeLogin(
             cookie: String,
             visitorData: String?,

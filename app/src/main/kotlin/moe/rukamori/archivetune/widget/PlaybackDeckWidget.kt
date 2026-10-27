@@ -8,18 +8,15 @@
 package moe.rukamori.archivetune.widget
 
 import android.content.Context
-import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -30,6 +27,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -37,10 +35,6 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import moe.rukamori.archivetune.R
 
 class PlaybackDeckWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -58,240 +52,115 @@ class PlaybackDeckWidget : GlanceAppWidget() {
 
 @Composable
 private fun PlaybackDeckContent(context: Context) {
-    val prefs = currentState<Preferences>()
-    val state = prefs.toWidgetPlaybackState(context)
-
-    GlanceTheme(
-        colors =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                GlanceTheme.colors
-            } else {
-                ArchiveTuneWidgetColors.providers
-            },
-    ) {
-        val palette = rememberWidgetPalette(state.dominantColor)
-        val size = LocalSize.current
-
-        Box(
-            modifier =
-                GlanceModifier
-                    .fillMaxSize()
-                    .background(palette.surface)
-                    .cornerRadius(30.dp)
-                    .padding(if (size.height < 150.dp) 8.dp else 14.dp)
-                    .clickable(openArchiveTuneAction(context)),
-        ) {
-            if (size.width < 260.dp || size.height < 150.dp) {
-                PlaybackDeckCompact(state = state, palette = palette, context = context)
-            } else {
-                PlaybackDeckPanel(state = state, palette = palette, context = context)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaybackDeckCompact(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    context: Context,
-) {
-    Row(
-        modifier = GlanceModifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        WidgetArtwork(
-            artPath = state.artPath,
-            context = context,
-            contentDescription = context.getString(R.string.album_cover_desc),
-            targetSize = 54.dp,
-            cornerRadius = 18.dp,
-            palette = palette,
-            modifier = GlanceModifier.size(54.dp),
-        )
-
-        Spacer(GlanceModifier.width(12.dp))
-
-        Column(
-            modifier = GlanceModifier.defaultWeight(),
-            verticalAlignment = Alignment.Vertical.CenterVertically,
-        ) {
-            Text(
-                text = state.title,
-                style =
-                    TextStyle(
-                        color = palette.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                maxLines = 1,
-            )
-            Text(
-                text = state.artist,
-                style =
-                    TextStyle(
-                        color = palette.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    ),
-                maxLines = 1,
-            )
-        }
-
-        if (state.isAvailable) {
-            Spacer(GlanceModifier.width(10.dp))
-            WidgetControlButton(
-                modifier = GlanceModifier.size(50.dp),
-                action = playPauseAction(),
-                icon = if (state.isPlaying) R.drawable.pause else R.drawable.play,
-                contentDescription =
-                    context.getString(
-                        if (state.isPlaying) R.string.widget_pause else R.string.play,
-                    ),
-                backgroundColor = palette.primaryContainer,
-                contentColor = palette.onPrimaryContainer,
-                cornerRadius = if (state.isPlaying) 14.dp else 25.dp,
-                iconSize = 25.dp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaybackDeckPanel(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    context: Context,
-) {
+    val state = currentState<Preferences>().toWidgetPlaybackState(context)
     val size = LocalSize.current
-    val artworkHeight = (size.height - 146.dp).coerceIn(96.dp, 220.dp)
+    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
+    val wide = size.width >= 320.dp && size.height >= 128.dp + 48.dp * textScale
+    val stacked = !wide && size.height >= 168.dp + 48.dp * textScale
 
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        WidgetArtwork(
-            artPath = state.artPath,
-            context = context,
-            contentDescription = context.getString(R.string.album_cover_desc),
-            targetSize = artworkHeight,
-            cornerRadius = 24.dp,
-            palette = palette,
-            modifier =
-                GlanceModifier
-                    .fillMaxWidth()
-                    .height(artworkHeight),
-        )
-
-        Spacer(GlanceModifier.height(12.dp))
-
-        Text(
-            text = state.title,
-            style =
-                TextStyle(
-                    color = palette.onSurface,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            maxLines = 2,
-        )
-
-        Spacer(GlanceModifier.height(3.dp))
-
-        Text(
-            text = state.artist,
-            style =
-                TextStyle(
-                    color = palette.onSurfaceVariant,
-                    fontSize = 13.sp,
-                ),
-            maxLines = 1,
-        )
-
-        Spacer(GlanceModifier.defaultWeight())
-
-        if (state.isAvailable) {
-            PlaybackDeckControls(state = state, palette = palette, context = context)
-        } else {
-            Box(
-                modifier =
-                    GlanceModifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .background(palette.secondaryContainer)
-                        .cornerRadius(26.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = context.getString(R.string.widget_tap_to_open),
-                    style =
-                        TextStyle(
-                            color = palette.onSecondaryContainer,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                    maxLines = 1,
-                )
+    WidgetTheme(state.dominantColor) { palette ->
+        Box(
+            modifier = GlanceModifier.fillMaxSize().background(palette.surface)
+                .cornerRadius(28.dp).clickable(openArchiveTuneAction(context))
+                .padding(if (size.width < 200.dp) 8.dp else 12.dp),
+        ) {
+            when {
+                wide -> {
+                    val recordSize = minOf(size.height - 24.dp, size.width * 0.42f, size.width - 184.dp)
+                    Row(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DeckRecord(state, palette, context, recordSize)
+                        Spacer(GlanceModifier.width(16.dp))
+                        Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight()) {
+                            WidgetTrackInfo(
+                                state, palette, GlanceModifier.defaultWeight().fillMaxWidth(),
+                                titleSize = 22,
+                                titleLines = if (size.height >= 176.dp + 56.dp * textScale) 2 else 1,
+                            )
+                            if (state.isAvailable) {
+                                WidgetPlaybackProgress(state, palette)
+                                Spacer(GlanceModifier.height(12.dp))
+                                WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                }
+                stacked -> {
+                    val recordSize = minOf(size.width - 24.dp, size.height - (96.dp + 48.dp * textScale))
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(modifier = GlanceModifier.fillMaxWidth().defaultWeight(), contentAlignment = Alignment.Center) {
+                            DeckRecord(state, palette, context, recordSize)
+                        }
+                        Spacer(GlanceModifier.height(8.dp))
+                        WidgetTrackInfo(state, palette, GlanceModifier.fillMaxWidth())
+                        if (state.isAvailable) {
+                            Spacer(GlanceModifier.height(8.dp))
+                            WidgetPlaybackProgress(state, palette)
+                            Spacer(GlanceModifier.height(8.dp))
+                            WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                        }
+                    }
+                }
+                else -> {
+                    val recordSize = minOf(80.dp, size.height - 24.dp, (size.width - 36.dp) * 0.45f)
+                        .coerceAtLeast(48.dp)
+                    Row(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(modifier = GlanceModifier.size(recordSize), contentAlignment = Alignment.Center) {
+                            DeckRecord(state, palette, context, recordSize)
+                            if (state.isAvailable) {
+                                WidgetPlayPauseButton(state, palette, context)
+                            }
+                        }
+                        Spacer(GlanceModifier.width(12.dp))
+                        Column(modifier = GlanceModifier.defaultWeight()) {
+                            WidgetTrackInfo(
+                                state, palette, titleSize = 14,
+                                showArtist = size.height - 24.dp >= 40.dp * textScale,
+                            )
+                            if (state.isAvailable && size.height >= 136.dp + 24.dp * textScale &&
+                                size.width - recordSize - 36.dp >= 96.dp
+                            ) {
+                                Spacer(GlanceModifier.height(8.dp))
+                                Row(modifier = GlanceModifier.fillMaxWidth()) {
+                                    WidgetSkipButton(false, palette, context, GlanceModifier.defaultWeight().height(48.dp))
+                                    WidgetSkipButton(true, palette, context, GlanceModifier.defaultWeight().height(48.dp))
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
-
-        if (state.isAvailable && state.playbackPosition > 0f) {
-            Spacer(GlanceModifier.height(10.dp))
-            LinearProgressIndicator(
-                progress = state.playbackPosition,
-                color = palette.progress,
-                backgroundColor = palette.progressTrack,
-                modifier =
-                    GlanceModifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .cornerRadius(3.dp),
-            )
         }
     }
 }
 
 @Composable
-private fun PlaybackDeckControls(
+private fun DeckRecord(
     state: WidgetPlaybackState,
     palette: WidgetPalette,
     context: Context,
+    diameter: Dp,
 ) {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier = GlanceModifier.size(diameter).background(palette.secondaryContainer)
+            .cornerRadius(diameter / 2).padding(4.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        WidgetControlButton(
-            modifier = GlanceModifier.size(50.dp),
-            action = skipPreviousAction(),
-            icon = R.drawable.skip_previous,
-            contentDescription = context.getString(R.string.widget_previous),
-            backgroundColor = palette.secondaryContainer,
-            contentColor = palette.onSecondaryContainer,
-            cornerRadius = 25.dp,
+        WidgetArtwork(
+            artPath = state.artPath, context = context, contentDescription = null,
+            targetSize = diameter - 8.dp, cornerRadius = (diameter - 8.dp) / 2,
+            palette = palette, modifier = GlanceModifier.fillMaxSize(), circular = true,
         )
-        Spacer(GlanceModifier.width(8.dp))
-        WidgetControlButton(
-            modifier =
-                GlanceModifier
-                    .defaultWeight()
-                    .height(52.dp),
-            action = playPauseAction(),
-            icon = if (state.isPlaying) R.drawable.pause else R.drawable.play,
-            contentDescription =
-                context.getString(
-                    if (state.isPlaying) R.string.widget_pause else R.string.play,
-                ),
-            backgroundColor = palette.primaryContainer,
-            contentColor = palette.onPrimaryContainer,
-            cornerRadius = if (state.isPlaying) 16.dp else 26.dp,
-            iconSize = 28.dp,
-        )
-        Spacer(GlanceModifier.width(8.dp))
-        WidgetControlButton(
-            modifier = GlanceModifier.size(50.dp),
-            action = skipNextAction(),
-            icon = R.drawable.skip_next,
-            contentDescription = context.getString(R.string.next),
-            backgroundColor = palette.secondaryContainer,
-            contentColor = palette.onSecondaryContainer,
-            cornerRadius = 25.dp,
-        )
+        Box(
+            modifier = GlanceModifier.size(16.dp).background(palette.surface).cornerRadius(8.dp),
+        ) {}
     }
 }

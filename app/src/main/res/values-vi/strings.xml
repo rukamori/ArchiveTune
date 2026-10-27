@@ -356,7 +356,6 @@
     <string name="proxy_connection_failed">Kết nối proxy thất bại: %s</string>
     <string name="enable_betterlyrics">Bật BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Bật lời bài hát SimpMusic</string>
-    <string name="enable_paxsenix_lyrics">Bật lời bài hát Paxsenix</string>
     <string name="player_and_audio">Trình phát và âm thanh</string>
     <string name="audio_quality">Chất lượng âm thanh</string>
     <string name="audio_quality_auto">Tự động</string>
@@ -669,7 +668,6 @@
     <string name="disable_animations_desc">Vô hiệu hóa hầu hết các hoạt ảnh ứng dụng. Được đề xuất cho các thiết bị cấu hình thấp</string>
     <string name="updates_status_checking">Kiểm tra bản phát hành mới nhất</string>
     <string name="updates_status_current">Bạn đang ở trên phiên bản mới nhất có sẵn</string>
-    <string name="update_channel_desc">Chọn giữa các bản phát hành đã thử nghiệm và các snapshot phát triển.</string>
     <string name="updates_loading_commits">Đang tải các commit gần nhất</string>
     <string name="updates_recent_commits_count">%1$d commit mới nhất</string>
     <string name="updates_no_commits">Không có commit mới gần đây</string>
@@ -853,10 +851,6 @@
     <string name="storage_clear_downloads_progress">Đang xóa tải xuống...%1$d%%</string>
     <string name="storage_clear_image_cache_progress">Đang xóa cache hình ảnh...%1$d%%</string>
     <string name="storage_clear_canvas_cache_progress">Đang xóa cache canvas...%1$d%%</string>
-    <string name="updates_channel_warning_intro">ArchiveTune cung cấp hai kênh tải xuống cho các bản dựng:</string>
-    <string name="updates_channel_warning_stable_title">Bản dựng ổn định</string>
-    <string name="updates_channel_warning_stable_source">Được phân phối qua GitHub Releases chính thức.</string>
-    <string name="updates_channel_warning_stable_desc">Các phiên bản này đã được kiểm tra và khuyên dùng cho hầu hết người dùng.</string>
     <string name="cast">Truyền</string>
     <string name="cast_devices">Thiết bị Cast</string>
     <string name="cast_sheet_subtitle">Chọn nơi ArchiveTune phát</string>

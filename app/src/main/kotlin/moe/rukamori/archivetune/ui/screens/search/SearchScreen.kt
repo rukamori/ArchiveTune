@@ -90,6 +90,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButton
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButtonHeight
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
@@ -604,7 +606,7 @@ private fun TrendingAlbumsSection(
                     Modifier
                         .combinedClickable(
                             onClick = {
-                                navController.navigate("album/${album.id}")
+                                navController.navigateToAlbum(album.id)
                             },
                             onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -652,7 +654,7 @@ private fun SuggestedArtistsSection(
                     Modifier
                         .combinedClickable(
                             onClick = {
-                                navController.navigate("artist/${artist.id}")
+                                navController.navigateToArtist(artist.id)
                             },
                             onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

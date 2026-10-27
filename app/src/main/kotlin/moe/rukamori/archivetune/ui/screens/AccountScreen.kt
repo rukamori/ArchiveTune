@@ -47,6 +47,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.AccountContentType
 import moe.rukamori.archivetune.viewmodels.AccountViewModel
 
@@ -134,7 +136,7 @@ fun AccountScreen(
                             Modifier
                                 .combinedClickable(
                                     onClick = {
-                                        navController.navigate("album/${item.id}")
+                                        navController.navigateToAlbum(item.id)
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -171,7 +173,7 @@ fun AccountScreen(
                             Modifier
                                 .combinedClickable(
                                     onClick = {
-                                        navController.navigate("artist/${item.id}")
+                                        navController.navigateToArtist(item.id)
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

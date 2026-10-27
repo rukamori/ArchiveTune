@@ -57,6 +57,8 @@ data class HomeUiState(
     val isLoadingMore: Boolean,
 )
 
+fun HomePage.Section.hasVisibleContent(): Boolean = items.isNotEmpty() || featuredCards.isNotEmpty()
+
 sealed interface HomeAction {
     data object Refresh : HomeAction
 

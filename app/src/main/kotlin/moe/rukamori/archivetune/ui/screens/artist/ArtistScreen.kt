@@ -144,6 +144,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ArtistAction
@@ -623,7 +625,7 @@ fun ArtistScreen(
                     ) {
                         ArtistNewReleaseSection(
                             release = release,
-                            onClick = { navController.navigate("album/${release.id}") },
+                            onClick = { navController.navigateToAlbum(release.id) },
                         )
                     }
                 }
@@ -774,7 +776,7 @@ fun ArtistScreen(
                                             Modifier
                                                 .combinedClickable(
                                                     onClick = {
-                                                        navController.navigate("album/${album.id}")
+                                                        navController.navigateToAlbum(album.id)
                                                     },
                                                     onLongClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -926,11 +928,11 @@ fun ArtistScreen(
                                                                 }
 
                                                                 is AlbumItem -> {
-                                                                    navController.navigate("album/${item.id}")
+                                                                    navController.navigateToAlbum(item.id)
                                                                 }
 
                                                                 is ArtistItem -> {
-                                                                    navController.navigate("artist/${item.id}")
+                                                                    navController.navigateToArtist(item.id)
                                                                 }
 
                                                                 is PlaylistItem -> {

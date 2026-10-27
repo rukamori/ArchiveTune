@@ -40,6 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -50,11 +51,11 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
-import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.playback.stream.ResolvedAudioStream
@@ -86,6 +87,9 @@ class DownloadUtil
         @PlayerCache val playerCache: Cache,
         private val downloadedArtworkRepository: DownloadedArtworkRepository,
         private val resolveAudioStream: ResolveAudioStreamUseCase,
+        private val moduleAudio: moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase,
+        private val moduleBindings: moe.rukamori.archivetune.modules.ModuleDownloadRepository,
+        private val moduleStorage: moe.rukamori.archivetune.modules.ModuleMediaStorage,
     ) {
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -202,7 +206,14 @@ class DownloadUtil
                 context,
                 DefaultDownloadIndex(databaseProvider),
                 DownloaderFactory { request ->
-                    ResumingDownloader(request, downloaderFactory, ::resetDownloadContent)
+                    ModuleSelectingDownloader(
+                        request,
+                        DownloaderFactory { standardRequest -> ResumingDownloader(standardRequest, downloaderFactory, ::resetDownloadContent) },
+                        moduleAudio,
+                        moduleBindings,
+                        moduleStorage,
+                        downloadScope,
+                    )
                 },
             ).apply {
                 maxParallelDownloads = MAX_PARALLEL_DOWNLOADS
@@ -271,6 +282,13 @@ class DownloadUtil
                     result.apply { putAll(current) }
                 }
                 downloadedArtworkRepository.retainForDownloads(result.keys)
+                try {
+                    restoreDownloadMetadata(result.keys)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Timber.w(exception, "Failed to restore downloaded song metadata")
+                }
                 for (download in result.values) {
                     if (download.state == Download.STATE_COMPLETED) {
                         scheduleDownloadedArtwork(download.request.id).join()
@@ -396,6 +414,7 @@ class DownloadUtil
                 authState = YouTube.currentPlaybackAuthState(),
                 pinnedFormatId = pinnedFormatId,
                 requiresSongMetadata = requiresSongMetadata,
+                allowModules = false,
             )
         }
 
@@ -459,8 +478,13 @@ class DownloadUtil
             if (persistedMetadata.put(mediaId, signature) == signature) return
             downloadScope.launch {
                 try {
+                    restoreDownloadMetadata(listOf(mediaId))
                     val artworkUrls =
                         database.withTransaction {
+                            val download = downloads.value[mediaId]
+                            if (download == null || download.state == Download.STATE_REMOVING) {
+                                return@withTransaction emptyList<String?>()
+                            }
                             val existingFormat = getFormatByIdBlocking(mediaId)
                             upsert(
                                 FormatEntity(
@@ -481,37 +505,60 @@ class DownloadUtil
                                 ),
                             )
 
-                        val now = LocalDateTime.now()
-                        val existing = getSongByIdBlocking(mediaId)?.song
-                        val resolvedThumbnailUrl =
-                            resolved.thumbnailUrl?.takeIf { it.isNotBlank() }
-
-                        val updatedSong =
-                            if (existing != null) {
+                            val existing =
+                                getSongByIdBlocking(mediaId)?.song
+                                    ?: throw IOException("Download song metadata is unavailable for $mediaId")
+                            val resolvedThumbnailUrl = resolved.thumbnailUrl?.takeIf { it.isNotBlank() }
+                            val updatedSong =
                                 existing.copy(
+                                    duration =
+                                        resolved.durationSeconds?.takeIf { existing.duration <= 0 && it > 0 }
+                                            ?: existing.duration,
                                     thumbnailUrl = existing.thumbnailUrl?.takeIf { it.isNotBlank() } ?: resolvedThumbnailUrl,
-                                    dateDownload = existing.dateDownload ?: now,
+                                    dateDownload = existing.dateDownload ?: LocalDateTime.now(),
                                 )
-                            } else {
-                                SongEntity(
-                                    id = mediaId,
-                                    title = resolved.title ?: mediaId,
-                                    duration = resolved.durationSeconds ?: 0,
-                                    thumbnailUrl = resolvedThumbnailUrl,
-                                    dateDownload = now,
-                                )
-                            }
 
-                            upsert(updatedSong)
+                            update(updatedSong)
                             listOf(updatedSong.thumbnailUrl, resolvedThumbnailUrl)
                         }
-                    scheduleDownloadedArtwork(mediaId, artworkUrls)
+                    if (artworkUrls.isNotEmpty()) scheduleDownloadedArtwork(mediaId, artworkUrls)
                 } catch (exception: CancellationException) {
                     persistedMetadata.remove(mediaId, signature)
                     throw exception
                 } catch (exception: Exception) {
                     persistedMetadata.remove(mediaId, signature)
                     Timber.w(exception, "Failed to persist download metadata")
+                }
+            }
+        }
+
+        private suspend fun restoreDownloadMetadata(mediaIds: Collection<String>) {
+            for (batch in mediaIds.chunked(DOWNLOAD_METADATA_BATCH_SIZE)) {
+                val songs = database.getSongsByIds(batch).associateBy { it.id }
+                val missingIds =
+                    batch.filter { mediaId ->
+                        val download = downloads.value[mediaId]
+                        val song = songs[mediaId]
+                        download != null && download.state != Download.STATE_REMOVING &&
+                            song?.song?.isLocal != true &&
+                            (song == null || song.artists.none { it.name.isNotBlank() })
+                    }
+                if (missingIds.isEmpty()) continue
+
+                val metadata = YouTube.queue(missingIds).getOrThrow()
+                currentCoroutineContext().ensureActive()
+                database.withTransaction {
+                    for (item in metadata) {
+                        if (item.id !in missingIds) continue
+                        val download = downloads.value[item.id]
+                        if (download == null || download.state == Download.STATE_REMOVING) continue
+                        insert(item.toMediaMetadata())
+                    }
+                }
+                val restoredIds = metadata.filter { item -> item.artists.any { it.name.isNotBlank() } }.map { it.id }.toSet()
+                val unresolvedCount = missingIds.count { it !in restoredIds }
+                if (unresolvedCount > 0) {
+                    Timber.w("Metadata unavailable for %d downloaded songs", unresolvedCount)
                 }
             }
         }
@@ -524,7 +571,6 @@ class DownloadUtil
                 bitrate = bitrate,
                 sampleRate = sampleRate,
                 contentLength = contentLength,
-                title = title,
                 durationSeconds = durationSeconds,
                 thumbnailUrl = thumbnailUrl,
             )
@@ -594,7 +640,6 @@ class DownloadUtil
             val bitrate: Int,
             val sampleRate: Int?,
             val contentLength: Long,
-            val title: String?,
             val durationSeconds: Int?,
             val thumbnailUrl: String?,
         )
@@ -746,6 +791,7 @@ class DownloadUtil
             private const val MAX_DOWNLOAD_HTTP_REQUESTS = MAX_PARALLEL_DOWNLOADS
             private const val DOWNLOAD_READ_TIMEOUT_SECONDS = 30L
             private const val DOWNLOAD_PROGRESS_REFRESH_INTERVAL_MS = 1_000L
+            private const val DOWNLOAD_METADATA_BATCH_SIZE = 100
             private const val DOWNLOAD_CONNECTION_KEEP_ALIVE_MINUTES = 5L
             private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
             private const val MAX_LOGGED_CAUSE_DEPTH = 6

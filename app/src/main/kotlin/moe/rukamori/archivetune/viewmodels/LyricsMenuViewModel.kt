@@ -38,6 +38,7 @@ import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.AiCustomPromptKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
+import moe.rukamori.archivetune.constants.AiRequestParametersKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LyricsEntity
@@ -347,6 +348,7 @@ class LyricsMenuViewModel
                                         provider = prefs[AiProviderKey].toEnum(AiProvider.NONE),
                                         apiKey = prefs[AiApiKeyKey].orEmpty(),
                                         customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
+                                        requestParameters = prefs[AiRequestParametersKey].orEmpty(),
                                         model =
                                             if (prefs[AiProviderKey].toEnum(AiProvider.NONE) == AiProvider.CUSTOM) {
                                                 prefs[AiCustomModelKey].orEmpty()

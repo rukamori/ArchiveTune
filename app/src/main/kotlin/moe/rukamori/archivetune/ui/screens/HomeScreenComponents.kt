@@ -141,6 +141,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -302,7 +304,7 @@ fun QuickPicksSection(
 
                 HorizontalCenteredHeroCarousel(
                     state = rememberCarouselState { distinctQuickPicks.size },
-                    maxItemWidth = heroMaxWidth,
+                    preferredItemWidth = heroMaxWidth,
                     itemSpacing = 10.dp,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier =
@@ -565,7 +567,7 @@ fun RemoteQuickPicksSection(
 
                 HorizontalCenteredHeroCarousel(
                     state = rememberCarouselState { songs.size },
-                    maxItemWidth = heroMaxWidth,
+                    preferredItemWidth = heroMaxWidth,
                     itemSpacing = 10.dp,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier =
@@ -1034,11 +1036,11 @@ fun SpeedDialSection(
                                                                     }
 
                                                                     is Album -> {
-                                                                        navController.navigate("album/${localItem.id}")
+                                                                        navController.navigateToAlbum(localItem.id)
                                                                     }
 
                                                                     is Artist -> {
-                                                                        navController.navigate("artist/${localItem.id}")
+                                                                        navController.navigateToArtist(localItem.id)
                                                                     }
 
                                                                     is Playlist -> {
@@ -1263,8 +1265,8 @@ private fun KeepListeningResumeCard(
                         }
                     }
 
-                    is Album -> navController.navigate("album/${item.id}")
-                    is Artist -> navController.navigate("artist/${item.id}")
+                    is Album -> navController.navigateToAlbum(item.id)
+                    is Artist -> navController.navigateToArtist(item.id)
                     is Playlist -> navController.navigate("local_playlist/${item.id}")
                 }
             }
@@ -1676,9 +1678,9 @@ private fun SimilarDiscoveryDeck(
     val onHeaderClick: (() -> Unit)? =
         remember(source, navController) {
             when (source) {
-                is Song -> source.album?.id?.let { albumId -> ({ navController.navigate("album/$albumId") }) }
-                is Album -> ({ navController.navigate("album/${source.id}") })
-                is Artist -> ({ navController.navigate("artist/${source.id}") })
+                is Song -> source.album?.id?.let { albumId -> ({ navController.navigateToAlbum(albumId) }) }
+                is Album -> ({ navController.navigateToAlbum(source.id) })
+                is Artist -> ({ navController.navigateToArtist(source.id) })
                 is Playlist -> ({ navController.navigate("local_playlist/${source.id}") })
             }
         }
@@ -1862,8 +1864,18 @@ private fun FeaturedPlaylistCard(
         }
     val secondaryEndpoint = card.radioEndpoint ?: card.shuffleEndpoint
     val playSecondary =
-        remember(secondaryEndpoint, playerConnection) {
-            secondaryEndpoint?.let { endpoint -> { playerConnection.playQueue(YouTubeQueue.playlist(endpoint)) } }
+        remember(card.id, card.radioEndpoint, secondaryEndpoint, playerConnection) {
+            secondaryEndpoint?.let { endpoint ->
+                {
+                    val queue =
+                        if (card.radioEndpoint != null) {
+                            YouTubeQueue.playlist(endpoint)
+                        } else {
+                            YouTubeQueue.shuffledPlaylist(card.id, endpoint)
+                        }
+                    playerConnection.playQueue(queue)
+                }
+            }
         }
     val showPlaylistMenu =
         remember(playlist, menuState, scope) {
@@ -2108,11 +2120,11 @@ private fun YouTubeGridItemWrapper(
                             }
 
                             is AlbumItem -> {
-                                navController.navigate("album/${item.id}")
+                                navController.navigateToAlbum(item.id)
                             }
 
                             is ArtistItem -> {
-                                navController.navigate("artist/${item.id}")
+                                navController.navigateToArtist(item.id)
                             }
 
                             is PlaylistItem -> {

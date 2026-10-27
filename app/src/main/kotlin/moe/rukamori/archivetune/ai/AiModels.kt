@@ -22,6 +22,7 @@ data class AiServiceConfig(
     val apiKey: String,
     val customEndpoint: String,
     val model: String,
+    val requestParameters: String = "",
 ) {
     val canCallApi: Boolean
         get() =

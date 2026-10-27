@@ -16,17 +16,17 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
+          python-version: '3.15'
 
       - name: Generate translation contributor credits
         run: python scripts/generate_translation_contributors.py
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
-          java-version: 21
+          java-version: 27
           distribution: "temurin"
 
       - name: Set Up Gradle
@@ -66,13 +66,3 @@ jobs:
           API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-mobile-universal-debug-pr-${{ github.event.number }}
-          path: |
-            app/build/outputs/apk/gms/mobile/universal/debug/*.apk
-            app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
-            app/build/outputs/apk/mobile/universal/debug/*.apk
-            app/build/outputs/apk/mobileUniversal/debug/*.apk

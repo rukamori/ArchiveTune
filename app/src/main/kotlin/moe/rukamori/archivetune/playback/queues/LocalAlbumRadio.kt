@@ -15,12 +15,17 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.withQueueEntry
+import moe.rukamori.archivetune.innertube.pages.QueueChip
 
 class LocalAlbumRadio(
     internal val albumWithSongs: AlbumWithSongs,
     internal val startIndex: Int = 0,
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
+    override val recommendationOnlyContinuation: Boolean = true
+    override var queueChips: List<QueueChip> = emptyList()
+        private set
 
     private lateinit var playlistId: String
     private val endpoint: WatchEndpoint
@@ -56,14 +61,16 @@ class LocalAlbumRadio(
                         .getOrThrow()
                         .album.playlistId
                 val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
+                queueChips = nextResult.queueChips
                 continuation = nextResult.continuation
                 firstTimeLoaded = true
                 return@withContext nextResult.items
                     .filterNot { it.id in initialSongIds }
-                    .map { it.toMediaItem() }
+                    .map { it.toMediaItem().withQueueEntry(recommended = true) }
             }
             val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
+            if (nextResult.queueChips.isNotEmpty()) queueChips = nextResult.queueChips
             continuation = nextResult.continuation
-            nextResult.items.map { it.toMediaItem() }
+            nextResult.items.map { it.toMediaItem().withQueueEntry(recommended = true) }
         }
 }

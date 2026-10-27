@@ -13,9 +13,11 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
 
 permissions:
-  contents: write
-  discussions: write
-  actions: write
+  contents: read
+
+concurrency:
+  group: early-access-build-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   notifyTelegram:
@@ -27,7 +29,7 @@ jobs:
           submodules: true
 
       - name: Set up Python 3
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
@@ -95,18 +97,18 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+      - name: Set up Python 3.15
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
+          python-version: '3.15'
 
       - name: Generate translation contributor credits
         run: python scripts/generate_translation_contributors.py
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Set up JDK 27
+        uses: actions/setup-java@v6
         with:
-          java-version: '21'
+          java-version: '27'
           distribution: 'temurin'
       
       - name: Set Up Gradle
@@ -136,7 +138,6 @@ jobs:
           echo "device_cap=$DEVICE_CAP" >> "$GITHUB_OUTPUT"
           echo "abi_cap=$ABI_CAP" >> "$GITHUB_OUTPUT"
           echo "gradle_task=assemble${DISTRIBUTION_CAP}${DEVICE_CAP}${ABI_CAP}Release" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release" >> "$GITHUB_OUTPUT"
           echo "apk_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release.apk" >> "$GITHUB_OUTPUT"
 
       - name: Resolve build hash
@@ -247,138 +248,62 @@ jobs:
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
-          mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+          mapfile -t SIGNED_APKS < <(
+            find "$RELEASE_DIR" -maxdepth 1 -type f \
+              \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | sort
+          )
+          if [ "${#SIGNED_APKS[@]}" -ne 1 ]; then
+            printf 'Expected one signed APK in %s, found %s\n' "$RELEASE_DIR" "${#SIGNED_APKS[@]}" >&2
+            exit 1
+          fi
+          mv "${SIGNED_APKS[0]}" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
-      - name: Upload Signed APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ steps.variant.outputs.artifact_name }}
-          path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+      - name: Publish Signed Release APK to Private R2
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          APK_PATH: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+          APK_NAME: ${{ steps.variant.outputs.apk_name }}
+        run: bash .github/scripts/publish-early-access.sh
 
-  aggregateAndSend:
-    name: Send APKs to Telegram
+  finalizeEarlyAccess:
+    name: Finalize Build and Enforce R2 Retention
     runs-on: ubuntu-latest
     needs: build
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: app-*-release
-          merge-multiple: true
-          path: app/build/outputs/apk/download
-
-      - name: Set up Python 3
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
-
-      - name: Install Dependencies
-        run: |
-          pip install telethon
-
-      - name: Get Git Commit Info
-        run: |
-          echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
-          echo "COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
-
-      - name: Restore Telegram session cache
-        uses: actions/cache@v6
-        id: telegram_session_cache
-        with:
-          path: bot_session.session
-          key: telegram-session-${{ runner.os }}-bot_session
-
-      - name: Send APKs to Telegram
+      - name: Retain Five Successful Commits per Branch
         env:
-          API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          APK_PATH: app/build/outputs/apk/download/*.apk
-        run: |
-          python ./.github/workflows/deploy_artifacts.py
-        continue-on-error: true
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: python3 .github/scripts/finalize-early-access.py
 
-  build_debug:
+  notifyDiscord:
+    name: Announce complete Early Access build
     if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     runs-on: ubuntu-latest
-
+    needs: finalizeEarlyAccess
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Generate translation contributor credits
-        run: python scripts/generate_translation_contributors.py
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          
-      - name: Set Up Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-cleanup: on-success
-          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
-          
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Resolve build hash
-        id: build_hash
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
-            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build Debug APK
-        run: ./gradlew assembleGmsMobileUniversalDebug
+      - name: Notify authorized Discord channel
         env:
-          PULL_REQUEST: 'false'
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
-          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
-          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
-          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
-          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-gms-mobile-universal-debug
-          path: |
-            app/build/outputs/apk/mobile/universal/debug/*.apk
-            app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
-            app/build/outputs/apk/gms/mobile/universal/debug/*.apk
-            app/build/outputs/apk/mobileUniversal/debug/*.apk
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          EARLY_ACCESS_SITE_ORIGIN: ${{ vars.EARLY_ACCESS_SITE_ORIGIN }}
+        run: bash .github/scripts/notify-early-access.sh
 
   notifyUser:
     name: Notify referenced issues
     if: github.ref == 'refs/heads/dev' && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     needs:
       - build
-      - aggregateAndSend
-      - build_debug
     uses: ./.github/workflows/notify_user.yml
     permissions:
       issues: write

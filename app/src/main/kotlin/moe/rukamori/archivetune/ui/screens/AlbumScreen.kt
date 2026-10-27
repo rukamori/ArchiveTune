@@ -105,6 +105,8 @@ import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
+import moe.rukamori.archivetune.ui.utils.navigateToAlbum
+import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -243,7 +245,7 @@ fun AlbumScreen(
                                 albumWithSongs.artists.fastForEachIndexed { index, artist ->
                                     withLink(
                                         LinkAnnotation.Clickable(artist.id) {
-                                            navController.navigate("artist/${artist.id}")
+                                            navController.navigateToArtist(artist.id)
                                         },
                                     ) {
                                         append(artist.name)
@@ -487,7 +489,7 @@ fun AlbumScreen(
                                     modifier =
                                         Modifier
                                             .combinedClickable(
-                                                onClick = { navController.navigate("album/${item.id}") },
+                                                onClick = { navController.navigateToAlbum(item.id) },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     menuState.show {

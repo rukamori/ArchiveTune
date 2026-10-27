@@ -49,6 +49,10 @@ class UpdateAiIntegrationSettingsUseCase
         suspend fun setCustomPrompt(prompt: String) {
             repository.setCustomPrompt(prompt)
         }
+
+        suspend fun setRequestParameters(value: String) {
+            repository.setRequestParameters(value)
+        }
     }
 
 class FetchAiModelsUseCase
@@ -65,15 +69,16 @@ class TestAiIntegrationUseCase
     constructor(
         private val repository: AiIntegrationSettingsRepository,
     ) {
-        suspend operator fun invoke() {
+        suspend operator fun invoke(): Boolean {
+            val config = repository.currentSettings().toServiceConfig()
             try {
-                repository.test(repository.currentSettings().toServiceConfig())
-                repository.setValidationStatus(AiApiValidationStatus.SUCCESS)
+                repository.test(config)
+                return repository.setValidationStatus(AiApiValidationStatus.SUCCESS, config)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                repository.setValidationStatus(AiApiValidationStatus.FAILED)
-                throw e
+                if (repository.setValidationStatus(AiApiValidationStatus.FAILED, config)) throw e
+                return false
             }
         }
     }

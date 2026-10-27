@@ -82,6 +82,7 @@ data class LyricsRenderingPreferences(
     val v2FillTransitionWidthDp: Float,
     val v2LrcBounceEnabled: Boolean,
     val romanization: LyricsRomanizationPreferences,
+    val showTranslations: Boolean = true,
 )
 
 @Immutable
@@ -90,4 +91,6 @@ data class PreparedLyrics(
     val syncType: LyricsSyncType,
     val lines: ImmutableList<PreparedLyricsLine>,
     val preferences: LyricsRenderingPreferences,
-)
+) {
+    val hasTranslations: Boolean = lines.any { !it.translation.isNullOrBlank() }
+}

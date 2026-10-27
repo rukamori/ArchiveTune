@@ -604,7 +604,6 @@
     <string name="disable_animations_desc">Desactiva la mayoría de las animaciones de las aplicaciones. Recomendado para dispositivos de gama baja</string>
     <string name="updates_status_checking">Comprobar si hay una nueva versión</string>
     <string name="updates_status_current">Tienes la última versión disponible</string>
-    <string name="update_channel_desc">Elige entre versiones probadas o en desarrollo.</string>
     <string name="updates_loading_commits">Cargando las últimas modificaciones</string>
     <string name="updates_recent_commits_count">%1$d commits recientes</string>
     <string name="updates_no_commits">Sin cambios recientes</string>
@@ -631,7 +630,6 @@
     <string name="testing_proxy_connection">Comprobando la conexión del proxy</string>
     <string name="proxy_connection_success">¡Conexión a través del proxy realizada correctamente!</string>
     <string name="proxy_connection_failed">Error en la conexión al servidor proxy: %s</string>
-    <string name="enable_paxsenix_lyrics">Activar la letra de Paxsenix</string>
     <string name="clear_lyrics_cache">Borrar la caché de las letras</string>
     <string name="clear_lyrics_cache_confirm">¿Estás seguro de que quieres borrar la caché de todas las letras de las canciones?</string>
     <string name="paxsenix_stats">Monitoreo y estadísticas de Paxsenix</string>
@@ -850,8 +848,6 @@
     <string name="lastfm_login_api_key_suspended">Clave de la API suspendida.</string>
     <string name="lastfm_login_network_error">Error de red. Comprueba tu conexión.</string>
     <string name="percent_format">%1$d%%</string>
-    <string name="updates_channel_warning_intro">ArchiveTune ofrece dos formas para descargar las versiones:</string>
-    <string name="updates_channel_warning_stable_source">Distribuido a través de las versiones oficiales de GitHub.</string>
     <string name="together_participant_joined_notification">%1$s se unió a la sala</string>
     <string name="together_participant_left_notification">%1$s abandono la sala</string>
     <string name="together_unknown_participant">Alguien</string>
@@ -877,8 +873,6 @@
     <string name="lastfm_login_failed">Error al iniciar sesión. Inténtalo de nuevo.</string>
     <string name="duration_seconds_short">%1$ds</string>
     <string name="export">Exportar</string>
-    <string name="updates_channel_warning_stable_title">Versiones estables</string>
-    <string name="updates_channel_warning_stable_desc">Estas versiones han sido probadas y se recomiendan para la mayoría de los usuarios.</string>
     <string name="together_room_closed_inactivity_notification">La sala se cerró porque nadie se unió durante 10 minutos</string>
     <string name="show_player_volume_bar">Mostrar barra de volumen</string>
     <string name="player_volume_bar_v7_v8_only">Disponible únicamente con los estilos de reproductor V7 y V8</string>
@@ -887,15 +881,7 @@
     <string name="jump_to_latest_log">Ir al registro más reciente</string>
     <string name="copy_log_entry">Copiar entrada de registro</string>
     <string name="export_logs_failed">No se pueden exportar los registros</string>
-    <string name="updates_subtitle_artifact">Versiones Canary y versiones en desarrollo</string>
     <string name="enable_update_notification_channel_desc">Recibe notificaciones cuando haya una nueva versión disponible en el canal seleccionado</string>
-    <string name="channel_artifact">Canary</string>
-    <string name="updates_artifact_hosting_description">Las versiones Canary se publican automáticamente desde la última versión en desarrollo.</string>
-    <string name="updates_channel_warning_artifact_title">Versión Canary</string>
-    <string name="updates_channel_warning_artifact_risk">Las versiones Canary pueden incluir funciones experimentales, cambios incompletos o regresiones temporales.</string>
-    <string name="updates_channel_warning_artifact_unstable">Las versiones Canary se proporcionan únicamente para pruebas y acceso anticipado.\nNo se garantiza la estabilidad, la compatibilidad ni la funcionalidad.</string>
-    <string name="updates_channel_warning_artifact_acknowledgement">Nota: descargar directamente desde GitHub evita cualquier filtro adicional que pueda realizar la tienda desde la que instalaste originalmente la aplicación.\nAl continuar, usted reconoce que las versiones Canary pueden ser inestables y que las utiliza bajo su propia responsabilidad.</string>
-    <string name="updates_artifact_channel_confirmation">Cambia al canal Canary para recibir las versiones de desarrollo.\n\nLas versiones Canary se publican automáticamente desde la última rama de desarrollo.\nNota: descargar directamente desde GitHub evita cualquier filtro adicional que pueda realizar la tienda desde la que instalaste originalmente la aplicación.</string>
     <string name="download_complete">Descarga completa</string>
     <string name="onboarding_welcome_title">¡Bienvenido a ArchiveTune!</string>
     <string name="onboarding_welcome_subtitle">Configura la reproducción, la música local y los permisos de actualización antes de empezar a escuchar.</string>
