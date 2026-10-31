@@ -289,6 +289,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
 import moe.rukamori.archivetune.ui.screens.library.LibraryHeaderContentPadding
+import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
 import moe.rukamori.archivetune.ui.screens.LoginScreen
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -975,8 +976,24 @@ class MainActivity : ComponentActivity() {
                     val latestUnreadNewsTimestamp by newsViewModel.latestUnreadNewsTimestamp.collectAsStateWithLifecycle()
                     val hasUnreadNews = latestUnreadNewsTimestamp != null
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val visibleBackStackEntries by navController.visibleEntries.collectAsStateWithLifecycle()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
+                    val hasVisibleLoginWebView =
+                        remember(currentRoute, visibleBackStackEntries) {
+                            currentRoute?.substringBefore('?') == LOGIN_ROUTE ||
+                                visibleBackStackEntries.any { entry ->
+                                    entry.destination.route?.substringBefore('?') == LOGIN_ROUTE
+                                }
+                        }
+                    val menuHazeSourceModifier =
+                        remember(menuHazeState, hasVisibleLoginWebView) {
+                            if (hasVisibleLoginWebView) Modifier else Modifier.hazeSource(menuHazeState)
+                        }
+                    val floatingBarsHazeSourceModifier =
+                        remember(floatingBarsHazeState, hasVisibleLoginWebView) {
+                            if (hasVisibleLoginWebView) Modifier else Modifier.hazeSource(floatingBarsHazeState)
+                        }
                     val isAppUpdateScreen = currentRoute?.substringBefore('?') == AppUpdateRoute
                     val currentNavigationLifecycle = navBackStackEntry?.lifecycle?.currentStateFlow
                         ?.collectAsStateWithLifecycle()?.value
@@ -2482,7 +2499,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     },
-                                    modifier = Modifier.fillMaxSize().hazeSource(menuHazeState),
+                                    modifier = Modifier.fillMaxSize().then(menuHazeSourceModifier),
                                 ) {
                                     var transitionDirection =
                                         AnimatedContentTransitionScope.SlideDirection.Left
@@ -2604,7 +2621,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         modifier =
                                             Modifier
-                                                .hazeSource(floatingBarsHazeState)
+                                                .then(floatingBarsHazeSourceModifier)
                                                 .then(
                                                     if (isTvDevice) {
                                                         Modifier
