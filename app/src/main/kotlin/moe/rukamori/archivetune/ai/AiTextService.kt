@@ -304,8 +304,8 @@ object AiTextService {
     private fun defaultModelFor(provider: AiProvider): String =
         when (provider) {
             AiProvider.CHATGPT -> "gpt-4o"
-            AiProvider.GEMINI -> "gemini-3.5-flash"
-            AiProvider.OPENROUTER -> "~openai/gpt-latest"
+            AiProvider.GEMINI -> "gemini-2.5-flash"
+            AiProvider.OPENROUTER -> "openai/gpt-4o-mini"
             AiProvider.CUSTOM -> throw AiServiceException("No AI model configured")
             AiProvider.NONE -> throw AiServiceException("AI provider is disabled")
         }
