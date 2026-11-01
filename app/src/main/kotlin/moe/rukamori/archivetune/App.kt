@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.appicon.RestoreLauncherEntryUseCase
+import moe.rukamori.archivetune.backup.PendingDatabaseRestore
 import moe.rukamori.archivetune.canvas.StartCanvasPolicyUseCase
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
@@ -104,6 +105,13 @@ class App :
 
     @Volatile private var isInitialized = false
     private val didRunImageCacheTrim = AtomicBoolean(false)
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        if (currentProcessName() == packageName) {
+            PendingDatabaseRestore.install(this)
+        }
+    }
 
     private fun currentProcessName(): String? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
