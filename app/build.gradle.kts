@@ -197,6 +197,7 @@ android {
         }
     }
 
+    val persistentDebugKeystore = file("persistent-debug.keystore")
     signingConfigs {
         create("release") {
             if (hasReleaseSigningConfig) {
@@ -204,15 +205,26 @@ android {
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
+            } else if (persistentDebugKeystore.isFile) {
+                storeFile = persistentDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+        getByName("debug") {
+            if (persistentDebugKeystore.isFile) {
+                storeFile = persistentDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             }
         }
     }
 
     buildTypes {
         release {
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

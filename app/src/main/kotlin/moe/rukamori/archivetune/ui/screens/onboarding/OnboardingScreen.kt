@@ -600,7 +600,6 @@ private fun WelcomePage(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SunnyIdentityPanel(
     iconResId: Int,
@@ -613,22 +612,57 @@ private fun SunnyIdentityPanel(
                 .heightIn(min = 260.dp),
         contentAlignment = Alignment.Center,
     ) {
+        // Ambient backlight glow
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.72f)
+                    .aspectRatio(1f)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                androidx.compose.ui.graphics.Color.Transparent,
+                            ),
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(44.dp),
+                    ),
+        )
+
+        // Liquid glass central panel
         Surface(
             modifier =
                 Modifier
-                    .fillMaxWidth(0.80f)
-                    .aspectRatio(1f),
-            shape = MaterialShapes.Sunny.toShape(0),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = 2.dp,
-            shadowElevation = 1.dp,
+                    .fillMaxWidth(0.68f)
+                    .aspectRatio(1f)
+                    .border(
+                        width = 1.dp,
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.60f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f),
+                                androidx.compose.ui.graphics.Color.Transparent,
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.30f),
+                            ),
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp),
+                    ),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 Icon(
                     painter = painterResource(iconResId),
                     contentDescription = null,
-                    modifier = Modifier.size(150.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(112.dp),
                 )
             }
         }
@@ -656,14 +690,19 @@ private fun OnboardingMetadataPills(uiState: OnboardingUiState) {
 @Composable
 private fun PassivePill(text: String) {
     Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 0.75.dp,
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f),
+        ),
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -775,10 +814,12 @@ private fun CommunitySpotlight(actions: ImmutableList<OnboardingCommunityActionU
                 .widthIn(max = OnboardingContentMaxWidth)
                 .fillMaxWidth()
                 .padding(bottom = 14.dp),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
         contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(0.75.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -790,15 +831,17 @@ private fun CommunitySpotlight(actions: ImmutableList<OnboardingCommunityActionU
                         Modifier
                             .weight(1f)
                             .aspectRatio(1f),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.25f)),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(action.iconResId),
                             contentDescription = null,
-                            modifier = Modifier.size(30.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp),
                         )
                     }
                 }
@@ -823,15 +866,29 @@ private fun ExpressivePageHeader(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Surface(
-            modifier = Modifier.size(88.dp),
-            shape = MaterialShapes.Sunny.toShape(0),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier =
+                Modifier
+                    .size(76.dp)
+                    .border(
+                        width = 1.dp,
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.50f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.10f),
+                            ),
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+                    ),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f),
+            contentColor = MaterialTheme.colorScheme.primary,
+            shadowElevation = 4.dp,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(iconResId),
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(34.dp),
                 )
             }

@@ -417,9 +417,7 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/appearance") {
         AppearanceSettings(navController)
     }
-    composable("settings/appearance/icon") {
-        IconScreen(navController)
-    }
+    // IconScreen removed per design update
     composable("settings/appearance/aod_customized") {
         AodCustomizedScreen(navController)
     }

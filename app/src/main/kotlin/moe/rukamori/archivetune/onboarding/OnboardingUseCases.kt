@@ -227,7 +227,7 @@ class BuildOnboardingUiStateUseCase
                         titleResId = R.string.support_development_star,
                         descriptionResId = R.string.onboarding_community_github_desc,
                         iconResId = R.drawable.github,
-                        url = "https://github.com/rukamori/ArchiveTune",
+                        url = "https://github.com/ks3695602-sys/FluentMusic-Android",
                     ),
                     OnboardingCommunityActionUiModel(
                         id = "discord",

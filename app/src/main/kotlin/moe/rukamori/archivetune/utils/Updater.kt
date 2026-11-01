@@ -56,7 +56,7 @@ object Updater {
     private val releaseRepo: String
         get() = BuildConfig.RELEASE_GITHUB_REPO
 
-    private const val CommitHistoryBaseUrl = "https://api.github.com/repos/rukamori/ArchiveTune"
+    private val CommitHistoryBaseUrl: String get() = "https://api.github.com/repos/$releaseOwner/$releaseRepo"
 
     private val stableReleaseBaseUrl: String
         get() = "https://github.com/$releaseOwner/$releaseRepo/releases"
@@ -242,7 +242,12 @@ object Updater {
                     (0 until releaseAssets.length())
                         .asSequence()
                         .mapNotNull(releaseAssets::optJSONObject)
-                        .firstOrNull { asset -> asset.optString("name") == expectedArtifactName }
+                        .firstOrNull { asset ->
+                            val name = asset.optString("name")
+                            name == expectedArtifactName ||
+                            name.contains("universal", ignoreCase = true) && name.endsWith(".apk") ||
+                            name.startsWith("FluentMusic", ignoreCase = true) && name.endsWith(".apk")
+                        }
                         ?.optString("browser_download_url")
                         ?.takeIf { it.isNotBlank() }
                 }
@@ -285,7 +290,7 @@ object Updater {
             client.get("https://api.github.com/repos/$releaseOwner/$releaseRepo/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
-                    append("User-Agent", "ArchiveTune")
+                    append("User-Agent", "FluentMusic")
                     if (!cachedEtag.isNullOrBlank()) {
                         append("If-None-Match", cachedEtag)
                     }
@@ -345,7 +350,7 @@ object Updater {
 
     suspend fun getCommitHistory(
         count: Int = 20,
-        branch: String = "dev",
+        branch: String = "main",
     ): Result<List<GitCommit>> =
         runCatchingCancellable {
             if (!isUpdaterDistribution) {

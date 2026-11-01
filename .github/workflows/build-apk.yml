@@ -72,8 +72,8 @@ jobs:
           # Copy release APK
           RELEASE_APK=$(find app/build/outputs/apk -type f -name "*universal*release*.apk" | head -n 1)
           if [ -n "$RELEASE_APK" ]; then
-            cp "$RELEASE_APK" release_artifacts/FluentMusic-universal-release-unsigned.apk
-            echo "Copied release APK: $RELEASE_APK -> release_artifacts/FluentMusic-universal-release-unsigned.apk"
+            cp "$RELEASE_APK" release_artifacts/FluentMusic-universal-release.apk
+            echo "Copied release APK: $RELEASE_APK -> release_artifacts/FluentMusic-universal-release.apk"
           fi
 
           # Also copy any other universal APKs if found

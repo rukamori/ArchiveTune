@@ -84,6 +84,7 @@ fun SettingsProfileHeader(
         }
 
     Card(
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier =
             modifier
                 .fillMaxWidth()
@@ -268,6 +269,7 @@ fun SettingsUpdateBanner(
     )
 
     Card(
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier =
             modifier
                 .fillMaxWidth()
@@ -569,6 +571,7 @@ fun SettingsSegmentedItem(
     )
 
     Card(
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier =
             modifier
                 .fillMaxWidth()
@@ -593,16 +596,21 @@ fun SettingsSegmentedItem(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 88.dp)
-                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                    .heightIn(min = 64.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier =
                     Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(effectiveAccent),
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(effectiveAccent.copy(alpha = 0.12f))
+                        .border(
+                            width = 0.5.dp,
+                            color = effectiveAccent.copy(alpha = 0.28f),
+                            shape = RoundedCornerShape(12.dp),
+                        ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (item.showUpdateIndicator) {
@@ -610,23 +618,23 @@ fun SettingsSegmentedItem(
                         badge = {
                             Badge(
                                 containerColor = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(9.dp),
+                                modifier = Modifier.size(8.dp),
                             )
                         },
                     ) {
                         Icon(
                             painter = item.icon,
                             contentDescription = null,
-                            tint = iconContentColor,
-                            modifier = Modifier.size(26.dp),
+                            tint = effectiveAccent,
+                            modifier = Modifier.size(22.dp),
                         )
                     }
                 } else {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = iconContentColor,
-                        modifier = Modifier.size(26.dp),
+                        tint = effectiveAccent,
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
@@ -679,7 +687,7 @@ private fun segmentedSettingsItemShape(
     index: Int,
     count: Int,
 ): Shape {
-    val large = 28.dp
+    val large = 20.dp
     val small = 6.dp
     return when {
         count <= 1 -> {

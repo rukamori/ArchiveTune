@@ -1985,84 +1985,35 @@ class MainActivity : ComponentActivity() {
                                                         val hasUpdateAvailable =
                                                             BuildConfig.UPDATER_AVAILABLE &&
                                                                 Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
-                                                        val newsTooltipState = rememberTooltipState()
-                                                        val newsLifecycleOwner = LocalLifecycleOwner.current
-                                                        LaunchedEffect(
-                                                            latestUnreadNewsTimestamp,
-                                                            newsLifecycleOwner,
-                                                            newsTooltipState,
-                                                        ) {
-                                                            val timestamp = latestUnreadNewsTimestamp
-                                                            if (timestamp == null) {
-                                                                newsTooltipState.dismiss()
-                                                                return@LaunchedEffect
-                                                            }
-                                                            newsLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                                                                if (newsViewModel.claimUnreadNewsTooltip(timestamp)) {
-                                                                    try {
-                                                                        newsTooltipState.show()
-                                                                    } finally {
-                                                                        newsTooltipState.dismiss()
+                                                        Box {
+                                                            TranslucentTopAppBarIconButton(
+                                                                onClick = mainMenuViewModel::toggle,
+                                                            ) {
+                                                                BadgedBox(badge = {
+                                                                    if (hasUpdateAvailable) {
+                                                                        Badge()
                                                                     }
+                                                                }) {
+                                                                    Icon(
+                                                                        painter = painterResource(R.drawable.more_horiz),
+                                                                        contentDescription =
+                                                                            stringResource(R.string.more_options),
+                                                                    )
                                                                 }
                                                             }
-                                                        }
-                                                        TooltipBox(
-                                                            positionProvider =
-                                                                if (hasUnreadNews) {
-                                                                    TooltipDefaults.rememberRichTooltipPositionProvider()
-                                                                } else {
-                                                                    TooltipDefaults.rememberPlainTooltipPositionProvider()
+                                                            TopAppBarOverflowMenu(
+                                                                expanded = topAppBarOverflowExpanded,
+                                                                profileState = menuProfileState,
+                                                                accountImageUrl = menuAccountImageUrl,
+                                                                hazeState = menuHazeState,
+                                                                pureBlack = pureBlack,
+                                                                hasUnreadNews = false,
+                                                                hasUpdateAvailable = hasUpdateAvailable,
+                                                                onDismissRequest = mainMenuViewModel::dismiss,
+                                                                onSelect = { destination ->
+                                                                    mainMenuViewModel.select(destination)
                                                                 },
-                                                            tooltip = {
-                                                                if (hasUnreadNews) {
-                                                                    RichTooltip(
-                                                                        title = { Text(stringResource(R.string.news_tooltip_title)) },
-                                                                    ) {
-                                                                        Text(stringResource(R.string.news_tooltip_body))
-                                                                    }
-                                                                } else {
-                                                                    PlainTooltip {
-                                                                        Text(stringResource(R.string.more_options))
-                                                                    }
-                                                                }
-                                                            },
-                                                            state = newsTooltipState,
-                                                        ) {
-                                                            Box {
-                                                                TranslucentTopAppBarIconButton(
-                                                                    onClick = {
-                                                                        newsTooltipState.dismiss()
-                                                                        mainMenuViewModel.toggle()
-                                                                    },
-                                                                ) {
-                                                                    BadgedBox(badge = {
-                                                                        if (hasUnreadNews || hasUpdateAvailable) {
-                                                                            Badge()
-                                                                        }
-                                                                    }) {
-                                                                        Icon(
-                                                                            painter = painterResource(R.drawable.more_horiz),
-                                                                            contentDescription =
-                                                                                stringResource(R.string.more_options),
-                                                                        )
-                                                                    }
-                                                                }
-                                                                TopAppBarOverflowMenu(
-                                                                    expanded = topAppBarOverflowExpanded,
-                                                                    profileState = menuProfileState,
-                                                                    accountImageUrl = menuAccountImageUrl,
-                                                                    hazeState = menuHazeState,
-                                                                    pureBlack = pureBlack,
-                                                                    hasUnreadNews = hasUnreadNews,
-                                                                    hasUpdateAvailable = hasUpdateAvailable,
-                                                                    onDismissRequest = mainMenuViewModel::dismiss,
-                                                                    onSelect = { destination ->
-                                                                        newsTooltipState.dismiss()
-                                                                        mainMenuViewModel.select(destination)
-                                                                    },
-                                                                )
-                                                            }
+                                                            )
                                                         }
                                                     },
                                                     scrollBehavior =

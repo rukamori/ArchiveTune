@@ -653,15 +653,6 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.app_icon)) },
-                        description = stringResource(R.string.app_icon_description),
-                        icon = { Icon(painterResource(R.drawable.app_icon_small), null) },
-                        onClick = { navController.navigate("settings/appearance/icon") },
-                    )
-                }
-
-                item {
                     EnumListPreference(
                         title = { Text(stringResource(R.string.dark_theme)) },
                         icon = { Icon(painterResource(R.drawable.dark_mode), null) },
@@ -1072,48 +1063,6 @@ fun AppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.customized_background)) },
                         icon = { Icon(painterResource(R.drawable.image), null) },
                         onClick = { navController.navigate("customize_background") },
-                    )
-                }
-
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.mini_player_background_style)) },
-                        icon = { Icon(painterResource(R.drawable.gradient), null) },
-                        selectedValue = miniPlayerBackground,
-                        onValueSelected = onMiniPlayerBackgroundSelected,
-                        valueText = {
-                            when (it) {
-                                MiniPlayerBackgroundStyle.THEME -> stringResource(R.string.follow_theme)
-                                MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
-                                MiniPlayerBackgroundStyle.GLOW -> stringResource(R.string.glow)
-                                MiniPlayerBackgroundStyle.ACRYLIC -> stringResource(R.string.acrylic)
-                                MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.blur)
-                                MiniPlayerBackgroundStyle.GLASS -> stringResource(R.string.glass)
-                            }
-                        },
-                    )
-                }
-
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.navigation_bar_background_style)) },
-                        icon = { Icon(painterResource(R.drawable.gradient), null) },
-                        selectedValue = navigationBarBackground,
-                        isEnabled = navigationBarMode != NavigationBarMode.APPLE_MUSIC,
-                        description = if (navigationBarMode == NavigationBarMode.APPLE_MUSIC) {
-                            stringResource(R.string.navigation_bar_background_apple_music)
-                        } else {
-                            null
-                        },
-                        onValueSelected = onNavigationBarBackgroundSelected,
-                        valueText = {
-                            when (it) {
-                                NavigationBarBackgroundStyle.THEME -> stringResource(R.string.follow_theme)
-                                NavigationBarBackgroundStyle.BLUR -> stringResource(R.string.blur)
-                                NavigationBarBackgroundStyle.ACRYLIC -> stringResource(R.string.acrylic)
-                                NavigationBarBackgroundStyle.GLASS -> stringResource(R.string.glass)
-                            }
-                        },
                     )
                 }
 
