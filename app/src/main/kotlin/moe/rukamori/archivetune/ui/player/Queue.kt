@@ -13,6 +13,8 @@ import android.view.ViewTreeObserver
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -238,8 +240,12 @@ internal fun QueueFooter(
     val playerDesignStyle by rememberEnumPreference(key = PlayerDesignStyleKey, defaultValue = PlayerDesignStyle.V4)
     val (showCodecOnPlayer) = rememberPreference(booleanPreferencesKey("show_codec_on_player"), false)
 
-    Box(
-        modifier = modifier
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
             .fillMaxWidth()
             .height(peekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding())
             .windowInsetsPadding(
@@ -506,5 +512,10 @@ internal fun QueueFooter(
 
             PlayerDesignStyle.V5 -> Unit
         }
+    }
+
+    if (playerDesignStyle == PlayerDesignStyle.V10) {
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     }
 }
