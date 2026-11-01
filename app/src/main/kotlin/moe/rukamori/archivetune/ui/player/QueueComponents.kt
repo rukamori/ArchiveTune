@@ -1553,6 +1553,7 @@ fun QueueCollapsedContentV10(
     ) {
         val hasCodec = showCodecOnPlayer && currentFormat != null
         if (hasCodec) {
+            Spacer(modifier = Modifier.height(2.dp))
             val container = currentFormat.containerLabel()
             val bitrate = currentFormat.autoRateDisplay()
             CodecInfoRow(
@@ -1688,7 +1689,7 @@ private fun RowScope.EditorialSegmentedButton(
             painter = painterResource(iconResId),
             contentDescription = contentDescription,
             tint = contentColor,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
