@@ -27,7 +27,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -51,6 +51,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.google.common.collect.ImmutableList
@@ -80,13 +82,13 @@ fun WhatsNewDialog(
                 modifier = Modifier.size(56.dp),
                 shape = MaterialShapes.SoftBurst.toShape(),
                 color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(R.drawable.new_release),
                         contentDescription = null,
                         modifier = Modifier.size(AlertDialogDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -113,7 +115,7 @@ fun WhatsNewDialog(
                     is WhatsNewContent.Success -> WhatsNewReleaseContent(
                         version = state.version,
                         sections = content.sections,
-                        modifier = Modifier.weight(1f, fill = false),
+                        modifier = Modifier.weight(1f),
                     )
                     WhatsNewContent.Empty -> Column(
                         modifier = Modifier
@@ -200,8 +202,13 @@ private fun WhatsNewReleaseContent(
     val section = sections[selectedIndex]
     val colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
 
-    Column(modifier = modifier) {
-        SecondaryTabRow(selectedTabIndex = selectedIndex, containerColor = Color.Transparent) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        PrimaryTabRow(
+            selectedTabIndex = selectedIndex,
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
+        ) {
             sections.forEachIndexed { index, item ->
                 val titleRes = when (item.category) {
                     WhatsNewCategory.FEATURES -> R.string.whats_new_features
@@ -211,13 +218,22 @@ private fun WhatsNewReleaseContent(
                 Tab(
                     selected = selectedIndex == index,
                     onClick = { selectedCategory = item.category.name },
-                    text = { Text(stringResource(titleRes), maxLines = 2) },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = {
+                        Text(
+                            text = stringResource(titleRes),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                        )
+                    },
                 )
             }
         }
         key(section.category) {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             ) {
