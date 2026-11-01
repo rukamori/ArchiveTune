@@ -152,7 +152,15 @@ fun MoodAndGenresScreen(
                     endpoint = item.endpoint,
                     artwork = artwork[item.endpoint.moodAndGenresArtworkKey()],
                     onClick = {
-                        navController.navigate("youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}")
+                        navController.navigate(
+                            buildString {
+                                append("youtube_browse/${android.net.Uri.encode(item.endpoint.browseId)}")
+                                append("?genreTitle=${android.net.Uri.encode(item.title)}")
+                                item.endpoint.params?.let { append("&params=${android.net.Uri.encode(it)}") }
+                            },
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
                     modifier =
                         Modifier

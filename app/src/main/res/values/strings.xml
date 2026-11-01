@@ -73,6 +73,15 @@
     <string name="library_top_mixes_failed">Failed to build top mixes</string>
     <string name="your_playlists">Your Playlists</string>
     <string name="see_all">See all</string>
+    <string name="genre_featured_playlists">Featured playlists</string>
+    <string name="genre_community_playlists">Community playlists</string>
+    <string name="genre_more_songs">More to explore · Songs</string>
+    <string name="genre_more_playlists">More to explore · Playlists</string>
+    <string name="genre_more_albums">More to explore · Albums</string>
+    <string name="genre_loading_source">Loading %1$s…</string>
+    <string name="genre_source_error">Couldn\'t load %1$s. Try again.</string>
+    <string name="genre_load_more">Load more · %1$s</string>
+    <string name="genre_navigate_back">Go back</string>
     <string name="your_artists">Your Artists</string>
     <string name="all_songs">All Songs</string>
     <string name="newest_first">Newest first</string>
