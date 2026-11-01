@@ -966,7 +966,7 @@ fun BottomSheetPlayer(
                 (if (showCodecOnPlayer) 24.dp else 0.dp) +
                 (if (sleepTimerEnabled) 42.dp else 0.dp)
         } else if (playerDesignStyle == PlayerDesignStyle.V10) {
-            if (isPortrait) 102.dp else 0.dp
+            if (isPortrait) (if (showCodecOnPlayer) 102.dp else 86.dp) else 0.dp
         } else if (playerDesignStyle == PlayerDesignStyle.V7) {
             72.dp
         } else if (showCodecOnPlayer) {

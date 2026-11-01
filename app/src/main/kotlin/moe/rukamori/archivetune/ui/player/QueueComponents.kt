@@ -1553,7 +1553,6 @@ fun QueueCollapsedContentV10(
     ) {
         val hasCodec = showCodecOnPlayer && currentFormat != null
         if (hasCodec) {
-            Spacer(modifier = Modifier.height(2.dp))
             val container = currentFormat.containerLabel()
             val bitrate = currentFormat.autoRateDisplay()
             CodecInfoRow(
@@ -1574,7 +1573,7 @@ fun QueueCollapsedContentV10(
                     .padding(
                         start = 38.dp,
                         end = 38.dp,
-                        top = if (hasCodec) 8.dp else 20.dp,
+                        top = if (hasCodec) 8.dp else 18.dp,
                         bottom = 20.dp,
                     ),
         ) {
