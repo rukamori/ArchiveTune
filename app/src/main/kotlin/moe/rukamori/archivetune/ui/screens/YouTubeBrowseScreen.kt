@@ -8,20 +8,29 @@
 package moe.rukamori.archivetune.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -38,7 +47,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,16 +57,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -179,167 +196,229 @@ private fun YouTubeBrowseContent(
     onItemMenu: (YTItem) -> Unit,
 ) {
     val data = state.data
-    val viewKey = data.expandedSection ?: data.selectedTab.name
     val savedState = rememberSaveableStateHolder()
     val coroutineScope = rememberCoroutineScope()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val insets = LocalPlayerAwareWindowInsets.current
         .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).asPaddingValues()
-    savedState.SaveableStateProvider(viewKey) {
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-        val gridState = rememberLazyGridState()
-        Scaffold(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                LargeFlexibleTopAppBar(
-                    title = {
-                        Text(
-                            text = data.section?.title ?: data.title.orEmpty(),
-                            fontWeight = MaterialTheme.typography.headlineLargeEmphasized.fontWeight,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    subtitle = if (data.expandedSection != null) {
-                        { Text(text = data.title.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    } else null,
-                    navigationIcon = {
-                        ArchiveIconButton(onClick = onBack, onLongClick = onBackToMain) {
-                            Icon(painterResource(R.drawable.arrow_back), contentDescription = stringResource(R.string.genre_navigate_back))
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { scaffoldPadding ->
-            val minimumColumnWidth = if (LocalDensity.current.fontScale >= 1.5f) 240.dp else 160.dp
-            val mediaItem: @Composable (YTItem, Boolean) -> Unit = { item, asList ->
-                GenreMediaItem(
-                    item = item,
-                    asList = asList,
-                    isActive = if (item is AlbumItem) item.id == activeAlbumId else item.id == activeSongId,
-                    isPlaying = isPlaying,
-                    coroutineScope = coroutineScope,
-                    onClick = { onItemClick(item) },
-                    onMenu = { onItemMenu(item) },
-                )
-            }
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minimumColumnWidth),
-                state = gridState,
-                contentPadding = insets,
-                modifier = Modifier.fillMaxSize().padding(top = scaffoldPadding.calculateTopPadding()),
-            ) {
-                if (data.expandedSection == null && data.genreTitle != null) {
-                    if (data.selectedTab == GenreTab.ALL && data.feed.thumbnail != null) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "genre_artwork", contentType = "artwork") {
-                            Surface(
-                                shape = MaterialTheme.shapes.extraLarge,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            ) {
-                                AsyncImage(
-                                    model = data.feed.thumbnail,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 7f),
-                                )
-                            }
+    val containerColor = MaterialTheme.colorScheme.surfaceContainer
+    val isGenreOverview = data.genreTitle != null && data.expandedSection == null
+    val artworkExpandedHeight = (LocalConfiguration.current.screenHeightDp.dp / 2).coerceIn(
+        TopAppBarDefaults.LargeFlexibleAppBarWithoutSubtitleExpandedHeight,
+        240.dp,
+    )
+    val artworkScrim = Brush.verticalGradient(
+        0f to containerColor.copy(alpha = 0.9f),
+        0.3f to containerColor.copy(alpha = 0.5f),
+        0.5f to containerColor.copy(alpha = 0.3f),
+        0.8f to containerColor.copy(alpha = 0.92f),
+        1f to containerColor,
+    )
+    val motion = MaterialTheme.motionScheme
+    val spatialSpec = motion.defaultSpatialSpec<IntOffset>()
+    val effectsSpec = motion.defaultEffectsSpec<Float>()
+    val layoutDirection = LocalLayoutDirection.current
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            Column(Modifier.fillMaxWidth().background(containerColor)) {
+                Box(Modifier.fillMaxWidth().clipToBounds()) {
+                    if (isGenreOverview && data.feed.thumbnail != null) {
+                        Box(
+                            Modifier.matchParentSize().graphicsLayer {
+                                alpha = 1f - scrollBehavior.state.collapsedFraction
+                            },
+                        ) {
+                            AsyncImage(
+                                model = data.feed.thumbnail,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            Box(Modifier.fillMaxSize().background(artworkScrim))
                         }
                     }
-                    stickyHeader(key = "genre_tabs", contentType = "tabs") {
-                        PrimaryScrollableTabRow(selectedTabIndex = data.selectedTab.ordinal, edgePadding = 16.dp) {
+                    LargeFlexibleTopAppBar(
+                        title = {
+                            Text(
+                                text = data.section?.title ?: data.title.orEmpty(),
+                                fontWeight = MaterialTheme.typography.headlineLargeEmphasized.fontWeight,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        subtitle = if (data.expandedSection != null) {
+                            { Text(text = data.title.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        } else null,
+                        navigationIcon = {
+                            ArchiveIconButton(onClick = onBack, onLongClick = onBackToMain) {
+                                Icon(painterResource(R.drawable.arrow_back), contentDescription = stringResource(R.string.genre_navigate_back))
+                            }
+                        },
+                        expandedHeight = if (isGenreOverview) artworkExpandedHeight else Dp.Unspecified,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Transparent,
+                        ),
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
+                if (isGenreOverview) {
+                    BoxWithConstraints(
+                        Modifier.fillMaxWidth()
+                            .windowInsetsPadding(TopAppBarDefaults.windowInsets.only(WindowInsetsSides.Horizontal)),
+                    ) {
+                        PrimaryScrollableTabRow(
+                            selectedTabIndex = data.selectedTab.ordinal,
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            edgePadding = 0.dp,
+                            minTabWidth = maxWidth / GenreTab.entries.size,
+                        ) {
                             GenreTab.entries.forEach { tab ->
                                 Tab(
                                     selected = data.selectedTab == tab,
                                     onClick = { onTabSelected(tab) },
-                                    text = { Text(stringResource(tab.titleRes)) },
+                                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    text = {
+                                        Text(
+                                            text = stringResource(tab.titleRes),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
                                 )
                             }
                         }
                     }
                 }
-                when {
-                    data.expandedSection != null -> {
-                        val section = data.section
-                        val collection = data.collection
-                        genreItems(
-                            keyPrefix = "collection",
-                            items = collection?.items ?: section?.items.orEmpty(),
-                            mediaItem = mediaItem,
-                        )
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "collection_status", contentType = "status") {
-                            if (collection != null) {
-                                GenreLoadStatus(
-                                    loading = collection.loading,
-                                    failed = collection.failed,
-                                    canLoadMore = !collection.endpointLoaded || collection.continuations.isNotEmpty(),
-                                    label = section?.title ?: stringResource(R.string.explore),
-                                    onLoad = { onLoadCollection(collection.sectionId) },
-                                )
-                                if (collection.items.isEmpty() && !collection.loading && !collection.failed && collection.continuations.isEmpty()) {
-                                    GenreEmptyMessage()
-                                }
-                            } else {
-                                GenreSourceStatus(data.feed, onLoadSource)
-                                if (data.feed.loaded && !data.feed.loading && !data.feed.failed) GenreEmptyMessage()
-                            }
-                        }
-                    }
-                    data.selectedTab == GenreTab.ALL -> {
-                        data.feed.sections.forEach { section ->
-                            val asList = section.items.isNotEmpty() && section.items.all { it is SongItem }
-                            val previewCount = if (asList) 3 else 4
-                            val preview = if (data.genreTitle == null) section.items else section.items.take(previewCount)
-                            if (section.items.isNotEmpty() || section.endpoint != null || section.continuation != null) {
-                                item(span = { GridItemSpan(maxLineSpan) }, key = "heading:${section.id}", contentType = "heading") {
-                                    GenreSectionHeading(
-                                        title = section.title ?: stringResource(R.string.explore),
-                                        onSeeAll = if (section.items.size > preview.size || section.endpoint != null || section.continuation != null) {
-                                            { onOpenSection(section.id) }
-                                        } else null,
+            }
+        },
+    ) { scaffoldPadding ->
+        val minimumColumnWidth = if (LocalDensity.current.fontScale >= 1.5f) 240.dp else 160.dp
+        val mediaItem: @Composable (YTItem, Boolean) -> Unit = { item, asList ->
+            GenreMediaItem(
+                item = item,
+                asList = asList,
+                isActive = if (item is AlbumItem) item.id == activeAlbumId else item.id == activeSongId,
+                isPlaying = isPlaying,
+                coroutineScope = coroutineScope,
+                onClick = { onItemClick(item) },
+                onMenu = { onItemMenu(item) },
+            )
+        }
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it.data.expandedSection ?: it.data.selectedTab.name },
+            transitionSpec = {
+                val from = initialState.data
+                val to = targetState.data
+                if (from.expandedSection == null && to.expandedSection == null && from.selectedTab != to.selectedTab) {
+                    val tabDirection = if (to.selectedTab.ordinal > from.selectedTab.ordinal) 1 else -1
+                    val direction = if (layoutDirection == LayoutDirection.Rtl) -tabDirection else tabDirection
+                    ((slideInHorizontally(spatialSpec) { direction * it / 8 } + fadeIn(effectsSpec)) togetherWith
+                        (slideOutHorizontally(spatialSpec) { -direction * it / 8 } + fadeOut(effectsSpec))).using(null)
+                } else {
+                    (fadeIn(effectsSpec) togetherWith fadeOut(effectsSpec)).using(null)
+                }
+            },
+            modifier = Modifier.fillMaxSize().padding(top = scaffoldPadding.calculateTopPadding()).clipToBounds(),
+            label = "genrePages",
+        ) { pageState ->
+            val pageData = pageState.data
+            val viewKey = pageData.expandedSection ?: pageData.selectedTab.name
+            savedState.SaveableStateProvider(viewKey) {
+                val gridState = rememberLazyGridState()
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minimumColumnWidth),
+                    state = gridState,
+                    contentPadding = insets,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        pageData.expandedSection != null -> {
+                            val section = pageData.section
+                            val collection = pageData.collection
+                            genreItems(
+                                keyPrefix = "collection",
+                                items = collection?.items ?: section?.items.orEmpty(),
+                                mediaItem = mediaItem,
+                            )
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "collection_status", contentType = "status") {
+                                if (collection != null) {
+                                    GenreLoadStatus(
+                                        loading = collection.loading,
+                                        failed = collection.failed,
+                                        canLoadMore = !collection.endpointLoaded || collection.continuations.isNotEmpty(),
+                                        label = section?.title ?: stringResource(R.string.explore),
+                                        onLoad = { onLoadCollection(collection.sectionId) },
                                     )
+                                    if (collection.items.isEmpty() && !collection.loading && !collection.failed && collection.continuations.isEmpty()) {
+                                        GenreEmptyMessage()
+                                    }
+                                } else {
+                                    GenreSourceStatus(pageData.feed, onLoadSource)
+                                    if (pageData.feed.loaded && !pageData.feed.loading && !pageData.feed.failed) GenreEmptyMessage()
                                 }
-                                genreItems(section.id, preview, mediaItem)
                             }
                         }
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "feed_status", contentType = "status") { GenreSourceStatus(data.feed, onLoadSource) }
-                        if (data.genreTitle != null) {
-                            GenreTab.entries.filter { it != GenreTab.ALL }.forEach { tab ->
-                                val additional = data.additionalItems(tab)
-                                val sources = data.sources.filter { it.source.tab == tab }
-                                if (additional.isNotEmpty() || sources.any { it.loading || it.failed || it.continuation != null }) {
-                                    item(span = { GridItemSpan(maxLineSpan) }, key = "more_heading:${tab.name}", contentType = "heading") {
+                        pageData.selectedTab == GenreTab.ALL -> {
+                            pageData.feed.sections.forEach { section ->
+                                val asList = section.items.isNotEmpty() && section.items.all { it is SongItem }
+                                val previewCount = if (asList) 3 else 4
+                                val preview = if (pageData.genreTitle == null) section.items else section.items.take(previewCount)
+                                if (section.items.isNotEmpty() || section.endpoint != null || section.continuation != null) {
+                                    item(span = { GridItemSpan(maxLineSpan) }, key = "heading:${section.id}", contentType = "heading") {
                                         GenreSectionHeading(
-                                            title = stringResource(when (tab) {
-                                                GenreTab.SONGS -> R.string.genre_more_songs
-                                                GenreTab.PLAYLISTS -> R.string.genre_more_playlists
-                                                GenreTab.ALBUMS -> R.string.genre_more_albums
-                                                GenreTab.ALL -> R.string.explore
-                                            }),
-                                            onSeeAll = { onTabSelected(tab) },
+                                            title = section.title ?: stringResource(R.string.explore),
+                                            onSeeAll = if (section.items.size > preview.size || section.endpoint != null || section.continuation != null) {
+                                                { onOpenSection(section.id) }
+                                            } else null,
                                         )
                                     }
-                                    genreItems("more:${tab.name}", additional.take(if (tab == GenreTab.SONGS) 3 else 4), mediaItem)
-                                    sources.forEach { source ->
-                                        item(span = { GridItemSpan(maxLineSpan) }, key = "status:${source.source.name}", contentType = "status") { GenreSourceStatus(source, onLoadSource, showLoadMore = false) }
+                                    genreItems(section.id, preview, mediaItem)
+                                }
+                            }
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "feed_status", contentType = "status") { GenreSourceStatus(pageData.feed, onLoadSource) }
+                            if (pageData.genreTitle != null) {
+                                GenreTab.entries.filter { it != GenreTab.ALL }.forEach { tab ->
+                                    val additional = pageData.additionalItems(tab)
+                                    val sources = pageData.sources.filter { it.source.tab == tab }
+                                    if (additional.isNotEmpty() || sources.any { it.loading || it.failed || it.continuation != null }) {
+                                        item(span = { GridItemSpan(maxLineSpan) }, key = "more_heading:${tab.name}", contentType = "heading") {
+                                            GenreSectionHeading(
+                                                title = stringResource(when (tab) {
+                                                    GenreTab.SONGS -> R.string.genre_more_songs
+                                                    GenreTab.PLAYLISTS -> R.string.genre_more_playlists
+                                                    GenreTab.ALBUMS -> R.string.genre_more_albums
+                                                    GenreTab.ALL -> R.string.explore
+                                                }),
+                                                onSeeAll = { onTabSelected(tab) },
+                                            )
+                                        }
+                                        genreItems("more:${tab.name}", additional.take(if (tab == GenreTab.SONGS) 3 else 4), mediaItem)
+                                        sources.forEach { source ->
+                                            item(span = { GridItemSpan(maxLineSpan) }, key = "status:${source.source.name}", contentType = "status") { GenreSourceStatus(source, onLoadSource, showLoadMore = false) }
+                                        }
                                     }
                                 }
                             }
+                            if (pageState is GenreBrowseScreenState.Empty) {
+                                item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "status") { GenreEmptyMessage() }
+                            }
                         }
-                        if (state is GenreBrowseScreenState.Empty) {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "status") { GenreEmptyMessage() }
-                        }
-                    }
-                    else -> {
-                        val categoryItems = data.categoryItems(data.selectedTab)
-                        genreItems("category", categoryItems, mediaItem)
-                        val sources = data.sources.filter { it.source == GenreSource.FEED || it.source.tab == data.selectedTab }
-                        sources.forEach { source ->
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "status:${source.source.name}", contentType = "status") { GenreSourceStatus(source, onLoadSource) }
-                        }
-                        if (categoryItems.isEmpty() && sources.none { it.loading || it.failed }) {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "status") { GenreEmptyMessage() }
+                        else -> {
+                            val categoryItems = pageData.categoryItems(pageData.selectedTab)
+                            genreItems("category", categoryItems, mediaItem)
+                            val sources = pageData.sources.filter { it.source == GenreSource.FEED || it.source.tab == pageData.selectedTab }
+                            sources.forEach { source ->
+                                item(span = { GridItemSpan(maxLineSpan) }, key = "status:${source.source.name}", contentType = "status") { GenreSourceStatus(source, onLoadSource) }
+                            }
+                            if (categoryItems.isEmpty() && sources.none { it.loading || it.failed }) {
+                                item(span = { GridItemSpan(maxLineSpan) }, key = "empty", contentType = "status") { GenreEmptyMessage() }
+                            }
                         }
                     }
                 }
