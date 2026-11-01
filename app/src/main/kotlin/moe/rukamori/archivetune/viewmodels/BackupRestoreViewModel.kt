@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.viewmodels
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
@@ -48,6 +49,7 @@ import moe.rukamori.archivetune.backup.BackupOperationCoordinator
 import moe.rukamori.archivetune.backup.BackupArchiveStep
 import moe.rukamori.archivetune.backup.CreateBackupUseCase
 import moe.rukamori.archivetune.backup.ObserveScheduledBackupSettingsUseCase
+import moe.rukamori.archivetune.backup.PendingDatabaseRestore
 import moe.rukamori.archivetune.backup.ScheduledBackupFrequency
 import moe.rukamori.archivetune.backup.ScheduledBackupSettings
 import moe.rukamori.archivetune.backup.UpdateScheduledBackupUseCase
@@ -70,11 +72,13 @@ import moe.rukamori.archivetune.modules.ModuleRepository
 import moe.rukamori.archivetune.modules.RestoreModuleBackupUseCase
 import moe.rukamori.archivetune.modules.readModuleBytes
 import org.xmlpull.v1.XmlPullParser
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.io.PushbackReader
 import java.io.Reader
 import java.io.StringReader
+import java.nio.file.Files
 import java.time.LocalDate
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -580,6 +584,7 @@ class BackupRestoreViewModel
             restoreJob = viewModelScope.launch(Dispatchers.IO) {
                 backupOperationCoordinator.withLock {
                     val title = context.getString(R.string.restore_in_progress)
+                    var databaseRestoreDirectory: File? = null
                     try {
                         val includeSettings = BackupCategory.SETTINGS in categories
                         val includeAccount = BackupCategory.ACCOUNT in categories
@@ -606,6 +611,7 @@ class BackupRestoreViewModel
                             }
                         }
                         if (includeLibrary && !hasDb) throw IllegalStateException("Backup missing database")
+                        check(entryNames.size == entryNames.distinct().size) { context.getString(R.string.restore_invalid_file) }
 
                         val restoreEntries =
                             entryNames.filter { name ->
@@ -614,7 +620,6 @@ class BackupRestoreViewModel
                                         includeLibrary && (
                                             name == InternalDatabase.DB_NAME ||
                                                 name == "${InternalDatabase.DB_NAME}-wal" ||
-                                                name == "${InternalDatabase.DB_NAME}-shm" ||
                                                 name == "${InternalDatabase.DB_NAME}-journal"
                                         )
                                     )
@@ -632,23 +637,22 @@ class BackupRestoreViewModel
                             emitProgress(title = title, step = step, percent = p, indeterminate = indeterminate)
                         }
 
+                        if (includeLibrary) {
+                            databaseRestoreDirectory =
+                                Files.createTempDirectory(context.cacheDir.toPath(), "database-restore-").toFile()
+                        }
                         currentCoroutineContext().ensureActive()
                         withContext(NonCancellable) {
                             completedUnits++
                             if (includeLibrary) {
                                 emit(context.getString(R.string.restore_step_stopping_playback), indeterminate = true)
                                 context.stopService(Intent(context, MusicService::class.java))
-                                database.awaitIdle()
-                                database.checkpoint()
-                                database.close()
-                                listOf("-wal", "-shm", "-journal").forEach { suffix ->
-                                    val sidecar = context.getDatabasePath("${InternalDatabase.DB_NAME}$suffix")
-                                    check(!sidecar.exists() || sidecar.delete()) { "Failed to clear database sidecar" }
-                                }
                                 completedUnits++
                             }
 
-                            context.applicationContext.contentResolver.openInputStream(uri)?.use { stream ->
+                            val restoreStream = context.applicationContext.contentResolver.openInputStream(uri)
+                                ?: throw IllegalStateException(context.getString(R.string.restore_file_not_found))
+                            restoreStream.use { stream ->
                                 stream.zipInputStream().use { zip ->
                                     var entry = zip.nextEntry
                                     while (entry != null) {
@@ -678,16 +682,13 @@ class BackupRestoreViewModel
 
                                             InternalDatabase.DB_NAME,
                                             "${InternalDatabase.DB_NAME}-wal",
-                                            "${InternalDatabase.DB_NAME}-shm",
                                             "${InternalDatabase.DB_NAME}-journal",
                                             -> {
                                                 emit(context.getString(R.string.restore_step_restoring_file, name), indeterminate = true)
-                                                val dbFile = context.getDatabasePath(name)
-                                                if (dbFile.exists()) {
-                                                    dbFile.delete()
-                                                }
+                                                val dbFile = checkNotNull(databaseRestoreDirectory).resolve(name)
                                                 FileOutputStream(dbFile).use { out ->
                                                     zip.copyTo(out)
+                                                    out.fd.sync()
                                                 }
                                             }
                                         }
@@ -697,16 +698,15 @@ class BackupRestoreViewModel
                                 }
                             }
 
+                            databaseRestoreDirectory?.let { directory ->
+                                PendingDatabaseRestore.prepare(context, directory, database.openHelper.writableDatabase.version)
+                            }
                             emitProgress(
                                 title = title,
                                 step = context.getString(R.string.restore_step_restarting),
                                 percent = 100,
                                 indeterminate = true,
                             )
-
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, R.string.restore_success, Toast.LENGTH_SHORT).show()
-                            }
 
                             try {
                                 context.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
@@ -717,6 +717,17 @@ class BackupRestoreViewModel
                                 context.dataStore.edit { prefs ->
                                     prefs[RedownloadOnRestoreKey] = true
                                 }
+                            }
+
+                            databaseRestoreDirectory?.let { directory ->
+                                PendingDatabaseRestore.commit(context, directory)
+                                if (!directory.deleteRecursively()) {
+                                    Log.w("BackupRestore", "Failed to remove database restore staging directory")
+                                }
+                                databaseRestoreDirectory = null
+                            }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, R.string.restore_success, Toast.LENGTH_SHORT).show()
                             }
 
                             _backupRestoreProgress.value = null
@@ -731,6 +742,11 @@ class BackupRestoreViewModel
                             Toast.makeText(context, e.message ?: context.getString(R.string.restore_failed), Toast.LENGTH_LONG).show()
                         }
                     } finally {
+                        databaseRestoreDirectory?.let { directory ->
+                            if (!directory.deleteRecursively()) {
+                                Log.w("BackupRestore", "Failed to remove database restore staging directory")
+                            }
+                        }
                         _backupRestoreProgress.value = null
                     }
                 }
