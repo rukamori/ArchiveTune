@@ -5,79 +5,99 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+)
 
 package moe.rukamori.archivetune.ui.screens.onboarding
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.annotation.StringRes
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.toShape
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.common.collect.ImmutableList
+import androidx.lifecycle.repeatOnLifecycle
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.onboarding.OnboardingCommunityActionUiModel
 import moe.rukamori.archivetune.onboarding.OnboardingEvent
-import moe.rukamori.archivetune.onboarding.OnboardingLoginBenefitUiModel
 import moe.rukamori.archivetune.onboarding.OnboardingPageId
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionAction
+import moe.rukamori.archivetune.onboarding.OnboardingPermissionId
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionStatus
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionUiModel
 import moe.rukamori.archivetune.onboarding.OnboardingScreenState
@@ -92,37 +112,59 @@ fun OnboardingRoute(
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val activity = LocalActivity.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val openLogin by rememberUpdatedState(onLoginRequested)
+    var requestedPermission by rememberSaveable { mutableStateOf<String?>(null) }
     val permissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-            viewModel.onPermissionResult()
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val permission = requestedPermission
+            val canRequestAgain =
+                permission == null || activity == null ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+            viewModel.onPermissionResult(permission, granted, canRequestAgain)
+            requestedPermission = null
         }
     val settingsLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            viewModel.onPermissionResult()
+            viewModel.onSettingsResult()
         }
 
-    LaunchedEffect(context, viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is OnboardingEvent.RequestPermission -> {
-                    permissionLauncher.launch(event.permission)
-                }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPermissions() }
 
-                OnboardingEvent.OpenInstallPackagesSettings -> {
-                    val intent =
-                        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                            .setData("package:${context.packageName}".toUri())
-                    runCatching {
-                        settingsLauncher.launch(intent)
+    LaunchedEffect(context, lifecycleOwner, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.events.collect { event ->
+                try {
+                    when (event) {
+                        is OnboardingEvent.RequestPermission -> {
+                            requestedPermission = event.permission
+                            permissionLauncher.launch(event.permission)
+                        }
+                        OnboardingEvent.OpenInstallPackagesSettings -> {
+                            settingsLauncher.launch(
+                                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                                    .setData("package:${context.packageName}".toUri()),
+                            )
+                        }
+                        OnboardingEvent.OpenAppSettings -> {
+                            settingsLauncher.launch(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData("package:${context.packageName}".toUri()),
+                            )
+                        }
+                        OnboardingEvent.OpenLogin -> openLogin()
+                        is OnboardingEvent.OpenUri -> {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, event.url.toUri()))
+                            viewModel.onExternalActionFinished(event)
+                        }
                     }
-                }
-
-                OnboardingEvent.OpenLogin -> onLoginRequested()
-
-                is OnboardingEvent.OpenUri -> {
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, event.url.toUri()))
-                    }
+                } catch (_: ActivityNotFoundException) {
+                    requestedPermission = null
+                    viewModel.onExternalActionFailed(event)
+                } catch (_: SecurityException) {
+                    requestedPermission = null
+                    viewModel.onExternalActionFailed(event)
                 }
             }
         }
@@ -132,10 +174,12 @@ fun OnboardingRoute(
         state = state,
         onNext = viewModel::onNext,
         onBack = viewModel::onBack,
-        onComplete = viewModel::complete,
+        onRetry = viewModel::retryLoading,
         onLogin = viewModel::onLogin,
         onPermissionAction = viewModel::onPermissionAction,
         onCommunityAction = viewModel::onCommunityAction,
+        onRetryExternalAction = viewModel::retryExternalAction,
+        onDismissActionError = viewModel::dismissActionError,
         modifier = modifier,
     )
 }
@@ -143,1009 +187,470 @@ fun OnboardingRoute(
 @Composable
 fun OnboardingScreen(
     state: OnboardingScreenState,
-    onNext: () -> Unit,
-    onBack: () -> Unit,
-    onComplete: () -> Unit,
+    onNext: (OnboardingPageId) -> Unit,
+    onBack: (OnboardingPageId) -> Unit,
+    onRetry: () -> Unit,
     onLogin: () -> Unit,
     onPermissionAction: (OnboardingPermissionAction) -> Unit,
     onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
+    onRetryExternalAction: () -> Unit,
+    onDismissActionError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        when (state) {
-            OnboardingScreenState.Loading -> {
-                LoadingContent(contentPadding = padding)
-            }
+    val uiState = (state as? OnboardingScreenState.Success)?.uiState
+    val page = uiState?.pages?.get(uiState.currentPage)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val pageStateHolder = rememberSaveableStateHolder()
+    val errorMessage = uiState?.actionErrorResId?.let { stringResource(it) }
+    val retryLabel = stringResource(R.string.retry)
+    val retryExternalAction by rememberUpdatedState(onRetryExternalAction)
+    val dismissActionError by rememberUpdatedState(onDismissActionError)
 
-            OnboardingScreenState.Empty -> {
-                MessageContent(
-                    title = stringResource(R.string.onboarding_empty_title),
-                    subtitle = stringResource(R.string.onboarding_empty_subtitle),
-                    actionLabel = stringResource(R.string.onboarding_finish),
-                    onAction = onComplete,
-                    contentPadding = padding,
+    LaunchedEffect(errorMessage, uiState?.actionErrorId) {
+        if (errorMessage != null) {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = errorMessage,
+                    actionLabel = retryLabel,
+                    withDismissAction = true,
+                    duration = SnackbarDuration.Long,
                 )
-            }
+            if (result == SnackbarResult.ActionPerformed) retryExternalAction() else dismissActionError()
+        }
+    }
 
-            is OnboardingScreenState.Error -> {
-                MessageContent(
-                    title = stringResource(state.messageResId),
-                    subtitle = stringResource(R.string.onboarding_empty_subtitle),
-                    actionLabel = stringResource(R.string.onboarding_finish),
-                    onAction = onComplete,
-                    contentPadding = padding,
-                )
-            }
+    BackHandler(enabled = uiState != null && uiState.currentPage > 0) {
+        if (uiState != null && page != null && !uiState.isBusy) onBack(page.id)
+    }
 
-            is OnboardingScreenState.Success -> {
-                OnboardingSuccessContent(
-                    uiState = state.uiState,
-                    onNext = onNext,
-                    onBack = onBack,
-                    onLogin = onLogin,
-                    onPermissionAction = onPermissionAction,
-                    onCommunityAction = onCommunityAction,
-                    contentPadding = padding,
-                )
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentWindowInsets = WindowInsets.safeDrawing,
+            topBar = {
+                if (uiState != null && page != null) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.onboarding_step, uiState.currentPage + 1, uiState.pages.size),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+                        },
+                        navigationIcon = {
+                            if (uiState.currentPage > 0) {
+                                IconButton(onClick = { onBack(page.id) }, enabled = !uiState.isBusy) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.arrow_back),
+                                        contentDescription = stringResource(R.string.back_button_desc),
+                                    )
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                    )
+                }
+            },
+            bottomBar = {
+                if (uiState != null && page != null) {
+                    OnboardingActions(
+                        uiState = uiState,
+                        page = page.id,
+                        onNext = onNext,
+                        onLogin = onLogin,
+                        maxHeight = maxHeight / 2,
+                    )
+                }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            when (state) {
+                OnboardingScreenState.Loading -> {
+                    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        if (LocalAnimationsDisabled.current) {
+                            Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge)
+                        } else {
+                            LoadingIndicator()
+                        }
+                    }
+                }
+                OnboardingScreenState.Empty -> {
+                    SetupError(R.string.onboarding_empty_title, onRetry, padding)
+                }
+                is OnboardingScreenState.Error -> {
+                    SetupError(state.messageResId, onRetry, padding)
+                }
+                is OnboardingScreenState.Success -> {
+                    Crossfade(
+                        targetState = state.uiState.pages[state.uiState.currentPage].id,
+                        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                        label = "onboardingPage",
+                    ) { pageId ->
+                        pageStateHolder.SaveableStateProvider(pageId.name) {
+                            OnboardingPage(
+                                page = pageId,
+                                uiState = state.uiState,
+                                onPermissionAction = onPermissionAction,
+                                onCommunityAction = onCommunityAction,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LoadingContent(contentPadding: PaddingValues) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(contentPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        LoadingIndicator()
-    }
-}
-
-@Composable
-private fun MessageContent(
-    title: String,
-    subtitle: String,
-    actionLabel: String,
-    onAction: () -> Unit,
+private fun SetupError(
+    @StringRes messageResId: Int,
+    onRetry: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.widthIn(max = OnboardingContentMaxWidth),
+            modifier = Modifier.widthIn(max = OnboardingContentMaxWidth).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onAction) {
-                Text(text = actionLabel)
-            }
+            Icon(painterResource(R.drawable.info), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(messageResId), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Button(onClick = onRetry, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.retry)) }
         }
     }
 }
 
 @Composable
-private fun OnboardingSuccessContent(
+private fun OnboardingActions(
     uiState: OnboardingUiState,
-    onNext: () -> Unit,
-    onBack: () -> Unit,
+    page: OnboardingPageId,
+    onNext: (OnboardingPageId) -> Unit,
     onLogin: () -> Unit,
-    onPermissionAction: (OnboardingPermissionAction) -> Unit,
-    onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
-    contentPadding: PaddingValues,
+    maxHeight: Dp,
 ) {
-    val pagerState =
-        rememberPagerState(
-            initialPage = uiState.currentPage,
-            pageCount = { uiState.pages.size },
-        )
-
-    LaunchedEffect(uiState.currentPage, uiState.pages.size) {
-        val targetPage = uiState.currentPage.coerceIn(0, uiState.pages.lastIndex)
-        if (pagerState.currentPage != targetPage) {
-            pagerState.animateScrollToPage(targetPage)
+    val primaryLabel =
+        when {
+            uiState.isCompleting -> R.string.onboarding_saving
+            uiState.completionErrorResId != null && page == OnboardingPageId.COMMUNITY -> R.string.retry
+            page == OnboardingPageId.WELCOME -> R.string.onboarding_get_started
+            page == OnboardingPageId.LOGIN -> R.string.onboarding_sign_in
+            page == OnboardingPageId.COMMUNITY -> R.string.onboarding_finish
+            else -> R.string.onboarding_continue
         }
-    }
-
-    HorizontalPager(
-        state = pagerState,
-        userScrollEnabled = false,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(contentPadding),
-    ) { pageIndex ->
-        when (uiState.pages[pageIndex].id) {
-            OnboardingPageId.WELCOME -> {
-                WelcomePage(
-                    uiState = uiState,
-                    pageIndex = pageIndex,
-                    onBack = onBack,
-                    onNext = onNext,
-                )
-            }
-
-            OnboardingPageId.PERMISSIONS -> {
-                PermissionsPage(
-                    uiState = uiState,
-                    pageIndex = pageIndex,
-                    onBack = onBack,
-                    onNext = onNext,
-                    onPermissionAction = onPermissionAction,
-                )
-            }
-
-            OnboardingPageId.LOGIN -> {
-                LoginPage(
-                    uiState = uiState,
-                    pageIndex = pageIndex,
-                    onBack = onBack,
-                    onNext = onNext,
-                    onLogin = onLogin,
-                )
-            }
-
-            OnboardingPageId.COMMUNITY -> {
-                CommunityPage(
-                    uiState = uiState,
-                    pageIndex = pageIndex,
-                    onBack = onBack,
-                    onNext = onNext,
-                    onCommunityAction = onCommunityAction,
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun LoginPage(
-    uiState: OnboardingUiState,
-    pageIndex: Int,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
-    onLogin: () -> Unit,
-) {
-    val page = uiState.pages[pageIndex]
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = OnboardingPagePadding,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-    ) {
-        item(key = page.id.name, contentType = "header") {
-            ExpressivePageHeader(
-                iconResId = page.iconResId,
-                titleResId = page.titleResId,
-                subtitleResId = page.subtitleResId,
-            )
-        }
-        item(key = "login-optional", contentType = "optional") {
-            Surface(
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
                 modifier =
                     Modifier
                         .widthIn(max = OnboardingContentMaxWidth)
-                        .fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                tonalElevation = 1.dp,
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                if (page == OnboardingPageId.COMMUNITY) {
+                    uiState.completionErrorResId?.let { message ->
+                        Text(
+                            stringResource(message),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                }
+                Button(
+                    onClick = { if (page == OnboardingPageId.LOGIN) onLogin() else onNext(page) },
+                    enabled = !uiState.isBusy,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 ) {
-                    Surface(
-                        modifier = Modifier.size(72.dp),
-                        shape = MaterialShapes.Sunny.toShape(0),
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    Text(stringResource(primaryLabel), textAlign = TextAlign.Center)
+                }
+                if (page == OnboardingPageId.LOGIN) {
+                    TextButton(onClick = { onNext(page) }, enabled = !uiState.isBusy) {
+                        Text(stringResource(R.string.onboarding_login_skip))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingPage(
+    page: OnboardingPageId,
+    uiState: OnboardingUiState,
+    onPermissionAction: (OnboardingPermissionAction) -> Unit,
+    onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
+) {
+    val pageModel = uiState.pages.first { it.id == page }
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        val identitySize = minOf(144.dp, maxHeight / 3)
+        Column(
+            modifier =
+                Modifier
+                    .widthIn(max = OnboardingContentMaxWidth + 48.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            if (page == OnboardingPageId.WELCOME) {
+                Icon(
+                    painter = painterResource(R.drawable.app_icon_small),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(identitySize),
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(pageModel.titleResId),
+                    style = MaterialTheme.typography.displaySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().semantics { heading() },
+                )
+                Text(
+                    text = stringResource(pageModel.subtitleResId),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            when (page) {
+                OnboardingPageId.WELCOME -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.account),
-                                contentDescription = null,
-                                modifier = Modifier.size(34.dp),
+                        Text(
+                            stringResource(uiState.variantLabelResId),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.onboarding_version_label, uiState.versionName),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                OnboardingPageId.PERMISSIONS -> {
+                    PermissionsContent(uiState = uiState, onPermissionAction = onPermissionAction)
+                }
+                OnboardingPageId.LOGIN -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.loginBenefits.forEach { benefit ->
+                            ListItem(
+                                headlineContent = { Text(stringResource(benefit.titleResId)) },
+                                supportingContent = { Text(stringResource(benefit.descriptionResId)) },
+                                leadingContent = { Icon(painterResource(benefit.iconResId), contentDescription = null) },
+                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
                             )
                         }
                     }
                     Text(
-                        text = stringResource(R.string.onboarding_login_optional),
-                        style = MaterialTheme.typography.bodyLarge,
+                        stringResource(R.string.onboarding_login_optional),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
                     )
                 }
-            }
-        }
-        item(key = "login-benefits-title", contentType = "benefits-title") {
-            Text(
-                text = stringResource(R.string.onboarding_login_benefits_title),
-                modifier =
-                    Modifier
-                        .widthIn(max = OnboardingContentMaxWidth)
-                        .fillMaxWidth(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        itemsIndexed(
-            items = uiState.loginBenefits,
-            key = { _, item -> item.id },
-            contentType = { _, item -> "login-benefit-${item.id}" },
-        ) { index, benefit ->
-            LoginBenefitRow(
-                benefit = benefit,
-                index = index,
-                count = uiState.loginBenefits.size,
-                onLogin = onLogin,
-            )
-        }
-        item(key = "login-actions", contentType = "actions") {
-            LoginActions(
-                onBack = onBack,
-                onLogin = onLogin,
-                onSkip = onNext,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun LoginBenefitRow(
-    benefit: OnboardingLoginBenefitUiModel,
-    index: Int,
-    count: Int,
-    onLogin: () -> Unit,
-) {
-    val onClick = remember(onLogin) { { onLogin() } }
-
-    SegmentedListItem(
-        onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .heightIn(min = 88.dp),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        leadingContent = {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(benefit.iconResId),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        },
-        supportingContent = {
-            Text(
-                text = stringResource(benefit.descriptionResId),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        trailingContent = {
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-    ) {
-        Text(
-            text = stringResource(benefit.titleResId),
-            style = MaterialTheme.typography.titleMedium,
-        )
-    }
-}
-
-@Composable
-private fun LoginActions(
-    onBack: () -> Unit,
-    onLogin: () -> Unit,
-    onSkip: () -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(top = 28.dp, bottom = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Button(
-            onClick = onLogin,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = OnboardingActionButtonPadding,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.login),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(modifier = Modifier.size(8.dp))
-            Text(
-                text = stringResource(R.string.login),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.weight(1f),
-                contentPadding = OnboardingActionButtonPadding,
-            ) {
-                Text(
-                    text = stringResource(R.string.back_button_desc),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            TextButton(
-                onClick = onSkip,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = stringResource(R.string.onboarding_login_skip),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun WelcomePage(
-    uiState: OnboardingUiState,
-    pageIndex: Int,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val page = uiState.pages[pageIndex]
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = OnboardingPagePadding,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(28.dp),
-    ) {
-        item(key = page.id.name, contentType = "welcome") {
-            BoxWithConstraints(
-                modifier =
-                    Modifier
-                        .widthIn(max = OnboardingContentMaxWidth)
-                        .fillMaxWidth(),
-            ) {
-                if (maxWidth >= 620.dp) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(28.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1.05f),
-                            verticalArrangement = Arrangement.spacedBy(18.dp),
-                        ) {
-                            LargePageTitle(page.titleResId, page.subtitleResId)
-                            OnboardingMetadataPills(uiState = uiState)
+                OnboardingPageId.COMMUNITY -> {
+                    val communities = uiState.communityActions.filter { it.id != "donate" }
+                    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                        communities.forEachIndexed { index, action ->
+                            SegmentedListItem(
+                                onClick = { onCommunityAction(action) },
+                                enabled = !uiState.isBusy,
+                                shapes = ListItemDefaults.segmentedShapes(index = index, count = communities.size),
+                                leadingContent = { Icon(painterResource(action.iconResId), contentDescription = null) },
+                                supportingContent = { Text(stringResource(action.descriptionResId)) },
+                                trailingContent = { Icon(painterResource(R.drawable.arrow_forward), contentDescription = null) },
+                                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(action.titleResId))
+                            }
                         }
-                        SunnyIdentityPanel(
-                            iconResId = page.iconResId,
-                            modifier = Modifier.weight(0.95f),
-                        )
                     }
-                } else {
+                    val donation = uiState.communityActions.first { it.id == "donate" }
                     Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(30.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        LargePageTitle(page.titleResId, page.subtitleResId)
-                        OnboardingMetadataPills(uiState = uiState)
-                        Spacer(modifier = Modifier.heightIn(min = 24.dp))
-                        SunnyIdentityPanel(iconResId = page.iconResId)
+                        Text(
+                            stringResource(R.string.onboarding_support_optional),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        FilledTonalButton(
+                            onClick = { onCommunityAction(donation) },
+                            enabled = !uiState.isBusy,
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painterResource(donation.iconResId),
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text(stringResource(donation.titleResId))
+                        }
                     }
                 }
             }
         }
-        item(key = "welcome-actions", contentType = "actions") {
-            OnboardingInlineActions(
-                currentPage = pageIndex,
-                pageCount = uiState.pages.size,
-                onBack = onBack,
-                onNext = onNext,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SunnyIdentityPanel(
-    iconResId: Int,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = 260.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth(0.80f)
-                    .aspectRatio(1f),
-            shape = MaterialShapes.Sunny.toShape(0),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = 2.dp,
-            shadowElevation = 1.dp,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    painter = painterResource(iconResId),
-                    contentDescription = null,
-                    modifier = Modifier.size(150.dp),
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun OnboardingMetadataPills(uiState: OnboardingUiState) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        PassivePill(text = stringResource(uiState.variantLabelResId))
-        PassivePill(
-            text =
-                stringResource(
-                    R.string.onboarding_version_label,
-                    uiState.versionName,
-                ),
-        )
     }
 }
 
 @Composable
-private fun PassivePill(text: String) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun PermissionsPage(
+private fun PermissionsContent(
     uiState: OnboardingUiState,
-    pageIndex: Int,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
     onPermissionAction: (OnboardingPermissionAction) -> Unit,
 ) {
-    val page = uiState.pages[pageIndex]
+    var moreExpanded by rememberSaveable { mutableStateOf(false) }
+    var explanationExpanded by rememberSaveable { mutableStateOf(false) }
+    val primary =
+        uiState.permissions.filter {
+            it.id == OnboardingPermissionId.NOTIFICATIONS || it.id == OnboardingPermissionId.LOCAL_AUDIO
+        }
+    val secondary =
+        uiState.permissions.filter {
+            it.id == OnboardingPermissionId.MICROPHONE || it.id == OnboardingPermissionId.BLUETOOTH_CONNECT ||
+                it.id == OnboardingPermissionId.BLUETOOTH_SCAN || it.id == OnboardingPermissionId.APP_INSTALLATION
+        }
+    val informational =
+        uiState.permissions.filter {
+            it.id == OnboardingPermissionId.NETWORK || it.id == OnboardingPermissionId.PLAYBACK_SERVICE ||
+                it.id == OnboardingPermissionId.AUDIO_SETTINGS || it.id == OnboardingPermissionId.DEVICE_AUDIO_CAPTURE
+        }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = OnboardingPagePadding,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-    ) {
-        item(key = page.id.name, contentType = "header") {
-            ExpressivePageHeader(
-                iconResId = page.iconResId,
-                titleResId = page.titleResId,
-                subtitleResId = page.subtitleResId,
-            )
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        primary.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
+        PermissionDisclosure(
+            titleResId = R.string.onboarding_more_permissions,
+            expanded = moreExpanded,
+            onClick = { moreExpanded = !moreExpanded },
+        )
+        if (moreExpanded) {
+            secondary.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
         }
-        itemsIndexed(
-            items = uiState.permissions,
-            key = { _, item -> item.id.name },
-            contentType = { _, item -> "permission-${item.id.name}" },
-        ) { index, item ->
-            PermissionRow(
-                permission = item,
-                index = index,
-                count = uiState.permissions.size,
-                onPermissionAction = onPermissionAction,
-            )
-        }
-        item(key = "permission-actions", contentType = "actions") {
-            OnboardingInlineActions(
-                currentPage = pageIndex,
-                pageCount = uiState.pages.size,
-                onBack = onBack,
-                onNext = onNext,
-            )
+        PermissionDisclosure(
+            titleResId = R.string.onboarding_how_access_works,
+            expanded = explanationExpanded,
+            onClick = { explanationExpanded = !explanationExpanded },
+        )
+        if (explanationExpanded) {
+            informational.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CommunityPage(
-    uiState: OnboardingUiState,
-    pageIndex: Int,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
-    onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
+private fun PermissionDisclosure(
+    @StringRes titleResId: Int,
+    expanded: Boolean,
+    onClick: () -> Unit,
 ) {
-    val page = uiState.pages[pageIndex]
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = OnboardingPagePadding,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+    val stateLabel = stringResource(if (expanded) R.string.onboarding_expanded else R.string.onboarding_collapsed)
+    SegmentedListItem(
+        onClick = onClick,
+        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+        trailingContent = {
+            Icon(painterResource(if (expanded) R.drawable.expand_less else R.drawable.expand_more), contentDescription = null)
+        },
+        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth().semantics { stateDescription = stateLabel },
     ) {
-        item(key = page.id.name, contentType = "header") {
-            ExpressivePageHeader(
-                iconResId = page.iconResId,
-                titleResId = page.titleResId,
-                subtitleResId = page.subtitleResId,
-            )
-        }
-        item(key = "community-spotlight", contentType = "spotlight") {
-            CommunitySpotlight(actions = uiState.communityActions)
-        }
-        itemsIndexed(
-            items = uiState.communityActions,
-            key = { _, item -> item.id },
-            contentType = { _, item -> "community-${item.id}" },
-        ) { index, item ->
-            CommunityRow(
-                action = item,
-                index = index,
-                count = uiState.communityActions.size,
-                onCommunityAction = onCommunityAction,
-            )
-        }
-        item(key = "community-actions", contentType = "actions") {
-            OnboardingInlineActions(
-                currentPage = pageIndex,
-                pageCount = uiState.pages.size,
-                onBack = onBack,
-                onNext = onNext,
-            )
-        }
+        Text(stringResource(titleResId), style = MaterialTheme.typography.titleMedium)
     }
 }
 
 @Composable
-private fun CommunitySpotlight(actions: ImmutableList<OnboardingCommunityActionUiModel>) {
+private fun PermissionItem(
+    permission: OnboardingPermissionUiModel,
+    enabled: Boolean,
+    onPermissionAction: (OnboardingPermissionAction) -> Unit,
+) {
+    val statusLabel =
+        when (permission.status) {
+            OnboardingPermissionStatus.ALLOWED -> R.string.permission_status_allowed
+            OnboardingPermissionStatus.NEEDS_ACTION -> R.string.onboarding_permission_optional
+            OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> R.string.onboarding_permission_allowed_by_install
+            OnboardingPermissionStatus.APPROVAL_AT_USE -> R.string.onboarding_permission_approval_at_use
+            OnboardingPermissionStatus.BLOCKED -> R.string.onboarding_permission_blocked
+            OnboardingPermissionStatus.UNAVAILABLE -> R.string.onboarding_permission_unavailable
+        }
     Surface(
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .padding(bottom = 14.dp),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            actions.forEach { action ->
-                Surface(
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            ListItem(
+                headlineContent = { Text(stringResource(permission.titleResId)) },
+                supportingContent = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(permission.descriptionResId))
+                        Text(
+                            text = stringResource(statusLabel),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                },
+                leadingContent = { Icon(painterResource(permission.iconResId), contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            )
+            permission.action?.let { action ->
+                val label =
+                    if (action is OnboardingPermissionAction.RequestRuntimePermission) {
+                        R.string.allow
+                    } else {
+                        R.string.onboarding_open_settings
+                    }
+                val actionDescription =
+                    stringResource(
+                        R.string.onboarding_permission_action_description,
+                        stringResource(label),
+                        stringResource(permission.titleResId),
+                    )
+                TextButton(
+                    onClick = { onPermissionAction(action) },
+                    enabled = enabled,
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .aspectRatio(1f),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            .align(Alignment.End)
+                            .padding(horizontal = 8.dp)
+                            .semantics { contentDescription = actionDescription },
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(action.iconResId),
-                            contentDescription = null,
-                            modifier = Modifier.size(30.dp),
-                        )
-                    }
+                    Text(stringResource(label))
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ExpressivePageHeader(
-    iconResId: Int,
-    titleResId: Int,
-    subtitleResId: Int,
-) {
-    Column(
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .padding(bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Surface(
-            modifier = Modifier.size(88.dp),
-            shape = MaterialShapes.Sunny.toShape(0),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    painter = painterResource(iconResId),
-                    contentDescription = null,
-                    modifier = Modifier.size(34.dp),
-                )
-            }
-        }
-        LargePageTitle(titleResId = titleResId, subtitleResId = subtitleResId)
-    }
-}
-
-@Composable
-private fun LargePageTitle(
-    titleResId: Int,
-    subtitleResId: Int,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = stringResource(titleResId),
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.SemiBold,
-            fontStyle = FontStyle.Italic,
-        )
-        Text(
-            text = stringResource(subtitleResId),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun PermissionRow(
-    permission: OnboardingPermissionUiModel,
-    index: Int,
-    count: Int,
-    onPermissionAction: (OnboardingPermissionAction) -> Unit,
-) {
-    val onClick =
-        remember(permission.action, onPermissionAction) {
-            {
-                val action = permission.action
-                if (action != null) {
-                    onPermissionAction(action)
-                }
-            }
-        }
-
-    SegmentedListItem(
-        onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .heightIn(min = 88.dp),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PermissionIcon(permission = permission)
-                Text(
-                    text = stringResource(permission.titleResId),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Text(
-                text = stringResource(permission.descriptionResId),
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                PermissionStatusAction(
-                    permission = permission,
-                    onPermissionAction = onPermissionAction,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PermissionIcon(permission: OnboardingPermissionUiModel) {
-    val containerColor =
-        when (permission.status) {
-            OnboardingPermissionStatus.ALLOWED -> MaterialTheme.colorScheme.primary
-            OnboardingPermissionStatus.NEEDS_ACTION -> MaterialTheme.colorScheme.tertiary
-            OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> MaterialTheme.colorScheme.secondary
-            OnboardingPermissionStatus.UNAVAILABLE -> MaterialTheme.colorScheme.surfaceVariant
-        }
-    val contentColor =
-        when (permission.status) {
-            OnboardingPermissionStatus.ALLOWED -> MaterialTheme.colorScheme.onPrimary
-            OnboardingPermissionStatus.NEEDS_ACTION -> MaterialTheme.colorScheme.onTertiary
-            OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> MaterialTheme.colorScheme.onSecondary
-            OnboardingPermissionStatus.UNAVAILABLE -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = Modifier.size(56.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                painter = painterResource(permission.iconResId),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun PermissionStatusAction(
-    permission: OnboardingPermissionUiModel,
-    onPermissionAction: (OnboardingPermissionAction) -> Unit,
-) {
-    val action = permission.action
-
-    if (action != null) {
-        FilledTonalButton(
-            onClick = { onPermissionAction(action) },
-            shapes = ButtonDefaults.shapes(),
-            contentPadding = ButtonDefaults.SmallContentPadding,
-        ) {
-            Text(text = stringResource(R.string.allow))
-        }
-    } else {
-        Surface(
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ) {
-            Text(
-                text = stringResource(permission.status.labelResId()),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                style = MaterialTheme.typography.labelMedium,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun CommunityRow(
-    action: OnboardingCommunityActionUiModel,
-    index: Int,
-    count: Int,
-    onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
-) {
-    val onClick = remember(action, onCommunityAction) { { onCommunityAction(action) } }
-
-    SegmentedListItem(
-        onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .heightIn(min = 88.dp),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        leadingContent = {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(action.iconResId),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        },
-        supportingContent = {
-            Text(
-                text = stringResource(action.descriptionResId),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        trailingContent = {
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-    ) {
-        Text(
-            text = stringResource(action.titleResId),
-            style = MaterialTheme.typography.titleMedium,
-        )
-    }
-}
-
-@Composable
-private fun OnboardingInlineActions(
-    currentPage: Int,
-    pageCount: Int,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val showBack = currentPage > 0
-    val isLastPage = currentPage >= pageCount - 1
-    val nextLabel =
-        if (isLastPage) {
-            stringResource(R.string.onboarding_finish)
-        } else {
-            stringResource(R.string.next)
-        }
-
-    Column(
-        modifier =
-            Modifier
-                .widthIn(max = OnboardingContentMaxWidth)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(top = 28.dp, bottom = 8.dp),
-    ) {
-        AnimatedVisibility(
-            visible = !showBack,
-            enter =
-                expandVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
-                    fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
-            exit =
-                shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
-                    fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
-        ) {
-            OnboardingNextButton(
-                text = nextLabel,
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        AnimatedVisibility(
-            visible = showBack,
-            enter =
-                expandVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
-                    fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
-            exit =
-                shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
-                    fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = OnboardingActionButtonPadding,
-                ) {
-                    Text(
-                        text = stringResource(R.string.back_button_desc),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                OnboardingNextButton(
-                    text = nextLabel,
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun OnboardingNextButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        contentPadding = OnboardingActionButtonPadding,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-private fun OnboardingPermissionStatus.labelResId(): Int =
-    when (this) {
-        OnboardingPermissionStatus.ALLOWED -> R.string.permission_status_allowed
-        OnboardingPermissionStatus.NEEDS_ACTION -> R.string.allow
-        OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> R.string.onboarding_permission_allowed_by_install
-        OnboardingPermissionStatus.UNAVAILABLE -> R.string.onboarding_permission_unavailable
-    }
-
-private val OnboardingContentMaxWidth = 680.dp
-private val OnboardingPagePadding = PaddingValues(horizontal = 24.dp, vertical = 28.dp)
-private val OnboardingActionButtonPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
+private val OnboardingContentMaxWidth = 560.dp

@@ -132,7 +132,11 @@ class OnboardingRepository
                 BuildConfig.DISTRIBUTION == DISTRIBUTION_GMS &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
             ) {
-                installGrantedData(OnboardingPermissionId.DEVICE_AUDIO_CAPTURE)
+                OnboardingPermissionData(
+                    id = OnboardingPermissionId.DEVICE_AUDIO_CAPTURE,
+                    status = OnboardingPermissionStatus.APPROVAL_AT_USE,
+                    action = null,
+                )
             } else {
                 OnboardingPermissionData(
                     id = OnboardingPermissionId.DEVICE_AUDIO_CAPTURE,

@@ -119,6 +119,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -872,33 +873,41 @@ class MainActivity : ComponentActivity() {
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val onboardingState by onboardingViewModel.screenState.collectAsStateWithLifecycle()
                 var showOnboardingLogin by rememberSaveable { mutableStateOf(false) }
+                val onboardingContentState = rememberSaveableStateHolder()
                 val shouldShowOnboarding =
                     when (val state = onboardingState) {
                         OnboardingScreenState.Loading -> true
                         OnboardingScreenState.Empty -> true
-                        is OnboardingScreenState.Error -> false
+                        is OnboardingScreenState.Error -> true
                         is OnboardingScreenState.Success -> state.uiState.shouldShowOnboarding
                     }
 
                 if (shouldShowOnboarding) {
-                    if (showOnboardingLogin) {
-                        CompositionLocalProvider(
-                            LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
-                        ) {
-                            LoginScreen(
-                                navController = navController,
-                                onLoginComplete = {
-                                    onboardingViewModel.onLoginCompleted()
-                                    showOnboardingLogin = false
-                                },
-                                onNavigateBack = { showOnboardingLogin = false },
-                            )
+                    CompositionLocalProvider(LocalAnimationsDisabled provides disableAnimations) {
+                        if (showOnboardingLogin) {
+                            CompositionLocalProvider(
+                                LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
+                            ) {
+                                LoginScreen(
+                                    navController = navController,
+                                    onLoginComplete = {
+                                        onboardingViewModel.onLoginCompleted()
+                                        showOnboardingLogin = false
+                                    },
+                                    onNavigateBack = {
+                                        onboardingViewModel.onLoginDismissed()
+                                        showOnboardingLogin = false
+                                    },
+                                )
+                            }
+                        } else {
+                            onboardingContentState.SaveableStateProvider("setup") {
+                                OnboardingRoute(
+                                    viewModel = onboardingViewModel,
+                                    onLoginRequested = { showOnboardingLogin = true },
+                                )
+                            }
                         }
-                    } else {
-                        OnboardingRoute(
-                            viewModel = onboardingViewModel,
-                            onLoginRequested = { showOnboardingLogin = true },
-                        )
                     }
                     return@ArchiveTuneTheme
                 }
