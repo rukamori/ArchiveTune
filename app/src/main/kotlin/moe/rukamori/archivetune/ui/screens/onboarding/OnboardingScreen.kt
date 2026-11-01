@@ -19,8 +19,23 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,6 +58,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -71,7 +87,10 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -80,6 +99,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -379,7 +399,20 @@ private fun OnboardingActions(
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 ) {
-                    Text(stringResource(primaryLabel), textAlign = TextAlign.Center)
+                    Text(
+                        stringResource(primaryLabel),
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (!uiState.isCompleting && uiState.completionErrorResId == null && page != OnboardingPageId.LOGIN) {
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Icon(
+                            painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    }
                 }
                 if (page == OnboardingPageId.LOGIN) {
                     TextButton(onClick = { onNext(page) }, enabled = !uiState.isBusy) {
@@ -399,123 +432,227 @@ private fun OnboardingPage(
     onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
 ) {
     val pageModel = uiState.pages.first { it.id == page }
-    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        val identitySize = minOf(144.dp, maxHeight / 3)
-        Column(
-            modifier =
-                Modifier
-                    .widthIn(max = OnboardingContentMaxWidth + 48.dp)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            if (page == OnboardingPageId.WELCOME) {
-                Icon(
-                    painter = painterResource(R.drawable.app_icon_small),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(identitySize),
-                )
-            }
+    val animationsDisabled = LocalAnimationsDisabled.current
+    var hasEntered by rememberSaveable { mutableStateOf(false) }
+    val entrance =
+        remember(animationsDisabled) {
+            MutableTransitionState(hasEntered || animationsDisabled).apply { targetState = true }
+        }
+    val entryOffset = with(LocalDensity.current) { 24.dp.roundToPx() }
+    val contentEnter =
+        fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+            slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { minOf(it / 4, entryOffset) }
+    val identityEnter =
+        fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+            scaleIn(initialScale = 0.92f, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec())
+
+    LaunchedEffect(Unit) { hasEntered = true }
+
+    AnimatedVisibility(
+        visibleState = entrance,
+        enter = EnterTransition.None,
+        exit = ExitTransition.None,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val identitySize = minOf(184.dp, maxHeight / 3)
             Column(
+                modifier =
+                    Modifier
+                        .widthIn(max = OnboardingContentMaxWidth + 48.dp)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                Text(
-                    text = stringResource(pageModel.titleResId),
-                    style = MaterialTheme.typography.displaySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().semantics { heading() },
-                )
-                Text(
-                    text = stringResource(pageModel.subtitleResId),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            when (page) {
-                OnboardingPageId.WELCOME -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                if (page == OnboardingPageId.WELCOME) {
+                    OnboardingBrandMark(
+                        modifier =
+                            Modifier
+                                .size(identitySize)
+                                .animateEnterExit(enter = identityEnter, exit = ExitTransition.None),
+                    )
+                } else {
+                    val containerColor =
+                        when (page) {
+                            OnboardingPageId.LOGIN -> MaterialTheme.colorScheme.secondaryContainer
+                            OnboardingPageId.COMMUNITY -> MaterialTheme.colorScheme.tertiaryContainer
+                            else -> MaterialTheme.colorScheme.primaryContainer
+                        }
+                    val contentColor =
+                        when (page) {
+                            OnboardingPageId.LOGIN -> MaterialTheme.colorScheme.onSecondaryContainer
+                            OnboardingPageId.COMMUNITY -> MaterialTheme.colorScheme.onTertiaryContainer
+                            else -> MaterialTheme.colorScheme.onPrimaryContainer
+                        }
+                    val iconResId =
+                        when (page) {
+                            OnboardingPageId.LOGIN -> R.drawable.account
+                            OnboardingPageId.COMMUNITY -> R.drawable.favorite_border
+                            else -> R.drawable.security
+                        }
+                    Surface(
+                        color = containerColor,
+                        contentColor = contentColor,
+                        shape = MaterialTheme.shapes.large,
+                        modifier =
+                            Modifier
+                                .size(minOf(64.dp, maxHeight / 5))
+                                .animateEnterExit(enter = identityEnter, exit = ExitTransition.None),
                     ) {
-                        Text(
-                            stringResource(uiState.variantLabelResId),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            stringResource(R.string.onboarding_version_label, uiState.versionName),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                OnboardingPageId.PERMISSIONS -> {
-                    PermissionsContent(uiState = uiState, onPermissionAction = onPermissionAction)
-                }
-                OnboardingPageId.LOGIN -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        uiState.loginBenefits.forEach { benefit ->
-                            ListItem(
-                                headlineContent = { Text(stringResource(benefit.titleResId)) },
-                                supportingContent = { Text(stringResource(benefit.descriptionResId)) },
-                                leadingContent = { Icon(painterResource(benefit.iconResId), contentDescription = null) },
-                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painterResource(iconResId),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(0.5f),
                             )
                         }
                     }
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     Text(
-                        stringResource(R.string.onboarding_login_optional),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(pageModel.titleResId),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .semantics { heading() }
+                                .animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
+                    )
+                    Text(
+                        text = stringResource(pageModel.subtitleResId),
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
+                        modifier = Modifier.animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
                     )
                 }
-                OnboardingPageId.COMMUNITY -> {
-                    val communities = uiState.communityActions.filter { it.id != "donate" }
-                    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-                        communities.forEachIndexed { index, action ->
-                            SegmentedListItem(
-                                onClick = { onCommunityAction(action) },
-                                enabled = !uiState.isBusy,
-                                shapes = ListItemDefaults.segmentedShapes(index = index, count = communities.size),
-                                leadingContent = { Icon(painterResource(action.iconResId), contentDescription = null) },
-                                supportingContent = { Text(stringResource(action.descriptionResId)) },
-                                trailingContent = { Icon(painterResource(R.drawable.arrow_forward), contentDescription = null) },
-                                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(stringResource(action.titleResId))
-                            }
+                when (page) {
+                    OnboardingPageId.WELCOME -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
+                        ) {
+                            Text(
+                                stringResource(uiState.variantLabelResId),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                stringResource(R.string.onboarding_version_label, uiState.versionName),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
-                    val donation = uiState.communityActions.first { it.id == "donate" }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    OnboardingPageId.PERMISSIONS -> {
+                        PermissionsContent(
+                            uiState = uiState,
+                            onPermissionAction = onPermissionAction,
+                            modifier = Modifier.animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
+                        )
+                    }
+                    OnboardingPageId.LOGIN -> {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
+                        ) {
+                            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                                uiState.loginBenefits.forEachIndexed { index, benefit ->
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(benefit.titleResId), fontWeight = FontWeight.SemiBold)
+                                        },
+                                        supportingContent = { Text(stringResource(benefit.descriptionResId)) },
+                                        leadingContent = { OnboardingListIcon(benefit.iconResId) },
+                                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    )
+                                    if (index < uiState.loginBenefits.lastIndex) {
+                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                    }
+                                }
+                            }
+                        }
                         Text(
-                            stringResource(R.string.onboarding_support_optional),
+                            stringResource(R.string.onboarding_login_optional),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
+                            modifier = Modifier.animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
                         )
-                        FilledTonalButton(
-                            onClick = { onCommunityAction(donation) },
-                            enabled = !uiState.isBusy,
-                            shapes = ButtonDefaults.shapes(),
+                    }
+                    OnboardingPageId.COMMUNITY -> {
+                        val communities = uiState.communityActions.filter { it.id != "donate" }
+                        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                            communities.forEachIndexed { index, action ->
+                                SegmentedListItem(
+                                    onClick = { onCommunityAction(action) },
+                                    enabled = !uiState.isBusy && uiState.pages[uiState.currentPage].id == page,
+                                    shapes = ListItemDefaults.segmentedShapes(index = index, count = communities.size),
+                                    leadingContent = { OnboardingListIcon(action.iconResId) },
+                                    supportingContent = { Text(stringResource(action.descriptionResId)) },
+                                    trailingContent = {
+                                        Icon(
+                                            painterResource(R.drawable.arrow_forward),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
+                                ) {
+                                    Text(stringResource(action.titleResId), fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                        val donation = uiState.communityActions.first { it.id == "donate" }
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .animateEnterExit(enter = contentEnter, exit = ExitTransition.None),
                         ) {
-                            Icon(
-                                painterResource(donation.iconResId),
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                            )
-                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                            Text(stringResource(donation.titleResId))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(20.dp),
+                            ) {
+                                Text(
+                                    stringResource(R.string.onboarding_support_optional),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                )
+                                FilledTonalButton(
+                                    onClick = { onCommunityAction(donation) },
+                                    enabled = !uiState.isBusy && uiState.pages[uiState.currentPage].id == page,
+                                    shapes = ButtonDefaults.shapes(),
+                                ) {
+                                    Icon(
+                                        painterResource(donation.iconResId),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                                    )
+                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                    Text(stringResource(donation.titleResId))
+                                }
+                            }
                         }
                     }
                 }
@@ -525,12 +662,58 @@ private fun OnboardingPage(
 }
 
 @Composable
+private fun OnboardingBrandMark(modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.extraLarge,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxSize(0.86f).graphicsLayer { rotationZ = -10f },
+        ) {}
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier.fillMaxSize(0.86f),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painterResource(R.drawable.app_icon_small),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(0.6f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingListIcon(
+    @DrawableRes iconResId: Int,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Surface(
+        color = containerColor,
+        contentColor = contentColor,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.size(40.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(painterResource(iconResId), contentDescription = null, modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
+@Composable
 private fun PermissionsContent(
     uiState: OnboardingUiState,
     onPermissionAction: (OnboardingPermissionAction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var moreExpanded by rememberSaveable { mutableStateOf(false) }
     var explanationExpanded by rememberSaveable { mutableStateOf(false) }
+    val canRequestPermission = !uiState.isBusy && uiState.pages[uiState.currentPage].id == OnboardingPageId.PERMISSIONS
     val primary =
         uiState.permissions.filter {
             it.id == OnboardingPermissionId.NOTIFICATIONS || it.id == OnboardingPermissionId.LOCAL_AUDIO
@@ -546,23 +729,45 @@ private fun PermissionsContent(
                 it.id == OnboardingPermissionId.AUDIO_SETTINGS || it.id == OnboardingPermissionId.DEVICE_AUDIO_CAPTURE
         }
 
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        primary.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        primary.forEach { permission -> PermissionItem(permission, canRequestPermission, onPermissionAction) }
         PermissionDisclosure(
             titleResId = R.string.onboarding_more_permissions,
             expanded = moreExpanded,
             onClick = { moreExpanded = !moreExpanded },
         )
-        if (moreExpanded) {
-            secondary.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
+        AnimatedVisibility(
+            visible = moreExpanded,
+            enter =
+                expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
+                    fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
+            exit =
+                shrinkVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
+                    fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                secondary.forEach { permission ->
+                    PermissionItem(permission, canRequestPermission && moreExpanded, onPermissionAction)
+                }
+            }
         }
         PermissionDisclosure(
             titleResId = R.string.onboarding_how_access_works,
             expanded = explanationExpanded,
             onClick = { explanationExpanded = !explanationExpanded },
         )
-        if (explanationExpanded) {
-            informational.forEach { permission -> PermissionItem(permission, !uiState.isBusy, onPermissionAction) }
+        AnimatedVisibility(
+            visible = explanationExpanded,
+            enter =
+                expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
+                    fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
+            exit =
+                shrinkVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
+                    fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                informational.forEach { permission -> PermissionItem(permission, canRequestPermission, onPermissionAction) }
+            }
         }
     }
 }
@@ -573,12 +778,21 @@ private fun PermissionDisclosure(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "permissionDisclosureRotation",
+    )
     val stateLabel = stringResource(if (expanded) R.string.onboarding_expanded else R.string.onboarding_collapsed)
     SegmentedListItem(
         onClick = onClick,
         shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
         trailingContent = {
-            Icon(painterResource(if (expanded) R.drawable.expand_less else R.drawable.expand_more), contentDescription = null)
+            Icon(
+                painterResource(R.drawable.expand_more),
+                contentDescription = null,
+                modifier = Modifier.graphicsLayer { rotationZ = chevronRotation },
+            )
         },
         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth().semantics { stateDescription = stateLabel },
@@ -602,14 +816,25 @@ private fun PermissionItem(
             OnboardingPermissionStatus.BLOCKED -> R.string.onboarding_permission_blocked
             OnboardingPermissionStatus.UNAVAILABLE -> R.string.onboarding_permission_unavailable
         }
+    val allowed = permission.status == OnboardingPermissionStatus.ALLOWED
+    val blocked = permission.status == OnboardingPermissionStatus.BLOCKED
+    val borderColor by animateColorAsState(
+        targetValue = if (allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "permissionBorder",
+    )
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        border = BorderStroke(1.dp, borderColor),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .animateContentSize(animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()),
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             ListItem(
-                headlineContent = { Text(stringResource(permission.titleResId)) },
+                headlineContent = { Text(stringResource(permission.titleResId), fontWeight = FontWeight.SemiBold) },
                 supportingContent = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(permission.descriptionResId))
@@ -621,7 +846,23 @@ private fun PermissionItem(
                         )
                     }
                 },
-                leadingContent = { Icon(painterResource(permission.iconResId), contentDescription = null) },
+                leadingContent = {
+                    OnboardingListIcon(
+                        iconResId = permission.iconResId,
+                        containerColor =
+                            when {
+                                allowed -> MaterialTheme.colorScheme.primaryContainer
+                                blocked -> MaterialTheme.colorScheme.errorContainer
+                                else -> MaterialTheme.colorScheme.secondaryContainer
+                            },
+                        contentColor =
+                            when {
+                                allowed -> MaterialTheme.colorScheme.onPrimaryContainer
+                                blocked -> MaterialTheme.colorScheme.onErrorContainer
+                                else -> MaterialTheme.colorScheme.onSecondaryContainer
+                            },
+                    )
+                },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             )
             permission.action?.let { action ->
@@ -637,13 +878,14 @@ private fun PermissionItem(
                         stringResource(label),
                         stringResource(permission.titleResId),
                     )
-                TextButton(
+                FilledTonalButton(
                     onClick = { onPermissionAction(action) },
                     enabled = enabled,
+                    shapes = ButtonDefaults.shapes(),
                     modifier =
                         Modifier
                             .align(Alignment.End)
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 16.dp)
                             .semantics { contentDescription = actionDescription },
                 ) {
                     Text(stringResource(label))
