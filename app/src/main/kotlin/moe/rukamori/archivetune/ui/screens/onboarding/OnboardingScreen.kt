@@ -456,6 +456,7 @@ private fun OnboardingPage(
     ) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             val identitySize = minOf(184.dp, maxHeight / 3)
+            val iconSize = minOf(64.dp, maxHeight / 5)
             Column(
                 modifier =
                     Modifier
@@ -498,7 +499,7 @@ private fun OnboardingPage(
                         shape = MaterialTheme.shapes.large,
                         modifier =
                             Modifier
-                                .size(minOf(64.dp, maxHeight / 5))
+                                .size(iconSize)
                                 .animateEnterExit(enter = identityEnter, exit = ExitTransition.None),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
