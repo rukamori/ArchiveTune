@@ -241,6 +241,7 @@ class HomeViewModel
         private val previousRemoteQuickPicks = MutableStateFlow<HomePage.Section?>(null)
         private val previousCommunitySection = MutableStateFlow<HomePage.Section?>(null)
         private val accountRefreshGeneration = AtomicLong(0L)
+        private var accountBannerJob: Job? = null
         private val communityPreviewGeneration = AtomicLong(0L)
         private var communityPreviewJob: Job? = null
 
@@ -255,6 +256,8 @@ class HomeViewModel
         val accountName: StateFlow<String> = _accountName.asStateFlow()
         private val _accountImageUrl = MutableStateFlow<String?>(null)
         val accountImageUrl: StateFlow<String?> = _accountImageUrl.asStateFlow()
+        private val _accountBannerUrl = MutableStateFlow<String?>(null)
+        val accountBannerUrl: StateFlow<String?> = _accountBannerUrl.asStateFlow()
         private val _accountChannelsState = MutableStateFlow<AccountChannelsState>(AccountChannelsState.Empty)
         val accountChannelsState: StateFlow<AccountChannelsState> = _accountChannelsState.asStateFlow()
 
@@ -814,14 +817,21 @@ class HomeViewModel
         }
 
         private fun clearAccountData() {
-            accountRefreshGeneration.incrementAndGet()
-            _accountName.value = ""
-            _accountImageUrl.value = null
+            beginAccountRefresh()
             accountPlaylists.value = null
             _accountChannelsState.value = AccountChannelsState.Empty
         }
 
-        private fun beginAccountRefresh(): Long = accountRefreshGeneration.incrementAndGet()
+        private fun beginAccountRefresh(): Long =
+            synchronized(accountRefreshGeneration) {
+                val generation = accountRefreshGeneration.incrementAndGet()
+                accountBannerJob?.cancel()
+                accountBannerJob = null
+                _accountName.value = ""
+                _accountImageUrl.value = null
+                _accountBannerUrl.value = null
+                generation
+            }
 
         private fun isCurrentAccountRefresh(refreshGeneration: Long): Boolean =
             accountRefreshGeneration.get() == refreshGeneration
@@ -837,20 +847,38 @@ class HomeViewModel
 
         private suspend fun refreshAccountIdentity(refreshGeneration: Long) {
             if (!isCurrentAccountRefresh(refreshGeneration)) return
-            _accountName.value = ""
-            _accountImageUrl.value = null
             _accountChannelsState.value = AccountChannelsState.Loading
 
             try {
                 YouTube
                     .accountInfo()
                     .onSuccess { info ->
-                        if (!isCurrentAccountRefresh(refreshGeneration)) return@onSuccess
-                        _accountName.value = info.name
-                        _accountImageUrl.value = info.thumbnailUrl
+                        synchronized(accountRefreshGeneration) {
+                            if (!isCurrentAccountRefresh(refreshGeneration)) return@onSuccess
+                            _accountName.value = info.name
+                            _accountImageUrl.value = info.thumbnailUrl
+                            info.channelHandle?.takeIf { it.isNotBlank() }?.let { handle ->
+                                accountBannerJob = viewModelScope.launch(Dispatchers.IO) {
+                                    YouTube.accountBanner(handle)
+                                        .onSuccess { bannerUrl ->
+                                            synchronized(accountRefreshGeneration) {
+                                                if (isCurrentAccountRefresh(refreshGeneration)) {
+                                                    _accountBannerUrl.value = bannerUrl
+                                                }
+                                            }
+                                        }.onFailure { error ->
+                                            if (error is CancellationException) throw error
+                                            if (isCurrentAccountRefresh(refreshGeneration)) {
+                                                Timber.w(error, "Failed to fetch account banner")
+                                            }
+                                        }
+                                }
+                            }
+                        }
                         context.dataStore.edit { preferences ->
                             if (isCurrentAccountRefresh(refreshGeneration)) {
                                 preferences[AccountNameKey] = info.name
+                                preferences[AccountChannelHandleKey] = info.channelHandle.orEmpty()
                                 info.email?.takeIf { it.isNotBlank() }?.let { email ->
                                     preferences[AccountEmailKey] = email
                                 }

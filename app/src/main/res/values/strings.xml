@@ -23,6 +23,11 @@
     <string name="stats">Stats</string>
     <string name="mood_and_genres">Mood &amp; Genres</string>
     <string name="account">Account</string>
+    <string name="account_view">View account</string>
+    <string name="account_switch">Switch account</string>
+    <string name="account_sign_out">Sign out</string>
+    <string name="account_navigate_back">Go back</string>
+    <string name="account_login_description">Log in to YouTube Music to access your library and sync your listening history.</string>
     <string name="quick_picks">Quick picks</string>
     <string name="speed_dial">Speed dial</string>
     <string name="forgotten_favorites">Forgotten favorites</string>
