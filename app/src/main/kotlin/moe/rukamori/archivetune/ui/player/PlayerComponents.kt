@@ -4972,7 +4972,7 @@ fun V10PlayerContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

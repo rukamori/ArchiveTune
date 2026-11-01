@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -329,6 +330,7 @@ fun CodecInfoRow(
     fileSize: String,
     textColor: Color,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(start = 30.dp, end = 30.dp, top = 6.dp, bottom = 2.dp),
 ) {
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -336,7 +338,7 @@ fun CodecInfoRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 30.dp, end = 30.dp, top = 6.dp, bottom = 2.dp),
+                .padding(contentPadding),
     ) {
         Text(
             text =
@@ -1560,6 +1562,7 @@ fun QueueCollapsedContentV10(
                 bitrate = bitrate,
                 fileSize = "",
                 textColor = accent.copy(alpha = 0.6f),
+                contentPadding = PaddingValues(start = 30.dp, end = 30.dp, top = 0.dp, bottom = 10.dp),
             )
         }
 
@@ -1573,8 +1576,8 @@ fun QueueCollapsedContentV10(
                     .padding(
                         start = 38.dp,
                         end = 38.dp,
-                        top = if (hasCodec) 8.dp else 18.dp,
-                        bottom = 20.dp,
+                        top = 0.dp,
+                        bottom = 0.dp,
                     ),
         ) {
             // 1. Queue (expand action) - leftmost
