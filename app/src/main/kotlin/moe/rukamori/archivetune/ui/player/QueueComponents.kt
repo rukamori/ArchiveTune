@@ -1564,17 +1564,17 @@ fun QueueCollapsedContentV10(
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 400.dp)
                     .padding(
-                        start = 36.dp,
-                        end = 36.dp,
-                        top = if (hasCodec) 8.dp else 18.dp,
-                        bottom = 18.dp,
+                        start = 38.dp,
+                        end = 38.dp,
+                        top = if (hasCodec) 8.dp else 20.dp,
+                        bottom = 20.dp,
                     ),
         ) {
             // 1. Queue (expand action) - leftmost
@@ -1670,7 +1670,7 @@ private fun RowScope.EditorialSegmentedButton(
         modifier =
             modifier
                 .weight(1f)
-                .height(46.dp)
+                .height(44.dp)
                 .clip(shape)
                 .background(containerColor)
                 .clickable {
@@ -1698,10 +1698,10 @@ private fun RowScope.EditorialSegmentedButton(
  * Cached singletons to prevent allocations on recomposition hot paths.
  */
 private val EditorialGroupedFirstShape =
-    RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp, topEnd = 6.dp, bottomEnd = 6.dp)
-private val EditorialGroupedMiddleShape = RoundedCornerShape(6.dp)
+    RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 8.dp, bottomEnd = 8.dp)
+private val EditorialGroupedMiddleShape = RoundedCornerShape(8.dp)
 private val EditorialGroupedLastShape =
-    RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 18.dp, bottomEnd = 18.dp)
+    RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 20.dp, bottomEnd = 20.dp)
 
 private fun editorialGroupedItemShape(isFirst: Boolean, isLast: Boolean): RoundedCornerShape {
     return when {
