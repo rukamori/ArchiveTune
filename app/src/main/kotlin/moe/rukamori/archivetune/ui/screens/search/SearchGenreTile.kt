@@ -10,23 +10,26 @@ package moe.rukamori.archivetune.ui.screens.search
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
@@ -45,12 +48,24 @@ internal fun SearchGenreTile(
     title: String,
     stripeColor: Long,
     artwork: MoodAndGenresArtworkState?,
-    variant: Int,
+    tileIndex: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val accent = lerp(Color(stripeColor), colors.primary, 0.12f)
+    val variant = tileIndex % 6
+    val artworkShape = GenreArtworkShapes[tileIndex % GenreArtworkShapes.size].toShape()
+    val medium = MaterialTheme.shapes.medium
+    val large = MaterialTheme.shapes.extraLarge
+    val tileShape = when (variant) {
+        1 -> medium.copy(bottomEnd = large.bottomEnd)
+        2 -> medium.copy(bottomStart = large.bottomStart)
+        3 -> medium.copy(topEnd = large.topEnd, bottomStart = large.bottomStart)
+        4 -> medium.copy(topStart = large.topStart, bottomEnd = large.bottomEnd)
+        5 -> large
+        else -> medium
+    }
     val compact = variant == 3 || variant == 4
     val ratio = when (variant) {
         1, 2 -> 0.8f
@@ -60,7 +75,7 @@ internal fun SearchGenreTile(
 
     Card(
         onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
+        shape = tileShape,
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow),
         border = BorderStroke(1.dp, accent),
         modifier = modifier,
@@ -73,7 +88,7 @@ internal fun SearchGenreTile(
                     fontWeight = FontWeight.Bold,
                     color = colors.onSurface,
                 )
-                GenreTileArtwork(artwork = artwork, accent = accent)
+                GenreTileArtwork(artwork = artwork, accent = accent, shape = artworkShape)
             },
         ) { measurables, constraints ->
             val width = constraints.maxWidth
@@ -103,6 +118,7 @@ internal fun SearchGenreTile(
 private fun GenreTileArtwork(
     artwork: MoodAndGenresArtworkState?,
     accent: Color,
+    shape: Shape,
 ) {
     val outline = MaterialTheme.colorScheme.onSurface
     val dark = MaterialTheme.colorScheme.scrim
@@ -125,18 +141,20 @@ private fun GenreTileArtwork(
     Box(
         modifier =
             Modifier.drawWithCache {
-                val paths = (0..3).map { layer ->
-                    val shift = size.width * layer * 0.06f
-                    val left = if (layoutDirection == LayoutDirection.Rtl) size.width * 0.18f - shift else shift
-                    genreArtworkPath(size.width * 0.82f, size.height * 0.82f).apply {
-                        translate(Offset(left, size.height * (3 - layer) * 0.06f))
-                    }
-                }
+                val artworkOutline = shape.createOutline(
+                    size = Size(size.width * 0.82f, size.height * 0.82f),
+                    layoutDirection = layoutDirection,
+                    density = this,
+                )
                 val stroke = Stroke(width = 1.dp.toPx())
                 onDrawBehind {
-                    paths.forEach { path ->
-                        drawPath(path, accent)
-                        drawPath(path, outline, style = stroke)
+                    for (layer in 0..3) {
+                        val shift = size.width * layer * 0.06f
+                        val left = if (layoutDirection == LayoutDirection.Rtl) size.width * 0.18f - shift else shift
+                        translate(left = left, top = size.height * (3 - layer) * 0.06f) {
+                            drawOutline(artworkOutline, accent)
+                            drawOutline(artworkOutline, outline, style = stroke)
+                        }
                     }
                 }
             },
@@ -151,23 +169,28 @@ private fun GenreTileArtwork(
                     Modifier
                         .fillMaxSize(0.82f)
                         .align(Alignment.TopEnd)
-                        .clip(GenreArtworkShape),
+                        .clip(shape),
             )
         }
     }
 }
 
-private fun genreArtworkPath(width: Float, height: Float): Path {
-    val shoulder = minOf(width * 0.5f, height * 0.5f)
-    return Path().apply {
-        moveTo(0f, height)
-        lineTo(0f, shoulder)
-        cubicTo(0f, 0f, width, 0f, width, shoulder)
-        lineTo(width, height)
-        close()
-    }
-}
-
-private val GenreArtworkShape = GenericShape { size, _ ->
-    addPath(genreArtworkPath(size.width, size.height))
-}
+private val GenreArtworkShapes = listOf(
+    MaterialShapes.Arch,
+    MaterialShapes.Flower,
+    MaterialShapes.Slanted,
+    MaterialShapes.Clover4Leaf,
+    MaterialShapes.Diamond,
+    MaterialShapes.SoftBurst,
+    MaterialShapes.Pentagon,
+    MaterialShapes.Heart,
+    MaterialShapes.Sunny,
+    MaterialShapes.Cookie6Sided,
+    MaterialShapes.Ghostish,
+    MaterialShapes.Cookie9Sided,
+    MaterialShapes.Triangle,
+    MaterialShapes.PixelCircle,
+    MaterialShapes.Pill,
+    MaterialShapes.Square,
+    MaterialShapes.Circle,
+)

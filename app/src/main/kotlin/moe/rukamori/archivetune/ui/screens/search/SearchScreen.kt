@@ -326,7 +326,7 @@ fun SearchScreen(
                                     title = item.title,
                                     stripeColor = item.stripeColor,
                                     artwork = artwork[item.endpoint.moodAndGenresArtworkKey()],
-                                    variant = index % 6,
+                                    tileIndex = index,
                                     onClick = {
                                         navController.navigate(
                                             buildString {
