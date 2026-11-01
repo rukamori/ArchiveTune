@@ -4890,10 +4890,7 @@ fun V10PlayerContent(
 
             // Row 2: previous circle + progress line with times
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -4974,6 +4971,8 @@ fun V10PlayerContent(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(2.dp))
         }
     }
 }
