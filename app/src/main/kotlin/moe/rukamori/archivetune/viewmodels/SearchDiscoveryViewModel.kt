@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
+import moe.rukamori.archivetune.repository.MoodAndGenresArtworkRepository
 import moe.rukamori.archivetune.search.LoadSearchDiscoveryUseCase
 import moe.rukamori.archivetune.search.SearchDiscoveryUiModel
 import javax.inject.Inject
@@ -46,7 +48,11 @@ class SearchDiscoveryViewModel
     @Inject
     constructor(
         private val loadSearchDiscovery: LoadSearchDiscoveryUseCase,
+        artworkRepository: MoodAndGenresArtworkRepository,
     ) : ViewModel() {
+        private val artworkLoader = MoodAndGenresArtworkLoader(artworkRepository, viewModelScope)
+        val artwork = artworkLoader.state
+
         private val _state = MutableStateFlow<SearchDiscoveryScreenState>(SearchDiscoveryScreenState.Loading)
         val state: StateFlow<SearchDiscoveryScreenState> = _state.asStateFlow()
 
@@ -57,6 +63,10 @@ class SearchDiscoveryViewModel
 
         init {
             load()
+        }
+
+        fun setVisibleArtwork(endpoints: List<BrowseEndpoint>) {
+            artworkLoader.setVisible(endpoints)
         }
 
         fun selectTab(tab: SearchDiscoveryTab) {
