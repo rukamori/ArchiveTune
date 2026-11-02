@@ -9,13 +9,13 @@ package moe.rukamori.archivetune.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -40,44 +40,47 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.carousel.CarouselItemScope
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -87,10 +90,12 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.Morph
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
@@ -98,11 +103,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
-import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.LocalItem
@@ -140,16 +144,16 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.player.EditorialMorphShape
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
-import kotlin.math.min
+import java.time.LocalTime
 import kotlin.math.roundToInt
 import kotlin.random.Random
-import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider as buildSnapLayoutInfoProvider
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -161,47 +165,102 @@ fun HomeCategoryChips(
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = 68.dp)
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         chips.forEach { chip ->
-            val selected = chip == selectedChip
-            FilterChip(
-                selected = selected,
-                onClick = { onChipSelected(chip) },
-                label = {
-                    Text(
-                        text = chip.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                leadingIcon =
-                    if (selected) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.done),
-                                contentDescription = null,
-                                modifier = Modifier.size(FilterChipDefaults.IconSize),
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                shapes = FilterChipDefaults.shapes(),
+            ToggleButton(
+                checked = chip == selectedChip,
+                onCheckedChange = { onChipSelected(chip) },
                 colors =
-                    FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ToggleButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
-                border = null,
+                elevation = null,
+            ) {
+                Text(
+                    text = chip.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun HomeGreetingHeader(
+    accountName: String,
+    modifier: Modifier = Modifier,
+) {
+    val hour by produceState(initialValue = LocalTime.now().hour) {
+        while (true) {
+            val now = LocalTime.now()
+            delay(((60 - now.minute) * 60L - now.second) * 1_000L)
+            value = LocalTime.now().hour
+        }
+    }
+    val greetingRes =
+        when (hour) {
+            in 5..11 -> R.string.greeting_morning
+            in 12..16 -> R.string.greeting_afternoon
+            in 17..21 -> R.string.greeting_evening
+            else -> R.string.greeting_night
+        }
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(96.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialShapes.Cookie9Sided.toShape(),
+                    ),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.about_appbar),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(56.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.labelLargeEmphasized,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+        )
+        Text(
+            text = stringResource(greetingRes),
+            style = MaterialTheme.typography.displaySmallEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() },
+        )
+        if (accountName.isNotBlank()) {
+            Text(
+                text = accountName,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -224,8 +283,7 @@ fun HomeSectionHeader(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 64.dp)
-                .then(if (onClick != null && actionContent == null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
     ) {
         thumbnail?.invoke()
         Column(
@@ -234,34 +292,37 @@ fun HomeSectionHeader(
                 Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
-                    .then(if (onClick != null && actionContent != null) Modifier.clickable(onClick = onClick) else Modifier),
+                    .semantics(mergeDescendants = true) { heading() }
+                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         ) {
             label?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLargeEmphasized,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.headlineSmallEmphasized,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (actionContent != null) {
-            actionContent()
-        } else if (onClick != null) {
-            Icon(
-                painter = painterResource(R.drawable.arrow_forward),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        actionContent?.invoke()
+        if (onClick != null) {
+            FilledTonalIconButton(
+                onClick = onClick,
+                shapes = IconButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_forward),
+                    contentDescription = stringResource(R.string.see_all),
+                )
+            }
         }
     }
 }
@@ -314,213 +375,102 @@ fun QuickPicksSection(
                 ) { index ->
                     val song = distinctQuickPicks[index]
                     val isActive = song.id == mediaMetadata?.id
-                    val context = LocalContext.current
-                    val imageRequest =
-                        remember(song.song.thumbnailUrl, requestWidthPx, requestHeightPx) {
-                            ImageRequest
-                                .Builder(context)
-                                .data(song.song.thumbnailUrl)
-                                .size(Size(requestWidthPx, requestHeightPx))
-                                .crossfade(true)
-                                .build()
-                        }
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .maskClip(MaterialTheme.shapes.extraLarge)
-                                .maskBorder(
-                                    BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-                                    ),
-                                    MaterialTheme.shapes.extraLarge,
-                                ).focusable()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (isActive) {
-                                            playerConnection.player.togglePlayPause()
-                                        } else {
-                                            playerConnection.playQueue(
-                                                if (song.song.isLocal) {
-                                                    ListQueue(items = listOf(song.toMediaItem()))
-                                                } else {
-                                                    YouTubeQueue.radio(song.toMediaMetadata())
-                                                },
-                                            )
-                                        }
+                    QuickPickHeroCard(
+                        title = song.song.title,
+                        subtitle = song.artists.joinToString { it.name },
+                        thumbnailUrl = song.song.thumbnailUrl,
+                        requestWidthPx = requestWidthPx,
+                        requestHeightPx = requestHeightPx,
+                        isActive = isActive,
+                        isPlaying = isPlaying,
+                        onClick = {
+                            if (isActive) {
+                                playerConnection.player.togglePlayPause()
+                            } else {
+                                playerConnection.playQueue(
+                                    if (song.song.isLocal) {
+                                        ListQueue(items = listOf(song.toMediaItem()))
+                                    } else {
+                                        YouTubeQueue.radio(song.toMediaMetadata())
                                     },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
-                                            SongMenu(
-                                                originalSong = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ),
-                    ) {
-                        AsyncImage(
-                            model = imageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0f to Color.Transparent,
-                                            0.48f to Color.Black.copy(alpha = 0.08f),
-                                            1f to Color.Black.copy(alpha = 0.84f),
-                                        ),
-                                    ),
-                        )
-
-                        if (isActive && isPlaying) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                shape = CircleShape,
-                                tonalElevation = 2.dp,
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(14.dp)
-                                        .size(36.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.volume_up),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(19.dp),
-                                    )
-                                }
+                                )
                             }
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(20.dp),
-                        ) {
-                            Text(
-                                text = song.song.title,
-                                style = MaterialTheme.typography.titleLargeEmphasized,
-                                color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = song.artists.joinToString { it.name },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.78f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            menuState.show {
+                                SongMenu(
+                                    originalSong = song,
+                                    navController = navController,
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }
 
         QuickPicksDisplayMode.LIST -> {
-            BoxWithConstraints(
-                modifier = modifier.fillMaxWidth(),
-            ) {
-                val widthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
-                val itemWidth = maxWidth * widthFactor
-                val lazyGridState = rememberLazyGridState()
-                val snapLayoutInfoProvider =
-                    remember(lazyGridState, widthFactor) {
-                        buildSnapLayoutInfoProvider(
-                            lazyGridState = lazyGridState,
-                            positionInLayout = { layoutSize, itemSize ->
-                                layoutSize * widthFactor / 2f - itemSize / 2f
-                            },
-                        )
-                    }
-                LazyHorizontalGrid(
-                    state = lazyGridState,
-                    rows = GridCells.Fixed(4),
-                    flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
-                    contentPadding =
-                        WindowInsets.systemBars
-                            .only(WindowInsetsSides.Horizontal)
-                            .asPaddingValues(),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(ListItemHeight * 4),
-                ) {
-                    items(
-                        items = distinctQuickPicks,
-                        key = { it.id },
-                        contentType = { "quick_pick_song" },
-                    ) { song ->
-                        SongListItem(
-                            song = song,
-                            showInLibraryIcon = true,
-                            isActive = song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            isSwipeable = false,
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            SongMenu(
-                                                originalSong = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null,
+            SongStackShelf(
+                items = distinctQuickPicks,
+                key = { it.id },
+                state = rememberLazyListState(),
+                modifier = modifier,
+            ) { song ->
+                SongListItem(
+                    song = song,
+                    showInLibraryIcon = true,
+                    isActive = song.id == mediaMetadata?.id,
+                    isPlaying = isPlaying,
+                    isSwipeable = false,
+                    trailingContent = {
+                        IconButton(
+                            onClick = {
+                                menuState.show {
+                                    SongMenu(
+                                        originalSong = song,
+                                        navController = navController,
+                                        onDismiss = menuState::dismiss,
                                     )
                                 }
                             },
-                            modifier =
-                                Modifier
-                                    .width(itemWidth)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (song.id == mediaMetadata?.id) {
-                                                playerConnection.player.togglePlayPause()
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    if (song.id == mediaMetadata?.id) {
+                                        playerConnection.player.togglePlayPause()
+                                    } else {
+                                        playerConnection.playQueue(
+                                            if (song.song.isLocal) {
+                                                ListQueue(items = listOf(song.toMediaItem()))
                                             } else {
-                                                playerConnection.playQueue(
-                                                    if (song.song.isLocal) {
-                                                        ListQueue(items = listOf(song.toMediaItem()))
-                                                    } else {
-                                                        YouTubeQueue.radio(song.toMediaMetadata())
-                                                    },
-                                                )
-                                            }
-                                        },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = song,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ),
-                        )
-                    }
-                }
+                                                YouTubeQueue.radio(song.toMediaMetadata())
+                                            },
+                                        )
+                                    }
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        SongMenu(
+                                            originalSong = song,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                },
+                            ),
+                )
             }
         }
     }
@@ -577,212 +527,290 @@ fun RemoteQuickPicksSection(
                 ) { index ->
                     val song = songs[index]
                     val isActive = song.id == mediaMetadata?.id
-                    val context = LocalContext.current
-                    val imageRequest =
-                        remember(song.thumbnail, requestWidthPx, requestHeightPx) {
-                            ImageRequest
-                                .Builder(context)
-                                .data(song.thumbnail)
-                                .size(Size(requestWidthPx, requestHeightPx))
-                                .crossfade(true)
-                                .build()
-                        }
-
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .maskClip(MaterialTheme.shapes.extraLarge)
-                                .maskBorder(
-                                    BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                    QuickPickHeroCard(
+                        title = song.title,
+                        subtitle = song.artists.joinToString { artist -> artist.name },
+                        thumbnailUrl = song.thumbnail,
+                        requestWidthPx = requestWidthPx,
+                        requestHeightPx = requestHeightPx,
+                        isActive = isActive,
+                        isPlaying = isPlaying,
+                        onClick = {
+                            if (isActive) {
+                                playerConnection.player.togglePlayPause()
+                            } else {
+                                playerConnection.playQueue(
+                                    YouTubeQueue(
+                                        endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
+                                        preloadItem = song.toMediaMetadata(),
                                     ),
-                                    MaterialTheme.shapes.extraLarge,
-                                ).focusable()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (isActive) {
-                                            playerConnection.player.togglePlayPause()
-                                        } else {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue(
-                                                    endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                                    preloadItem = song.toMediaMetadata(),
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ),
-                    ) {
-                        AsyncImage(
-                            model = imageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0f to Color.Transparent,
-                                            0.48f to Color.Black.copy(alpha = 0.08f),
-                                            1f to Color.Black.copy(alpha = 0.84f),
-                                        ),
-                                    ),
-                        )
-
-                        if (isActive && isPlaying) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                shape = CircleShape,
-                                tonalElevation = 2.dp,
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(14.dp)
-                                        .size(36.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.volume_up),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(19.dp),
-                                    )
-                                }
+                                )
                             }
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(20.dp),
-                        ) {
-                            Text(
-                                text = song.title,
-                                style = MaterialTheme.typography.titleLargeEmphasized,
-                                color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = song.artists.joinToString { artist -> artist.name },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.78f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            menuState.show {
+                                YouTubeSongMenu(
+                                    song = song,
+                                    navController = navController,
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }
 
         QuickPicksDisplayMode.LIST -> {
-            BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-                val widthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
-                val itemWidth = maxWidth * widthFactor
-                val lazyGridState = rememberLazyGridState()
-                val snapLayoutInfoProvider =
-                    remember(lazyGridState, widthFactor) {
-                        buildSnapLayoutInfoProvider(
-                            lazyGridState = lazyGridState,
-                            positionInLayout = { layoutSize, itemSize ->
-                                layoutSize * widthFactor / 2f - itemSize / 2f
-                            },
-                        )
-                    }
-                LazyHorizontalGrid(
-                    state = lazyGridState,
-                    rows = GridCells.Fixed(4),
-                    flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
-                    contentPadding =
-                        WindowInsets.systemBars
-                            .only(WindowInsetsSides.Horizontal)
-                            .asPaddingValues(),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(ListItemHeight * 4),
-                ) {
-                    items(
-                        items = songs,
-                        key = SongItem::id,
-                        contentType = { "remote_quick_pick_song" },
-                    ) { song ->
-                        YouTubeListItem(
-                            item = song,
-                            isActive = song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            isSwipeable = false,
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null,
+            SongStackShelf(
+                items = songs,
+                key = SongItem::id,
+                state = rememberLazyListState(),
+                modifier = modifier,
+            ) { song ->
+                YouTubeListItem(
+                    item = song,
+                    isActive = song.id == mediaMetadata?.id,
+                    isPlaying = isPlaying,
+                    isSwipeable = false,
+                    trailingContent = {
+                        IconButton(
+                            onClick = {
+                                menuState.show {
+                                    YouTubeSongMenu(
+                                        song = song,
+                                        navController = navController,
+                                        onDismiss = menuState::dismiss,
                                     )
                                 }
                             },
-                            modifier =
-                                Modifier
-                                    .width(itemWidth)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (song.id == mediaMetadata?.id) {
-                                                playerConnection.player.togglePlayPause()
-                                            } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue(
-                                                        endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                                        preloadItem = song.toMediaMetadata(),
-                                                    ),
-                                                )
-                                            }
-                                        },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            menuState.show {
-                                                YouTubeSongMenu(
-                                                    song = song,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ),
-                        )
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    if (song.id == mediaMetadata?.id) {
+                                        playerConnection.player.togglePlayPause()
+                                    } else {
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
+                                                preloadItem = song.toMediaMetadata(),
+                                            ),
+                                        )
+                                    }
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        YouTubeSongMenu(
+                                            song = song,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                },
+                            ),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+)
+@Composable
+private fun CarouselItemScope.QuickPickHeroCard(
+    title: String,
+    subtitle: String,
+    thumbnailUrl: String?,
+    requestWidthPx: Int,
+    requestHeightPx: Int,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val imageRequest =
+        remember(thumbnailUrl, requestWidthPx, requestHeightPx) {
+            ImageRequest
+                .Builder(context)
+                .data(thumbnailUrl)
+                .size(Size(requestWidthPx, requestHeightPx))
+                .crossfade(true)
+                .build()
+        }
+    val isActivelyPlaying = isActive && isPlaying
+    val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie9Sided) }
+    val morphProgress by animateFloatAsState(
+        targetValue = if (isActivelyPlaying) 1f else 0f,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "quickPickPlayMorph",
+    )
+    val playButtonColor by animateColorAsState(
+        targetValue = if (isActive) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primary,
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "quickPickPlayColor",
+    )
+    val playIconColor =
+        if (isActive) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimary
+    val playLabel = stringResource(if (isActivelyPlaying) R.string.widget_pause else R.string.play)
+
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .maskClip(MaterialTheme.shapes.extraLarge)
+                .focusable()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ),
+    ) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.52f to Color.Black.copy(alpha = 0.12f),
+                            1f to Color.Black.copy(alpha = 0.88f),
+                        ),
+                    ),
+        )
+
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 16.dp, bottom = 16.dp)
+                    .graphicsLayer {
+                        val drawInfo = carouselItemDrawInfo
+                        val visibleFraction =
+                            if (drawInfo.maxSize > 0f) drawInfo.size / drawInfo.maxSize else 1f
+                        alpha = ((visibleFraction - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                    },
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(bottom = 4.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmallEmphasized,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .clip(EditorialMorphShape(morph, morphProgress))
+                        .background(playButtonColor)
+                        .clickable(
+                            onClickLabel = playLabel,
+                            role = Role.Button,
+                            onClick = onClick,
+                        ),
+            ) {
+                Icon(
+                    painter = painterResource(if (isActivelyPlaying) R.drawable.pause else R.drawable.play),
+                    contentDescription = playLabel,
+                    tint = playIconColor,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T : Any> SongStackShelf(
+    items: List<T>,
+    key: (T) -> Any,
+    state: LazyListState,
+    modifier: Modifier = Modifier,
+    itemContent: @Composable (T) -> Unit,
+) {
+    val stacks = remember(items) { items.chunked(SongStackSize) }
+    val layoutDirection = LocalLayoutDirection.current
+    val systemBarPadding =
+        WindowInsets.systemBars
+            .only(WindowInsetsSides.Horizontal)
+            .asPaddingValues()
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val startPadding = systemBarPadding.calculateStartPadding(layoutDirection) + 16.dp
+        val endPadding = systemBarPadding.calculateEndPadding(layoutDirection) + 16.dp
+        val stackWidth =
+            if (maxWidth * 0.475f >= 320.dp) {
+                maxWidth * 0.475f
+            } else {
+                (maxWidth - startPadding - 40.dp).coerceAtLeast(264.dp)
+            }
+
+        LazyRow(
+            state = state,
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = state, snapPosition = SnapPosition.Start),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = startPadding, end = endPadding),
+        ) {
+            items(
+                items = stacks,
+                key = { stack -> key(stack.first()) },
+                contentType = { "song_stack" },
+            ) { stack ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    modifier = Modifier.width(stackWidth),
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        stack.forEach { item -> itemContent(item) }
                     }
                 }
             }
         }
     }
 }
+
+private const val SongStackSize = 4
 
 private const val SpeedDialGridRows = 3
 private const val SpeedDialGridColumns = 3
@@ -947,9 +975,8 @@ fun SpeedDialSection(
     val motionScheme = MaterialTheme.motionScheme
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.extraLarge,
         modifier =
             modifier
                 .padding(horizontal = 12.dp)
@@ -1145,35 +1172,47 @@ fun SpeedDialSection(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SpeedDialRandomTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.large,
-        tonalElevation = 2.dp,
-        modifier =
-            modifier
-                .aspectRatio(1f)
-                .combinedClickable(onClick = onClick),
+        modifier = modifier.aspectRatio(1f),
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(6.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialShapes.Cookie9Sided.toShape(),
+                        ),
             ) {
-                repeat(3) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape,
-                        modifier = Modifier.size(18.dp),
-                    ) {}
-                }
+                Icon(
+                    painter = painterResource(R.drawable.shuffle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp),
+                )
             }
+            Text(
+                text = stringResource(R.string.shuffle),
+                style = MaterialTheme.typography.labelLargeEmphasized,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -1201,7 +1240,7 @@ fun KeepListeningSection(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val startPadding = systemBarPadding.calculateStartPadding(layoutDirection) + 16.dp
         val endPadding = systemBarPadding.calculateEndPadding(layoutDirection) + 16.dp
-        val cardWidth = (maxWidth - startPadding - 40.dp).coerceIn(280.dp, 360.dp)
+        val cardWidth = if (maxWidth >= 600.dp) 184.dp else 160.dp
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1228,7 +1267,7 @@ fun KeepListeningSection(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun KeepListeningResumeCard(
     item: LocalItem,
@@ -1329,7 +1368,7 @@ private fun KeepListeningResumeCard(
             is Artist -> pluralStringResource(R.plurals.n_song, item.songCount, item.songCount)
             is Playlist -> pluralStringResource(R.plurals.n_song, item.songCount, item.songCount)
         }
-    val thumbnailShape = if (item is Artist) CircleShape else MaterialTheme.shapes.large
+    val thumbnailShape = if (item is Artist) MaterialShapes.Cookie9Sided.toShape() else MaterialTheme.shapes.large
     val placeholderIcon =
         when (item) {
             is Song -> R.drawable.music_note
@@ -1337,93 +1376,86 @@ private fun KeepListeningResumeCard(
             is Artist -> R.drawable.artist
             is Playlist -> R.drawable.queue_music
         }
-
-    Surface(
-        color =
+    val containerColor by animateColorAsState(
+        targetValue =
             if (isActive) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
+                MaterialTheme.colorScheme.surfaceContainer
             },
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "keepListeningContainer",
+    )
+    val cardShape = MaterialTheme.shapes.extraLarge
+
+    Surface(
+        color = containerColor,
         contentColor =
             if (isActive) {
                 MaterialTheme.colorScheme.onSecondaryContainer
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
-        shape = MaterialTheme.shapes.extraLarge,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = cardShape,
         modifier =
             modifier
-                .heightIn(min = 120.dp)
+                .clip(cardShape)
                 .focusable()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(12.dp),
-        ) {
-            ItemThumbnail(
-                thumbnailUrl = item.homeThumbnailUrl(),
-                isActive = isActive,
-                isPlaying = isPlaying,
-                shape = thumbnailShape,
-                placeholderIconRes = placeholderIcon,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(96.dp),
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box {
+                ItemThumbnail(
+                    thumbnailUrl = item.homeThumbnailUrl(),
+                    isActive = isActive,
+                    isPlaying = isPlaying,
+                    shape = thumbnailShape,
+                    placeholderIconRes = placeholderIcon,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f),
+                )
+                if (item is Song) {
+                    FilledIconButton(
+                        onClick = onClick,
+                        shapes = IconButtonDefaults.shapes(),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp),
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (isActive && isPlaying) R.drawable.pause else R.drawable.play,
+                                ),
+                            contentDescription =
+                                stringResource(if (isActive && isPlaying) R.string.widget_pause else R.string.play),
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleSmallEmphasized,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color =
-                        if (isActive) {
-                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (item is Song) {
-                FilledIconButton(
-                    onClick = onClick,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (isActive && isPlaying) R.drawable.pause else R.drawable.play,
-                            ),
-                        contentDescription =
-                            stringResource(if (isActive && isPlaying) R.string.widget_pause else R.string.play),
-                    )
-                }
-            } else {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_forward),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color =
+                    if (isActive) {
+                        MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -1469,45 +1501,65 @@ fun ForgottenFavoritesSection(
     forgottenFavorites: List<Song>,
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
-    horizontalLazyGridItemWidth: Dp,
-    lazyGridState: LazyGridState,
-    snapLayoutInfoProvider: SnapLayoutInfoProvider,
+    state: LazyListState,
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
     haptic: HapticFeedback,
     modifier: Modifier = Modifier,
 ) {
-    val rows = min(4, forgottenFavorites.size)
     val distinctForgottenFavorites = remember(forgottenFavorites) { forgottenFavorites.distinctBy { it.id } }
 
-    LazyHorizontalGrid(
-        state = lazyGridState,
-        rows = GridCells.Fixed(rows),
-        flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(ListItemHeight * rows),
-    ) {
-        items(
-            items = distinctForgottenFavorites,
-            key = { it.id },
-            contentType = { "forgotten_favorite_song" },
-        ) { song ->
-            SongListItem(
-                song = song,
-                showInLibraryIcon = true,
-                isActive = song.id == mediaMetadata?.id,
-                isPlaying = isPlaying,
-                isSwipeable = false,
-                trailingContent = {
-                    IconButton(
+    SongStackShelf(
+        items = distinctForgottenFavorites,
+        key = { it.id },
+        state = state,
+        modifier = modifier,
+    ) { song ->
+        SongListItem(
+            song = song,
+            showInLibraryIcon = true,
+            isActive = song.id == mediaMetadata?.id,
+            isPlaying = isPlaying,
+            isSwipeable = false,
+            trailingContent = {
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuState.show {
+                            SongMenu(
+                                originalSong = song,
+                                navController = navController,
+                                onDismiss = menuState::dismiss,
+                            )
+                        }
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = stringResource(R.string.more_options),
+                    )
+                }
+            },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusable()
+                    .combinedClickable(
                         onClick = {
+                            if (song.id == mediaMetadata?.id) {
+                                playerConnection.player.togglePlayPause()
+                            } else {
+                                playerConnection.playQueue(
+                                    if (song.song.isLocal) {
+                                        ListQueue(items = listOf(song.toMediaItem()))
+                                    } else {
+                                        YouTubeQueue.radio(song.toMediaMetadata())
+                                    },
+                                )
+                            }
+                        },
+                        onLongClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             menuState.show {
                                 SongMenu(
@@ -1517,44 +1569,8 @@ fun ForgottenFavoritesSection(
                                 )
                             }
                         },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                modifier =
-                    Modifier
-                        .width(horizontalLazyGridItemWidth)
-                        .focusable()
-                        .combinedClickable(
-                            onClick = {
-                                if (song.id == mediaMetadata?.id) {
-                                    playerConnection.player.togglePlayPause()
-                                } else {
-                                    playerConnection.playQueue(
-                                        if (song.song.isLocal) {
-                                            ListQueue(items = listOf(song.toMediaItem()))
-                                        } else {
-                                            YouTubeQueue.radio(song.toMediaMetadata())
-                                        },
-                                    )
-                                }
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    SongMenu(
-                                        originalSong = song,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        ),
-            )
-        }
+                    ),
+        )
     }
 }
 
@@ -1573,14 +1589,15 @@ fun AccountPlaylistsSection(
     haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues =
+        WindowInsets.systemBars
+            .only(WindowInsetsSides.Horizontal)
+            .asPaddingValues(),
 ) {
     val distinctPlaylists = remember(accountPlaylists) { accountPlaylists.distinctBy { it.id } }
 
     LazyRow(
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
+        contentPadding = contentPadding,
         modifier = modifier,
     ) {
         items(
@@ -1655,6 +1672,7 @@ fun SimilarRecommendationsSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SimilarDiscoveryDeck(
     recommendation: SimilarRecommendation,
@@ -1686,12 +1704,11 @@ private fun SimilarDiscoveryDeck(
         }
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.extraLarge,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier,
     ) {
-        Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Column(modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
             HomeSectionHeader(
                 label = stringResource(R.string.similar_to),
                 title = source.title,
@@ -1702,9 +1719,9 @@ private fun SimilarDiscoveryDeck(
                                 thumbnailUrl = thumbnailUrl,
                                 isActive = false,
                                 isPlaying = false,
-                                shape = if (source is Artist) CircleShape else MaterialTheme.shapes.medium,
+                                shape = if (source is Artist) MaterialShapes.Cookie9Sided.toShape() else MaterialTheme.shapes.large,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(48.dp),
+                                modifier = Modifier.size(64.dp),
                             )
                         }
                     },
@@ -1892,8 +1909,7 @@ private fun FeaturedPlaylistCard(
 
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier,
     ) {
         Column(
@@ -1906,12 +1922,11 @@ private fun FeaturedPlaylistCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 96.dp)
-                        .then(
-                            Modifier.combinedClickable(
-                                onClick = openPlaylist,
-                                onLongClick = showPlaylistMenu,
-                            ),
+                        .heightIn(min = 112.dp)
+                        .clip(MaterialTheme.shapes.large)
+                        .combinedClickable(
+                            onClick = openPlaylist,
+                            onLongClick = showPlaylistMenu,
                         ),
             ) {
                 card.thumbnail?.let { thumbnail ->
@@ -1926,23 +1941,23 @@ private fun FeaturedPlaylistCard(
                         contentScale = ContentScale.Crop,
                         modifier =
                             Modifier
-                                .size(96.dp)
-                                .clip(MaterialTheme.shapes.medium),
+                                .size(112.dp)
+                                .clip(MaterialTheme.shapes.large),
                     )
                 } ?: run {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier =
                             Modifier
-                                .size(96.dp)
-                                .clip(MaterialTheme.shapes.medium)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .size(112.dp)
+                                .clip(MaterialTheme.shapes.large)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.queue_music),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(36.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(40.dp),
                         )
                     }
                 }
@@ -1953,8 +1968,7 @@ private fun FeaturedPlaylistCard(
                 ) {
                     Text(
                         text = card.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLargeEmphasized,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -2020,23 +2034,35 @@ private fun FeaturedPlaylistCard(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             ) {
-                FilledIconButton(
+                val playButtonHeight = ButtonDefaults.MediumContainerHeight
+                Button(
                     onClick = playPlaylist,
-                    modifier = Modifier.size(56.dp),
+                    shapes = ButtonDefaults.shapesFor(playButtonHeight),
+                    contentPadding = ButtonDefaults.contentPaddingFor(playButtonHeight, hasStartIcon = true),
+                    modifier = Modifier.heightIn(min = playButtonHeight),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(playButtonHeight)),
+                    )
+                    Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(playButtonHeight)))
+                    Text(
+                        text = stringResource(R.string.play),
+                        style = ButtonDefaults.textStyleFor(playButtonHeight),
+                        maxLines = 1,
                     )
                 }
+                Spacer(modifier = Modifier.weight(1f))
                 if (playSecondary != null) {
                     FilledTonalIconButton(
                         onClick = playSecondary,
-                        modifier = Modifier.size(56.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        modifier = Modifier.size(IconButtonDefaults.mediumContainerSize()),
                     ) {
                         Icon(
                             painter = painterResource(if (card.radioEndpoint != null) R.drawable.radio else R.drawable.shuffle),
@@ -2053,7 +2079,8 @@ private fun FeaturedPlaylistCard(
                 }
                 FilledTonalIconButton(
                     onClick = showPlaylistMenu,
-                    modifier = Modifier.size(56.dp),
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.size(IconButtonDefaults.mediumContainerSize()),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.more_horiz),
@@ -2240,6 +2267,7 @@ fun AccountPlaylistsTitle(
 /**
  * HomePage section navigation title
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomePageSectionTitle(
     section: HomePage.Section,
@@ -2255,16 +2283,17 @@ fun HomePageSectionTitle(
                 {
                     val shape =
                         if (section.endpoint?.isArtistEndpoint == true) {
-                            CircleShape
+                            MaterialShapes.Cookie9Sided.toShape()
                         } else {
-                            RoundedCornerShape(ThumbnailCornerRadius)
+                            MaterialTheme.shapes.large
                         }
                     AsyncImage(
                         model = thumbnailUrl,
                         contentDescription = null,
+                        contentScale = ContentScale.Crop,
                         modifier =
                             Modifier
-                                .size(ListThumbnailSize)
+                                .size(56.dp)
                                 .clip(shape),
                     )
                 }
@@ -2282,10 +2311,17 @@ fun HomePageSectionTitle(
         actionContent =
             onPlayAll?.let { playAll ->
                 {
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = playAll,
-                        modifier = Modifier.heightIn(min = 40.dp).widthIn(min = 88.dp),
+                        shapes = ButtonDefaults.shapes(),
+                        contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MinHeight, hasStartIcon = true),
                     ) {
+                        Icon(
+                            painter = painterResource(R.drawable.play),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MinHeight)),
+                        )
+                        Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(ButtonDefaults.MinHeight)))
                         Text(
                             text = stringResource(R.string.play_all),
                             maxLines = 1,

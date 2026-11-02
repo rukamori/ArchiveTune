@@ -1941,22 +1941,24 @@ class MainActivity : ComponentActivity() {
                                                             ) + WindowInsetsSides.Top,
                                                         ),
                                                     title = {
-                                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            // app icon
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.about_appbar),
-                                                                contentDescription = null,
-                                                                modifier =
-                                                                    Modifier
-                                                                        .size(35.dp)
-                                                                        .padding(end = 3.dp),
-                                                            )
-                                                            Text(
-                                                                text = stringResource(R.string.app_name),
-                                                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis,
-                                                            )
+                                                        if (navBackStackEntry?.destination?.route != Screens.Home.route) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                // app icon
+                                                                Icon(
+                                                                    painter = painterResource(R.drawable.about_appbar),
+                                                                    contentDescription = null,
+                                                                    modifier =
+                                                                        Modifier
+                                                                            .size(35.dp)
+                                                                            .padding(end = 3.dp),
+                                                                )
+                                                                Text(
+                                                                    text = stringResource(R.string.app_name),
+                                                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis,
+                                                                )
+                                                            }
                                                         }
                                                     },
                                                     actions = {
