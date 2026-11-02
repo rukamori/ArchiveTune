@@ -823,4 +823,11 @@
     <string name="whats_new_acknowledgment_failed">Couldn\'t save that you\'ve seen this version. Choose %1$s to try again.</string>
     <string name="whats_new_startup_failed">Couldn\'t check what\'s new for this version.</string>
     <string name="whats_new_open_failed">Couldn\'t open the release notes.</string>
+    <string name="less">less</string>
+    <string name="media_detail_summary">%1$s, %2$s</string>
+    <string name="media_detail_duration_hours">%1$d hr %2$d min</string>
+    <plurals name="n_minute">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
 </resources>

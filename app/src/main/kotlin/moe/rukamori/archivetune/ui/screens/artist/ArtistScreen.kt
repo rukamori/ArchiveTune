@@ -22,17 +22,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -58,25 +61,18 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -98,7 +94,6 @@ import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_ALBUM
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_ARTIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
@@ -124,13 +119,18 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.AlbumGridItem
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveArtwork
+import moe.rukamori.archivetune.ui.component.ImmersiveCircleAction
+import moe.rukamori.archivetune.ui.component.ImmersiveDescription
+import moe.rukamori.archivetune.ui.component.ImmersiveDetailColors
+import moe.rukamori.archivetune.ui.component.ImmersivePlayButton
+import moe.rukamori.archivetune.ui.component.ImmersiveSectionHeader
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
-import moe.rukamori.archivetune.ui.component.MediaDetailPrimaryActions
-import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -224,15 +224,8 @@ fun ArtistScreen(
         }
     }
 
-    val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val heroContentColor =
-        if (surfaceColor.luminance() > 0.5f) {
-            MaterialTheme.colorScheme.onSurface
-        } else {
-            Color.White
-        }
     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
+    val immersiveColors = rememberImmersiveDetailColors(thumbnail)
 
     val transparentAppBar by remember {
         derivedStateOf {
@@ -309,7 +302,7 @@ fun ArtistScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -389,204 +382,95 @@ fun ArtistScreen(
                         }
                     val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
 
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = ArtistHeroMinHeight)
-                                .background(surfaceColor),
-                    ) {
-                        if (thumbnail != null) {
-                            AsyncImage(
-                                model =
-                                    thumbnail.resize(
-                                        width = ArtistHeroArtworkSizePx,
-                                        height = ArtistHeroArtworkSizePx,
-                                        sizeBuckets = ArtistHeroArtworkSizeBuckets,
-                                        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
-                                    ),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize(),
-                            )
-                        } else {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .matchParentSize()
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.person),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(96.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                    ArtistHero(
+                        name = artistName ?: unknownArtist,
+                        thumbnailUrl = thumbnail,
+                        audience = artistStats.audience,
+                        catalog = artistStats.catalog,
+                        colors = immersiveColors,
+                    )
 
-                        Box(
-                            modifier =
-                                Modifier
-                                    .matchParentSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0f to Color.Black.copy(alpha = 0.42f),
-                                            0.18f to Color.Transparent,
-                                            0.42f to Color.Transparent,
-                                            0.72f to surfaceColor.copy(alpha = 0.78f),
-                                            1f to surfaceColor,
+                    ArtistPrimaryActions(
+                        isLocalArtist = libraryArtist?.artist?.isLocal == true,
+                        isSubscribed = isSubscribed,
+                        colors = immersiveColors,
+                        canShuffle =
+                            if (showLocal) {
+                                librarySongs.isNotEmpty()
+                            } else {
+                                artistPage?.artist?.shuffleEndpoint != null
+                            },
+                        canPlay =
+                            if (showLocal) {
+                                librarySongs.isNotEmpty()
+                            } else {
+                                artistPage?.artist?.playEndpoint != null
+                            },
+                        onShuffle = {
+                            if (showLocal) {
+                                if (librarySongs.isNotEmpty()) {
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = artistName ?: unknownArtist,
+                                            items = librarySongs.shuffled().map { it.toMediaItem() },
                                         ),
-                                    ),
-                        )
-
-                        Column(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = ArtistHorizontalPadding,
-                                        top = systemBarsTopPadding + AppBarHeight + 96.dp,
-                                        end = ArtistHorizontalPadding,
-                                        bottom = 24.dp,
-                                    ),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = artistName ?: unknownArtist,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = heroContentColor,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-
-                            if (artistStats.audience.isNotEmpty()) {
-                                Text(
-                                    text = artistStats.audience,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = heroContentColor.copy(alpha = 0.62f),
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 16.dp),
-                                )
+                                    )
+                                }
+                            } else {
+                                artistPage?.artist?.shuffleEndpoint?.let { endpoint ->
+                                    playerConnection.playQueue(YouTubeQueue(endpoint))
+                                }
                             }
-
-                            if (artistStats.catalog.isNotEmpty()) {
-                                Text(
-                                    text = artistStats.catalog,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = heroContentColor.copy(alpha = 0.62f),
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(
-                                                top =
-                                                    if (artistStats.audience.isEmpty()) {
-                                                        16.dp
-                                                    } else {
-                                                        4.dp
-                                                    },
-                                            ),
-                                )
+                        },
+                        onPlay = {
+                            if (showLocal) {
+                                if (librarySongs.isNotEmpty()) {
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = artistName ?: unknownArtist,
+                                            items = librarySongs.map { it.toMediaItem() },
+                                        ),
+                                    )
+                                }
+                            } else {
+                                artistPage?.artist?.playEndpoint?.let { endpoint ->
+                                    playerConnection.playQueue(YouTubeQueue(endpoint))
+                                }
                             }
-
-                            ArtistPrimaryActions(
-                                isLocalArtist = libraryArtist?.artist?.isLocal == true,
-                                isSubscribed = isSubscribed,
-                                contentColor = heroContentColor,
-                                contrastingColor = surfaceColor,
-                                canShuffle =
-                                    if (showLocal) {
-                                        librarySongs.isNotEmpty()
-                                    } else {
-                                        artistPage?.artist?.shuffleEndpoint != null
-                                    },
-                                canPlay =
-                                    if (showLocal) {
-                                        librarySongs.isNotEmpty()
-                                    } else {
-                                        artistPage?.artist?.playEndpoint != null
-                                    },
-                                onShuffle = {
-                                    if (showLocal) {
-                                        if (librarySongs.isNotEmpty()) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = artistName ?: unknownArtist,
-                                                    items = librarySongs.shuffled().map { it.toMediaItem() },
-                                                ),
-                                            )
-                                        }
-                                    } else {
-                                        artistPage?.artist?.shuffleEndpoint?.let { endpoint ->
-                                            playerConnection.playQueue(YouTubeQueue(endpoint))
-                                        }
+                        },
+                        onToggleSubscription = {
+                            database.transaction {
+                                val artist = libraryArtist?.artist
+                                if (artist != null) {
+                                    update(artist.toggleLike())
+                                } else {
+                                    artistPage?.artist?.let { remoteArtist ->
+                                        insert(
+                                            ArtistEntity(
+                                                id = remoteArtist.id,
+                                                name = remoteArtist.title,
+                                                channelId = remoteArtist.channelId,
+                                                thumbnailUrl = remoteArtist.thumbnail,
+                                            ).toggleLike(),
+                                        )
                                     }
-                                },
-                                onPlay = {
-                                    if (showLocal) {
-                                        if (librarySongs.isNotEmpty()) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = artistName ?: unknownArtist,
-                                                    items = librarySongs.map { it.toMediaItem() },
-                                                ),
-                                            )
-                                        }
-                                    } else {
-                                        artistPage?.artist?.playEndpoint?.let { endpoint ->
-                                            playerConnection.playQueue(YouTubeQueue(endpoint))
-                                        }
+                                }
+                            }
+                        },
+                        onRadio =
+                            if (showLocal) {
+                                null
+                            } else {
+                                artistPage?.artist?.radioEndpoint?.let { endpoint ->
+                                    {
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(endpoint),
+                                        )
                                     }
-                                },
-                                onToggleSubscription = {
-                                    database.transaction {
-                                        val artist = libraryArtist?.artist
-                                        if (artist != null) {
-                                            update(artist.toggleLike())
-                                        } else {
-                                            artistPage?.artist?.let { remoteArtist ->
-                                                insert(
-                                                    ArtistEntity(
-                                                        id = remoteArtist.id,
-                                                        name = remoteArtist.title,
-                                                        channelId = remoteArtist.channelId,
-                                                        thumbnailUrl = remoteArtist.thumbnail,
-                                                    ).toggleLike(),
-                                                )
-                                            }
-                                        }
-                                    }
-                                },
-                                onRadio =
-                                    if (showLocal) {
-                                        null
-                                    } else {
-                                        artistPage?.artist?.radioEndpoint?.let { endpoint ->
-                                            {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue(endpoint),
-                                                )
-                                            }
-                                        }
-                                    },
-                                modifier = Modifier.padding(top = 12.dp),
-                            )
-                        }
-                    }
+                                }
+                            },
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                    )
                 }
 
                 artistPage
@@ -597,23 +481,10 @@ fun ArtistScreen(
                             key = "artist_description",
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            var isExpanded by rememberSaveable(description) { mutableStateOf(false) }
-                            Text(
+                            ImmersiveDescription(
                                 text = description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .widthIn(max = ArtistContentMaxWidth)
-                                        .padding(horizontal = ArtistHorizontalPadding, vertical = 12.dp)
-                                        .combinedClickable(
-                                            onClick = { isExpanded = !isExpanded },
-                                            onLongClick = {},
-                                        ),
+                                colors = immersiveColors,
+                                modifier = Modifier.padding(vertical = 8.dp),
                             )
                         }
                     }
@@ -625,6 +496,7 @@ fun ArtistScreen(
                     ) {
                         ArtistNewReleaseSection(
                             release = release,
+                            colors = immersiveColors,
                             onClick = { navController.navigateToAlbum(release.id) },
                         )
                     }
@@ -635,8 +507,9 @@ fun ArtistScreen(
                     // Local Songs Section
                     if (librarySongs.isNotEmpty()) {
                         item {
-                            NavigationTitle(
+                            ImmersiveSectionHeader(
                                 title = stringResource(R.string.songs),
+                                colors = immersiveColors,
                                 onClick = {
                                     navController.navigate("artist/${viewModel.artistId}/songs")
                                 },
@@ -718,7 +591,7 @@ fun ArtistScreen(
                                         navController.navigate("artist/${viewModel.artistId}/songs")
                                     },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    color = immersiveColors.content.copy(alpha = 0.08f),
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
@@ -727,7 +600,7 @@ fun ArtistScreen(
                                     Text(
                                         text = stringResource(R.string.view_all),
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = immersiveColors.accent,
                                         modifier =
                                             Modifier
                                                 .fillMaxWidth()
@@ -742,8 +615,9 @@ fun ArtistScreen(
                     // Local Albums Section
                     if (libraryAlbums.isNotEmpty()) {
                         item {
-                            NavigationTitle(
+                            ImmersiveSectionHeader(
                                 title = stringResource(R.string.albums),
+                                colors = immersiveColors,
                                 onClick = {
                                     navController.navigate("artist/${viewModel.artistId}/albums")
                                 },
@@ -802,8 +676,9 @@ fun ArtistScreen(
                                 key = "youtube_section_header_${section.title}_${section.items.firstOrNull()?.id.orEmpty()}_${section.moreEndpoint?.browseId.orEmpty()}",
                                 contentType = CONTENT_TYPE_HEADER,
                             ) {
-                                NavigationTitle(
+                                ImmersiveSectionHeader(
                                     title = section.title,
+                                    colors = immersiveColors,
                                     onClick =
                                         section.moreEndpoint?.let {
                                             {
@@ -1055,22 +930,7 @@ fun ArtistScreen(
                 )
             }
         },
-        colors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    navigationIconContentColor = Color.White,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
-                )
-            },
+        colors = immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar),
     )
 }
 
@@ -1151,10 +1011,12 @@ private fun ArtistOverflowMenuItem(
 }
 
 private const val ArtistOverflowMenuItemCount = 3
-private const val ArtistHeroArtworkSizePx = 1200
 private const val ArtistReleaseArtworkSizePx = 320
-private val ArtistHeroArtworkSizeBuckets = listOf(ArtistHeroArtworkSizePx)
+private const val ArtistHeroAspectRatio = 1.12f
+private const val ArtistHeroFadeStart = 0.52f
 private val ArtistHeroMinHeight = 560.dp
+private val ArtistHeroMaxHeight = 640.dp
+private val ArtistActionsMaxWidth = 560.dp
 private val ArtistHorizontalPadding = 24.dp
 private val ArtistContentMaxWidth = 720.dp
 private val ArtistReleaseArtworkSize = 112.dp
@@ -1176,11 +1038,64 @@ private data class ArtistReleaseUiModel(
 )
 
 @Composable
+private fun ArtistHero(
+    name: String,
+    thumbnailUrl: String?,
+    audience: String,
+    catalog: String,
+    colors: ImmersiveDetailColors,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        ImmersiveArtwork(
+            thumbnailUrl = thumbnailUrl,
+            fallbackIcon = R.drawable.person,
+            colors = colors,
+            fadeStart = ArtistHeroFadeStart,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(minOf(maxWidth * ArtistHeroAspectRatio, ArtistHeroMaxHeight)),
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .widthIn(max = ArtistContentMaxWidth)
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                        .padding(horizontal = ArtistHorizontalPadding, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = colors.content,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                listOf(audience, catalog)
+                    .filter(String::isNotEmpty)
+                    .fastForEach { stat ->
+                        Text(
+                            text = stat,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.contentVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ArtistPrimaryActions(
     isLocalArtist: Boolean,
     isSubscribed: Boolean,
-    contentColor: Color,
-    contrastingColor: Color,
+    colors: ImmersiveDetailColors,
     canShuffle: Boolean,
     canPlay: Boolean,
     onShuffle: () -> Unit,
@@ -1189,32 +1104,62 @@ private fun ArtistPrimaryActions(
     onRadio: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    MediaDetailPrimaryActions(
-        isAdded = isSubscribed,
-        contentColor = contentColor,
-        contrastingColor = contrastingColor,
-        addContentDescription = if (isLocalArtist) R.string.add_to_library else R.string.subscribe,
-        removeContentDescription = if (isLocalArtist) R.string.remove_from_library else R.string.subscribed,
-        onShuffle = if (canShuffle) onShuffle else null,
-        onPlay = if (canPlay) onPlay else null,
-        onToggleAdd = onToggleSubscription,
-        additionalActions = { actionColor ->
-            onRadio?.let { radio ->
-                MediaDetailIconAction(
-                    icon = R.drawable.radio,
-                    contentDescription = R.string.start_radio,
-                    contentColor = actionColor,
-                    onClick = radio,
-                )
-            }
-        },
-        modifier = modifier,
-    )
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .widthIn(max = ArtistActionsMaxWidth)
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                .padding(horizontal = ArtistHorizontalPadding),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (canPlay) {
+            ImmersivePlayButton(
+                colors = colors,
+                onClick = onPlay,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (canShuffle) {
+            ImmersiveCircleAction(
+                icon = R.drawable.shuffle,
+                contentDescription = R.string.shuffle,
+                colors = colors,
+                onClick = onShuffle,
+            )
+        }
+        onRadio?.let { radio ->
+            ImmersiveCircleAction(
+                icon = R.drawable.radio,
+                contentDescription = R.string.start_radio,
+                colors = colors,
+                onClick = radio,
+            )
+        }
+        if (!canPlay) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+        ImmersiveCircleAction(
+            icon = if (isSubscribed) R.drawable.done else R.drawable.add,
+            contentDescription =
+                when {
+                    isLocalArtist && isSubscribed -> R.string.remove_from_library
+                    isLocalArtist -> R.string.add_to_library
+                    isSubscribed -> R.string.subscribed
+                    else -> R.string.subscribe
+                },
+            colors = colors,
+            onClick = onToggleSubscription,
+            selected = isSubscribed,
+        )
+    }
 }
 
 @Composable
 private fun ArtistNewReleaseSection(
     release: ArtistReleaseUiModel,
+    colors: ImmersiveDetailColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1243,7 +1188,8 @@ private fun ArtistNewReleaseSection(
             shape = MaterialTheme.shapes.large,
             colors =
                 CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = colors.content.copy(alpha = 0.07f),
+                    contentColor = colors.content,
                 ),
             modifier =
                 Modifier
@@ -1279,13 +1225,13 @@ private fun ArtistNewReleaseSection(
                             Modifier
                                 .size(ArtistReleaseArtworkSize)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .background(colors.content.copy(alpha = 0.08f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.album),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = colors.contentVariant,
                             modifier = Modifier.size(40.dp),
                         )
                     }
@@ -1298,14 +1244,14 @@ private fun ArtistNewReleaseSection(
                     Text(
                         text = stringResource(R.string.latest_release).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = colors.accent,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                     Text(
                         text = release.title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = colors.content,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -1313,7 +1259,7 @@ private fun ArtistNewReleaseSection(
                     Text(
                         text = metadata,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.contentVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

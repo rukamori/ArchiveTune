@@ -41,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +54,6 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -84,13 +82,16 @@ import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveDetailFooter
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
+import moe.rukamori.archivetune.ui.component.ImmersiveSectionHeader
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailStatePanel
-import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -109,7 +110,6 @@ import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
-import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.AlbumUiState
 import moe.rukamori.archivetune.viewmodels.AlbumViewModel
@@ -138,10 +138,8 @@ fun AlbumScreen(
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
-    // System bars padding
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
-
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val immersiveColors = rememberImmersiveDetailColors(albumWithSongs?.album?.thumbnailUrl)
 
     val wrappedSongs =
         remember(albumWithSongs, hideExplicit) {
@@ -226,7 +224,7 @@ fun AlbumScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -256,28 +254,15 @@ fun AlbumScreen(
                                 }
                             }
                         }
-                    val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
-                    val metadata =
-                        listOfNotNull(
-                            albumWithSongs.album.year?.toString(),
-                            pluralStringResource(
-                                R.plurals.n_song,
-                                wrappedSongs.size,
-                                wrappedSongs.size,
-                            ),
-                            totalDuration
-                                .takeIf { it > 0 }
-                                ?.let { makeTimeString(it * 1000L) },
-                        ).joinToString(MediaDetailMetadataSeparator)
                     val isBookmarked = albumWithSongs.album.bookmarkedAt != null
 
-                    MediaDetailHero(
+                    ImmersiveMediaHeader(
                         title = albumWithSongs.album.title,
                         thumbnailUrl = albumWithSongs.album.thumbnailUrl,
                         fallbackIcon = R.drawable.album,
-                        systemBarsTopPadding = systemBarsTopPadding,
+                        colors = immersiveColors,
                         subtitle = artistNames,
-                        metadata = metadata,
+                        metadata = albumWithSongs.album.year?.toString(),
                         isAdded = isBookmarked,
                         addContentDescription = R.string.add_to_library,
                         removeContentDescription = R.string.remove_from_library,
@@ -401,14 +386,6 @@ fun AlbumScreen(
                     )
                 }
 
-                // Songs Section Header
-                item(key = "songs_header") {
-                    NavigationTitle(
-                        title = stringResource(R.string.songs),
-                    )
-                }
-
-                // Songs List
                 itemsIndexed(
                     items = wrappedSongs,
                     key = { _, song -> song.item.id },
@@ -468,11 +445,19 @@ fun AlbumScreen(
                     )
                 }
 
-                // Other Versions Section
+                item(key = "songs_footer") {
+                    ImmersiveDetailFooter(
+                        songCount = wrappedSongs.size,
+                        totalDurationSeconds = wrappedSongs.sumOf { it.item.song.duration.coerceAtLeast(0).toLong() },
+                        colors = immersiveColors,
+                    )
+                }
+
                 if (otherVersions.isNotEmpty()) {
                     item(key = "other_versions_header") {
-                        NavigationTitle(
+                        ImmersiveSectionHeader(
                             title = stringResource(R.string.other_versions),
+                            colors = immersiveColors,
                         )
                     }
                     item(key = "other_versions_list") {
@@ -619,26 +604,9 @@ fun AlbumScreen(
             }
         }
 
-        // Top App Bar
-        val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = Color.White,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
-
         TopAppBar(
             modifier = Modifier.align(Alignment.TopCenter),
-            colors = topAppBarColors,
+            colors = immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar),
             scrollBehavior = scrollBehavior,
             title = {
                 if (selection) {
@@ -751,5 +719,3 @@ fun AlbumScreen(
         )
     }
 }
-
-private const val MediaDetailMetadataSeparator = "  •  "

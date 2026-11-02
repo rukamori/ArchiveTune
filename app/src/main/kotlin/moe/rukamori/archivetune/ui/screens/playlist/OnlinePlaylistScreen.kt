@@ -47,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,12 +102,14 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
 import moe.rukamori.archivetune.ui.component.MediaDetailStatePanel
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -248,7 +249,7 @@ fun OnlinePlaylistScreen(
 
     val showTopBarTitle by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val immersiveColors = rememberImmersiveDetailColors(playlist?.thumbnail)
 
     val transparentAppBar by remember {
         derivedStateOf { !selection && !isSearching && !showTopBarTitle }
@@ -283,7 +284,7 @@ fun OnlinePlaylistScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -396,11 +397,11 @@ fun OnlinePlaylistScreen(
                             val isBookmarked = dbPlaylist?.playlist?.bookmarkedAt != null
                             val fallbackPlaySong = songs.firstOrNull()
 
-                            MediaDetailHero(
+                            ImmersiveMediaHeader(
                                 title = playlist.title,
                                 thumbnailUrl = playlist.thumbnail,
                                 fallbackIcon = R.drawable.queue_music,
-                                systemBarsTopPadding = systemBarsTopPadding,
+                                colors = immersiveColors,
                                 subtitle = author,
                                 metadata = playlist.songCountText,
                                 description = playlist.description,
@@ -771,20 +772,7 @@ fun OnlinePlaylistScreen(
 
         // Top App Bar
         val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = Color.White,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
+            immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar)
 
         TopAppBar(
             colors = topAppBarColors,

@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -62,10 +60,12 @@ import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.ListItem
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -119,9 +119,8 @@ private fun SpotifyLikedSongsContent(
         (state as? SpotifyLikedSongsScreenState.Success)?.songs ?: ImmutableList.of()
     val lazyListState = rememberLazyListState()
     val showTopBarTitle by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
-    val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val isLoading = state is SpotifyLikedSongsScreenState.Loading
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val immersiveColors = rememberImmersiveDetailColors(null)
     val canPlay = songs.isNotEmpty()
     val onShuffle: (() -> Unit)? =
         remember(canPlay, onPlayAll) {
@@ -149,7 +148,7 @@ private fun SpotifyLikedSongsContent(
     ExpressivePullToRefreshBox(
         isRefreshing = isLoading,
         onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize().background(surfaceColor),
+        modifier = Modifier.fillMaxSize().background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -164,11 +163,11 @@ private fun SpotifyLikedSongsContent(
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "header", contentType = "spotify_liked_songs_header") {
-                MediaDetailHero(
+                ImmersiveMediaHeader(
                     title = title,
                     thumbnailUrl = null,
                     fallbackIcon = R.drawable.favorite,
-                    systemBarsTopPadding = systemBarsTopPadding,
+                    colors = immersiveColors,
                     metadata = metadata,
                     isAdded = false,
                     addContentDescription = R.string.add_to_library,
@@ -236,19 +235,7 @@ private fun SpotifyLikedSongsContent(
 
         TopAppBar(
             colors =
-                if (showTopBarTitle) {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    )
-                } else {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                        navigationIconContentColor = Color.White,
-                        titleContentColor = Color.White,
-                    )
-                },
+                immersiveTopAppBarColors(immersiveColors, overArtwork = !showTopBarTitle),
             title = {
                 if (showTopBarTitle) {
                     Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)

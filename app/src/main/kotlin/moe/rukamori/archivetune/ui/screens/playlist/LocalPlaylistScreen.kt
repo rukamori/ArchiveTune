@@ -46,7 +46,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -113,12 +112,14 @@ import moe.rukamori.archivetune.ui.component.EditPlaylistDialog
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -548,7 +549,7 @@ fun LocalPlaylistScreen(
         }
     }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val immersiveColors = rememberImmersiveDetailColors(playlist?.playlist?.thumbnailUrl ?: playlist?.thumbnails?.firstOrNull())
 
     val transparentAppBar by remember {
         derivedStateOf {
@@ -561,7 +562,7 @@ fun LocalPlaylistScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -613,13 +614,13 @@ fun LocalPlaylistScreen(
                                 ).joinToString(MediaDetailMetadataSeparator)
                             val isBookmarked = playlist.playlist.bookmarkedAt != null
 
-                            MediaDetailHero(
+                            ImmersiveMediaHeader(
                                 title = playlist.playlist.name,
                                 thumbnailUrl =
                                     playlist.playlist.thumbnailUrl
                                         ?: playlist.thumbnails.firstOrNull(),
                                 fallbackIcon = R.drawable.queue_music,
-                                systemBarsTopPadding = systemBarsTopPadding,
+                                colors = immersiveColors,
                                 metadata = metadata,
                                 isAdded = isBookmarked,
                                 addContentDescription = R.string.add_to_library,
@@ -1124,20 +1125,7 @@ fun LocalPlaylistScreen(
 
         // Top App Bar
         val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = Color.White,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
+            immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar)
 
         TopAppBar(
             colors = topAppBarColors,
