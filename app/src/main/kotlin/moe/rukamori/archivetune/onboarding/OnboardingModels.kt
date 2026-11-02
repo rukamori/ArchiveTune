@@ -36,6 +36,11 @@ data class OnboardingUiState(
     val permissions: ImmutableList<OnboardingPermissionUiModel>,
     val loginBenefits: ImmutableList<OnboardingLoginBenefitUiModel>,
     val communityActions: ImmutableList<OnboardingCommunityActionUiModel>,
+    val isBusy: Boolean = false,
+    val isCompleting: Boolean = false,
+    @StringRes val completionErrorResId: Int? = null,
+    @StringRes val actionErrorResId: Int? = null,
+    val actionErrorId: Int = 0,
 )
 
 @Immutable
@@ -43,7 +48,6 @@ data class OnboardingPageUiModel(
     val id: OnboardingPageId,
     @StringRes val titleResId: Int,
     @StringRes val subtitleResId: Int,
-    @DrawableRes val iconResId: Int,
 )
 
 enum class OnboardingPageId {
@@ -94,6 +98,8 @@ enum class OnboardingPermissionStatus {
     ALLOWED,
     NEEDS_ACTION,
     ALLOWED_BY_INSTALL,
+    APPROVAL_AT_USE,
+    BLOCKED,
     UNAVAILABLE,
 }
 
@@ -103,6 +109,8 @@ sealed interface OnboardingPermissionAction {
     ) : OnboardingPermissionAction
 
     data object OpenInstallPackagesSettings : OnboardingPermissionAction
+
+    data object OpenAppSettings : OnboardingPermissionAction
 }
 
 @Immutable
@@ -125,6 +133,8 @@ sealed interface OnboardingEvent {
     ) : OnboardingEvent
 
     data object OpenInstallPackagesSettings : OnboardingEvent
+
+    data object OpenAppSettings : OnboardingEvent
 
     data object OpenLogin : OnboardingEvent
 

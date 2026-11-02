@@ -17,7 +17,6 @@ import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiAudioQuality
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
-import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiNetworkConfiguration
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolutionPriority
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiStreamRequest
@@ -39,11 +38,7 @@ class YoutubeiStreamRepository
                 context = context,
                 diagnostics = { message -> Timber.tag("YoutubeiResolver").d(message) },
             ) {
-                YoutubeiNetworkConfiguration(
-                    proxy = YouTube.proxy,
-                    proxyUsername = YouTube.proxyUsername,
-                    proxyPassword = YouTube.proxyPassword,
-                    dns = YouTube.dns,
+                playbackNetworkConfiguration(context).copy(
                     interceptors = listOf(NetworkGatekeeper),
                 )
             }
@@ -167,7 +162,7 @@ class YoutubeiStreamRepository
                 !streamUrl?.queryParameter("sig").isNullOrBlank() ||
                     !streamUrl?.queryParameter("signature").isNullOrBlank(),
                 resolved.requestHeaders.any { (name, value) -> name.equals("User-Agent", ignoreCase = true) && value.isNotBlank() },
-                YouTube.proxy?.type()?.name ?: "DIRECT",
+                YouTube.streamOkHttpProxy.type().name,
                 YouTube.streamOkHttpProxy.type().name,
             )
             return ResolvedAudioStream(

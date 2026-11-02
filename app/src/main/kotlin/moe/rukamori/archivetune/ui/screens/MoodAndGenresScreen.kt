@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens
 
-import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -29,10 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,22 +46,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
+import moe.rukamori.archivetune.repository.moodAndGenresArtworkKey
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.viewmodels.MoodAndGenresArtworkState
 import moe.rukamori.archivetune.viewmodels.MoodAndGenresViewModel
-import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -71,7 +72,9 @@ fun MoodAndGenresScreen(
     navController: NavController,
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
-    val moodAndGenres by viewModel.moodAndGenres.collectAsState()
+    val moodAndGenres by viewModel.moodAndGenres.collectAsStateWithLifecycle()
+    val artwork by viewModel.artwork.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
     val gridState = rememberLazyGridState()
     val density = LocalDensity.current
     val windowInsets = LocalPlayerAwareWindowInsets.current
@@ -79,12 +82,29 @@ fun MoodAndGenresScreen(
     val bottomPadding = with(density) { windowInsets.getBottom(this).toDp() }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
-        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsStateWithLifecycle()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
             gridState.animateScrollToItem(0)
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+        }
+    }
+
+    LaunchedEffect(gridState, moodAndGenres, lifecycleOwner, viewModel) {
+        val itemsByKey = moodAndGenres.orEmpty().associateBy {
+            "${it.title}:${it.endpoint.browseId}:${it.endpoint.params}"
+        }
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try {
+                snapshotFlow { gridState.layoutInfo.visibleItemsInfo.map { it.key } }
+                    .distinctUntilChanged()
+                    .collect { keys ->
+                        viewModel.setVisibleArtwork(keys.mapNotNull { itemsByKey[it]?.endpoint })
+                    }
+            } finally {
+                viewModel.setVisibleArtwork(emptyList())
+            }
         }
     }
 
@@ -130,8 +150,17 @@ fun MoodAndGenresScreen(
                     title = item.title,
                     stripeColor = item.stripeColor,
                     endpoint = item.endpoint,
+                    artwork = artwork[item.endpoint.moodAndGenresArtworkKey()],
                     onClick = {
-                        navController.navigate("youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}")
+                        navController.navigate(
+                            buildString {
+                                append("youtube_browse/${android.net.Uri.encode(item.endpoint.browseId)}")
+                                append("?genreTitle=${android.net.Uri.encode(item.title)}")
+                                item.endpoint.params?.let { append("&params=${android.net.Uri.encode(it)}") }
+                            },
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
                     modifier =
                         Modifier
@@ -151,10 +180,11 @@ fun MoodAndGenresButton(
     endpoint: BrowseEndpoint? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    artwork: MoodAndGenresArtworkState? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = remember(stripeColor) { Color(stripeColor) }
-    val artworkUrl = rememberMoodAndGenresArtworkUrl(endpoint)
+    val artworkUrl = (artwork as? MoodAndGenresArtworkState.Available)?.url
     val artworkModel = rememberMoodAndGenresArtworkModel(endpoint = endpoint, artworkUrl = artworkUrl)
     val cardStart =
         remember(base, colorScheme.primaryContainer) {
@@ -255,89 +285,6 @@ fun MoodAndGenresButton(
 }
 
 @Composable
-private fun rememberMoodAndGenresArtworkUrl(endpoint: BrowseEndpoint?): String? {
-    endpoint ?: return null
-    val context = LocalContext.current
-
-    val cacheKey = buildMoodAndGenresArtworkCacheKey(endpoint)
-    val cachedEntry = moodAndGenresArtworkCache[cacheKey]
-    val cachedArtwork =
-        cachedEntry
-            ?.takeIf { isMoodAndGenresArtworkFresh(it.cachedAt) }
-            ?.url
-
-    if (cachedEntry != null && cachedArtwork == null) {
-        moodAndGenresArtworkCache.remove(cacheKey, cachedEntry)
-    }
-
-    val artworkUrl by
-        produceState(
-            initialValue = cachedArtwork,
-            key1 = cacheKey,
-            key2 = cachedArtwork,
-        ) {
-            if (cachedArtwork != null) {
-                value = cachedArtwork
-                return@produceState
-            }
-
-            // Clear a previously remembered value before resolving an expired entry.
-            value = null
-
-            val persistedEntry =
-                withContext(Dispatchers.IO) {
-                    val sharedPrefs =
-                        context.getSharedPreferences(
-                            MoodAndGenresArtworkPreferencesName,
-                            Context.MODE_PRIVATE,
-                        )
-                    val encodedEntry = sharedPrefs.getString(cacheKey, null)
-                    val entry = decodeMoodAndGenresArtworkCacheEntry(encodedEntry)
-                    if (entry != null && isMoodAndGenresArtworkFresh(entry.cachedAt)) {
-                        entry
-                    } else {
-                        if (encodedEntry != null) {
-                            sharedPrefs.edit().remove(cacheKey).apply()
-                        }
-                        null
-                    }
-                }
-
-            if (persistedEntry != null) {
-                moodAndGenresArtworkCache[cacheKey] = persistedEntry
-                value = persistedEntry.url
-                return@produceState
-            }
-
-            val resolvedArtwork =
-                withContext(Dispatchers.IO) {
-                    YouTube.browse(endpoint.browseId, endpoint.params).getOrNull()?.thumbnail
-                }
-
-            if (!resolvedArtwork.isNullOrBlank()) {
-                val resolvedEntry =
-                    MoodAndGenresArtworkCacheEntry(
-                        url = resolvedArtwork,
-                        cachedAt = System.currentTimeMillis(),
-                    )
-                withContext(Dispatchers.IO) {
-                    context
-                        .getSharedPreferences(
-                            MoodAndGenresArtworkPreferencesName,
-                            Context.MODE_PRIVATE,
-                        ).edit()
-                        .putString(cacheKey, resolvedEntry.encode())
-                        .apply()
-                }
-                moodAndGenresArtworkCache[cacheKey] = resolvedEntry
-                value = resolvedEntry.url
-            }
-        }
-
-    return artworkUrl
-}
-
-@Composable
 private fun rememberMoodAndGenresArtworkModel(
     endpoint: BrowseEndpoint?,
     artworkUrl: String?,
@@ -348,7 +295,7 @@ private fun rememberMoodAndGenresArtworkModel(
     val requestSizePx = with(LocalDensity.current) { MoodAndGenresArtworkRequestSize.roundToPx() }
     val imageCacheKey =
         remember(endpoint, artworkUrl) {
-            val endpointKey = endpoint?.let(::buildMoodAndGenresArtworkCacheKey).orEmpty()
+            val endpointKey = endpoint?.moodAndGenresArtworkKey().orEmpty()
             "mood_and_genres:$endpointKey:$artworkUrl"
         }
 
@@ -363,40 +310,6 @@ private fun rememberMoodAndGenresArtworkModel(
             .build()
     }
 }
-
-private fun buildMoodAndGenresArtworkCacheKey(endpoint: BrowseEndpoint): String = "${endpoint.browseId}:${endpoint.params.orEmpty()}"
-
-private data class MoodAndGenresArtworkCacheEntry(
-    val url: String,
-    val cachedAt: Long,
-) {
-    fun encode(): String = "$url|$cachedAt"
-}
-
-private fun decodeMoodAndGenresArtworkCacheEntry(encodedEntry: String?): MoodAndGenresArtworkCacheEntry? {
-    if (encodedEntry == null) return null
-    val separatorIndex = encodedEntry.lastIndexOf('|')
-    if (separatorIndex <= 0 || separatorIndex == encodedEntry.lastIndex) return null
-
-    val url = encodedEntry.substring(0, separatorIndex)
-    val cachedAt = encodedEntry.substring(separatorIndex + 1).toLongOrNull() ?: return null
-    return url
-        .takeIf(String::isNotBlank)
-        ?.let { MoodAndGenresArtworkCacheEntry(url = it, cachedAt = cachedAt) }
-}
-
-private fun isMoodAndGenresArtworkFresh(
-    cachedAt: Long,
-    now: Long = System.currentTimeMillis(),
-): Boolean {
-    val age = now - cachedAt
-    return cachedAt > 0L && age in 0..MoodAndGenresArtworkTtlMs
-}
-
-private const val MoodAndGenresArtworkPreferencesName = "mood_genre_artwork_cache"
-private const val MoodAndGenresArtworkTtlMs = 7L * 24 * 60 * 60 * 1000
-
-private val moodAndGenresArtworkCache = ConcurrentHashMap<String, MoodAndGenresArtworkCacheEntry>()
 
 private val MoodAndGenresButtonShape = RoundedCornerShape(24.dp)
 private val MoodAndGenresCoverShape = RoundedCornerShape(16.dp)

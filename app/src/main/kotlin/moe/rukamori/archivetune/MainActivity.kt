@@ -119,6 +119,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -289,6 +290,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
 import moe.rukamori.archivetune.ui.screens.library.LibraryHeaderContentPadding
+import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
 import moe.rukamori.archivetune.ui.screens.LoginScreen
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -872,33 +874,41 @@ class MainActivity : ComponentActivity() {
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val onboardingState by onboardingViewModel.screenState.collectAsStateWithLifecycle()
                 var showOnboardingLogin by rememberSaveable { mutableStateOf(false) }
+                val onboardingContentState = rememberSaveableStateHolder()
                 val shouldShowOnboarding =
                     when (val state = onboardingState) {
                         OnboardingScreenState.Loading -> true
                         OnboardingScreenState.Empty -> true
-                        is OnboardingScreenState.Error -> false
+                        is OnboardingScreenState.Error -> true
                         is OnboardingScreenState.Success -> state.uiState.shouldShowOnboarding
                     }
 
                 if (shouldShowOnboarding) {
-                    if (showOnboardingLogin) {
-                        CompositionLocalProvider(
-                            LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
-                        ) {
-                            LoginScreen(
-                                navController = navController,
-                                onLoginComplete = {
-                                    onboardingViewModel.onLoginCompleted()
-                                    showOnboardingLogin = false
-                                },
-                                onNavigateBack = { showOnboardingLogin = false },
-                            )
+                    CompositionLocalProvider(LocalAnimationsDisabled provides disableAnimations) {
+                        if (showOnboardingLogin) {
+                            CompositionLocalProvider(
+                                LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
+                            ) {
+                                LoginScreen(
+                                    navController = navController,
+                                    onLoginComplete = {
+                                        onboardingViewModel.onLoginCompleted()
+                                        showOnboardingLogin = false
+                                    },
+                                    onNavigateBack = {
+                                        onboardingViewModel.onLoginDismissed()
+                                        showOnboardingLogin = false
+                                    },
+                                )
+                            }
+                        } else {
+                            onboardingContentState.SaveableStateProvider("setup") {
+                                OnboardingRoute(
+                                    viewModel = onboardingViewModel,
+                                    onLoginRequested = { showOnboardingLogin = true },
+                                )
+                            }
                         }
-                    } else {
-                        OnboardingRoute(
-                            viewModel = onboardingViewModel,
-                            onLoginRequested = { showOnboardingLogin = true },
-                        )
                     }
                     return@ArchiveTuneTheme
                 }
@@ -975,8 +985,24 @@ class MainActivity : ComponentActivity() {
                     val latestUnreadNewsTimestamp by newsViewModel.latestUnreadNewsTimestamp.collectAsStateWithLifecycle()
                     val hasUnreadNews = latestUnreadNewsTimestamp != null
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val visibleBackStackEntries by navController.visibleEntries.collectAsStateWithLifecycle()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
+                    val hasVisibleLoginWebView =
+                        remember(currentRoute, visibleBackStackEntries) {
+                            currentRoute?.substringBefore('?') == LOGIN_ROUTE ||
+                                visibleBackStackEntries.any { entry ->
+                                    entry.destination.route?.substringBefore('?') == LOGIN_ROUTE
+                                }
+                        }
+                    val menuHazeSourceModifier =
+                        remember(menuHazeState, hasVisibleLoginWebView) {
+                            if (hasVisibleLoginWebView) Modifier else Modifier.hazeSource(menuHazeState)
+                        }
+                    val floatingBarsHazeSourceModifier =
+                        remember(floatingBarsHazeState, hasVisibleLoginWebView) {
+                            if (hasVisibleLoginWebView) Modifier else Modifier.hazeSource(floatingBarsHazeState)
+                        }
                     val isAppUpdateScreen = currentRoute?.substringBefore('?') == AppUpdateRoute
                     val currentNavigationLifecycle = navBackStackEntry?.lifecycle?.currentStateFlow
                         ?.collectAsStateWithLifecycle()?.value
@@ -2482,7 +2508,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     },
-                                    modifier = Modifier.fillMaxSize().hazeSource(menuHazeState),
+                                    modifier = Modifier.fillMaxSize().then(menuHazeSourceModifier),
                                 ) {
                                     var transitionDirection =
                                         AnimatedContentTransitionScope.SlideDirection.Left
@@ -2604,7 +2630,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         modifier =
                                             Modifier
-                                                .hazeSource(floatingBarsHazeState)
+                                                .then(floatingBarsHazeSourceModifier)
                                                 .then(
                                                     if (isTvDevice) {
                                                         Modifier

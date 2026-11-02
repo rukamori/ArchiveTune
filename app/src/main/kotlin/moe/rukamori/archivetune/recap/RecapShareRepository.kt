@@ -46,6 +46,7 @@ class RecapShareRepository @Inject constructor(
             RecapChapter.ALBUMS -> data.albums
             RecapChapter.TRACK -> data.songs.take(1)
             RecapChapter.MONTHS -> data.months.mapNotNull { it.artist }
+            RecapChapter.TIME, RecapChapter.HABITS -> (data.albums + data.songs).distinctBy { it.artwork ?: it.id }
             else -> data.songs
         }
         val artwork = withContext(Dispatchers.Default) {
@@ -101,15 +102,13 @@ private class RecapPoster(
     private val secondary = RecapAppearance.Secondary
 
     fun draw(data: RecapData, chapter: RecapChapter, entries: List<RecapEntry>) {
-        val topColor = if (chapter == RecapChapter.TIME || chapter == RecapChapter.HABITS) RecapAppearance.Surface else RecapAppearance.Blue
+        val topColor = if (chapter == RecapChapter.TIME || chapter == RecapChapter.HABITS) 0xFF54B9D2.toInt() else 0xFF2851A0.toInt()
         paint.shader = LinearGradient(0f, 0f, 0f, 1920f, topColor, RecapAppearance.Background, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
         val mint = RecapAppearance.Mint and 0x00FFFFFF
         paint.shader = RadialGradient(900f, 1400f, 1000f, intArrayOf(mint or 0x59000000, mint), null, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
         paint.shader = null
-        paint.color = 0x40000000
-        canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
         paragraph(text.period(data), 72f, 64f, 936, 42f, 2, color = secondary)
         when (chapter) {
             RecapChapter.INTRO, RecapChapter.END -> {
@@ -121,7 +120,7 @@ private class RecapPoster(
                 label(context.getString(R.string.year_in_music_minutes_unit), 72f, 850f, 46f, foreground)
                 label(text.plays(data.plays), 72f, 940f, 38f, secondary)
                 label(context.getString(R.string.recap_distinct_tracks) + " " + text.number(data.distinctTracks), 72f, 1010f, 34f, secondary)
-                mosaic(data.songs, 1140f)
+                artworkWall(entries, 1080f, 210f)
             }
             RecapChapter.TRACK -> entries.firstOrNull()?.let { entry ->
                 paragraph(text.chapterTitle(chapter), 72f, 176f, 936, 42f, 2, color = secondary)
@@ -137,24 +136,26 @@ private class RecapPoster(
                 ranked(entries, 700f, 196f)
             }
             RecapChapter.MONTHS -> {
-                paragraph(text.chapterTitle(chapter), 72f, 176f, 936, 66f, 2, bold = true)
                 data.months.filter { it.available && it.milliseconds > 0 }.forEachIndexed { index, month ->
-                    val left = 72f + (index % 3) * 320f
-                    val top = 420f + (index / 3) * 320f
-                    month.artist?.let { art(it, RectF(left + 100f, top, left + 280f, top + 180f)) }
-                    paragraph(text.month(month.month, short = true), left, top + 135f, 296, 68f, 1, bold = true)
-                    month.artist?.let { paragraph(it.title, left, top + 220f, 296, 28f, 2) }
-                    paragraph(text.minutes(month.milliseconds), left, top + 283f, 296, 24f, 1, color = secondary)
+                    val left = (index % 3) * 360f
+                    val top = 220f + (index / 3) * 380f
+                    month.artist?.let { art(it, RectF(left, top, left + 360f, top + 360f)) }
+                    paragraph(text.month(month.month, short = true), left + 12f, top + 120f, 336, 110f, 1, bold = true)
                 }
             }
             RecapChapter.HABITS -> {
                 paragraph(context.getString(R.string.recap_streak_statement, text.days(data.habits.longestStreak)),
                     72f, 250f, 936, 96f, 5, bold = true)
-                mosaic(data.songs, 1060f)
+                artworkWall(entries, 800f, 300f)
             }
             RecapChapter.SUMMARY -> {
-                mosaic(data.songs, 220f)
-                paragraph(text.period(data.year, data.month), 72f, 830f, 936, if (data.month == null) 180f else 92f, 2)
+                if (data.songs.isNotEmpty()) {
+                    val width = 1080f / data.songs.size
+                    data.songs.forEachIndexed { index, entry ->
+                        art(entry, RectF(index * width, 180f, (index + 1) * width, 700f))
+                    }
+                }
+                paragraph(text.period(data.year, data.month), 56f, 760f, 968, if (data.month == null) 260f else 92f, 2)
                 val facts = buildList {
                     data.albums.firstOrNull()?.let { add(Triple(context.getString(R.string.recap_top_album), it.title, it.subtitle)) }
                     data.songs.firstOrNull()?.let { add(Triple(context.getString(R.string.recap_top_song), it.title, it.subtitle)) }
@@ -188,13 +189,13 @@ private class RecapPoster(
         }
     }
 
-    private fun mosaic(entries: List<RecapEntry>, top: Float) {
-        val rows = entries.take(5).chunked(3)
-        rows.forEachIndexed { rowIndex, row ->
-            val width = (936f - 24f * (row.size - 1)) / row.size
-            row.forEachIndexed { column, entry ->
-                val left = 72f + column * (width + 24f)
-                art(entry, RectF(left, top + rowIndex * 280f, left + width, top + rowIndex * 280f + 256f))
+    private fun artworkWall(entries: List<RecapEntry>, top: Float, height: Float) {
+        if (entries.isEmpty()) return
+        repeat(3) { row ->
+            repeat(3) { column ->
+                val left = column * 368f
+                val y = top + row * (height + 24f)
+                art(entries[(row * 3 + column) % entries.size], RectF(left, y, left + 344f, y + height))
             }
         }
     }

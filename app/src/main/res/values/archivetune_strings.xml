@@ -804,9 +804,15 @@
     <string name="android_auto_for_you">For You</string>
     <string name="android_auto_library">Library</string>
     <string name="whats_new_title">What\'s New in v%1$s</string>
+    <string name="whats_new_heading">What\'s new</string>
+    <string name="whats_new_version">Version %1$s</string>
     <string name="whats_new_features">Features</string>
     <string name="whats_new_fixes">Fixes</string>
     <string name="whats_new_improvements">Improvements</string>
+    <plurals name="whats_new_change_count">
+        <item quantity="one">%d change</item>
+        <item quantity="other">%d changes</item>
+    </plurals>
     <string name="whats_new_no_highlights">Open this version\'s release notes for the complete details.</string>
     <string name="whats_new_no_highlights_title">No highlights to show</string>
     <string name="whats_new_loading">Loading release highlights…</string>

@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.appicon.RestoreLauncherEntryUseCase
+import moe.rukamori.archivetune.backup.PendingDatabaseRestore
 import moe.rukamori.archivetune.canvas.StartCanvasPolicyUseCase
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
@@ -46,6 +47,7 @@ import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
+import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.playback.stream.YoutubeiStreamRepository
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
@@ -91,6 +93,9 @@ class App :
     lateinit var youtubeiStreamRepository: YoutubeiStreamRepository
 
     @Inject
+    lateinit var resolveAudioStream: ResolveAudioStreamUseCase
+
+    @Inject
     lateinit var startCanvasPolicy: StartCanvasPolicyUseCase
 
     @Inject
@@ -100,6 +105,13 @@ class App :
 
     @Volatile private var isInitialized = false
     private val didRunImageCacheTrim = AtomicBoolean(false)
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        if (currentProcessName() == packageName) {
+            PendingDatabaseRestore.install(this)
+        }
+    }
 
     private fun currentProcessName(): String? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -294,13 +306,12 @@ class App :
                 .map { it.toPlaybackAuthState() }
                 .distinctUntilChanged()
                 .collect { authState ->
-                    val previousFingerprint = YouTube.currentPlaybackAuthState().fingerprint
                     YouTube.authState = authState
-                    if (previousFingerprint != authState.fingerprint) {
-                        YTPlayerUtils.clearPlaybackAuthCaches()
-                        youtubeiStreamRepository.invalidateSessions()
-                        YTPlayerUtils.preWarmYoutubeiPoTokens(authState)
-                    }
+                    resolveAudioStream.clear()
+                    YTPlayerUtils.clearPlaybackAuthCaches()
+                    BotGuardTokenGenerator.invalidateAll()
+                    youtubeiStreamRepository.invalidateSessions()
+                    YTPlayerUtils.preWarmYoutubeiPoTokens(authState)
                 }
         }
 

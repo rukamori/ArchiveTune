@@ -16,6 +16,7 @@ import android.graphics.Typeface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,6 +78,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -99,10 +104,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazePerformanceMode
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
+import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.recap.RecapAppearance
 import moe.rukamori.archivetune.recap.RecapChapter
 import moe.rukamori.archivetune.recap.RecapData
@@ -265,59 +277,100 @@ private fun RecapContent(
     val success = state as? YearInMusicUiState.Success
     val periodData = if (state.selection.month == null) success?.data else
         (success?.monthState as? RecapMonthState.Success)?.data
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = LocalPlayerAwareWindowInsets.current,
-        topBar = {
-            Column(Modifier.background(Brush.verticalGradient(listOf(
-                Color(RecapAppearance.Mint).copy(alpha = 0.22f), MaterialTheme.colorScheme.surface,
-            ))).windowInsetsPadding(WindowInsets.safeDrawing.only(
-                androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal,
-            ))) {
-                Column(Modifier.widthIn(max = 728.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(horizontal = 16.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        RecapIcon(R.drawable.arrow_back, R.string.recap_back, callbacks.back)
-                        if (state.selection.sharing) {
-                            ShareProgress()
-                        } else RecapIcon(R.drawable.share, R.string.share, callbacks.share, periodData != null)
-                    }
-                    Row(Modifier.fillMaxWidth().padding(start = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.year_in_music), Modifier.weight(1f),
-                            style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                        TextButton(onClick = { callbacks.yearPicker(true) }) {
-                            Text(state.selection.year.toString(), style = MaterialTheme.typography.titleMedium)
-                            Icon(painterResource(R.drawable.expand_more), null, Modifier.size(20.dp))
+    val haze = rememberHazeState()
+    val surface = MaterialTheme.colorScheme.surface
+    val foreground = MaterialTheme.colorScheme.onSurface
+    val disableBlur by rememberPreference(DisableBlurKey, false)
+    val backdropAlpha = if (surface.luminance() < 0.5f) 0.3f else 1f
+    val glass = remember(surface, disableBlur) {
+        HazeBlurStyle {
+            blurEnabled(!disableBlur)
+            blurRadius(24.dp)
+            noiseFactor(0f)
+            backgroundColor(surface)
+        }
+    }
+    val glassModifier = Modifier.clip(CircleShape)
+        .hazeBlur(input = HazeInput.Sources(haze), style = glass,
+            performanceMode = HazePerformanceMode.Adaptive)
+        .background(surface.copy(alpha = 0.35f))
+    Box(Modifier.fillMaxSize().background(surface)) {
+        Canvas(Modifier.fillMaxWidth().height(480.dp).hazeSource(haze)) {
+            drawRect(surface)
+            drawRect(Brush.radialGradient(
+                listOf(Color(0xFFF2A52D).copy(alpha = backdropAlpha), Color(0xFFF2A52D).copy(alpha = 0f)),
+                center = Offset(size.width * 0.85f, 0f), radius = size.width * 0.85f,
+            ))
+            drawRect(Brush.radialGradient(
+                listOf(Color(RecapAppearance.Mint).copy(alpha = backdropAlpha), Color(RecapAppearance.Mint).copy(alpha = 0f)),
+                center = Offset(size.width, size.height * 0.42f), radius = size.width * 0.7f,
+            ))
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, surface)))
+        }
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = LocalPlayerAwareWindowInsets.current,
+            topBar = {
+                Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal,
+                ))) {
+                    Column(Modifier.widthIn(max = 728.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(horizontal = 16.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            IconButton(onClick = callbacks.back, modifier = glassModifier.size(48.dp)) {
+                                Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.recap_back), tint = foreground)
+                            }
+                            if (state.selection.sharing) {
+                                ShareProgress()
+                            } else IconButton(onClick = callbacks.share, enabled = periodData != null,
+                                modifier = glassModifier.size(48.dp)) {
+                                Icon(painterResource(R.drawable.share), stringResource(R.string.share),
+                                    tint = foreground.copy(alpha = if (periodData != null) 1f else 0.38f))
+                            }
                         }
-                    }
-                    if (success != null) {
-                        SecondaryScrollableTabRow(selectedTabIndex = state.selection.month ?: 0,
-                            containerColor = Color.Transparent, edgePadding = 8.dp, divider = {}) {
-                            Tab(selected = state.selection.month == null, onClick = { callbacks.month(null) },
-                                text = { Text(state.selection.year.toString()) })
-                            success.data.months.forEach { month ->
-                                Tab(selected = state.selection.month == month.month, onClick = { callbacks.month(month.month) },
-                                    enabled = month.available, text = { Text(text.month(month.month, short = true)) })
+                        Row(Modifier.fillMaxWidth().padding(start = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.year_in_music), Modifier.weight(1f),
+                                style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { callbacks.yearPicker(true) }, modifier = glassModifier) {
+                                Text(state.selection.year.toString(), style = MaterialTheme.typography.titleMedium, color = foreground)
+                                Icon(painterResource(R.drawable.expand_more), null, Modifier.size(20.dp), tint = foreground)
+                            }
+                        }
+                        if (success != null) {
+                            SecondaryScrollableTabRow(selectedTabIndex = state.selection.month ?: 0,
+                                containerColor = Color.Transparent, contentColor = foreground,
+                                edgePadding = 8.dp, divider = {}, indicator = {}) {
+                                Tab(selected = state.selection.month == null, onClick = { callbacks.month(null) },
+                                    selectedContentColor = foreground, unselectedContentColor = foreground.copy(alpha = 0.55f),
+                                    text = { Text(state.selection.year.toString(), style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = if (state.selection.month == null) FontWeight.Bold else FontWeight.Medium) })
+                                success.data.months.forEach { month ->
+                                    Tab(selected = state.selection.month == month.month, onClick = { callbacks.month(month.month) },
+                                        enabled = month.available, selectedContentColor = foreground,
+                                        unselectedContentColor = foreground.copy(alpha = 0.55f),
+                                        text = { Text(text.month(month.month, short = true), style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = if (state.selection.month == month.month) FontWeight.Bold else FontWeight.Medium) })
+                                }
                             }
                         }
                     }
                 }
-            }
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when (state) {
-                is YearInMusicUiState.Loading -> RecapStatus(R.string.recap_loading, loading = true)
-                is YearInMusicUiState.Empty -> RecapStatus(R.string.year_in_music_empty_title,
-                    detail = stringResource(R.string.year_in_music_empty_subtitle, state.selection.year))
-                is YearInMusicUiState.Error -> RecapStatus(state.messageRes, retry = callbacks.retry)
-                is YearInMusicUiState.Success -> if (state.selection.month == null) {
-                    RecapOverview(state.data, state.selection, overview, text, callbacks)
-                } else when (val month = state.monthState) {
-                    RecapMonthState.Loading -> RecapStatus(R.string.recap_loading, loading = true)
-                    RecapMonthState.Empty -> RecapStatus(R.string.recap_month_empty,
-                        detail = text.period(state.selection.year, state.selection.month))
-                    is RecapMonthState.Error -> RecapStatus(month.messageRes, retry = callbacks.retryMonth)
-                    is RecapMonthState.Success -> RecapOverview(month.data, state.selection, overview, text, callbacks)
+            },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                when (state) {
+                    is YearInMusicUiState.Loading -> RecapStatus(R.string.recap_loading, loading = true)
+                    is YearInMusicUiState.Empty -> RecapStatus(R.string.year_in_music_empty_title,
+                        detail = stringResource(R.string.year_in_music_empty_subtitle, state.selection.year))
+                    is YearInMusicUiState.Error -> RecapStatus(state.messageRes, retry = callbacks.retry)
+                    is YearInMusicUiState.Success -> if (state.selection.month == null) {
+                        RecapOverview(state.data, state.selection, overview, text, callbacks)
+                    } else when (val month = state.monthState) {
+                        RecapMonthState.Loading -> RecapStatus(R.string.recap_loading, loading = true)
+                        RecapMonthState.Empty -> RecapStatus(R.string.recap_month_empty,
+                            detail = text.period(state.selection.year, state.selection.month))
+                        is RecapMonthState.Error -> RecapStatus(month.messageRes, retry = callbacks.retryMonth)
+                        is RecapMonthState.Success -> RecapOverview(month.data, state.selection, overview, text, callbacks)
+                    }
                 }
             }
         }
@@ -363,8 +416,17 @@ private fun RecapOverview(
             }
         } else {
             item("period", "heading") {
-                Text(text.period(data), Modifier.widthIn(max = 680.dp).fillMaxWidth(),
-                    style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                val minutes = text.number(data.milliseconds / 60_000)
+                val statement = stringResource(R.string.recap_month_listening, minutes, text.month(data.month))
+                val emphasis = stringResource(R.string.recap_listening_minutes, minutes)
+                val emphasisStart = statement.indexOf(emphasis)
+                val foreground = MaterialTheme.colorScheme.onSurface
+                Text(buildAnnotatedString {
+                    append(statement)
+                    if (emphasisStart >= 0) addStyle(SpanStyle(color = foreground), emphasisStart, emphasisStart + emphasis.length)
+                }, Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(top = 12.dp, bottom = 24.dp).semantics { heading() },
+                    color = foreground.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             }
         }
         if (data.artists.isNotEmpty()) {

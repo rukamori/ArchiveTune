@@ -35,6 +35,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AccountInfo
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
+import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.decodeSavedAccounts
@@ -63,6 +64,7 @@ class YouTubeLoginRepository
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val resolveAudioStream: ResolveAudioStreamUseCase,
     ) {
         fun observeAccountIdentity(): Flow<AccountIdentity> =
             context.dataStore.data
@@ -104,6 +106,7 @@ class YouTubeLoginRepository
                         authState = resolvedAuthState,
                         accountInfo = accountInfo,
                     )
+                    resolveAudioStream.invalidateSession()
 
                     YouTubeLoginSession(
                         authState = resolvedAuthState,
@@ -165,6 +168,7 @@ class YouTubeLoginRepository
                         }
                     }
 
+                    resolveAudioStream.invalidateSession()
                     context.dataStore.data
                         .first()
                         .toPlaybackAuthState()

@@ -233,6 +233,7 @@ import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
 import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
 import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
 import moe.rukamori.archivetune.playback.stream.AudioStreamRequest
+import moe.rukamori.archivetune.playback.stream.PlaybackHttpClient
 import moe.rukamori.archivetune.playback.stream.ResolveAudioStreamUseCase
 import moe.rukamori.archivetune.playback.stream.ResolvedAudioStream
 import moe.rukamori.archivetune.playback.stream.StreamPurpose
@@ -409,7 +410,6 @@ class MusicService :
     private val mediaOkHttpClient: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
-            .proxy(YouTube.streamOkHttpProxy)
             .followRedirects(true)
             .followSslRedirects(true)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -3786,6 +3786,10 @@ class MusicService :
 
         if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {
             return false
+        }
+
+        if (responseException.responseCode == 403) {
+            resolveAudioStream.invalidateSession()
         }
 
         Timber.tag("MusicService").i(
@@ -7881,7 +7885,9 @@ class MusicService :
     }
 
     private fun createResolvedUpstreamDataSourceFactory(): DataSource.Factory {
-        val httpFactory = OkHttpDataSource.Factory(mediaOkHttpClient)
+        val httpFactory = OkHttpDataSource.Factory(
+            PlaybackHttpClient(this, mediaOkHttpClient),
+        )
         val chunkedFactory = DataSource.Factory {
             ChunkedDataSource(httpFactory.createDataSource(), CHUNK_LENGTH)
         }

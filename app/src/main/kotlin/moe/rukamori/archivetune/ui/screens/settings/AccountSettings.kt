@@ -10,16 +10,18 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -41,6 +44,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,8 +61,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.SplitButtonDefaults
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -68,6 +70,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,6 +85,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,6 +94,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazePerformanceMode
+import dev.chrisbanes.haze.HazeSourceRetention
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import moe.rukamori.archivetune.App.Companion.forgetAccount
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -97,6 +111,7 @@ import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
+import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.ForceSyncOnAccountSwitchKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.SavedAccountsKey
@@ -126,7 +141,7 @@ import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import java.util.UUID
 
 private val AccountContentMaxWidth = 840.dp
-private val AvatarSize = 72.dp
+private val AvatarSize = 88.dp
 private val RowIconSize = 40.dp
 
 @Immutable
@@ -185,13 +200,15 @@ fun AccountSettings(
 
     val accountNameFromViewModel by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
+    val accountBannerUrl by viewModel.accountBannerUrl.collectAsStateWithLifecycle()
+    val (disableBlur, _) = rememberPreference(DisableBlurKey, false)
     val accountChannelsState by viewModel.accountChannelsState.collectAsStateWithLifecycle()
     val displayName =
         when {
+            !isLoggedIn -> loginLabel
             accountNameFromViewModel.isNotBlank() -> accountNameFromViewModel
             accountNamePref.isNotBlank() -> accountNamePref
-            isLoggedIn -> accountLabel
-            else -> loginLabel
+            else -> accountLabel
         }
     val hasSwitchableChannels =
         (accountChannelsState as? AccountChannelsState.Success)
@@ -285,7 +302,7 @@ fun AccountSettings(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.account_navigate_back),
                         )
                     }
                 },
@@ -325,33 +342,37 @@ fun AccountSettings(
                     ),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                item {
-                    AccountSummaryCard(
-                        isLoggedIn = isLoggedIn,
-                        accountName = displayName,
-                        accountEmail = accountEmail,
-                        accountHandle = accountChannelHandle,
-                        accountImageUrl = accountImageUrl,
-                        accountSwitcherEnabled =
-                            isLoggedIn || savedAccounts.accounts.isNotEmpty() || hasSwitchableChannels,
-                        onPrimaryAction = {
-                            if (isLoggedIn) {
-                                navController.navigate("account")
-                            } else {
-                                navController.navigate(buildLoginRoute())
-                            }
-                        },
-                        onSecondaryAction = {
-                            if (isLoggedIn) {
-                                showToken = false
-                                onInnerTubeCookieChange("")
-                                forgetAccount(context, clearWebAuthSession = true)
-                            } else {
-                                showTokenEditor = true
-                            }
-                        },
-                        onOpenAccountSwitcher = { showAccountSwitcher = true },
-                    )
+                item(key = "profile", contentType = "profile") {
+                    key(innerTubeCookie, dataSyncId) {
+                        AccountProfileCard(
+                            isLoggedIn = isLoggedIn,
+                            accountName = displayName,
+                            accountEmail = accountEmail,
+                            accountHandle = accountChannelHandle,
+                            accountImageUrl = accountImageUrl,
+                            accountBannerUrl = accountBannerUrl,
+                            disableBlur = disableBlur,
+                            accountSwitcherEnabled =
+                                isLoggedIn || savedAccounts.accounts.isNotEmpty() || hasSwitchableChannels,
+                            onPrimaryAction = {
+                                if (isLoggedIn) {
+                                    navController.navigate("account")
+                                } else {
+                                    navController.navigate(buildLoginRoute())
+                                }
+                            },
+                            onSecondaryAction = {
+                                if (isLoggedIn) {
+                                    showToken = false
+                                    onInnerTubeCookieChange("")
+                                    forgetAccount(context, clearWebAuthSession = true)
+                                } else {
+                                    showTokenEditor = true
+                                }
+                            },
+                            onOpenAccountSwitcher = { showAccountSwitcher = true },
+                        )
+                    }
                 }
 
                 if (hasUpdate) {
@@ -367,11 +388,11 @@ fun AccountSettings(
                     AnimatedVisibility(
                         visible = isLoggedIn,
                         enter =
-                            fadeIn(spring(stiffness = Spring.StiffnessLow)) +
-                                expandVertically(
-                                    spring(stiffness = Spring.StiffnessLow),
-                                ),
-                        exit = fadeOut() + shrinkVertically(),
+                            fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                                expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                        exit =
+                            fadeOut(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                                shrinkVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
                     ) {
                         ExpressiveSectionCard(title = generalLabel) {
                             ExpressiveSwitchRow(
@@ -553,179 +574,260 @@ fun AccountSettings(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AccountSummaryCard(
+private fun AccountProfileCard(
     isLoggedIn: Boolean,
     accountName: String,
     accountEmail: String,
     accountHandle: String,
     accountImageUrl: String?,
+    accountBannerUrl: String?,
+    disableBlur: Boolean,
     accountSwitcherEnabled: Boolean,
     onPrimaryAction: () -> Unit,
     onSecondaryAction: () -> Unit,
     onOpenAccountSwitcher: () -> Unit,
 ) {
+    val hazeState = rememberHazeState()
+    val bannerUrl = accountBannerUrl.takeIf { isLoggedIn }
+    var bannerLoaded by remember(bannerUrl) { mutableStateOf(false) }
+    val panelColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val blurStyle = remember(panelColor) {
+        HazeBlurStyle {
+            backgroundColor(panelColor)
+            blurRadius(24.dp)
+            noiseFactor(0f)
+            colorEffects(listOf(HazeColorEffect.tint(panelColor.copy(alpha = 0.88f))))
+            fallbackColorEffect(HazeColorEffect.tint(panelColor))
+        }
+    }
+    val hazeInput = remember(hazeState) {
+        HazeInput.Sources(hazeState, retention = HazeSourceRetention.ClearWhenUnavailable)
+    }
+    val actionHeight = ButtonDefaults.MediumContainerHeight
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = panelColor),
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val expanded = maxWidth >= 600.dp
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .hazeSource(hazeState)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
             ) {
-                Box(contentAlignment = Alignment.BottomEnd) {
-                    Surface(
-                        modifier = Modifier.size(AvatarSize),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                if (bannerUrl != null) {
+                    key(bannerUrl) {
+                        AsyncImage(
+                            model = bannerUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            onSuccess = { bannerLoaded = true },
+                            onError = { bannerLoaded = false },
+                        )
+                    }
+                }
+            }
+
+            Column {
+                if (isLoggedIn) {
+                    Spacer(modifier = Modifier.height(120.dp))
+                }
+                Box {
+                    Box(
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .then(
+                                    if (bannerLoaded && !disableBlur) {
+                                        Modifier.hazeBlur(
+                                            input = hazeInput,
+                                            style = blurStyle,
+                                            performanceMode = HazePerformanceMode.Default,
+                                        )
+                                    } else {
+                                        Modifier.background(panelColor)
+                                    },
+                                ),
+                    )
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
-                        if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = accountImageUrl,
-                                contentDescription = null,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape),
-                                contentScale = ContentScale.Crop,
-                            )
+                        if (expanded) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AccountProfileAvatar(isLoggedIn, accountImageUrl)
+                                AccountProfileIdentity(
+                                    isLoggedIn = isLoggedIn,
+                                    accountName = accountName,
+                                    accountHandle = accountHandle,
+                                    accountEmail = accountEmail,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         } else {
-                            Box(contentAlignment = Alignment.Center) {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                AccountProfileAvatar(isLoggedIn, accountImageUrl)
+                                AccountProfileIdentity(
+                                    isLoggedIn = isLoggedIn,
+                                    accountName = accountName,
+                                    accountHandle = accountHandle,
+                                    accountEmail = accountEmail,
+                                )
+                            }
+                        }
+
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                onClick = onPrimaryAction,
+                                modifier = Modifier.heightIn(min = actionHeight),
+                                shapes = ButtonDefaults.shapesFor(actionHeight),
+                                contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
+                            ) {
                                 Icon(
                                     painter =
-                                        painterResource(
-                                            if (isLoggedIn) R.drawable.account else R.drawable.login,
-                                        ),
+                                        painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
+                                )
+                                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
+                                Text(
+                                    text = stringResource(if (isLoggedIn) R.string.account_view else R.string.login),
+                                    style = ButtonDefaults.textStyleFor(actionHeight),
                                 )
                             }
-                        }
-                    }
-
-                    if (isLoggedIn) {
-                        Surface(
-                            modifier = Modifier.size(24.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                )
+                            if (accountSwitcherEnabled) {
+                                FilledTonalButton(
+                                    onClick = onOpenAccountSwitcher,
+                                    modifier = Modifier.heightIn(min = actionHeight),
+                                    shapes = ButtonDefaults.shapesFor(actionHeight),
+                                    contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.expand_more),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
+                                    )
+                                    Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
+                                    Text(
+                                        text =
+                                            stringResource(if (isLoggedIn) R.string.account_switch else R.string.saved_accounts),
+                                        style = ButtonDefaults.textStyleFor(actionHeight),
+                                    )
+                                }
                             }
                         }
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = accountName,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (accountHandle.isNotBlank()) {
-                        Text(
-                            text = accountHandle,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (accountEmail.isNotBlank() || !isLoggedIn) {
-                        Text(
-                            text = accountEmail.ifBlank { stringResource(R.string.not_logged_in) },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SplitButtonLayout(
-                    leadingButton = {
-                        SplitButtonDefaults.ElevatedLeadingButton(
-                            onClick = onPrimaryAction,
-                            colors =
-                                ButtonDefaults.elevatedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                ),
+                        TextButton(
+                            onClick = onSecondaryAction,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            shapes = ButtonDefaults.shapes(),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor =
+                                    if (isLoggedIn) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    },
+                            ),
                         ) {
-                            Icon(
-                                painter =
-                                    painterResource(
-                                        if (isLoggedIn) R.drawable.account else R.drawable.login,
-                                    ),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isLoggedIn) stringResource(R.string.account) else stringResource(R.string.login),
+                                text = stringResource(if (isLoggedIn) R.string.account_sign_out else R.string.advanced_login),
                             )
                         }
-                    },
-                    trailingButton = {
-                        SplitButtonDefaults.ElevatedTrailingButton(
-                            checked = false,
-                            onCheckedChange = { onOpenAccountSwitcher() },
-                            enabled = accountSwitcherEnabled,
-                            colors =
-                                ButtonDefaults.elevatedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                ),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.expand_more),
-                                contentDescription = stringResource(R.string.saved_accounts),
-                                modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize),
-                            )
-                        }
-                    },
-                )
-
-                TextButton(
-                    onClick = onSecondaryAction,
-                    colors =
-                        ButtonDefaults.textButtonColors(
-                            contentColor =
-                                if (isLoggedIn) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                },
-                        ),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(
-                        text = if (isLoggedIn) stringResource(R.string.action_logout) else stringResource(R.string.advanced_login),
-                    )
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccountProfileAvatar(
+    isLoggedIn: Boolean,
+    imageUrl: String?,
+) {
+    val fallbackIcon: @Composable () -> Unit = {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+    Surface(
+        modifier = Modifier.size(AvatarSize),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        if (isLoggedIn && !imageUrl.isNullOrBlank()) {
+            key(imageUrl) {
+                SubcomposeAsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    loading = { fallbackIcon() },
+                    error = { fallbackIcon() },
+                )
+            }
+        } else {
+            fallbackIcon()
+        }
+    }
+}
+
+@Composable
+private fun AccountProfileIdentity(
+    isLoggedIn: Boolean,
+    accountName: String,
+    accountHandle: String,
+    accountEmail: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = accountName,
+            style = MaterialTheme.typography.headlineSmallEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() },
+        )
+        if (isLoggedIn) {
+            if (accountHandle.isNotBlank()) {
+                Text(
+                    text = accountHandle,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (accountEmail.isNotBlank()) {
+                Text(
+                    text = accountEmail,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.account_login_description),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -1094,7 +1196,7 @@ private fun ExpressiveSectionCard(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = 8.dp).semantics { heading() },
         )
         Column(
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
@@ -1138,8 +1240,6 @@ private fun ExpressiveActionRow(
                 {
                     Text(
                         text = supportingText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             },
@@ -1147,8 +1247,6 @@ private fun ExpressiveActionRow(
         Text(
             text = title,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -1190,8 +1288,6 @@ private fun ExpressiveSwitchRow(
                 {
                     Text(
                         text = supportingText,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             },
@@ -1199,8 +1295,6 @@ private fun ExpressiveSwitchRow(
         Text(
             text = title,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }

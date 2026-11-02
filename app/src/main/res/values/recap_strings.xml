@@ -31,6 +31,8 @@
     <string name="recap_weekday">Most-listened weekday</string>
     <string name="recap_hour">Most-listened hour</string>
     <string name="recap_minutes_value">%1$s min</string>
+    <string name="recap_month_listening">You listened for %1$s minutes in %2$s.</string>
+    <string name="recap_listening_minutes">%1$s minutes</string>
     <plurals name="recap_plays_value">
         <item quantity="one">%1$s play</item>
         <item quantity="other">%1$s plays</item>

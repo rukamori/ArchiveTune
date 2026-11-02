@@ -26,6 +26,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -80,7 +83,7 @@ fun LoginScreen(
 
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val loginSuccessMessage = stringResource(R.string.login_success)
-    var webView: WebView? = null
+    var webView by remember { mutableStateOf<WebView?>(null) }
 
     LaunchedEffect(screenState, loginSuccessMessage) {
         if (screenState is LoginScreenState.Success) {
@@ -108,6 +111,7 @@ fun LoginScreen(
                     )
                 settings.apply {
                     javaScriptEnabled = true
+                    domStorageEnabled = true
                     setSupportZoom(true)
                     builtInZoomControls = true
                     displayZoomControls = false
@@ -134,7 +138,9 @@ fun LoginScreen(
                 )
                 webView = this
                 resetAuthWebViewSession(context, this, clearCookies = true) {
-                    loadUrl(startUrl?.takeIf { it.isNotBlank() } ?: DEFAULT_LOGIN_URL)
+                    if (webView === this) {
+                        loadUrl(startUrl?.takeIf { it.isNotBlank() } ?: DEFAULT_LOGIN_URL)
+                    }
                 }
             }
         },
@@ -197,7 +203,7 @@ private class YouTubeLoginWebViewClient(
         request: WebResourceRequest,
     ): Boolean {
         val targetUrl = request.url.toString()
-        if (!request.isForMainFrame && !targetUrl.isWebViewLoadableUrl()) return true
+        if (!targetUrl.isWebViewLoadableUrl() && (!request.isForMainFrame || !request.hasGesture())) return true
         return handleUrlLoading(view, targetUrl)
     }
 
@@ -273,7 +279,7 @@ private class YouTubeLoginWebViewClient(
         if (targetUrl.isYouTubeMusicStoreListingUrl()) return true
         if (targetUrl.isWebViewLoadableUrl()) return false
 
-        targetUrl.intentWebViewUrl()?.let(view::loadUrl)
+        targetUrl.intentWebViewUrl()?.takeUnless { it == view.url }?.let(view::loadUrl)
         return true
     }
 }
