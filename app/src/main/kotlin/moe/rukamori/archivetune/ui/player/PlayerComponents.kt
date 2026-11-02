@@ -57,7 +57,6 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
@@ -117,7 +116,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.animation.core.Animatable
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.MaterialShapes
 import kotlin.math.abs
 import androidx.compose.ui.platform.LocalHapticFeedback
