@@ -1668,7 +1668,10 @@ private fun RowScope.EditorialSegmentedButton(
         targetValue = if (isToggle && checked) accent else accent.copy(alpha = 0.08f),
         label = "EditorialSegmentedBg",
     )
-    val contentColor = if (isToggle && checked) field else accent
+    val contentColor by animateColorAsState(
+        targetValue = if (isToggle && checked) field else accent,
+        label = "EditorialSegmentedFg",
+    )
     val shape = editorialGroupedItemShape(isFirst = isFirst, isLast = isLast)
 
     Box(
