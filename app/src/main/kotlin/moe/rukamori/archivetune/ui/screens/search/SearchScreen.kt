@@ -535,12 +535,7 @@ private fun SuggestedSongsSection(
     val haptic = LocalHapticFeedback.current
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
-
-    SectionContainer(
-        title = stringResource(R.string.stats_unique_songs),
-        modifier = modifier,
-    ) {
-        val visibleSongs = remember(songs) { songs.take(6) }
+    val visibleSongs = remember(songs) { songs.take(6) }
 
         Column(
             verticalArrangement = Arrangement.spacedBy(SuggestedSongGroupItemSpacing),
@@ -609,8 +604,7 @@ private fun SuggestedSongsSection(
                     )
                 }
             }
-        }
-    }
+      }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -629,10 +623,6 @@ private fun TrendingAlbumsSection(
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
-    NavigationTitle(
-        title = stringResource(R.string.top_albums),
-        modifier = modifier,
-    )
     LazyRow(
         contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal).asPaddingValues(),
     ) {
@@ -680,10 +670,6 @@ private fun SuggestedArtistsSection(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
 
-    NavigationTitle(
-        title = stringResource(R.string.stats_unique_artists),
-        modifier = modifier,
-    )
     LazyRow(
         contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal).asPaddingValues(),
     ) {
