@@ -142,10 +142,9 @@ fun WhatsNewDialog(
                         }
                         when (val content = state.content) {
                             is WhatsNewContent.Success -> content.sections.forEach { section ->
-                                val style = section.category.style()
                                 item(key = section.category.name, contentType = "category_header") {
                                     WhatsNewSectionHeader(
-                                        style = style,
+                                        style = section.category.style(),
                                         changeCount = section.entries.size,
                                         modifier = if (disableAnimations) Modifier else Modifier.animateItem(),
                                     )
@@ -155,6 +154,7 @@ fun WhatsNewDialog(
                                     key = { _, entry -> "${section.category.name}:$entry" },
                                     contentType = { _, _ -> "release_change" },
                                 ) { index, entry ->
+                                    val style = section.category.style()
                                     SegmentedListItem(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
