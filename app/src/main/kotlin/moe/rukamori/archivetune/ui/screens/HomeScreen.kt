@@ -367,16 +367,6 @@ private fun HomeContent(
                             .fillMaxWidth()
                             .align(Alignment.TopCenter),
                 ) {
-                    item(
-                        key = "home_greeting",
-                        contentType = "greeting",
-                    ) {
-                        HomeGreetingHeader(
-                            accountName = uiState.accountName,
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-
                     if (uiState.showCategoryChips) {
                         item(
                             key = "home_category_chips",

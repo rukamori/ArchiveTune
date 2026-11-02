@@ -73,7 +73,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +102,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
@@ -151,7 +149,6 @@ import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
-import java.time.LocalTime
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -191,77 +188,6 @@ fun HomeCategoryChips(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun HomeGreetingHeader(
-    accountName: String,
-    modifier: Modifier = Modifier,
-) {
-    val hour by produceState(initialValue = LocalTime.now().hour) {
-        while (true) {
-            val now = LocalTime.now()
-            delay(((60 - now.minute) * 60L - now.second) * 1_000L)
-            value = LocalTime.now().hour
-        }
-    }
-    val greetingRes =
-        when (hour) {
-            in 5..11 -> R.string.greeting_morning
-            in 12..16 -> R.string.greeting_afternoon
-            in 17..21 -> R.string.greeting_evening
-            else -> R.string.greeting_night
-        }
-
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(96.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialShapes.Cookie9Sided.toShape(),
-                    ),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.about_appbar),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(56.dp),
-            )
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-        )
-        Text(
-            text = stringResource(greetingRes),
-            style = MaterialTheme.typography.displaySmallEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() },
-        )
-        if (accountName.isNotBlank()) {
-            Text(
-                text = accountName,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
