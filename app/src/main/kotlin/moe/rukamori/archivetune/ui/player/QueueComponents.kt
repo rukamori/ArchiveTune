@@ -1518,12 +1518,6 @@ fun QueueCollapsedContentV9(
     }
 }
 
-/**
- * V10 Design Style collapsed queue content.
- * 5-slot connected grouped segmented bar:
- * [ Queue ] [ Shuffle ] [ Repeat ] [ Like ] [ Add to Playlist ]
- * Safe for Android 16 (SDK 36) - no Surface(onClick) or M3 ToggleButton.
- */
 @Composable
 fun QueueCollapsedContentV10(
     showCodecOnPlayer: Boolean,
@@ -1701,10 +1695,6 @@ private fun RowScope.EditorialSegmentedButton(
     }
 }
 
-/**
- * Segmented item shapes for V10 Connected GroupedButton.
- * Cached singletons to prevent allocations on recomposition hot paths.
- */
 private val EditorialGroupedFirstShape =
     RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 8.dp, bottomEnd = 8.dp)
 private val EditorialGroupedMiddleShape = RoundedCornerShape(8.dp)
