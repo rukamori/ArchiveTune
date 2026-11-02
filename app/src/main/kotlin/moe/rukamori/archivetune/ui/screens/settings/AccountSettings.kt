@@ -9,15 +9,12 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -41,13 +38,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -55,17 +49,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,7 +75,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -87,6 +87,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,14 +96,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazePerformanceMode
-import dev.chrisbanes.haze.HazeSourceRetention
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import moe.rukamori.archivetune.App.Companion.forgetAccount
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -111,7 +104,6 @@ import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
-import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.ForceSyncOnAccountSwitchKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.SavedAccountsKey
@@ -141,8 +133,12 @@ import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import java.util.UUID
 
 private val AccountContentMaxWidth = 840.dp
-private val AvatarSize = 88.dp
+private val HeroBackdropHeight = 128.dp
+private val AvatarSize = 96.dp
+private val AvatarRingWidth = 6.dp
+private val HeroAvatarOuterSize = AvatarSize + AvatarRingWidth * 2
 private val RowIconSize = 40.dp
+private val RowIconCorner = 12.dp
 
 @Immutable
 private data class SavedAccountCollection(
@@ -160,11 +156,8 @@ fun AccountSettings(
     val scrollBehavior = appBarScrollBehavior()
 
     val accountLabel = stringResource(R.string.account)
-    val generalLabel = stringResource(R.string.general)
     val integrationLabel = stringResource(R.string.integration)
-    val miscLabel = stringResource(R.string.misc)
     val loginLabel = stringResource(R.string.login)
-    val tokenDescription = stringResource(R.string.token_adv_login_description)
 
     val (accountNamePref, onAccountNameChange) = rememberPreference(AccountNameKey, "")
     val (accountEmail, onAccountEmailChange) = rememberPreference(AccountEmailKey, "")
@@ -201,7 +194,6 @@ fun AccountSettings(
     val accountNameFromViewModel by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val accountBannerUrl by viewModel.accountBannerUrl.collectAsStateWithLifecycle()
-    val (disableBlur, _) = rememberPreference(DisableBlurKey, false)
     val accountChannelsState by viewModel.accountChannelsState.collectAsStateWithLifecycle()
     val displayName =
         when {
@@ -221,10 +213,12 @@ fun AccountSettings(
     var showTokenEditor by remember { mutableStateOf(false) }
     var showUnsavedAccountDialog by remember { mutableStateOf(false) }
     var showAccountSwitcher by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
             showToken = false
+            showSignOutDialog = false
         }
     }
 
@@ -286,14 +280,12 @@ fun AccountSettings(
         topBar = {
             LargeFlexibleTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = accountLabel,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    Text(
+                        text = accountLabel,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 },
                 navigationIcon = {
                     IconButton(
@@ -340,34 +332,25 @@ fun AccountSettings(
                         end = 16.dp,
                         bottom = SettingsDimensions.ScreenBottomPadding,
                     ),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                item(key = "profile", contentType = "profile") {
+                item(key = "hero", contentType = "hero") {
                     key(innerTubeCookie, dataSyncId) {
-                        AccountProfileCard(
+                        AccountHero(
                             isLoggedIn = isLoggedIn,
                             accountName = displayName,
                             accountEmail = accountEmail,
                             accountHandle = accountChannelHandle,
                             accountImageUrl = accountImageUrl,
                             accountBannerUrl = accountBannerUrl,
-                            disableBlur = disableBlur,
                             accountSwitcherEnabled =
                                 isLoggedIn || savedAccounts.accounts.isNotEmpty() || hasSwitchableChannels,
+                            accountSwitcherOpen = showAccountSwitcher,
                             onPrimaryAction = {
                                 if (isLoggedIn) {
                                     navController.navigate("account")
                                 } else {
                                     navController.navigate(buildLoginRoute())
-                                }
-                            },
-                            onSecondaryAction = {
-                                if (isLoggedIn) {
-                                    showToken = false
-                                    onInnerTubeCookieChange("")
-                                    forgetAccount(context, clearWebAuthSession = true)
-                                } else {
-                                    showTokenEditor = true
                                 }
                             },
                             onOpenAccountSwitcher = { showAccountSwitcher = true },
@@ -376,26 +359,21 @@ fun AccountSettings(
                 }
 
                 if (hasUpdate) {
-                    item {
-                        UpdateBannerStrip(
+                    item(key = "update", contentType = "update") {
+                        UpdateAvailableBanner(
                             latestVersion = latestVersionName,
                             onClick = { uriHandler.openUri(Updater.getLatestDownloadUrl()) },
                         )
                     }
                 }
 
-                item {
-                    AnimatedVisibility(
-                        visible = isLoggedIn,
-                        enter =
-                            fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
-                                expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
-                        exit =
-                            fadeOut(MaterialTheme.motionScheme.defaultEffectsSpec()) +
-                                shrinkVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
-                    ) {
-                        ExpressiveSectionCard(title = generalLabel) {
-                            ExpressiveSwitchRow(
+                if (isLoggedIn) {
+                    item(key = "sync", contentType = "section") {
+                        AccountSection(
+                            title = stringResource(R.string.account_section_sync),
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            AccountSwitchRow(
                                 icon = painterResource(R.drawable.add_circle),
                                 title = stringResource(R.string.more_content),
                                 subtitle = stringResource(R.string.use_login_for_browse_desc),
@@ -404,8 +382,7 @@ fun AccountSettings(
                                 index = 0,
                                 count = 3,
                             )
-
-                            ExpressiveSwitchRow(
+                            AccountSwitchRow(
                                 icon = painterResource(R.drawable.cached),
                                 title = stringResource(R.string.yt_sync),
                                 checked = ytmSync,
@@ -413,8 +390,7 @@ fun AccountSettings(
                                 index = 1,
                                 count = 3,
                             )
-
-                            ExpressiveSwitchRow(
+                            AccountSwitchRow(
                                 icon = painterResource(R.drawable.sync),
                                 title = stringResource(R.string.force_sync_on_switch_account),
                                 subtitle = stringResource(R.string.force_sync_on_switch_account_desc),
@@ -427,9 +403,12 @@ fun AccountSettings(
                     }
                 }
 
-                item {
-                    ExpressiveSectionCard(title = integrationLabel) {
-                        ExpressiveActionRow(
+                item(key = "connected", contentType = "section") {
+                    AccountSection(
+                        title = stringResource(R.string.account_section_connected),
+                        modifier = Modifier.animateItem(),
+                    ) {
+                        AccountActionRow(
                             icon = painterResource(R.drawable.integration),
                             title = integrationLabel,
                             subtitle = stringResource(R.string.account_integrations_summary),
@@ -437,8 +416,7 @@ fun AccountSettings(
                             index = 0,
                             count = 2,
                         )
-
-                        ExpressiveActionRow(
+                        AccountActionRow(
                             icon = painterResource(R.drawable.fire),
                             title = stringResource(R.string.music_together),
                             onClick = { navController.navigate("settings/music_together") },
@@ -448,9 +426,12 @@ fun AccountSettings(
                     }
                 }
 
-                item {
-                    ExpressiveSectionCard(title = miscLabel) {
-                        ExpressiveActionRow(
+                item(key = "security", contentType = "section") {
+                    AccountSection(
+                        title = stringResource(R.string.account_section_security),
+                        modifier = Modifier.animateItem(),
+                    ) {
+                        AccountActionRow(
                             icon = painterResource(R.drawable.visibility_off),
                             title = stringResource(R.string.hidden_playlists),
                             subtitle = stringResource(R.string.hidden_playlists_description),
@@ -458,16 +439,20 @@ fun AccountSettings(
                             index = 0,
                             count = 2,
                         )
-
-                        ExpressiveActionRow(
+                        AccountActionRow(
                             icon = painterResource(R.drawable.token),
                             title = tokenActionTitle,
-                            subtitle = tokenDescription,
-                            accent = if (isLoggedIn && showToken) MaterialTheme.colorScheme.tertiary else null,
+                            subtitle =
+                                if (isLoggedIn && showToken) {
+                                    previewSecureValue(innerTubeCookie)
+                                } else {
+                                    stringResource(R.string.token_adv_login_description)
+                                },
+                            monospaceSubtitle = isLoggedIn && showToken,
+                            highlighted = isLoggedIn && showToken,
+                            trailingIcon = painterResource(if (isLoggedIn && showToken) R.drawable.edit else R.drawable.arrow_forward),
                             onClick = {
-                                if (!isLoggedIn) {
-                                    showTokenEditor = true
-                                } else if (!showToken) {
+                                if (isLoggedIn && !showToken) {
                                     showToken = true
                                 } else {
                                     showTokenEditor = true
@@ -479,8 +464,17 @@ fun AccountSettings(
                     }
                 }
 
-                item {
-                    VersionStamp()
+                if (isLoggedIn) {
+                    item(key = "sign_out", contentType = "sign_out") {
+                        AccountSignOutRow(
+                            onClick = { showSignOutDialog = true },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                item(key = "version", contentType = "version") {
+                    VersionStamp(modifier = Modifier.animateItem())
                 }
             }
         }
@@ -529,6 +523,42 @@ fun AccountSettings(
         )
     }
 
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.logout),
+                    contentDescription = null,
+                )
+            },
+            title = {
+                Text(text = stringResource(R.string.account_sign_out_dialog_title))
+            },
+            text = {
+                Text(text = stringResource(R.string.account_sign_out_dialog_text))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                        showToken = false
+                        onInnerTubeCookieChange("")
+                        forgetAccount(context, clearWebAuthSession = true)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(text = stringResource(R.string.account_sign_out))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
     if (showUnsavedAccountDialog) {
         AlertDialog(
             onDismissRequest = { showUnsavedAccountDialog = false },
@@ -574,192 +604,109 @@ fun AccountSettings(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AccountProfileCard(
+private fun AccountHero(
     isLoggedIn: Boolean,
     accountName: String,
     accountEmail: String,
     accountHandle: String,
     accountImageUrl: String?,
     accountBannerUrl: String?,
-    disableBlur: Boolean,
     accountSwitcherEnabled: Boolean,
+    accountSwitcherOpen: Boolean,
     onPrimaryAction: () -> Unit,
-    onSecondaryAction: () -> Unit,
     onOpenAccountSwitcher: () -> Unit,
 ) {
-    val hazeState = rememberHazeState()
-    val bannerUrl = accountBannerUrl.takeIf { isLoggedIn }
-    var bannerLoaded by remember(bannerUrl) { mutableStateOf(false) }
-    val panelColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val blurStyle = remember(panelColor) {
-        HazeBlurStyle {
-            backgroundColor(panelColor)
-            blurRadius(24.dp)
-            noiseFactor(0f)
-            colorEffects(listOf(HazeColorEffect.tint(panelColor.copy(alpha = 0.88f))))
-            fallbackColorEffect(HazeColorEffect.tint(panelColor))
-        }
-    }
-    val hazeInput = remember(hazeState) {
-        HazeInput.Sources(hazeState, retention = HazeSourceRetention.ClearWhenUnavailable)
-    }
-    val actionHeight = ButtonDefaults.MediumContainerHeight
+    val heroColor = MaterialTheme.colorScheme.surfaceContainerHigh
 
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = panelColor),
+        color = heroColor,
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val expanded = maxWidth >= 600.dp
-            Box(
+        Box {
+            AccountHeroBackdrop(
+                bannerUrl = accountBannerUrl.takeIf { isLoggedIn },
+                fadeColor = heroColor,
                 modifier =
                     Modifier
-                        .matchParentSize()
-                        .hazeSource(hazeState)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .fillMaxWidth()
+                        .height(HeroBackdropHeight),
+            )
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 20.dp,
+                            top = HeroBackdropHeight - HeroAvatarOuterSize / 2,
+                            end = 20.dp,
+                            bottom = 20.dp,
+                        ),
             ) {
-                if (bannerUrl != null) {
-                    key(bannerUrl) {
-                        AsyncImage(
-                            model = bannerUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            onSuccess = { bannerLoaded = true },
-                            onError = { bannerLoaded = false },
-                        )
-                    }
-                }
-            }
-
-            Column {
-                if (isLoggedIn) {
-                    Spacer(modifier = Modifier.height(120.dp))
-                }
-                Box {
-                    Box(
-                        modifier =
-                            Modifier
-                                .matchParentSize()
-                                .then(
-                                    if (bannerLoaded && !disableBlur) {
-                                        Modifier.hazeBlur(
-                                            input = hazeInput,
-                                            style = blurStyle,
-                                            performanceMode = HazePerformanceMode.Default,
-                                        )
-                                    } else {
-                                        Modifier.background(panelColor)
-                                    },
-                                ),
-                    )
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        if (expanded) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                AccountProfileAvatar(isLoggedIn, accountImageUrl)
-                                AccountProfileIdentity(
-                                    isLoggedIn = isLoggedIn,
-                                    accountName = accountName,
-                                    accountHandle = accountHandle,
-                                    accountEmail = accountEmail,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                AccountProfileAvatar(isLoggedIn, accountImageUrl)
-                                AccountProfileIdentity(
-                                    isLoggedIn = isLoggedIn,
-                                    accountName = accountName,
-                                    accountHandle = accountHandle,
-                                    accountEmail = accountEmail,
-                                )
-                            }
-                        }
-
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(
-                                onClick = onPrimaryAction,
-                                modifier = Modifier.heightIn(min = actionHeight),
-                                shapes = ButtonDefaults.shapesFor(actionHeight),
-                                contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
-                            ) {
-                                Icon(
-                                    painter =
-                                        painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
-                                )
-                                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
-                                Text(
-                                    text = stringResource(if (isLoggedIn) R.string.account_view else R.string.login),
-                                    style = ButtonDefaults.textStyleFor(actionHeight),
-                                )
-                            }
-                            if (accountSwitcherEnabled) {
-                                FilledTonalButton(
-                                    onClick = onOpenAccountSwitcher,
-                                    modifier = Modifier.heightIn(min = actionHeight),
-                                    shapes = ButtonDefaults.shapesFor(actionHeight),
-                                    contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.expand_more),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
-                                    )
-                                    Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
-                                    Text(
-                                        text =
-                                            stringResource(if (isLoggedIn) R.string.account_switch else R.string.saved_accounts),
-                                        style = ButtonDefaults.textStyleFor(actionHeight),
-                                    )
-                                }
-                            }
-                        }
-                        TextButton(
-                            onClick = onSecondaryAction,
-                            modifier = Modifier.heightIn(min = 48.dp),
-                            shapes = ButtonDefaults.shapes(),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor =
-                                    if (isLoggedIn) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.primary
-                                    },
-                            ),
-                        ) {
-                            Text(
-                                text = stringResource(if (isLoggedIn) R.string.account_sign_out else R.string.advanced_login),
-                            )
-                        }
-                    }
-                }
+                AccountHeroAvatar(
+                    isLoggedIn = isLoggedIn,
+                    imageUrl = accountImageUrl,
+                    ringColor = heroColor,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                AccountHeroIdentity(
+                    isLoggedIn = isLoggedIn,
+                    accountName = accountName,
+                    accountHandle = accountHandle,
+                    accountEmail = accountEmail,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                AccountHeroActions(
+                    isLoggedIn = isLoggedIn,
+                    accountSwitcherEnabled = accountSwitcherEnabled,
+                    accountSwitcherOpen = accountSwitcherOpen,
+                    onPrimaryAction = onPrimaryAction,
+                    onOpenAccountSwitcher = onOpenAccountSwitcher,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AccountProfileAvatar(
+private fun AccountHeroBackdrop(
+    bannerUrl: String?,
+    fadeColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.background(MaterialTheme.colorScheme.primaryContainer)) {
+        if (bannerUrl != null) {
+            key(bannerUrl) {
+                AsyncImage(
+                    model = bannerUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        }
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.3f to Color.Transparent,
+                            1f to fadeColor,
+                        ),
+                    ),
+        )
+    }
+}
+
+@Composable
+private fun AccountHeroAvatar(
     isLoggedIn: Boolean,
     imageUrl: String?,
+    ringColor: Color,
 ) {
+    val avatarShape = MaterialShapes.Cookie9Sided.toShape()
     val fallbackIcon: @Composable () -> Unit = {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Icon(
@@ -770,49 +717,62 @@ private fun AccountProfileAvatar(
             )
         }
     }
-    Surface(
-        modifier = Modifier.size(AvatarSize),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
+    Box(
+        modifier =
+            Modifier
+                .size(HeroAvatarOuterSize)
+                .background(ringColor, avatarShape),
+        contentAlignment = Alignment.Center,
     ) {
-        if (isLoggedIn && !imageUrl.isNullOrBlank()) {
-            key(imageUrl) {
-                SubcomposeAsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    loading = { fallbackIcon() },
-                    error = { fallbackIcon() },
-                )
+        Box(
+            modifier =
+                Modifier
+                    .size(AvatarSize)
+                    .clip(avatarShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            if (isLoggedIn && !imageUrl.isNullOrBlank()) {
+                key(imageUrl) {
+                    SubcomposeAsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        loading = { fallbackIcon() },
+                        error = { fallbackIcon() },
+                    )
+                }
+            } else {
+                fallbackIcon()
             }
-        } else {
-            fallbackIcon()
         }
     }
 }
 
 @Composable
-private fun AccountProfileIdentity(
+private fun AccountHeroIdentity(
     isLoggedIn: Boolean,
     accountName: String,
     accountHandle: String,
     accountEmail: String,
-    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = accountName,
-            style = MaterialTheme.typography.headlineSmallEmphasized,
+            style = MaterialTheme.typography.headlineMediumEmphasized,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.semantics { heading() },
         )
         if (isLoggedIn) {
             if (accountHandle.isNotBlank()) {
                 Text(
                     text = accountHandle,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleSmallEmphasized,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             if (accountEmail.isNotBlank()) {
@@ -820,6 +780,8 @@ private fun AccountProfileIdentity(
                     text = accountEmail,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         } else {
@@ -830,6 +792,123 @@ private fun AccountProfileIdentity(
             )
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AccountHeroActions(
+    isLoggedIn: Boolean,
+    accountSwitcherEnabled: Boolean,
+    accountSwitcherOpen: Boolean,
+    onPrimaryAction: () -> Unit,
+    onOpenAccountSwitcher: () -> Unit,
+) {
+    val actionHeight = ButtonDefaults.MediumContainerHeight
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (isLoggedIn && accountSwitcherEnabled) {
+            AccountSwitcherSplitButton(
+                switcherOpen = accountSwitcherOpen,
+                onViewAccount = onPrimaryAction,
+                onOpenSwitcher = onOpenAccountSwitcher,
+            )
+        } else {
+            Button(
+                onClick = onPrimaryAction,
+                modifier = Modifier.heightIn(min = actionHeight),
+                shapes = ButtonDefaults.shapesFor(actionHeight),
+                contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
+            ) {
+                Icon(
+                    painter = painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
+                )
+                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
+                Text(
+                    text = stringResource(if (isLoggedIn) R.string.account_view else R.string.login),
+                    style = ButtonDefaults.textStyleFor(actionHeight),
+                )
+            }
+            if (accountSwitcherEnabled) {
+                FilledTonalButton(
+                    onClick = onOpenAccountSwitcher,
+                    modifier = Modifier.heightIn(min = actionHeight),
+                    shapes = ButtonDefaults.shapesFor(actionHeight),
+                    contentPadding = ButtonDefaults.contentPaddingFor(actionHeight, hasStartIcon = true),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.account),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.iconSizeFor(actionHeight)),
+                    )
+                    Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(actionHeight)))
+                    Text(
+                        text = stringResource(R.string.saved_accounts),
+                        style = ButtonDefaults.textStyleFor(actionHeight),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountSwitcherSplitButton(
+    switcherOpen: Boolean,
+    onViewAccount: () -> Unit,
+    onOpenSwitcher: () -> Unit,
+) {
+    val splitHeight = SplitButtonDefaults.MediumContainerHeight
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (switcherOpen) 180f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "accountSwitcherArrow",
+    )
+
+    SplitButtonLayout(
+        leadingButton = {
+            SplitButtonDefaults.LeadingButton(
+                onClick = onViewAccount,
+                modifier = Modifier.heightIn(min = splitHeight),
+                shapes = SplitButtonDefaults.leadingButtonShapesFor(splitHeight),
+                contentPadding = SplitButtonDefaults.leadingButtonContentPaddingFor(splitHeight),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.account),
+                    contentDescription = null,
+                    modifier = Modifier.size(SplitButtonDefaults.leadingButtonIconSizeFor(splitHeight)),
+                )
+                Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(splitHeight)))
+                Text(
+                    text = stringResource(R.string.account_view),
+                    style = ButtonDefaults.textStyleFor(splitHeight),
+                )
+            }
+        },
+        trailingButton = {
+            SplitButtonDefaults.TrailingButton(
+                checked = switcherOpen,
+                onCheckedChange = { checked -> if (checked) onOpenSwitcher() },
+                modifier = Modifier.heightIn(min = splitHeight),
+                shapes = SplitButtonDefaults.trailingButtonShapesFor(splitHeight),
+                contentPadding = SplitButtonDefaults.trailingButtonContentPaddingFor(splitHeight),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.expand_more),
+                    contentDescription = stringResource(R.string.account_switch),
+                    modifier =
+                        Modifier
+                            .size(SplitButtonDefaults.trailingButtonIconSizeFor(splitHeight))
+                            .graphicsLayer { rotationZ = arrowRotation },
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -1113,40 +1192,34 @@ private fun AccountSheetAvatar(
 }
 
 @Composable
-private fun UpdateBannerStrip(
+private fun UpdateAvailableBanner(
     latestVersion: String,
     onClick: () -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            ),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BadgedBox(
-                badge = { Badge(containerColor = MaterialTheme.colorScheme.error) },
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.tertiary, MaterialShapes.SoftBurst.toShape()),
+                contentAlignment = Alignment.Center,
             ) {
-                Surface(
-                    modifier = Modifier.size(44.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Icon(
-                            painter = painterResource(R.drawable.update),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                }
+                Icon(
+                    painter = painterResource(R.drawable.update),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiary,
+                    modifier = Modifier.size(24.dp),
+                )
             }
 
             Column(
@@ -1155,48 +1228,49 @@ private fun UpdateBannerStrip(
             ) {
                 Text(
                     text = stringResource(R.string.new_version_available),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
                 )
                 Text(
                     text = latestVersion,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            FilledTonalButton(
+            Button(
                 onClick = onClick,
-                colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    ),
                 shapes = ButtonDefaults.shapes(),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary,
+                    ),
             ) {
-                Text(
-                    text = stringResource(R.string.update_text),
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Text(text = stringResource(R.string.update_text))
             }
         }
     }
 }
 
 @Composable
-private fun ExpressiveSectionCard(
+private fun AccountSection(
     title: String,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 8.dp).semantics { heading() },
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            color = MaterialTheme.colorScheme.primary,
+            modifier =
+                Modifier
+                    .padding(start = 16.dp)
+                    .semantics { heading() },
         )
         Column(
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
@@ -1206,30 +1280,46 @@ private fun ExpressiveSectionCard(
 }
 
 @Composable
-private fun ExpressiveActionRow(
+private fun AccountActionRow(
     icon: Painter,
     title: String,
     subtitle: String? = null,
-    accent: Color? = null,
+    monospaceSubtitle: Boolean = false,
+    highlighted: Boolean = false,
+    trailingIcon: Painter = painterResource(R.drawable.arrow_forward),
     onClick: () -> Unit,
     index: Int,
     count: Int,
 ) {
-    val tint = accent ?: MaterialTheme.colorScheme.primary
     SegmentedListItem(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
         colors =
             ListItemDefaults.segmentedColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
         leadingContent = {
-            ExpressiveRowIcon(icon = icon, tint = tint)
+            AccountRowIcon(
+                icon = icon,
+                containerColor =
+                    if (highlighted) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                contentColor =
+                    if (highlighted) {
+                        MaterialTheme.colorScheme.onTertiary
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                rounded = highlighted,
+            )
         },
         trailingContent = {
             Icon(
-                painter = painterResource(R.drawable.arrow_forward),
+                painter = trailingIcon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1240,6 +1330,9 @@ private fun ExpressiveActionRow(
                 {
                     Text(
                         text = supportingText,
+                        fontFamily = if (monospaceSubtitle) FontFamily.Monospace else null,
+                        maxLines = if (monospaceSubtitle) 2 else Int.MAX_VALUE,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             },
@@ -1252,7 +1345,7 @@ private fun ExpressiveActionRow(
 }
 
 @Composable
-private fun ExpressiveSwitchRow(
+private fun AccountSwitchRow(
     icon: Painter,
     title: String,
     subtitle: String? = null,
@@ -1268,13 +1361,24 @@ private fun ExpressiveSwitchRow(
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
         colors =
             ListItemDefaults.segmentedColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
         leadingContent = {
-            ExpressiveRowIcon(
+            AccountRowIcon(
                 icon = icon,
-                tint = MaterialTheme.colorScheme.primary,
-                emphasized = checked,
+                containerColor =
+                    if (checked) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                contentColor =
+                    if (checked) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                rounded = checked,
             )
         },
         trailingContent = {
@@ -1286,9 +1390,7 @@ private fun ExpressiveSwitchRow(
         supportingContent =
             subtitle?.let { supportingText ->
                 {
-                    Text(
-                        text = supportingText,
-                    )
+                    Text(text = supportingText)
                 }
             },
     ) {
@@ -1300,55 +1402,98 @@ private fun ExpressiveSwitchRow(
 }
 
 @Composable
-private fun ExpressiveRowIcon(
-    icon: Painter,
-    tint: Color,
-    emphasized: Boolean = false,
+private fun AccountSignOutRow(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = Modifier.size(RowIconSize),
-        shape = MaterialTheme.shapes.medium,
-        color =
-            if (emphasized) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHighest
-            },
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = tint,
+    SegmentedListItem(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        leadingContent = {
+            AccountRowIcon(
+                icon = painterResource(R.drawable.logout),
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
             )
-        }
+        },
+        supportingContent = {
+            Text(text = stringResource(R.string.account_sign_out_summary))
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.account_sign_out),
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
 @Composable
-private fun VersionStamp() {
-    Column(
+private fun AccountRowIcon(
+    icon: Painter,
+    containerColor: Color,
+    contentColor: Color,
+    rounded: Boolean = false,
+) {
+    val corner by animateDpAsState(
+        targetValue = if (rounded) RowIconSize / 2 else RowIconCorner,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "accountRowIconCorner",
+    )
+    val animatedContainerColor by animateColorAsState(
+        targetValue = containerColor,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "accountRowIconContainer",
+    )
+    val animatedContentColor by animateColorAsState(
+        targetValue = contentColor,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "accountRowIconContent",
+    )
+    Box(
         modifier =
             Modifier
+                .size(RowIconSize)
+                .background(animatedContainerColor, RoundedCornerShape(corner)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = animatedContentColor,
+        )
+    }
+}
+
+@Composable
+private fun VersionStamp(modifier: Modifier = Modifier) {
+    Column(
+        modifier =
+            modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
+                .padding(top = 4.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+            style = MaterialTheme.typography.labelMediumEmphasized,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.40f),
+            color = MaterialTheme.colorScheme.outline,
         )
     }
 }
+
 
 @Composable
 private fun TokenEditorDialog(

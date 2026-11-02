@@ -32,6 +32,12 @@
     <string name="account_sign_out">Sign out</string>
     <string name="account_navigate_back">Go back</string>
     <string name="account_login_description">Log in to YouTube Music to access your library and sync your listening history.</string>
+    <string name="account_section_sync">Sync &amp; browsing</string>
+    <string name="account_section_connected">Connected services</string>
+    <string name="account_section_security">Privacy &amp; security</string>
+    <string name="account_sign_out_summary">Remove this session from the device</string>
+    <string name="account_sign_out_dialog_title">Sign out of YouTube Music?</string>
+    <string name="account_sign_out_dialog_text">You will need to log in again to sync your library. Accounts you saved stay available in the account switcher.</string>
     <string name="quick_picks">Quick picks</string>
     <string name="speed_dial">Speed dial</string>
     <string name="forgotten_favorites">Forgotten favorites</string>
