@@ -58,11 +58,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -135,6 +136,11 @@ private val AppleMusicFallbackGradient =
         Color(0xFF141414),
         Color(0xFF050505),
     )
+
+private const val ARTWORK_BLUR_OVERSCAN = 1.35f
+private val AppleMusicTrackHeight = 6.dp
+private val EnhancedLyricsHorizontalPadding = 8.dp
+private val V2LyricsHorizontalPadding = 24.dp
 
 @Suppress("UNUSED_PARAMETER")
 @Composable
@@ -379,12 +385,14 @@ fun LyricsScreen(
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.systemBars),
         ) {
-            AppleMusicGrabber(onClick = onBackClick)
+            AppleMusicGrabber(
+                foregroundColor = foregroundColor,
+                onClick = onBackClick,
+            )
             AppleMusicTrackHeader(
                 mediaMetadata = mediaMetadata,
                 foregroundColor = foregroundColor,
                 onMoreClick = showLyricsMenu,
-                onDismissClick = onBackClick,
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -597,6 +605,7 @@ private fun AppleMusicBackground(
         modifier =
             modifier
                 .fillMaxSize()
+                .clipToBounds()
                 .background(AppleMusicFallbackGradient.last()),
     ) {
         AnimatedContent(
@@ -612,8 +621,11 @@ private fun AppleMusicBackground(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .blur(46.dp)
-                            .alpha(0.62f),
+                            .graphicsLayer {
+                                scaleX = ARTWORK_BLUR_OVERSCAN
+                                scaleY = ARTWORK_BLUR_OVERSCAN
+                                alpha = 0.62f
+                            }.blur(46.dp),
                 )
             }
         }
@@ -640,6 +652,7 @@ private fun AppleMusicBackground(
 
 @Composable
 private fun AppleMusicGrabber(
+    foregroundColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -656,7 +669,16 @@ private fun AppleMusicGrabber(
                     role = Role.Button,
                     onClick = onClick,
                 ),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(width = 36.dp, height = 5.dp)
+                    .clip(CircleShape)
+                    .background(foregroundColor.copy(alpha = 0.32f)),
+        )
+    }
 }
 
 @Composable
@@ -664,7 +686,6 @@ private fun AppleMusicTrackHeader(
     mediaMetadata: MediaMetadata,
     foregroundColor: Color,
     onMoreClick: () -> Unit,
-    onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val artistText =
@@ -708,30 +729,21 @@ private fun AppleMusicTrackHeader(
         ) {
             Text(
                 text = mediaMetadata.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = foregroundColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = artistText,
-                style = MaterialTheme.typography.bodyLarge,
-                color = foregroundColor.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = foregroundColor.copy(alpha = 0.6f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
         Spacer(modifier = Modifier.width(12.dp))
-
-        AppleMusicHeaderIconButton(
-            iconRes = R.drawable.close,
-            contentDescription = stringResource(R.string.close),
-            foregroundColor = foregroundColor,
-            onClick = onDismissClick,
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
 
         AppleMusicHeaderIconButton(
             iconRes = R.drawable.more_horiz,
@@ -764,16 +776,16 @@ private fun AppleMusicHeaderIconButton(
         Box(
             modifier =
                 Modifier
-                    .size(36.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
-                    .background(foregroundColor.copy(alpha = 0.18f)),
+                    .background(foregroundColor.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = contentDescription,
                 tint = foregroundColor,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -796,7 +808,13 @@ private fun AppleMusicLyricsPane(
         modifier =
             modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
+                .padding(
+                    horizontal =
+                        when (lyricsMode) {
+                            LyricsMode.ENHANCED -> EnhancedLyricsHorizontalPadding
+                            LyricsMode.V2 -> V2LyricsHorizontalPadding
+                        },
+                ),
         textColor = foregroundColor,
     )
 }
@@ -834,7 +852,7 @@ private fun AppleMusicControls(
             valueRange = 0f..safeDuration.toFloat(),
             activeColor = foregroundColor.copy(alpha = 0.94f),
             inactiveColor = foregroundColor.copy(alpha = 0.28f),
-            trackHeight = 8.dp,
+            trackHeight = AppleMusicTrackHeight,
             onValueChange = { onPositionChange(it.toLong()) },
             onValueChangeFinished = onPositionChangeFinished,
             modifier = Modifier.fillMaxWidth(),
@@ -926,7 +944,7 @@ private fun AppleMusicControls(
                 valueRange = 0f..1f,
                 activeColor = foregroundColor.copy(alpha = 0.88f),
                 inactiveColor = foregroundColor.copy(alpha = 0.24f),
-                trackHeight = 8.dp,
+                trackHeight = AppleMusicTrackHeight,
                 onValueChange = onVolumeChange,
                 onValueChangeFinished = {},
                 modifier =

@@ -14,10 +14,11 @@
 package moe.rukamori.archivetune.ui.component
 
 import android.app.Activity
-import android.os.SystemClock
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -72,6 +73,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -80,7 +82,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -96,6 +100,7 @@ import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeLine
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
 import com.mocharealm.accompanist.lyrics.ui.composable.list.rememberLyricsLazyListState
+import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeBreathingDotsDefaults
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.LyricsAnchor
 import kotlinx.coroutines.isActive
@@ -120,6 +125,14 @@ import kotlin.math.roundToInt
 
 private const val LRC_LEAD_MS = 300L
 private const val MIN_KARAOKE_SYLLABLE_DURATION_MS = 1
+private const val LYRICS_FOCUS_ANCHOR_MAX_FRACTION = 0.25f
+
+private val LyricsFocusAnchor = 64.dp
+private val LyricsScrollAnimationSpec =
+    tween<Float>(
+        durationMillis = 700,
+        easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
+    )
 
 @Composable
 fun LyricsEnhanced(
@@ -244,17 +257,18 @@ fun LyricsEnhanced(
         onDispose { player.removeListener(listener) }
     }
 
-    LaunchedEffect(player, lifecycleOwner, lyricsRenderViewModel) {
+    LaunchedEffect(player, lifecycleOwner, lyricsRenderViewModel, isSynced) {
+        if (!isSynced) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             lyricsRenderViewModel.onPlaybackPositionChanged(
                 latestSliderPositionProvider.value() ?: player.currentPosition,
             )
             while (isActive) {
-                withFrameNanos {
+                withFrameNanos { frameTimeNanos ->
                     val sliderPosition = latestSliderPositionProvider.value()
                     lyricsRenderViewModel.onPlaybackFrame(
                         positionMs = sliderPosition ?: player.currentPosition,
-                        sampleTimeNanos = SystemClock.elapsedRealtimeNanos(),
+                        sampleTimeNanos = frameTimeNanos,
                         playbackSpeed = player.playbackParameters.speed,
                         isAdvancing = player.isPlaying && sliderPosition == null,
                         durationMs = player.duration,
@@ -300,22 +314,27 @@ fun LyricsEnhanced(
         }
     }
 
+    val lyricsBaseTextStyle = MaterialTheme.typography.headlineMedium
     val normalTextStyle =
-        MaterialTheme.typography.headlineMedium.copy(
+        lyricsBaseTextStyle.copy(
             fontSize = lyricsTextSize.sp,
+            lineHeight = TextUnit.Unspecified,
+            letterSpacing = 0.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = lyricsFontFamily ?: MaterialTheme.typography.headlineMedium.fontFamily,
+            fontFamily = lyricsFontFamily ?: lyricsBaseTextStyle.fontFamily,
+            textMotion = TextMotion.Animated,
         )
-    val accompanimentTextStyle =
-        MaterialTheme.typography.titleLarge.copy(
-            fontSize = (lyricsTextSize * 0.82f).sp,
-            fontFamily = lyricsFontFamily ?: MaterialTheme.typography.titleLarge.fontFamily,
-        )
+    val accompanimentTextStyle = normalTextStyle.copy(fontSize = (lyricsTextSize * 0.6f).sp)
+    val translationTextStyle = normalTextStyle.copy(fontSize = (lyricsTextSize * 0.55f).sp)
     val phoneticTextStyle =
-        MaterialTheme.typography.bodyMedium.copy(
+        normalTextStyle.copy(
             fontSize = (lyricsTextSize * 0.55f).sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
+            textMotion = TextMotion.Static,
         )
+    val lyricsBlendMode = if (textColor.luminance() > 0.5f) BlendMode.Plus else BlendMode.SrcOver
+    val breathingDotsDefaults =
+        remember(textColor) { KaraokeBreathingDotsDefaults(breathingDotsColor = textColor) }
     val plainLyrics =
         remember(lyricsEntries, isSynced) {
             PlainLyrics(
@@ -476,7 +495,10 @@ fun LyricsEnhanced(
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    val lyricsViewportAnchor = remember(maxHeight) { LyricsAnchor.Fixed(maxHeight * 0.38f) }
+                    val lyricsViewportAnchor =
+                        remember(maxHeight) {
+                            LyricsAnchor.Fixed(minOf(LyricsFocusAnchor, maxHeight * LYRICS_FOCUS_ANCHOR_MAX_FRACTION))
+                        }
 
                     CompositionLocalProvider(LocalLayoutDirection provides lyricsLayoutDirection) {
                         key(lyricsSessionKey, syncedLyrics) {
@@ -487,8 +509,14 @@ fun LyricsEnhanced(
                                 onLineClicked = { line ->
                                     if (isSelectionModeActive) {
                                         toggleSelectedLine(line.selectionKey())
-                                    } else if (lyricsClick && isSynced && line.start > 0) {
-                                        player.seekTo(line.start.toLong())
+                                    } else if (lyricsClick && line.start > 0) {
+                                        player.seekTo(
+                                            (
+                                                line.start.toLong() -
+                                                    latestLyricsSyncOffset.value -
+                                                    latestLeadMs.value
+                                            ).coerceAtLeast(0L),
+                                        )
                                     }
                                 },
                                 onLinePressed = { line ->
@@ -505,13 +533,16 @@ fun LyricsEnhanced(
                                 textColor = textColor,
                                 normalLineTextStyle = normalTextStyle,
                                 accompanimentLineTextStyle = accompanimentTextStyle,
+                                translationTextStyle = translationTextStyle,
                                 phoneticTextStyle = phoneticTextStyle,
-                                blendMode = BlendMode.SrcOver,
+                                breathingDotsDefaults = breathingDotsDefaults,
+                                blendMode = lyricsBlendMode,
                                 useBlurEffect = lyricsLineBlur,
                                 showTranslation = showTranslations,
                                 showPhonetic = showPhonetics,
                                 anchor = lyricsViewportAnchor,
                                 keepAliveZone = 72.dp,
+                                scrollAnimationSpec = LyricsScrollAnimationSpec,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -666,9 +697,9 @@ private fun PlainLyricsView(
     val contentPadding =
         remember {
             PaddingValues(
-                start = 12.dp,
-                top = 120.dp,
-                end = 12.dp,
+                start = 4.dp,
+                top = 16.dp,
+                end = 4.dp,
                 bottom = 96.dp,
             )
         }
