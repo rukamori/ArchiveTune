@@ -319,6 +319,7 @@
     <string name="error_unknown">Unknown error</string>
     <string name="action_like">Like</string>
     <string name="action_remove_like">Remove like</string>
+    <string name="like_failed">Couldn’t update like status. Try again.</string>
     <string name="action_shuffle_on">Shuffle on</string>
     <string name="action_shuffle_off">Shuffle off</string>
     <string name="repeat_mode_off">Repeat mode off</string>

@@ -270,9 +270,12 @@ class SyncUtils
                     if (currentSong.liked == song.liked && currentSong.inLibrary == song.inLibrary) {
                         return@withLock Result.success(currentSong)
                     }
+                    val previousSong = currentSong
+                    val updatedSong = persistSongLike(song)
+
                     val shouldSyncRemote = !song.isLocal && isLoggedIn() && isYtmSyncEnabled()
                     if (!shouldSyncRemote) {
-                        return@withLock Result.success(persistSongLike(song))
+                        return@withLock Result.success(updatedSong)
                     }
 
                     val pending =
@@ -284,7 +287,6 @@ class SyncUtils
 
                     try {
                         YouTube.likeVideo(song.id, song.liked).getOrThrow()
-                        val updatedSong = persistSongLike(song)
                         pendingSongLikes.replace(
                             song.id,
                             pending,
@@ -295,9 +297,11 @@ class SyncUtils
                         )
                         Result.success(updatedSong)
                     } catch (error: CancellationException) {
+                        runCatching { persistSongLike(previousSong) }
                         pendingSongLikes.remove(song.id, pending)
                         throw error
                     } catch (error: Exception) {
+                        runCatching { persistSongLike(previousSong) }
                         pendingSongLikes.remove(song.id, pending)
                         Timber.w(error, "likeSong: Failed to sync like for ${song.id}")
                         Result.failure(error)

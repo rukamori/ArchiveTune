@@ -513,7 +513,7 @@ class MusicService :
     private var discordSyncWorkerJob: Job? = null
     private val pendingDiscordRefreshWaiters = mutableListOf<CompletableDeferred<Boolean>>()
     private val discordRefreshWaitersMutex = Mutex()
-    private val toggleLikeMutex = Mutex()
+    private val inFlightLikeSongIds = ConcurrentHashMap.newKeySet<String>()
 
     @Volatile
     private var lastLoginRecoveryPrompt: Pair<String, Long>? = null
@@ -6324,30 +6324,32 @@ class MusicService :
 
     fun toggleLike() {
         val mediaMetadata = currentMediaMetadata.value ?: return
+        val songId = mediaMetadata.id
+        if (!inFlightLikeSongIds.add(songId)) {
+            Timber.d("toggleLike: Like operation already in progress for %s, ignoring tap", songId)
+            return
+        }
         ioScope.launch {
             try {
-                val result =
-                    toggleLikeMutex.withLock {
-                        val requestedSong =
-                            database.withTransaction {
-                                val currentSongEntity =
-                                    getSongById(mediaMetadata.id)
-                                        ?: run {
-                                            insert(mediaMetadata) {
-                                                it.copy(isLocal = mediaMetadata.id.isLocalMediaId())
-                                            }
-                                            getSongById(mediaMetadata.id)
-                                        }
-                                        ?: return@withTransaction null
-                                currentSongEntity.song.toggleLike()
-                            } ?: return@withLock null
-                        syncUtils.likeSong(requestedSong)
+                val requestedSong =
+                    database.withTransaction {
+                        val currentSongEntity =
+                            getSongById(songId)
+                                ?: run {
+                                    insert(mediaMetadata) {
+                                        it.copy(isLocal = songId.isLocalMediaId())
+                                    }
+                                    getSongById(songId)
+                                }
+                                ?: return@withTransaction null
+                        currentSongEntity.song.toggleLike()
                     } ?: return@launch
+                val result = syncUtils.likeSong(requestedSong)
                 val song =
                     result.getOrElse { error ->
                         reportException(error)
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@MusicService, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MusicService, R.string.like_failed, Toast.LENGTH_SHORT).show()
                         }
                         return@launch
                     }
@@ -6372,6 +6374,11 @@ class MusicService :
                 throw error
             } catch (error: Exception) {
                 reportException(error)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MusicService, R.string.like_failed, Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                inFlightLikeSongIds.remove(songId)
             }
         }
     }

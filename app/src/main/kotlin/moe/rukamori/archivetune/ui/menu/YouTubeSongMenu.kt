@@ -124,6 +124,7 @@ fun YouTubeSongMenu(
     val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
+    var isLikeInProgress by remember { mutableStateOf(false) }
     val artists =
         remember {
             song.artists.mapNotNull {
@@ -284,6 +285,8 @@ fun YouTubeSongMenu(
             trailingContent = {
                 IconButton(
                     onClick = {
+                        if (isLikeInProgress) return@IconButton
+                        isLikeInProgress = true
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
                                 val requestedSong =
@@ -300,7 +303,7 @@ fun YouTubeSongMenu(
                                 syncUtils.likeSong(requestedSong).onFailure { error ->
                                     Timber.w(error, "Failed to update liked song ${song.id}")
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, R.string.like_failed, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             } catch (error: CancellationException) {
@@ -308,8 +311,10 @@ fun YouTubeSongMenu(
                             } catch (error: Exception) {
                                 Timber.e(error, "Failed to prepare liked song ${song.id}")
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.like_failed, Toast.LENGTH_SHORT).show()
                                 }
+                            } finally {
+                                isLikeInProgress = false
                             }
                         }
                     },
@@ -518,7 +523,7 @@ fun YouTubeSongMenu(
                                     syncUtils.likeSong(requestedSong).onFailure { error ->
                                         Timber.w(error, "Failed to update song library state ${song.id}")
                                         withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, R.string.like_failed, Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 } catch (error: CancellationException) {
@@ -526,7 +531,7 @@ fun YouTubeSongMenu(
                                 } catch (error: Exception) {
                                     Timber.e(error, "Failed to prepare song library state ${song.id}")
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, R.string.like_failed, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
