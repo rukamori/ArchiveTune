@@ -219,17 +219,21 @@ class FloatingMusicRecognitionService :
                     },
                 )
             }
-        windowManager.addView(view, bubbleParams)
+        addOverlayView(view, bubbleParams)
         bubbleView = view
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
 
     private fun overlayComposeView(content: @Composable () -> Unit): ComposeView =
         ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@FloatingMusicRecognitionService)
-            setViewTreeSavedStateRegistryOwner(this@FloatingMusicRecognitionService)
             setContent { ArchiveTuneTheme { content() } }
         }
+
+    private fun addOverlayView(view: View, params: WindowManager.LayoutParams) {
+        view.setViewTreeLifecycleOwner(this)
+        view.setViewTreeSavedStateRegistryOwner(this)
+        windowManager.addView(view, params)
+    }
 
     private fun onBubbleClick() {
         when (uiState.value) {
@@ -422,7 +426,7 @@ class FloatingMusicRecognitionService :
                 PixelFormat.TRANSLUCENT,
             ).apply { gravity = Gravity.BOTTOM }
         val view = overlayComposeView { FloatingRecognitionDismissTarget(hovered = dismissHovered) }
-        windowManager.addView(view, params)
+        addOverlayView(view, params)
         dismissView = view
     }
 
