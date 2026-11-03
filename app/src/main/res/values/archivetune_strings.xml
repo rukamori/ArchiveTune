@@ -847,4 +847,17 @@
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
+    <string name="menu_type_song">Song</string>
+    <string name="menu_type_album">Album</string>
+    <string name="menu_type_artist">Artist</string>
+    <string name="menu_type_playlist">Playlist</string>
+    <string name="menu_section_library">Library</string>
+    <string name="menu_section_offline">Offline</string>
+    <string name="menu_section_go_to">Go to</string>
+    <string name="menu_section_manage">Manage</string>
+    <string name="menu_section_sound">Sound</string>
+    <string name="menu_favorite">Favorite</string>
+    <string name="menu_state_on">On</string>
+    <string name="menu_download_available_offline">Available offline</string>
+    <string name="menu_download_tap_to_cancel">Tap to cancel</string>
 </resources>
