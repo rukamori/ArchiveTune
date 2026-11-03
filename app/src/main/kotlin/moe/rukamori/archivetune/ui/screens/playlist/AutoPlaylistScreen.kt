@@ -499,6 +499,7 @@ fun AutoPlaylistScreen(
                     contentType = { _, _ -> CONTENT_TYPE_SONG },
                 ) { index, songWrapper ->
                     SongListItem(
+                        swipeContentBackgroundColor = immersiveColors.backdrop,
                         song = songWrapper.item,
                         isActive = songWrapper.item.song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,

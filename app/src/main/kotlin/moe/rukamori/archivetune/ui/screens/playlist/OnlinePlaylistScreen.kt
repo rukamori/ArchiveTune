@@ -652,6 +652,7 @@ fun OnlinePlaylistScreen(
                         contentType = { "online_playlist_song" },
                     ) { song ->
                         YouTubeListItem(
+                            swipeContentBackgroundColor = immersiveColors.backdrop,
                             item = song.item.second,
                             showSourceIcon = true,
                             viewCountText =

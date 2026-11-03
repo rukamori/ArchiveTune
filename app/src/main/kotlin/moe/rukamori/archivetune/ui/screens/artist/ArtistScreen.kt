@@ -529,6 +529,7 @@ fun ArtistScreen(
                             contentType = { _, _ -> CONTENT_TYPE_SONG },
                         ) { index, song ->
                             SongListItem(
+                                swipeContentBackgroundColor = immersiveColors.backdrop,
                                 song = song,
                                 showInLibraryIcon = true,
                                 isActive = song.id == mediaMetadata?.id,
@@ -696,6 +697,7 @@ fun ArtistScreen(
                                 contentType = { CONTENT_TYPE_SONG },
                             ) { song ->
                                 YouTubeListItem(
+                                    swipeContentBackgroundColor = immersiveColors.backdrop,
                                     item = song as SongItem,
                                     isActive = mediaMetadata?.id == song.id,
                                     isPlaying = isPlaying,

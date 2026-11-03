@@ -391,6 +391,7 @@ fun AlbumScreen(
                     key = { _, song -> song.item.id },
                 ) { index, songWrapper ->
                     SongListItem(
+                        swipeContentBackgroundColor = immersiveColors.backdrop,
                         song = songWrapper.item,
                         albumIndex = songWrapper.item.song.trackNumber ?: (index + 1),
                         isActive = songWrapper.item.id == mediaMetadata?.id,

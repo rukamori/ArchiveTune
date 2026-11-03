@@ -460,6 +460,7 @@ fun TopPlaylistScreen(
                         key = { _, song -> song.item.id },
                     ) { index, songWrapper ->
                         SongListItem(
+                            swipeContentBackgroundColor = immersiveColors.backdrop,
                             song = songWrapper.item,
                             albumIndex = index + 1,
                             isActive = songWrapper.item.song.id == mediaMetadata?.id,

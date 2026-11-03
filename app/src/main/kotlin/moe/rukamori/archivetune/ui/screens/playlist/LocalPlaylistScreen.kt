@@ -914,6 +914,7 @@ fun LocalPlaylistScreen(
 
                         val content: @Composable () -> Unit = {
                             SongListItem(
+                                swipeContentBackgroundColor = immersiveColors.backdrop,
                                 song = song.song,
                                 showSourceIcon = true,
                                 viewCountText =
@@ -1022,6 +1023,7 @@ fun LocalPlaylistScreen(
                     ) {
                         val content: @Composable () -> Unit = {
                             SongListItem(
+                                swipeContentBackgroundColor = immersiveColors.backdrop,
                                 song = song.song,
                                 showSourceIcon = true,
                                 viewCountText =
@@ -1106,6 +1108,7 @@ fun LocalPlaylistScreen(
                 item {
                     PlaylistSuggestionsSection(
                         modifier = Modifier.padding(vertical = 16.dp),
+                        swipeContentBackgroundColor = immersiveColors.backdrop,
                     )
                 }
             }

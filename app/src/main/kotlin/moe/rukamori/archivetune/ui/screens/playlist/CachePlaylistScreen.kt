@@ -314,6 +314,7 @@ fun CachePlaylistScreen(
                 // Song items
                 itemsIndexed(filteredSongs, key = { _, song -> song.item.id }) { index, songWrapper ->
                     SongListItem(
+                        swipeContentBackgroundColor = immersiveColors.backdrop,
                         song = songWrapper.item,
                         isActive = songWrapper.item.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
