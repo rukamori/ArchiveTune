@@ -232,6 +232,7 @@ private class RecapPoster(
                 val scale = maxOf(bounds.width() / image.width, bounds.height() / image.height)
                 val width = image.width * scale
                 val height = image.height * scale
+                paint.alpha = 255
                 drawBitmap(image, null, RectF(bounds.centerX() - width / 2, bounds.centerY() - height / 2,
                     bounds.centerX() + width / 2, bounds.centerY() + height / 2), paint)
             } else {
