@@ -413,7 +413,11 @@ fun NavGraphBuilder.navigationBuilder(
         YouTubeBrowseScreen(navController)
     }
     composable("settings") {
-        SettingsScreen(navController, latestVersionName() ?: BuildConfig.VERSION_NAME)
+        SettingsScreen(
+            navController = navController,
+            latestVersionName = latestVersionName() ?: BuildConfig.VERSION_NAME,
+            viewModel = homeViewModel,
+        )
     }
     composable("settings/account") {
         AccountSettings(

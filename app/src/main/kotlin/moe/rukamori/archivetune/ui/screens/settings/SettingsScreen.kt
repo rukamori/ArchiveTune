@@ -15,21 +15,23 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,33 +41,48 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AccountChannelHandleKey
+import moe.rukamori.archivetune.constants.AccountEmailKey
+import moe.rukamori.archivetune.constants.AccountNameKey
+import moe.rukamori.archivetune.constants.InnerTubeCookieKey
+import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.Updater
+import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
     latestVersionName: String,
+    viewModel: HomeViewModel,
     onClearUpdateBadge: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val listState = rememberLazyListState()
+    val revealState = rememberSettingsRevealState()
+    val motion = MaterialTheme.motionScheme
+    val animationsDisabled = LocalAnimationsDisabled.current
 
     val storagePermission =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -104,13 +121,55 @@ fun SettingsScreen(
             }
         }
 
+    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
+    val accountNamePref by rememberPreference(AccountNameKey, "")
+    val accountEmail by rememberPreference(AccountEmailKey, "")
+    val accountHandle by rememberPreference(AccountChannelHandleKey, "")
+    val accountName by viewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
+    val accountBannerUrl by viewModel.accountBannerUrl.collectAsStateWithLifecycle()
+    val isLoggedIn = remember(innerTubeCookie) { hasYouTubeLoginCookie(innerTubeCookie) }
+    val accountFallbackName = stringResource(R.string.account)
+    val profileState =
+        if (isLoggedIn) {
+            SettingsProfileState(
+                accountName = accountName.ifBlank { accountNamePref }.ifBlank { accountFallbackName },
+                accountEmail = accountEmail,
+                accountHandle = accountHandle,
+                accountImageUrl = accountImageUrl,
+                accountBannerUrl = accountBannerUrl,
+            )
+        } else {
+            null
+        }
+
     val scrollBehavior = appBarScrollBehavior()
     val shouldShowPermissionHint = !isStorageGranted || !isNotificationGranted
     val hasUpdate =
         BuildConfig.UPDATER_AVAILABLE &&
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
     var isUpdateDismissed by remember { mutableStateOf(false) }
-    val settingsGroups = buildSettingsGroups(navController, isAndroid12OrLater, hasUpdate, context)
+    val settingsContent = buildSettingsContent(navController, isAndroid12OrLater, hasUpdate, isLoggedIn, context)
+
+    val itemFadeInSpec = motion.defaultEffectsSpec<Float>()
+    val itemPlacementSpec = motion.defaultSpatialSpec<IntOffset>()
+    val itemFadeOutSpec = motion.fastEffectsSpec<Float>()
+    val blockModifier =
+        Modifier
+            .widthIn(max = SettingsDimensions.HubContentMaxWidth)
+            .fillMaxWidth()
+            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+
+    fun LazyItemScope.hubItemModifier(): Modifier =
+        if (animationsDisabled) {
+            blockModifier
+        } else {
+            blockModifier.animateItem(
+                fadeInSpec = itemFadeInSpec,
+                placementSpec = itemPlacementSpec,
+                fadeOutSpec = itemFadeOutSpec,
+            )
+        }
 
     Scaffold(
         modifier =
@@ -162,22 +221,49 @@ fun SettingsScreen(
                     top = innerPadding.calculateTopPadding(),
                     bottom = SettingsDimensions.ScreenBottomPadding,
                 ),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            var revealOrder = 0
+
+            if (profileState != null) {
+                val order = revealOrder++
+                item(key = "profile", contentType = "settings_profile") {
+                    SettingsProfileCard(
+                        state = profileState,
+                        revealState = revealState,
+                        onClick = { navController.navigate("settings/account") },
+                        coverScrollOffset = {
+                            if (listState.firstVisibleItemIndex == 0) {
+                                listState.firstVisibleItemScrollOffset.toFloat()
+                            } else {
+                                0f
+                            }
+                        },
+                        modifier =
+                            hubItemModifier()
+                                .padding(bottom = SettingsDimensions.SectionSpacing)
+                                .settingsReveal(revealState, "profile", order),
+                    )
+                }
+            }
+
             if (hasUpdate && !isUpdateDismissed) {
+                val order = revealOrder++
                 item(key = "update", contentType = "settings_banner") {
                     SettingsUpdateBanner(
                         latestVersion = latestVersionName,
                         onClick = { navController.navigate("settings/update") },
                         onDismiss = { isUpdateDismissed = true },
                         modifier =
-                            Modifier
-                                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                                .padding(bottom = SettingsDimensions.SectionSpacing),
+                            hubItemModifier()
+                                .padding(bottom = SettingsDimensions.SectionSpacing)
+                                .settingsReveal(revealState, "update", order),
                     )
                 }
             }
 
             if (shouldShowPermissionHint) {
+                val order = revealOrder++
                 item(key = "permission", contentType = "settings_banner") {
                     SettingsPermissionBanner(
                         onRequestPermission = {
@@ -193,43 +279,68 @@ fun SettingsScreen(
                             }
                         },
                         modifier =
-                            Modifier
-                                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                                .padding(bottom = SettingsDimensions.SectionSpacing),
+                            hubItemModifier()
+                                .padding(bottom = SettingsDimensions.SectionSpacing)
+                                .settingsReveal(revealState, "permission", order),
                     )
                 }
             }
 
-            settingsGroups.forEachIndexed { groupIndex, group ->
-                if (groupIndex > 0) {
-                    item(
-                        key = "settings_group_spacing_$groupIndex",
-                        contentType = "settings_group_spacing",
-                    ) {
-                        Spacer(modifier = Modifier.height(SettingsDimensions.SectionSpacing))
-                    }
+            val highlightsHeaderOrder = revealOrder++
+            item(key = "highlights_header", contentType = "settings_section_header") {
+                SettingsSectionHeader(
+                    title = stringResource(R.string.settings_section_essentials),
+                    modifier =
+                        hubItemModifier()
+                            .padding(top = 8.dp)
+                            .settingsReveal(revealState, "highlights_header", highlightsHeaderOrder),
+                )
+            }
+
+            val highlightsOrder = revealOrder
+            revealOrder += settingsContent.highlights.size
+            item(key = "highlights", contentType = "settings_highlights") {
+                SettingsHighlightGrid(
+                    highlights = settingsContent.highlights,
+                    revealState = revealState,
+                    revealOrderStart = highlightsOrder,
+                    modifier = hubItemModifier(),
+                )
+            }
+
+            settingsContent.groups.forEach { group ->
+                val headerOrder = revealOrder++
+                item(key = "header_${group.key}", contentType = "settings_section_header") {
+                    SettingsSectionHeader(
+                        title = group.title,
+                        modifier =
+                            hubItemModifier()
+                                .padding(top = SettingsDimensions.HubBlockSpacing)
+                                .settingsReveal(revealState, "header_${group.key}", headerOrder),
+                    )
                 }
 
+                val groupOrder = revealOrder
+                revealOrder += group.items.size
                 itemsIndexed(
                     items = group.items,
                     key = { _, item -> item.key },
-                    contentType = { _, _ -> "settings_segment" },
+                    contentType = { _, _ -> "settings_item" },
                 ) { index, settingsItem ->
-                    SettingsSegmentedItem(
+                    SettingsHubListItem(
                         item = settingsItem,
                         index = index,
                         count = group.items.size,
                         modifier =
-                            Modifier
-                                .padding(horizontal = SettingsDimensions.SegmentedGroupHorizontalPadding)
+                            hubItemModifier()
                                 .padding(
                                     bottom =
                                         if (index < group.items.lastIndex) {
-                                            SettingsDimensions.SegmentedItemGap
+                                            ListItemDefaults.SegmentedGap
                                         } else {
                                             0.dp
                                         },
-                                ),
+                                ).settingsReveal(revealState, settingsItem.key, groupOrder + index),
                     )
                 }
             }

@@ -557,6 +557,8 @@
     <string name="settings_account_subtitle">Sign in and manage account sync</string>
     <string name="settings_stats_title">Listening Stats</string>
     <string name="settings_stats_subtitle">Your top songs, artists, and playback history</string>
+    <string name="settings_section_essentials">Essentials</string>
+    <string name="settings_profile_manage">Manage account</string>
     <string name="top_songs">Top Songs</string>
     <string name="year_in_music">Year in Music</string>
     <string name="top_artists">Top Artists</string>
