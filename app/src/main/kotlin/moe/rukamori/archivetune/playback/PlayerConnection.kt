@@ -108,6 +108,7 @@ class PlayerConnection(
     internal val isCanvasArtworkRefetching = _isCanvasArtworkRefetching.asStateFlow()
 
     private var metadataExtractionJob: Job? = null
+    private val playbackErrorJob: Job
 
     init {
         player.addListener(this)
@@ -124,6 +125,13 @@ class PlayerConnection(
         if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
             service.currentMediaMetadata.value = player.currentMetadata
         }
+
+        playbackErrorJob =
+            scope.launch {
+                service.unrecoveredPlaybackError.collect { playbackError ->
+                    updatePlaybackError(playbackError)
+                }
+            }
 
         metadataExtractionJob =
             scope.launch(Dispatchers.IO) {
@@ -301,7 +309,7 @@ class PlayerConnection(
     }
 
     fun dismissPlaybackError() {
-        dismissedPlaybackError = error.value ?: player.playerError
+        dismissedPlaybackError = error.value ?: service.unrecoveredPlaybackError.value
         error.value = null
     }
 
@@ -329,7 +337,6 @@ class PlayerConnection(
 
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state
-        updatePlaybackError(player.playerError)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -376,7 +383,6 @@ class PlayerConnection(
         if (playbackError != null) {
             reportException(playbackError)
         }
-        updatePlaybackError(playbackError)
     }
 
     private fun updatePlaybackError(playbackError: PlaybackException?) {
@@ -411,6 +417,7 @@ class PlayerConnection(
 
     fun dispose() {
         player.removeListener(this)
+        playbackErrorJob.cancel()
         metadataExtractionJob?.cancel()
         metadataExtractionJob = null
     }
