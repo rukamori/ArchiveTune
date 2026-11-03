@@ -56,11 +56,21 @@ class ModuleHttpClient(configuredClient: OkHttpClient? = null) {
         return bytes.toString(Charsets.UTF_8) to origin
     }
 
+    suspend fun documentIfPresent(url: String): Pair<String, String>? {
+        val response = sourceResponse(url)
+        if (response.getInt("status") == 404) return null
+        if (!response.getBoolean("ok")) throw ModuleException(ModuleFailure.NETWORK)
+        return Base64.decode(response.getString("base64"), Base64.DEFAULT).toString(Charsets.UTF_8) to response.getString("url")
+    }
+
     suspend fun source(url: String): Pair<ByteArray, String> {
-        val response = execute(Request.Builder().url(webUrl(url)).build(), "document:${java.util.UUID.randomUUID()}", ModuleSourceDecoder.MAX_SOURCE_BYTES)
+        val response = sourceResponse(url)
         if (!response.getBoolean("ok")) throw ModuleException(ModuleFailure.NETWORK)
         return Base64.decode(response.getString("base64"), Base64.DEFAULT) to response.getString("url")
     }
+
+    private suspend fun sourceResponse(url: String): JSONObject =
+        execute(Request.Builder().url(webUrl(url)).build(), "document:${java.util.UUID.randomUUID()}", ModuleSourceDecoder.MAX_SOURCE_BYTES)
 
     suspend fun fetch(json: String, baseUrl: String, namespace: String, permissions: ModuleNetworkPermissions? = null, onStatus: (Int) -> Unit = {}): String {
         val input = JSONObject(json)

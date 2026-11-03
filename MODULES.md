@@ -600,6 +600,14 @@ The reader limits catalog depth to four, documents to 32, and entries to 1,000,
 it deduplicates repeated URLs to stop cycles. A direct JSON catalog URL is the
 most predictable publishing target.
 
+A GitHub repository URL is also accepted as a catalog URL, for example
+`https://github.com/rukamori/ArchiveTuneModules`. The reader looks for
+`registry.json`, `index.json`, `catalog.json`, then `source.json` at the root
+of the default branch through `raw.githubusercontent.com`. A `/tree/<ref>/<folder>`
+URL searches that branch and folder instead, and a `/blob/<ref>/<file>` URL reads
+that file directly. Relative download paths resolve against the raw file, and
+the GitHub URL is kept so refreshing follows the branch's latest catalog.
+
 For URL installations, Check for update revisits the original import URL. If
 the original URL is a descriptor, update that descriptor to point to the new
 package. Direct versioned package URLs keep pointing to that version unless
