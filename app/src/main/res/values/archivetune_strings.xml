@@ -77,6 +77,12 @@
     <string name="history_remote_error_desc">Try again in a moment.</string>
     <string name="history_no_results_title">No matching songs</string>
     <string name="history_no_results_desc">Try a different song or artist name.</string>
+    <string name="history_last_played">Last played</string>
+    <string name="history_now_playing">Now playing</string>
+    <string name="history_pause">Pause</string>
+    <string name="history_played_at">%1$s · %2$s</string>
+    <string name="history_play_chapter">Play %1$s</string>
+    <string name="history_clear_search">Clear search</string>
     <string name="clear_selection">Clear selection</string>
     <string name="scan_device">Scan device</string>
     <string name="scanning_device">Scanning device…</string>
