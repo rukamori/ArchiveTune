@@ -1572,14 +1572,9 @@ fun QueueCollapsedContentV10(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 Modifier
-                    .fillMaxWidth()
                     .widthIn(max = 400.dp)
-                    .padding(
-                        start = 38.dp,
-                        end = 38.dp,
-                        top = 0.dp,
-                        bottom = 0.dp,
-                    ),
+                    .fillMaxWidth()
+                    .padding(horizontal = 38.dp),
         ) {
             // 1. Queue (expand action) - leftmost
             EditorialSegmentedButton(
