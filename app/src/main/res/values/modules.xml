@@ -18,6 +18,8 @@
     <string name="modules_import_file">Import file</string>
     <string name="modules_add_url">Add module URL</string>
     <string name="modules_add_catalog">Add catalog URL</string>
+    <string name="modules_add_menu_expanded">Add options shown</string>
+    <string name="modules_add_menu_collapsed">Add options hidden</string>
     <string name="modules_url">URL</string>
     <string name="modules_url_hint">A direct module, descriptor, or catalog URL</string>
     <string name="modules_continue">Continue</string>
