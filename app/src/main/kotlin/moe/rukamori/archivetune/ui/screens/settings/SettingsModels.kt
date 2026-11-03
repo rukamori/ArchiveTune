@@ -22,6 +22,17 @@ data class SettingsProfileState(
 )
 
 @Immutable
+sealed interface SettingsProfileSlot {
+    data object Loading : SettingsProfileSlot
+
+    data object Hidden : SettingsProfileSlot
+
+    data class Profile(
+        val state: SettingsProfileState,
+    ) : SettingsProfileSlot
+}
+
+@Immutable
 data class SettingsContent(
     val highlights: List<SettingsHighlight>,
     val groups: List<SettingsGroup>,

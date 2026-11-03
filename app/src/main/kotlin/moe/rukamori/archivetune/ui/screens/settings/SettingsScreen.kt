@@ -14,7 +14,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,10 +58,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -66,6 +79,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.Updater
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
@@ -121,26 +135,39 @@ fun SettingsScreen(
             }
         }
 
-    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val accountNamePref by rememberPreference(AccountNameKey, "")
     val accountEmail by rememberPreference(AccountEmailKey, "")
     val accountHandle by rememberPreference(AccountChannelHandleKey, "")
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val accountBannerUrl by viewModel.accountBannerUrl.collectAsStateWithLifecycle()
-    val isLoggedIn = remember(innerTubeCookie) { hasYouTubeLoginCookie(innerTubeCookie) }
+    val loginState by remember(context) {
+        context.dataStore.data
+            .map<Preferences, Boolean?> { hasYouTubeLoginCookie(it[InnerTubeCookieKey]) }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = null)
     val accountFallbackName = stringResource(R.string.account)
-    val profileState =
-        if (isLoggedIn) {
-            SettingsProfileState(
-                accountName = accountName.ifBlank { accountNamePref }.ifBlank { accountFallbackName },
-                accountEmail = accountEmail,
-                accountHandle = accountHandle,
-                accountImageUrl = accountImageUrl,
-                accountBannerUrl = accountBannerUrl,
-            )
-        } else {
-            null
+    val profileSlot =
+        when (loginState) {
+            null -> {
+                SettingsProfileSlot.Loading
+            }
+
+            false -> {
+                SettingsProfileSlot.Hidden
+            }
+
+            true -> {
+                SettingsProfileSlot.Profile(
+                    SettingsProfileState(
+                        accountName = accountName.ifBlank { accountNamePref }.ifBlank { accountFallbackName },
+                        accountEmail = accountEmail,
+                        accountHandle = accountHandle,
+                        accountImageUrl = accountImageUrl,
+                        accountBannerUrl = accountBannerUrl,
+                    ),
+                )
+            }
         }
 
     val scrollBehavior = appBarScrollBehavior()
@@ -149,11 +176,19 @@ fun SettingsScreen(
         BuildConfig.UPDATER_AVAILABLE &&
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
     var isUpdateDismissed by remember { mutableStateOf(false) }
-    val settingsContent = buildSettingsContent(navController, isAndroid12OrLater, hasUpdate, isLoggedIn, context)
+    val settingsContent =
+        buildSettingsContent(
+            navController = navController,
+            isAndroid12OrLater = isAndroid12OrLater,
+            hasUpdate = hasUpdate,
+            showAccountEntry = loginState == false,
+            context = context,
+        )
 
     val itemFadeInSpec = motion.defaultEffectsSpec<Float>()
     val itemPlacementSpec = motion.defaultSpatialSpec<IntOffset>()
     val itemFadeOutSpec = motion.fastEffectsSpec<Float>()
+    val slotSizeSpec = motion.defaultSpatialSpec<IntSize>()
     val blockModifier =
         Modifier
             .widthIn(max = SettingsDimensions.HubContentMaxWidth)
@@ -225,25 +260,49 @@ fun SettingsScreen(
         ) {
             var revealOrder = 0
 
-            if (profileState != null) {
-                val order = revealOrder++
-                item(key = "profile", contentType = "settings_profile") {
-                    SettingsProfileCard(
-                        state = profileState,
-                        revealState = revealState,
-                        onClick = { navController.navigate("settings/account") },
-                        coverScrollOffset = {
-                            if (listState.firstVisibleItemIndex == 0) {
-                                listState.firstVisibleItemScrollOffset.toFloat()
-                            } else {
-                                0f
-                            }
-                        },
-                        modifier =
-                            hubItemModifier()
-                                .padding(bottom = SettingsDimensions.SectionSpacing)
-                                .settingsReveal(revealState, "profile", order),
-                    )
+            item(key = "profile_slot", contentType = "settings_profile") {
+                AnimatedContent(
+                    targetState = profileSlot,
+                    contentKey = { it::class },
+                    transitionSpec = {
+                        if (animationsDisabled) {
+                            (EnterTransition.None togetherWith ExitTransition.None)
+                                .using(SizeTransform { _, _ -> snap() })
+                        } else {
+                            (fadeIn(itemFadeInSpec) togetherWith fadeOut(itemFadeOutSpec))
+                                .using(SizeTransform { _, _ -> slotSizeSpec })
+                        }
+                    },
+                    label = "settingsProfileSlot",
+                    modifier = hubItemModifier(),
+                ) { slot ->
+                    when (slot) {
+                        SettingsProfileSlot.Loading -> {
+                            SettingsProfileLoadingRow(
+                                modifier = Modifier.padding(bottom = SettingsDimensions.SectionSpacing),
+                            )
+                        }
+
+                        is SettingsProfileSlot.Profile -> {
+                            SettingsProfileCard(
+                                state = slot.state,
+                                revealState = revealState,
+                                onClick = { navController.navigate("settings/account") },
+                                coverScrollOffset = {
+                                    if (listState.firstVisibleItemIndex == 0) {
+                                        listState.firstVisibleItemScrollOffset.toFloat()
+                                    } else {
+                                        0f
+                                    }
+                                },
+                                modifier = Modifier.padding(bottom = SettingsDimensions.SectionSpacing),
+                            )
+                        }
+
+                        SettingsProfileSlot.Hidden -> {
+                            Spacer(modifier = Modifier.fillMaxWidth())
+                        }
+                    }
                 }
             }
 

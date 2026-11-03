@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
@@ -247,6 +248,37 @@ fun SettingsProfileCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SettingsProfileLoadingRow(modifier: Modifier = Modifier) {
+    Surface(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) {},
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = SettingsDimensions.ListItemMinHeight)
+                    .padding(horizontal = SettingsDimensions.HubContentInset, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LoadingIndicator(modifier = Modifier.size(SettingsDimensions.ListItemIconSize))
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = stringResource(R.string.loading),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

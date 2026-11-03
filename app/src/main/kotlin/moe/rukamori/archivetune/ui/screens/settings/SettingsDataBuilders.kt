@@ -30,7 +30,7 @@ fun buildSettingsContent(
     navController: NavController,
     isAndroid12OrLater: Boolean,
     hasUpdate: Boolean,
-    isLoggedIn: Boolean,
+    showAccountEntry: Boolean,
     context: Context,
 ): SettingsContent {
     val account =
@@ -268,7 +268,7 @@ fun buildSettingsContent(
 
     val groups =
         buildList {
-            if (!isLoggedIn) {
+            if (showAccountEntry) {
                 add(
                     SettingsGroup(
                         key = "account",
