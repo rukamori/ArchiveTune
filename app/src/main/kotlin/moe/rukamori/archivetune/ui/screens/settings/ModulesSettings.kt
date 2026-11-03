@@ -514,7 +514,8 @@ private fun ModuleAddMenu(visible: Boolean, onAction: (ModuleSettingsAction) -> 
                 }.animateFloatingActionButton(visible = visible || expanded, alignment = Alignment.BottomEnd),
             ) {
                 val icon by remember { derivedStateOf { if (checkedProgress > 0.5f) R.drawable.close else R.drawable.add } }
-                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.animateIcon({ checkedProgress }))
+                Icon(painterResource(icon), contentDescription = null,
+                    modifier = with(ToggleFloatingActionButtonDefaults) { Modifier.animateIcon({ checkedProgress }) })
             }
         },
     ) {
