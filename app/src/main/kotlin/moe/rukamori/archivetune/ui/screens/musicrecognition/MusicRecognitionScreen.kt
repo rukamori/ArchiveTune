@@ -14,6 +14,7 @@
 package moe.rukamori.archivetune.ui.screens.musicrecognition
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -168,6 +169,8 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.musicrecognition.FloatingMusicRecognitionService
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionCaptureActivity
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.musicrecognition.navigateToMusicRecognitionDetails
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -216,7 +219,7 @@ fun MusicRecognitionScreen(
     val onQueryChange = remember(viewModel) { viewModel::onHistoryQueryChanged }
     val onSearch = remember(viewModel) { viewModel::onTrackSearchRequested }
     val onOpenUri = remember(viewModel) { viewModel::onExternalUriRequested }
-    val onBackgroundChange = remember(viewModel) { viewModel::onBackgroundRecognitionEnabledChanged }
+    val onFloatingChange = remember(viewModel) { viewModel::onFloatingRecognitionEnabledChanged }
     val captureLevel = remember(captureState) { { captureState.value.level } }
     val captureProgress = remember(captureState) { { captureState.value.progress } }
     val permissionLauncher =
@@ -225,11 +228,15 @@ fun MusicRecognitionScreen(
                 !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
             viewModel.onMicrophonePermissionResult(granted, permanentlyDenied)
         }
+    val floatingRecognitionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            viewModel.onFloatingRecognitionStartResult(result.resultCode == Activity.RESULT_OK)
+        }
 
     val recognitionActive = state is MusicRecognitionScreenState.Loading ||
         state is MusicRecognitionScreenState.Success
     BackHandler(onBack = if (recognitionActive) onCancel else onBack)
-    LaunchedEffect(viewModel, context, navController, lifecycleOwner, hapticFeedback) {
+    LaunchedEffect(viewModel, context, navController, lifecycleOwner, hapticFeedback, floatingRecognitionLauncher) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.events.collect { event ->
                 if (navController.currentDestination?.route != MusicRecognitionRoute) return@collect
@@ -250,6 +257,12 @@ fun MusicRecognitionScreen(
                         hapticFeedback.performHapticFeedback(
                             if (event.matched) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
                         )
+                    MusicRecognitionEvent.StartFloatingRecognition ->
+                        floatingRecognitionLauncher.launch(
+                            MusicRecognitionCaptureActivity.intent(context, listenNow = false),
+                        )
+                    MusicRecognitionEvent.StopFloatingRecognition ->
+                        context.startService(FloatingMusicRecognitionService.closeIntent(context))
                     MusicRecognitionEvent.OpenAppSettings -> {
                         context.startActivity(
                             Intent(
@@ -305,7 +318,7 @@ fun MusicRecognitionScreen(
             state = settingsState,
             sheetState = settingsSheetState,
             onDismiss = onHideSettings,
-            onBackgroundChange = onBackgroundChange,
+            onFloatingChange = onFloatingChange,
         )
     }
 }
@@ -676,7 +689,7 @@ private fun RecognitionHeadlineText(content: RecognitionHeadlineContent) {
 }
 
 @Stable
-private class PolygonMorphState(initial: RoundedPolygon) {
+internal class PolygonMorphState(initial: RoundedPolygon) {
     private var settled: RoundedPolygon = initial
     var morph by mutableStateOf(Morph(initial, initial))
         private set
@@ -1264,7 +1277,7 @@ private fun MusicRecognitionSettingsBottomSheet(
     state: MusicRecognitionSettingsUiState,
     sheetState: SheetState,
     onDismiss: () -> Unit,
-    onBackgroundChange: (Boolean) -> Unit,
+    onFloatingChange: (Boolean) -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1280,22 +1293,25 @@ private fun MusicRecognitionSettingsBottomSheet(
             item(key = "settings_header", contentType = "header") {
                 RecognitionSheetHeader(stringResource(R.string.music_recognition_settings), onDismiss)
             }
-            item(key = "background_recognition", contentType = "setting") {
+            item(key = "floating_recognition", contentType = "setting") {
                 SwitchPreference(
-                    title = { Text(stringResource(R.string.music_recognition_background_title)) },
+                    title = { Text(stringResource(R.string.music_recognition_floating_title)) },
                     description = stringResource(
-                        if (state.backgroundRecognitionAvailable) R.string.music_recognition_background_description
-                        else R.string.music_recognition_background_foss_description,
+                        if (state.floatingRecognitionAvailable) R.string.music_recognition_floating_description
+                        else R.string.music_recognition_floating_foss_description,
                     ),
-                    checked = state.backgroundRecognitionEnabled,
-                    onCheckedChange = onBackgroundChange,
-                    isEnabled = state.backgroundRecognitionAvailable && !state.isSaving,
+                    checked = state.floatingRecognitionEnabled,
+                    onCheckedChange = onFloatingChange,
+                    isEnabled = state.floatingRecognitionAvailable && !state.isSaving,
                 )
             }
-            if (state.saveFailed) {
+            if (state.saveFailed || state.permissionsDenied) {
                 item(key = "save_error", contentType = "error") {
                     Text(
-                        stringResource(R.string.music_recognition_setting_save_failed),
+                        stringResource(
+                            if (state.permissionsDenied) R.string.music_recognition_floating_permissions_denied
+                            else R.string.music_recognition_setting_save_failed,
+                        ),
                         modifier = Modifier.padding(horizontal = 16.dp).semantics {
                             liveRegion = LiveRegionMode.Polite
                         },

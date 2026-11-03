@@ -6,8 +6,6 @@
     <string name="music_recognition_processing">분석 중…</string>
     <string name="music_recognition_listen_again">다시 듣기</string>
     <string name="music_recognition_no_match">일치하는 노래를 찾을 수 없습니다.</string>
-    <string name="music_recognition_signature_failed">오디오 서명을 생성할 수 없습니다.</string>
-    <string name="music_recognition_recognition_failed">인식 실패</string>
     <string name="music_recognition_open_shazam">Shazam 열기</string>
     <string name="music_recognition_lyrics_preview">가사 미리보기</string>
     <string name="music_recognition_permission_title">마이크 권한</string>

@@ -199,8 +199,6 @@
     <string name="music_recognition_processing">Töötlen…</string>
     <string name="music_recognition_listen_again">Kuula uuesti</string>
     <string name="music_recognition_no_match">Vastet ei leidu</string>
-    <string name="music_recognition_signature_failed">Allkirja loomine ei õnnestunud</string>
-    <string name="music_recognition_recognition_failed">Tuvastamine ei õnnestunud</string>
     <string name="music_recognition_open_shazam">Ava Shazam</string>
     <string name="music_recognition_lyrics_preview">Laulusõnade eelvaade</string>
     <string name="music_recognition_permission_title">Õigused mikrofoni kasutamiseks</string>
@@ -222,12 +220,10 @@
     <string name="theme_export_failed">Kujunduse eksportimine ei õnnestunud</string>
     <string name="suggestions">Soovitused</string>
     <string name="music_recognition_settings">Muusika tuvastamise seadistused</string>
-    <string name="music_recognition_background_title">Tuvastamine taustal</string>
     <string name="music_recognition_notification_status_listening">KUULAN</string>
     <string name="music_recognition_notification_status_processing">TÖÖTLEN</string>
     <string name="music_recognition_notification_status_result">TULEMUS</string>
     <string name="music_recognition_notification_listening_title">Kuulan muusikat</string>
-    <string name="music_recognition_notification_listening_text">Hõivan selles seadmes esitamisel olevat heli</string>
     <string name="music_recognition_notification_processing_title">Töötlen heliriba</string>
     <string name="music_recognition_notification_processing_text">Otsin tuvastatud heli sõrmejälje alusel</string>
     <string name="music_recognition_notification_artist">Esitaja: %1$s</string>
@@ -236,5 +232,4 @@
     <string name="music_recognition_notification_release">Avaldatud: %1$s</string>
     <string name="music_recognition_notification_label">Plaadifirma: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC-kood: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Ühtegi lugu ei leidu</string>
 </resources>

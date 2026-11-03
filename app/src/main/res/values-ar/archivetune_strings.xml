@@ -190,7 +190,6 @@
     <string name="music_recognition_listening">جاري الاستماع…</string>
     <string name="music_recognition_processing">جاري التحليل…</string>
     <string name="music_recognition_no_match">لا توجد نتائج مطابقة</string>
-    <string name="music_recognition_recognition_failed">فشل التعرف</string>
     <string name="top_songs">أفضل الأغاني</string>
     <string name="theme_creator_title">منشئ السمات</string>
     <string name="theme_applied">تم تطبيق السمة</string>
@@ -204,7 +203,6 @@
     <string name="album_not_found_desc">تعذر تحميل الألبوم المطلوب</string>
     <string name="empty_album">ألبوم فارغ</string>
     <string name="empty_album_desc">هذا الألبوم لا يحتوى على أغاني</string>
-    <string name="music_recognition_signature_failed">تعذر إنشاء بصمة صوتية</string>
     <string name="music_recognition_open_shazam">فتح شازام</string>
     <string name="music_recognition_lyrics_preview">معاينة الكلمات</string>
     <string name="music_recognition_permission_title">إذن استخدام الميكروفون</string>
@@ -218,16 +216,12 @@
     <string name="history_remote_empty_desc">سيظهر سجل الاستماع الذي تمت مزامنته هنا بعد الاستماع إلى الموسيقى على YouTube Music.</string>
     <string name="suggestions">اقتراحات</string>
     <string name="music_recognition_settings">إعدادات التعرف على الموسيقى</string>
-    <string name="music_recognition_background_title">التعرف في الخلفية</string>
-    <string name="music_recognition_background_description">عند التفعيل، تتعرف لوحة الإعدادات السريعة على الصوت المشغل على هذا الجهاز دون فتح ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">التعرف في الخلفية غير متاح في نسخة FOSS. تفتح لوحة الإعدادات السريعة شاشة التعرف بدلاً من ذلك.</string>
     <string name="music_recognition_notification_channel_name">التعرف على الموسيقى</string>
     <string name="music_recognition_notification_channel_description">تقدم ونتائج التعرف على الموسيقى</string>
     <string name="music_recognition_notification_status_listening">جاري الاستماع</string>
     <string name="music_recognition_notification_status_processing">جاري المعالجة</string>
     <string name="music_recognition_notification_status_result">النتيجة</string>
     <string name="music_recognition_notification_listening_title">الاستماع للموسيقى</string>
-    <string name="music_recognition_notification_listening_text">التقاط الصوت المشغل على هذا الجهاز</string>
     <string name="music_recognition_notification_processing_title">معالجة الصوت</string>
     <string name="music_recognition_notification_processing_text">مطابقة البصمة الصوتية الملتقطة</string>
     <string name="music_recognition_notification_artist">الفنان: %1$s</string>
@@ -236,10 +230,7 @@
     <string name="music_recognition_notification_release">الإصدار: %1$s</string>
     <string name="music_recognition_notification_label">شركة الإنتاج: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">لم يتم العثور على أغنية</string>
     <string name="music_recognition_notification_no_match_text">حافظ على تشغيل الموسيقى بوضوح، ثم حاول التعرف مرة أخرى.</string>
-    <string name="music_recognition_notification_recording_failed_title">تعذر التقاط صوت الجهاز</string>
-    <string name="music_recognition_notification_recording_failed_text">قد يحظر التطبيق المشغل التقاط الصوت، أو ربما توقف التشغيل.</string>
     <string name="music_recognition_notification_signature_failed_text">لم يحتوِ الصوت الملتقط على موسيقى كافية للتعرف عليها.</string>
     <string name="music_recognition_notification_recognition_failed_text">لم تتمكن خدمة التعرف من تحديد هذا الصوت. حاول مرة أخرى بعد قليل.</string>
     <string name="music_recognition_history">سجل التعرف</string>

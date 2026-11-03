@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">處理中…</string>
     <string name="music_recognition_listen_again">再聽一遍</string>
     <string name="music_recognition_no_match">未找到匹配項</string>
-    <string name="music_recognition_signature_failed">無法產生簽名</string>
-    <string name="music_recognition_recognition_failed">辨識失敗</string>
     <string name="music_recognition_open_shazam">打開 Shazam</string>
     <string name="music_recognition_lyrics_preview">歌詞預覽</string>
     <string name="music_recognition_permission_title">麥克風權限</string>
@@ -178,16 +176,12 @@
     <string name="share_as_text">以文字形式分享</string>
     <string name="share_as_image">以圖像形式分享</string>
     <string name="music_recognition_settings">音樂辨識設定</string>
-    <string name="music_recognition_background_title">後台識別</string>
-    <string name="music_recognition_background_description">啟用後，無需開啟 ArchiveTune，點擊控制中心上的磁貼即可識別裝置上正在播放的音訊。</string>
-    <string name="music_recognition_background_foss_description">FOSS 版本不支援後台辨識功能。控制中心上的磁貼改為開啟識別介面。</string>
     <string name="music_recognition_notification_channel_name">音樂識別</string>
     <string name="music_recognition_notification_channel_description">音樂辨識進展與結果</string>
     <string name="music_recognition_notification_status_listening">聆聽中</string>
     <string name="music_recognition_notification_status_processing">處理中</string>
     <string name="music_recognition_notification_status_result">結果</string>
     <string name="music_recognition_notification_listening_title">辨識音樂中</string>
-    <string name="music_recognition_notification_listening_text">捕捉此裝置上播放的音樂</string>
     <string name="music_recognition_notification_processing_title">正在處理音訊</string>
     <string name="music_recognition_notification_processing_text">匹配捕獲的音頻指紋</string>
     <string name="music_recognition_notification_artist">藝人：%1$s</string>
@@ -196,10 +190,7 @@
     <string name="music_recognition_notification_release">發佈於：%1$s</string>
     <string name="music_recognition_notification_label">標籤：%1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">未找到歌曲</string>
     <string name="music_recognition_notification_no_match_text">保持音樂清晰播放，然後再次嘗試識別。</string>
-    <string name="music_recognition_notification_recording_failed_title">無法擷取設備音訊</string>
-    <string name="music_recognition_notification_recording_failed_text">播放應用程式可能會阻止音訊擷取，或播放已停止。</string>
     <string name="music_recognition_notification_signature_failed_text">捕獲的音訊中包含的音樂不足以進行識別。</string>
     <string name="music_recognition_notification_recognition_failed_text">識別服務無法辨識此音訊。請稍後再試。</string>
     <string name="max_selection_limit">最大選擇數量限制</string>

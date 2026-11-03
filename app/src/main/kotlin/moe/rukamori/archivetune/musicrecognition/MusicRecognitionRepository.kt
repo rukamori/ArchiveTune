@@ -8,12 +8,9 @@
 package moe.rukamori.archivetune.musicrecognition
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.media.AudioFormat
-import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.media.projection.MediaProjection
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -60,23 +57,23 @@ class MusicRecognitionRepository
                     emit(emptyList())
                 }.flowOn(Dispatchers.IO)
 
-        fun observeBackgroundRecognitionEnabled(): Flow<Boolean> =
+        fun observeFloatingRecognitionEnabled(): Flow<Boolean> =
             context.dataStore.data
                 .map { preferences ->
-                    preferences[BackgroundRecognitionEnabledKey] ?: BackgroundRecognitionEnabledDefault
+                    preferences[FloatingRecognitionEnabledKey] ?: FloatingRecognitionEnabledDefault
                 }.distinctUntilChanged()
                 .flowOn(Dispatchers.IO)
 
-        suspend fun isBackgroundRecognitionEnabled(): Boolean =
+        suspend fun isFloatingRecognitionEnabled(): Boolean =
             withContext(Dispatchers.IO) {
-                context.dataStore.data.first()[BackgroundRecognitionEnabledKey]
-                    ?: BackgroundRecognitionEnabledDefault
+                context.dataStore.data.first()[FloatingRecognitionEnabledKey]
+                    ?: FloatingRecognitionEnabledDefault
             }
 
-        suspend fun setBackgroundRecognitionEnabled(enabled: Boolean) {
+        suspend fun setFloatingRecognitionEnabled(enabled: Boolean) {
             withContext(Dispatchers.IO) {
                 context.dataStore.edit { preferences ->
-                    preferences[BackgroundRecognitionEnabledKey] = enabled
+                    preferences[FloatingRecognitionEnabledKey] = enabled
                 }
             }
         }
@@ -97,43 +94,6 @@ class MusicRecognitionRepository
                         encoding,
                         minimumBufferSize,
                     )
-
-                captureSamples(audioRecord, minimumBufferSize, onCaptureProgress)
-            }
-
-        suspend fun captureDevicePlayback(
-            mediaProjection: MediaProjection,
-            onCaptureProgress: (AudioCaptureProgress) -> Unit = {},
-        ): ShortArray =
-            withContext(Dispatchers.IO) {
-                val audioFormat =
-                    AudioFormat
-                        .Builder()
-                        .setSampleRate(SampleRateHz)
-                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .build()
-                val minimumBufferSize =
-                    AudioRecord
-                        .getMinBufferSize(
-                            SampleRateHz,
-                            AudioFormat.CHANNEL_IN_MONO,
-                            AudioFormat.ENCODING_PCM_16BIT,
-                        ).coerceAtLeast(MinimumBufferSizeBytes)
-                val captureConfiguration =
-                    AudioPlaybackCaptureConfiguration
-                        .Builder(mediaProjection)
-                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                        .build()
-                val audioRecord =
-                    AudioRecord
-                        .Builder()
-                        .setAudioFormat(audioFormat)
-                        .setBufferSizeInBytes(minimumBufferSize)
-                        .setAudioPlaybackCaptureConfig(captureConfiguration)
-                        .build()
 
                 captureSamples(audioRecord, minimumBufferSize, onCaptureProgress)
             }
@@ -243,11 +203,11 @@ private const val LevelWindowSamples = SampleRateHz / 25
 private const val SilenceDecibels = -54.0
 private const val LoudDecibels = -12.0
 private const val MusicRecognitionHistoryLimit = 50
-private const val BackgroundRecognitionEnabledDefault = true
+private const val FloatingRecognitionEnabledDefault = false
 
 private val MusicRecognitionHistoryJsonKey = stringPreferencesKey("musicRecognitionHistoryJson")
-private val BackgroundRecognitionEnabledKey =
-    booleanPreferencesKey("musicRecognitionBackgroundEnabled")
+private val FloatingRecognitionEnabledKey =
+    booleanPreferencesKey("musicRecognitionFloatingEnabled")
 
 private val HistoryJson =
     Json {

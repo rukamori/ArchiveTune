@@ -51,7 +51,7 @@ data class RecognitionHistoryEntry(
         get() = "$title $artist".trim()
 }
 
-data class BackgroundRecognitionSetting(
+data class FloatingRecognitionSetting(
     val enabled: Boolean,
     val available: Boolean,
 )

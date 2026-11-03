@@ -179,8 +179,6 @@
     <string name="music_recognition_processing">İşleniyor…</string>
     <string name="music_recognition_listen_again">Tekrar dinle</string>
     <string name="music_recognition_no_match">Eşleşme bulunamadı</string>
-    <string name="music_recognition_signature_failed">İmza oluşturulamadı</string>
-    <string name="music_recognition_recognition_failed">Tanıma başarısız oldu</string>
     <string name="music_recognition_open_shazam">Shazam\'ı aç</string>
     <string name="music_recognition_lyrics_preview">Şarkı sözü ön izlemesi</string>
     <string name="music_recognition_permission_title">Mikrofon izni</string>
@@ -206,15 +204,12 @@
     <string name="release_type_album">Albüm</string>
     <string name="suggestions">Önerilenler</string>
     <string name="music_recognition_settings">Müzik Tanıma Ayarları</string>
-    <string name="music_recognition_background_title">Arkaplanda tanıma</string>
-    <string name="music_recognition_background_foss_description">Arkaplanda tanıma ÖAKK sürümünde kullanılamıyor. Hızlı Ayarlar Paneli bunun yerine tanıma ekranını açar.</string>
     <string name="music_recognition_notification_channel_name">Müzik tanıma</string>
     <string name="music_recognition_notification_channel_description">Müzik tanıma süreci ve sonuçları</string>
     <string name="music_recognition_notification_status_listening">DİNLENİYOR</string>
     <string name="music_recognition_notification_status_processing">İŞLENİYOR</string>
     <string name="music_recognition_notification_status_result">SONUÇ</string>
     <string name="music_recognition_notification_listening_title">Müzik dinleniyor</string>
-    <string name="music_recognition_notification_listening_text">Bu cihazda oynatılan ses yakalanıyor</string>
     <string name="music_recognition_notification_processing_title">Ses işleniyor</string>
     <string name="music_recognition_notification_processing_text">Yakalan ses parmak izi eşleştiriliyor</string>
     <string name="music_recognition_notification_artist">Sanatçı:%1$s</string>
@@ -223,10 +218,7 @@
     <string name="music_recognition_notification_release">Yayımlanma tarihi: %1$s</string>
     <string name="music_recognition_notification_label">Etiket: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Şarkı bulunamadı</string>
     <string name="music_recognition_notification_no_match_text">Müziği daha net oynatın, ardından tanımayı tekrar deneyin</string>
-    <string name="music_recognition_notification_recording_failed_title">Cihaz sesi yakalanamadı</string>
-    <string name="music_recognition_notification_recording_failed_text">Çalışan uygulama ses yakalamayı engelleyebilir, yada yeniden oynatma durmuş olabilir.</string>
     <string name="music_recognition_notification_signature_failed_text">Yakalanan ses tanımlamak için yeterli müzik içermiyor.</string>
     <string name="music_recognition_notification_recognition_failed_text">Tanıma hizmeti bu sesi tanımlayamadı. Kısa bir süre sonra tekrar deneyin.</string>
     <string name="music_recognition_history">Tanımlama geçmişi</string>
@@ -288,7 +280,6 @@
     <string name="aod_customize_show_time_labels">Süre etiketlerini göster</string>
     <string name="aod_customize_show_controls">Kontrolleri göster</string>
     <string name="aod_customize_show_exit_button">Çıkış tuşunu göster</string>
-    <string name="music_recognition_background_description">Etkinleştirildiğinde, Hızlı Ayarlar kutucuğu ArchiveTune\'u açmadan bu cihazda oynatılan sesi tanır.</string>
     <string name="history_remote_loading">Uzak geçmiş senkronize ediliyor</string>
     <string name="history_remote_empty_title">Hiç uzak geçmiş mevcut değil</string>
     <string name="history_remote_error_title">Uzak geçmiş yüklenemedi</string>

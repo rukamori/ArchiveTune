@@ -201,8 +201,6 @@
     <string name="music_recognition_processing">Procesando…</string>
     <string name="music_recognition_listen_again">Volver a escuchar</string>
     <string name="music_recognition_no_match">Sin resultados</string>
-    <string name="music_recognition_signature_failed">No se ha podido generar una firma</string>
-    <string name="music_recognition_recognition_failed">Error en el reconocimiento</string>
     <string name="music_recognition_open_shazam">Abrir Shazam</string>
     <string name="music_recognition_lyrics_preview">Vista previa de la letra</string>
     <string name="music_recognition_permission_title">Permiso de micrófono</string>
@@ -532,16 +530,12 @@
     <string name="block_artist">bloqueo artístico o creativo</string>
     <string name="suggestions">Sugerencias</string>
     <string name="music_recognition_settings">Configuración de reconocimiento de música</string>
-    <string name="music_recognition_background_title">Reconocimiento en segundo plano</string>
-    <string name="music_recognition_background_description">Cuando está activada, la opción de Ajustes rápidos reconoce el audio que se reproduce en este dispositivo sin necesidad de abrir ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">El reconocimiento en segundo plano no está disponible en la variante FOSS. En su lugar, el mosaico de Ajustes Rápidos abre la pantalla de reconocimiento.</string>
     <string name="music_recognition_notification_channel_name">Reconocimiento musical</string>
     <string name="music_recognition_notification_channel_description">Progreso y resultados del reconocimiento musical</string>
     <string name="music_recognition_notification_status_listening">ESCUCHANDO</string>
     <string name="music_recognition_notification_status_processing">PROCESANDO</string>
     <string name="music_recognition_notification_status_result">RESULTADO</string>
     <string name="music_recognition_notification_listening_title">Escuchar música</string>
-    <string name="music_recognition_notification_listening_text">Capturando el audio que se reproduce en este dispositivo</string>
     <string name="music_recognition_notification_processing_title">Procesando el audio</string>
     <string name="music_recognition_notification_processing_text">La coincidencia de la huella digital de audio</string>
     <string name="music_recognition_notification_artist">Artista: %1$s</string>
@@ -550,10 +544,7 @@
     <string name="music_recognition_notification_release">Publicado: %1$s</string>
     <string name="music_recognition_notification_label">Etiqueta: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">No se encontró ninguna canción</string>
     <string name="music_recognition_notification_no_match_text">Deja que la música suene con claridad y vuelve a intentar el reconocimiento.</string>
-    <string name="music_recognition_notification_recording_failed_title">No se pudo capturar el audio del dispositivo</string>
-    <string name="music_recognition_notification_recording_failed_text">Es posible que la aplicación que se está reproduciendo esté bloqueando la captura de audio, o que la reproducción se haya detenido.</string>
     <string name="music_recognition_notification_signature_failed_text">La grabación de audio no contenía suficiente música como para permitir la identificación.</string>
     <string name="music_recognition_notification_recognition_failed_text">El servicio de reconocimiento no pudo identificar este audio. Inténtelo de nuevo en breve.</string>
     <string name="show_lyrics_player_controls">Mostrar controles del reproductor</string>

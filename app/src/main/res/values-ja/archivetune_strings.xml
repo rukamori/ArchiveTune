@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">Processing…</string>
     <string name="music_recognition_listen_again">もう一度聞いてください</string>
     <string name="music_recognition_no_match">一致するものが見つかりませんでした</string>
-    <string name="music_recognition_signature_failed">署名を生成できませんでした</string>
-    <string name="music_recognition_recognition_failed">認識に失敗しました</string>
     <string name="music_recognition_open_shazam">シャザムを開く</string>
     <string name="music_recognition_lyrics_preview">歌詞プレビュー</string>
     <string name="music_recognition_permission_title">マイクの許可</string>
@@ -16,16 +14,12 @@
     <string name="music_recognition_permission_action">許可する</string>
     <string name="music_recognition_error">何か問題が発生しました</string>
     <string name="music_recognition_settings">音楽認識設定</string>
-    <string name="music_recognition_background_title">バックグラウンドでの認識</string>
-    <string name="music_recognition_background_description">有効にすると、クイック設定タイルは、ArchiveTune を開かなくても、このデバイスで再生されているオーディオを認識します。</string>
-    <string name="music_recognition_background_foss_description">バックグラウンド認識は FOSS バリアントでは利用できません。代わりに、クイック設定タイルにより認識画面が開きます。</string>
     <string name="music_recognition_notification_channel_name">音楽認識</string>
     <string name="music_recognition_notification_channel_description">音楽認識の進捗状況と結果</string>
     <string name="music_recognition_notification_status_listening">聞く</string>
     <string name="music_recognition_notification_status_processing">処理中</string>
     <string name="music_recognition_notification_status_result">結果</string>
     <string name="music_recognition_notification_listening_title">音楽を聴く</string>
-    <string name="music_recognition_notification_listening_text">このデバイスで再生中のオーディオをキャプチャする</string>
     <string name="music_recognition_notification_processing_title">オーディオの処理</string>
     <string name="music_recognition_notification_processing_text">キャプチャされた音声フィンガープリントの照合</string>
     <string name="music_recognition_notification_artist">Artist: %1$s</string>
@@ -34,10 +28,7 @@
     <string name="music_recognition_notification_release">Released: %1$s</string>
     <string name="music_recognition_notification_label">Label: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">曲が見つかりませんでした</string>
     <string name="music_recognition_notification_no_match_text">音楽をはっきりと再生し続けてから、認識を再試行してください。</string>
-    <string name="music_recognition_notification_recording_failed_title">デバイスの音声をキャプチャできませんでした</string>
-    <string name="music_recognition_notification_recording_failed_text">再生中のアプリがオーディオのキャプチャをブロックしているか、再生が停止している可能性があります。</string>
     <string name="music_recognition_notification_signature_failed_text">キャプチャされた音声には、識別できるほどの音楽が含まれていませんでした。</string>
     <string name="music_recognition_notification_recognition_failed_text">認識サービスはこの音声を識別できませんでした。しばらくしてからもう一度お試しください。</string>
     <string name="music_recognition_history">認定履歴</string>

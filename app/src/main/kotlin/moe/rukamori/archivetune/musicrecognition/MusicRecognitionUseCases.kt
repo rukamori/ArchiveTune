@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.musicrecognition
 
-import android.media.projection.MediaProjection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -46,16 +45,6 @@ class RecognizeMusicUseCase
         ): Result<RecognizedTrack> =
             recognize(
                 captureAudio = { repository.captureAudio(onCaptureProgress) },
-                onPhaseChanged = onPhaseChanged,
-            )
-
-        suspend fun fromDevicePlayback(
-            mediaProjection: MediaProjection,
-            onPhaseChanged: (RecognitionPhase) -> Unit,
-            onCaptureProgress: (AudioCaptureProgress) -> Unit = {},
-        ): Result<RecognizedTrack> =
-            recognize(
-                captureAudio = { repository.captureDevicePlayback(mediaProjection, onCaptureProgress) },
                 onPhaseChanged = onPhaseChanged,
             )
 
@@ -144,42 +133,42 @@ class FilterRecognitionHistoryUseCase
         }
     }
 
-class ObserveBackgroundRecognitionSettingUseCase
+class ObserveFloatingRecognitionSettingUseCase
     @Inject
     constructor(
         private val repository: MusicRecognitionRepository,
     ) {
-        operator fun invoke(): Flow<BackgroundRecognitionSetting> =
+        operator fun invoke(): Flow<FloatingRecognitionSetting> =
             repository
-                .observeBackgroundRecognitionEnabled()
+                .observeFloatingRecognitionEnabled()
                 .map { enabled ->
-                    BackgroundRecognitionSetting(
-                        enabled = isBackgroundRecognitionAvailable && enabled,
-                        available = isBackgroundRecognitionAvailable,
+                    FloatingRecognitionSetting(
+                        enabled = isFloatingRecognitionAvailable && enabled,
+                        available = isFloatingRecognitionAvailable,
                     )
                 }.distinctUntilChanged()
     }
 
-class SetBackgroundRecognitionEnabledUseCase
+class SetFloatingRecognitionEnabledUseCase
     @Inject
     constructor(
         private val repository: MusicRecognitionRepository,
     ) {
         suspend operator fun invoke(enabled: Boolean) {
-            if (!isBackgroundRecognitionAvailable) return
-            repository.setBackgroundRecognitionEnabled(enabled)
+            if (!isFloatingRecognitionAvailable) return
+            repository.setFloatingRecognitionEnabled(enabled)
         }
     }
 
-class IsBackgroundRecognitionEnabledUseCase
+class IsFloatingRecognitionEnabledUseCase
     @Inject
     constructor(
         private val repository: MusicRecognitionRepository,
     ) {
         suspend operator fun invoke(): Boolean =
-            isBackgroundRecognitionAvailable &&
-                repository.isBackgroundRecognitionEnabled()
+            isFloatingRecognitionAvailable &&
+                repository.isFloatingRecognitionEnabled()
     }
 
 private const val GMS_DISTRIBUTION = "gms"
-private val isBackgroundRecognitionAvailable = BuildConfig.DISTRIBUTION == GMS_DISTRIBUTION
+private val isFloatingRecognitionAvailable = BuildConfig.DISTRIBUTION == GMS_DISTRIBUTION
