@@ -272,7 +272,6 @@
     <string name="new_version_available">新版本可用</string>
     <string name="updates">更新</string>
     <string name="current_version">当前版本</string>
-    <string name="latest_version_format">最新消息：%s</string>
     <string name="enable_update_notification">启用更新通知</string>
     <string name="recent_commits">近期提交</string>
     <string name="update_notification_text">ArchiveTune%s现已发布</string>
