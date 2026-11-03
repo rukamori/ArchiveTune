@@ -100,6 +100,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.material3.toShape
@@ -895,7 +896,7 @@ private fun RecognitionOrb(
                     modifier = ringModifier,
                     color = colors.primary,
                     trackColor = colors.surfaceContainerHighest,
-                    amplitude = { if (animationsEnabled) WavyBaseAmplitude + level.value * (1f - WavyBaseAmplitude) else 0f },
+                    amplitude = if (animationsEnabled) WavyProgressIndicatorDefaults.indicatorAmplitude else NoWaveAmplitude,
                 )
                 OrbProgressMode.Matching -> CircularWavyProgressIndicator(
                     modifier = ringModifier,
@@ -947,6 +948,8 @@ private fun RecognitionOrb(
                         val scale = baseScale.value * (1f + pulse + breathing)
                         scaleX = scale
                         scaleY = scale
+                    }
+                    .graphicsLayer {
                         shape = EditorialMorphShape(morphState.morph, morphState.progress.value)
                         clip = true
                     }
@@ -1525,6 +1528,7 @@ internal fun recognitionAnimationsEnabled(): Boolean {
 }
 
 private val ContentMaxWidth = 720.dp
+private val NoWaveAmplitude: (Float) -> Float = { 0f }
 private val OrbMaxSize = 248.dp
 private val OrbMinSize = 160.dp
 private val OrbRingInset = 18.dp
@@ -1539,7 +1543,6 @@ private const val SettledSpinStep = 90f
 private const val BreathMillis = 1_800
 private const val BreathScaleRange = 0.035f
 private const val ListeningScaleRange = 0.16f
-private const val WavyBaseAmplitude = 0.2f
 private const val BeatRingCount = 5
 private const val BeatRingMillis = 1_400
 private const val MinBeatLevel = 0.18f
