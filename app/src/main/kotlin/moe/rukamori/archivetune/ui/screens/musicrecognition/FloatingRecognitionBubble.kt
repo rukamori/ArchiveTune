@@ -238,7 +238,7 @@ private fun FloatingRecognitionCoreContent(
     animationsEnabled: Boolean,
 ) {
     val motion = MaterialTheme.motionScheme
-    val artworkShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val artworkShape = MaterialShapes.Cookie12Sided.toShape()
     AnimatedContent(
         targetState = state,
         contentKey = { it::class },

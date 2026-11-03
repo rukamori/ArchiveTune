@@ -1035,7 +1035,7 @@ private fun EarlyAccessCard(
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val badgeShape = remember { MaterialShapes.Clover4Leaf.toShape() }
+    val badgeShape = MaterialShapes.Clover4Leaf.toShape()
 
     Surface(
         modifier = modifier.fillMaxWidth(),

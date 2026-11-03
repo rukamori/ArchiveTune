@@ -972,7 +972,7 @@ private fun RecognitionOrbContent(
     reveal: Animatable<Float, AnimationVector1D>,
 ) {
     val motion = MaterialTheme.motionScheme
-    val artworkShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val artworkShape = MaterialShapes.Cookie12Sided.toShape()
     AnimatedContent(
         targetState = state,
         contentKey = { it.stage() },
