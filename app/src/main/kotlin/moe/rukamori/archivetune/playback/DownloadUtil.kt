@@ -318,10 +318,16 @@ class DownloadUtil
         }
 
         private fun invalidateResolvedStream(mediaId: String, failure: IOException? = null) {
+            val rejectedStreamUrl =
+                (failure as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)
+                    ?.takeIf { it.responseCode == 403 }
+                    ?.dataSpec
+                    ?.uri
+                    ?.toString()
+            val streamRejected = rejectedStreamUrl != null
+            rejectedStreamUrl?.let(resolveAudioStream::reportRejectedStream)
             resolveAudioStream.invalidate(mediaId, StreamPurpose.DOWNLOAD)
-            if (failure is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException &&
-                failure.responseCode == 403
-            ) {
+            if (streamRejected) {
                 resolveAudioStream.invalidateSession()
             }
         }
