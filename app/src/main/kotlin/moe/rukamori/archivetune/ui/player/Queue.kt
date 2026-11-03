@@ -222,7 +222,7 @@ internal fun QueueFooter(
     textButtonColor: Color,
     iconButtonColor: Color,
     modifier: Modifier = Modifier,
-    onAddToPlaylistClick: () -> Unit = {},
+    onAddToPlaylistClick: () -> Unit,
 ) {
     if (peekHeight <= 0.dp) return
     val context = LocalContext.current

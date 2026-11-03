@@ -1545,12 +1545,7 @@ fun QueueCollapsedContentV10(
         modifier =
             modifier
                 .fillMaxSize()
-                .offset(y = (-8).dp)
-                .windowInsetsPadding(
-                    WindowInsets.systemBars.only(
-                        WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
-                    ),
-                ),
+                .offset(y = (-8).dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

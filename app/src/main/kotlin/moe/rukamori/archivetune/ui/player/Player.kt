@@ -759,30 +759,32 @@ fun BottomSheetPlayer(
         }
 
     val (textButtonColor, iconButtonColor) =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            Pair(dynamicAccentColor, dynamicIconButtonColor)
-        } else {
-            when (playerButtonsStyle) {
-                PlayerButtonsStyle.DEFAULT -> {
-                    Pair(TextBackgroundColor, icBackgroundColor)
-                }
-
-                PlayerButtonsStyle.SECONDARY -> {
-                    Pair(
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.onSecondary,
-                    )
-                }
-            }
-        }.let { (tb, ib) ->
-            if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        when (playerDesignStyle) {
+            PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
                 Pair(Color.White, Color.Black)
-            } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+            }
+
+            PlayerDesignStyle.V9 -> {
                 Pair(dynamicAccentColor, dynamicIconButtonColor)
-            } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+            }
+
+            PlayerDesignStyle.V10 -> {
                 Pair(dynamicV10FieldColor, dynamicV10AccentColor)
-            } else {
-                Pair(tb, ib)
+            }
+
+            else -> {
+                when (playerButtonsStyle) {
+                    PlayerButtonsStyle.DEFAULT -> {
+                        Pair(TextBackgroundColor, icBackgroundColor)
+                    }
+
+                    PlayerButtonsStyle.SECONDARY -> {
+                        Pair(
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.onSecondary,
+                        )
+                    }
+                }
             }
         }
 
