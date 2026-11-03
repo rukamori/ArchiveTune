@@ -740,6 +740,13 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Donate</string>
+    <string name="about_section_links">Links</string>
+    <string name="about_section_project">Project</string>
+    <string name="about_translations">Translations</string>
+    <string name="about_translations_summary">Credits for every language</string>
+    <string name="about_open_source_licenses">Open-source licenses</string>
+    <string name="about_open_source_licenses_summary">Libraries that power the app</string>
+    <string name="about_contributors_see_all">See all contributors</string>
     <string name="aod_mode">AOD Mode</string>
     <string name="playlist_source_local">Local</string>
     <string name="playlist_source_online">Online</string>
