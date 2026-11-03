@@ -332,6 +332,8 @@ private fun DownloadLibraryScreenContent(
     val pagerState = rememberPagerState(initialPage = tabs.indexOf(controls.selectedTab), pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val topBarEnterSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    val topBarExitSpec = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
     val topBarMode =
         when {
             selectionActive -> DownloadTopBarMode.SELECTION
@@ -360,8 +362,7 @@ private fun DownloadLibraryScreenContent(
                 AnimatedContent(
                     targetState = topBarMode,
                     transitionSpec = {
-                        fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) togetherWith
-                            fadeOut(MaterialTheme.motionScheme.fastEffectsSpec())
+                        fadeIn(topBarEnterSpec) togetherWith fadeOut(topBarExitSpec)
                     },
                     label = "downloadLibraryTopBar",
                 ) { mode ->
@@ -1034,7 +1035,7 @@ private fun DownloadedOverview(
                 add(pluralStringResource(R.plurals.n_playlist, storage.playlistCount, storage.playlistCount))
             }
         }.joinToString(separator)
-    val badgeShape = remember { MaterialShapes.Cookie6Sided.toShape() }
+    val badgeShape = MaterialShapes.Cookie6Sided.toShape()
     val buttonHeight = ButtonDefaults.MediumContainerHeight
 
     Surface(
@@ -1722,7 +1723,7 @@ private fun DownloadArtwork(
     selected: Boolean,
     size: Dp,
 ) {
-    val selectedShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val selectedShape = MaterialShapes.Cookie9Sided.toShape()
 
     Box(
         modifier = Modifier.size(size),
@@ -1769,7 +1770,7 @@ private fun DownloadEmptyState(
     onAction: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val shape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val shape = MaterialShapes.Cookie9Sided.toShape()
 
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
