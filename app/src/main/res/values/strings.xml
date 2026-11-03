@@ -538,6 +538,17 @@
     <string name="playback_error_http" translatable="false">HTTP</string>
     <string name="playback_error_message" translatable="false">Message</string>
     <string name="playback_error_cause" translatable="false">Cause</string>
+    <string name="playback_error_decoder_title">Can\'t decode this track</string>
+    <string name="playback_error_http_title">Server error</string>
+    <string name="playback_error_hint_no_internet">Check your Wi-Fi or mobile data connection, then try again.</string>
+    <string name="playback_error_hint_timeout">The server took too long to respond. Trying again usually helps.</string>
+    <string name="playback_error_hint_no_stream">ArchiveTune couldn\'t get a playable stream for this track. Try again, or play something else.</string>
+    <string name="playback_error_hint_malformed_stream">The stream source returned data that couldn\'t be read. Try again in a moment.</string>
+    <string name="playback_error_hint_decoder">This device couldn\'t decode the audio of this track.</string>
+    <string name="playback_error_hint_http">The server responded with HTTP %1$d. Try again in a moment.</string>
+    <string name="playback_error_hint_unknown">Something went wrong while playing this track. The technical details can help when reporting it.</string>
+    <string name="playback_error_show_details">Show technical details</string>
+    <string name="playback_error_hide_details">Hide technical details</string>
     <string name="content_language">Default content language</string>
     <string name="content_country">Default content country</string>
     <string name="system_default">System default</string>
