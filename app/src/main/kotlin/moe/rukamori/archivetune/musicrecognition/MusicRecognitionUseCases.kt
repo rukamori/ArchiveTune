@@ -40,18 +40,22 @@ class RecognizeMusicUseCase
     constructor(
         private val repository: MusicRecognitionRepository,
     ) {
-        suspend operator fun invoke(onPhaseChanged: (RecognitionPhase) -> Unit): Result<RecognizedTrack> =
+        suspend operator fun invoke(
+            onPhaseChanged: (RecognitionPhase) -> Unit,
+            onCaptureProgress: (AudioCaptureProgress) -> Unit = {},
+        ): Result<RecognizedTrack> =
             recognize(
-                captureAudio = repository::captureAudio,
+                captureAudio = { repository.captureAudio(onCaptureProgress) },
                 onPhaseChanged = onPhaseChanged,
             )
 
         suspend fun fromDevicePlayback(
             mediaProjection: MediaProjection,
             onPhaseChanged: (RecognitionPhase) -> Unit,
+            onCaptureProgress: (AudioCaptureProgress) -> Unit = {},
         ): Result<RecognizedTrack> =
             recognize(
-                captureAudio = { repository.captureDevicePlayback(mediaProjection) },
+                captureAudio = { repository.captureDevicePlayback(mediaProjection, onCaptureProgress) },
                 onPhaseChanged = onPhaseChanged,
             )
 

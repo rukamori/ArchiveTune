@@ -40,6 +40,8 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
+import kotlin.math.log10
+import kotlin.math.sqrt
 
 @Singleton
 class MusicRecognitionRepository
@@ -79,7 +81,7 @@ class MusicRecognitionRepository
             }
         }
 
-        suspend fun captureAudio(): ShortArray =
+        suspend fun captureAudio(onCaptureProgress: (AudioCaptureProgress) -> Unit = {}): ShortArray =
             withContext(Dispatchers.IO) {
                 val channel = AudioFormat.CHANNEL_IN_MONO
                 val encoding = AudioFormat.ENCODING_PCM_16BIT
@@ -96,10 +98,13 @@ class MusicRecognitionRepository
                         minimumBufferSize,
                     )
 
-                captureSamples(audioRecord, minimumBufferSize)
+                captureSamples(audioRecord, minimumBufferSize, onCaptureProgress)
             }
 
-        suspend fun captureDevicePlayback(mediaProjection: MediaProjection): ShortArray =
+        suspend fun captureDevicePlayback(
+            mediaProjection: MediaProjection,
+            onCaptureProgress: (AudioCaptureProgress) -> Unit = {},
+        ): ShortArray =
             withContext(Dispatchers.IO) {
                 val audioFormat =
                     AudioFormat
@@ -130,7 +135,7 @@ class MusicRecognitionRepository
                         .setAudioPlaybackCaptureConfig(captureConfiguration)
                         .build()
 
-                captureSamples(audioRecord, minimumBufferSize)
+                captureSamples(audioRecord, minimumBufferSize, onCaptureProgress)
             }
 
         suspend fun recognize(samples: ShortArray): Result<RecognizedTrack> {
@@ -184,6 +189,7 @@ class MusicRecognitionRepository
 private suspend fun captureSamples(
     audioRecord: AudioRecord,
     bufferSizeBytes: Int,
+    onCaptureProgress: (AudioCaptureProgress) -> Unit,
 ): ShortArray {
     if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
         audioRecord.release()
@@ -192,17 +198,24 @@ private suspend fun captureSamples(
 
     val output = ShortArray((RecordingDurationMillis * SampleRateHz / 1_000L).toInt())
     val buffer = ShortArray(bufferSizeBytes / Short.SIZE_BYTES)
+    val chunkSize = minOf(buffer.size, LevelWindowSamples)
 
     try {
         audioRecord.startRecording()
         var written = 0
         while (written < output.size) {
             coroutineContext.ensureActive()
-            val read = audioRecord.read(buffer, 0, minOf(buffer.size, output.size - written))
+            val read = audioRecord.read(buffer, 0, minOf(chunkSize, output.size - written))
             if (read < 0) error("AudioRecord read failed with code $read")
             if (read == 0) continue
             buffer.copyInto(output, destinationOffset = written, endIndex = read)
             written += read
+            onCaptureProgress(
+                AudioCaptureProgress(
+                    level = buffer.normalizedLevel(read),
+                    fraction = written.toFloat() / output.size,
+                ),
+            )
         }
         return output.copyOf(written)
     } finally {
@@ -211,9 +224,24 @@ private suspend fun captureSamples(
     }
 }
 
+private fun ShortArray.normalizedLevel(count: Int): Float {
+    var sumOfSquares = 0.0
+    for (index in 0 until count) {
+        val sample = this[index] / Short.MAX_VALUE.toDouble()
+        sumOfSquares += sample * sample
+    }
+    val rms = sqrt(sumOfSquares / count)
+    if (rms <= 0.0) return 0f
+    val decibels = 20.0 * log10(rms)
+    return ((decibels - SilenceDecibels) / (LoudDecibels - SilenceDecibels)).toFloat().coerceIn(0f, 1f)
+}
+
 private const val SampleRateHz = 16_000
 private const val RecordingDurationMillis = 8_400L
 private const val MinimumBufferSizeBytes = 4_096
+private const val LevelWindowSamples = SampleRateHz / 25
+private const val SilenceDecibels = -54.0
+private const val LoudDecibels = -12.0
 private const val MusicRecognitionHistoryLimit = 50
 private const val BackgroundRecognitionEnabledDefault = true
 

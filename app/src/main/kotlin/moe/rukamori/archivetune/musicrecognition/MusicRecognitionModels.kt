@@ -61,6 +61,11 @@ enum class RecognitionPhase {
     Processing,
 }
 
+data class AudioCaptureProgress(
+    val level: Float,
+    val fraction: Float,
+)
+
 sealed interface MusicRecognitionFailure {
     data object NoMatch : MusicRecognitionFailure
 

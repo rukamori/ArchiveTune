@@ -54,6 +54,15 @@
     <string name="music_recognition_history_no_results_title">No history matches</string>
     <string name="music_recognition_history_no_results_body">Try another song, artist, album, or code.</string>
     <string name="music_recognition_history_recognized_at">Recognized %1$s</string>
+    <string name="music_recognition_idle_hint">Tap the button to identify a song playing around you.</string>
+    <string name="music_recognition_searching">Searching for a match…</string>
+    <string name="music_recognition_match_found">Match found</string>
+    <string name="music_recognition_step_listen">Listen</string>
+    <string name="music_recognition_step_process">Process</string>
+    <string name="music_recognition_step_result">Result</string>
+    <string name="music_recognition_step_state_current">Current step</string>
+    <string name="music_recognition_step_state_done">Done</string>
+    <string name="music_recognition_capture_progress">%1$d%% of the sample captured</string>
     <string name="local_history">Local</string>
     <string name="history_local_summary">Played on this device</string>
     <string name="history_remote_summary">Synced from YouTube Music</string>
