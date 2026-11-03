@@ -422,19 +422,24 @@ private fun BoxScope.ModuleSaveToolbar(visible: Boolean, enabled: Boolean, onSav
     val motion = MaterialTheme.motionScheme
     AnimatedVisibility(
         visible = visible,
-        modifier = Modifier.align(Alignment.BottomCenter).imePadding().padding(bottom = 16.dp),
+        modifier = Modifier.align(Alignment.BottomCenter).imePadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         enter = slideInVertically(motion.defaultSpatialSpec()) { it } + scaleIn(motion.defaultSpatialSpec(), initialScale = 0.85f) +
             fadeIn(motion.defaultEffectsSpec()),
         exit = slideOutVertically(motion.fastSpatialSpec()) { it } + scaleOut(motion.fastSpatialSpec(), targetScale = 0.85f) +
             fadeOut(motion.fastEffectsSpec()),
     ) {
-        HorizontalFloatingToolbar(expanded = true, colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()) {
-            Text(stringResource(R.string.modules_unsaved_changes), style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.CenterVertically).padding(start = 12.dp, end = 16.dp))
-            Button(onClick = onSave, shapes = ButtonDefaults.shapes(), enabled = enabled) {
-                Icon(painterResource(R.drawable.check), null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.save))
+        val colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+        Surface(shape = CircleShape, color = colors.toolbarContainerColor, contentColor = colors.toolbarContentColor,
+            shadowElevation = FloatingToolbarDefaults.ContainerExpandedElevationWithFab) {
+            Row(Modifier.heightIn(min = FloatingToolbarDefaults.ContainerSize).padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.modules_unsaved_changes), style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Button(onClick = onSave, shapes = ButtonDefaults.shapes(), enabled = enabled) {
+                    Icon(painterResource(R.drawable.check), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(stringResource(R.string.save))
+                }
             }
         }
     }
