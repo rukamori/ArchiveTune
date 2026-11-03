@@ -104,6 +104,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -397,6 +398,8 @@ class MusicService :
     private lateinit var connectivityManager: ConnectivityManager
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
+    private val _unrecoveredPlaybackError = MutableStateFlow<PlaybackException?>(null)
+    val unrecoveredPlaybackError = _unrecoveredPlaybackError.asStateFlow()
     private val isNetworkConnected = MutableStateFlow(false)
 
     private val audioQuality by enumPreference(
@@ -3777,11 +3780,21 @@ class MusicService :
         val failedUrl = responseException.dataSpec.uri.toString()
         val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
         val failedExpiredUrl = YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(failedUrl)
+        val rejectedPoTokenBinding =
+            responseException.responseCode == 403 && resolveAudioStream.reportRejectedStream(failedUrl)
 
         resolveAudioStream.invalidate(mediaId)
         YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
         if (!failedExpiredUrl && requestProfile.clientKey.isNotEmpty()) {
             YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)
+        }
+
+        if (rejectedPoTokenBinding && playbackStreamRecoveryTracker.registerTokenBindingRetryAttempt(mediaId)) {
+            Timber.tag("MusicService").i(
+                "Retrying playback for %s with the alternate stream PO token binding",
+                mediaId,
+            )
+            return preparePlaybackFromSnapshot(recoverySnapshot)
         }
 
         if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {
@@ -7653,13 +7666,35 @@ class MusicService :
         }
     }
 
+    override fun onPlayerErrorChanged(error: PlaybackException?) {
+        super.onPlayerErrorChanged(error)
+        if (_unrecoveredPlaybackError.value !== error) {
+            _unrecoveredPlaybackError.value = null
+        }
+    }
+
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
-        val snapshot = capturePlaybackRecoverySnapshot() ?: return
+        val snapshot =
+            capturePlaybackRecoverySnapshot() ?: run {
+                surfaceUnrecoveredPlaybackError(error)
+                return
+            }
         playbackErrorRecoveryJob?.cancel()
         playbackErrorRecoveryJob = scope.launch {
             handlePlaybackError(error, snapshot)
         }
+    }
+
+    private fun surfaceUnrecoveredPlaybackError(error: PlaybackException) {
+        if (player.playerError === error) {
+            _unrecoveredPlaybackError.value = error
+        }
+    }
+
+    private suspend fun finishUnrecoveredPlaybackError(error: PlaybackException) {
+        if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+        surfaceUnrecoveredPlaybackError(error)
     }
 
     private suspend fun handlePlaybackError(
@@ -7668,7 +7703,7 @@ class MusicService :
     ) {
         val currentMediaId = recoverySnapshot.mediaId
         if (activeModuleAudio.containsKey(currentMediaId)) {
-            if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+            finishUnrecoveredPlaybackError(error)
             return
         }
         val isLocalMedia = currentMediaId.isLocalMediaId() ||
@@ -7692,6 +7727,7 @@ class MusicService :
         if (!isLocalMedia && isCacheCorruptionError(error, hasAnyCachedData)) {
             if (!isNetworkCurrentlyConnected()) {
                 waitOnNetworkError()
+                surfaceUnrecoveredPlaybackError(error)
                 return
             }
             if (cacheBypassMediaIds.add(currentMediaId)) {
@@ -7710,16 +7746,21 @@ class MusicService :
                     }
                 }
                 if (player.currentMediaItem?.mediaId != currentMediaId || player.playerError !== error) return
-                val retrySnapshot = capturePlaybackRecoverySnapshot() ?: return
+                val retrySnapshot =
+                    capturePlaybackRecoverySnapshot() ?: run {
+                        surfaceUnrecoveredPlaybackError(error)
+                        return
+                    }
                 player.stop()
                 if (preparePlaybackFromSnapshot(retrySnapshot)) return
             }
-            if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+            finishUnrecoveredPlaybackError(error)
             return
         }
 
         if (!isLocalMedia && !isFullyDownloadedMedia && !isNetworkCurrentlyConnected()) {
             waitOnNetworkError()
+            surfaceUnrecoveredPlaybackError(error)
             return
         }
 
@@ -7786,11 +7827,7 @@ class MusicService :
             }
         }
 
-        if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
-            skipOnError()
-        } else {
-            stopOnError()
-        }
+        finishUnrecoveredPlaybackError(error)
     }
 
     private suspend fun trimPlayerCacheToBytes(limitBytes: Long) {
