@@ -835,7 +835,6 @@
     <string name="lastfm_endpoint_invalid">Saisissez un point de terminaison HTTP ou HTTPS valide.</string>
     <string name="lastfm_service_not_configured">Configurez le service de scrobbling avant de vous connecter.</string>
     <string name="onboarding_empty_title">Configuration indisponible</string>
-    <string name="onboarding_empty_subtitle">Continuez vers ArchiveTune.</string>
     <string name="onboarding_error_generic">Impossible de charger le programme d\'installation</string>
     <string name="onboarding_permission_allowed_by_install">Autorisé par l\'installation</string>
     <string name="lyrics_search_result_stats">%1$d lignes, %2$d caractères</string>

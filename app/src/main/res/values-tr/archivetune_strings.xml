@@ -509,7 +509,6 @@
     <string name="settings_stats_title">Dinlenme İstatistikleri</string>
     <string name="settings_stats_subtitle">En çok dinlediğiniz şarkılar, sanatçılar ve çalma geçmişiniz</string>
     <string name="top_songs">En çok dinlediğiniz şarkılar</string>
-    <string name="top_albums">En çok dinlediğiniz Şarkılar</string>
     <string name="year_in_music_top_track">En çok dinlediğiniz parça</string>
     <string name="year_in_music_empty_title">Recap\'lenecek hiçbir şey yok</string>
     <string name="year_in_music_empty_subtitle">%d boyunca daha fazla müzik dinleyin, özetiniz burada görünecektir.</string>

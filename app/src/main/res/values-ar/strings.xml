@@ -939,7 +939,6 @@
     <string name="onboarding_foss_variant">نسخة FOSS</string>
     <string name="onboarding_version_label">الإصدار %1$s</string>
     <string name="onboarding_empty_title">الإعداد غير متاح</string>
-    <string name="onboarding_empty_subtitle">المتابعة إلى ArchiveTune.</string>
     <string name="onboarding_error_generic">تعذر تحميل الإعداد</string>
     <string name="onboarding_permission_allowed_by_install">مسموح به عند التثبيت</string>
     <string name="onboarding_permission_unavailable">غير متاح</string>

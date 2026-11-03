@@ -883,7 +883,6 @@
     <string name="onboarding_foss_variant">Bản FOSS</string>
     <string name="onboarding_version_label">Phiên bản %1$s</string>
     <string name="onboarding_empty_title">Không khả dụng thiết lập</string>
-    <string name="onboarding_empty_subtitle">Tiếp tục tới ArchiveTune.</string>
     <string name="onboarding_error_generic">Không thể tải thiết lập</string>
     <string name="onboarding_permission_allowed_by_install">Đã cho phép qua cài đặt</string>
     <string name="onboarding_permission_unavailable">Không khả dụng</string>

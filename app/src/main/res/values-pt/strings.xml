@@ -905,7 +905,6 @@
     <string name="onboarding_foss_variant">Edição FOSS</string>
     <string name="onboarding_version_label">Versão %1$s</string>
     <string name="onboarding_empty_title">Configuração indisponível</string>
-    <string name="onboarding_empty_subtitle">Continuar para o ArchiveTune.</string>
     <string name="onboarding_error_generic">Impossível carregar a configuração</string>
     <string name="onboarding_permission_allowed_by_install">Permitido pela instalação</string>
     <string name="onboarding_permission_unavailable">Indisponível</string>

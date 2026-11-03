@@ -536,7 +536,6 @@
     <string name="theme_export_success">Đã xuất chủ đề</string>
     <string name="theme_export_failed">Xuất thất bại</string>
     <string name="theme_import_failed_title">Không thể nhập giao diện</string>
-    <string name="top_albums">Album hàng đầu</string>
     <string name="about_position_developers">Nhà phát triển | Nhóm</string>
     <string name="about_position_yuki">dummy reze | Quản trị</string>
     <string name="music_recognition_settings">Cài đặt nhận dạng nhạc</string>

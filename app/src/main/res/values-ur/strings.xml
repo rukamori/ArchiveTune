@@ -894,7 +894,6 @@
     <string name="onboarding_foss_variant">FOSS نسخہ</string>
     <string name="onboarding_version_label">‫نسخہ: %1$s</string>
     <string name="onboarding_empty_title">تنظیم غیردستیاب</string>
-    <string name="onboarding_empty_subtitle">‫ArchiveTune کی جانب بڑھیں۔</string>
     <string name="onboarding_error_generic">تنطیم لاد نہیں سکا</string>
     <string name="onboarding_permission_allowed_by_install">نصب کی جانب سے اجازت شدہ</string>
     <string name="onboarding_permission_unavailable">غیر دستیاب</string>

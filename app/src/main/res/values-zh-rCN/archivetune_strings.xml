@@ -461,7 +461,6 @@
     <string name="settings_stats_title">听歌统计</string>
     <string name="settings_stats_subtitle">你的最爱歌曲、最爱艺人及播放历史</string>
     <string name="top_songs">最常听歌曲</string>
-    <string name="top_albums">最常听专辑</string>
     <string name="year_in_music_top_track">你的年度首选单曲</string>
     <string name="year_in_music_empty_title">暂无足够的回顾数据</string>
     <string name="year_in_music_empty_subtitle">在 %d 年内收听更多音乐，你的年度回顾就会显示在此处</string>

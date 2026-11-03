@@ -839,7 +839,6 @@
     <string name="onboarding_foss_variant">FOSS(오픈소스 전용) 빌드</string>
     <string name="onboarding_version_label">버전: %1$s</string>
     <string name="onboarding_empty_title">설정 완료</string>
-    <string name="onboarding_empty_subtitle">모든 준비가 완료되었습니다! 이제 마음껏 음악을 감상해 보세요.</string>
     <string name="onboarding_error_generic">오류가 발생했습니다. 다시 시도해 주세요.</string>
     <string name="onboarding_permission_allowed_by_install">설치와 동시에 자동으로 허용됨</string>
     <string name="onboarding_permission_unavailable">사용할 수 없는 권한</string>

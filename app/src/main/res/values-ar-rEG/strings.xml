@@ -807,7 +807,6 @@
     <string name="onboarding_foss_variant">نسخة المصدر المفتوح (FOSS)</string>
     <string name="onboarding_version_label">إصدار %1$s</string>
     <string name="onboarding_empty_title">الإعداد مش متاح</string>
-    <string name="onboarding_empty_subtitle">كمل لـ ArchiveTune.</string>
     <string name="onboarding_error_generic">معرفناش نحمل الإعداد</string>
     <string name="onboarding_permission_allowed_by_install">مسموح بيه مع التثبيت</string>
     <string name="onboarding_permission_unavailable">مش متاح</string>

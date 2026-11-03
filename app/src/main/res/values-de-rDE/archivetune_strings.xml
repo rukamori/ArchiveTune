@@ -487,7 +487,6 @@
     <string name="storage_location_removable_named">SD-Karte %s</string>
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="history_duration_seconds">%1$s s</string>
-    <string name="top_albums">Top-Alben</string>
     <string name="stats_show_top_songs">Top 5 anzeigen</string>
     <string name="restore_file_not_found">Konnte die ausgewählte Datei nicht öffnen.</string>
     <string name="spotify_available_count">%1$d Playlists verfügbar</string>
