@@ -132,6 +132,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -477,14 +478,19 @@ fun UpdateScreen(
 }
 
 @Composable
-private fun rememberEntranceProgress(order: Int): Animatable<Float, AnimationVector1D> {
+internal fun rememberEntranceProgress(order: Int): Animatable<Float, AnimationVector1D> {
+    val animationsDisabled = LocalAnimationsDisabled.current
     var hasEntered by rememberSaveable { mutableStateOf(false) }
-    val progress = remember { Animatable(if (hasEntered) 1f else 0f) }
+    val progress = remember { Animatable(if (hasEntered || animationsDisabled) 1f else 0f) }
     val animationSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     LaunchedEffect(progress) {
         if (!hasEntered) {
-            delay(EntranceStaggerMillis * order)
-            progress.animateTo(1f, animationSpec)
+            if (!animationsDisabled) {
+                delay(EntranceStaggerMillis * order)
+                progress.animateTo(1f, animationSpec)
+            } else {
+                progress.snapTo(1f)
+            }
             hasEntered = true
         }
     }
@@ -501,7 +507,7 @@ private fun LazyItemScope.historyItemModifier(
         fadeOutSpec = motionScheme.fastEffectsSpec(),
     )
 
-private fun Modifier.entranceReveal(progress: Animatable<Float, AnimationVector1D>): Modifier =
+internal fun Modifier.entranceReveal(progress: Animatable<Float, AnimationVector1D>): Modifier =
     graphicsLayer {
         val value = progress.value
         alpha = value.coerceIn(0f, 1f)
@@ -766,7 +772,7 @@ private fun UpdateStatusBadge(
         label = "badgeIcon",
     )
     val rotation: State<Float>? =
-        if (isAvailable) {
+        if (isAvailable && !LocalAnimationsDisabled.current) {
             rememberInfiniteTransition(label = "badgeSpin").animateFloat(
                 initialValue = 0f,
                 targetValue = 360f,

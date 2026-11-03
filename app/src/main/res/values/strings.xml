@@ -904,6 +904,7 @@
     <string name="app_update_release_notes">What’s new</string>
     <string name="app_update_release_date">Released %1$s</string>
     <string name="app_update_download_size">Download size: %1$s</string>
+    <string name="app_update_install_from_release_page">Installs from the release page</string>
     <string name="app_update_transfer_progress">%1$s of %2$s · %3$d%%</string>
     <string name="app_update_transfer_bytes">%1$s downloaded</string>
     <string name="app_update_cancel_download">Cancel download</string>
