@@ -118,7 +118,7 @@ val LocalPreferenceGroupPosition = compositionLocalOf<PreferenceGroupPosition?> 
 private val PreferenceGroupLargeCorner = 28.dp
 private val PreferenceGroupSmallCorner = 6.dp
 private val PreferenceItemPressedCorner = 20.dp
-private val PreferenceGroupHorizontalPadding = 26.dp
+private val PreferenceGroupHorizontalPadding = 30.dp
 private val PreferenceItemContentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
 private val PreferenceIconBadgeSize = 40.dp
 private const val PreferenceIconBadgeActiveRotation = 40f
