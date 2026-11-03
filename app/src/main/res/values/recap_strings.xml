@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="recap_year_so_far">Year so far</string>
     <string name="recap_period_so_far">%1$s · Year so far</string>
     <string name="recap_recorded_listening">Your recorded listening</string>
     <string name="recap_highlights">Highlight reel</string>

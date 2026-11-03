@@ -865,7 +865,6 @@
     <string name="onboarding_foss_variant">מהדורת FOSS</string>
     <string name="onboarding_version_label">גרסה %1$s</string>
     <string name="onboarding_empty_title">הגדרה לא זמינה</string>
-    <string name="onboarding_empty_subtitle">המשך ל-ArchiveTune.</string>
     <string name="onboarding_error_generic">לא ניתן היה לטעון את ההגדרות</string>
     <string name="onboarding_permission_allowed_by_install">מורשה על ידי התקנה</string>
     <string name="onboarding_permission_unavailable">לא זמין</string>

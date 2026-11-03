@@ -925,7 +925,6 @@
     <string name="onboarding_foss_variant">Edisi FOSS</string>
     <string name="onboarding_version_label">Versi %1$s</string>
     <string name="onboarding_empty_title">Penyiapan tidak tersedia</string>
-    <string name="onboarding_empty_subtitle">Lanjutkan ke ArchiveTune.</string>
     <string name="onboarding_error_generic">Tidak dapat memuat penyiapan</string>
     <string name="onboarding_permission_allowed_by_install">Diizinkan saat instal</string>
     <string name="onboarding_permission_unavailable">Tidak tersedia</string>

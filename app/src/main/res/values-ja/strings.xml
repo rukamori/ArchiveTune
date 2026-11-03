@@ -895,7 +895,6 @@
     <string name="onboarding_foss_variant">FOSS編</string>
     <string name="onboarding_version_label">バージョン %1$s</string>
     <string name="onboarding_empty_title">セットアップが利用できません</string>
-    <string name="onboarding_empty_subtitle">ArchiveTune に進みます。</string>
     <string name="onboarding_error_generic">セットアップを読み込めませんでした</string>
     <string name="onboarding_permission_allowed_by_install">インストールにより許可される</string>
     <string name="onboarding_permission_unavailable">利用不可</string>

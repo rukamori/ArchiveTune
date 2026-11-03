@@ -526,7 +526,6 @@
     <string name="storage_cache_clear_warning">정말로 캐시 데이터를 모두 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다.)</string>
     <string name="history_duration_desc">기록에 반영할 최소 감상 시간 설정</string>
     <string name="history_duration_seconds">%1$s 초</string>
-    <string name="top_albums">인기 앨범</string>
     <string name="theme_creator_title">테마 제작기</string>
     <string name="theme_import_failed_title">테마 가져오기 실패</string>
     <string name="theme_applied">테마가 성공적으로 적용되었습니다.</string>

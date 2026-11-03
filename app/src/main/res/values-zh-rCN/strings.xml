@@ -932,7 +932,6 @@
     <string name="onboarding_foss_variant">FOSS 版本</string>
     <string name="onboarding_version_label">版本 %1$s</string>
     <string name="onboarding_empty_title">初始化跳过</string>
-    <string name="onboarding_empty_subtitle">直接进入 ArchiveTune</string>
     <string name="onboarding_error_generic">无法加载初始化向导</string>
     <string name="onboarding_permission_allowed_by_install">安装时已默认允许</string>
     <string name="onboarding_permission_unavailable">不可用</string>

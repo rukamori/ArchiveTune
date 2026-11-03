@@ -542,7 +542,6 @@
     <string name="storage_cache_clear_warning">Laissez ArchiveTune ouvert pendant la suppression des fichiers de cache.</string>
     <string name="history_duration_desc">Durée minimale d\'écoute pour qu\'un morceau soit considéré comme écouté</string>
     <string name="history_duration_seconds">%1$s s</string>
-    <string name="top_albums">Meilleurs Albums</string>
     <string name="theme_import_failed_title">Impossible d\'importer le thème</string>
     <string name="theme_applied">Thème appliqué</string>
     <string name="theme_export_success">Thème exporté</string>

@@ -890,7 +890,6 @@
     <string name="onboarding_foss_variant">Edición FOSS</string>
     <string name="onboarding_version_label">Versión %1$s</string>
     <string name="onboarding_empty_title">Configuración no disponible</string>
-    <string name="onboarding_empty_subtitle">Continúa en ArchiveTune.</string>
     <string name="onboarding_error_generic">No se ha podido cargar el programa de instalación</string>
     <string name="onboarding_permission_allowed_by_install">Permitido por la instalación</string>
     <string name="onboarding_permission_unavailable">No disponible</string>

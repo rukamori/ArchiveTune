@@ -777,7 +777,6 @@
     <string name="onboarding_foss_variant">FOSS 版本</string>
     <string name="onboarding_version_label">版本 %1$s</string>
     <string name="onboarding_empty_title">設定不可用</string>
-    <string name="onboarding_empty_subtitle">繼續使用 ArchiveTune。</string>
     <string name="onboarding_error_generic">無法載入設定程式</string>
     <string name="onboarding_permission_allowed_by_install">已允許 (安裝)</string>
     <string name="onboarding_permission_unavailable">不可用</string>

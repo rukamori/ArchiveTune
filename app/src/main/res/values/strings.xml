@@ -1129,7 +1129,6 @@
     <string name="onboarding_foss_variant">FOSS edition</string>
     <string name="onboarding_version_label">Version %1$s</string>
     <string name="onboarding_empty_title">Setup unavailable</string>
-    <string name="onboarding_empty_subtitle">Continue to ArchiveTune.</string>
     <string name="onboarding_error_generic">Couldn\'t load setup</string>
     <string name="onboarding_permission_allowed_by_install">Allowed by install</string>
     <string name="onboarding_permission_unavailable">Unavailable</string>

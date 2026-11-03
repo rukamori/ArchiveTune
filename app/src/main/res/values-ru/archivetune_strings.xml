@@ -534,7 +534,6 @@
     <string name="settings_stats_title">Статистика прослушивания</string>
     <string name="settings_stats_subtitle">Ваши лучшие песни, исполнители и история воспроизведения</string>
     <string name="top_songs">Лучшие песни</string>
-    <string name="top_albums">Лучшие альбомы</string>
     <string name="year_in_music_top_track">Ваш лучший трек</string>
     <string name="year_in_music_empty_title">Пока нечего обозревать</string>
     <string name="year_in_music_empty_subtitle">Слушайте больше музыки в %d году, и ваш обзор появится здесь.</string>

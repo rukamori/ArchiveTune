@@ -478,7 +478,6 @@
     <string name="settings_account_subtitle">تسجيل الدخول وإدارة مزامنة الحساب</string>
     <string name="settings_stats_title">إحصائيات الاستماع</string>
     <string name="settings_stats_subtitle">أفضل أغانيك، فنانوك، وسجل التشغيل</string>
-    <string name="top_albums">أفضل الألبومات</string>
     <string name="year_in_music_top_track">مقطعك المفضل</string>
     <string name="year_in_music_empty_title">لا يوجد شيء لتلخيصه بعد</string>
     <string name="year_in_music_empty_subtitle">شغّل المزيد من الموسيقى خلال عام %d وسيظهر ملخصك هنا.</string>

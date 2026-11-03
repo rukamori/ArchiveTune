@@ -840,7 +840,6 @@
     <string name="enable_youlyplus_lyrics">YouLyPlus-Songtexte aktivieren</string>
     <string name="eq_waiting_for_audio_session">Warte auf Audiositzung</string>
     <string name="onboarding_permissions_title">Berechtigungen überprüfen</string>
-    <string name="onboarding_empty_subtitle">Zu ArchiveTune fortfahren.</string>
     <string name="together_queue_count">%1$d in Warteschlange</string>
     <string name="together_shuffle_on">Shuffle an</string>
     <string name="together_shuffle_off">Shuffle aus</string>

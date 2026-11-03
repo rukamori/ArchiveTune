@@ -555,7 +555,6 @@
     <string name="storage_cache_clear_warning">Mantén ArchiveTune abierto mientras se eliminan los archivos de caché.</string>
     <string name="history_duration_desc">Tiempo mínimo de reproducción para que una canción se considere escuchada</string>
     <string name="history_duration_seconds">%1$s s</string>
-    <string name="top_albums">Mejores álbumes</string>
     <string name="stats_top_songs">Mejores canciones</string>
     <string name="stats_show_all_songs">Mostrar todas las canciones %1$d</string>
     <string name="stats_show_top_songs">Mostrar los 5 primeros puestos</string>
