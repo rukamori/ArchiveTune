@@ -1025,6 +1025,55 @@
     <string name="download_failed_state">Download failed</string>
     <string name="search_downloads">Search downloads</string>
     <string name="no_matching_downloads">No matching downloads</string>
+    <string name="no_downloads_body">Download songs, albums, or playlists to listen without a connection.</string>
+    <string name="no_downloads_in_progress_body">Active, paused, and failed downloads appear here.</string>
+    <string name="no_matching_downloads_body">Try a different search or filter.</string>
+    <string name="clear_filters">Clear filters</string>
+    <string name="view_downloaded">View downloaded</string>
+    <string name="download_storage_used">%1$s on this device</string>
+    <string name="download_meta_separator">" · "</string>
+    <string name="download_count">%1$d</string>
+    <string name="download_paused_state">Paused</string>
+    <string name="download_paused_progress">Paused · %1$d%%</string>
+    <string name="download_waiting_state">Waiting to download</string>
+    <string name="cancel_download">Cancel download</string>
+    <string name="cancel_downloads_title">Cancel downloads?</string>
+    <string name="cancel_downloads_action">Cancel downloads</string>
+    <string name="keep_downloading">Keep downloading</string>
+    <string name="cancel_all_downloads_confirm">Every download in progress will stop and partially downloaded files will be deleted.</string>
+    <string name="cancel_download_section_confirm">All downloads in this section will stop and partially downloaded files will be deleted.</string>
+    <string name="pause_all_downloads">Pause all</string>
+    <string name="resume_all_downloads">Resume all</string>
+    <string name="retry_failed_downloads">Retry failed</string>
+    <string name="cancel_all_downloads">Cancel all</string>
+    <string name="remove_all_downloads">Remove all</string>
+    <string name="select_download">Select</string>
+    <string name="show_download_tracks">Show tracks</string>
+    <string name="hide_download_tracks">Hide tracks</string>
+    <string name="sort_downloads">Sort downloads</string>
+    <string name="download_nothing_to_play">Nothing downloaded to play yet</string>
+    <string name="download_added_to_queue">Added to queue</string>
+    <string name="download_playing_next">Will play next</string>
+    <plurals name="n_songs_offline">
+        <item quantity="one">%d song offline</item>
+        <item quantity="other">%d songs offline</item>
+    </plurals>
+    <plurals name="n_downloads_active">
+        <item quantity="one">%d download in progress</item>
+        <item quantity="other">%d downloads in progress</item>
+    </plurals>
+    <plurals name="n_downloads_failed">
+        <item quantity="one">%d failed</item>
+        <item quantity="other">%d failed</item>
+    </plurals>
+    <plurals name="remove_downloads_selection_confirm">
+        <item quantity="one">Remove %d selected download? This action cannot be undone.</item>
+        <item quantity="other">Remove %d selected downloads? This action cannot be undone.</item>
+    </plurals>
+    <plurals name="cancel_downloads_selection_confirm">
+        <item quantity="one">%d selected download will stop and its partial file will be deleted.</item>
+        <item quantity="other">%d selected downloads will stop and their partial files will be deleted.</item>
+    </plurals>
     <string name="permissions_title">Allow ArchiveTune to work best</string>
     <string name="permissions_subtitle">We use a few permissions to play and manage your music reliably. You can change these anytime in system settings.</string>
     <string name="permission_storage_title">Storage access</string>
