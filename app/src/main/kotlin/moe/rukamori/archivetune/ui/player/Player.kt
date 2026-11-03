@@ -12,7 +12,6 @@ package moe.rukamori.archivetune.ui.player
 import android.content.Context
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
@@ -113,7 +112,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -956,26 +954,7 @@ fun BottomSheetPlayer(
             }
         }
     }
-    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
 
-    val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5) {
-            0.dp
-        } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-            88.dp +
-                (if (showCodecOnPlayer) 24.dp else 0.dp) +
-                (if (sleepTimerEnabled) 42.dp else 0.dp)
-        } else if (playerDesignStyle == PlayerDesignStyle.V10) {
-            if (isPortrait) (if (showCodecOnPlayer) 94.dp else 78.dp) else 0.dp
-        } else if (playerDesignStyle == PlayerDesignStyle.V7) {
-            72.dp
-        } else if (showCodecOnPlayer) {
-            88.dp
-        } else {
-            QueuePeekHeight
-        }
-
-    val queueCollapsedHeight = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     val queueVisible by queueViewModel.isQueueVisible.collectAsStateWithLifecycle()
 
     LaunchedEffect(state, queueViewModel) {
@@ -1317,7 +1296,29 @@ fun BottomSheetPlayer(
 // distance
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            if (maxWidth > maxHeight) {
+            val isLandscape = maxWidth > maxHeight
+            val isPortrait = !isLandscape
+
+            val dynamicQueuePeekHeight =
+                if (playerDesignStyle == PlayerDesignStyle.V5) {
+                    0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+                    88.dp +
+                        (if (showCodecOnPlayer) 24.dp else 0.dp) +
+                        (if (sleepTimerEnabled) 42.dp else 0.dp)
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    if (isPortrait) (if (showCodecOnPlayer) 94.dp else 78.dp) else 0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V7) {
+                    72.dp
+                } else if (showCodecOnPlayer) {
+                    88.dp
+                } else {
+                    QueuePeekHeight
+                }
+
+            val queueCollapsedHeight = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+
+            if (isLandscape) {
                 if (playerDesignStyle == PlayerDesignStyle.V5) {
                     val littleBackground = MaterialTheme.colorScheme.primaryContainer
                     val littleTextColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1907,21 +1908,20 @@ fun BottomSheetPlayer(
                     }
                 }
             }
+            QueueFooter(
+                playerBottomSheetState = state,
+                navController = navController,
+                viewModel = queueViewModel,
+                peekHeight = dynamicQueuePeekHeight,
+                onExpandQueue = openQueue,
+                onShowLyrics = { isLyricsScreenVisible = true },
+                TextBackgroundColor = TextBackgroundColor,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                onAddToPlaylistClick = { showChoosePlaylistDialog = true },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
-
-        QueueFooter(
-            playerBottomSheetState = state,
-            navController = navController,
-            viewModel = queueViewModel,
-            peekHeight = dynamicQueuePeekHeight,
-            onExpandQueue = openQueue,
-            onShowLyrics = { isLyricsScreenVisible = true },
-            TextBackgroundColor = TextBackgroundColor,
-            textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            onAddToPlaylistClick = { showChoosePlaylistDialog = true },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
