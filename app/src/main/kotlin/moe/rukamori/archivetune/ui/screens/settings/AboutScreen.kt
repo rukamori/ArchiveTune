@@ -1833,33 +1833,43 @@ private fun ContributorGrid(
             ) {
                 val spacing = AboutSpacing.xxs
                 val columns = (maxWidth / AboutDimensions.ContributorCellMinWidth).toInt().coerceAtLeast(3)
-                val cellWidth = (maxWidth - spacing * (columns - 1)) / columns
+                val rowCount = (contributors.size + columns - 1) / columns
 
-                FlowRow(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    maxItemsInEachRow = columns,
-                    horizontalArrangement = Arrangement.spacedBy(spacing),
                     verticalArrangement = Arrangement.spacedBy(spacing),
                 ) {
-                    repeat(contributors.size) { index ->
-                        val contributor = contributors[index]
-                        val progress = reveal.getOrNull(index)
-                        ContributorCell(
-                            login = contributor.login,
-                            avatarUrl = contributor.avatarUrl,
-                            onClick = { onOpenProfile(contributor.profileUrl) },
-                            modifier =
-                                Modifier
-                                    .width(cellWidth)
-                                    .graphicsLayer {
-                                        val value = progress?.value ?: 1f
-                                        val scale = AboutMotion.ContributorStartScale +
-                                            (1f - AboutMotion.ContributorStartScale) * value
-                                        alpha = value.coerceIn(0f, 1f)
-                                        scaleX = scale
-                                        scaleY = scale
-                                    },
-                        )
+                    repeat(rowCount) { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(spacing),
+                        ) {
+                            repeat(columns) { column ->
+                                val index = row * columns + column
+                                if (index < contributors.size) {
+                                    val contributor = contributors[index]
+                                    val progress = reveal.getOrNull(index)
+                                    ContributorCell(
+                                        login = contributor.login,
+                                        avatarUrl = contributor.avatarUrl,
+                                        onClick = { onOpenProfile(contributor.profileUrl) },
+                                        modifier =
+                                            Modifier
+                                                .weight(1f)
+                                                .graphicsLayer {
+                                                    val value = progress?.value ?: 1f
+                                                    val scale = AboutMotion.ContributorStartScale +
+                                                        (1f - AboutMotion.ContributorStartScale) * value
+                                                    alpha = value.coerceIn(0f, 1f)
+                                                    scaleX = scale
+                                                    scaleY = scale
+                                                },
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             }
