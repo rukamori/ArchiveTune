@@ -719,7 +719,6 @@
     <string name="new_version_available">גרסה חדשה זמינה</string>
     <string name="updates">עדכונים</string>
     <string name="current_version">גרסה נוכחית</string>
-    <string name="latest_version_format">אחרון: %s</string>
     <string name="updates_status_current">אתה נמצא בגרסה הזמינה האחרונה</string>
     <string name="enable_update_notification">הפעל התראות עדכון</string>
     <string name="update_channel">עדכון ערוץ</string>
@@ -866,7 +865,6 @@
     <string name="onboarding_foss_variant">מהדורת FOSS</string>
     <string name="onboarding_version_label">גרסה %1$s</string>
     <string name="onboarding_empty_title">הגדרה לא זמינה</string>
-    <string name="onboarding_empty_subtitle">המשך ל-ArchiveTune.</string>
     <string name="onboarding_error_generic">לא ניתן היה לטעון את ההגדרות</string>
     <string name="onboarding_permission_allowed_by_install">מורשה על ידי התקנה</string>
     <string name="onboarding_permission_unavailable">לא זמין</string>

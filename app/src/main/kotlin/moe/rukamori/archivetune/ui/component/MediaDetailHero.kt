@@ -248,7 +248,7 @@ public fun MediaDetailHero(
 }
 
 @Composable
-private fun MediaDetailRemovalConfirmationDialog(
+internal fun MediaDetailRemovalConfirmationDialog(
     title: String,
     @StringRes removeContentDescription: Int,
     onDismiss: () -> Unit,

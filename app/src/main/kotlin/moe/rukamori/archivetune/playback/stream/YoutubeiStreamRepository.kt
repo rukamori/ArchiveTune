@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import timber.log.Timber
 import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,6 +43,7 @@ class YoutubeiStreamRepository
                     interceptors = listOf(NetworkGatekeeper),
                 )
             }
+        private val gvsPoTokenBindings = ConcurrentHashMap<String, GvsPoTokenBinding>()
 
         override suspend fun resolve(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(
@@ -142,13 +144,30 @@ class YoutubeiStreamRepository
                     throw failure
                 }
 
-            val streamUrl = resolved.url.toHttpUrlOrNull()
+            val sessionPoToken = authState.poTokenGvsSession
+            val resolvedUrl = resolved.url.toHttpUrlOrNull()
+            val sessionBoundUrl =
+                resolvedUrl?.takeIf { url ->
+                    preferredGvsPoTokenBinding(authState.streamCacheFingerprint) == GvsPoTokenBinding.SESSION &&
+                        !sessionPoToken.isNullOrBlank() &&
+                        !url.queryParameter("pot").isNullOrBlank() &&
+                        url.queryParameter("pot") != sessionPoToken
+                }?.newBuilder()
+                    ?.setQueryParameter("pot", sessionPoToken)
+                    ?.build()
+            val streamUrl = sessionBoundUrl ?: resolvedUrl
             val streamToken = streamUrl?.queryParameter("pot")
+            val gvsPoTokenBinding =
+                when {
+                    streamToken.isNullOrBlank() -> null
+                    streamToken == sessionPoToken -> GvsPoTokenBinding.SESSION
+                    else -> GvsPoTokenBinding.VIDEO
+                }
             val tokenBinding =
                 when {
                     streamToken.isNullOrBlank() -> "missing"
+                    streamToken == sessionPoToken -> "session"
                     streamToken == authState.poTokenGvs && authState.poTokenGvsVideoId == request.mediaId -> "video"
-                    streamToken == authState.poTokenGvsSession -> "session"
                     else -> "other"
                 }
             Timber.tag("YoutubeiResolver").d(
@@ -166,7 +185,7 @@ class YoutubeiStreamRepository
                 YouTube.streamOkHttpProxy.type().name,
             )
             return ResolvedAudioStream(
-                url = resolved.url,
+                url = sessionBoundUrl?.toString() ?: resolved.url,
                 requestHeaders = resolved.requestHeaders,
                 formatId = resolved.formatId,
                 mimeType = resolved.mimeType,
@@ -184,6 +203,30 @@ class YoutubeiStreamRepository
                 loudnessDb = resolved.loudnessDb,
                 perceptualLoudnessDb = resolved.perceptualLoudnessDb,
                 playbackTrackingUrl = resolved.playbackTrackingUrl,
+                gvsPoTokenBinding = gvsPoTokenBinding,
+            )
+        }
+
+        private fun preferredGvsPoTokenBinding(authFingerprint: String): GvsPoTokenBinding =
+            gvsPoTokenBindings[authFingerprint] ?: GvsPoTokenBinding.VIDEO
+
+        internal fun reportRejectedGvsPoToken(
+            authFingerprint: String,
+            rejectedBinding: GvsPoTokenBinding,
+        ) {
+            val alternateBinding =
+                when (rejectedBinding) {
+                    GvsPoTokenBinding.VIDEO -> GvsPoTokenBinding.SESSION
+                    GvsPoTokenBinding.SESSION -> GvsPoTokenBinding.VIDEO
+                }
+            val preferredBinding =
+                gvsPoTokenBindings.compute(authFingerprint) { _, current ->
+                    if ((current ?: GvsPoTokenBinding.VIDEO) == rejectedBinding) alternateBinding else current
+                } ?: GvsPoTokenBinding.VIDEO
+            Timber.tag("YoutubeiResolver").w(
+                "Stream rejected %s-bound PO token; preferring %s-bound token",
+                rejectedBinding,
+                preferredBinding,
             )
         }
 

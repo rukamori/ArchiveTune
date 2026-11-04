@@ -3,11 +3,9 @@
     <string name="explore">עיון</string>
     <string name="local_history">מקומי</string>
     <string name="music_recognition_tap_to_listen">הקש להאזנה</string>
-    <string name="music_recognition_signature_failed">לא ניתן היה להפיק חתימה</string>
     <string name="music_recognition_no_match">לא נמצאה התאמה</string>
     <string name="music_recognition_permission_desc">אפשר גישה למיקרופון כדי לזהות מוזיקה בקרבת מקום.</string>
     <string name="music_recognition_lyrics_preview">תצוגה מקדימה של מילות השיר</string>
-    <string name="music_recognition_recognition_failed">הזיהוי נכשל</string>
     <string name="music_recognition_listening">מקשיב…</string>
     <string name="music_recognition_open_shazam">פתיחת \"Shazam\"</string>
     <string name="music_recognition_permission_title">הרשאת מיקרופון</string>

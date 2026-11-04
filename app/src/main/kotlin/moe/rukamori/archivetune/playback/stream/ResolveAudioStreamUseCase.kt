@@ -316,6 +316,22 @@ class ResolveAudioStreamUseCase
             cache.entries.removeIf { it.value.url == url }
         }
 
+        fun reportRejectedStream(url: String): Boolean {
+            if (YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(url)) return false
+            val rejected =
+                cache.values.firstOrNull { it.url == url && it.source == StreamSource.YOUTUBEI }
+                    ?: return false
+            val rejectedBinding = rejected.gvsPoTokenBinding ?: return false
+            youtubeiRepository.reportRejectedGvsPoToken(rejected.authFingerprint, rejectedBinding)
+            synchronized(inFlightLock) {
+                cache.entries.removeIf {
+                    it.value.authFingerprint == rejected.authFingerprint &&
+                        it.value.gvsPoTokenBinding == rejectedBinding
+                }
+            }
+            return true
+        }
+
         fun invalidateSession() {
             sessionResetRequired.set(true)
             clear()

@@ -6,8 +6,6 @@
     <string name="music_recognition_processing">بنحلل…</string>
     <string name="music_recognition_listen_again">اسمع تاني</string>
     <string name="music_recognition_no_match">ملقناش تطابق</string>
-    <string name="music_recognition_signature_failed">معرفناش نطلع بصمة صوتية</string>
-    <string name="music_recognition_recognition_failed">فشل التعرف</string>
     <string name="music_recognition_open_shazam">افتح شازام</string>
     <string name="music_recognition_lyrics_preview">معاينة الكلمات</string>
     <string name="music_recognition_permission_title">صلاحية المايك</string>
@@ -412,7 +410,6 @@
     <string name="settings_stats_title">إحصائيات الاستماع</string>
     <string name="settings_stats_subtitle">أحلى أغانيك، فنانينك، وسجل التشغيل بتاعك</string>
     <string name="top_songs">أفضل الأغاني</string>
-    <string name="top_albums">أفضل الألبومات</string>
     <string name="year_in_music">حصاد السنة في المزيكا</string>
     <string name="top_artists">أفضل الفنانين</string>
     <string name="share_summary">مشاركة الملخص</string>
@@ -550,15 +547,12 @@
     <string name="about_content_desc_telegram">تليجرام</string>
     <string name="about_content_desc_donate">تبرع</string>
     <string name="music_recognition_settings">إعدادات التعرف على المزيكا</string>
-    <string name="music_recognition_background_title">التعرف في الخلفية</string>
-    <string name="music_recognition_background_foss_description">التعرف في الخلفية مش متاح في نسخة FOSS. زر الإعدادات السريعة هيفتح شاشة التعرف بدالها.</string>
     <string name="music_recognition_notification_channel_name">التعرف على المزيكا</string>
     <string name="music_recognition_notification_channel_description">تقدم ونتائج التعرف على المزيكا</string>
     <string name="music_recognition_notification_status_listening">جاري الاستماع</string>
     <string name="music_recognition_notification_status_processing">جاري المعالجة</string>
     <string name="music_recognition_notification_status_result">النتيجة</string>
     <string name="music_recognition_notification_listening_title">بنسمع المزيكا</string>
-    <string name="music_recognition_notification_listening_text">جاري التقاط الصوت الشغال على الجهاز</string>
     <string name="music_recognition_notification_processing_title">جاري معالجة الصوت</string>
     <string name="music_recognition_notification_processing_text">جاري مطابقة البصمة الصوتية للصوت الملتقط</string>
     <string name="music_recognition_notification_artist">الفنان: %1$s</string>
@@ -567,11 +561,8 @@
     <string name="music_recognition_notification_release">تاريخ الإصدار: %1$s</string>
     <string name="music_recognition_notification_label">شركة الإنتاج: %1$s</string>
     <string name="music_recognition_notification_isrc">رمز ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">ملقناش أي أغنية</string>
-    <string name="music_recognition_notification_recording_failed_title">معرفناش نسجل صوت الجهاز</string>
     <string name="music_recognition_notification_signature_failed_text">الصوت المتسجل مفيش فيه مزيكا كافية عشان نعرفها.</string>
     <string name="music_recognition_notification_recognition_failed_text">خدمة التعرف معرفتش توصل للصوت ده. جرب تاني كمان شوية.</string>
-    <string name="show_lyrics_player_controls">إظهار أزرار تحكم المشغل</string>
     <string name="lyrics_background_style">شكل خلفية الكلمات</string>
     <string name="lyrics_background_default">الافتراضي</string>
     <string name="latest_release">أحدث إصدار</string>
@@ -587,7 +578,5 @@
     <string name="stats_listening_patterns">أنماط الاستماع</string>
     <string name="stats_artist_breakdown">تفصيل الفنانين</string>
     <string name="about_position_yuki">dummy reze | مدير</string>
-    <string name="music_recognition_background_description">لما تفعل الميزة دي، زر الإعدادات السريعة هيتعرف على الصوت الشغال على الجهاز من غير ما تفتح ArchiveTune.</string>
     <string name="music_recognition_notification_no_match_text">خلي المزيكا شغالة بوضوح وجرب التعرف تاني.</string>
-    <string name="music_recognition_notification_recording_failed_text">التطبيق اللي شغال التاني ممكن يكون حاطط حماية مانعة تسجيل الصوت، أو المزيكا وقفت.</string>
 </resources>

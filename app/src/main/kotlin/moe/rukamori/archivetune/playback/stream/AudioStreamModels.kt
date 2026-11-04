@@ -20,6 +20,11 @@ enum class StreamSource {
     MODULE,
 }
 
+enum class GvsPoTokenBinding {
+    VIDEO,
+    SESSION,
+}
+
 data class AudioStreamRequest(
     val mediaId: String,
     val playlistId: String? = null,
@@ -52,6 +57,7 @@ data class ResolvedAudioStream(
     val loudnessDb: Double? = null,
     val perceptualLoudnessDb: Double? = null,
     val playbackTrackingUrl: String? = null,
+    val gvsPoTokenBinding: GvsPoTokenBinding? = null,
     val moduleSelection: moe.rukamori.archivetune.modules.ModuleAudioSelection? = null,
 )
 

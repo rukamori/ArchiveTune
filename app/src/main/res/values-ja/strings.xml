@@ -846,7 +846,6 @@
     <string name="new_version_available">新しいバージョンが利用可能になりました</string>
     <string name="updates">アップデート</string>
     <string name="current_version">現在のバージョン</string>
-    <string name="latest_version_format">Latest: %s</string>
     <string name="updates_status_current">利用可能な最新リリースを使用しています</string>
     <string name="enable_update_notification">更新通知を有効にする</string>
     <string name="enable_update_notification_channel_desc">選択したチャンネルで新しいリリースが利用可能になったときに通知を受け取る</string>
@@ -896,7 +895,6 @@
     <string name="onboarding_foss_variant">FOSS編</string>
     <string name="onboarding_version_label">バージョン %1$s</string>
     <string name="onboarding_empty_title">セットアップが利用できません</string>
-    <string name="onboarding_empty_subtitle">ArchiveTune に進みます。</string>
     <string name="onboarding_error_generic">セットアップを読み込めませんでした</string>
     <string name="onboarding_permission_allowed_by_install">インストールにより許可される</string>
     <string name="onboarding_permission_unavailable">利用不可</string>

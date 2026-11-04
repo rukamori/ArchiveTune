@@ -88,12 +88,19 @@ data class TeamMemberCollection private constructor(
     }
 }
 
+enum class AboutLinkEmphasis {
+    STANDARD,
+    PRIMARY,
+    ACCENT,
+}
+
 @Immutable
 data class AboutLinkUiModel(
     val id: String,
     @DrawableRes val iconResId: Int,
     @StringRes val labelResId: Int,
     val url: String,
+    val emphasis: AboutLinkEmphasis = AboutLinkEmphasis.STANDARD,
 )
 
 @Immutable
@@ -417,6 +424,7 @@ class AboutViewModel
                             iconResId = R.drawable.github,
                             labelResId = R.string.about_content_desc_github,
                             url = "https://github.com/rukamori/ArchiveTune",
+                            emphasis = AboutLinkEmphasis.PRIMARY,
                         ),
                         AboutLinkUiModel(
                             id = "website",
@@ -435,6 +443,7 @@ class AboutViewModel
                             iconResId = R.drawable.coffee,
                             labelResId = R.string.about_content_desc_donate,
                             url = "https://miuka.moe/donate",
+                            emphasis = AboutLinkEmphasis.ACCENT,
                         ),
                         AboutLinkUiModel(
                             id = "discord",

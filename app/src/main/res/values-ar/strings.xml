@@ -890,7 +890,6 @@
     <string name="new_version_available">إصدار جديد متوفر</string>
     <string name="updates">التحديثات</string>
     <string name="current_version">الإصدار الحالي</string>
-    <string name="latest_version_format">الأحدث: %s</string>
     <string name="updates_status_current">أنت على أحدث إصدار متاح</string>
     <string name="enable_update_notification">تفعيل إشعارات التحديث</string>
     <string name="enable_update_notification_channel_desc">تلقي إشعارات عند توفر إصدار جديد في القناة المحددة</string>
@@ -940,7 +939,6 @@
     <string name="onboarding_foss_variant">نسخة FOSS</string>
     <string name="onboarding_version_label">الإصدار %1$s</string>
     <string name="onboarding_empty_title">الإعداد غير متاح</string>
-    <string name="onboarding_empty_subtitle">المتابعة إلى ArchiveTune.</string>
     <string name="onboarding_error_generic">تعذر تحميل الإعداد</string>
     <string name="onboarding_permission_allowed_by_install">مسموح به عند التثبيت</string>
     <string name="onboarding_permission_unavailable">غير متاح</string>

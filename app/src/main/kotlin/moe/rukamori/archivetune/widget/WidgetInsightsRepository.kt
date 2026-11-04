@@ -36,6 +36,11 @@ internal class WidgetInsightsRepository
                     topMixes = database.libraryTopMixes(limit = 4).first(),
                 )
             }
+
+        suspend fun recentSongs(limit: Int): List<Song> =
+            withContext(Dispatchers.IO) {
+                database.recentSongs(limit = limit).first()
+            }
     }
 
 internal data class WidgetInsightsData(

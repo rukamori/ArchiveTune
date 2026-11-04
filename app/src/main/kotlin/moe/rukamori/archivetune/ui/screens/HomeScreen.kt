@@ -12,9 +12,10 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,15 +25,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +47,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
@@ -50,6 +56,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -73,11 +80,10 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
 private val HomeFeedMaxWidth = 1_200.dp
-private val HomeSectionSpacing = 18.dp
+private val HomeSectionSpacing = 28.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -112,7 +118,7 @@ fun HomeScreen(
     }
 
     val lazyListState = rememberLazyListState()
-    val forgottenFavoritesGridState = rememberLazyGridState()
+    val forgottenFavoritesListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
@@ -147,7 +153,7 @@ fun HomeScreen(
 
     LaunchedEffect(uiState?.forgottenFavorites) {
         if (uiState != null) {
-            forgottenFavoritesGridState.scrollToItem(0)
+            forgottenFavoritesListState.scrollToItem(0)
         }
     }
 
@@ -216,7 +222,7 @@ fun HomeScreen(
                     haptic = haptic,
                     scope = scope,
                     lazyListState = lazyListState,
-                    forgottenFavoritesGridState = forgottenFavoritesGridState,
+                    forgottenFavoritesListState = forgottenFavoritesListState,
                     onAction = viewModel::onAction,
                 )
             }
@@ -246,27 +252,42 @@ private fun HomeStatePane(
             modifier = Modifier.padding(32.dp),
         ) {
             if (showLoadingIndicator) {
-                LoadingIndicator()
+                ContainedLoadingIndicator()
             } else {
                 iconResId?.let {
-                    Icon(
-                        painter = painterResource(it),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp),
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .size(112.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = MaterialShapes.Cookie9Sided.toShape(),
+                                ),
+                    ) {
+                        Icon(
+                            painter = painterResource(it),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(48.dp),
+                        )
+                    }
                 }
                 messageResId?.let {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     Text(
                         text = stringResource(it),
-                        style = MaterialTheme.typography.titleLargeEmphasized,
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
                         color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
                     )
                 }
                 if (actionResId != null && onAction != null) {
-                    Spacer(Modifier.height(20.dp))
-                    FilledTonalButton(onClick = onAction) {
+                    Spacer(Modifier.height(24.dp))
+                    Button(
+                        onClick = onAction,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Text(stringResource(actionResId))
                     }
                 }
@@ -289,8 +310,8 @@ private fun HomeContent(
     menuState: MenuState,
     haptic: HapticFeedback,
     scope: CoroutineScope,
-    lazyListState: androidx.compose.foundation.lazy.LazyListState,
-    forgottenFavoritesGridState: LazyGridState,
+    lazyListState: LazyListState,
+    forgottenFavoritesListState: LazyListState,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -298,24 +319,35 @@ private fun HomeContent(
         uiState
             .takeIf { it.quickPicksMode == QuickPicks.QUICK_PICKS }
             ?.remoteQuickPicks
-    val tonalStart = MaterialTheme.colorScheme.primaryContainer
-    val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
+    val primaryGlow = MaterialTheme.colorScheme.primaryContainer
+    val tertiaryGlow = MaterialTheme.colorScheme.tertiaryContainer
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.showTonalBackdrop) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(430.dp)
+                        .height(520.dp)
                         .align(Alignment.TopCenter)
                         .drawWithCache {
-                            val brush =
-                                Brush.verticalGradient(
-                                    0f to tonalStart.copy(alpha = 0.30f),
-                                    0.42f to tonalMiddle.copy(alpha = 0.14f),
+                            val primaryBrush =
+                                Brush.radialGradient(
+                                    0f to primaryGlow.copy(alpha = 0.55f),
                                     1f to Color.Transparent,
+                                    center = Offset(size.width * 0.12f, size.height * 0.16f),
+                                    radius = size.height * 0.7f,
                                 )
-                            onDrawBehind { drawRect(brush) }
+                            val tertiaryBrush =
+                                Brush.radialGradient(
+                                    0f to tertiaryGlow.copy(alpha = 0.42f),
+                                    1f to Color.Transparent,
+                                    center = Offset(size.width * 0.94f, size.height * 0.34f),
+                                    radius = size.height * 0.5f,
+                                )
+                            onDrawBehind {
+                                drawRect(primaryBrush)
+                                drawRect(tertiaryBrush)
+                            }
                         },
             )
         }
@@ -325,19 +357,7 @@ private fun HomeContent(
             onRefresh = { onAction(HomeAction.Refresh) },
             modifier = Modifier.fillMaxSize(),
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val forgottenItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
-                val forgottenItemWidth = maxWidth.coerceAtMost(HomeFeedMaxWidth) * forgottenItemWidthFactor
-                val forgottenSnapLayoutInfoProvider =
-                    remember(forgottenFavoritesGridState, forgottenItemWidthFactor) {
-                        SnapLayoutInfoProvider(
-                            lazyGridState = forgottenFavoritesGridState,
-                            positionInLayout = { layoutSize, itemSize ->
-                                layoutSize * forgottenItemWidthFactor / 2f - itemSize / 2f
-                            },
-                        )
-                    }
-
+            Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = lazyListState,
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -520,22 +540,33 @@ private fun HomeContent(
                             key = "home_account_playlists",
                             contentType = "media_shelf",
                         ) {
-                            Column(modifier = Modifier.animateItem()) {
-                                AccountPlaylistsTitle(
-                                    accountName = uiState.accountName,
-                                    accountImageUrl = uiState.accountImageUrl,
-                                    onClick = { navController.navigate("account") },
-                                )
-                                AccountPlaylistsSection(
-                                    accountPlaylists = uiState.accountPlaylists,
-                                    mediaMetadata = mediaMetadata,
-                                    isPlaying = isPlaying,
-                                    navController = navController,
-                                    playerConnection = playerConnection,
-                                    menuState = menuState,
-                                    haptic = haptic,
-                                    scope = scope,
-                                )
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                shape = MaterialTheme.shapes.extraLarge,
+                                modifier =
+                                    Modifier
+                                        .animateItem()
+                                        .padding(horizontal = 12.dp)
+                                        .fillMaxWidth(),
+                            ) {
+                                Column(modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+                                    AccountPlaylistsTitle(
+                                        accountName = uiState.accountName,
+                                        accountImageUrl = uiState.accountImageUrl,
+                                        onClick = { navController.navigate("account") },
+                                    )
+                                    AccountPlaylistsSection(
+                                        accountPlaylists = uiState.accountPlaylists,
+                                        mediaMetadata = mediaMetadata,
+                                        isPlaying = isPlaying,
+                                        navController = navController,
+                                        playerConnection = playerConnection,
+                                        menuState = menuState,
+                                        haptic = haptic,
+                                        scope = scope,
+                                        contentPadding = PaddingValues(horizontal = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -559,9 +590,7 @@ private fun HomeContent(
                                 forgottenFavorites = uiState.forgottenFavorites,
                                 mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
-                                horizontalLazyGridItemWidth = forgottenItemWidth,
-                                lazyGridState = forgottenFavoritesGridState,
-                                snapLayoutInfoProvider = forgottenSnapLayoutInfoProvider,
+                                state = forgottenFavoritesListState,
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,

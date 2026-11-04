@@ -28,6 +28,12 @@
     <string name="account_sign_out">Sign out</string>
     <string name="account_navigate_back">Go back</string>
     <string name="account_login_description">Log in to YouTube Music to access your library and sync your listening history.</string>
+    <string name="account_section_sync">Sync &amp; browsing</string>
+    <string name="account_section_connected">Connected services</string>
+    <string name="account_section_security">Privacy &amp; security</string>
+    <string name="account_sign_out_summary">Remove this session from the device</string>
+    <string name="account_sign_out_dialog_title">Sign out of YouTube Music?</string>
+    <string name="account_sign_out_dialog_text">You will need to log in again to sync your library. Accounts you saved stay available in the account switcher.</string>
     <string name="quick_picks">Quick picks</string>
     <string name="speed_dial">Speed dial</string>
     <string name="forgotten_favorites">Forgotten favorites</string>
@@ -176,6 +182,13 @@
     <string name="widget_no_recent_songs">No recent songs yet</string>
     <string name="widget_no_genres">No genres yet</string>
     <string name="widget_no_recommendations">No recommendations yet</string>
+    <string name="widget_now_playing">Now playing</string>
+    <string name="widget_up_next">Up next</string>
+    <string name="widget_queue_empty">Nothing queued after this song</string>
+    <string name="widget_open">Open</string>
+    <string name="widget_last_30_days">Last 30 days</string>
+    <string name="widget_listening_time_label">Listening time</string>
+    <string name="widget_plays_label">Played</string>
     <string name="play_next">Play next</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="add_to_library">Add to library</string>
@@ -532,6 +545,17 @@
     <string name="playback_error_http" translatable="false">HTTP</string>
     <string name="playback_error_message" translatable="false">Message</string>
     <string name="playback_error_cause" translatable="false">Cause</string>
+    <string name="playback_error_decoder_title">Can\'t decode this track</string>
+    <string name="playback_error_http_title">Server error</string>
+    <string name="playback_error_hint_no_internet">Check your Wi-Fi or mobile data connection, then try again.</string>
+    <string name="playback_error_hint_timeout">The server took too long to respond. Trying again usually helps.</string>
+    <string name="playback_error_hint_no_stream">ArchiveTune couldn\'t get a playable stream for this track. Try again, or play something else.</string>
+    <string name="playback_error_hint_malformed_stream">The stream source returned data that couldn\'t be read. Try again in a moment.</string>
+    <string name="playback_error_hint_decoder">This device couldn\'t decode the audio of this track.</string>
+    <string name="playback_error_hint_http">The server responded with HTTP %1$d. Try again in a moment.</string>
+    <string name="playback_error_hint_unknown">Something went wrong while playing this track. The technical details can help when reporting it.</string>
+    <string name="playback_error_show_details">Show technical details</string>
+    <string name="playback_error_hide_details">Hide technical details</string>
     <string name="content_language">Default content language</string>
     <string name="content_country">Default content country</string>
     <string name="system_default">System default</string>
@@ -687,6 +711,13 @@
     <string name="eq_percent">%1$d%%</string>
     <string name="eq_frequency_hertz">%1$d Hz</string>
     <string name="eq_frequency_kilohertz">%1$.1f kHz</string>
+    <string name="eq_decibels_compact">%1$+.1f</string>
+    <string name="eq_response_curve">Frequency response curve</string>
+    <string name="eq_custom_sound">Custom sound</string>
+    <string name="eq_output_gain_managed">Managed by automatic headroom</string>
+    <string name="eq_no_profiles">No saved profiles yet. Save the current sound to reuse it later.</string>
+    <string name="eq_turn_on_to_adjust">Turn on sound shaping to adjust these controls</string>
+    <string name="eq_reset_to_zero">Reset to 0 dB</string>
     <string name="storage">Storage</string>
     <string name="smart_trimmer">Smart Trimmer</string>
     <string name="smart_trimmer_description">Smart trimmer dynamically manages the image cache and song cache, pruning old entries to save disk space.</string>
@@ -887,6 +918,7 @@
     <string name="app_update_release_notes">What’s new</string>
     <string name="app_update_release_date">Released %1$s</string>
     <string name="app_update_download_size">Download size: %1$s</string>
+    <string name="app_update_install_from_release_page">Installs from the release page</string>
     <string name="app_update_transfer_progress">%1$s of %2$s · %3$d%%</string>
     <string name="app_update_transfer_bytes">%1$s downloaded</string>
     <string name="app_update_cancel_download">Cancel download</string>
@@ -980,7 +1012,6 @@
     <string name="new_version_available">New version available</string>
     <string name="updates">Updates</string>
     <string name="current_version">Current Version</string>
-    <string name="latest_version_format">Latest: %s</string>
     <string name="updates_status_current">You are on the latest available release</string>
     <string name="automatic_update_checks">Automatic Updates Check</string>
     <string name="automatic_update_checks_desc">Check automatically for optional updates. Required updates are always checked.</string>
@@ -996,6 +1027,21 @@
     <string name="updates_loading_commits">Loading recent commits</string>
     <string name="updates_recent_commits_count">%1$d recent commits</string>
     <string name="updates_no_commits">No recent commits found</string>
+    <string name="updates_status_available_title">Update available</string>
+    <string name="updates_status_current_title">You\'re up to date</string>
+    <string name="updates_status_unchecked_title">Not checked yet</string>
+    <string name="updates_status_available_desc">A newer release is ready to download.</string>
+    <string name="updates_latest_version">Latest Version</string>
+    <string name="updates_latest_version_unknown">Unknown</string>
+    <string name="updates_get_update">Get Update</string>
+    <string name="updates_preferences">Preferences</string>
+    <string name="updates_commit_branch">dev branch</string>
+    <string name="updates_commits_error">Couldn\'t load recent commits</string>
+    <string name="updates_commit_meta">%1$s · %2$s</string>
+    <string name="updates_commit_date_unknown">Date unavailable</string>
+    <string name="updates_open_commit">Open commit</string>
+    <string name="updates_history_expanded">Expanded</string>
+    <string name="updates_history_collapsed">Collapsed</string>
     <string name="changelog">Changelog</string>
     <string name="view_changelog">View Changelog</string>
     <string name="check_for_update">Check for Update</string>
@@ -1019,6 +1065,55 @@
     <string name="download_failed_state">Download failed</string>
     <string name="search_downloads">Search downloads</string>
     <string name="no_matching_downloads">No matching downloads</string>
+    <string name="no_downloads_body">Download songs, albums, or playlists to listen without a connection.</string>
+    <string name="no_downloads_in_progress_body">Active, paused, and failed downloads appear here.</string>
+    <string name="no_matching_downloads_body">Try a different search or filter.</string>
+    <string name="clear_filters">Clear filters</string>
+    <string name="view_downloaded">View downloaded</string>
+    <string name="download_storage_used">%1$s on this device</string>
+    <string name="download_meta_separator">" · "</string>
+    <string name="download_count">%1$d</string>
+    <string name="download_paused_state">Paused</string>
+    <string name="download_paused_progress">Paused · %1$d%%</string>
+    <string name="download_waiting_state">Waiting to download</string>
+    <string name="cancel_download">Cancel download</string>
+    <string name="cancel_downloads_title">Cancel downloads?</string>
+    <string name="cancel_downloads_action">Cancel downloads</string>
+    <string name="keep_downloading">Keep downloading</string>
+    <string name="cancel_all_downloads_confirm">Every download in progress will stop and partially downloaded files will be deleted.</string>
+    <string name="cancel_download_section_confirm">All downloads in this section will stop and partially downloaded files will be deleted.</string>
+    <string name="pause_all_downloads">Pause all</string>
+    <string name="resume_all_downloads">Resume all</string>
+    <string name="retry_failed_downloads">Retry failed</string>
+    <string name="cancel_all_downloads">Cancel all</string>
+    <string name="remove_all_downloads">Remove all</string>
+    <string name="select_download">Select</string>
+    <string name="show_download_tracks">Show tracks</string>
+    <string name="hide_download_tracks">Hide tracks</string>
+    <string name="sort_downloads">Sort downloads</string>
+    <string name="download_nothing_to_play">Nothing downloaded to play yet</string>
+    <string name="download_added_to_queue">Added to queue</string>
+    <string name="download_playing_next">Will play next</string>
+    <plurals name="n_songs_offline">
+        <item quantity="one">%d song offline</item>
+        <item quantity="other">%d songs offline</item>
+    </plurals>
+    <plurals name="n_downloads_active">
+        <item quantity="one">%d download in progress</item>
+        <item quantity="other">%d downloads in progress</item>
+    </plurals>
+    <plurals name="n_downloads_failed">
+        <item quantity="one">%d failed</item>
+        <item quantity="other">%d failed</item>
+    </plurals>
+    <plurals name="remove_downloads_selection_confirm">
+        <item quantity="one">Remove %d selected download? This action cannot be undone.</item>
+        <item quantity="other">Remove %d selected downloads? This action cannot be undone.</item>
+    </plurals>
+    <plurals name="cancel_downloads_selection_confirm">
+        <item quantity="one">%d selected download will stop and its partial file will be deleted.</item>
+        <item quantity="other">%d selected downloads will stop and their partial files will be deleted.</item>
+    </plurals>
     <string name="permissions_title">Allow ArchiveTune to work best</string>
     <string name="permissions_subtitle">We use a few permissions to play and manage your music reliably. You can change these anytime in system settings.</string>
     <string name="permission_storage_title">Storage access</string>
@@ -1048,7 +1143,6 @@
     <string name="onboarding_foss_variant">FOSS edition</string>
     <string name="onboarding_version_label">Version %1$s</string>
     <string name="onboarding_empty_title">Setup unavailable</string>
-    <string name="onboarding_empty_subtitle">Continue to ArchiveTune.</string>
     <string name="onboarding_error_generic">Couldn\'t load setup</string>
     <string name="onboarding_permission_allowed_by_install">Allowed by install</string>
     <string name="onboarding_permission_unavailable">Unavailable</string>
@@ -1221,4 +1315,67 @@
     <string name="modules_session_verify">Verify connection</string>
     <string name="modules_session_connected">Module connection verified</string>
     <string name="modules_session_failed">Module verification failed or expired. Open module settings to try again.</string>
+    <string name="crash_report_title">Crash report</string>
+    <string name="crash_report_headline">ArchiveTune stopped unexpectedly</string>
+    <string name="crash_report_supporting">The details below describe what went wrong. Share them with the developers to help fix the problem, or restart the app.</string>
+    <string name="crash_report_diagnosis">What happened</string>
+    <string name="crash_report_device">Device</string>
+    <string name="crash_report_stack_trace">Stack trace</string>
+    <string name="crash_report_exception">Exception</string>
+    <string name="crash_report_message">Message</string>
+    <string name="crash_report_root_cause">Root cause</string>
+    <string name="crash_report_origin">Thrown at</string>
+    <string name="crash_report_no_stack_trace">No stack trace available</string>
+    <string name="crash_report_show_all_device">Show all device details</string>
+    <string name="crash_report_show_less_device">Show fewer device details</string>
+    <string name="crash_report_collapse_trace">Collapse trace</string>
+    <string name="crash_report_wrap_lines">Wrap</string>
+    <string name="crash_report_copy">Copy</string>
+    <string name="crash_report_copy_report">Copy crash report</string>
+    <string name="crash_report_restart">Restart</string>
+    <string name="crash_report_close">Close</string>
+    <string name="crash_report_restart_failed">Couldn\'t restart ArchiveTune</string>
+    <string name="crash_report_device_os">OS version</string>
+    <string name="crash_report_device_name">Phone name</string>
+    <string name="crash_report_device_model">Model</string>
+    <string name="crash_report_device_manufacturer">Manufacturer</string>
+    <string name="crash_report_device_brand">Brand</string>
+    <string name="crash_report_device_codename">Device codename</string>
+    <string name="crash_report_device_product">Product</string>
+    <string name="crash_report_device_hardware">Hardware</string>
+    <string name="crash_report_device_fingerprint">Build fingerprint</string>
+    <plurals name="crash_report_frame_count">
+        <item quantity="one">%1$d frame</item>
+        <item quantity="other">%1$d frames</item>
+    </plurals>
+    <plurals name="crash_report_show_full_trace">
+        <item quantity="one">Show full trace (%1$d line)</item>
+        <item quantity="other">Show full trace (%1$d lines)</item>
+    </plurals>
+    <string name="add_to_playlist_hint">Pick one or more playlists</string>
+    <string name="add_to_playlist_sort_label">Sort by</string>
+    <string name="add_to_playlist_create_supporting">New playlists appear in the list below</string>
+    <string name="add_to_playlist_synced_supporting">%1$s · Synced</string>
+    <string name="add_to_playlist_remove_selection">Remove from selection</string>
+    <string name="add_to_playlist_count_overflow">99+</string>
+    <string name="add_to_playlist_empty_hint">Create a playlist to start collecting songs</string>
+    <string name="add_to_playlist_no_match_hint">Try a different name</string>
+    <plurals name="add_to_playlist_n_duplicates">
+        <item quantity="one">%d song already added</item>
+        <item quantity="other">%d songs already added</item>
+    </plurals>
+    <string name="import_destination_title">Import to</string>
+    <plurals name="import_n_songs_ready">
+        <item quantity="one">%d song ready to import</item>
+        <item quantity="other">%d songs ready to import</item>
+    </plurals>
+    <string name="import_liked_songs_supporting">Like every imported song</string>
+    <string name="import_result_title">Import complete</string>
+    <string name="import_result_of_total">of %1$d</string>
+    <string name="import_result_all_success">Every song was imported</string>
+    <plurals name="import_result_some_failed">
+        <item quantity="one">%d song couldn\'t be imported</item>
+        <item quantity="other">%d songs couldn\'t be imported</item>
+    </plurals>
+    <string name="import_result_failed_items">Couldn\'t import</string>
 </resources>

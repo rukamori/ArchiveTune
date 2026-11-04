@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_motion_cookie"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:autoStart="true"
+    android:flipInterval="120"
+    android:importantForAccessibility="no"
+    android:inAnimation="@anim/widget_motion_fade_in"
+    android:outAnimation="@anim/widget_motion_fade_out">
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_0"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_0" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_1" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_2" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_3"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_3" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_4"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_4" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_5"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_5" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_6"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_6" />
+    <ImageView
+        android:id="@+id/widget_motion_cookie_frame_7"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_motion_cookie_7" />
+</ViewFlipper>

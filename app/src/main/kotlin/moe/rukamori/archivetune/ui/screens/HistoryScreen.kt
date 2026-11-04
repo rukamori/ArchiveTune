@@ -14,60 +14,42 @@
 package moe.rukamori.archivetune.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.toShape
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -79,9 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -90,12 +70,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -112,12 +90,12 @@ import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.HistoryPage
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TopSearch
@@ -127,11 +105,14 @@ import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.DateAgo
 import moe.rukamori.archivetune.viewmodels.HistoryViewModel
 import moe.rukamori.archivetune.viewmodels.RemoteHistoryUiState
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import moe.rukamori.archivetune.ui.component.IconButton as AppIconButton
 
 @Composable
@@ -144,6 +125,7 @@ fun HistoryScreen(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val animationsDisabled = LocalAnimationsDisabled.current
+    val motion = MaterialTheme.motionScheme
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
@@ -233,7 +215,6 @@ fun HistoryScreen(
             }
         }
     val activeListState = if (historySource == HistorySource.REMOTE) remoteListState else localListState
-    val motionDuration = if (animationsDisabled) 0 else 220
 
     val clearSelection =
         remember {
@@ -260,6 +241,7 @@ fun HistoryScreen(
                 }
             }
         }
+    val playedAtFormatter = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
 
     val currentVisibleCount =
         if (historySource == HistorySource.REMOTE) {
@@ -268,13 +250,104 @@ fun HistoryScreen(
             localVisibleEvents.size
         }
 
-    val historySourceDock: @Composable () -> Unit = {
-        HistorySourceDock(
-            visibleSongCount = currentVisibleCount,
-            availableSources = availableSources,
+    val localHeroEvent =
+        remember(filteredEvents) {
+            filteredEvents.entries.firstOrNull()?.let { (dateAgo, songs) ->
+                songs.firstOrNull()?.let { dateAgo to it }
+            }
+        }
+    val remoteHeroSection = filteredRemoteSections.firstOrNull()?.takeIf { it.songs.isNotEmpty() }
+    val heroTrack =
+        if (searchQuery.isNotBlank()) {
+            null
+        } else if (historySource == HistorySource.REMOTE) {
+            remoteHeroSection?.let { section ->
+                val song = section.songs.first()
+                HistoryHeroTrack(
+                    id = song.id,
+                    title = song.title,
+                    artists = song.artists.joinToString { it.name },
+                    thumbnailUrl = song.thumbnail.heroArtwork(),
+                    playedLabel = section.title,
+                )
+            }
+        } else {
+            localHeroEvent?.let { (dateAgo, event) ->
+                HistoryHeroTrack(
+                    id = event.song.id,
+                    title = event.song.song.title,
+                    artists = event.song.artists.joinToString { it.name },
+                    thumbnailUrl = event.song.song.thumbnailUrl?.heroArtwork(),
+                    playedLabel =
+                        stringResource(
+                            R.string.history_played_at,
+                            dateAgoToString(dateAgo),
+                            event.event.timestamp.format(playedAtFormatter),
+                        ),
+                )
+            }
+        }
+    val isHeroActive = heroTrack != null && heroTrack.id == mediaMetadata?.id
+
+    val playLocalSection: (DateAgo, List<EventWithSong>, Int) -> Unit = { dateAgo, songsForDate, startIndex ->
+        playerConnection.playQueue(
+            ListQueue(
+                title = dateAgoToString(dateAgo),
+                items = songsForDate.map { it.song.toMediaItem() },
+                startIndex = startIndex,
+            ),
+        )
+    }
+    val playRemoteSection: (HistoryPage.HistorySection) -> Unit = { section ->
+        playerConnection.playQueue(
+            ListQueue(
+                title = section.title,
+                items = section.songs.map { it.toMediaItem() },
+            ),
+        )
+    }
+    val shuffleVisible: () -> Unit = {
+        val items =
+            if (historySource == HistorySource.REMOTE) {
+                remoteVisibleSongs.map { it.toMediaItem() }
+            } else {
+                localVisibleEvents.map { it.song.toMediaItem() }
+            }
+        if (items.isNotEmpty()) {
+            playerConnection.playQueue(
+                ListQueue(
+                    title = context.getString(R.string.history),
+                    items = items.shuffled(),
+                ),
+            )
+        }
+    }
+    val playHero: () -> Unit = {
+        if (isHeroActive) {
+            playerConnection.player.togglePlayPause()
+        } else if (historySource == HistorySource.REMOTE) {
+            remoteHeroSection?.songs?.firstOrNull()?.let { song ->
+                playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
+            }
+        } else {
+            localHeroEvent?.let { (dateAgo, _) ->
+                playLocalSection(dateAgo, filteredEvents.getValue(dateAgo), 0)
+            }
+        }
+    }
+
+    val historyOverview: @Composable () -> Unit = {
+        HistoryOverview(
+            hero = heroTrack,
+            isHeroActive = isHeroActive,
+            isPlaying = isPlaying,
             currentSource = historySource,
+            availableSources = availableSources,
+            visibleSongCount = currentVisibleCount,
+            onHeroPlayClick = playHero,
+            onShuffleClick = shuffleVisible,
             onSourceChange = { newSource ->
-                if (newSource == historySource) return@HistorySourceDock
+                if (newSource == historySource) return@HistoryOverview
 
                 viewModel.historySource.value = newSource
                 if (newSource == HistorySource.REMOTE) {
@@ -297,9 +370,15 @@ fun HistoryScreen(
     }
 
     val historyContent: @Composable (Dp) -> Unit = { topPadding ->
-        Crossfade(
+        AnimatedContent(
             targetState = historySource,
-            animationSpec = tween(durationMillis = motionDuration),
+            transitionSpec = {
+                if (animationsDisabled) {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                } else {
+                    fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
+                }
+            },
             label = "HistorySourceContent",
         ) { source ->
             when (source) {
@@ -307,13 +386,13 @@ fun HistoryScreen(
                     RemoteHistoryFeed(
                         listState = remoteListState,
                         topPadding = topPadding,
-                        headerContent = historySourceDock,
+                        headerContent = historyOverview,
                         remoteHistoryState = remoteHistoryState,
                         filteredSections = filteredRemoteSections,
                         isPlaying = isPlaying,
                         activeMediaId = mediaMetadata?.id,
-                        navController = navController,
                         onRetry = viewModel::fetchRemoteHistory,
+                        onPlaySection = playRemoteSection,
                         onSongMenu = { song ->
                             menuState.show {
                                 YouTubeSongMenu(
@@ -339,7 +418,7 @@ fun HistoryScreen(
                     LocalHistoryFeed(
                         listState = localListState,
                         topPadding = topPadding,
-                        headerContent = historySourceDock,
+                        headerContent = historyOverview,
                         filteredEvents = filteredEvents,
                         visibleEvents = localVisibleEvents,
                         isLoadingMore = isLoadingMoreEvents,
@@ -349,7 +428,6 @@ fun HistoryScreen(
                         isPlaying = isPlaying,
                         activeMediaId = mediaMetadata?.id,
                         dateAgoToString = dateAgoToString,
-                        navController = navController,
                         onToggleSelection = { eventId ->
                             selectedEventIds =
                                 if (eventId in selectedEventIdSet) {
@@ -378,20 +456,21 @@ fun HistoryScreen(
                             if (event.song.id == mediaMetadata?.id) {
                                 playerConnection.player.togglePlayPause()
                             } else {
-                                playerConnection.playQueue(
-                                    ListQueue(
-                                        title = dateAgoToString(dateAgo),
-                                        items = songsForDate.map { it.song.toMediaItem() },
-                                        startIndex = index,
-                                    ),
-                                )
+                                playLocalSection(dateAgo, songsForDate, index)
                             }
+                        },
+                        onPlaySection = { dateAgo, songsForDate ->
+                            playLocalSection(dateAgo, songsForDate, 0)
                         },
                         onLoadMore = viewModel::loadMoreEvents,
                     )
                 }
             }
         }
+    }
+
+    val showShuffleFab by remember(activeListState) {
+        derivedStateOf { activeListState.firstVisibleItemIndex > 0 }
     }
 
     LaunchedEffect(isSearching) {
@@ -460,11 +539,23 @@ fun HistoryScreen(
                         Text(
                             text =
                                 if (selectionCount > 0) {
-                                    pluralStringResource(R.plurals.n_song, selectionCount, selectionCount)
+                                    pluralStringResource(R.plurals.n_selected, selectionCount, selectionCount)
                                 } else {
                                     stringResource(R.string.history)
                                 },
                             fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    subtitle = {
+                        Text(
+                            text =
+                                stringResource(
+                                    if (historySource == HistorySource.LOCAL) {
+                                        R.string.history_local_summary
+                                    } else {
+                                        R.string.history_remote_summary
+                                    },
+                                ),
                         )
                     },
                     navigationIcon = {
@@ -487,7 +578,10 @@ fun HistoryScreen(
                                     painterResource(
                                         if (selectionCount > 0) R.drawable.close else R.drawable.arrow_back,
                                     ),
-                                contentDescription = null,
+                                contentDescription =
+                                    stringResource(
+                                        if (selectionCount > 0) R.string.clear_selection else R.string.back_button_desc,
+                                    ),
                             )
                         }
                     },
@@ -499,7 +593,7 @@ fun HistoryScreen(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.search),
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.search),
                                 )
                             }
                         }
@@ -514,30 +608,27 @@ fun HistoryScreen(
             }
         },
         floatingActionButton = {
-            HideOnScrollFAB(
-                visible = !showSearchBar && selectionCount == 0 && currentVisibleCount > 0,
-                lazyListState = activeListState,
-                icon = R.drawable.shuffle,
-                label = stringResource(R.string.shuffle),
-                onClick = {
-                    if (historySource == HistorySource.REMOTE) {
-                        if (remoteVisibleSongs.isNotEmpty()) {
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = context.getString(R.string.history),
-                                    items = remoteVisibleSongs.map { it.toMediaItem() }.shuffled(),
-                                ),
-                            )
-                        }
-                    } else if (localVisibleEvents.isNotEmpty()) {
-                        playerConnection.playQueue(
-                            ListQueue(
-                                title = context.getString(R.string.history),
-                                items = localVisibleEvents.map { it.song.toMediaItem() }.shuffled(),
-                            ),
-                        )
-                    }
+            ExtendedFloatingActionButton(
+                text = { Text(text = stringResource(R.string.shuffle)) },
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = null,
+                    )
                 },
+                onClick = shuffleVisible,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier =
+                    Modifier
+                        .windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+                            ),
+                        ).animateFloatingActionButton(
+                            visible = showShuffleFab && !showSearchBar && selectionCount == 0 && currentVisibleCount > 0,
+                            alignment = Alignment.BottomEnd,
+                        ),
             )
         },
     ) { innerPadding ->
@@ -548,8 +639,8 @@ fun HistoryScreen(
 
             AnimatedVisibility(
                 visible = showSearchBar,
-                enter = fadeIn(tween(durationMillis = motionDuration)),
-                exit = fadeOut(tween(durationMillis = motionDuration)),
+                enter = if (animationsDisabled) fadeIn(snap()) else fadeIn(motion.defaultEffectsSpec()),
+                exit = if (animationsDisabled) fadeOut(snap()) else fadeOut(motion.fastEffectsSpec()),
             ) {
                 TopSearch(
                     query = query,
@@ -578,7 +669,7 @@ fun HistoryScreen(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.back_button_desc),
                             )
                         }
                     },
@@ -590,7 +681,7 @@ fun HistoryScreen(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.close),
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.history_clear_search),
                                 )
                             }
                         }
@@ -611,6 +702,17 @@ fun HistoryScreen(
                         } else {
                             localVisibleEvents.map { it.event.id }
                         }
+                },
+                onPlaySelection = {
+                    if (selectedSongs.isNotEmpty()) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.history),
+                                items = selectedSongs.map { it.song.toMediaItem() },
+                            ),
+                        )
+                        clearSelection()
+                    }
                 },
                 onMoreClick = {
                     menuState.show {
@@ -644,14 +746,15 @@ private fun LocalHistoryFeed(
     isPlaying: Boolean,
     activeMediaId: String?,
     dateAgoToString: (DateAgo) -> String,
-    navController: NavController,
     onToggleSelection: (Long) -> Unit,
     onStartSelection: (Long) -> Unit,
     onSongMenu: (EventWithSong) -> Unit,
     onSongClick: (DateAgo, List<EventWithSong>, Int, EventWithSong) -> Unit,
+    onPlaySection: (DateAgo, List<EventWithSong>) -> Unit,
     onLoadMore: () -> Unit,
 ) {
     val isSelectionMode = selectedEventIds.isNotEmpty()
+    val itemMotion = rememberHistoryItemMotion()
 
     LaunchedEffect(listState, canLoadMore) {
         snapshotFlow {
@@ -665,20 +768,10 @@ private fun LocalHistoryFeed(
 
     LazyColumn(
         state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .wrapContentWidth(Alignment.CenterHorizontally)
-                .widthIn(max = 840.dp)
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ),
+        modifier = historyFeedModifier(topPadding),
         contentPadding = PaddingValues(bottom = 112.dp),
     ) {
-        item("history_overview") {
+        item(key = "history_overview", contentType = "history_overview") {
             headerContent()
         }
 
@@ -693,7 +786,7 @@ private fun LocalHistoryFeed(
             }
         } else if (visibleEvents.isEmpty()) {
             item("local_history_empty") {
-                HistoryStateCard(
+                HistoryStatePanel(
                     title =
                         stringResource(
                             if (isSearchActive) R.string.history_no_results_title else R.string.history_local_empty_title,
@@ -707,11 +800,21 @@ private fun LocalHistoryFeed(
                 )
             }
         } else {
+            var chapterIndex = 0
             filteredEvents.forEach { (dateAgo, songsForDate) ->
-                stickyHeader(key = "header_$dateAgo") {
-                    HistorySectionHeader(
+                val headerIndex = chapterIndex++
+                stickyHeader(key = "header_$dateAgo", contentType = "history_chapter_header") {
+                    val artistsLine =
+                        remember(songsForDate) {
+                            songsForDate.artistsLine { event -> event.song.artists.map { it.name } }
+                        }
+                    HistoryChapterHeader(
                         title = dateAgoToString(dateAgo),
                         songCount = songsForDate.size,
+                        artistsLine = artistsLine,
+                        chapterIndex = headerIndex,
+                        containsActive = activeMediaId != null && songsForDate.any { it.song.id == activeMediaId },
+                        onPlayAll = { onPlaySection(dateAgo, songsForDate) },
                     )
                 }
 
@@ -721,32 +824,30 @@ private fun LocalHistoryFeed(
                     contentType = { _, _ -> "local_history_song" },
                 ) { index, event ->
                     val isActive = event.song.id == activeMediaId
-                    HistorySongGroupItem(
+                    val isSelected = event.event.id in selectedEventIds
+                    HistoryTrackSurface(
                         index = index,
                         lastIndex = songsForDate.lastIndex,
-                        isSelected = event.event.id in selectedEventIds,
+                        isSelected = isSelected,
                         isActive = isActive,
-                        modifier = Modifier.animateItem(),
+                        modifier = itemMotion(),
                     ) { containerColor ->
                         SongListItem(
                             song = event.song,
                             isActive = isActive,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,
-                            isSelected = event.event.id in selectedEventIds,
+                            isSelected = isSelected,
                             swipeContentBackgroundColor = containerColor,
                             showActiveContainer = false,
                             trailingContent = {
                                 androidx.compose.material3.IconButton(
-                                    onClick = {
-                                        if (!isSelectionMode) {
-                                            onSongMenu(event)
-                                        }
-                                    },
+                                    onClick = { onSongMenu(event) },
+                                    enabled = !isSelectionMode,
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null,
+                                        contentDescription = stringResource(R.string.more_options),
                                     )
                                 }
                             },
@@ -777,7 +878,7 @@ private fun LocalHistoryFeed(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (isLoadingMore) {
-                            ContainedLoadingIndicator()
+                            LoadingIndicator()
                         }
                     }
                 }
@@ -795,34 +896,26 @@ private fun RemoteHistoryFeed(
     filteredSections: List<HistoryPage.HistorySection>,
     isPlaying: Boolean,
     activeMediaId: String?,
-    navController: NavController,
     onRetry: () -> Unit,
-    onSongMenu: (moe.rukamori.archivetune.innertube.models.SongItem) -> Unit,
-    onSongClick: (moe.rukamori.archivetune.innertube.models.SongItem) -> Unit,
+    onPlaySection: (HistoryPage.HistorySection) -> Unit,
+    onSongMenu: (SongItem) -> Unit,
+    onSongClick: (SongItem) -> Unit,
 ) {
+    val itemMotion = rememberHistoryItemMotion()
+
     LazyColumn(
         state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .wrapContentWidth(Alignment.CenterHorizontally)
-                .widthIn(max = 840.dp)
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ),
+        modifier = historyFeedModifier(topPadding),
         contentPadding = PaddingValues(bottom = 112.dp),
     ) {
-        item("history_overview") {
+        item(key = "history_overview", contentType = "history_overview") {
             headerContent()
         }
 
         when (remoteHistoryState) {
             RemoteHistoryUiState.Loading -> {
                 item("remote_history_loading") {
-                    HistoryStateCard(
+                    HistoryStatePanel(
                         title = stringResource(R.string.history_remote_loading),
                         description = stringResource(R.string.history_remote_summary),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -833,7 +926,7 @@ private fun RemoteHistoryFeed(
 
             RemoteHistoryUiState.Empty -> {
                 item("remote_history_empty") {
-                    HistoryStateCard(
+                    HistoryStatePanel(
                         title = stringResource(R.string.history_remote_empty_title),
                         description = stringResource(R.string.history_remote_empty_desc),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -844,13 +937,13 @@ private fun RemoteHistoryFeed(
 
             RemoteHistoryUiState.Error -> {
                 item("remote_history_error") {
-                    HistoryStateCard(
+                    HistoryStatePanel(
                         title = stringResource(R.string.history_remote_error_title),
                         description = stringResource(R.string.history_remote_error_desc),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         actionLabel = stringResource(R.string.retry),
                         onActionClick = onRetry,
-                        icon = R.drawable.history,
+                        icon = R.drawable.sync,
                     )
                 }
             }
@@ -858,7 +951,7 @@ private fun RemoteHistoryFeed(
             is RemoteHistoryUiState.Success -> {
                 if (filteredSections.isEmpty()) {
                     item("remote_history_search_empty") {
-                        HistoryStateCard(
+                        HistoryStatePanel(
                             title = stringResource(R.string.history_no_results_title),
                             description = stringResource(R.string.history_no_results_desc),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -866,11 +959,19 @@ private fun RemoteHistoryFeed(
                         )
                     }
                 } else {
-                    filteredSections.forEach { section ->
-                        stickyHeader(key = "header_${section.title}") {
-                            HistorySectionHeader(
+                    filteredSections.forEachIndexed { sectionIndex, section ->
+                        stickyHeader(key = "header_${section.title}", contentType = "history_chapter_header") {
+                            val artistsLine =
+                                remember(section.songs) {
+                                    section.songs.artistsLine { song -> song.artists.map { it.name } }
+                                }
+                            HistoryChapterHeader(
                                 title = section.title,
                                 songCount = section.songs.size,
+                                artistsLine = artistsLine,
+                                chapterIndex = sectionIndex,
+                                containsActive = activeMediaId != null && section.songs.any { it.id == activeMediaId },
+                                onPlayAll = { onPlaySection(section) },
                             )
                         }
 
@@ -880,11 +981,11 @@ private fun RemoteHistoryFeed(
                             contentType = { _, _ -> "remote_history_song" },
                         ) { index, song ->
                             val isActive = song.id == activeMediaId
-                            HistorySongGroupItem(
+                            HistoryTrackSurface(
                                 index = index,
                                 lastIndex = section.songs.lastIndex,
                                 isActive = isActive,
-                                modifier = Modifier.animateItem(),
+                                modifier = itemMotion(),
                             ) { containerColor ->
                                 YouTubeListItem(
                                     item = song,
@@ -898,7 +999,7 @@ private fun RemoteHistoryFeed(
                                         ) {
                                             Icon(
                                                 painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
+                                                contentDescription = stringResource(R.string.more_options),
                                             )
                                         }
                                     },
@@ -920,396 +1021,55 @@ private fun RemoteHistoryFeed(
 }
 
 @Composable
-private fun HistorySourceDock(
-    visibleSongCount: Int,
-    availableSources: List<HistorySource>,
-    currentSource: HistorySource,
-    onSourceChange: (HistorySource) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Surface(
-                        modifier = Modifier.size(64.dp),
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.history),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text =
-                                stringResource(
-                                    if (currentSource == HistorySource.LOCAL) {
-                                        R.string.local_history
-                                    } else {
-                                        R.string.remote_history
-                                    },
-                                ),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text =
-                                stringResource(
-                                    if (currentSource == HistorySource.LOCAL) {
-                                        R.string.history_local_summary
-                                    } else {
-                                        R.string.history_remote_summary
-                                    },
-                                ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = pluralStringResource(R.plurals.n_song, visibleSongCount, visibleSongCount),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-                if (availableSources.size > 1) {
-                    HistorySourceSelector(
-                        currentSource = currentSource,
-                        availableSources = availableSources,
-                        onSourceChange = onSourceChange,
-                    )
-                }
-            }
-        }
-    }
-}
+private fun historyFeedModifier(topPadding: Dp): Modifier =
+    Modifier
+        .fillMaxSize()
+        .wrapContentWidth(Alignment.CenterHorizontally)
+        .widthIn(max = 840.dp)
+        .padding(top = topPadding)
+        .windowInsetsPadding(
+            LocalPlayerAwareWindowInsets.current.only(
+                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+            ),
+        )
 
 @Composable
-private fun HistorySongGroupItem(
-    index: Int,
-    lastIndex: Int,
-    modifier: Modifier = Modifier,
-    isSelected: Boolean = false,
-    isActive: Boolean = false,
-    content: @Composable (containerColor: Color) -> Unit,
-) {
-    val outerShape = MaterialTheme.shapes.extraLarge
-    val innerCorner = remember { CornerSize(4.dp) }
-    val shape =
-        remember(index, lastIndex, outerShape, innerCorner) {
-            when {
-                lastIndex == 0 -> {
-                    outerShape
-                }
-
-                index == 0 -> {
-                    outerShape.copy(
-                        bottomStart = innerCorner,
-                        bottomEnd = innerCorner,
-                    )
-                }
-
-                index == lastIndex -> {
-                    outerShape.copy(
-                        topStart = innerCorner,
-                        topEnd = innerCorner,
-                    )
-                }
-
-                else -> {
-                    outerShape.copy(
-                        topStart = innerCorner,
-                        topEnd = innerCorner,
-                        bottomStart = innerCorner,
-                        bottomEnd = innerCorner,
-                    )
-                }
-            }
-        }
-
-    val containerColor =
-        when {
-            isActive -> MaterialTheme.colorScheme.secondaryContainer
-            isSelected -> MaterialTheme.colorScheme.surfaceContainerHighest
-            else -> MaterialTheme.colorScheme.surfaceContainerLow
-        }
-
-    Surface(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
-        shape = shape,
-        color = containerColor,
-    ) {
-        content(containerColor)
-    }
-}
-
-@Composable
-private fun HistorySectionHeader(
-    title: String,
-    songCount: Int,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 24.dp, top = 20.dp, end = 24.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(
-                modifier = Modifier.size(12.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primary,
-            ) {}
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = pluralStringResource(R.plurals.n_song, songCount, songCount),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistorySourceSelector(
-    currentSource: HistorySource,
-    availableSources: List<HistorySource>,
-    onSourceChange: (HistorySource) -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        availableSources.forEachIndexed { index, source ->
-            val checked = source == currentSource
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = {
-                    if (!checked) {
-                        onSourceChange(source)
-                    }
-                },
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                shapes =
-                    when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        availableSources.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    },
-                colors =
-                    ToggleButtonDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-            ) {
-                Text(
-                    text =
-                        stringResource(
-                            if (source == HistorySource.LOCAL) {
-                                R.string.local_history
-                            } else {
-                                R.string.remote_history
-                            },
-                        ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+private fun rememberHistoryItemMotion(): LazyItemScope.() -> Modifier {
+    val motion = MaterialTheme.motionScheme
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val fadeInSpec = motion.defaultEffectsSpec<Float>()
+    val placementSpec = motion.defaultSpatialSpec<IntOffset>()
+    val fadeOutSpec = motion.fastEffectsSpec<Float>()
+    return remember(animationsDisabled, fadeInSpec, placementSpec, fadeOutSpec) {
+        val itemModifier: LazyItemScope.() -> Modifier = {
+            if (animationsDisabled) {
+                Modifier
+            } else {
+                Modifier.animateItem(
+                    fadeInSpec = fadeInSpec,
+                    placementSpec = placementSpec,
+                    fadeOutSpec = fadeOutSpec,
                 )
             }
         }
+        itemModifier
     }
 }
 
-@Composable
-private fun HistoryStateCard(
-    title: String,
-    description: String,
-    modifier: Modifier = Modifier,
-    actionLabel: String? = null,
-    onActionClick: (() -> Unit)? = null,
-    loading: Boolean = false,
-    icon: Int? = null,
-) {
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = 360.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 40.dp),
-        ) {
-            if (loading) {
-                ContainedLoadingIndicator()
-            } else if (icon != null) {
-                val stateShape = MaterialShapes.Cookie9Sided.toShape()
-                Surface(
-                    modifier = Modifier.size(88.dp),
-                    shape = stateShape,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(icon),
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp),
-                        )
-                    }
-                }
-            }
+private inline fun <T> List<T>.artistsLine(crossinline artistNames: (T) -> List<String>): String =
+    asSequence()
+        .flatMap { artistNames(it).asSequence() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .take(HISTORY_CHAPTER_ARTIST_PREVIEW)
+        .joinToString()
 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = 420.dp),
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = 420.dp),
-            )
-
-            if (actionLabel != null && onActionClick != null) {
-                FilledTonalButton(
-                    onClick = onActionClick,
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = actionLabel)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.HistorySelectionToolbar(
-    visible: Boolean,
-    allVisibleSelected: Boolean,
-    onToggleAll: () -> Unit,
-    onMoreClick: () -> Unit,
-) {
-    val animationsDisabled = LocalAnimationsDisabled.current
-    AnimatedVisibility(
-        visible = visible,
-        enter =
-            fadeIn(tween(if (animationsDisabled) 0 else 220)) +
-                slideInVertically(animationSpec = tween(if (animationsDisabled) 0 else 220)) { it / 2 },
-        exit =
-            fadeOut(tween(if (animationsDisabled) 0 else 220)) +
-                slideOutVertically(animationSpec = tween(if (animationsDisabled) 0 else 220)) { it / 2 },
-        modifier =
-            Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ).padding(16.dp),
-    ) {
-        HorizontalFloatingToolbar(
-            expanded = true,
-            floatingActionButton = {
-                FloatingToolbarDefaults.VibrantFloatingActionButton(
-                    onClick = onMoreClick,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = stringResource(R.string.more_options),
-                    )
-                }
-            },
-            colors =
-                FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
-        ) {
-            HistoryToolbarAction(
-                icon = if (allVisibleSelected) R.drawable.deselect else R.drawable.select_all,
-                label = stringResource(if (allVisibleSelected) R.string.clear_selection else R.string.select),
-                onClick = onToggleAll,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistoryToolbarAction(
-    icon: Int,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier =
-            Modifier
-                .clip(MaterialTheme.shapes.large)
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
+private fun String.heroArtwork(): String =
+    resize(
+        width = HISTORY_HERO_ARTWORK_PX,
+        height = HISTORY_HERO_ARTWORK_PX,
+        ytimgResizePolicy = YtimgResizePolicy.PreserveOriginal,
+    )
 
 private fun filterLocalEvents(
     events: Map<DateAgo, List<EventWithSong>>,
@@ -1350,3 +1110,5 @@ private fun filterRemoteSections(
 }
 
 private const val HISTORY_LOAD_MORE_THRESHOLD = 12
+private const val HISTORY_CHAPTER_ARTIST_PREVIEW = 3
+private const val HISTORY_HERO_ARTWORK_PX = 544

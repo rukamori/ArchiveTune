@@ -94,6 +94,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -175,6 +176,7 @@ fun LyricsV2(
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
+    sourceLabel: String? = null,
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
     lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
@@ -451,7 +453,24 @@ fun LyricsV2(
                 },
             ) { index, item ->
                 if (item == HEAD_LYRICS_ENTRY) {
-                    Spacer(modifier = Modifier.height(120.dp))
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                        contentAlignment = Alignment.BottomStart,
+                    ) {
+                        if (sourceLabel != null) {
+                            Text(
+                                text = sourceLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = textColor.copy(alpha = 0.6f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
                     return@itemsIndexed
                 }
 

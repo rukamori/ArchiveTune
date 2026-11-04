@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.playback
 
 internal class PlaybackStreamRecoveryTracker {
     private var attemptedMediaId: String? = null
+    private var tokenBindingAttemptedMediaId: String? = null
 
     fun registerRetryAttempt(mediaId: String): Boolean {
         if (attemptedMediaId == mediaId) return false
@@ -16,15 +17,28 @@ internal class PlaybackStreamRecoveryTracker {
         return true
     }
 
+    fun registerTokenBindingRetryAttempt(mediaId: String): Boolean {
+        if (tokenBindingAttemptedMediaId == mediaId) return false
+        tokenBindingAttemptedMediaId = mediaId
+        return true
+    }
+
     fun onPlaybackRecovered(mediaId: String?) {
-        if (mediaId != null && attemptedMediaId == mediaId) {
+        if (mediaId == null) return
+        if (attemptedMediaId == mediaId) {
             attemptedMediaId = null
+        }
+        if (tokenBindingAttemptedMediaId == mediaId) {
+            tokenBindingAttemptedMediaId = null
         }
     }
 
     fun onMediaItemChanged(currentMediaId: String?) {
         if (attemptedMediaId != currentMediaId) {
             attemptedMediaId = null
+        }
+        if (tokenBindingAttemptedMediaId != currentMediaId) {
+            tokenBindingAttemptedMediaId = null
         }
     }
 }

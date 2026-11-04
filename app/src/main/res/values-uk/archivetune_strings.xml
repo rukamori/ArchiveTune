@@ -162,8 +162,6 @@
     <string name="music_recognition_processing">Обробка…</string>
     <string name="music_recognition_listen_again">Слухати ще раз</string>
     <string name="music_recognition_no_match">Збігів не знайдено</string>
-    <string name="music_recognition_signature_failed">Не вдалося створити сигнатуру</string>
-    <string name="music_recognition_recognition_failed">Визначення не вдалося</string>
     <string name="music_recognition_open_shazam">Відкрити Shazam</string>
     <string name="music_recognition_lyrics_preview">Попередній перегляд тексту пісні</string>
     <string name="music_recognition_permission_title">Дозвіл на використання мікрофона</string>

@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +57,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.media3.exoplayer.offline.Download
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -68,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.launch
@@ -78,8 +77,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.SpotifyDownloadItem
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistEvent
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
@@ -89,10 +88,12 @@ import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
 import moe.rukamori.archivetune.ui.component.MediaDetailAction
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.MediaDetailIconAction
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
@@ -232,32 +233,18 @@ fun SpotifyPlaylistScreen(
             tracks.sumOf { track -> track.durationMs.toLong() }
         }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
-
     val thumbnailUrl =
         remember(playlist) {
             playlist?.let { SpotifyMapper.getPlaylistThumbnail(it)?.resize(544, 544) }
         }
+    val immersiveColors = rememberImmersiveDetailColors(thumbnailUrl)
 
     val transparentAppBar by remember {
         derivedStateOf { !showTopBarTitle && !isSearching }
     }
 
     val topAppBarColors =
-        if (transparentAppBar) {
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-                navigationIconContentColor = Color.White,
-                titleContentColor = Color.White,
-                actionIconContentColor = Color.White,
-            )
-        } else {
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                scrolledContainerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
+        immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar)
 
     LaunchedEffect(isSearching) {
         if (isSearching) focusRequester.requestFocus()
@@ -323,7 +310,7 @@ fun SpotifyPlaylistScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -354,11 +341,11 @@ fun SpotifyPlaylistScreen(
                                     ?.let(::makeTimeString),
                             ).joinToString(MediaDetailMetadataSeparator)
 
-                        MediaDetailHero(
+                        ImmersiveMediaHeader(
                             title = currentPlaylist.name,
                             thumbnailUrl = thumbnailUrl,
                             fallbackIcon = R.drawable.queue_music,
-                            systemBarsTopPadding = systemBarsTopPadding,
+                            colors = immersiveColors,
                             subtitle =
                                 currentPlaylist.owner
                                     ?.displayName

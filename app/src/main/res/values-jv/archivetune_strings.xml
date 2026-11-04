@@ -6,8 +6,6 @@
     <string name="music_recognition_processing">Memproses…</string>
     <string name="music_recognition_listen_again">Rungokake lagi</string>
     <string name="music_recognition_no_match">Ora ana kecocokan yang ditemukan</string>
-    <string name="music_recognition_signature_failed">Ora bisa membuat tanda tangan</string>
-    <string name="music_recognition_recognition_failed">Pengenalan gagal</string>
     <string name="music_recognition_open_shazam">Buka Shazam</string>
     <string name="music_recognition_lyrics_preview">Pratinjau lirik</string>
     <string name="music_recognition_permission_title">Idin mikrofon</string>

@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" tools:node="remove" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
 
     <application>
         <meta-data
@@ -45,7 +45,7 @@
         <activity android:name=".musicrecognition.MusicRecognitionCaptureActivity" tools:node="remove" />
 
         <service android:name=".musicrecognition.MusicRecognitionTileService" tools:node="remove" />
-        <service android:name=".musicrecognition.BackgroundMusicRecognitionService" tools:node="remove" />
+        <service android:name=".musicrecognition.FloatingMusicRecognitionService" tools:node="remove" />
         <service android:name=".aod.AodModeTileService" tools:node="remove" />
         <service android:name=".aod.AodDreamService" tools:node="remove" />
 
