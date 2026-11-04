@@ -221,14 +221,29 @@ private fun FloatingRecognitionCore(
                         val scale = 1f + level.value * FloatingPulseScaleRange
                         scaleX = scale
                         scaleY = scale
-                    }
-                    .graphicsLayer {
-                        shadowElevation = 6.dp.toPx()
-                        shape = EditorialMorphShape(morphState.morph, morphState.progress.value)
-                        clip = true
-                    }
-                    .drawBehind { drawRect(containerColor.value) },
-            )
+                    },
+            ) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .padding(FloatingShadowInset)
+                        .graphicsLayer {
+                            shadowElevation = 6.dp.toPx()
+                            shape = CircleShape
+                            clip = true
+                        }
+                        .drawBehind { drawRect(containerColor.value) },
+                )
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .graphicsLayer {
+                            shape = EditorialMorphShape(morphState.morph, morphState.progress.value)
+                            clip = true
+                        }
+                        .drawBehind { drawRect(containerColor.value) },
+                )
+            }
             FloatingRecognitionCoreContent(state, contentColor, animationsEnabled)
         }
     }
@@ -432,5 +447,6 @@ internal fun FloatingRecognitionDismissTarget(hovered: Boolean) {
 }
 
 private val FloatingCardTextMaxWidth = 196.dp
+private val FloatingShadowInset = 4.dp
 private val NoWaveAmplitude: (Float) -> Float = { 0f }
 private const val FloatingPulseScaleRange = 0.14f
