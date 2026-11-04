@@ -8,11 +8,11 @@
 package moe.rukamori.archivetune.widget
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.os.Build
 import android.widget.RemoteViews
 import androidx.annotation.DrawableRes
-import androidx.annotation.IdRes
 import androidx.annotation.LayoutRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
@@ -481,31 +481,15 @@ internal fun WidgetDivider(
 
 internal enum class WidgetMotionKind(
     @LayoutRes val layout: Int,
-    val frames: List<Int>,
+    @DrawableRes val restingDrawable: Int,
 ) {
     Cookie(
         layout = R.layout.widget_motion_cookie,
-        frames = listOf(
-            R.id.widget_motion_cookie_frame_0,
-            R.id.widget_motion_cookie_frame_1,
-            R.id.widget_motion_cookie_frame_2,
-            R.id.widget_motion_cookie_frame_3,
-            R.id.widget_motion_cookie_frame_4,
-            R.id.widget_motion_cookie_frame_5,
-            R.id.widget_motion_cookie_frame_6,
-            R.id.widget_motion_cookie_frame_7,
-        ),
+        restingDrawable = R.drawable.widget_shape_cookie,
     ),
     Equalizer(
         layout = R.layout.widget_motion_equalizer,
-        frames = listOf(
-            R.id.widget_motion_eq_frame_0,
-            R.id.widget_motion_eq_frame_1,
-            R.id.widget_motion_eq_frame_2,
-            R.id.widget_motion_eq_frame_3,
-            R.id.widget_motion_eq_frame_4,
-            R.id.widget_motion_eq_frame_5,
-        ),
+        restingDrawable = R.drawable.widget_eq_rest,
     ),
 }
 
@@ -517,23 +501,23 @@ internal fun WidgetMotion(
     modifier: GlanceModifier = GlanceModifier,
 ) {
     val remoteViews =
-        RemoteViews(context.packageName, kind.layout).apply {
-            kind.frames.forEach { frame -> tintFrame(frame, color, context) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            RemoteViews(context.packageName, kind.layout).apply {
+                setColorStateList(
+                    R.id.widget_motion,
+                    "setIndeterminateTintList",
+                    ColorStateList.valueOf(color.day),
+                    ColorStateList.valueOf(color.night),
+                )
+            }
+        } else {
+            val night =
+                context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                    Configuration.UI_MODE_NIGHT_YES
+            RemoteViews(context.packageName, R.layout.widget_motion_static).apply {
+                setImageViewResource(R.id.widget_motion_static, kind.restingDrawable)
+                setInt(R.id.widget_motion_static, "setColorFilter", if (night) color.night else color.day)
+            }
         }
     AndroidRemoteViews(remoteViews = remoteViews, modifier = modifier)
-}
-
-private fun RemoteViews.tintFrame(
-    @IdRes frame: Int,
-    color: WidgetDayNightColor,
-    context: Context,
-) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        setColorInt(frame, "setColorFilter", color.day, color.night)
-    } else {
-        val night =
-            context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
-                Configuration.UI_MODE_NIGHT_YES
-        setInt(frame, "setColorFilter", if (night) color.night else color.day)
-    }
 }

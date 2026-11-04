@@ -1,53 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_motion_eq"
+<ProgressBar xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_motion"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:autoStart="true"
-    android:flipInterval="170"
     android:importantForAccessibility="no"
-    android:inAnimation="@anim/widget_motion_fade_in"
-    android:outAnimation="@anim/widget_motion_fade_out">
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_0"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_0" />
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_1"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_1" />
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_2"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_2" />
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_3"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_3" />
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_4"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_4" />
-    <ImageView
-        android:id="@+id/widget_motion_eq_frame_5"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_motion_eq_5" />
-</ViewFlipper>
+    android:indeterminate="true"
+    android:indeterminateDrawable="@drawable/widget_motion_equalizer"
+    android:indeterminateOnly="true"
+    android:maxWidth="2000dp"
+    android:maxHeight="2000dp"
+    android:minWidth="0dp"
+    android:minHeight="0dp" />
