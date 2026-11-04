@@ -127,6 +127,7 @@ import moe.rukamori.archivetune.constants.toPlaylistTagPreference
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.isGlassBackgroundSupported
 import moe.rukamori.archivetune.ui.component.LibraryChipOrderDialog
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PlaylistTagOrderDialog
@@ -403,6 +404,30 @@ fun AppearanceSettings(navController: NavController) {
     val availableBackgroundStyles =
         PlayerBackgroundStyle.entries.filter {
             it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        }
+    val availableMiniPlayerBackgroundStyles =
+        remember {
+            MiniPlayerBackgroundStyle.entries.filter {
+                it != MiniPlayerBackgroundStyle.GLASS || isGlassBackgroundSupported
+            }
+        }
+    val availableNavigationBarBackgroundStyles =
+        remember {
+            NavigationBarBackgroundStyle.entries.filter {
+                it != NavigationBarBackgroundStyle.GLASS || isGlassBackgroundSupported
+            }
+        }
+    val displayedMiniPlayerBackground =
+        if (miniPlayerBackground == MiniPlayerBackgroundStyle.GLASS && !isGlassBackgroundSupported) {
+            MiniPlayerBackgroundStyle.BLUR
+        } else {
+            miniPlayerBackground
+        }
+    val displayedNavigationBarBackground =
+        if (navigationBarBackground == NavigationBarBackgroundStyle.GLASS && !isGlassBackgroundSupported) {
+            NavigationBarBackgroundStyle.BLUR
+        } else {
+            navigationBarBackground
         }
     val availableLyricsBackgroundStyles =
         remember {
@@ -893,10 +918,11 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
-                    EnumListPreference(
+                    ListPreference(
                         title = { Text(stringResource(R.string.mini_player_background_style)) },
                         icon = { Icon(painterResource(R.drawable.gradient), null) },
-                        selectedValue = miniPlayerBackground,
+                        selectedValue = displayedMiniPlayerBackground,
+                        values = availableMiniPlayerBackgroundStyles,
                         onValueSelected = onMiniPlayerBackgroundSelected,
                         valueText = {
                             when (it) {
@@ -912,10 +938,11 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
-                    EnumListPreference(
+                    ListPreference(
                         title = { Text(stringResource(R.string.navigation_bar_background_style)) },
                         icon = { Icon(painterResource(R.drawable.gradient), null) },
-                        selectedValue = navigationBarBackground,
+                        selectedValue = displayedNavigationBarBackground,
+                        values = availableNavigationBarBackgroundStyles,
                         isEnabled = navigationBarMode != NavigationBarMode.APPLE_MUSIC,
                         description = if (navigationBarMode == NavigationBarMode.APPLE_MUSIC) {
                             stringResource(R.string.navigation_bar_background_apple_music)
