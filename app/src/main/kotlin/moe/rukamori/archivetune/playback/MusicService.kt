@@ -267,6 +267,8 @@ import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import moe.rukamori.archivetune.widget.LoadWidgetInsightsUseCase
+import moe.rukamori.archivetune.widget.LoadWidgetRecentSongsUseCase
+import moe.rukamori.archivetune.widget.WidgetServiceActions
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.io.EOFException
@@ -316,6 +318,9 @@ class MusicService :
 
     @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
+
+    @Inject
+    internal lateinit var loadWidgetRecentSongsUseCase: LoadWidgetRecentSongsUseCase
 
     @Inject
     lateinit var equalizerPlaybackController: EqualizerPlaybackController
@@ -1277,6 +1282,7 @@ class MusicService :
                 player = player,
                 scope = scope,
                 loadWidgetInsights = loadWidgetInsightsUseCase,
+                loadWidgetRecentSongs = loadWidgetRecentSongsUseCase,
             )
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -8959,11 +8965,11 @@ class MusicService :
             scheduleStopIfIdle()
         }
         when (intent?.action) {
-            "moe.rukamori.archivetune.WIDGET_PLAY_PAUSE" -> {
+            WidgetServiceActions.PLAY_PAUSE -> {
                 if (player.isPlaying) player.pause() else player.play()
             }
 
-            "moe.rukamori.archivetune.WIDGET_SKIP_NEXT" -> {
+            WidgetServiceActions.SKIP_NEXT -> {
                 if (player.hasNextMediaItem()) {
                     player.seekToNext()
                     player.prepare()
@@ -8971,13 +8977,17 @@ class MusicService :
                 }
             }
 
-            "moe.rukamori.archivetune.WIDGET_SKIP_PREV" -> {
+            WidgetServiceActions.SKIP_PREV -> {
                 if (player.hasPreviousMediaItem()) {
                     player.seekToPrevious()
                     player.prepare()
                     player.play()
                 }
             }
+
+            WidgetServiceActions.PLAY_QUEUE_ITEM -> playWidgetQueueItem(intent)
+
+            WidgetServiceActions.PLAY_SONG -> playWidgetSong(intent)
         }
         super.onStartCommand(intent, flags, startId)
         return START_NOT_STICKY
@@ -8988,6 +8998,39 @@ class MusicService :
     fun updateWidget() {
         widgetUpdater.update()
         widgetUpdater.updateProgressTracking()
+    }
+
+    private fun playWidgetQueueItem(intent: Intent) {
+        val mediaId = intent.getStringExtra(WidgetServiceActions.EXTRA_MEDIA_ID) ?: return
+        val itemCount = player.mediaItemCount
+        val hintedIndex = intent.getIntExtra(WidgetServiceActions.EXTRA_QUEUE_INDEX, C.INDEX_UNSET)
+        val index =
+            if (hintedIndex in 0 until itemCount && player.getMediaItemAt(hintedIndex).mediaId == mediaId) {
+                hintedIndex
+            } else {
+                (0 until itemCount).firstOrNull { player.getMediaItemAt(it).mediaId == mediaId }
+            } ?: return
+        player.seekTo(index, 0L)
+        player.prepare()
+        player.play()
+    }
+
+    private fun playWidgetSong(intent: Intent) {
+        val songId = intent.getStringExtra(WidgetServiceActions.EXTRA_MEDIA_ID) ?: return
+        if (player.currentMediaItem?.mediaId == songId) {
+            if (player.isPlaying) player.pause() else player.play()
+            return
+        }
+        scope.launch(SilentHandler) {
+            val song = withContext(Dispatchers.IO) { database.song(songId).first() } ?: return@launch
+            playQueue(
+                if (song.song.isLocal) {
+                    ListQueue(items = listOf(song.toMediaItem()))
+                } else {
+                    YouTubeQueue.radio(song.toMediaMetadata())
+                },
+            )
+        }
     }
 
     class MusicBinder internal constructor(service: MusicService) : Binder() {

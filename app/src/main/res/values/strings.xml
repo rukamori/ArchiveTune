@@ -182,6 +182,13 @@
     <string name="widget_no_recent_songs">No recent songs yet</string>
     <string name="widget_no_genres">No genres yet</string>
     <string name="widget_no_recommendations">No recommendations yet</string>
+    <string name="widget_now_playing">Now playing</string>
+    <string name="widget_up_next">Up next</string>
+    <string name="widget_queue_empty">Nothing queued after this song</string>
+    <string name="widget_open">Open</string>
+    <string name="widget_last_30_days">Last 30 days</string>
+    <string name="widget_listening_time_label">Listening time</string>
+    <string name="widget_plays_label">Played</string>
     <string name="play_next">Play next</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="add_to_library">Add to library</string>
