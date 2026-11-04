@@ -1352,4 +1352,30 @@
         <item quantity="one">Show full trace (%1$d line)</item>
         <item quantity="other">Show full trace (%1$d lines)</item>
     </plurals>
+    <string name="add_to_playlist_hint">Pick one or more playlists</string>
+    <string name="add_to_playlist_sort_label">Sort by</string>
+    <string name="add_to_playlist_create_supporting">New playlists appear in the list below</string>
+    <string name="add_to_playlist_synced_supporting">%1$s · Synced</string>
+    <string name="add_to_playlist_remove_selection">Remove from selection</string>
+    <string name="add_to_playlist_count_overflow">99+</string>
+    <string name="add_to_playlist_empty_hint">Create a playlist to start collecting songs</string>
+    <string name="add_to_playlist_no_match_hint">Try a different name</string>
+    <plurals name="add_to_playlist_n_duplicates">
+        <item quantity="one">%d song already added</item>
+        <item quantity="other">%d songs already added</item>
+    </plurals>
+    <string name="import_destination_title">Import to</string>
+    <plurals name="import_n_songs_ready">
+        <item quantity="one">%d song ready to import</item>
+        <item quantity="other">%d songs ready to import</item>
+    </plurals>
+    <string name="import_liked_songs_supporting">Like every imported song</string>
+    <string name="import_result_title">Import complete</string>
+    <string name="import_result_of_total">of %1$d</string>
+    <string name="import_result_all_success">Every song was imported</string>
+    <plurals name="import_result_some_failed">
+        <item quantity="one">%d song couldn\'t be imported</item>
+        <item quantity="other">%d songs couldn\'t be imported</item>
+    </plurals>
+    <string name="import_result_failed_items">Couldn\'t import</string>
 </resources>
