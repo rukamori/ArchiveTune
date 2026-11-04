@@ -54,6 +54,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
@@ -485,13 +487,17 @@ internal fun QueueFooter(
             }
 
             PlayerDesignStyle.V10 -> {
-                val screenState by viewModel.state.collectAsStateWithLifecycle()
-                val model = when (val screen = screenState) {
-                    is QueueScreenState.Success -> screen.model
-                    is QueueScreenState.Error -> screen.previous
-                    else -> null
-                }
-                val canControlPlayback = model?.canControlPlayback == true
+                val canControlPlayback by remember(viewModel) {
+                    viewModel.state
+                        .map { screen ->
+                            when (screen) {
+                                is QueueScreenState.Success -> screen.model.canControlPlayback
+                                is QueueScreenState.Error -> screen.previous?.canControlPlayback ?: true
+                                else -> true
+                            }
+                        }
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(initialValue = true)
                 val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
                 val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
                 val currentSongLiked = currentSong?.song?.liked == true
