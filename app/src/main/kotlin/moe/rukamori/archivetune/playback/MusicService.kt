@@ -1305,6 +1305,7 @@ class MusicService :
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
             carMediaButtonPreferences = ::buildAndroidAutoButtons
+            adoptQueueContinuation = ::adoptQueueContinuation
         }
         val mediaSessionBuilder = MediaLibrarySession.Builder(this, player, mediaLibrarySessionCallback)
             .setBitmapLoader(CoilBitmapLoader(this, scope))
@@ -4399,6 +4400,16 @@ class MusicService :
 
     fun clearAutomix() {
         resetQueueRecommendations()
+    }
+
+    fun adoptQueueContinuation(
+        queue: Queue,
+        title: String?,
+    ) {
+        if (isTogetherGuestSession()) return
+        clearQueueContinuation()
+        currentQueue = queue
+        queueTitle = title
     }
 
     fun clearQueueContinuation() {
@@ -9069,6 +9080,8 @@ class MusicService :
         const val ALBUM = "album"
         const val PLAYLIST = "playlist"
         const val ONLINE_PLAYLIST = "online_playlist"
+        const val SPOTIFY_PLAYLIST = "spotify_playlist"
+        const val SPOTIFY_LIKED = "spotify_liked"
 
         private const val TAG = "MusicService"
         private const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4

@@ -236,6 +236,12 @@
                 android:resource="@xml/provider_paths" />
         </provider>
 
+        <provider
+            android:name=".androidauto.CarArtworkProvider"
+            android:authorities="${applicationId}.carartwork"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+
         <service
             android:name=".playback.MusicService"
             android:exported="true"
