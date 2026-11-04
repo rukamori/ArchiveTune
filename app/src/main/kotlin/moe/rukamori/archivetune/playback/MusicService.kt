@@ -4218,7 +4218,7 @@ class MusicService :
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
-            if (initialStatus.items.isEmpty()) {
+            if (initialStatus.items.isEmpty() && preloadItem == null) {
                 currentQueue = EmptyQueue
                 queueTitle = null
                 initialQueueJob = null
