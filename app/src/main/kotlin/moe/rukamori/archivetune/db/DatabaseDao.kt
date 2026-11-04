@@ -2180,6 +2180,7 @@ interface DatabaseDao {
     fun insertLyricsIfAbsent(
         id: String,
         lyrics: String,
+        provider: String?,
         source: String = LyricsEntity.Source.REMOTE.value,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
@@ -2189,9 +2190,13 @@ interface DatabaseDao {
                 lyrics = lyrics,
                 source = source,
                 updatedAt = updatedAt,
+                provider = provider,
             ),
         )
     }
+
+    @Query("SELECT provider FROM lyrics WHERE id = :id")
+    fun lyricsProvider(id: String): String?
 
     @Query(
         """
@@ -2240,6 +2245,7 @@ interface DatabaseDao {
         id: String,
         lyrics: String,
         source: String,
+        provider: String?,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
         upsert(
@@ -2248,7 +2254,24 @@ interface DatabaseDao {
                 lyrics = lyrics,
                 source = source,
                 updatedAt = updatedAt,
+                provider = provider,
             ),
+        )
+    }
+
+    @Transaction
+    fun replaceLyricsKeepingProvider(
+        id: String,
+        lyrics: String,
+        source: String,
+        updatedAt: Long = System.currentTimeMillis(),
+    ) {
+        replaceLyrics(
+            id = id,
+            lyrics = lyrics,
+            source = source,
+            provider = lyricsProvider(id),
+            updatedAt = updatedAt,
         )
     }
 

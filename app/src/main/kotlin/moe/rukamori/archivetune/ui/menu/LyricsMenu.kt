@@ -346,6 +346,7 @@ fun LyricsMenu(
                     mediaMetadata = searchMediaMetadata,
                     lyrics = result.lyrics,
                     source = LyricsEntity.Source.USER_SELECTION,
+                    provider = result.providerName,
                 )
             },
             onDismiss = {

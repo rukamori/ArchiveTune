@@ -111,18 +111,18 @@ class LyricsHelper
                 value.results.sumOf { it.lyrics.length.toLong() * 2L }
                     .coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
         }
-        private val singleLyricsCache = object : LruCache<RequestKey, String>(SINGLE_CACHE_BYTES) {
-            override fun sizeOf(key: RequestKey, value: String): Int =
-                (value.length.toLong() * 2L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+        private val singleLyricsCache = object : LruCache<RequestKey, FetchedLyrics>(SINGLE_CACHE_BYTES) {
+            override fun sizeOf(key: RequestKey, value: FetchedLyrics): Int =
+                (value.lyrics.length.toLong() * 2L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
         }
-        private val inFlight = mutableMapOf<RequestKey, CompletableDeferred<String>>()
+        private val inFlight = mutableMapOf<RequestKey, CompletableDeferred<FetchedLyrics>>()
         private val providerPermits = Semaphore(MAX_CONCURRENT_PROVIDERS)
 
         suspend fun getLyrics(
             mediaMetadata: MediaMetadata,
             preferredProviderOnly: Boolean = false,
             forceRefresh: Boolean = false,
-        ): String = withContext(Dispatchers.IO) {
+        ): FetchedLyrics = withContext(Dispatchers.IO) {
             val ordered = orderedProviders()
             val providers = if (preferredProviderOnly) ordered.take(1) else ordered
             val request = RequestKey(
@@ -140,12 +140,12 @@ class LyricsHelper
         private suspend fun getOrFetchLyrics(
             request: RequestKey,
             providers: List<LyricsProvider>,
-        ): String {
+        ): FetchedLyrics {
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val candidate = CompletableDeferred<String>()
+                val candidate = CompletableDeferred<FetchedLyrics>()
                 val generation: Long
-                val shared: CompletableDeferred<String>
+                val shared: CompletableDeferred<FetchedLyrics>
                 synchronized(cacheLock) {
                     singleLyricsCache.get(request)?.let { return it }
                     generation = cacheGeneration
@@ -164,11 +164,11 @@ class LyricsHelper
                     val lyrics = if (isNetworkAvailable()) {
                         fetchPriorityLyrics(providers, request)
                     } else {
-                        LYRICS_NOT_FOUND
+                        FetchedLyrics.NotFound
                     }
                     currentCoroutineContext().ensureActive()
                     synchronized(cacheLock) {
-                        if (generation == cacheGeneration && lyrics != LYRICS_NOT_FOUND) {
+                        if (generation == cacheGeneration && lyrics.lyrics != LYRICS_NOT_FOUND) {
                             singleLyricsCache.put(request, lyrics)
                         }
                     }
@@ -281,8 +281,8 @@ class LyricsHelper
         private suspend fun fetchPriorityLyrics(
             providers: List<LyricsProvider>,
             request: RequestKey,
-        ): String = supervisorScope {
-            if (providers.isEmpty()) return@supervisorScope LYRICS_NOT_FOUND
+        ): FetchedLyrics = supervisorScope {
+            if (providers.isEmpty()) return@supervisorScope FetchedLyrics.NotFound
             val pending = providers.mapIndexed { index, provider ->
                 async(Dispatchers.IO) {
                     providerPermits.withPermit {
@@ -330,7 +330,8 @@ class LyricsHelper
                         (0 until selected.index).all { completed[it] }
                     ) break
                 }
-                best?.lyrics ?: LYRICS_NOT_FOUND
+                best?.let { FetchedLyrics(lyrics = it.lyrics, providerName = providers[it.index].name) }
+                    ?: FetchedLyrics.NotFound
             } finally {
                 jobs.forEach { it.cancel() }
             }
@@ -481,3 +482,12 @@ data class LyricsResult(
     val providerName: String,
     val lyrics: String,
 )
+
+data class FetchedLyrics(
+    val lyrics: String,
+    val providerName: String?,
+) {
+    companion object {
+        val NotFound = FetchedLyrics(lyrics = LYRICS_NOT_FOUND, providerName = null)
+    }
+}

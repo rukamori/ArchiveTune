@@ -306,6 +306,9 @@
     <string name="lyrics_line_blur">Blur lyrics lines</string>
     <string name="lyrics_auto_hide_controls">Auto-hide controls</string>
     <string name="lyrics_auto_hide_controls_desc">Hide playback controls after 5 seconds. Tap the screen to show them again.</string>
+    <string name="lyrics_searching_lyrics_providers">Searching lyrics providers…</string>
+    <string name="lyrics_source_label">Source: %1$s</string>
+    <string name="lyrics_source_embedded">Embedded in file</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>

@@ -1411,11 +1411,12 @@ class MusicService :
                     .lyrics(mediaMetadata.id)
                     .first() == null
             ) {
-                val lyrics = lyricsHelper.getLyrics(mediaMetadata)
+                val fetched = lyricsHelper.getLyrics(mediaMetadata)
                 database.query {
                     insertLyricsIfAbsent(
                         id = mediaMetadata.id,
-                        lyrics = lyrics,
+                        lyrics = fetched.lyrics,
+                        provider = fetched.providerName,
                     )
                 }
             }

@@ -102,6 +102,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -142,14 +143,17 @@ import moe.rukamori.archivetune.constants.PlayerCustomBrightnessKey
 import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
+import moe.rukamori.archivetune.ui.component.LyricsSearchingIndicator
 import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
 import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -215,6 +219,24 @@ fun LyricsScreen(
         }
     val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val lyricsRenderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
+    val lyricsSourceLabel =
+        currentLyrics
+            ?.takeIf { entity -> entity.lyrics != LyricsEntity.LYRICS_NOT_FOUND }
+            ?.let { entity ->
+                when {
+                    entity.source == LyricsEntity.Source.EMBEDDED.value -> {
+                        stringResource(R.string.lyrics_source_label, stringResource(R.string.lyrics_source_embedded))
+                    }
+
+                    entity.provider != null -> {
+                        stringResource(R.string.lyrics_source_label, entity.provider)
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
+            }
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
@@ -278,7 +300,7 @@ fun LyricsScreen(
                 }
             if (existingLyrics != null) return@LaunchedEffect
 
-            val lyrics =
+            val fetched =
                 withContext(Dispatchers.IO) {
                     lyricsHelper.getLyrics(mediaMetadata)
                 }
@@ -286,7 +308,8 @@ fun LyricsScreen(
                 database.query {
                     insertLyricsIfAbsent(
                         id = mediaMetadata.id,
-                        lyrics = lyrics,
+                        lyrics = fetched.lyrics,
+                        provider = fetched.providerName,
                     )
                 }
             }
@@ -483,6 +506,7 @@ fun LyricsScreen(
                         lyricsState = lyricsRenderState,
                         foregroundColor = foregroundColor,
                         sliderPositionProvider = { sliderPosition },
+                        sourceLabel = lyricsSourceLabel,
                         lyricsSyncOffset = lyricsSyncOffset,
                         modifier =
                             Modifier
@@ -564,6 +588,7 @@ fun LyricsScreen(
                     lyricsState = lyricsRenderState,
                     foregroundColor = foregroundColor,
                     sliderPositionProvider = { sliderPosition },
+                    sourceLabel = lyricsSourceLabel,
                     lyricsSyncOffset = lyricsSyncOffset,
                     modifier =
                         Modifier
@@ -945,6 +970,7 @@ private fun AppleMusicLyricsPane(
     lyricsState: LyricsRenderScreenState,
     foregroundColor: Color,
     sliderPositionProvider: () -> Long?,
+    sourceLabel: String?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -952,6 +978,7 @@ private fun AppleMusicLyricsPane(
         lyricsMode = lyricsMode,
         lyricsState = lyricsState,
         sliderPositionProvider = sliderPositionProvider,
+        sourceLabel = sourceLabel,
         lyricsSyncOffset = lyricsSyncOffset,
         modifier =
             modifier
@@ -1358,19 +1385,41 @@ private fun LyricsContent(
     lyricsMode: LyricsMode,
     lyricsState: LyricsRenderScreenState,
     sliderPositionProvider: () -> Long?,
+    sourceLabel: String?,
     lyricsSyncOffset: Int,
     textColor: Color,
     modifier: Modifier = Modifier,
 ) {
     when (lyricsMode) {
         LyricsMode.V2 -> {
-            LyricsV2(
-                lyricsState = lyricsState,
-                sliderPositionProvider = sliderPositionProvider,
-                lyricsSyncOffset = lyricsSyncOffset,
-                modifier = modifier,
-                textColorOverride = textColor,
-            )
+            if (lyricsState is LyricsRenderScreenState.Loading) {
+                val lyricsFontFamily = rememberArchiveTuneLyricsFontFamily()
+                val searchingBaseStyle = MaterialTheme.typography.headlineSmall
+                Box(
+                    modifier = modifier,
+                    contentAlignment = Alignment.Center,
+                ) {
+                    LyricsSearchingIndicator(
+                        textColor = textColor,
+                        textStyle =
+                            searchingBaseStyle.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = lyricsFontFamily,
+                                textAlign = TextAlign.Center,
+                            ),
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
+            } else {
+                LyricsV2(
+                    lyricsState = lyricsState,
+                    sliderPositionProvider = sliderPositionProvider,
+                    lyricsSyncOffset = lyricsSyncOffset,
+                    modifier = modifier,
+                    sourceLabel = sourceLabel,
+                    textColorOverride = textColor,
+                )
+            }
         }
 
         LyricsMode.ENHANCED -> {
@@ -1379,6 +1428,7 @@ private fun LyricsContent(
                 sliderPositionProvider = sliderPositionProvider,
                 lyricsSyncOffset = lyricsSyncOffset,
                 modifier = modifier,
+                sourceLabel = sourceLabel,
                 textColorOverride = textColor,
             )
         }

@@ -73,8 +73,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -83,6 +85,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextMotion
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -99,6 +103,7 @@ import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeAlignment
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeLine
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
+import com.mocharealm.accompanist.lyrics.ui.composable.list.LyricsLazyListState
 import com.mocharealm.accompanist.lyrics.ui.composable.list.rememberLyricsLazyListState
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeBreathingDotsDefaults
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
@@ -115,8 +120,6 @@ import moe.rukamori.archivetune.lyrics.LyricsTextDirection
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedTranslationTextForEntry
 import moe.rukamori.archivetune.lyrics.WordTimestamp
 import moe.rukamori.archivetune.lyrics.toLyricsEntries
-import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
-import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
@@ -127,7 +130,10 @@ private const val LRC_LEAD_MS = 300L
 private const val MIN_KARAOKE_SYLLABLE_DURATION_MS = 1
 private const val LYRICS_FOCUS_ANCHOR_MAX_FRACTION = 0.25f
 
+private const val LYRICS_SOURCE_LABEL_ALPHA = 0.6f
+
 private val LyricsFocusAnchor = 64.dp
+private val LyricsSourceLabelGap = 12.dp
 private val LyricsScrollAnimationSpec =
     tween<Float>(
         durationMillis = 700,
@@ -140,6 +146,7 @@ fun LyricsEnhanced(
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
+    sourceLabel: String? = null,
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
     lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
@@ -326,6 +333,11 @@ fun LyricsEnhanced(
         )
     val accompanimentTextStyle = normalTextStyle.copy(fontSize = (lyricsTextSize * 0.6f).sp)
     val translationTextStyle = normalTextStyle.copy(fontSize = (lyricsTextSize * 0.55f).sp)
+    val searchingTextStyle =
+        normalTextStyle.copy(
+            fontSize = (lyricsTextSize * 0.8f).sp,
+            textAlign = TextAlign.Center,
+        )
     val phoneticTextStyle =
         normalTextStyle.copy(
             fontSize = (lyricsTextSize * 0.55f).sp,
@@ -429,8 +441,15 @@ fun LyricsEnhanced(
     ) {
         when {
             lyricsState is LyricsRenderScreenState.Loading -> {
-                ShimmerHost {
-                    repeat(6) { TextPlaceholder() }
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    LyricsSearchingIndicator(
+                        textColor = textColor,
+                        textStyle = searchingTextStyle,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
             }
 
@@ -472,6 +491,7 @@ fun LyricsEnhanced(
                     lines = plainLyrics,
                     listState = plainLyricsListState,
                     selectedLineKeys = selectedLineKeySet,
+                    sourceLabel = sourceLabel,
                     textColor = textColor,
                     textStyle = normalTextStyle,
                     onLineClicked = { lineKey ->
@@ -495,10 +515,7 @@ fun LyricsEnhanced(
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    val lyricsViewportAnchor =
-                        remember(maxHeight) {
-                            LyricsAnchor.Fixed(minOf(LyricsFocusAnchor, maxHeight * LYRICS_FOCUS_ANCHOR_MAX_FRACTION))
-                        }
+                    val lyricsViewportAnchor = remember(maxHeight) { LyricsAnchor.Fixed(lyricsFocusAnchor(maxHeight)) }
 
                     CompositionLocalProvider(LocalLayoutDirection provides lyricsLayoutDirection) {
                         key(lyricsSessionKey, syncedLyrics) {
@@ -544,6 +561,14 @@ fun LyricsEnhanced(
                                 keepAliveZone = 72.dp,
                                 scrollAnimationSpec = LyricsScrollAnimationSpec,
                                 modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                        if (sourceLabel != null) {
+                            KaraokeLyricsSourceLabel(
+                                text = sourceLabel,
+                                textColor = textColor,
+                                listState = karaokeLyricsListState,
+                                anchorOffset = lyricsViewportAnchor.offset,
                             )
                         }
                     }
@@ -688,6 +713,7 @@ private fun PlainLyricsView(
     lines: PlainLyrics,
     listState: LazyListState,
     selectedLineKeys: Set<String>,
+    sourceLabel: String?,
     textColor: Color,
     textStyle: TextStyle,
     onLineClicked: (String) -> Unit,
@@ -710,6 +736,18 @@ private fun PlainLyricsView(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (sourceLabel != null) {
+            item(
+                key = "lyrics_source_label",
+                contentType = "lyrics_source_label",
+            ) {
+                LyricsSourceLabelText(
+                    text = sourceLabel,
+                    textColor = textColor,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
+        }
         items(
             items = lines.items,
             key = { line -> line.itemId },
@@ -726,6 +764,56 @@ private fun PlainLyricsView(
         }
     }
 }
+
+@Composable
+private fun KaraokeLyricsSourceLabel(
+    text: String,
+    textColor: Color,
+    listState: LyricsLazyListState,
+    anchorOffset: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    val anchorPx = with(density) { anchorOffset.toPx() }
+    val gapPx = with(density) { LyricsSourceLabelGap.toPx() }
+
+    LyricsSourceLabelText(
+        text = text,
+        textColor = textColor,
+        modifier =
+            modifier
+                .padding(horizontal = 16.dp)
+                .graphicsLayer {
+                    if (listState.firstVisibleItemIndex != 0) {
+                        alpha = 0f
+                        return@graphicsLayer
+                    }
+                    val firstLineTop = anchorPx - listState.firstVisibleItemScrollOffset
+                    val labelTop = firstLineTop - gapPx - size.height
+                    translationY = labelTop
+                    alpha = ((labelTop + size.height) / size.height).coerceIn(0f, 1f)
+                },
+    )
+}
+
+@Composable
+private fun LyricsSourceLabelText(
+    text: String,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = textColor.copy(alpha = LYRICS_SOURCE_LABEL_ALPHA),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+private fun lyricsFocusAnchor(viewportHeight: Dp): Dp =
+    minOf(LyricsFocusAnchor, viewportHeight * LYRICS_FOCUS_ANCHOR_MAX_FRACTION)
 
 @Composable
 private fun PlainLyricLineItem(
