@@ -1308,4 +1308,41 @@
     <string name="modules_session_verify">Verify connection</string>
     <string name="modules_session_connected">Module connection verified</string>
     <string name="modules_session_failed">Module verification failed or expired. Open module settings to try again.</string>
+    <string name="crash_report_title">Crash report</string>
+    <string name="crash_report_headline">ArchiveTune stopped unexpectedly</string>
+    <string name="crash_report_supporting">The details below describe what went wrong. Share them with the developers to help fix the problem, or restart the app.</string>
+    <string name="crash_report_diagnosis">What happened</string>
+    <string name="crash_report_device">Device</string>
+    <string name="crash_report_stack_trace">Stack trace</string>
+    <string name="crash_report_exception">Exception</string>
+    <string name="crash_report_message">Message</string>
+    <string name="crash_report_root_cause">Root cause</string>
+    <string name="crash_report_origin">Thrown at</string>
+    <string name="crash_report_no_stack_trace">No stack trace available</string>
+    <string name="crash_report_show_all_device">Show all device details</string>
+    <string name="crash_report_show_less_device">Show fewer device details</string>
+    <string name="crash_report_collapse_trace">Collapse trace</string>
+    <string name="crash_report_wrap_lines">Wrap</string>
+    <string name="crash_report_copy">Copy</string>
+    <string name="crash_report_copy_report">Copy crash report</string>
+    <string name="crash_report_restart">Restart</string>
+    <string name="crash_report_close">Close</string>
+    <string name="crash_report_restart_failed">Couldn\'t restart ArchiveTune</string>
+    <string name="crash_report_device_os">OS version</string>
+    <string name="crash_report_device_name">Phone name</string>
+    <string name="crash_report_device_model">Model</string>
+    <string name="crash_report_device_manufacturer">Manufacturer</string>
+    <string name="crash_report_device_brand">Brand</string>
+    <string name="crash_report_device_codename">Device codename</string>
+    <string name="crash_report_device_product">Product</string>
+    <string name="crash_report_device_hardware">Hardware</string>
+    <string name="crash_report_device_fingerprint">Build fingerprint</string>
+    <plurals name="crash_report_frame_count">
+        <item quantity="one">%1$d frame</item>
+        <item quantity="other">%1$d frames</item>
+    </plurals>
+    <plurals name="crash_report_show_full_trace">
+        <item quantity="one">Show full trace (%1$d line)</item>
+        <item quantity="other">Show full trace (%1$d lines)</item>
+    </plurals>
 </resources>
