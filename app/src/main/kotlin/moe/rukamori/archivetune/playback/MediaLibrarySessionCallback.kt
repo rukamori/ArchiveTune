@@ -132,8 +132,11 @@ class MediaLibrarySessionCallback
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
             val builder = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-            val defaults = builder.build()
-            val availableSessionCommands = defaults.availableSessionCommands
+            val isCarController = isCarController(session, controller)
+            if (!controller.isTrusted && !isCarController) {
+                return builder.build()
+            }
+            val availableSessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(MediaSessionConstants.CommandToggleLike)
                 .add(MediaSessionConstants.CommandToggleStartRadio)
@@ -141,8 +144,10 @@ class MediaLibrarySessionCallback
                 .add(MediaSessionConstants.CommandToggleShuffle)
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
                 .build()
-            builder.setAvailableSessionCommands(availableSessionCommands)
-            if (isCarController(session, controller)) {
+            builder
+                .setAvailableSessionCommands(availableSessionCommands)
+                .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
+            if (isCarController) {
                 val carButtons = carMediaButtonPreferences(androidAutoSettings.currentConfiguration())
                 builder
                     .setMediaButtonPreferences(carButtons)
