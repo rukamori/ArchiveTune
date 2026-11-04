@@ -250,7 +250,6 @@
     <string name="lyrics_share_background_blur">Latar belakang blur</string>
     <string name="lyrics_share_background_blur_value">%1$d piksel</string>
     <string name="lyrics_line_blur">Blur baris lirik</string>
-    <string name="show_lyrics_player_controls">Tampilkan kontrol pemutar</string>
     <string name="lyrics_share_background_dim">Latar belakang redup</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Tampilkan sampul album</string>

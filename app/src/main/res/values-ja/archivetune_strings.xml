@@ -251,7 +251,6 @@
     <string name="lyrics_share_background_blur">背景ぼかし</string>
     <string name="lyrics_share_background_blur_value">%1$d ピクセル</string>
     <string name="lyrics_line_blur">歌詞のラインをぼかす</string>
-    <string name="show_lyrics_player_controls">プレーヤーのコントロールを表示する</string>
     <string name="lyrics_share_background_dim">背景が暗い</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">アルバムジャケットを表示</string>

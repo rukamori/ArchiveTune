@@ -136,14 +136,14 @@ fun LyricsMenu(
     mediaMetadataProvider: () -> MediaMetadata,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
-    showPlayerControlsState: State<Boolean>,
-    onShowPlayerControlsChange: (Boolean) -> Unit,
+    autoHideControlsState: State<Boolean>,
+    onAutoHideControlsChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     lyricsRenderViewModel: LyricsRenderViewModel,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val showPlayerControls by showPlayerControlsState
+    val autoHideControls by autoHideControlsState
     val renderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
     val preparedLyrics = (renderState as? LyricsRenderScreenState.Success)?.lyrics
     val hasTranslations = preparedLyrics?.hasTranslations == true
@@ -790,16 +790,19 @@ fun LyricsMenu(
                 )
                 NewMenuItem(
                     headlineContent = {
-                        Text(stringResource(R.string.show_lyrics_player_controls))
+                        Text(stringResource(R.string.lyrics_auto_hide_controls))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.lyrics_auto_hide_controls_desc))
                     },
                     trailingContent = {
                         Switch(
-                            checked = showPlayerControls,
-                            onCheckedChange = onShowPlayerControlsChange,
+                            checked = autoHideControls,
+                            onCheckedChange = onAutoHideControlsChange,
                         )
                     },
                     onClick = {
-                        onShowPlayerControlsChange(!showPlayerControls)
+                        onAutoHideControlsChange(!autoHideControls)
                     },
                     modifier =
                         Modifier.padding(

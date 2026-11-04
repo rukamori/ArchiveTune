@@ -396,7 +396,6 @@
     <string name="lyrics_share_background_blur">Arka plan bulanıklığı</string>
     <string name="lyrics_share_background_blur_value">%1$d piksel</string>
     <string name="lyrics_line_blur">Şarkı sözü satırlarını bulanıklaştır</string>
-    <string name="show_lyrics_player_controls">Oynatıcı kontrollerini göster</string>
     <string name="lyrics_share_background_dim">Arka plan karartması</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Albüm kapağını göster</string>

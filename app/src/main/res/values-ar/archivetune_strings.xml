@@ -377,7 +377,6 @@
     <string name="lyrics_share_background_blur">ضبابية الخلفية</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">تغبيش أسطر الكلمات</string>
-    <string name="show_lyrics_player_controls">إظهار عناصر تحكم المشغل</string>
     <string name="lyrics_share_background_dim">تعتيم الخلفية</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">إظهار غلاف الألبوم</string>

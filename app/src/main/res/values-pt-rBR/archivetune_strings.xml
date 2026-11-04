@@ -567,7 +567,6 @@
     <string name="music_recognition_notification_no_match_text">Deixe a música tocando com clareza e tente o reconhecimento novamente.</string>
     <string name="music_recognition_notification_signature_failed_text">O áudio capturado não continha música suficiente para ser identificado.</string>
     <string name="music_recognition_notification_recognition_failed_text">O serviço de reconhecimento não conseguiu identificar este áudio. Tente novamente daqui a pouco.</string>
-    <string name="show_lyrics_player_controls">Mostrar controles do player</string>
     <string name="block_artist">Bloquear artista</string>
     <string name="unblock_artist">Desbloquear artista</string>
     <string name="stats_top_songs">Top músicas</string>

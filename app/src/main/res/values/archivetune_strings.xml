@@ -304,7 +304,8 @@
     <string name="lyrics_share_background_blur">Background blur</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">Blur lyrics lines</string>
-    <string name="show_lyrics_player_controls">Show player controls</string>
+    <string name="lyrics_auto_hide_controls">Auto-hide controls</string>
+    <string name="lyrics_auto_hide_controls_desc">Hide playback controls after 5 seconds. Tap the screen to show them again.</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>

@@ -563,7 +563,6 @@
     <string name="music_recognition_notification_isrc">رمز ISRC: %1$s</string>
     <string name="music_recognition_notification_signature_failed_text">الصوت المتسجل مفيش فيه مزيكا كافية عشان نعرفها.</string>
     <string name="music_recognition_notification_recognition_failed_text">خدمة التعرف معرفتش توصل للصوت ده. جرب تاني كمان شوية.</string>
-    <string name="show_lyrics_player_controls">إظهار أزرار تحكم المشغل</string>
     <string name="lyrics_background_style">شكل خلفية الكلمات</string>
     <string name="lyrics_background_default">الافتراضي</string>
     <string name="latest_release">أحدث إصدار</string>

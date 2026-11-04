@@ -204,7 +204,6 @@
     <string name="lyrics_share_background_blur">背景模糊</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">模糊歌詞</string>
-    <string name="show_lyrics_player_controls">顯示播放器控件</string>
     <string name="lyrics_share_background_dim">變暗背景</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">顯示專輯封面</string>

@@ -372,7 +372,6 @@
     <string name="lyrics_share_layout_story">动态比例</string>
     <string name="lyrics_share_background_blur">背景模糊</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
-    <string name="show_lyrics_player_controls">显示播放控制按钮</string>
     <string name="lyrics_share_background_dim">背景暗化</string>
     <string name="lyrics_share_show_cover">显示专辑封面</string>
     <string name="lyrics_share_show_cover_desc">在导出的图片顶部包含专辑封面</string>

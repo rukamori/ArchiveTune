@@ -453,7 +453,6 @@
     <string name="playlist_sync_failed">Синхронизация плейлиста не удалась: %1$s</string>
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="lyrics_line_blur">Размыть строки текста</string>
-    <string name="show_lyrics_player_controls">Показывать элементы управления плеером</string>
     <string name="lyrics_share_style_album_tint">Оттенок альбома</string>
     <string name="lyrics_share_style_frosted_dark">Темный матовый</string>
     <string name="lyrics_share_style_frosted_light">Светлый матовый</string>

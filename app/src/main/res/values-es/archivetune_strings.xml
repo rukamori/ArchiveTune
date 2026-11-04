@@ -547,7 +547,6 @@
     <string name="music_recognition_notification_no_match_text">Deja que la música suene con claridad y vuelve a intentar el reconocimiento.</string>
     <string name="music_recognition_notification_signature_failed_text">La grabación de audio no contenía suficiente música como para permitir la identificación.</string>
     <string name="music_recognition_notification_recognition_failed_text">El servicio de reconocimiento no pudo identificar este audio. Inténtelo de nuevo en breve.</string>
-    <string name="show_lyrics_player_controls">Mostrar controles del reproductor</string>
     <string name="storage_clear_song_cache_progress">Borrando la caché de canciones... %1$d %%</string>
     <string name="storage_clear_downloads_progress">Borrando descargas... %1$d%%</string>
     <string name="storage_clear_image_cache_progress">Borrando la caché de imágenes... %1$d%%</string>

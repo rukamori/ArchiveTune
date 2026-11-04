@@ -602,7 +602,6 @@
     <string name="aod_customize_auto_start_screen_off_desc">Tự động hiển thị màn hình môi trường AOD khi màn hình tắt trong khi phát nhạc</string>
     <string name="aod_customize_screensaver_info_title">Trình bảo vệ màn hình hệ thống (AOD khi sạc)</string>
     <string name="aod_customize_screensaver_info_desc">Để kích hoạt AOD tự động khi sạc hoặc đặt trên đế, hãy vào Cài đặt Android &gt; Màn hình &gt; Trình bảo vệ màn hình và chọn ArchiveTune.</string>
-    <string name="show_lyrics_player_controls">Hiển thị điều khiển trình phát</string>
     <string name="arrange_playlist_tags">Sắp xếp thẻ danh sách phát</string>
     <string name="arrange_playlist_tags_desc">Chọn thứ tự hiển thị bộ lọc thẻ trong thư viện của bạn</string>
     <string name="block_artist">Chặn nghệ sĩ</string>
