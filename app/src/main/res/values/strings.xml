@@ -711,6 +711,13 @@
     <string name="eq_percent">%1$d%%</string>
     <string name="eq_frequency_hertz">%1$d Hz</string>
     <string name="eq_frequency_kilohertz">%1$.1f kHz</string>
+    <string name="eq_decibels_compact">%1$+.1f</string>
+    <string name="eq_response_curve">Frequency response curve</string>
+    <string name="eq_custom_sound">Custom sound</string>
+    <string name="eq_output_gain_managed">Managed by automatic headroom</string>
+    <string name="eq_no_profiles">No saved profiles yet. Save the current sound to reuse it later.</string>
+    <string name="eq_turn_on_to_adjust">Turn on sound shaping to adjust these controls</string>
+    <string name="eq_reset_to_zero">Reset to 0 dB</string>
     <string name="storage">Storage</string>
     <string name="smart_trimmer">Smart Trimmer</string>
     <string name="smart_trimmer_description">Smart trimmer dynamically manages the image cache and song cache, pruning old entries to save disk space.</string>
