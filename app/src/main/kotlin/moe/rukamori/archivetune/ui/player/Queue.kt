@@ -485,6 +485,13 @@ internal fun QueueFooter(
             }
 
             PlayerDesignStyle.V10 -> {
+                val screenState by viewModel.state.collectAsStateWithLifecycle()
+                val model = when (val screen = screenState) {
+                    is QueueScreenState.Success -> screen.model
+                    is QueueScreenState.Error -> screen.previous
+                    else -> null
+                }
+                val canControlPlayback = model?.canControlPlayback == true
                 val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
                 val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
                 val currentSongLiked = currentSong?.song?.liked == true
@@ -496,6 +503,7 @@ internal fun QueueFooter(
                     shuffleModeEnabled = shuffleModeEnabled,
                     repeatMode = repeatMode,
                     currentSongLiked = currentSongLiked,
+                    canControlPlayback = canControlPlayback,
                     onExpandQueue = onExpandQueue,
                     onShuffleClick = { viewModel.onAction(QueueAction.ToggleShuffle) },
                     onRepeatModeClick = { viewModel.onAction(QueueAction.ToggleRepeat) },

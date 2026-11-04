@@ -1532,6 +1532,7 @@ fun QueueCollapsedContentV10(
     shuffleModeEnabled: Boolean,
     repeatMode: Int,
     currentSongLiked: Boolean,
+    canControlPlayback: Boolean = true,
     onExpandQueue: () -> Unit,
     onShuffleClick: () -> Unit,
     onRepeatModeClick: () -> Unit,
@@ -1588,6 +1589,7 @@ fun QueueCollapsedContentV10(
                 field = field,
                 checked = shuffleModeEnabled,
                 isToggle = true,
+                enabled = canControlPlayback,
                 iconResId = R.drawable.shuffle,
                 contentDescription = stringResource(if (shuffleModeEnabled) R.string.action_shuffle_on else R.string.action_shuffle_off),
                 enableHapticFeedback = enableHapticFeedback,
@@ -1599,6 +1601,7 @@ fun QueueCollapsedContentV10(
                 field = field,
                 checked = repeatMode != Player.REPEAT_MODE_OFF,
                 isToggle = true,
+                enabled = canControlPlayback,
                 iconResId = if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
                 contentDescription =
                     stringResource(
@@ -1644,6 +1647,7 @@ private fun RowScope.EditorialSegmentedButton(
     field: Color,
     checked: Boolean = false,
     isToggle: Boolean = false,
+    enabled: Boolean = true,
     isFirst: Boolean = false,
     isLast: Boolean = false,
     iconResId: Int,
@@ -1654,15 +1658,22 @@ private fun RowScope.EditorialSegmentedButton(
     val view = LocalView.current
 
     val containerColor by animateColorAsState(
-        targetValue = if (isToggle && checked) accent else accent.copy(alpha = 0.08f),
+        targetValue = when {
+            !enabled -> accent.copy(alpha = 0.04f)
+            isToggle && checked -> accent
+            else -> accent.copy(alpha = 0.08f)
+        },
         label = "EditorialSegmentedBg",
     )
     val contentColor by animateColorAsState(
-        targetValue = if (isToggle && checked) field else accent,
+        targetValue = when {
+            !enabled -> accent.copy(alpha = 0.38f)
+            isToggle && checked -> field
+            else -> accent
+        },
         label = "EditorialSegmentedFg",
     )
     val shape = editorialGroupedItemShape(isFirst = isFirst, isLast = isLast)
-
     Box(
         modifier =
             modifier
@@ -1678,7 +1689,7 @@ private fun RowScope.EditorialSegmentedButton(
                         role = Role.Button
                     }
                 }
-                .clickable {
+                .clickable(enabled = enabled) {
                     if (enableHapticFeedback) {
                         view.performHapticFeedback(
                             android.view.HapticFeedbackConstants.CONTEXT_CLICK,
