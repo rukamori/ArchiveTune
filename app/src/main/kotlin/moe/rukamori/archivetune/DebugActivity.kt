@@ -539,7 +539,7 @@ private fun CrashEmblem(modifier: Modifier = Modifier) {
     val emblemColor = MaterialTheme.colorScheme.errorContainer
     val haloColor = MaterialTheme.colorScheme.tertiaryContainer
     val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.SoftBurst) }
-    val haloShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val haloShape = MaterialShapes.Cookie12Sided.toShape()
     val morphProgress = remember { Animatable(0f) }
     val scale = remember { Animatable(0.4f) }
 

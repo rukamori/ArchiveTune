@@ -522,7 +522,7 @@ internal fun AddToPlaylistActionTile(
         animationSpec = motion.defaultSpatialSpec(),
         label = "actionTileBadgeRotation",
     )
-    val badgeShape = remember(badgePolygon) { badgePolygon.toShape() }
+    val badgeShape = badgePolygon.toShape()
 
     Surface(
         onClick = onClick,
@@ -736,7 +736,7 @@ internal fun AddToPlaylistEmptyState(
     searching: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val emptyShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val emptyShape = MaterialShapes.Cookie12Sided.toShape()
 
     Column(
         modifier =

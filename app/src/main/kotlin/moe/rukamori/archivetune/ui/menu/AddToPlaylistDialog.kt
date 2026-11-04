@@ -802,7 +802,7 @@ private fun AddToPlaylistDuplicatesDialog(
     onDismiss: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val badgeShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
     val totalDuplicates =
         remember(duplicateSongsMap) {
             duplicateSongsMap.values
