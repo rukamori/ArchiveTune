@@ -483,7 +483,7 @@ internal fun QueueFooter(
                 )
             }
 
-            PlayerDesignStyle.V5, PlayerDesignStyle.V10 -> Unit
+            PlayerDesignStyle.V5, PlayerDesignStyle.V10, PlayerDesignStyle.V11 -> Unit
         }
     }
 }

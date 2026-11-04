@@ -444,6 +444,7 @@ fun AppearanceSettings(navController: NavController) {
             PlayerDesignStyle.V8,
             PlayerDesignStyle.V9,
             PlayerDesignStyle.V10,
+            PlayerDesignStyle.V11,
             -> false
 
             else -> true
@@ -830,6 +831,7 @@ fun AppearanceSettings(navController: NavController) {
                                 PlayerDesignStyle.V8 -> stringResource(R.string.player_design_v8)
                                 PlayerDesignStyle.V9 -> stringResource(R.string.player_design_v9)
                                 PlayerDesignStyle.V10 -> stringResource(R.string.player_design_v10)
+                                PlayerDesignStyle.V11 -> stringResource(R.string.player_design_v11)
                             }
                         },
                     )

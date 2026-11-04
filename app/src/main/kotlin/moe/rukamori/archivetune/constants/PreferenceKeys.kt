@@ -674,6 +674,7 @@ enum class PlayerDesignStyle {
     V8,
     V9,
     V10,
+    V11,
 }
 
 enum class PlayerBackgroundStyle {
