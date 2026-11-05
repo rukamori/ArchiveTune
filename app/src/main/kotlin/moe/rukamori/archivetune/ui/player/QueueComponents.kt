@@ -11,6 +11,7 @@ package moe.rukamori.archivetune.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -68,6 +69,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
@@ -1551,16 +1553,21 @@ fun QueueCollapsedContentV10(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        val hasCodec = showCodecOnPlayer && currentFormat != null
-        if (hasCodec) {
-            val container = currentFormat.containerLabel()
-            val bitrate = currentFormat.autoRateDisplay()
+        if (showCodecOnPlayer) {
+            val hasFormat = currentFormat != null
+            val container = if (hasFormat) currentFormat.containerLabel() else " "
+            val bitrate = currentFormat?.autoRateDisplay()
+            val codecAlpha by animateFloatAsState(
+                targetValue = if (hasFormat) 0.6f else 0f,
+                label = "V10CodecInfoAlpha",
+            )
             CodecInfoRow(
                 codec = container,
                 bitrate = bitrate,
                 fileSize = "",
-                textColor = accent.copy(alpha = 0.6f),
+                textColor = accent.copy(alpha = codecAlpha),
                 contentPadding = PaddingValues(start = 30.dp, end = 30.dp, top = 0.dp, bottom = 10.dp),
+                modifier = if (hasFormat) Modifier else Modifier.clearAndSetSemantics { },
             )
         }
 
