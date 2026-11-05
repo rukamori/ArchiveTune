@@ -61,6 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -1540,7 +1542,6 @@ fun QueueCollapsedContentV10(
     onAddToPlaylistClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
 
     Column(
         modifier =
@@ -1580,7 +1581,6 @@ fun QueueCollapsedContentV10(
                 isFirst = true,
                 iconResId = R.drawable.queue_music,
                 contentDescription = stringResource(R.string.queue),
-                enableHapticFeedback = enableHapticFeedback,
             )
             // 2. Shuffle (toggle)
             EditorialSegmentedButton(
@@ -1592,7 +1592,6 @@ fun QueueCollapsedContentV10(
                 enabled = canControlPlayback,
                 iconResId = R.drawable.shuffle,
                 contentDescription = stringResource(if (shuffleModeEnabled) R.string.action_shuffle_on else R.string.action_shuffle_off),
-                enableHapticFeedback = enableHapticFeedback,
             )
             // 3. Repeat (toggle)
             EditorialSegmentedButton(
@@ -1611,7 +1610,6 @@ fun QueueCollapsedContentV10(
                             else -> R.string.repeat_mode_off
                         },
                     ),
-                enableHapticFeedback = enableHapticFeedback,
             )
             // 4. Like (toggle)
             EditorialSegmentedButton(
@@ -1622,7 +1620,6 @@ fun QueueCollapsedContentV10(
                 isToggle = true,
                 iconResId = if (currentSongLiked) R.drawable.favorite else R.drawable.favorite_border,
                 contentDescription = stringResource(if (currentSongLiked) R.string.action_remove_like else R.string.action_like),
-                enableHapticFeedback = enableHapticFeedback,
             )
             // 5. Add to Playlist (action) - rightmost
             EditorialSegmentedButton(
@@ -1632,7 +1629,6 @@ fun QueueCollapsedContentV10(
                 isLast = true,
                 iconResId = R.drawable.library_add,
                 contentDescription = stringResource(R.string.add_to_playlist),
-                enableHapticFeedback = enableHapticFeedback,
             )
         }
     }
@@ -1652,10 +1648,9 @@ private fun RowScope.EditorialSegmentedButton(
     isLast: Boolean = false,
     iconResId: Int,
     contentDescription: String? = null,
-    enableHapticFeedback: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
+    val haptic = LocalHapticFeedback.current
 
     val containerColor by animateColorAsState(
         targetValue = when {
@@ -1690,11 +1685,8 @@ private fun RowScope.EditorialSegmentedButton(
                     }
                 }
                 .clickable(enabled = enabled) {
-                    if (enableHapticFeedback) {
-                        view.performHapticFeedback(
-                            android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                            android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                        )
+                    if (isToggle) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                     onClick()
                 },
