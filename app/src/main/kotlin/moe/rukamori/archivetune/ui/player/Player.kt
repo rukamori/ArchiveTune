@@ -734,7 +734,9 @@ fun BottomSheetPlayer(
     val TextBackgroundColor =
         if (playerDesignStyle == PlayerDesignStyle.V11) {
             v11Palette.onField
-        } else if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
+        } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+            dynamicV10AccentColor
+        } else if (playerDesignStyle == PlayerDesignStyle.V9) {
             dynamicTextColor
         } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.White
@@ -772,30 +774,36 @@ fun BottomSheetPlayer(
         }
 
     val (textButtonColor, iconButtonColor) =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            Pair(dynamicAccentColor, dynamicIconButtonColor)
-        } else {
-            when (playerButtonsStyle) {
-                PlayerButtonsStyle.DEFAULT -> {
-                    Pair(TextBackgroundColor, icBackgroundColor)
-                }
-
-                PlayerButtonsStyle.SECONDARY -> {
-                    Pair(
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.onSecondary,
-                    )
-                }
-            }
-        }.let { (tb, ib) ->
-            if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        when (playerDesignStyle) {
+            PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
                 Pair(Color.White, Color.Black)
-            } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+            }
+
+            PlayerDesignStyle.V9 -> {
                 Pair(dynamicAccentColor, dynamicIconButtonColor)
-            } else if (playerDesignStyle == PlayerDesignStyle.V11) {
+            }
+
+            PlayerDesignStyle.V10 -> {
+                Pair(dynamicV10FieldColor, dynamicV10AccentColor)
+            }
+
+            PlayerDesignStyle.V11 -> {
                 Pair(v11Palette.accent, v11Palette.onAccent)
-            } else {
-                Pair(tb, ib)
+            }
+
+            else -> {
+                when (playerButtonsStyle) {
+                    PlayerButtonsStyle.DEFAULT -> {
+                        Pair(TextBackgroundColor, icBackgroundColor)
+                    }
+
+                    PlayerButtonsStyle.SECONDARY -> {
+                        Pair(
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.onSecondary,
+                        )
+                    }
+                }
             }
         }
 
@@ -968,25 +976,7 @@ fun BottomSheetPlayer(
         }
     }
 
-    val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5 ||
-            playerDesignStyle == PlayerDesignStyle.V10 ||
-            playerDesignStyle == PlayerDesignStyle.V11
-        ) {
-            0.dp
-        } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-            88.dp +
-                (if (showCodecOnPlayer) 24.dp else 0.dp) +
-                (if (sleepTimerEnabled) 42.dp else 0.dp)
-        } else if (playerDesignStyle == PlayerDesignStyle.V7) {
-            72.dp
-        } else if (showCodecOnPlayer) {
-            88.dp
-        } else {
-            QueuePeekHeight
-        }
 
-    val queueCollapsedHeight = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     val queueVisible by queueViewModel.isQueueVisible.collectAsStateWithLifecycle()
 
     LaunchedEffect(state, queueViewModel) {
@@ -1243,49 +1233,6 @@ fun BottomSheetPlayer(
                 )
             }
         }
-        val v11Content: @Composable (Boolean) -> Unit = { landscape ->
-            enrichedMetadata?.let { metadata ->
-                V11PlayerContent(
-                    mediaMetadata = metadata,
-                    playbackState = playbackState,
-                    isPlaying = isPlaying,
-                    canSkipPrevious = canSkipPrevious,
-                    canSkipNext = canSkipNext,
-                    sliderPosition = sliderPosition,
-                    position = position,
-                    duration = duration,
-                    playerConnection = playerConnection,
-                    navController = navController,
-                    state = state,
-                    palette = v11Palette,
-                    queueTitle = queueTitle,
-                    currentSongLiked = currentSongLiked,
-                    canvasSource = artworkCanvas?.source,
-                    canvasPrimaryUrl = artworkCanvas?.animated,
-                    canvasFallbackUrl = artworkCanvas?.videoUrl,
-                    sleepTimerEnabled = sleepTimerEnabled,
-                    sleepTimerTimeLeft = sleepTimerTimeLeft,
-                    onCollapseClick = { state.collapseSoft() },
-                    onQueueClick = openQueue,
-                    onLyricsClick = { isLyricsScreenVisible = true },
-                    onSliderValueChange = onSliderValueChange,
-                    onSliderValueChangeFinished = onSliderValueChangeFinished,
-                    onSleepTimerClick = onPlayerSleepTimerClick,
-                    onMenuClick = { showPlayerMenu(metadata) },
-                    onAddToPlaylistClick = { showChoosePlaylistDialog = true },
-                    landscape = landscape,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(bottom = queueCollapsedHeight)
-                            .windowInsetsPadding(
-                                WindowInsets.systemBars.only(
-                                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                                ),
-                            ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                )
-            }
-        }
 
         val controlsContent: @Composable ColumnScope.(MediaMetadata, Boolean) -> Unit = { mediaMetadata, landscape ->
             PlayerControlsContent(
@@ -1343,7 +1290,72 @@ fun BottomSheetPlayer(
 // distance
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            if (maxWidth > maxHeight) {
+            val isLandscape = maxWidth > maxHeight
+            val isPortrait = !isLandscape
+
+            val dynamicQueuePeekHeight =
+                if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.V11) {
+                    0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+                    88.dp +
+                        (if (showCodecOnPlayer) 24.dp else 0.dp) +
+                        (if (sleepTimerEnabled) 42.dp else 0.dp)
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    if (isPortrait) (if (showCodecOnPlayer) 94.dp else 78.dp) else 0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V7) {
+                    72.dp
+                } else if (showCodecOnPlayer) {
+                    88.dp
+                } else {
+                    QueuePeekHeight
+                }
+
+            val queueCollapsedHeight = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+            val v11Content: @Composable (Boolean) -> Unit = { landscape ->
+                enrichedMetadata?.let { metadata ->
+                    V11PlayerContent(
+                        mediaMetadata = metadata,
+                        playbackState = playbackState,
+                        isPlaying = isPlaying,
+                        canSkipPrevious = canSkipPrevious,
+                        canSkipNext = canSkipNext,
+                        sliderPosition = sliderPosition,
+                        position = position,
+                        duration = duration,
+                        playerConnection = playerConnection,
+                        navController = navController,
+                        state = state,
+                        palette = v11Palette,
+                        queueTitle = queueTitle,
+                        currentSongLiked = currentSongLiked,
+                        canvasSource = artworkCanvas?.source,
+                        canvasPrimaryUrl = artworkCanvas?.animated,
+                        canvasFallbackUrl = artworkCanvas?.videoUrl,
+                        sleepTimerEnabled = sleepTimerEnabled,
+                        sleepTimerTimeLeft = sleepTimerTimeLeft,
+                        onCollapseClick = { state.collapseSoft() },
+                        onQueueClick = openQueue,
+                        onLyricsClick = { isLyricsScreenVisible = true },
+                        onSliderValueChange = onSliderValueChange,
+                        onSliderValueChangeFinished = onSliderValueChangeFinished,
+                        onSleepTimerClick = onPlayerSleepTimerClick,
+                        onMenuClick = { showPlayerMenu(metadata) },
+                        onAddToPlaylistClick = { showChoosePlaylistDialog = true },
+                        landscape = landscape,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(bottom = queueCollapsedHeight)
+                                .windowInsetsPadding(
+                                    WindowInsets.systemBars.only(
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                                    ),
+                                ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                    )
+                }
+            }
+
+            if (isLandscape) {
                 if (playerDesignStyle == PlayerDesignStyle.V5) {
                     val littleBackground = MaterialTheme.colorScheme.primaryContainer
                     val littleTextColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1937,20 +1949,20 @@ fun BottomSheetPlayer(
                     }
                 }
             }
+            QueueFooter(
+                playerBottomSheetState = state,
+                navController = navController,
+                viewModel = queueViewModel,
+                peekHeight = dynamicQueuePeekHeight,
+                onExpandQueue = openQueue,
+                onShowLyrics = { isLyricsScreenVisible = true },
+                TextBackgroundColor = TextBackgroundColor,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                onAddToPlaylistClick = { showChoosePlaylistDialog = true },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
-
-        QueueFooter(
-            playerBottomSheetState = state,
-            navController = navController,
-            viewModel = queueViewModel,
-            peekHeight = dynamicQueuePeekHeight,
-            onExpandQueue = openQueue,
-            onShowLyrics = { isLyricsScreenVisible = true },
-            TextBackgroundColor = TextBackgroundColor,
-            textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(

@@ -54,6 +54,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
@@ -222,6 +224,7 @@ internal fun QueueFooter(
     textButtonColor: Color,
     iconButtonColor: Color,
     modifier: Modifier = Modifier,
+    onAddToPlaylistClick: () -> Unit,
 ) {
     if (peekHeight <= 0.dp) return
     val context = LocalContext.current
@@ -483,7 +486,39 @@ internal fun QueueFooter(
                 )
             }
 
-            PlayerDesignStyle.V5, PlayerDesignStyle.V10, PlayerDesignStyle.V11 -> Unit
+            PlayerDesignStyle.V10 -> {
+                val canControlPlayback by remember(viewModel) {
+                    viewModel.state
+                        .map { screen ->
+                            when (screen) {
+                                is QueueScreenState.Success -> screen.model.canControlPlayback
+                                is QueueScreenState.Error -> screen.previous?.canControlPlayback ?: true
+                                else -> true
+                            }
+                        }
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(initialValue = true)
+                val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
+                val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
+                val currentSongLiked = currentSong?.song?.liked == true
+                QueueCollapsedContentV10(
+                    showCodecOnPlayer = showCodecOnPlayer,
+                    currentFormat = currentFormat,
+                    accent = TextBackgroundColor,
+                    field = textButtonColor,
+                    shuffleModeEnabled = shuffleModeEnabled,
+                    repeatMode = repeatMode,
+                    currentSongLiked = currentSongLiked,
+                    canControlPlayback = canControlPlayback,
+                    onExpandQueue = onExpandQueue,
+                    onShuffleClick = { viewModel.onAction(QueueAction.ToggleShuffle) },
+                    onRepeatModeClick = { viewModel.onAction(QueueAction.ToggleRepeat) },
+                    onToggleLike = playerConnection::toggleLike,
+                    onAddToPlaylistClick = onAddToPlaylistClick,
+                )
+            }
+
+            PlayerDesignStyle.V5, PlayerDesignStyle.V11 -> Unit
         }
     }
 }
