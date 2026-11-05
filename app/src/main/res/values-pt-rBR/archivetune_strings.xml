@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">Processando…</string>
     <string name="music_recognition_listen_again">Ouvir novamente</string>
     <string name="music_recognition_no_match">Nenhuma correspondência encontrada</string>
-    <string name="music_recognition_signature_failed">Não foi possível gerar uma assinatura</string>
-    <string name="music_recognition_recognition_failed">Falha no reconhecimento</string>
     <string name="music_recognition_open_shazam">Abrir Shazam</string>
     <string name="music_recognition_lyrics_preview">Prévia da letra</string>
     <string name="music_recognition_permission_title">Permissão do microfone</string>
@@ -414,7 +412,6 @@
     <string name="settings_stats_title">Estatísticas de escuta</string>
     <string name="settings_stats_subtitle">Suas principais músicas, artistas e histórico de reprodução</string>
     <string name="top_songs">Principais músicas</string>
-    <string name="top_albums">Principais álbuns</string>
     <string name="year_in_music">Ano na música</string>
     <string name="top_artists">Principais artistas</string>
     <string name="share_summary">Compartilhar resumo</string>
@@ -553,16 +550,12 @@
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Doar</string>
     <string name="music_recognition_settings">Configurações de reconhecimento de música</string>
-    <string name="music_recognition_background_title">Reconhecimento em segundo plano</string>
-    <string name="music_recognition_background_description">Quando ativado, o bloco de Configurações Rápidas reconhece o áudio que está sendo reproduzido neste dispositivo sem abrir o ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">O reconhecimento em segundo plano não está disponível na versão FOSS. Em vez disso, o bloco “Configurações rápidas” abre a tela de reconhecimento.</string>
     <string name="music_recognition_notification_channel_name">Reconhecimento de músicas</string>
     <string name="music_recognition_notification_channel_description">Progresso e resultados no reconhecimento musical</string>
     <string name="music_recognition_notification_status_listening">OUVINDO</string>
     <string name="music_recognition_notification_status_processing">PROCESSANDO</string>
     <string name="music_recognition_notification_status_result">RESULTADO</string>
     <string name="music_recognition_notification_listening_title">Ouvindo música</string>
-    <string name="music_recognition_notification_listening_text">Capturando o áudio que está sendo reproduzido neste dispositivo</string>
     <string name="music_recognition_notification_processing_title">Processando áudio</string>
     <string name="music_recognition_notification_processing_text">Comparação da impressão digital de áudio capturada</string>
     <string name="music_recognition_notification_artist">Artista: %1$s</string>
@@ -571,13 +564,9 @@
     <string name="music_recognition_notification_release">Lançada em: %1$s</string>
     <string name="music_recognition_notification_label">Gravadora: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Nenhuma música encontrada</string>
     <string name="music_recognition_notification_no_match_text">Deixe a música tocando com clareza e tente o reconhecimento novamente.</string>
-    <string name="music_recognition_notification_recording_failed_title">Não foi possível capturar o áudio do dispositivo</string>
-    <string name="music_recognition_notification_recording_failed_text">O aplicativo em execução pode estar bloqueando a captura de áudio, ou a reprodução pode ter sido interrompida.</string>
     <string name="music_recognition_notification_signature_failed_text">O áudio capturado não continha música suficiente para ser identificado.</string>
     <string name="music_recognition_notification_recognition_failed_text">O serviço de reconhecimento não conseguiu identificar este áudio. Tente novamente daqui a pouco.</string>
-    <string name="show_lyrics_player_controls">Mostrar controles do player</string>
     <string name="block_artist">Bloquear artista</string>
     <string name="unblock_artist">Desbloquear artista</string>
     <string name="stats_top_songs">Top músicas</string>

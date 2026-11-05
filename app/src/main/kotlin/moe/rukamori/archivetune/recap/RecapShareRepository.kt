@@ -98,16 +98,22 @@ private class RecapPoster(
 ) {
     private val text = RecapText(context)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private val foreground = RecapAppearance.Foreground
-    private val secondary = RecapAppearance.Secondary
+    private var foreground = RecapAppearance.Foreground
+    private var secondary = RecapAppearance.Secondary
 
     fun draw(data: RecapData, chapter: RecapChapter, entries: List<RecapEntry>) {
-        val topColor = if (chapter == RecapChapter.TIME || chapter == RecapChapter.HABITS) 0xFF54B9D2.toInt() else 0xFF2851A0.toInt()
-        paint.shader = LinearGradient(0f, 0f, 0f, 1920f, topColor, RecapAppearance.Background, Shader.TileMode.CLAMP)
+        val scene = RecapAppearance.scene(chapter)
+        foreground = if (scene.light) RecapAppearance.Ink else RecapAppearance.Foreground
+        secondary = if (scene.light) (RecapAppearance.Ink and 0x00FFFFFF) or 0xB3000000.toInt() else RecapAppearance.Secondary
+        paint.shader = LinearGradient(0f, 0f, 0f, 1920f, scene.base, null, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
-        val mint = RecapAppearance.Mint and 0x00FFFFFF
-        paint.shader = RadialGradient(900f, 1400f, 1000f, intArrayOf(mint or 0x59000000, mint), null, Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
+        val glowCenters = arrayOf(floatArrayOf(160f, 360f), floatArrayOf(940f, 980f), floatArrayOf(300f, 1640f))
+        scene.glow.forEachIndexed { index, color ->
+            val center = glowCenters[index % glowCenters.size]
+            val rgb = color and 0x00FFFFFF
+            paint.shader = RadialGradient(center[0], center[1], 1000f, intArrayOf(rgb or 0x99000000.toInt(), rgb), null, Shader.TileMode.CLAMP)
+            canvas.drawRect(0f, 0f, 1080f, 1920f, paint)
+        }
         paint.shader = null
         paragraph(text.period(data), 72f, 64f, 936, 42f, 2, color = secondary)
         when (chapter) {
@@ -115,8 +121,10 @@ private class RecapPoster(
                 paragraph(text.chapterTitle(chapter), 72f, 720f, 936, 92f, 4, bold = true)
             }
             RecapChapter.TIME -> {
-                paragraph(context.getString(R.string.recap_time_statement), 72f, 220f, 936, 76f, 3, bold = true)
-                paragraph(text.number(data.milliseconds / 60_000), 72f, 520f, 936, 156f, 2, bold = true)
+                val minutes = text.number(data.milliseconds / 60_000)
+                paragraph(context.getString(R.string.recap_month_listening, minutes,
+                    data.month?.let { text.month(it) } ?: data.year.toString()), 72f, 220f, 936, 76f, 4, bold = true)
+                paragraph(minutes, 72f, 600f, 936, 156f, 1, bold = true)
                 label(context.getString(R.string.year_in_music_minutes_unit), 72f, 850f, 46f, foreground)
                 label(text.plays(data.plays), 72f, 940f, 38f, secondary)
                 label(context.getString(R.string.recap_distinct_tracks) + " " + text.number(data.distinctTracks), 72f, 1010f, 34f, secondary)
@@ -224,6 +232,7 @@ private class RecapPoster(
                 val scale = maxOf(bounds.width() / image.width, bounds.height() / image.height)
                 val width = image.width * scale
                 val height = image.height * scale
+                paint.alpha = 255
                 drawBitmap(image, null, RectF(bounds.centerX() - width / 2, bounds.centerY() - height / 2,
                     bounds.centerX() + width / 2, bounds.centerY() + height / 2), paint)
             } else {

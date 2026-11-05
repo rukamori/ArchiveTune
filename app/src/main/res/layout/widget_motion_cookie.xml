@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProgressBar xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_motion"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:importantForAccessibility="no"
+    android:indeterminate="true"
+    android:indeterminateDrawable="@drawable/widget_motion_cookie_spin"
+    android:indeterminateOnly="true"
+    android:maxWidth="2000dp"
+    android:maxHeight="2000dp"
+    android:minWidth="0dp"
+    android:minHeight="0dp" />

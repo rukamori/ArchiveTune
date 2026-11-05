@@ -502,7 +502,6 @@
     <string name="new_version_available">Доступна новая версия</string>
     <string name="updates">Обновления</string>
     <string name="current_version">Текущая версия</string>
-    <string name="latest_version_format">Последняя: %s</string>
     <string name="enable_update_notification">Включить уведомление об обновлении</string>
     <string name="update_channel">Канал обновлений</string>
     <string name="recent_commits">Последние коммиты</string>

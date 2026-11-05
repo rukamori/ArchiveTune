@@ -33,9 +33,11 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -86,6 +88,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.NavigationRail
@@ -124,6 +127,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -140,6 +144,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -159,6 +165,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.edit
+import androidx.graphics.shapes.Morph
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -289,6 +296,7 @@ import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
+import moe.rukamori.archivetune.ui.player.EditorialMorphShape
 import moe.rukamori.archivetune.ui.screens.library.LibraryHeaderContentPadding
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
@@ -1941,23 +1949,7 @@ class MainActivity : ComponentActivity() {
                                                             ) + WindowInsetsSides.Top,
                                                         ),
                                                     title = {
-                                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            // app icon
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.about_appbar),
-                                                                contentDescription = null,
-                                                                modifier =
-                                                                    Modifier
-                                                                        .size(35.dp)
-                                                                        .padding(end = 3.dp),
-                                                            )
-                                                            Text(
-                                                                text = stringResource(R.string.app_name),
-                                                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis,
-                                                            )
-                                                        }
+                                                        TopAppBarBrand()
                                                     },
                                                     actions = {
                                                         val hasUpdateAvailable =
@@ -3332,6 +3324,67 @@ private fun HomeOverflowMenuIcon(
 }
 
 private const val TopAppBarIconButtonContainerAlpha = 0.48f
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun TopAppBarBrand() {
+    val playerConnection = LocalPlayerConnection.current
+    val isPlaying = playerConnection?.isPlaying?.collectAsStateWithLifecycle()?.value == true
+    val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie9Sided) }
+    val morphProgress by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "brandBadgeMorph",
+    )
+    val badgeColor by animateColorAsState(
+        targetValue =
+            if (isPlaying) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.primaryContainer
+            },
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "brandBadgeColor",
+    )
+    val badgeContentColor by animateColorAsState(
+        targetValue =
+            if (isPlaying) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            },
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "brandBadgeContentColor",
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.semantics(mergeDescendants = true) { heading() },
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(40.dp)
+                    .clip(EditorialMorphShape(morph, morphProgress))
+                    .background(badgeColor),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.about_appbar),
+                contentDescription = null,
+                tint = badgeContentColor,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLargeEmphasized,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
 
 @Composable
 private fun TranslucentTopAppBarIconButton(

@@ -23,6 +23,7 @@ class SpotifyPlaylistQueue(
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
     override val preloadItem: MediaMetadata? = null,
+    private val initialResolveLimit: Int? = null,
 ) : Queue {
     private val allTracks = mutableListOf<SpotifyTrack>()
     private var resolveOffset = 0
@@ -50,10 +51,17 @@ class SpotifyPlaylistQueue(
             }
 
             val targetIndex = startIndex.coerceIn(allTracks.indices)
-            val resolvedEntries = resolveTrackEntries(allTracks)
+            val resolveStart = if (initialResolveLimit != null) targetIndex else 0
+            val resolveEnd =
+                initialResolveLimit
+                    ?.let { limit -> (targetIndex + limit.coerceAtLeast(1)).coerceAtMost(allTracks.size) }
+                    ?: allTracks.size
+            val resolvedEntries =
+                resolveTrackEntries(allTracks.subList(resolveStart, resolveEnd))
+                    .map { (index, item) -> resolveStart + index to item }
             val resolvedItems = resolvedEntries.map { it.second }
 
-            resolveOffset = allTracks.size
+            resolveOffset = resolveEnd
             if (resolvedItems.isEmpty()) {
                 return@withContext Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
             }

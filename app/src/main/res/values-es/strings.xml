@@ -497,7 +497,6 @@
     <string name="new_version_available">Nueva versión disponible</string>
     <string name="updates">Actualizaciones</string>
     <string name="current_version">Versión Actual</string>
-    <string name="latest_version_format">Ultima: %s</string>
     <string name="enable_update_notification">Activar la Notificación de Actualización</string>
     <string name="update_channel">Canal de actualización</string>
     <string name="recent_commits">Cambios recientes</string>
@@ -891,7 +890,6 @@
     <string name="onboarding_foss_variant">Edición FOSS</string>
     <string name="onboarding_version_label">Versión %1$s</string>
     <string name="onboarding_empty_title">Configuración no disponible</string>
-    <string name="onboarding_empty_subtitle">Continúa en ArchiveTune.</string>
     <string name="onboarding_error_generic">No se ha podido cargar el programa de instalación</string>
     <string name="onboarding_permission_allowed_by_install">Permitido por la instalación</string>
     <string name="onboarding_permission_unavailable">No disponible</string>

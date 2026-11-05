@@ -5,6 +5,8 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package moe.rukamori.archivetune.ui.screens.settings
 
 import android.content.ActivityNotFoundException
@@ -13,6 +15,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
@@ -22,12 +26,13 @@ import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 
 @Composable
-fun buildSettingsGroups(
+fun buildSettingsContent(
     navController: NavController,
     isAndroid12OrLater: Boolean,
     hasUpdate: Boolean,
+    showAccountEntry: Boolean,
     context: Context,
-): List<SettingsGroup> {
+): SettingsContent {
     val account =
         SettingsItem(
             key = "account",
@@ -253,32 +258,60 @@ fun buildSettingsGroups(
             onClick = { navController.navigate("settings/about") },
         )
 
-    return listOf(
-        SettingsGroup(
-            title = stringResource(R.string.settings),
-            items = listOf(account, stats),
-        ),
-        SettingsGroup(
-            title = stringResource(R.string.settings_section_player_content),
-            items = listOf(appearance, playback, canvas, lyrics, content, behavior),
-        ),
-        SettingsGroup(
-            title = stringResource(R.string.integration),
-            items = listOf(androidAuto, integration, modules, aiIntegration, internet),
-        ),
-        SettingsGroup(
-            title = stringResource(R.string.storage),
-            items = listOf(storage, backupRestore),
-        ),
-        SettingsGroup(
-            title = stringResource(R.string.about),
-            items =
-                buildList {
-                    add(developerOptions)
-                    defaultLinks?.let(::add)
-                    updates?.let(::add)
-                    add(about)
-                },
-        ),
-    )
+    val highlights =
+        listOf(
+            SettingsHighlight(item = appearance, tone = SettingsTone.Primary, glyph = MaterialShapes.Cookie9Sided),
+            SettingsHighlight(item = playback, tone = SettingsTone.Tertiary, glyph = MaterialShapes.Clover4Leaf),
+            SettingsHighlight(item = lyrics, tone = SettingsTone.Secondary, glyph = MaterialShapes.Sunny),
+            SettingsHighlight(item = stats, tone = SettingsTone.Neutral, glyph = MaterialShapes.Puffy),
+        )
+
+    val groups =
+        buildList {
+            if (showAccountEntry) {
+                add(
+                    SettingsGroup(
+                        key = "account",
+                        title = stringResource(R.string.account),
+                        items = listOf(account),
+                    ),
+                )
+            }
+            add(
+                SettingsGroup(
+                    key = "player_content",
+                    title = stringResource(R.string.settings_section_player_content),
+                    items = listOf(canvas, content, behavior),
+                ),
+            )
+            add(
+                SettingsGroup(
+                    key = "integration",
+                    title = stringResource(R.string.integration),
+                    items = listOf(androidAuto, integration, modules, aiIntegration, internet),
+                ),
+            )
+            add(
+                SettingsGroup(
+                    key = "storage",
+                    title = stringResource(R.string.storage),
+                    items = listOf(storage, backupRestore),
+                ),
+            )
+            add(
+                SettingsGroup(
+                    key = "about",
+                    title = stringResource(R.string.about),
+                    items =
+                        buildList {
+                            add(developerOptions)
+                            defaultLinks?.let(::add)
+                            updates?.let(::add)
+                            add(about)
+                        },
+                ),
+            )
+        }
+
+    return SettingsContent(highlights = highlights, groups = groups)
 }

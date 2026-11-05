@@ -21,26 +21,26 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MusicRecognitionTileActionActivity : ComponentActivity() {
     @Inject
-    lateinit var isBackgroundRecognitionEnabled: IsBackgroundRecognitionEnabledUseCase
+    lateinit var isFloatingRecognitionEnabled: IsFloatingRecognitionEnabledUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
-            val backgroundRecognitionEnabled =
+            val floatingRecognitionEnabled =
                 try {
-                    isBackgroundRecognitionEnabled()
+                    isFloatingRecognitionEnabled()
                 } catch (cancellationException: CancellationException) {
                     throw cancellationException
                 } catch (throwable: Throwable) {
-                    Timber.e(throwable, "Failed to read background recognition setting")
+                    Timber.e(throwable, "Failed to read floating recognition setting")
                     false
                 }
 
             val destination =
-                if (backgroundRecognitionEnabled) {
-                    Intent(
+                if (floatingRecognitionEnabled) {
+                    MusicRecognitionCaptureActivity.intent(
                         this@MusicRecognitionTileActionActivity,
-                        MusicRecognitionCaptureActivity::class.java,
+                        listenNow = true,
                     )
                 } else {
                     Intent(

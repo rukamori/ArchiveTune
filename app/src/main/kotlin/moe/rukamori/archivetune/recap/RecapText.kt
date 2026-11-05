@@ -19,16 +19,40 @@ import java.time.Month
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 
+internal class RecapScene(val base: IntArray, val glow: IntArray, val light: Boolean)
+
 internal object RecapAppearance {
-    const val Background = 0xFF132D53.toInt()
-    const val Foreground = 0xFFF5F5F7.toInt()
-    const val Secondary = 0xFFD9E8F2.toInt()
-    const val Surface = 0xFF326C9B.toInt()
-    const val Cream = 0xFFF9EAB9.toInt()
-    const val Mint = 0xFF9ED5B5.toInt()
-    const val Sky = 0xFF52B8D3.toInt()
-    const val Blue = 0xFF326AD8.toInt()
-    const val Ink = 0xFF20291F.toInt()
+    const val Foreground = 0xFFFFFFFF.toInt()
+    const val Secondary = 0xB3FFFFFF.toInt()
+    const val Surface = 0x33FFFFFF
+    const val Ink = 0xFF1C1C1E.toInt()
+
+    private val Pastel = RecapScene(intArrayOf(0xFFFBF3D5.toInt(), 0xFFF3EDC4.toInt(), 0xFFDDEFC9.toInt()),
+        intArrayOf(0xFFF8DC7C.toInt(), 0xFFB5E6C2.toInt(), 0xFFFFF4DC.toInt()), light = true)
+    private val Lagoon = RecapScene(intArrayOf(0xFF5CB9DD.toInt(), 0xFF4A92A8.toInt(), 0xFF27474F.toInt()),
+        intArrayOf(0xFF7FD6EE.toInt(), 0xFF3E7F92.toInt(), 0xFF8FD3C5.toInt()), light = false)
+    private val Cobalt = RecapScene(intArrayOf(0xFF2A5BD0.toInt(), 0xFF3F78E0.toInt(), 0xFF1D2C47.toInt()),
+        intArrayOf(0xFF4F8BF0.toInt(), 0xFF3AA5A0.toInt(), 0xFF8E5A3C.toInt()), light = false)
+    private val Ember = RecapScene(intArrayOf(0xFFF0A23A.toInt(), 0xFFE0703A.toInt(), 0xFF4A2230.toInt()),
+        intArrayOf(0xFFFFC85A.toInt(), 0xFFE2565A.toInt(), 0xFF6CCB9A.toInt()), light = false)
+    private val Grove = RecapScene(intArrayOf(0xFF4FB98A.toInt(), 0xFF2F8F86.toInt(), 0xFF17363A.toInt()),
+        intArrayOf(0xFF9BE3A5.toInt(), 0xFF2FA7C9.toInt(), 0xFFF2C14E.toInt()), light = false)
+
+    private val atmospheres = listOf(
+        intArrayOf(0xFFF7C948.toInt(), 0xFF7BDCB5.toInt(), 0xFF4FB3E8.toInt(), 0xFFF29E4C.toInt()),
+        intArrayOf(0xFFF59A3C.toInt(), 0xFFF6D04D.toInt(), 0xFF6FDDB0.toInt(), 0xFFF06A5D.toInt()),
+        intArrayOf(0xFF5B8CF0.toInt(), 0xFF7FD6EE.toInt(), 0xFFB79CF2.toInt(), 0xFF6FDDB0.toInt()),
+    )
+
+    fun scene(chapter: RecapChapter): RecapScene = when (chapter) {
+        RecapChapter.INTRO -> Pastel
+        RecapChapter.TIME, RecapChapter.HABITS -> Lagoon
+        RecapChapter.ARTISTS -> Ember
+        RecapChapter.ALBUMS -> Grove
+        else -> Cobalt
+    }
+
+    fun atmosphere(year: Int): IntArray = atmospheres[Math.floorMod(year, atmospheres.size)]
 }
 
 internal data class RecapFact(val label: String, val value: String)

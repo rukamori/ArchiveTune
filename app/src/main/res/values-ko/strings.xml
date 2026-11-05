@@ -556,7 +556,6 @@
     <string name="new_version_available">새 버전 사용 가능</string>
     <string name="updates">업데이트</string>
     <string name="current_version">현재 설치된 버전</string>
-    <string name="latest_version_format">최신 버전: %s</string>
     <string name="updates_status_current">사용 가능한 가장 최신의 릴리즈 버전을 사용하고 있습니다.</string>
     <string name="enable_update_notification">신규 업데이트 푸시 알림 받기</string>
     <string name="update_channel">업데이트 채널</string>
@@ -840,7 +839,6 @@
     <string name="onboarding_foss_variant">FOSS(오픈소스 전용) 빌드</string>
     <string name="onboarding_version_label">버전: %1$s</string>
     <string name="onboarding_empty_title">설정 완료</string>
-    <string name="onboarding_empty_subtitle">모든 준비가 완료되었습니다! 이제 마음껏 음악을 감상해 보세요.</string>
     <string name="onboarding_error_generic">오류가 발생했습니다. 다시 시도해 주세요.</string>
     <string name="onboarding_permission_allowed_by_install">설치와 동시에 자동으로 허용됨</string>
     <string name="onboarding_permission_unavailable">사용할 수 없는 권한</string>

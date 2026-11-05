@@ -236,6 +236,12 @@
                 android:resource="@xml/provider_paths" />
         </provider>
 
+        <provider
+            android:name=".androidauto.CarArtworkProvider"
+            android:authorities="${applicationId}.carartwork"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+
         <service
             android:name=".playback.MusicService"
             android:exported="true"
@@ -406,6 +412,54 @@
     <meta-data
         android:name="android.appwidget.provider"
         android:resource="@xml/widget_listening_insights_info" />
+</receiver>
+
+<receiver
+    android:name=".widget.ArtworkNowPlayingWidgetReceiver"
+    android:label="@string/widget_artwork_now_playing_name"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_artwork_now_playing_info" />
+</receiver>
+
+<receiver
+    android:name=".widget.MiniPlayerWidgetReceiver"
+    android:label="@string/widget_mini_player_name"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_mini_player_info" />
+</receiver>
+
+<receiver
+    android:name=".widget.UpNextWidgetReceiver"
+    android:label="@string/widget_up_next_name"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_up_next_info" />
+</receiver>
+
+<receiver
+    android:name=".widget.RecentlyPlayedWidgetReceiver"
+    android:label="@string/widget_recently_played_name"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_recently_played_info" />
 </receiver>
 
 

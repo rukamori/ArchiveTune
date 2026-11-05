@@ -674,6 +674,7 @@ enum class PlayerDesignStyle {
     V8,
     V9,
     V10,
+    V11,
 }
 
 enum class PlayerBackgroundStyle {
@@ -743,7 +744,7 @@ enum class LyricsAnimationStyle {
 val LyricsTextSizeKey = floatPreferencesKey("lyricsTextSize")
 val LyricsLineSpacingKey = floatPreferencesKey("lyricsLineSpacing")
 val LyricsLineBlurKey = booleanPreferencesKey("lyricsLineBlur")
-val ShowLyricsPlayerControlsKey = booleanPreferencesKey("showLyricsPlayerControls")
+val LyricsAutoHideControlsKey = booleanPreferencesKey("lyricsAutoHideControls")
 
 val TopSize = stringPreferencesKey("topSize")
 

@@ -182,8 +182,6 @@
     <string name="music_recognition_processing">Elaborazione in corso…</string>
     <string name="music_recognition_listen_again">Ascolta di nuovo</string>
     <string name="music_recognition_no_match">Nessuna corrispondenza trovata</string>
-    <string name="music_recognition_signature_failed">Impossibile generare una firma</string>
-    <string name="music_recognition_recognition_failed">Errore nel riconoscimento</string>
     <string name="music_recognition_open_shazam">Aprire Shazam</string>
     <string name="music_recognition_lyrics_preview">Anteprima del testo</string>
     <string name="music_recognition_permission_title">Permessi microfono</string>
@@ -277,7 +275,6 @@
     <string name="stats_unique_songs">Canzoni che potrebbero piacerti</string>
     <string name="stats_unique_artists">Artisti che potrebbero piacerti</string>
     <string name="music_recognition_settings">Impostazioni per il riconoscimento della musica</string>
-    <string name="music_recognition_background_foss_description">Il riconoscimento in background non è disponibile nella versione FOSS. Il tasto di impostazioni rapide aprirà invece la scremata di riconoscimento.</string>
     <string name="music_recognition_notification_channel_name">Riconoscimento musicale</string>
     <string name="music_recognition_notification_status_listening">IN ASCOLTO</string>
     <string name="music_recognition_notification_status_processing">CARICAMENTO</string>
@@ -289,8 +286,6 @@
     <string name="music_recognition_notification_genre">Genere: %1$s</string>
     <string name="music_recognition_notification_release">Rilasciato: %1$s</string>
     <string name="music_recognition_notification_label">Etichetta: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Nessuna canzone trovata</string>
-    <string name="music_recognition_notification_recording_failed_title">Non è stato possibile registrare l\'audio del dispositivo</string>
     <string name="music_recognition_notification_signature_failed_text">L\'audio registrato non conteneva abbastanza musica per identificare la canzone.</string>
     <string name="music_recognition_notification_recognition_failed_text">Il servizio di identificazione non è riuscito a identificare questa canzone. Prova di nuovo tra poco.</string>
     <string name="music_recognition_history">Cronologia di riconoscimento</string>

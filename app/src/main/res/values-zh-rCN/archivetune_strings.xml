@@ -202,8 +202,6 @@
     <string name="music_recognition_processing">处理中…</string>
     <string name="music_recognition_listen_again">再听一次</string>
     <string name="music_recognition_no_match">未找到相关歌曲</string>
-    <string name="music_recognition_signature_failed">无法解析音频信息</string>
-    <string name="music_recognition_recognition_failed">没能听出这首歌</string>
     <string name="music_recognition_open_shazam">打开 Shazam</string>
     <string name="music_recognition_lyrics_preview">歌词预览</string>
     <string name="music_recognition_error">好像出了点问题</string>
@@ -224,16 +222,12 @@
     <string name="music_recognition_permission_desc">允许访问麦克风以识别周围播放的音乐</string>
     <string name="music_recognition_permission_action">允许</string>
     <string name="music_recognition_settings">听歌识曲设置</string>
-    <string name="music_recognition_background_title">后台听歌识曲</string>
-    <string name="music_recognition_background_description">开启后，无需打开 ArchiveTune，即可通过快捷设置磁贴直接识别设备上正在播放的音频</string>
-    <string name="music_recognition_background_foss_description">开源版本 (FOSS) 不支持后台识别功能。点击快捷设置磁贴将直接打开识别界面</string>
     <string name="music_recognition_notification_channel_name">听歌识曲</string>
     <string name="music_recognition_notification_channel_description">听歌识曲进度与识别结果通知</string>
     <string name="music_recognition_notification_status_listening">正在聆听</string>
     <string name="music_recognition_notification_status_processing">正在分析</string>
     <string name="music_recognition_notification_status_result">识别结果</string>
     <string name="music_recognition_notification_listening_title">正在聆听环境音乐</string>
-    <string name="music_recognition_notification_listening_text">正在捕获此设备上播放的音频</string>
     <string name="music_recognition_notification_processing_title">正在处理音频</string>
     <string name="music_recognition_notification_processing_text">正在比对捕获的音频声纹特征</string>
     <string name="music_recognition_notification_artist">艺人：%1$s</string>
@@ -242,10 +236,7 @@
     <string name="music_recognition_notification_release">发行时间：%1$s</string>
     <string name="music_recognition_notification_label">唱片公司：%1$s</string>
     <string name="music_recognition_notification_isrc">ISRC 编码：%1$s</string>
-    <string name="music_recognition_notification_no_match_title">未找到匹配歌曲</string>
     <string name="music_recognition_notification_no_match_text">请保持音乐清晰播放，然后重新尝试识别</string>
-    <string name="music_recognition_notification_recording_failed_title">无法捕获设备音频</string>
-    <string name="music_recognition_notification_recording_failed_text">当前播放的应用可能阻止了音频捕获，或播放已停止</string>
     <string name="music_recognition_notification_signature_failed_text">捕获的音频太短或音乐特征不足，无法识别</string>
     <string name="music_recognition_notification_recognition_failed_text">识别服务未能识别此音频，请稍后重试</string>
     <string name="music_recognition_history">识别历史</string>
@@ -381,7 +372,6 @@
     <string name="lyrics_share_layout_story">动态比例</string>
     <string name="lyrics_share_background_blur">背景模糊</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
-    <string name="show_lyrics_player_controls">显示播放控制按钮</string>
     <string name="lyrics_share_background_dim">背景暗化</string>
     <string name="lyrics_share_show_cover">显示专辑封面</string>
     <string name="lyrics_share_show_cover_desc">在导出的图片顶部包含专辑封面</string>
@@ -470,7 +460,6 @@
     <string name="settings_stats_title">听歌统计</string>
     <string name="settings_stats_subtitle">你的最爱歌曲、最爱艺人及播放历史</string>
     <string name="top_songs">最常听歌曲</string>
-    <string name="top_albums">最常听专辑</string>
     <string name="year_in_music_top_track">你的年度首选单曲</string>
     <string name="year_in_music_empty_title">暂无足够的回顾数据</string>
     <string name="year_in_music_empty_subtitle">在 %d 年内收听更多音乐，你的年度回顾就会显示在此处</string>

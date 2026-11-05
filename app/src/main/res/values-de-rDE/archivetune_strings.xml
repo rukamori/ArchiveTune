@@ -166,8 +166,6 @@
     <string name="music_recognition_processing">Verarbeitung…</string>
     <string name="music_recognition_listen_again">Noch einmal anhören</string>
     <string name="music_recognition_no_match">Kein Treffer gefunden</string>
-    <string name="music_recognition_signature_failed">Es konnte keine Signatur erstellt werden</string>
-    <string name="music_recognition_recognition_failed">Erkennung fehlgeschlagen</string>
     <string name="music_recognition_open_shazam">Shazam öffnen</string>
     <string name="music_recognition_lyrics_preview">Vorschau auf den Songtext</string>
     <string name="music_recognition_permission_title">Mikrofon-Berechtigung</string>
@@ -461,7 +459,6 @@
     <string name="storage_migration_cache_progress">Verschiebe Cache…%1$d%%</string>
     <string name="storage_migration_downloads_progress">Verschiebe Downloads...%1$d%%</string>
     <string name="storage_folder_invalid">Wähle einen gültigen Ordner.</string>
-    <string name="music_recognition_background_title">Erkennung im Hintergrund</string>
     <string name="music_recognition_notification_channel_name">Musikerkennung</string>
     <string name="music_recognition_notification_status_result">ERGEBNIS</string>
     <string name="music_recognition_notification_processing_title">Audio verarbeiten</string>
@@ -490,11 +487,9 @@
     <string name="storage_location_removable_named">SD-Karte %s</string>
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="history_duration_seconds">%1$s s</string>
-    <string name="top_albums">Top-Alben</string>
     <string name="stats_show_top_songs">Top 5 anzeigen</string>
     <string name="restore_file_not_found">Konnte die ausgewählte Datei nicht öffnen.</string>
     <string name="spotify_available_count">%1$d Playlists verfügbar</string>
-    <string name="music_recognition_notification_no_match_title">Kein Song gefunden</string>
     <string name="storage_cache_cleared">Cache geleert.</string>
     <string name="aod_shape_cookie_6">Keks 6</string>
     <string name="aod_shape_cookie_9">Keks 9</string>
@@ -543,13 +538,11 @@
     <string name="stats_time_range">Zeitspanne</string>
     <string name="storage_cache_clear_failed">Cache konnte nicht geleert werden. Überprüfe den SD-Kartenzugriff.</string>
     <string name="aod_customize_show_time_labels">Zeitbeschriftungen anzeigen</string>
-    <string name="show_lyrics_player_controls">Wiedergabesteuerung anzeigen</string>
     <string name="spotify_no_tracks">Keine Spotify-Titel gefunden.</string>
     <string name="spotify_reload_playlist_desc">Spotify-Playlists von deinem Konto aktualisieren.</string>
     <string name="latest_release">Letzte Veröffentlichung</string>
     <string name="lyrics_share_style_vivid_glow">Lebhaftes Glühen</string>
     <string name="storage_migration_warning">Warnung: Während dieses Prozesses, lasse die App offen und schalte dein Gerät nicht aus, da sonst die Gefahr von Datenverlust besteht.</string>
-    <string name="music_recognition_notification_recording_failed_title">Geräteaudio konnte nicht aufgenommen werden</string>
     <string name="music_recognition_notification_signature_failed_text">Das aufgenommene Audio enthielt nicht genug Musik für eine Identifikation.</string>
     <string name="music_recognition_notification_recognition_failed_text">Der Erkennungsdienst konnte das Audio nicht identifizieren. Versuche es in Kürze erneut.</string>
     <string name="music_recognition_history_empty_body">Passende Songs werden hier erscheinen, wenn die Erkennung Erfolg hatte.</string>
@@ -576,7 +569,6 @@
     <string name="song_source_changed">Songquelle geändert.</string>
     <string name="import_preparing">Bereite Import vor…</string>
     <string name="unblock_artist">Blockierung des Künstlers aufheben</string>
-    <string name="music_recognition_background_foss_description">Erkennung im Hintergrund ist in der FOSS-Variante nicht verfügbar. Stattdessen öffnet die Schnelleinstellungskachel den Erkennungsbildschirm.</string>
     <string name="use_system_language">Systemsprache verwenden</string>
     <string name="import_source_youtube">YouTube Music</string>
     <string name="import_source_unresolved">Nicht gefunden</string>

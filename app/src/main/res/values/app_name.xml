@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">ArchiveTune</string>
-    <string name="widget_description">Text-first player with adaptive playback controls</string>
-    <string name="widget_album_art_description">Framed album cover with a play button and a caption when expanded</string>
-    <string name="widget_now_playing_card_description">Split artwork card with track details and playback controls</string>
-    <string name="widget_playback_deck_description">Circular album artwork with track details and playback controls</string>
-    <string name="widget_playback_capsule_description">Compact player with circular artwork and a play button</string>
-    <string name="widget_playback_spotlight_description">Full artwork with track details and controls when expanded</string>
+    <string name="widget_description">Slim player with shaped artwork that expands into full playback controls</string>
+    <string name="widget_album_art_description">Album cover framed on a blurred artwork backdrop with a play button</string>
+    <string name="widget_now_playing_card_description">Artwork-tinted card with track details, progress, and playback controls</string>
+    <string name="widget_playback_deck_description">Spinning record artwork with track details and playback controls</string>
+    <string name="widget_playback_capsule_description">Pill-shaped player with circular artwork and a play button</string>
+    <string name="widget_playback_spotlight_description">Edge-to-edge artwork with track details and controls when expanded</string>
     <string name="widget_playback_command_description">Large playback buttons with track details</string>
-    <string name="widget_listening_insights_description">Scrollable listening time, recent songs, genres, and recommendations</string>
+    <string name="widget_listening_insights_description">Listening time, plays, recent songs, genres, and recommendations</string>
+    <string name="widget_artwork_now_playing_description">Artwork, track details, and a play button, with recently played songs when larger</string>
+    <string name="widget_mini_player_description">Small artwork player with a play button</string>
+    <string name="widget_up_next_description">The current song and the songs queued after it</string>
+    <string name="widget_recently_played_description">A grid of your recent songs; tap one to play it</string>
+    <string name="widget_artwork_now_playing_name">Now playing</string>
+    <string name="widget_mini_player_name">Mini player</string>
+    <string name="widget_up_next_name">Up next</string>
+    <string name="widget_recently_played_name">Recently played</string>
     <string name="widget_player_name">Music player</string>
     <string name="widget_album_art_name">Album frame</string>
     <string name="widget_now_playing_card_name">Now playing card</string>

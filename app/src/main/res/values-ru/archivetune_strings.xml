@@ -211,8 +211,6 @@
     <string name="music_recognition_processing">Обработка…</string>
     <string name="music_recognition_listen_again">Послушать ещё раз</string>
     <string name="music_recognition_no_match">Не найдено совпадений</string>
-    <string name="music_recognition_signature_failed">Не удалось сгенерировать подпись</string>
-    <string name="music_recognition_recognition_failed">Ошибка распознавания</string>
     <string name="music_recognition_open_shazam">Открыть Shazam</string>
     <string name="music_recognition_lyrics_preview">Предпросмотр текста</string>
     <string name="music_recognition_permission_title">Разрешение микрофона</string>
@@ -319,16 +317,12 @@
     <string name="aod_customize_subtitle">Форма, компоновка, элементы управления и стилизация интерфейса</string>
     <string name="aod_customize_entry_desc">Настройка always-on экрана проигрывателя</string>
     <string name="music_recognition_settings">Настройки распознавания музыки</string>
-    <string name="music_recognition_background_title">Распознавание в фоне</string>
-    <string name="music_recognition_background_description">Когда включено, плитка Быстрых Настроек распознает аудио играющие на этом устройстве без открытия ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">Распознавание в фоне недоступно в FOSS версии. Плитка Быстрых Настроек откроет меню распознавания.</string>
     <string name="music_recognition_notification_channel_name">Распознавание музыки</string>
     <string name="music_recognition_notification_channel_description">Прогресс распознавания музыки и результаты</string>
     <string name="music_recognition_notification_status_listening">СЛУШАЕМ</string>
     <string name="music_recognition_notification_status_processing">ОБРАБАТЫВАЕМ</string>
     <string name="music_recognition_notification_status_result">РЕЗУЛЬТАТ</string>
     <string name="music_recognition_notification_listening_title">Слушаем музыку</string>
-    <string name="music_recognition_notification_listening_text">Захватываем аудио играющие на этом устройстве</string>
     <string name="music_recognition_notification_processing_title">Обрабатываем аудио</string>
     <string name="music_recognition_notification_processing_text">Сверяем отпечаток захваченного аудио</string>
     <string name="music_recognition_notification_artist">Исполнитель: %1$s</string>
@@ -337,10 +331,7 @@
     <string name="music_recognition_notification_release">Выпущено: %1$s</string>
     <string name="music_recognition_notification_label">Издатель: %1$s</string>
     <string name="music_recognition_notification_isrc">МСКФ: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Не найдено песен</string>
     <string name="music_recognition_notification_no_match_text">Продолжайте проигрывать музыку в хорошем качестве, после чего попробуйте снова.</string>
-    <string name="music_recognition_notification_recording_failed_title">Невозможно получить звук устройства</string>
-    <string name="music_recognition_notification_recording_failed_text">Проигрывающее приложение может блокировать захват звука, или воспроизведение могло остановится.</string>
     <string name="music_recognition_notification_signature_failed_text">Захваченное аудио не содержит достаточно музыки чтобы её определить.</string>
     <string name="music_recognition_notification_recognition_failed_text">Сервис распознавания не смог распознать это аудио. Подождите и попробуйте снова.</string>
     <string name="aod_customize_preview">Превью в реальном времени</string>
@@ -462,7 +453,6 @@
     <string name="playlist_sync_failed">Синхронизация плейлиста не удалась: %1$s</string>
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="lyrics_line_blur">Размыть строки текста</string>
-    <string name="show_lyrics_player_controls">Показывать элементы управления плеером</string>
     <string name="lyrics_share_style_album_tint">Оттенок альбома</string>
     <string name="lyrics_share_style_frosted_dark">Темный матовый</string>
     <string name="lyrics_share_style_frosted_light">Светлый матовый</string>
@@ -543,7 +533,6 @@
     <string name="settings_stats_title">Статистика прослушивания</string>
     <string name="settings_stats_subtitle">Ваши лучшие песни, исполнители и история воспроизведения</string>
     <string name="top_songs">Лучшие песни</string>
-    <string name="top_albums">Лучшие альбомы</string>
     <string name="year_in_music_top_track">Ваш лучший трек</string>
     <string name="year_in_music_empty_title">Пока нечего обозревать</string>
     <string name="year_in_music_empty_subtitle">Слушайте больше музыки в %d году, и ваш обзор появится здесь.</string>

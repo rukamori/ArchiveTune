@@ -41,6 +41,7 @@ data class DownloadEntryUiModel(
     val progress: Float,
     val percent: Int,
     val speedBytesPerSecond: Long,
+    val sizeBytes: Long,
     val paused: Boolean,
     val failed: Boolean,
     val children: List<DownloadEntryUiModel> = emptyList(),
@@ -64,9 +65,31 @@ data class DownloadSectionUiModel(
 }
 
 @Immutable
+data class DownloadStorageSummary(
+    val songCount: Int,
+    val albumCount: Int,
+    val playlistCount: Int,
+    val bytes: Long,
+)
+
+@Immutable
+data class DownloadQueueSummary(
+    val songIds: List<String>,
+    val failedSongIds: List<String>,
+    val progress: Float,
+    val speedBytesPerSecond: Long,
+    val paused: Boolean,
+) {
+    val activeCount: Int = songIds.size
+    val percent: Int = (progress * 100f).roundToInt().coerceIn(0, 100)
+}
+
+@Immutable
 data class DownloadLibraryUiModel(
     val downloadedSections: List<DownloadSectionUiModel>,
     val progressSections: List<DownloadSectionUiModel>,
+    val storage: DownloadStorageSummary,
+    val queue: DownloadQueueSummary,
 ) {
     val isEmpty: Boolean = downloadedSections.isEmpty() && progressSections.isEmpty()
 }
@@ -177,9 +200,35 @@ class ManageDownloadsUseCase
                     }
                 }
 
+            val completedDownloads = snapshot.downloads.values.filter { it.state == Download.STATE_COMPLETED }
+            val activeDownloads = snapshot.downloads.values.filter { it.isVisibleInProgress() }
+
             return DownloadLibraryUiModel(
                 downloadedSections = downloadedSections,
                 progressSections = progressSections,
+                storage =
+                    DownloadStorageSummary(
+                        songCount = completedDownloads.size,
+                        albumCount = downloadedSections.entryCount(DownloadMediaType.ALBUM),
+                        playlistCount = downloadedSections.entryCount(DownloadMediaType.PLAYLIST),
+                        bytes = completedDownloads.sumOf { it.bytesDownloaded.coerceAtLeast(0L) },
+                    ),
+                queue =
+                    DownloadQueueSummary(
+                        songIds = activeDownloads.map { it.request.id },
+                        failedSongIds =
+                            activeDownloads
+                                .filter { it.state == Download.STATE_FAILED }
+                                .map { it.request.id },
+                        progress =
+                            if (activeDownloads.isEmpty()) {
+                                0f
+                            } else {
+                                activeDownloads.map { it.progressFraction() }.average().toFloat().coerceIn(0f, 1f)
+                            },
+                        speedBytesPerSecond = activeDownloads.sumOf { speeds[it.request.id] ?: 0L },
+                        paused = activeDownloads.isNotEmpty() && activeDownloads.all { it.state.isPausedState() },
+                    ),
             )
         }
 
@@ -341,21 +390,8 @@ class ManageDownloadsUseCase
             val activeEntries = entries.filter { it.isVisibleInProgress() }
             val progress =
                 songIds
-                    .map { songId ->
-                        when (val download = downloads[songId]) {
-                            null -> {
-                                0f
-                            }
-
-                            else -> {
-                                if (download.state == Download.STATE_COMPLETED) {
-                                    1f
-                                } else {
-                                    download.percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
-                                }
-                            }
-                        }
-                    }.average()
+                    .map { songId -> downloads[songId]?.progressFraction() ?: 0f }
+                    .average()
                     .toFloat()
                     .coerceIn(0f, 1f)
             return DownloadEntryUiModel(
@@ -372,6 +408,7 @@ class ManageDownloadsUseCase
                 progress = progress,
                 percent = (progress * 100f).roundToInt().coerceIn(0, 100),
                 speedBytesPerSecond = activeEntries.sumOf { speeds[it.request.id] ?: 0L },
+                sizeBytes = entries.sumOf { it.bytesDownloaded.coerceAtLeast(0L) },
                 paused = activeEntries.isNotEmpty() && activeEntries.all { it.state.isPausedState() },
                 failed = activeEntries.any { it.state == Download.STATE_FAILED },
                 children = children,
@@ -419,6 +456,16 @@ class ManageDownloadsUseCase
                 all { downloads[it]?.state?.isTrackedState() == true }
             }
         }
+
+        private fun List<DownloadSectionUiModel>.entryCount(mediaType: DownloadMediaType): Int =
+            firstOrNull { it.mediaType == mediaType }?.entries?.size ?: 0
+
+        private fun Download.progressFraction(): Float =
+            if (state == Download.STATE_COMPLETED) {
+                1f
+            } else {
+                percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
+            }
 
         private fun Download.requestTitle(): String = request.data.toString(Charsets.UTF_8).ifBlank { request.id }
 

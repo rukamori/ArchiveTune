@@ -11,6 +11,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.MediaStore
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -33,7 +34,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -47,12 +47,15 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.androidauto.AndroidAutoConfiguration
 import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsUseCases
+import moe.rukamori.archivetune.androidauto.CarArtwork
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.MediaSessionConstants
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.PlaylistSortType
+import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.SongSortType
+import moe.rukamori.archivetune.constants.SpotifySpDcKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSong
@@ -67,9 +70,16 @@ import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
+import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.spotify.SpotifyLibraryRepository
+import moe.rukamori.archivetune.spotify.SpotifyMapper
+import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.utils.reportException
 import java.io.ObjectInputStream
 import java.text.Collator
 import java.time.LocalDateTime
@@ -86,14 +96,27 @@ class MediaLibrarySessionCallback
         val database: MusicDatabase,
         val downloadUtil: DownloadUtil,
         private val androidAutoSettings: AndroidAutoSettingsUseCases,
+        private val spotifyLibraryRepository: SpotifyLibraryRepository,
     ) : MediaLibrarySession.Callback {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        private var pendingSearchJob: Job? = null
         private val onlineSearchItemCache = ConcurrentHashMap<String, MediaItem>()
+        private val searchResultCache = ConcurrentHashMap<String, CachedSearchResult>()
+        private val spotifyTracksCache = ConcurrentHashMap<String, CachedSpotifyTracks>()
         var toggleLike: () -> Unit = {}
         var toggleStartRadio: () -> Unit = {}
         var toggleLibrary: () -> Unit = {}
         var carMediaButtonPreferences: (AndroidAutoConfiguration) -> List<CommandButton> = { emptyList() }
+        var adoptQueueContinuation: (Queue, String?) -> Unit = { _, _ -> }
+
+        private class CachedSearchResult(
+            val items: List<MediaItem>,
+            val createdAtMs: Long,
+        )
+
+        private class CachedSpotifyTracks(
+            val tracks: List<SpotifyTrack>,
+            val loadedAtMs: Long,
+        )
 
         private data class AutoPlaylistSortOption(
             val sortType: PlaylistSongSortType,
@@ -132,8 +155,11 @@ class MediaLibrarySessionCallback
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
             val builder = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-            val defaults = builder.build()
-            val availableSessionCommands = defaults.availableSessionCommands
+            val isCarController = isCarController(session, controller)
+            if (!controller.isTrusted && !isCarController) {
+                return builder.build()
+            }
+            val availableSessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(MediaSessionConstants.CommandToggleLike)
                 .add(MediaSessionConstants.CommandToggleStartRadio)
@@ -141,8 +167,10 @@ class MediaLibrarySessionCallback
                 .add(MediaSessionConstants.CommandToggleShuffle)
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
                 .build()
-            builder.setAvailableSessionCommands(availableSessionCommands)
-            if (isCarController(session, controller)) {
+            builder
+                .setAvailableSessionCommands(availableSessionCommands)
+                .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
+            if (isCarController) {
                 val carButtons = carMediaButtonPreferences(androidAutoSettings.currentConfiguration())
                 builder
                     .setMediaButtonPreferences(carButtons)
@@ -155,8 +183,9 @@ class MediaLibrarySessionCallback
             session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)
 
         fun release() {
-            pendingSearchJob?.cancel()
             scope.cancel()
+            searchResultCache.clear()
+            spotifyTracksCache.clear()
         }
 
         override fun onPlaybackResumption(
@@ -291,50 +320,28 @@ class MediaLibrarySessionCallback
             browser: MediaSession.ControllerInfo,
             query: String,
             params: MediaLibraryService.LibraryParams?,
-        ): ListenableFuture<LibraryResult<Void>> =
-            Futures.immediateFuture(LibraryResult.ofVoid(params)).also {
-                val q = query.trim()
-                pendingSearchJob?.cancel()
-                pendingSearchJob =
-                    scope.launch(Dispatchers.IO) {
-                        val isCarController = isCarController(session, browser)
-                        val configuration = if (isCarController) androidAutoSettings.currentConfiguration() else null
-                        val count =
-                            try {
-                                if (q.isBlank()) {
-                                    if (configuration == null) {
-                                        0
-                                    } else {
-                                        database.recentSongs(AUTO_BROWSE_LIMIT).first()
-                                            .availableForCar(
-                                                configuration.localSongs && androidAutoSettings.hasLocalAudioPermission(),
-                                                androidAutoSettings.isOnlinePlaybackAllowed(configuration),
-                                            ).size
-                                    }
-                                } else {
-                                    val localCount =
-                                        searchOfflineSongs(q, previewSize = 25, configuration = configuration).count +
-                                            database.searchArtistsCount(q) +
-                                            database.searchAlbumsCount(q) +
-                                            database.searchPlaylistsCount(q)
-                                    val onlineCount = searchOnlineSongs(
-                                        q,
-                                        previewSize = 25,
-                                        allowed = configuration == null ||
-                                            (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
-                                    ).size
-                                    localCount + onlineCount
-                                }
-                            } catch (cancellation: kotlinx.coroutines.CancellationException) {
-                                throw cancellation
-                            } catch (_: Exception) {
-                                0
-                            }
-                        withContext(Dispatchers.Main) {
-                            session.notifySearchResultChanged(browser, query, count, params)
+        ): ListenableFuture<LibraryResult<Void>> {
+            val q = query.trim()
+            scope.launch(Dispatchers.IO) {
+                val count =
+                    try {
+                        if (isCarController(session, browser)) {
+                            carSearchItems(q).also { items -> cacheSearchResult(browser, query, items) }.size
+                        } else {
+                            searchResultCount(q)
                         }
+                    } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                        throw cancellation
+                    } catch (error: Exception) {
+                        reportException(error)
+                        0
                     }
+                withContext(Dispatchers.Main) {
+                    session.notifySearchResultChanged(browser, query, count, params)
+                }
             }
+            return Futures.immediateFuture(LibraryResult.ofVoid(params))
+        }
 
         override fun onGetSearchResult(
             session: MediaLibrarySession,
@@ -346,116 +353,162 @@ class MediaLibrarySessionCallback
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
             scope.future(Dispatchers.IO) {
                 val q = query.trim()
+                if (isCarController(session, browser)) {
+                    val items = cachedSearchResult(browser, query) ?: carSearchItems(q)
+                    return@future LibraryResult.ofItemList(items, params)
+                }
+                if (q.isBlank()) return@future LibraryResult.ofItemList(emptyList(), params)
+
                 val safePage = page.coerceAtLeast(0)
                 val safePageSize = pageSize.coerceIn(1, 50)
-                val isCarController = isCarController(session, browser)
-                val configuration = if (isCarController) androidAutoSettings.currentConfiguration() else null
-                if (q.isBlank()) {
-                    val recent = if (isCarController) {
-                        database.recentSongs(AUTO_BROWSE_LIMIT).first()
-                            .availableForCar(
-                                localSongsAllowed = configuration?.localSongs == true && androidAutoSettings.hasLocalAudioPermission(),
-                                onlineContentAllowed = configuration?.let(androidAutoSettings::isOnlinePlaybackAllowed) == true,
-                            )
-                            .map { it.toMediaItem(MusicService.RECENT) }
-                    } else {
-                        emptyList()
-                    }
-                    return@future LibraryResult.ofItemList(recent.take(safePageSize), params)
-                }
-
                 val requested = (safePage + 1) * safePageSize
-                val items = ArrayList<MediaItem>(min(requested, 200))
-
-                val offlineSongs = searchOfflineSongs(q, previewSize = requested, configuration = configuration)
-                val existingSongIds =
-                    offlineSongs.items
-                        .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
-                val onlineSongs =
-                    searchOnlineSongs(
-                        q,
-                        previewSize = requested,
-                        allowed = configuration == null ||
-                            (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
-                    ).filter { onlineItem ->
-                        existingSongIds.add(searchSongIdentity(onlineItem))
-                    }
-                onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
-                items +=
-                    interleaveMediaItems(
-                        first = offlineSongs.items,
-                        second = onlineSongs,
-                    ).take(requested)
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val artists = database.searchArtists(q, previewSize = remaining).first()
-                    items +=
-                        artists.map { artist ->
-                            browsableMediaItem(
-                                "${MusicService.ARTIST}/${artist.id}",
-                                artist.title,
-                                context.resources.getQuantityString(
-                                    R.plurals.n_song,
-                                    artist.songCount,
-                                    artist.songCount,
-                                ),
-                                artist.thumbnailUrl?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_ARTIST,
-                            )
-                        }
-                }
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val albums = database.searchAlbums(q, previewSize = remaining).first()
-                    items +=
-                        albums.map { album ->
-                            browsableMediaItem(
-                                "${MusicService.ALBUM}/${album.id}",
-                                album.title,
-                                album.artists.joinToString { it.name },
-                                album.thumbnailUrl?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_ALBUM,
-                            )
-                        }
-                }
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val playlists = database.searchPlaylists(q, previewSize = remaining).first()
-                    items +=
-                        playlists.map { playlist ->
-                            browsableMediaItem(
-                                "${MusicService.PLAYLIST}/${playlist.id}",
-                                playlist.title,
-                                context.resources.getQuantityString(
-                                    R.plurals.n_song,
-                                    playlist.songCount,
-                                    playlist.songCount,
-                                ),
-                                playlist.thumbnails.firstOrNull()?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                            )
-                        }
-                }
-
-                if (isCarController) {
-                    val artworkAllowed = configuration?.let(androidAutoSettings::isRemoteArtworkAllowed) == true
-                    return@future LibraryResult.ofItemList(
-                        items.take(AUTO_BROWSE_LIMIT).map { it.withCarArtworkPolicy(artworkAllowed) },
-                        params,
-                    )
-                }
+                val items = searchItems(q, requested, configuration = null)
                 val from = safePage * safePageSize
                 if (from >= items.size) return@future LibraryResult.ofItemList(emptyList(), params)
                 val to = min(from + safePageSize, items.size)
 
                 LibraryResult.ofItemList(items.subList(from, to), params)
             }
+
+        private suspend fun searchResultCount(query: String): Int {
+            if (query.isBlank()) return 0
+            val localCount =
+                searchOfflineSongs(query, previewSize = 25).count +
+                    database.searchArtistsCount(query) +
+                    database.searchAlbumsCount(query) +
+                    database.searchPlaylistsCount(query)
+            return localCount + searchOnlineSongs(query, previewSize = 25).size
+        }
+
+        private suspend fun carSearchItems(query: String): List<MediaItem> {
+            val configuration = androidAutoSettings.currentConfiguration()
+            val items =
+                if (query.isBlank()) {
+                    database.recentSongs(AUTO_BROWSE_LIMIT).first()
+                        .availableForCar(
+                            localSongsAllowed = configuration.localSongs && androidAutoSettings.hasLocalAudioPermission(),
+                            onlineContentAllowed = androidAutoSettings.isOnlinePlaybackAllowed(configuration),
+                        )
+                        .map { it.toMediaItem(MusicService.RECENT) }
+                } else {
+                    searchItems(query, CAR_SEARCH_RESULT_LIMIT, configuration)
+                }
+            val artworkAllowed = androidAutoSettings.isRemoteArtworkAllowed(configuration)
+            return items.take(AUTO_BROWSE_LIMIT).map { it.withCarArtworkPolicy(artworkAllowed) }
+        }
+
+        private suspend fun searchItems(
+            query: String,
+            requested: Int,
+            configuration: AndroidAutoConfiguration?,
+        ): List<MediaItem> {
+            val items = ArrayList<MediaItem>(min(requested, 200))
+
+            val offlineSongs = searchOfflineSongs(query, previewSize = requested, configuration = configuration)
+            val existingSongIds =
+                offlineSongs.items
+                    .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
+            val onlineSongs =
+                searchOnlineSongs(
+                    query,
+                    previewSize = requested,
+                    allowed = configuration == null ||
+                        (configuration.onlineVoiceSearch && androidAutoSettings.isOnlinePlaybackAllowed(configuration)),
+                ).filter { onlineItem ->
+                    existingSongIds.add(searchSongIdentity(onlineItem))
+                }
+            onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
+            items +=
+                interleaveMediaItems(
+                    first = offlineSongs.items,
+                    second = onlineSongs,
+                ).take(requested)
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val artists = database.searchArtists(query, previewSize = remaining).first()
+                items +=
+                    artists.map { artist ->
+                        browsableMediaItem(
+                            "${MusicService.ARTIST}/${artist.id}",
+                            artist.title,
+                            context.resources.getQuantityString(
+                                R.plurals.n_song,
+                                artist.songCount,
+                                artist.songCount,
+                            ),
+                            artist.thumbnailUrl?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_ARTIST,
+                        )
+                    }
+            }
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val albums = database.searchAlbums(query, previewSize = remaining).first()
+                items +=
+                    albums.map { album ->
+                        browsableMediaItem(
+                            "${MusicService.ALBUM}/${album.id}",
+                            album.title,
+                            album.artists.joinToString { it.name },
+                            album.thumbnailUrl?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_ALBUM,
+                        )
+                    }
+            }
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val playlists = database.searchPlaylists(query, previewSize = remaining).first()
+                items +=
+                    playlists.map { playlist ->
+                        browsableMediaItem(
+                            "${MusicService.PLAYLIST}/${playlist.id}",
+                            playlist.title,
+                            context.resources.getQuantityString(
+                                R.plurals.n_song,
+                                playlist.songCount,
+                                playlist.songCount,
+                            ),
+                            playlist.thumbnails.firstOrNull()?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                        )
+                    }
+            }
+            return items
+        }
+
+        private fun searchCacheKey(
+            browser: MediaSession.ControllerInfo,
+            query: String,
+        ): String = "${browser.packageName}:${browser.uid}:$query"
+
+        private fun cacheSearchResult(
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            items: List<MediaItem>,
+        ) {
+            val now = SystemClock.elapsedRealtime()
+            searchResultCache.entries.removeIf { entry -> now - entry.value.createdAtMs > SEARCH_RESULT_CACHE_MS }
+            searchResultCache[searchCacheKey(browser, query)] = CachedSearchResult(items, now)
+        }
+
+        private fun cachedSearchResult(
+            browser: MediaSession.ControllerInfo,
+            query: String,
+        ): List<MediaItem>? {
+            val key = searchCacheKey(browser, query)
+            val cached = searchResultCache[key] ?: return null
+            if (SystemClock.elapsedRealtime() - cached.createdAtMs > SEARCH_RESULT_CACHE_MS) {
+                searchResultCache.remove(key, cached)
+                return null
+            }
+            return cached.items
+        }
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -809,11 +862,26 @@ class MediaLibrarySessionCallback
                                         playlist.thumbnails.firstOrNull()?.toUri(),
                                         MediaMetadata.MEDIA_TYPE_PLAYLIST,
                                     )
-                                }
+                                } +
+                                if (onlineContentAllowed) spotifyLibraryItems() else emptyList()
+                        }
+
+                        MusicService.SPOTIFY_LIKED -> {
+                            if (onlineContentAllowed) spotifyTrackItems(parentId, SPOTIFY_LIKED_SOURCE_ID) else emptyList()
                         }
 
                         else -> {
                             when {
+                                parentId.startsWith("${MusicService.SPOTIFY_PLAYLIST}/") -> {
+                                    val path = parentId.pathSegments()
+                                    val playlistId = path.getOrNull(1)
+                                    if (onlineContentAllowed && playlistId != null && path.size == 2) {
+                                        spotifyTrackItems(parentId, playlistId)
+                                    } else {
+                                        emptyList()
+                                    }
+                                }
+
                                 parentId.startsWith("${MusicService.ARTIST}/") -> {
                                     database
                                         .artistSongsByCreateDateAsc(parentId.removePrefix("${MusicService.ARTIST}/"))
@@ -869,7 +937,7 @@ class MediaLibrarySessionCallback
         ): ListenableFuture<LibraryResult<MediaItem>> =
             scope.future(Dispatchers.IO) {
                 val isCarController = isCarController(session, browser)
-                when {
+                val result = when {
                     mediaId == MusicService.ROOT -> {
                         LibraryResult.ofItem(
                             MediaItem
@@ -1101,6 +1169,14 @@ class MediaLibrarySessionCallback
                         )
                     }
 
+                    mediaId == MusicService.SPOTIFY_LIKED ||
+                        mediaId.startsWith("${MusicService.SPOTIFY_LIKED}/") ||
+                        mediaId.startsWith("${MusicService.SPOTIFY_PLAYLIST}/") -> {
+                        spotifyItem(mediaId)?.let {
+                            LibraryResult.ofItem(it, null)
+                        } ?: LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
+                    }
+
                     mediaId.startsWith("${MusicService.ONLINE_PLAYLIST}/") -> {
                         onlinePlaylistItem(mediaId)?.let {
                             LibraryResult.ofItem(it, null)
@@ -1166,6 +1242,14 @@ class MediaLibrarySessionCallback
                             LibraryResult.ofItem(it, null)
                         } ?: LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
                     }
+                }
+                val item = result.value
+                if (isCarController && item != null) {
+                    val remoteArtworkAllowed =
+                        androidAutoSettings.isRemoteArtworkAllowed(androidAutoSettings.currentConfiguration())
+                    LibraryResult.ofItem(item.withCarArtworkPolicy(remoteArtworkAllowed), result.params)
+                } else {
+                    result
                 }
             }
 
@@ -1401,6 +1485,11 @@ class MediaLibrarySessionCallback
                             } ?: 0,
                             startPositionMs,
                         )
+                    }
+
+                    MusicService.SPOTIFY_LIKED, MusicService.SPOTIFY_PLAYLIST -> {
+                        if (!onlineContentAllowed) return@future defaultResult
+                        spotifyMediaItemsWithStartPosition(path, startPositionMs)
                     }
 
                     else -> {
@@ -1954,6 +2043,158 @@ class MediaLibrarySessionCallback
                     .firstOrNull { it.id == songId }
                     ?.toMediaItem(parentId)
 
+        private fun isSpotifyLibraryVisible(): Boolean =
+            context.dataStore.get(ShowSpotifyPlaylistsKey, false) &&
+                !context.dataStore[SpotifySpDcKey].isNullOrBlank()
+
+        private suspend fun spotifyPlaylists(): List<SpotifyPlaylist> {
+            spotifyLibraryRepository.restoreCachedPlaylists()
+            return spotifyLibraryRepository.playlists.value.ifEmpty { spotifyLibraryRepository.refreshPlaylists() }
+        }
+
+        private suspend fun spotifyLibraryItems(): List<MediaItem> {
+            if (!isSpotifyLibraryVisible()) return emptyList()
+            return listOf(spotifyLikedItem()) + spotifyPlaylists().map(::spotifyPlaylistMediaItem)
+        }
+
+        private fun spotifyLikedItem(): MediaItem =
+            queueMediaItem(
+                MusicService.SPOTIFY_LIKED,
+                context.getString(R.string.android_auto_spotify_liked_songs),
+                null,
+                drawableUri(R.drawable.spotify),
+                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+            )
+
+        private fun spotifyPlaylistMediaItem(playlist: SpotifyPlaylist): MediaItem =
+            queueMediaItem(
+                "${MusicService.SPOTIFY_PLAYLIST}/${playlist.id}",
+                playlist.name,
+                playlist.tracks?.total?.let { total ->
+                    context.resources.getQuantityString(R.plurals.n_song, total, total)
+                },
+                SpotifyMapper.getPlaylistThumbnail(playlist)?.toUri(),
+                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+            )
+
+        private suspend fun spotifyTracks(sourceId: String): List<SpotifyTrack> {
+            val now = SystemClock.elapsedRealtime()
+            spotifyTracksCache[sourceId]
+                ?.takeIf { cached -> now - cached.loadedAtMs <= SPOTIFY_TRACKS_CACHE_MS }
+                ?.let { cached -> return cached.tracks }
+            val tracks =
+                if (sourceId == SPOTIFY_LIKED_SOURCE_ID) {
+                    spotifyLibraryRepository.likedSongs()
+                } else {
+                    spotifyLibraryRepository.playlistTracks(sourceId)
+                }.filter { track -> track.id.isNotBlank() }
+            spotifyTracksCache[sourceId] = CachedSpotifyTracks(tracks, now)
+            return tracks
+        }
+
+        private suspend fun spotifyTrackItems(
+            parentId: String,
+            sourceId: String,
+        ): List<MediaItem> {
+            if (!isSpotifyLibraryVisible()) return emptyList()
+            return spotifyTracks(sourceId)
+                .distinctBy(SpotifyTrack::id)
+                .map { track -> track.toSpotifyMediaItem(parentId) }
+        }
+
+        private suspend fun spotifyItem(mediaId: String): MediaItem? {
+            if (!isSpotifyLibraryVisible()) return null
+            val path = mediaId.pathSegments()
+            return when (path.firstOrNull()) {
+                MusicService.SPOTIFY_LIKED -> {
+                    val trackId = path.getOrNull(1) ?: return spotifyLikedItem()
+                    spotifyTracks(SPOTIFY_LIKED_SOURCE_ID)
+                        .firstOrNull { track -> track.id == trackId }
+                        ?.toSpotifyMediaItem(MusicService.SPOTIFY_LIKED)
+                }
+
+                MusicService.SPOTIFY_PLAYLIST -> {
+                    val playlistId = path.getOrNull(1) ?: return null
+                    val trackId = path.getOrNull(2)
+                    if (trackId == null) {
+                        spotifyPlaylists()
+                            .firstOrNull { playlist -> playlist.id == playlistId }
+                            ?.let(::spotifyPlaylistMediaItem)
+                    } else {
+                        spotifyTracks(playlistId)
+                            .firstOrNull { track -> track.id == trackId }
+                            ?.toSpotifyMediaItem("${MusicService.SPOTIFY_PLAYLIST}/$playlistId")
+                    }
+                }
+
+                else -> null
+            }
+        }
+
+        private suspend fun spotifyMediaItemsWithStartPosition(
+            path: List<String>,
+            startPositionMs: Long,
+        ): MediaSession.MediaItemsWithStartPosition {
+            check(isSpotifyLibraryVisible()) { context.getString(R.string.spotify_not_connected) }
+            val isLiked = path.firstOrNull() == MusicService.SPOTIFY_LIKED
+            val sourceId =
+                if (isLiked) {
+                    SPOTIFY_LIKED_SOURCE_ID
+                } else {
+                    requireNotNull(path.getOrNull(1)) { "Missing Spotify playlist id" }
+                }
+            val selectedTrackId = path.getOrNull(if (isLiked) 1 else 2)
+            val tracks = spotifyTracks(sourceId)
+            check(tracks.isNotEmpty()) { context.getString(R.string.spotify_no_tracks) }
+            val startIndex =
+                selectedTrackId
+                    ?.let { trackId -> tracks.indexOfFirst { track -> track.id == trackId }.takeIf { it >= 0 } }
+                    ?: 0
+            val title =
+                if (isLiked) {
+                    context.getString(R.string.android_auto_spotify_liked_songs)
+                } else {
+                    spotifyPlaylists().firstOrNull { playlist -> playlist.id == sourceId }?.name
+                }
+            val queue =
+                SpotifyPlaylistQueue(
+                    title = title,
+                    initialTracks = tracks,
+                    startIndex = startIndex,
+                    initialResolveLimit = SPOTIFY_CAR_RESOLVE_LIMIT,
+                )
+            val status = queue.getInitialStatus()
+            check(status.items.isNotEmpty()) { context.getString(R.string.spotify_no_tracks) }
+            withContext(Dispatchers.Main.immediate) {
+                adoptQueueContinuation(queue, status.title)
+            }
+            return MediaSession.MediaItemsWithStartPosition(
+                status.items,
+                status.mediaItemIndex,
+                startPositionMs,
+            )
+        }
+
+        private fun SpotifyTrack.toSpotifyMediaItem(parentId: String): MediaItem {
+            val artistNames = artists.joinToString { artist -> artist.name }
+            return MediaItem
+                .Builder()
+                .setMediaId("$parentId/$id")
+                .setMediaMetadata(
+                    MediaMetadata
+                        .Builder()
+                        .setTitle(name)
+                        .setSubtitle(artistNames)
+                        .setArtist(artistNames)
+                        .setArtworkUri(SpotifyMapper.getTrackThumbnail(this)?.toUri())
+                        .setIsPlayable(true)
+                        .setIsBrowsable(false)
+                        .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                        .setExtras(playableExtras())
+                        .build(),
+                ).build()
+        }
+
         private suspend fun addCurrentSongToPlaylist(
             mediaSession: MediaSession,
             playlistId: String,
@@ -2171,9 +2412,15 @@ class MediaLibrarySessionCallback
 
         private fun MediaItem.withCarArtworkPolicy(remoteArtworkAllowed: Boolean): MediaItem {
             val artworkUri = mediaMetadata.artworkUri ?: return this
-            if (remoteArtworkAllowed || (artworkUri.scheme != "http" && artworkUri.scheme != "https")) return this
+            val isRemote = artworkUri.scheme.equals("http", ignoreCase = true) ||
+                artworkUri.scheme.equals("https", ignoreCase = true)
+            val carArtworkUri = when {
+                isRemote && !remoteArtworkAllowed -> null
+                CarArtwork.requiresLocalUri(context, artworkUri) -> CarArtwork.contentUri(context, artworkUri)
+                else -> return this
+            }
             return buildUpon()
-                .setMediaMetadata(mediaMetadata.buildUpon().setArtworkUri(null).build())
+                .setMediaMetadata(mediaMetadata.buildUpon().setArtworkUri(carArtworkUri).build())
                 .build()
         }
 
@@ -2397,6 +2644,11 @@ class MediaLibrarySessionCallback
             private const val CONTENT_STYLE_LIST_ITEM = 1
             private const val CONTENT_STYLE_GRID_ITEM = 2
             private const val AUTO_BROWSE_LIMIT = 100
+            private const val CAR_SEARCH_RESULT_LIMIT = 50
+            private const val SEARCH_RESULT_CACHE_MS = 120_000L
+            private const val SPOTIFY_TRACKS_CACHE_MS = 600_000L
+            private const val SPOTIFY_CAR_RESOLVE_LIMIT = 20
+            private const val SPOTIFY_LIKED_SOURCE_ID = "liked"
             private const val AUTO_HOME_PLAYLIST_LIMIT = 20
             private const val HOME_RECENT_WINDOW_MS = 86400000L * 14L
             private const val PLAYLIST_ACTION_SHUFFLE = "_shuffle"

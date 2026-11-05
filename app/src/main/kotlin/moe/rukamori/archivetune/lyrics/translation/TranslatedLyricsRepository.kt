@@ -26,7 +26,7 @@ class TranslatedLyricsRepository
         ) {
             withContext(Dispatchers.IO) {
                 database.withTransaction {
-                    replaceLyrics(
+                    replaceLyricsKeepingProvider(
                         id = mediaId,
                         lyrics = lyrics,
                         source = LyricsEntity.Source.TRANSLATION.value,

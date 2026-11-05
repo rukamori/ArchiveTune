@@ -742,7 +742,7 @@ fun PlayerTopActions(
             }
         }
 
-        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10 -> {
+        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10, PlayerDesignStyle.V11 -> {
             Unit
         }
     }
@@ -1827,7 +1827,7 @@ fun PlayerPlaybackControls(
             }
         }
 
-        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10 -> {
+        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10, PlayerDesignStyle.V11 -> {
             Unit
         }
     }

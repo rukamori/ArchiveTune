@@ -208,8 +208,6 @@
     <string name="music_recognition_processing">Traitement…</string>
     <string name="music_recognition_listen_again">Réécouter</string>
     <string name="music_recognition_no_match">Aucun résultat trouvé</string>
-    <string name="music_recognition_signature_failed">Impossible de générer une signature</string>
-    <string name="music_recognition_recognition_failed">Échec de la reconnaissance</string>
     <string name="music_recognition_open_shazam">Ouvrir Shazam</string>
     <string name="music_recognition_lyrics_preview">Aperçu des paroles</string>
     <string name="music_recognition_permission_title">Autorisation d\'utilisation du microphone</string>
@@ -544,7 +542,6 @@
     <string name="storage_cache_clear_warning">Laissez ArchiveTune ouvert pendant la suppression des fichiers de cache.</string>
     <string name="history_duration_desc">Durée minimale d\'écoute pour qu\'un morceau soit considéré comme écouté</string>
     <string name="history_duration_seconds">%1$s s</string>
-    <string name="top_albums">Meilleurs Albums</string>
     <string name="theme_import_failed_title">Impossible d\'importer le thème</string>
     <string name="theme_applied">Thème appliqué</string>
     <string name="theme_export_success">Thème exporté</string>
@@ -555,16 +552,12 @@
     <string name="block_artist">Bloquer l\'artiste</string>
     <string name="unblock_artist">Débloquer l\'artiste</string>
     <string name="music_recognition_settings">Paramètres de reconnaissance musicale</string>
-    <string name="music_recognition_background_title">Reconnaissance en arrière-plan</string>
-    <string name="music_recognition_background_description">Lorsqu\'elle est activée, la vignette « Paramètres rapides » détecte la lecture audio sur cet appareil sans ouvrir ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">La reconnaissance d\'arrière-plan n\'est pas disponible dans la version FOSS. La vignette « Paramètres rapides » ouvre à la place l\'écran de reconnaissance.</string>
     <string name="music_recognition_notification_channel_name">Reconnaissance musicale</string>
     <string name="music_recognition_notification_channel_description">Progrès et résultats en matière de reconnaissance musicale</string>
     <string name="music_recognition_notification_status_listening">ÉCOUTE</string>
     <string name="music_recognition_notification_status_processing">TRAITEMENT</string>
     <string name="music_recognition_notification_status_result">RÉSULTAT</string>
     <string name="music_recognition_notification_listening_title">Écoute de la musique</string>
-    <string name="music_recognition_notification_listening_text">Enregistrer le son diffusé sur cet appareil</string>
     <string name="music_recognition_notification_processing_title">Traitement audio</string>
     <string name="music_recognition_notification_processing_text">Comparaison de l\'empreinte audio enregistrée</string>
     <string name="music_recognition_notification_artist">Artiste : %1$s</string>
@@ -573,13 +566,9 @@
     <string name="music_recognition_notification_release">Date de sortie : %1$s</string>
     <string name="music_recognition_notification_label">Label : %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC : %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Aucun titre trouvé</string>
     <string name="music_recognition_notification_no_match_text">Continuez à diffuser la musique clairement, puis réessayez la reconnaissance.</string>
-    <string name="music_recognition_notification_recording_failed_title">Impossible de capturer le son de l\'appareil</string>
-    <string name="music_recognition_notification_recording_failed_text">Il se peut que l\'application de lecture bloque la capture audio ou que la lecture se soit arrêtée.</string>
     <string name="music_recognition_notification_signature_failed_text">L\'enregistrement audio ne contenait pas suffisamment de musique pour permettre une identification.</string>
     <string name="music_recognition_notification_recognition_failed_text">Le service de reconnaissance n\'a pas pu identifier cet enregistrement audio. Veuillez réessayer dans quelques instants.</string>
-    <string name="show_lyrics_player_controls">Afficher les commandes du lecteur</string>
     <string name="stats_top_songs">Meilleurs Titres</string>
     <string name="stats_show_all_songs">Afficher les %1$d titres</string>
     <string name="stats_show_top_songs">Afficher les 5 meilleurs</string>

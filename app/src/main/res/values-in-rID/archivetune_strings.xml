@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">Memproses…</string>
     <string name="music_recognition_listen_again">Dengarkan lagi</string>
     <string name="music_recognition_no_match">Tidak ada kecocokan yang ditemukan</string>
-    <string name="music_recognition_signature_failed">Tidak dapat membuat tanda tangan</string>
-    <string name="music_recognition_recognition_failed">Pengenalan gagal</string>
     <string name="music_recognition_open_shazam">Buka Shazam</string>
     <string name="music_recognition_lyrics_preview">Pratinjau lirik</string>
     <string name="music_recognition_permission_title">Izin mikrofon</string>
@@ -16,16 +14,12 @@
     <string name="music_recognition_permission_action">Izinkan</string>
     <string name="music_recognition_error">Ada yang tidak beres</string>
     <string name="music_recognition_settings">Pengaturan pengenalan musik</string>
-    <string name="music_recognition_background_title">Pengenalan di latar belakang</string>
-    <string name="music_recognition_background_description">Jika diaktifkan, ubin Pengaturan Cepat akan mengenali audio yang diputar di perangkat ini tanpa membuka ArchiveTune.</string>
-    <string name="music_recognition_background_foss_description">Pengenalan latar belakang tidak tersedia di varian FOSS. Ubin Pengaturan Cepat akan membuka layar pengenalan sebagai gantinya.</string>
     <string name="music_recognition_notification_channel_name">Pengenalan musik</string>
     <string name="music_recognition_notification_channel_description">Progres dan hasil pengenalan musik</string>
     <string name="music_recognition_notification_status_listening">MENDENGARKAN</string>
     <string name="music_recognition_notification_status_processing">MEMPROSES</string>
     <string name="music_recognition_notification_status_result">HASIL</string>
     <string name="music_recognition_notification_listening_title">Mendengarkan musik</string>
-    <string name="music_recognition_notification_listening_text">Merekam audio yang diputar di perangkat ini</string>
     <string name="music_recognition_notification_processing_title">Memproses audio</string>
     <string name="music_recognition_notification_processing_text">Mencocokkan sidik jari audio yang direkam</string>
     <string name="music_recognition_notification_artist">Artis: %1$s</string>
@@ -34,10 +28,7 @@
     <string name="music_recognition_notification_release">Rilis: %1$s</string>
     <string name="music_recognition_notification_label">Label: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Lagu tidak ditemukan</string>
     <string name="music_recognition_notification_no_match_text">Jaga agar musik tetap diputar dengan jelas, lalu coba pengenalan lagi.</string>
-    <string name="music_recognition_notification_recording_failed_title">Tidak dapat merekam audio perangkat</string>
-    <string name="music_recognition_notification_recording_failed_text">Aplikasi yang sedang memutar mungkin memblokir perekaman audio, atau pemutaran mungkin telah berhenti.</string>
     <string name="music_recognition_notification_signature_failed_text">Audio yang direkam tidak berisi cukup musik untuk diidentifikasi.</string>
     <string name="music_recognition_notification_recognition_failed_text">Layanan pengenalan tidak dapat mengidentifikasi audio ini. Coba lagi sebentar lagi.</string>
     <string name="music_recognition_history">Riwayat pengenalan</string>
@@ -259,7 +250,6 @@
     <string name="lyrics_share_background_blur">Latar belakang blur</string>
     <string name="lyrics_share_background_blur_value">%1$d piksel</string>
     <string name="lyrics_line_blur">Blur baris lirik</string>
-    <string name="show_lyrics_player_controls">Tampilkan kontrol pemutar</string>
     <string name="lyrics_share_background_dim">Latar belakang redup</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Tampilkan sampul album</string>
@@ -505,7 +495,6 @@
     <string name="settings_stats_title">Statistik Mendengarkan</string>
     <string name="settings_stats_subtitle">Lagu, artis, dan riwayat pemutaran teratas Anda</string>
     <string name="top_songs">Lagu Teratas</string>
-    <string name="top_albums">Album Teratas</string>
     <string name="year_in_music">Setahun di Musik</string>
     <string name="top_artists">Artis Teratas</string>
     <string name="share_summary">Bagikan Ringkasan</string>

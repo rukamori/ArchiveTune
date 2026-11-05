@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="24dp"
+            android:height="24dp"
+            android:viewportWidth="24"
+            android:viewportHeight="24">
+            <path
+                android:name="bar_0"
+                android:pathData="M4.5,20 L4.5,15.2"
+                android:strokeColor="@android:color/white"
+                android:strokeLineCap="round"
+                android:strokeWidth="3" />
+            <path
+                android:name="bar_1"
+                android:pathData="M9.5,20 L9.5,12.8"
+                android:strokeColor="@android:color/white"
+                android:strokeLineCap="round"
+                android:strokeWidth="3" />
+            <path
+                android:name="bar_2"
+                android:pathData="M14.5,20 L14.5,15.2"
+                android:strokeColor="@android:color/white"
+                android:strokeLineCap="round"
+                android:strokeWidth="3" />
+            <path
+                android:name="bar_3"
+                android:pathData="M19.5,20 L19.5,12.8"
+                android:strokeColor="@android:color/white"
+                android:strokeLineCap="round"
+                android:strokeWidth="3" />
+        </vector>
+    </aapt:attr>
+    <target android:name="bar_0">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="520"
+                android:startOffset="0"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:valueFrom="M4.5,20 L4.5,15.2"
+                android:valueTo="M4.5,20 L4.5,6"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+    <target android:name="bar_1">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="410"
+                android:startOffset="90"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:valueFrom="M9.5,20 L9.5,12.8"
+                android:valueTo="M9.5,20 L9.5,4"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+    <target android:name="bar_2">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="610"
+                android:startOffset="40"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:valueFrom="M14.5,20 L14.5,15.2"
+                android:valueTo="M14.5,20 L14.5,8"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+    <target android:name="bar_3">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="470"
+                android:startOffset="140"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:repeatCount="infinite"
+                android:repeatMode="reverse"
+                android:valueFrom="M19.5,20 L19.5,12.8"
+                android:valueTo="M19.5,20 L19.5,5"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+</animated-vector>

@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +23,9 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.hazeGlass
 
+val isGlassBackgroundSupported: Boolean
+    get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
 @OptIn(ExperimentalHazeApi::class)
 @Composable
 fun FloatingBarGlassBackground(
@@ -30,6 +34,15 @@ fun FloatingBarGlassBackground(
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    if (!isGlassBackgroundSupported) {
+        FloatingBarBlurBackground(
+            hazeState = hazeState,
+            isAcrylic = false,
+            pureBlack = pureBlack,
+            modifier = modifier,
+        )
+        return
+    }
     val colorScheme = MaterialTheme.colorScheme
     val surfaceColor = if (pureBlack) Color.Black else colorScheme.surfaceContainerHigh
     val isDarkSurface = pureBlack || colorScheme.surface.luminance() < colorScheme.onSurface.luminance()

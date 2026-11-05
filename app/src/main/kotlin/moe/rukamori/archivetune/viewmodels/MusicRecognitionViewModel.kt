@@ -29,13 +29,13 @@ import moe.rukamori.archivetune.musicrecognition.FilterRecognitionHistoryUseCase
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionAutoStartRequestKey
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionException
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionFailure
-import moe.rukamori.archivetune.musicrecognition.ObserveBackgroundRecognitionSettingUseCase
+import moe.rukamori.archivetune.musicrecognition.ObserveFloatingRecognitionSettingUseCase
 import moe.rukamori.archivetune.musicrecognition.ObserveRecognitionHistoryUseCase
 import moe.rukamori.archivetune.musicrecognition.RecognitionHistoryEntry
 import moe.rukamori.archivetune.musicrecognition.RecognitionPhase
 import moe.rukamori.archivetune.musicrecognition.RecognizeMusicUseCase
 import moe.rukamori.archivetune.musicrecognition.RecognizedTrack
-import moe.rukamori.archivetune.musicrecognition.SetBackgroundRecognitionEnabledUseCase
+import moe.rukamori.archivetune.musicrecognition.SetFloatingRecognitionEnabledUseCase
 import timber.log.Timber
 import java.text.DateFormat
 import java.util.Date
@@ -72,6 +72,12 @@ enum class RecognitionPhaseUi {
     Listening,
     Processing,
 }
+
+@Immutable
+data class RecognitionCaptureUiState(
+    val level: Float = 0f,
+    val progress: Float = 0f,
+)
 
 enum class MusicRecognitionErrorUi {
     PermissionRequired,
@@ -126,10 +132,11 @@ data class RecognitionHistorySheetUiState(
 @Immutable
 data class MusicRecognitionSettingsUiState(
     val visible: Boolean,
-    val backgroundRecognitionEnabled: Boolean,
-    val backgroundRecognitionAvailable: Boolean,
+    val floatingRecognitionEnabled: Boolean,
+    val floatingRecognitionAvailable: Boolean,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
+    val permissionsDenied: Boolean = false,
 )
 
 sealed interface MusicRecognitionEvent {
@@ -137,7 +144,13 @@ sealed interface MusicRecognitionEvent {
 
     data object RecognitionStarted : MusicRecognitionEvent
 
+    data class RecognitionFinished(val matched: Boolean) : MusicRecognitionEvent
+
     data object OpenAppSettings : MusicRecognitionEvent
+
+    data object StartFloatingRecognition : MusicRecognitionEvent
+
+    data object StopFloatingRecognition : MusicRecognitionEvent
 
     data class Search(
         val query: String,
@@ -159,10 +172,10 @@ class MusicRecognitionViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         observeRecognitionHistory: ObserveRecognitionHistoryUseCase,
-        observeBackgroundRecognitionSetting: ObserveBackgroundRecognitionSettingUseCase,
+        observeFloatingRecognitionSetting: ObserveFloatingRecognitionSettingUseCase,
         private val filterRecognitionHistory: FilterRecognitionHistoryUseCase,
         private val recognizeMusic: RecognizeMusicUseCase,
-        private val setBackgroundRecognitionEnabled: SetBackgroundRecognitionEnabledUseCase,
+        private val setFloatingRecognitionEnabled: SetFloatingRecognitionEnabledUseCase,
     ) : ViewModel() {
         private val emptyHistory = RecognitionHistoryUiModel(ImmutableList.of())
         private val _screenState =
@@ -170,6 +183,9 @@ class MusicRecognitionViewModel
                 MusicRecognitionScreenState.Empty(emptyHistory),
             )
         val screenState: StateFlow<MusicRecognitionScreenState> = _screenState.asStateFlow()
+
+        private val _captureState = MutableStateFlow(RecognitionCaptureUiState())
+        val captureState: StateFlow<RecognitionCaptureUiState> = _captureState.asStateFlow()
 
         private val _historyVisible = MutableStateFlow(false)
         private val _historyQuery = MutableStateFlow("")
@@ -181,8 +197,8 @@ class MusicRecognitionViewModel
             MutableStateFlow(
                 MusicRecognitionSettingsUiState(
                     visible = false,
-                    backgroundRecognitionEnabled = false,
-                    backgroundRecognitionAvailable = false,
+                    floatingRecognitionEnabled = false,
+                    floatingRecognitionAvailable = false,
                 ),
             )
         val settingsState: StateFlow<MusicRecognitionSettingsUiState> = _settingsState.asStateFlow()
@@ -215,11 +231,14 @@ class MusicRecognitionViewModel
         val events = _events.receiveAsFlow()
 
         private var recognitionJob: Job? = null
-        private var persistedBackgroundRecognitionEnabled = false
+        private var persistedFloatingRecognitionEnabled = false
         private var permissionRequestPending = false
         private var permissionRequestId = 0L
         private var dispatchedPermissionRequestId: Long? = null
+
+        @Volatile
         private var recognitionRequestId = 0L
+        private var revealedTrack: RecognizedTrack? = null
 
         init {
             viewModelScope.launch {
@@ -230,12 +249,12 @@ class MusicRecognitionViewModel
             }
 
             viewModelScope.launch {
-                observeBackgroundRecognitionSetting().collect { setting ->
-                    persistedBackgroundRecognitionEnabled = setting.enabled
+                observeFloatingRecognitionSetting().collect { setting ->
+                    persistedFloatingRecognitionEnabled = setting.enabled
                     _settingsState.value =
                         _settingsState.value.copy(
-                            backgroundRecognitionEnabled = setting.enabled,
-                            backgroundRecognitionAvailable = setting.available,
+                            floatingRecognitionEnabled = setting.enabled,
+                            floatingRecognitionAvailable = setting.available,
                         )
                 }
             }
@@ -295,6 +314,8 @@ class MusicRecognitionViewModel
             dispatchedPermissionRequestId = null
             recognitionJob?.cancel()
             recognitionJob = null
+            revealedTrack = null
+            _captureState.value = RecognitionCaptureUiState()
             _screenState.value = MusicRecognitionScreenState.Empty(currentHistory())
         }
 
@@ -303,10 +324,18 @@ class MusicRecognitionViewModel
             _events.trySend(MusicRecognitionEvent.OpenAppSettings)
         }
 
+        fun onResultRevealed() {
+            val track = revealedTrack ?: return
+            if (_screenState.value !is MusicRecognitionScreenState.Success) return
+            _events.trySend(MusicRecognitionEvent.NavigateToDetails(track, recognitionRequestId))
+        }
+
         fun onDetailsNavigationRequested(requestId: Long): Boolean {
             if (requestId != recognitionRequestId ||
                 _screenState.value !is MusicRecognitionScreenState.Success
             ) return false
+            revealedTrack = null
+            _captureState.value = RecognitionCaptureUiState()
             _screenState.value = MusicRecognitionScreenState.Empty(currentHistory())
             return true
         }
@@ -320,27 +349,53 @@ class MusicRecognitionViewModel
             _settingsState.value = _settingsState.value.copy(visible = visible)
         }
 
-        fun onBackgroundRecognitionEnabledChanged(enabled: Boolean) {
-            if (!_settingsState.value.backgroundRecognitionAvailable ||
+        fun onFloatingRecognitionEnabledChanged(enabled: Boolean) {
+            if (!_settingsState.value.floatingRecognitionAvailable ||
                 _settingsState.value.isSaving
             ) return
 
             _settingsState.value =
                 _settingsState.value.copy(
-                    backgroundRecognitionEnabled = enabled,
+                    floatingRecognitionEnabled = enabled,
                     isSaving = true,
                     saveFailed = false,
+                    permissionsDenied = false,
                 )
+            if (enabled) {
+                if (!_events.trySend(MusicRecognitionEvent.StartFloatingRecognition).isSuccess) {
+                    onFloatingRecognitionStartResult(started = false)
+                }
+            } else {
+                _events.trySend(MusicRecognitionEvent.StopFloatingRecognition)
+                persistFloatingRecognitionEnabled(false)
+            }
+        }
+
+        fun onFloatingRecognitionStartResult(started: Boolean) {
+            if (!_settingsState.value.isSaving) return
+            if (started) {
+                persistFloatingRecognitionEnabled(true)
+            } else {
+                _settingsState.value =
+                    _settingsState.value.copy(
+                        floatingRecognitionEnabled = persistedFloatingRecognitionEnabled,
+                        isSaving = false,
+                        permissionsDenied = true,
+                    )
+            }
+        }
+
+        private fun persistFloatingRecognitionEnabled(enabled: Boolean) {
             viewModelScope.launch {
                 runCatching {
-                    setBackgroundRecognitionEnabled(enabled)
-                    persistedBackgroundRecognitionEnabled = enabled
+                    setFloatingRecognitionEnabled(enabled)
+                    persistedFloatingRecognitionEnabled = enabled
                 }.onFailure { throwable ->
                     if (throwable is CancellationException) throw throwable
-                    Timber.e(throwable, "Failed to update background recognition setting")
+                    Timber.e(throwable, "Failed to update floating recognition setting")
                     _settingsState.value =
                         _settingsState.value.copy(
-                            backgroundRecognitionEnabled = persistedBackgroundRecognitionEnabled,
+                            floatingRecognitionEnabled = persistedFloatingRecognitionEnabled,
                             saveFailed = true,
                         )
                 }
@@ -370,6 +425,8 @@ class MusicRecognitionViewModel
         private fun startRecognition() {
             if (recognitionJob?.isActive == true) return
             val requestId = ++recognitionRequestId
+            revealedTrack = null
+            _captureState.value = RecognitionCaptureUiState()
             _screenState.value = MusicRecognitionScreenState.Loading(
                 phase = RecognitionPhaseUi.Listening,
                 history = currentHistory(),
@@ -378,32 +435,46 @@ class MusicRecognitionViewModel
                 viewModelScope.launch {
                     _events.send(MusicRecognitionEvent.RecognitionStarted)
                     val result =
-                        recognizeMusic { phase ->
-                            ensureActive()
-                            _screenState.value =
-                                MusicRecognitionScreenState.Loading(
-                                    phase = phase.toUiModel(),
-                                    history = currentHistory(),
-                                )
-                        }
+                        recognizeMusic(
+                            onPhaseChanged = { phase ->
+                                ensureActive()
+                                if (phase == RecognitionPhase.Processing) {
+                                    _captureState.value = RecognitionCaptureUiState(level = 0f, progress = 1f)
+                                }
+                                _screenState.value =
+                                    MusicRecognitionScreenState.Loading(
+                                        phase = phase.toUiModel(),
+                                        history = currentHistory(),
+                                    )
+                            },
+                            onCaptureProgress = { capture ->
+                                if (requestId == recognitionRequestId) {
+                                    _captureState.value =
+                                        RecognitionCaptureUiState(level = capture.level, progress = capture.fraction)
+                                }
+                            },
+                        )
 
                     ensureActive()
                     result.fold(
                         onSuccess = { track ->
+                            revealedTrack = track
                             _screenState.value =
                                 MusicRecognitionScreenState.Success(
                                     track = track.toRecognitionUiModel(),
                                     history = currentHistory(),
                                 )
-                            _events.send(MusicRecognitionEvent.NavigateToDetails(track, requestId))
+                            _events.send(MusicRecognitionEvent.RecognitionFinished(matched = true))
                         },
                         onFailure = { throwable ->
                             if (throwable is CancellationException) throw throwable
+                            _captureState.value = RecognitionCaptureUiState()
                             _screenState.value =
                                 MusicRecognitionScreenState.Error(
                                     error = throwable.toUiError(),
                                     history = currentHistory(),
                                 )
+                            _events.send(MusicRecognitionEvent.RecognitionFinished(matched = false))
                         },
                     )
                     recognitionJob = null
