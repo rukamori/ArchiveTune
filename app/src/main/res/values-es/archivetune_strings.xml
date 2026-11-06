@@ -450,15 +450,12 @@
     <string name="player_design_v9">Versión extendida</string>
     <string name="aod_shape_arch">Arco</string>
     <string name="storage_folder">Carpeta de almacenamiento</string>
-    <string name="storage_folder_pick">Seleccionar carpeta</string>
     <string name="storage_location_sheet_title">Ubicación del almacenamiento</string>
     <string name="storage_location_internal">Almacenamiento interno</string>
     <string name="storage_location_removable">Tarjeta Sd</string>
     <string name="storage_location_removable_named">Tarjeta SD %s</string>
     <string name="storage_location_free">%s libre</string>
     <string name="storage_location_apply">Utilice este almacenamiento</string>
-    <string name="storage_migration_cache_progress">Moviendo caché... %1$d %%</string>
-    <string name="storage_migration_downloads_progress">Moviendo las descargas…%1$d %%</string>
     <string name="storage_migration_warning">Advertencia: No cierre la aplicación ni apague el dispositivo durante este proceso. Si lo hace, podría perder datos.</string>
     <string name="storage_folder_selected_restart">Carpeta de almacenamiento guardada. La aplicación se reiniciará en 3 segundos.</string>
     <string name="storage_folder_invalid">Seleccione una carpeta válida.</string>
@@ -466,7 +463,6 @@
     <string name="storage_folder_not_writable">ArchiveTune no puede escribir archivos de caché en esta carpeta.</string>
     <string name="storage_cache_cleared">Caché vaciada.</string>
     <string name="storage_cache_clear_failed">No se pudo borrar la caché. Compruebe el acceso a la tarjeta SD.</string>
-    <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="android_auto_suggested_songs">Canciones sugeridas</string>
     <string name="android_auto_mixes_and_radios">Mezclas y radios</string>
     <string name="android_auto_sort_playlist">Ordenar lista de reproducción</string>
@@ -547,10 +543,6 @@
     <string name="music_recognition_notification_no_match_text">Deja que la música suene con claridad y vuelve a intentar el reconocimiento.</string>
     <string name="music_recognition_notification_signature_failed_text">La grabación de audio no contenía suficiente música como para permitir la identificación.</string>
     <string name="music_recognition_notification_recognition_failed_text">El servicio de reconocimiento no pudo identificar este audio. Inténtelo de nuevo en breve.</string>
-    <string name="storage_clear_song_cache_progress">Borrando la caché de canciones... %1$d %%</string>
-    <string name="storage_clear_downloads_progress">Borrando descargas... %1$d%%</string>
-    <string name="storage_clear_image_cache_progress">Borrando la caché de imágenes... %1$d%%</string>
-    <string name="storage_clear_canvas_cache_progress">Borrando la caché del lienzo... %1$d%%</string>
     <string name="storage_cache_clear_warning">Mantén ArchiveTune abierto mientras se eliminan los archivos de caché.</string>
     <string name="history_duration_desc">Tiempo mínimo de reproducción para que una canción se considere escuchada</string>
     <string name="history_duration_seconds">%1$s s</string>

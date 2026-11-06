@@ -353,7 +353,6 @@
     <string name="aod_shape_pentagon">Pentagone</string>
     <string name="news_no_results_title">Aucun article correspondant</string>
     <string name="about_archive_tune_team">L\'équipe</string>
-    <string name="storage_migration_cache_progress">Transfert du cache... %1$d%%</string>
     <string name="ai_api_testing">Test de connexion…</string>
     <string name="aod_customize_horizontal_padding">Remplissage horizontal</string>
     <string name="local_songs_scan_included_folders_empty">Tous les dossiers sont inclus.</string>
@@ -474,7 +473,6 @@
     <string name="lyrics_share_style_vivid_glow">Éclat éclatant</string>
     <string name="ai_api_status_success">API prête</string>
     <string name="aod_shape_pill">Comprimé</string>
-    <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="login_success">Connexion réussie</string>
     <string name="aod_shape_slanted">Incliné</string>
     <string name="settings_behavior_subtitle">Historique, paramètres par défaut et paramètres de confidentialité</string>
@@ -504,7 +502,6 @@
     <string name="mini_player_background_style">Style d\'arrière-plan du mini-lecteur</string>
     <string name="settings_account_subtitle">Se connecter et gérer la synchronisation du compte</string>
     <string name="aod_shape_soft_burst">Explosion douce</string>
-    <string name="storage_folder_pick">Choisissez un dossier</string>
     <string name="ai_model_search">Modèles de recherche</string>
     <string name="force_sync_on_switch_account_desc">Resynchroniser les playlists, les titres favoris, les artistes et les albums du compte sélectionné après le changement de compte</string>
     <string name="spotify_no_tracks">Aucun titre Spotify trouvé.</string>
@@ -524,7 +521,6 @@
     <string name="settings_backup_restore_subtitle">Exporter et récupérer les données personnelles de vos applications</string>
     <string name="aod_customize_show_album">Afficher l\'album</string>
     <string name="aod_customize_show_exit_button">Afficher le bouton « Quitter »</string>
-    <string name="storage_migration_downloads_progress">Transfert des téléchargements... %1$d%%</string>
     <string name="aod_customize_content_position">Position du contenu</string>
     <string name="suggestions">Suggestions</string>
     <string name="restore_missing_content">L\'archive de sauvegarde ne contient aucune donnée pouvant être restaurée.</string>
@@ -535,10 +531,6 @@
     <string name="about_license_unknown">Licence inconnue</string>
     <string name="about_position_developers">Développeur | Équipe</string>
     <string name="about_position_yuki">dummy reze | Administrateur</string>
-    <string name="storage_clear_song_cache_progress">Effacement du cache des titres... %1$d %%</string>
-    <string name="storage_clear_downloads_progress">Suppression des téléchargements... %1$d %%</string>
-    <string name="storage_clear_image_cache_progress">Effacement du cache d\'images... %1$d %%</string>
-    <string name="storage_clear_canvas_cache_progress">Effacement du cache du canevas... %1$d %%</string>
     <string name="storage_cache_clear_warning">Laissez ArchiveTune ouvert pendant la suppression des fichiers de cache.</string>
     <string name="history_duration_desc">Durée minimale d\'écoute pour qu\'un morceau soit considéré comme écouté</string>
     <string name="history_duration_seconds">%1$s s</string>

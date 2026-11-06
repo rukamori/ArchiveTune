@@ -456,8 +456,6 @@
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="storage_location_internal">Interner Speicher</string>
     <string name="storage_location_free">%s frei</string>
-    <string name="storage_migration_cache_progress">Verschiebe Cache…%1$d%%</string>
-    <string name="storage_migration_downloads_progress">Verschiebe Downloads...%1$d%%</string>
     <string name="storage_folder_invalid">Wähle einen gültigen Ordner.</string>
     <string name="music_recognition_notification_channel_name">Musikerkennung</string>
     <string name="music_recognition_notification_status_result">ERGEBNIS</string>
@@ -485,7 +483,6 @@
     <string name="music_recognition_notification_release">Veröffentlicht: %1$s</string>
     <string name="storage_location_removable">SD-Karte</string>
     <string name="storage_location_removable_named">SD-Karte %s</string>
-    <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="history_duration_seconds">%1$s s</string>
     <string name="stats_show_top_songs">Top 5 anzeigen</string>
     <string name="restore_file_not_found">Konnte die ausgewählte Datei nicht öffnen.</string>
@@ -515,15 +512,10 @@
     <string name="aod_shape_pixel_circle">Pixelkreis</string>
     <string name="block_artist">Künstler blockieren</string>
     <string name="storage_folder">Speicherordner</string>
-    <string name="storage_folder_pick">Ordner auswählen</string>
     <string name="storage_location_sheet_title">Speicherort</string>
     <string name="storage_location_apply">Diesen Speicher verwenden</string>
     <string name="storage_folder_selected_restart">Speicherordner gespeichert. App startet in 3 Sekunden neu.</string>
     <string name="storage_folder_not_writable">ArchiveTune kann keine Cachedateien in diesen Ordner schreiben.</string>
-    <string name="storage_clear_song_cache_progress">Leere Songcache...%1$d%%</string>
-    <string name="storage_clear_downloads_progress">Lösche Downloads...%1$d%%</string>
-    <string name="storage_clear_image_cache_progress">Leere Bildcache...%1$d%%</string>
-    <string name="storage_clear_canvas_cache_progress">Leere Canvas-Cache...%1$d%%</string>
     <string name="storage_cache_clear_warning">Lasse ArchiveTune offen während Cachedateien entfernt werden.</string>
     <string name="history_duration_desc">Minimale Wiedergabezeit, um einen Song als gehört zu zählen</string>
     <string name="crossfade_gapless_title">Lückenlose Alben überspringen</string>

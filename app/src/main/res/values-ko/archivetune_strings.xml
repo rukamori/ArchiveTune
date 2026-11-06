@@ -400,7 +400,6 @@
     <string name="lyrics_share_style_deep_blur">딥 블러</string>
     <string name="aod_shape_pentagon">오각형</string>
     <string name="about_archive_tune_team">ArchiveTune 팀</string>
-    <string name="storage_migration_cache_progress">캐시 이동 중… %1$d%%</string>
     <string name="aod_customize_horizontal_padding">가로 여백</string>
     <string name="local_songs_scan_included_folders_empty">모든 폴더가 포함됩니다.</string>
     <string name="aod_position_bottom">하단</string>
@@ -484,7 +483,6 @@
     <string name="spotify_reload_playlist_desc">Spotify 계정에서 재생목록을 새로고침합니다.</string>
     <string name="lyrics_share_style_vivid_glow">비비드 글로우</string>
     <string name="aod_shape_pill">알약 모양</string>
-    <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="aod_shape_slanted">기울임</string>
     <string name="lyrics_share_style_album_tint">앨범 색조</string>
     <string name="playlist_sync_progress_step">%1$d / %2$d곡</string>
@@ -502,7 +500,6 @@
     <string name="aod_customize_sample_elapsed">1:24</string>
     <string name="mini_player_background_style">미니 플레이어 배경 스타일</string>
     <string name="aod_shape_soft_burst">소프트 버스트</string>
-    <string name="storage_folder_pick">대상 폴더 선택</string>
     <string name="spotify_no_tracks">Spotify 노래를 찾을 수 없습니다.</string>
     <string name="android_auto_sort_playlist">재생목록 정렬</string>
     <string name="spotify_no_sources">Spotify 재생목록을 찾을 수 없습니다.</string>
@@ -516,13 +513,8 @@
     <string name="storage_cache_clear_failed">캐시를 비울 수 없습니다. SD 카드 접근 권한을 확인해 주세요.</string>
     <string name="aod_customize_show_album">앨범명 표시</string>
     <string name="aod_customize_show_exit_button">나가기 버튼 표시</string>
-    <string name="storage_migration_downloads_progress">오프라인 저장한 음악 이동 중… %1$d%%</string>
     <string name="aod_customize_content_position">콘텐츠 위치</string>
     <string name="suggestions">추천</string>
-    <string name="storage_clear_song_cache_progress">음악 캐시 삭제 중</string>
-    <string name="storage_clear_downloads_progress">오프라인 저장한 음악 삭제 중</string>
-    <string name="storage_clear_image_cache_progress">이미지 캐시 삭제 중</string>
-    <string name="storage_clear_canvas_cache_progress">캔버스 캐시 삭제 중</string>
     <string name="storage_cache_clear_warning">정말로 캐시 데이터를 모두 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다.)</string>
     <string name="history_duration_desc">기록에 반영할 최소 감상 시간 설정</string>
     <string name="history_duration_seconds">%1$s 초</string>
