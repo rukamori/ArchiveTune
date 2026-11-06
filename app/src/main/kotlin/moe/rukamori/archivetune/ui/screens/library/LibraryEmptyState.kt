@@ -53,7 +53,7 @@ internal fun LibraryEmptyState(
 ) {
     val animationsDisabled = LocalAnimationsDisabled.current
     val motion = MaterialTheme.motionScheme
-    val badgeShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
     val badgeScale = remember { Animatable(if (animationsDisabled) 1f else 0.6f) }
     val badgeRotation = remember { Animatable(if (animationsDisabled) 0f else -40f) }
 

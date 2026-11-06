@@ -483,7 +483,7 @@ private fun LibraryQuickAccessBento(
     onOpenTop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val heartShape = remember { MaterialShapes.Heart.toShape() }
+    val heartShape = MaterialShapes.Heart.toShape()
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1070,7 +1070,7 @@ private fun TopMixesEmptyCard(
     onRefresh: () -> Unit,
     onConfigureAi: () -> Unit,
 ) {
-    val sparkleShape = remember { MaterialShapes.Sunny.toShape() }
+    val sparkleShape = MaterialShapes.Sunny.toShape()
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,

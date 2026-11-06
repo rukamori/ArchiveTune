@@ -112,7 +112,7 @@ class LocalSongsViewModel @Inject constructor(
                     sort,
                 ) { songs, query, view, focus, sort ->
                     LocalLibraryInputs(songs, query, view.toEnum(LocalLibraryView.SONGS), focus, sort)
-                }.mapLatest(::buildLibraryState)
+                }.mapLatest<LocalLibraryInputs, LocalLibraryUiState>(::buildLibraryState)
                     .flowOn(Dispatchers.Default)
                     .catch { error ->
                         if (error is CancellationException) throw error

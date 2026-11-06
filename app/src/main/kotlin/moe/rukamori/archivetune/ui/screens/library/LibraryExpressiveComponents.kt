@@ -272,7 +272,7 @@ private fun LibraryHeroArtwork(
     ringColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val leadShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val leadShape = MaterialShapes.Cookie9Sided.toShape()
     val satelliteUrl = artworkUrls.getOrNull(1).takeUnless { circular }
     Box(modifier = modifier) {
         val leadUrl = artworkUrls.firstOrNull()
