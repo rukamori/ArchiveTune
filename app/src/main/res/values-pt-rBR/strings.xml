@@ -967,7 +967,6 @@
     <string name="eq_sound_shaping_on">A função de modelagem de som está ativada</string>
     <string name="eq_sound_shaping_off">A função de modelagem de som está desativada</string>
     <string name="eq_enable_description">Aplica esses controles à reprodução do ArchiveTune</string>
-    <string name="eq_control_mode">Modo de controle</string>
     <string name="eq_basic">Básico</string>
     <string name="eq_advanced">Avançado</string>
     <string name="eq_basic_description">Predefinições rápidas e ampla modelagem de timbre</string>

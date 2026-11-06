@@ -945,7 +945,6 @@
     <string name="eq_sound_shaping_on">Điều chỉnh âm thanh đang bật</string>
     <string name="eq_sound_shaping_off">Điều chỉnh âm thanh đang tắt</string>
     <string name="eq_enable_description">Áp dụng các điều khiển này cho quá trình phát lại của ArchiveTune</string>
-    <string name="eq_control_mode">Chế độ điều chỉnh</string>
     <string name="eq_basic">Cơ bản</string>
     <string name="eq_advanced">Nâng cao</string>
     <string name="eq_basic_description">Các thiết lập nhanh và khả năng điều chỉnh âm thanh rộng rãi</string>

@@ -553,7 +553,6 @@
     <string name="eq_sound_shaping_on">サウンドシェイピングがオンになっています</string>
     <string name="eq_sound_shaping_off">サウンドシェイピングがオフになっている</string>
     <string name="eq_enable_description">これらのコントロールを ArchiveTune の再生に適用します</string>
-    <string name="eq_control_mode">制御モード</string>
     <string name="eq_basic">基本</string>
     <string name="eq_advanced">上級者向け</string>
     <string name="eq_basic_description">素早いプリセットと幅広いトーンシェイピング</string>

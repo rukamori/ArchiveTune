@@ -965,7 +965,6 @@
     <string name="eq_sound_shaping_on">Le façonnage du son est activé</string>
     <string name="eq_sound_shaping_off">Le façonnage du son est désactivé</string>
     <string name="eq_enable_description">Applique ces commandes à la lecture d\'ArchiveTune</string>
-    <string name="eq_control_mode">Mode de commande</string>
     <string name="eq_basic">Basique</string>
     <string name="eq_advanced">Avancé</string>
     <string name="eq_basic_description">Préréglages rapides et large palette de modulations sonores</string>

@@ -936,7 +936,6 @@
     <string name="eq_sound_shaping_on">聲音塑形功能已開啟</string>
     <string name="eq_sound_shaping_off">聲音塑形功能已關閉</string>
     <string name="eq_enable_description">將這些控制項應用於 ArchiveTune 播放</string>
-    <string name="eq_control_mode">控制模式</string>
     <string name="eq_basic">基本</string>
     <string name="eq_advanced">高級</string>
     <string name="eq_basic_description">快速預設與音色調節</string>

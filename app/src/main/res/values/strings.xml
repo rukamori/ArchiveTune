@@ -704,7 +704,6 @@
     <string name="eq_sound_shaping_on">Sound shaping is on</string>
     <string name="eq_sound_shaping_off">Sound shaping is off</string>
     <string name="eq_enable_description">Applies these controls to ArchiveTune playback</string>
-    <string name="eq_control_mode">Control mode</string>
     <string name="eq_basic">Basic</string>
     <string name="eq_advanced">Advanced</string>
     <string name="eq_basic_description">Quick presets and broad tone shaping</string>

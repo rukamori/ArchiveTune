@@ -567,7 +567,6 @@
     <string name="eq_sound_shaping_on">Pembentukan suara aktif</string>
     <string name="eq_sound_shaping_off">Pembentukan suara nonaktif</string>
     <string name="eq_enable_description">Terapkan kontrol ini ke pemutaran ArchiveTune</string>
-    <string name="eq_control_mode">Mode kontrol</string>
     <string name="eq_basic">Dasar</string>
     <string name="eq_advanced">Lanjutan</string>
     <string name="eq_basic_description">Preset cepat dan pembentukan nada luas</string>

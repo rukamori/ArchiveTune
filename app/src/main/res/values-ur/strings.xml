@@ -770,7 +770,6 @@
     <string name="eq_sound_shaping_off">سمعی ڈھالنا غیر فعل ہے</string>
     <string name="custom_background_permission_cleanup_error">پچھلی تصویر تک رسائی خلاصی نہیں ہو سکی۔</string>
     <string name="eq_enable_description">‫ان ترتیبات کو ArchiveTune کے سازندہ پر لاگو کرتا ہے</string>
-    <string name="eq_control_mode">کنٹرول اسلوب</string>
     <string name="eq_basic">بنیادی</string>
     <string name="eq_advanced">مقدم</string>
     <string name="eq_basic_description">فوری پیش تنطیمات اور کشادہ تشکیل سٰر</string>

@@ -924,7 +924,6 @@
     <string name="eq_sound_shaping_on">Soundanpassung ist an</string>
     <string name="eq_sound_shaping_off">Soundanpassung ist aus</string>
     <string name="eq_enable_description">Diese Kontrollen auf die ArchiveTune-Wiedergabe anwenden</string>
-    <string name="eq_control_mode">Kontrollmodus</string>
     <string name="eq_advanced">Erweitert</string>
     <string name="eq_preset_number">Voreinstellung %1$d</string>
     <string name="eq_profiles_description">Behalte, importiere und teile ganze Konfigurationen</string>
