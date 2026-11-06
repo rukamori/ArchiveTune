@@ -251,6 +251,8 @@
     <string name="view_album">View album</string>
     <string name="view_all">View all</string>
     <string name="more">more</string>
+    <string name="home_fab_menu_expanded">Quick actions shown</string>
+    <string name="home_fab_menu_collapsed">Quick actions hidden</string>
     <string name="refetch">Refetch</string>
     <string name="refetch_canvas">Refetch canvas</string>
     <string name="canvas_refetch_failed">Couldn\'t refresh animated canvas</string>

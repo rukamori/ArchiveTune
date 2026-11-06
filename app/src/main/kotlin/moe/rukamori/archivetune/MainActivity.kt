@@ -28,8 +28,8 @@ import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -72,7 +72,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
@@ -83,14 +82,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PlainTooltip
@@ -101,6 +100,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
@@ -132,6 +133,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -144,8 +146,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -191,7 +196,6 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
-import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CancellationException
@@ -275,7 +279,6 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.ui.component.BlurredOverflowMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
@@ -286,7 +289,6 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
-import moe.rukamori.archivetune.ui.component.OverflowMenuDivider
 import moe.rukamori.archivetune.ui.component.StarDialog
 import moe.rukamori.archivetune.ui.component.TopAppBarOverflowMenu
 import moe.rukamori.archivetune.ui.component.TopSearch
@@ -2398,8 +2400,6 @@ class MainActivity : ComponentActivity() {
                                             ) {
                                                 HomeOverflowFab(
                                                     expanded = homeOverflowMenuExpanded,
-                                                    pureBlack = pureBlack,
-                                                    hazeState = menuHazeState,
                                                     onExpandedChange = { homeOverflowMenuExpanded = it },
                                                     onShuffleClick = {
                                                         val useLocalSource =
@@ -3171,9 +3171,8 @@ val LocalPlayerAwareWindowInsets =
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 
-private val HomeOverflowFabSize = 56.dp
 private val HomeOverflowFabSpacing = 12.dp
-private val HomeOverflowMenuIconSize = 40.dp
+private const val HomeOverflowFabIconRotation = 90f
 
 @Composable
 private fun HomeOverflowFabVisibility(
@@ -3207,120 +3206,69 @@ private fun HomeOverflowFabVisibility(
 @Composable
 private fun HomeOverflowFab(
     expanded: Boolean,
-    pureBlack: Boolean,
-    hazeState: HazeState,
     onExpandedChange: (Boolean) -> Unit,
     onShuffleClick: () -> Unit,
     onMusicRecognitionClick: () -> Unit,
     onMusicTogetherClick: () -> Unit,
 ) {
-    val menuItemColors =
-        MenuDefaults.itemColors(
-            textColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface,
-            leadingIconColor =
-                if (pureBlack) {
-                    Color.White.copy(alpha = 0.82f)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-        )
+    BackHandler(expanded) { onExpandedChange(false) }
+    val moreLabel = stringResource(R.string.more)
+    val stateLabel =
+        stringResource(if (expanded) R.string.home_fab_menu_expanded else R.string.home_fab_menu_collapsed)
 
-    Box {
-        FloatingActionButton(
-            onClick = { onExpandedChange(!expanded) },
-            modifier = Modifier.size(HomeOverflowFabSize),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.more_horiz),
-                contentDescription = stringResource(R.string.more),
-            )
-        }
-
-        BlurredOverflowMenu(
-            expanded = expanded,
-            hazeState = hazeState,
-            pureBlack = pureBlack,
-            onDismissRequest = { onExpandedChange(false) },
-        ) {
-            DropdownMenuItem(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                text = { Text(stringResource(R.string.music_recognition)) },
-                onClick = {
-                    onExpandedChange(false)
-                    onMusicRecognitionClick()
-                },
-                leadingIcon = {
-                    HomeOverflowMenuIcon(
-                        iconRes = R.drawable.mic,
-                        contentDescription = stringResource(R.string.music_recognition),
-                        pureBlack = pureBlack,
-                    )
-                },
-                colors = menuItemColors,
-            )
-            OverflowMenuDivider()
-            DropdownMenuItem(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                text = { Text(stringResource(R.string.music_together)) },
-                onClick = {
-                    onExpandedChange(false)
-                    onMusicTogetherClick()
-                },
-                leadingIcon = {
-                    HomeOverflowMenuIcon(
-                        iconRes = R.drawable.multi_user,
-                        contentDescription = null,
-                        pureBlack = pureBlack,
-                    )
-                },
-                colors = menuItemColors,
-            )
-            OverflowMenuDivider()
-            DropdownMenuItem(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                text = { Text(stringResource(R.string.shuffle)) },
-                onClick = {
-                    onExpandedChange(false)
-                    onShuffleClick()
-                },
-                leadingIcon = {
-                    HomeOverflowMenuIcon(
-                        iconRes = R.drawable.shuffle,
-                        contentDescription = stringResource(R.string.shuffle),
-                        pureBlack = pureBlack,
-                    )
-                },
-                colors = menuItemColors,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeOverflowMenuIcon(
-    @DrawableRes iconRes: Int,
-    contentDescription: String?,
-    pureBlack: Boolean,
-) {
-    Surface(
-        modifier = Modifier.size(HomeOverflowMenuIconSize),
-        shape = CircleShape,
-        color =
-            if (pureBlack) {
-                Color.White.copy(alpha = 0.12f)
-            } else {
-                MaterialTheme.colorScheme.secondaryContainer
-            },
-        contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+    FloatingActionButtonMenu(
+        expanded = expanded,
+        button = {
+            ToggleFloatingActionButton(
+                checked = expanded,
+                onCheckedChange = onExpandedChange,
+                modifier =
+                    Modifier.semantics {
+                        traversalIndex = -1f
+                        stateDescription = stateLabel
+                        contentDescription = moreLabel
+                    },
+            ) {
+                val icon by remember {
+                    derivedStateOf { if (checkedProgress > 0.5f) R.drawable.close else R.drawable.more_horiz }
+                }
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    modifier =
+                        with(ToggleFloatingActionButtonDefaults) {
+                            Modifier
+                                .animateIcon({ checkedProgress })
+                                .graphicsLayer { rotationZ = checkedProgress * HomeOverflowFabIconRotation }
+                        },
+                )
+            }
+        },
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = contentDescription,
-            )
-        }
+        FloatingActionButtonMenuItem(
+            onClick = {
+                onExpandedChange(false)
+                onMusicRecognitionClick()
+            },
+            icon = { Icon(painterResource(R.drawable.mic), contentDescription = null) },
+            text = { Text(stringResource(R.string.music_recognition)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = {
+                onExpandedChange(false)
+                onMusicTogetherClick()
+            },
+            icon = { Icon(painterResource(R.drawable.multi_user), contentDescription = null) },
+            text = { Text(stringResource(R.string.music_together)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = {
+                onExpandedChange(false)
+                onShuffleClick()
+            },
+            icon = { Icon(painterResource(R.drawable.shuffle), contentDescription = null) },
+            text = { Text(stringResource(R.string.shuffle)) },
+        )
     }
 }
 
