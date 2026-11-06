@@ -128,6 +128,36 @@
     <string name="local_song_settings_open_failed">Couldn’t open the system picker or app settings.</string>
     <string name="local_songs_no_matches_title">No matching local songs</string>
     <string name="local_songs_no_matches_desc">Try a different song, artist, or album name.</string>
+    <string name="local_library_overline">On this device</string>
+    <string name="local_library_stats">%1$s · %2$s · %3$s</string>
+    <string name="local_library_meta">%1$s · %2$s</string>
+    <string name="local_library_duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="local_library_load_failed">Couldn’t load your local music.</string>
+    <string name="local_library_scanning">Scanning this device…</string>
+    <string name="local_library_scan_now">Scan device</string>
+    <string name="local_library_scan_again">Scan again</string>
+    <string name="local_library_scan_settings">Scan settings</string>
+    <string name="local_library_allow_access">Allow access</string>
+    <string name="local_library_access_needed">Storage access is needed to scan this device.</string>
+    <string name="local_library_views">Library view</string>
+    <string name="local_library_focus_album">Album</string>
+    <string name="local_library_focus_artist">Artist</string>
+    <string name="local_library_close_focus">Back to all local music</string>
+    <string name="local_library_play_album">Play %1$s</string>
+    <string name="local_library_sort_by">Sort by %1$s</string>
+    <string name="local_library_no_albums_title">No albums yet</string>
+    <string name="local_library_no_albums_desc">Songs without album tags only appear in Songs.</string>
+    <string name="local_library_no_artists_title">No artists yet</string>
+    <string name="local_library_no_artists_desc">Songs without artist tags only appear in Songs.</string>
+    <string name="local_library_clear_search">Clear search</string>
+    <plurals name="local_library_queued_next">
+        <item quantity="one">%d song will play next</item>
+        <item quantity="other">%d songs will play next</item>
+    </plurals>
+    <plurals name="local_library_added_to_queue">
+        <item quantity="one">Added %d song to the queue</item>
+        <item quantity="other">Added %d songs to the queue</item>
+    </plurals>
     <string name="sort_by_album">Album</string>
     <string name="remote_history">Remote</string>
     <string name="charts">Charts</string>
