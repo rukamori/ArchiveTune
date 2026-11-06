@@ -59,7 +59,11 @@ class OnboardingViewModel
                         } else {
                             OnboardingScreenState.Success(uiState)
                         }
-                    }.onStart { emit(OnboardingScreenState.Loading) }
+                    }.onStart {
+                        if (screenState.value !is OnboardingScreenState.Success) {
+                            emit(OnboardingScreenState.Loading)
+                        }
+                    }
                     .catch { error ->
                         if (error !is IOException) throw error
                         emit(OnboardingScreenState.Error(R.string.onboarding_error_generic))
