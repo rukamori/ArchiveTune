@@ -63,11 +63,8 @@
     <string name="recently_added">נוסף לאחרונה</string>
     <string name="sort_descending">מיון בסדר יורד</string>
     <string name="sort_ascending">מיון בסדר עולה</string>
-    <string name="your_collection">האוסף שלך</string>
     <string name="playing_desc">מתנגן</string>
     <string name="tracks_label">רצועות</string>
-    <string name="song_singular">שיר</string>
-    <string name="more_playlists_desc">פלייליסטים נוספים</string>
     <string name="more_label">עוד</string>
     <string name="tracks_count_label">מספר שירים</string>
     <string name="recently_updated">עודכן לאחרונה</string>
@@ -86,14 +83,10 @@
     <string name="personal_label">אישי</string>
     <string name="youtube_synced">YouTube מסונכרן</string>
     <string name="options_label">אפשרויות</string>
-    <string name="top_artist_badge">אמן מוביל</string>
-    <string name="no_artist_yet">אין עדיין אמן</string>
-    <string name="total_label">סך הכל</string>
     <string name="play_time">זמן נגינה</string>
     <string name="subscribed_only">למנויים בלבד</string>
     <string name="all_artists_filter">כל האמנים</string>
     <string name="artist_subtitle">אמן</string>
-    <string name="recently_played_artists">אמנים שהושמעו לאחרונה</string>
     <string name="newest_year">שנה חדשה</string>
     <string name="oldest_year">שנה ישנה</string>
     <string name="lyrics_mode_enhanced">משופר</string>
@@ -296,7 +289,6 @@
     <string name="add_to_queue">הוסף לתור</string>
     <string name="customize_theme_colors">בחר את צבעי ערכת הנושא של האפליקציה</string>
     <string name="eq_save_profile">שמירת פרופיל</string>
-    <string name="featured_album_badge">אלבום מומלץ</string>
     <string name="palette_coffee">קפה</string>
     <string name="contrast">ניגודיות</string>
     <string name="palette_rainbow">קשת בענן</string>

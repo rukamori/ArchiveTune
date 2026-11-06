@@ -668,7 +668,6 @@
     <string name="sort_z_to_a">역가나다순</string>
     <string name="album_name">앨범 이름</string>
     <string name="oldest_first">오래된순</string>
-    <string name="song_singular">노래</string>
     <string name="font_preference_default">기본 글꼴</string>
     <string name="play_time">재생 시간</string>
     <string name="font_preference_desc">앱에 적용할 글꼴의 출처를 선택합니다.</string>
@@ -681,7 +680,6 @@
     <string name="discord_refresh_success">Discord Rich Presence를 새로고침했습니다.</string>
     <string name="app_icon">앱 아이콘</string>
     <string name="youtube_synced">YouTube 동기화됨</string>
-    <string name="your_collection">내 컬렉션</string>
     <string name="discord_login_description">내 Discord 계정을 안전하게 연동하여 내가 듣고 있는 음악 정보를 프로필 상태 메시지에 실시간으로 보여줍니다.</string>
     <string name="personal_label">개인용</string>
     <string name="most_played_badge">최다 재생</string>
@@ -703,8 +701,6 @@
     <string name="low_data_mode_description">모바일 데이터 사용량을 줄이기 위해 종량제 네트워크에서 낮은 음질로 스트리밍하고 재생 캐시와 움직이는 캔버스 비디오를 비활성화합니다.</string>
     <string name="discord_authorization_failed">Discord 프로필 연동 인증 단계에 실패했습니다.</string>
     <string name="most_tracks">곡 수 많은 순</string>
-    <string name="featured_album_badge">추천 앨범</string>
-    <string name="recently_played_artists">최근 재생한 아티스트</string>
     <string name="discord_authorization_success">Discord 계정 연동이 완료되었습니다.</string>
     <string name="tracks_label">곡</string>
     <string name="newest_year">최신 연도순</string>
@@ -713,12 +709,9 @@
     <string name="recently_played">최근 재생한 음악</string>
     <string name="widget_tap_to_open">탭하여 ArchiveTune 열기</string>
     <string name="discord_refresh_failed">Discord Rich Presence 새로고침 실패</string>
-    <string name="top_artist_badge">인기 아티스트</string>
     <string name="your_playlists">내 재생목록</string>
     <string name="youtube_channels">YouTube 공식 아티스트 채널</string>
-    <string name="no_artist_yet">등록된 아티스트가 없습니다.</string>
     <string name="discord_url_source_custom">사용자 정의 URL</string>
-    <string name="total_label">총</string>
     <string name="list_view">목록 보기</string>
     <string name="player_background_style_v8_v9_desc">V8 및 V9 플레이어 스타일에서는 사용할 수 없습니다.</string>
     <string name="account_integrations_summary">Discord, Last.fm, ListenBrainz</string>
@@ -734,7 +727,6 @@
     <string name="recently_added">최근에 추가됨</string>
     <string name="top_mixes">추천 믹스</string>
     <string name="sort_a_to_z">가나다순</string>
-    <string name="more_playlists_desc">더 많은 재생목록</string>
     <string name="tracks_count_label">곡 개수</string>
     <string name="discord_url_source_artist">아티스트 URL</string>
     <string name="instant_playback">즉시 재생</string>

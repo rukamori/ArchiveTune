@@ -61,9 +61,6 @@
     <string name="recently_added">Mostanában hozzá adott</string>
     <string name="sort_descending">Rendezés lefelé</string>
     <string name="sort_ascending">Rendezés felfelé</string>
-    <string name="your_collection">Ön zene gyűjteménye</string>
-    <string name="song_singular">Zeneszám</string>
-    <string name="more_playlists_desc">Több lejátszási lista..</string>
     <string name="more_label">Több</string>
     <string name="recently_updated">Mostanában frissített</string>
     <string name="custom_order">Saját elrendezés</string>

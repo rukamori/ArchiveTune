@@ -461,11 +461,8 @@
     <string name="recently_added">Kürzlich hinzugefügt</string>
     <string name="sort_descending">Absteigend sortieren</string>
     <string name="sort_ascending">Aufsteigend sortieren</string>
-    <string name="your_collection">Deine Sammlung</string>
     <string name="playing_desc">Läuft</string>
     <string name="tracks_label">Titel</string>
-    <string name="song_singular">Song</string>
-    <string name="more_playlists_desc">Weitere Playlists</string>
     <string name="more_label">Mehr</string>
     <string name="tracks_count_label">Titelanzahl</string>
     <string name="recently_updated">Kürzlich aktualisiert</string>
@@ -692,7 +689,6 @@
     <string name="saved_accounts">Gespeicherte Konten</string>
     <string name="save_current_account">Aktuelles Konto speichern</string>
     <string name="library_top_mixes_no_recent_history">Höre dir mehr Songs an, dann aktualisiere, um KI-Mixe aus deinem bisherigen Verlauf zu erstellen.</string>
-    <string name="no_artist_yet">Noch kein Künstler</string>
     <string name="cached">Im Cache</string>
     <string name="library_top_mixes_refresh">Mixe aktualisieren</string>
     <string name="library_top_mixes_ai_not_configured_title">Konfiguriere KI, um Mixe zu erstellen</string>
@@ -732,8 +728,6 @@
     <string name="onboarding_permission_notifications_title">Benachrichtigungen</string>
     <string name="onboarding_permission_unavailable">Nicht verfügbar</string>
     <string name="onboarding_version_label">Version %1$s</string>
-    <string name="total_label">gesamt</string>
-    <string name="recently_played_artists">Kürzlich gespielte Künstler</string>
     <string name="longest_duration">Längste Dauer</string>
     <string name="shortest_duration">Kürzeste Dauer</string>
     <string name="cast_available_device_count">Geräte gefunden: %1$d</string>
@@ -783,7 +777,6 @@
     <string name="app_icon_current">Aktuelles Symbol</string>
     <string name="together_unknown_participant">Jemand</string>
     <string name="lyrics_searching_providers">Suche Anbieter</string>
-    <string name="featured_album_badge">VORGESTELLTES ALBUM</string>
     <string name="widget_insights_title">Höreinblicke</string>
     <string name="together_room_closed_inactivity_notification">Raum geschlossen, da für 10 Minuten niemand beigetreten ist</string>
     <string name="show_player_volume_bar">Lautstärkeregler anzeigen</string>
@@ -832,7 +825,6 @@
     <string name="together_transfer_host_confirm">Host an %1$s übertragen?</string>
     <string name="lyrics_search_still_searching">Suche noch</string>
     <string name="unsupported_language">Sprache nicht unterstützt: %1$s</string>
-    <string name="top_artist_badge">TOP-KÜNSTLER</string>
     <string name="cast_sheet_subtitle">Wähle wo ArchiveTune spielen soll</string>
     <string name="cast_disconnect">Trennen</string>
     <string name="app_icon_description">App-Symbol auswählen</string>

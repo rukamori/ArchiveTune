@@ -7,15 +7,12 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -25,13 +22,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -40,43 +38,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.component.ItemThumbnail
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LibraryMediaListCard(
     title: String,
     subtitle: String,
-    thumbnailUrl: String?,
+    artworkUrls: List<String>,
+    @DrawableRes fallbackIconRes: Int,
     sourceLabel: String,
     sourceColor: Color,
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     contentAlpha: Float = 1f,
     metadataTrailingContent: (@Composable RowScope.() -> Unit)? = null,
     additionalAction: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    val cardBackgroundColor =
-        rememberArtworkCardColor(
-            thumbnailUrl = thumbnailUrl,
-            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        )
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by
-        animateFloatAsState(
-            targetValue = if (isPressed) 0.97f else 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-            label = "LibraryMediaListCardScale",
-        )
+    val scale by rememberLibraryPressScale(interactionSource, pressedScale = 0.98f)
 
     Row(
         modifier =
@@ -86,91 +73,74 @@ fun LibraryMediaListCard(
                     scaleX = scale
                     scaleY = scale
                     alpha = contentAlpha
-                }.clip(RoundedCornerShape(32.dp))
-                .background(cardBackgroundColor)
-                .clickable(
+                }.clip(MaterialTheme.shapes.largeIncreased)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .combinedClickable(
                     interactionSource = interactionSource,
-                    indication = null,
+                    indication = ripple(),
                     onClick = onClick,
-                ).padding(12.dp),
+                    onLongClick = onLongClick,
+                ).padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ItemThumbnail(
-            thumbnailUrl = thumbnailUrl,
-            isActive = false,
-            isPlaying = false,
-            shape = RoundedCornerShape(24.dp),
-            contentScale = ContentScale.Crop,
-            showPlaceholder = true,
-            modifier = Modifier.size(72.dp),
+        LibraryArtworkMosaic(
+            artworkUrls = artworkUrls,
+            fallbackIconRes = fallbackIconRes,
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.size(64.dp),
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
+                    text = sourceLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = sourceColor,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier =
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .background(sourceColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+                Text(
                     text = subtitle,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Box(
-                    modifier =
-                        Modifier
-                            .clip(CircleShape)
-                            .background(sourceColor.copy(alpha = 0.12f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = sourceLabel,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = sourceColor,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
                 metadataTrailingContent?.invoke(this)
             }
         }
 
-        IconButton(
+        FilledTonalIconButton(
             onClick = onPlay,
-            colors =
-                IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ),
-            modifier = Modifier.size(36.dp),
+            shapes = IconButtonDefaults.shapes(),
         ) {
             Icon(
                 painter = painterResource(R.drawable.play),
                 contentDescription = stringResource(R.string.play),
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
 
-        Spacer(modifier = Modifier.width(4.dp))
-
-        IconButton(
-            onClick = onMenuClick,
-            modifier = Modifier.size(36.dp),
-        ) {
+        IconButton(onClick = onMenuClick) {
             Icon(
                 painter = painterResource(R.drawable.more_vert),
                 contentDescription = stringResource(R.string.options_label),

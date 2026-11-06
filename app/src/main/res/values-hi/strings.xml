@@ -76,11 +76,8 @@
     <string name="recently_added">हाल ही में जोड़े गए</string>
     <string name="sort_descending">अवरोही क्रम में क्रमित करें</string>
     <string name="sort_ascending">आरोही क्रम में क्रमित करें</string>
-    <string name="your_collection">आपका संग्रह</string>
     <string name="playing_desc">चल रहा</string>
     <string name="tracks_label">ट्रैक</string>
-    <string name="song_singular">गाना</string>
-    <string name="more_playlists_desc">और प्लेलिस्ट</string>
     <string name="more_label">और</string>
     <string name="tracks_count_label">ट्रैक की संख्या</string>
 </resources>

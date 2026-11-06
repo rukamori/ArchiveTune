@@ -5,23 +5,26 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package moe.rukamori.archivetune.ui.screens.library
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,8 +35,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,9 +55,9 @@ import moe.rukamori.archivetune.podcast.PodcastLibraryEvent
 import moe.rukamori.archivetune.podcast.PodcastLibraryItemUiModel
 import moe.rukamori.archivetune.podcast.PodcastLibraryScreenState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MediaDetailStatePanel
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewMenuItem
+import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.viewmodels.PodcastLibraryViewModel
 
 @Composable
@@ -62,6 +69,7 @@ fun LibraryPodcastsScreen(
     val refreshState by viewModel.refreshState.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
     val menuState = LocalMenuState.current
+    val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val unknownErrorMessage = stringResource(R.string.error_unknown)
     val loginRequiredMessage = stringResource(R.string.not_logged_in_youtube)
@@ -69,6 +77,7 @@ fun LibraryPodcastsScreen(
     val noEpisodesMessage = stringResource(R.string.podcast_has_no_episodes)
     val onRefresh = remember(viewModel) { { viewModel.onAction(PodcastLibraryAction.Refresh) } }
     val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
+    val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
     val onPodcastClick =
         remember(navController) {
             { browseId: String -> navController.navigate("podcast/${Uri.encode(browseId)}") }
@@ -81,9 +90,10 @@ fun LibraryPodcastsScreen(
         remember(viewModel) {
             { browseId: String -> viewModel.onAction(PodcastLibraryAction.RemovePodcast(browseId)) }
         }
-    val onPodcastMenuClick =
-        remember(menuState, onPodcastRemove) {
-            { podcast: PodcastLibraryItemUiModel ->
+    val onPodcastMenu =
+        remember(menuState, onPodcastRemove, haptic) {
+            { podcast: PodcastLibraryItemUiModel, fromLongPress: Boolean ->
+                if (fromLongPress) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 menuState.show {
                     PodcastLibraryMenu(
                         onRemove = { onPodcastRemove(podcast.browseId) },
@@ -92,6 +102,11 @@ fun LibraryPodcastsScreen(
                 }
             }
         }
+    val playerAwareBottomPadding =
+        LocalPlayerAwareWindowInsets.current
+            .only(WindowInsetsSides.Bottom)
+            .asPaddingValues()
+            .calculateBottomPadding()
 
     LaunchedEffect(
         viewModel,
@@ -133,13 +148,16 @@ fun LibraryPodcastsScreen(
             onRefresh = onRefresh,
             onErrorShown = onRefreshErrorShown,
             modifier = Modifier.fillMaxSize(),
+            indicatorOffset = LibraryPullToRefreshIndicatorOffset,
         ) {
             LibraryPodcastsContent(
                 state = state,
+                bottomPadding = playerAwareBottomPadding,
                 onRetry = onRefresh,
+                onSearch = openSearch,
                 onPodcastClick = onPodcastClick,
                 onPodcastPlay = onPodcastPlay,
-                onPodcastMenuClick = onPodcastMenuClick,
+                onPodcastMenu = onPodcastMenu,
             )
         }
         SnackbarHost(
@@ -147,77 +165,95 @@ fun LibraryPodcastsScreen(
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
+                    .padding(bottom = playerAwareBottomPadding),
         )
     }
 }
 
 @Composable
-private fun BoxScope.LibraryPodcastsContent(
+private fun LibraryPodcastsContent(
     state: PodcastLibraryScreenState,
+    bottomPadding: Dp,
     onRetry: () -> Unit,
+    onSearch: () -> Unit,
     onPodcastClick: (String) -> Unit,
     onPodcastPlay: (String) -> Unit,
-    onPodcastMenuClick: (PodcastLibraryItemUiModel) -> Unit,
+    onPodcastMenu: (PodcastLibraryItemUiModel, Boolean) -> Unit,
 ) {
-    val bottomPadding =
-        LocalPlayerAwareWindowInsets.current
-            .only(WindowInsetsSides.Bottom)
-            .asPaddingValues()
-            .calculateBottomPadding()
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                start = LibraryContentHorizontalPadding,
+                top = LibraryHeaderContentPadding + 8.dp,
+                end = LibraryContentHorizontalPadding,
+                bottom = bottomPadding + 16.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        when (state) {
+            PodcastLibraryScreenState.Loading -> {
+                item(key = "podcasts_loading", contentType = "library_loading") {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .fillParentMaxHeight(0.7f),
+                    ) {
+                        LoadingIndicator(modifier = Modifier.size(64.dp))
+                    }
+                }
+            }
 
-    when (state) {
-        PodcastLibraryScreenState.Loading -> {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        }
+            PodcastLibraryScreenState.Empty -> {
+                item(key = "podcasts_empty", contentType = "library_empty_state") {
+                    LibraryEmptyState(
+                        iconRes = R.drawable.mic,
+                        titleRes = R.string.library_empty_podcasts_title,
+                        descriptionRes = R.string.library_empty_podcasts_desc,
+                        actionLabelRes = R.string.search_yt_music,
+                        onAction = onSearch,
+                    )
+                }
+            }
 
-        PodcastLibraryScreenState.Empty -> {
-            MediaDetailStatePanel(
-                title = stringResource(R.string.podcast),
-                description = stringResource(R.string.browse_empty_description),
-                iconRes = R.drawable.mic,
-                actionLabel = stringResource(R.string.retry),
-                onAction = onRetry,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        }
+            is PodcastLibraryScreenState.Error -> {
+                item(key = "podcasts_error", contentType = "library_empty_state") {
+                    LibraryEmptyState(
+                        iconRes = R.drawable.error,
+                        titleRes = R.string.library_your_podcasts,
+                        descriptionRes = state.messageResId,
+                        actionLabelRes = R.string.retry,
+                        onAction = onRetry,
+                    )
+                }
+            }
 
-        is PodcastLibraryScreenState.Error -> {
-            MediaDetailStatePanel(
-                title = stringResource(R.string.podcast),
-                description = stringResource(state.messageResId),
-                iconRes = R.drawable.error,
-                actionLabel = stringResource(R.string.retry),
-                onAction = onRetry,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        }
-
-        is PodcastLibraryScreenState.Success -> {
-            LazyColumn(
-                contentPadding =
-                    PaddingValues(
-                        start = 24.dp,
-                        top = LibraryHeaderContentPadding,
-                        end = 24.dp,
-                        bottom = bottomPadding + 16.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
+            is PodcastLibraryScreenState.Success -> {
+                val podcasts = state.uiState.podcasts
+                item(key = "podcasts_hero", contentType = "library_hero") {
+                    PodcastsHero(
+                        podcasts = podcasts,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
                 items(
-                    items = state.uiState.podcasts,
+                    items = podcasts,
                     key = PodcastLibraryItemUiModel::browseId,
                     contentType = { "library_podcast" },
                 ) { podcast ->
-                    val onClick = remember(podcast.browseId, onPodcastClick) { { onPodcastClick(podcast.browseId) } }
-                    val onPlay = remember(podcast.browseId, onPodcastPlay) { { onPodcastPlay(podcast.browseId) } }
-                    val onMenuClick = remember(podcast, onPodcastMenuClick) { { onPodcastMenuClick(podcast) } }
                     PodcastLibraryCard(
                         podcast = podcast,
-                        onClick = onClick,
-                        onPlay = onPlay,
-                        onMenuClick = onMenuClick,
+                        onClick = { onPodcastClick(podcast.browseId) },
+                        onPlay = { onPodcastPlay(podcast.browseId) },
+                        onShowMenu = { fromLongPress -> onPodcastMenu(podcast, fromLongPress) },
+                        modifier =
+                            Modifier.animateItem(
+                                fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                fadeOutSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+                            ),
                     )
                 }
             }
@@ -226,23 +262,62 @@ private fun BoxScope.LibraryPodcastsContent(
 }
 
 @Composable
+private fun PodcastsHero(
+    podcasts: List<PodcastLibraryItemUiModel>,
+    modifier: Modifier = Modifier,
+) {
+    val syncedCount = remember(podcasts) { podcasts.count { it.isSavedRemotely } }
+    val heroArtwork =
+        remember(podcasts) {
+            podcasts.asSequence().mapNotNull { it.thumbnailUrl }.distinct().take(2).toList()
+        }
+    val stats =
+        buildList {
+            add(
+                LibraryHeroStat(
+                    value = podcasts.size.toString(),
+                    label = pluralStringResource(R.plurals.library_stat_podcasts, podcasts.size),
+                ),
+            )
+            if (syncedCount > 0) {
+                add(
+                    LibraryHeroStat(
+                        value = syncedCount.toString(),
+                        label = stringResource(R.string.youtube_synced),
+                    ),
+                )
+            }
+        }
+    LibraryCollectionHero(
+        overline = stringResource(R.string.filter_library),
+        title = stringResource(R.string.library_your_podcasts),
+        stats = stats,
+        artworkUrls = heroArtwork,
+        fallbackIconRes = R.drawable.mic,
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun PodcastLibraryCard(
     podcast: PodcastLibraryItemUiModel,
     onClick: () -> Unit,
     onPlay: () -> Unit,
-    onMenuClick: () -> Unit,
+    onShowMenu: (fromLongPress: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isRemote = podcast.isSavedRemotely
     LibraryMediaListCard(
         title = podcast.title,
         subtitle = podcast.author ?: stringResource(R.string.podcast),
-        thumbnailUrl = podcast.thumbnailUrl,
+        artworkUrls = listOfNotNull(podcast.thumbnailUrl),
+        fallbackIconRes = R.drawable.mic,
         sourceLabel = stringResource(if (isRemote) R.string.youtube_synced else R.string.personal_label),
         sourceColor = if (isRemote) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
         onClick = onClick,
         onPlay = onPlay,
-        onMenuClick = onMenuClick,
+        onMenuClick = { onShowMenu(false) },
+        onLongClick = { onShowMenu(true) },
         modifier = modifier,
     )
 }

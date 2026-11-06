@@ -76,11 +76,8 @@
     <string name="recently_added">Nedávno přidané</string>
     <string name="sort_descending">Seřadit sestupně</string>
     <string name="sort_ascending">Seřadit vzestupně</string>
-    <string name="your_collection">Vaše Kolekce</string>
     <string name="playing_desc">Přehrává</string>
     <string name="tracks_label">skladby</string>
-    <string name="song_singular">Skladba</string>
-    <string name="more_playlists_desc">Další Playlisty</string>
     <string name="more_label">Další</string>
     <string name="tracks_count_label">Počet skladeb</string>
     <string name="recently_updated">Nedávno aktualizované</string>

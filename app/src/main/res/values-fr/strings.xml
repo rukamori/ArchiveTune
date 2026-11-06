@@ -679,7 +679,6 @@
     <string name="sort_z_to_a">Z → A</string>
     <string name="album_name">Nom de l\'album</string>
     <string name="oldest_first">Du plus ancien au plus récent</string>
-    <string name="song_singular">Titre</string>
     <string name="font_preference_default">Par défaut</string>
     <string name="haptics">Vibration</string>
     <string name="play_time">Temps d\'écoute</string>
@@ -694,7 +693,6 @@
     <string name="app_icon">Icône de l\'application</string>
     <string name="display">Affichage</string>
     <string name="youtube_synced">Synchronisé avec YouTube</string>
-    <string name="your_collection">Votre Collection</string>
     <string name="discord_login_description">Connectez votre compte Discord via OAuth afin qu\'ArchiveTune puisse publier des informations de présence enrichies.</string>
     <string name="personal_label">Personnel</string>
     <string name="lyrics_animation_style_v2_only">Disponible uniquement en mode paroles V2</string>
@@ -720,8 +718,6 @@
     <string name="most_tracks">La plupart des titres</string>
     <string name="remove_account">Supprimer le compte</string>
     <string name="paxsenix_status_degraded">Dégradé</string>
-    <string name="featured_album_badge">ALBUM À L\'AFFICHE</string>
-    <string name="recently_played_artists">Artistes récemment écoutés</string>
     <string name="discord_authorization_success">Compte Discord connecté</string>
     <string name="tracks_label">titres</string>
     <string name="newest_year">Année en cours</string>
@@ -731,11 +727,8 @@
     <string name="saved_accounts">Comptes enregistrés</string>
     <string name="widget_tap_to_open">Appuyez pour ouvrir ArchiveTune</string>
     <string name="discord_refresh_failed">Échec de l\'actualisation de la présence sur Discord</string>
-    <string name="top_artist_badge">MEILLEUR ARTISTE</string>
     <string name="youtube_channels">Chaînes YouTube</string>
-    <string name="no_artist_yet">Aucun artiste pour l\'instant</string>
     <string name="discord_url_source_custom">URL personnalisée</string>
-    <string name="total_label">total</string>
     <string name="list_view">Affichage sous forme de liste</string>
     <string name="player_background_style_v8_v9_desc">Non disponible avec les styles de lecteur V8 et V9</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
@@ -751,7 +744,6 @@
     <string name="recently_added">Ajoutés récemment</string>
     <string name="top_mixes">Les Meilleurs Mixages pour Vous</string>
     <string name="sort_a_to_z">A → Z</string>
-    <string name="more_playlists_desc">Plus de Playlists</string>
     <string name="tracks_count_label">Nombre de titres</string>
     <string name="discord_url_source_artist">URL de l\'artiste</string>
     <string name="font_preference">Police</string>
