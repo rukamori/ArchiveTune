@@ -328,6 +328,7 @@ import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
 import moe.rukamori.archivetune.settings.AppLanguageSettingsUseCases
+import moe.rukamori.archivetune.settings.AppLocaleApplier
 import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -337,7 +338,6 @@ import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
-import moe.rukamori.archivetune.utils.setAppLocale
 import moe.rukamori.archivetune.viewmodels.BackupCategory
 import moe.rukamori.archivetune.viewmodels.BackupRestoreViewModel
 import moe.rukamori.archivetune.viewmodels.GatekeeperViewModel
@@ -589,6 +589,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocaleApplier.wrap(newBase))
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -608,7 +612,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             appLanguageSettings.observeSettings()
-                .map(appLanguageSettings::locale)
+                .map(appLanguageSettings::languageTag)
                 .distinctUntilChanged()
                 .catch { exception ->
                     if (exception is CancellationException) throw exception
@@ -616,13 +620,10 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(this@MainActivity, R.string.error_unknown, Toast.LENGTH_LONG).show()
                     appLocaleInitialized = true
                 }
-                .collect { locale ->
-                    val localeChanged = resources.configuration.locales[0] != locale
-                    if (localeChanged) {
-                        setAppLocale(this@MainActivity, locale)
-                    }
-                    if (appLocaleInitialized && localeChanged) {
+                .collect { languageTag ->
+                    if (AppLocaleApplier.apply(this@MainActivity, languageTag)) {
                         recreate()
+                        return@collect
                     }
                     appLocaleInitialized = true
                 }

@@ -7,13 +7,11 @@
 
 package moe.rukamori.archivetune.settings
 
-import android.content.res.Resources
 import androidx.compose.runtime.Immutable
 import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.LanguageCodeToName
-import java.util.Locale
 import javax.inject.Inject
 
 @Immutable
@@ -33,12 +31,8 @@ class AppLanguageSettingsUseCases @Inject constructor(
         settings.copy(languageTag = settings.languageTag.takeIf { it in LanguageCodeToName } ?: "en")
     }
 
-    fun locale(settings: AppLanguageSettings): Locale =
-        if (settings.useSystemLanguage) {
-            Resources.getSystem().configuration.locales[0]
-        } else {
-            Locale.forLanguageTag(settings.languageTag)
-        }
+    fun languageTag(settings: AppLanguageSettings): String? =
+        settings.languageTag.takeUnless { settings.useSystemLanguage }
 
     suspend fun setUseSystemLanguage(enabled: Boolean) = repository.setUseSystemLanguage(enabled)
 
