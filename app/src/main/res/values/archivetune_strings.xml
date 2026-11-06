@@ -939,4 +939,22 @@
     <string name="menu_state_on">On</string>
     <string name="menu_download_available_offline">Available offline</string>
     <string name="menu_download_tap_to_cancel">Tap to cancel</string>
+    <string name="search_for">Search for</string>
+    <string name="search_idle_message">Find songs, albums, artists, playlists and podcasts</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_suggestions_loading">Finding suggestions…</string>
+    <string name="search_suggestions_failed">Couldn’t load suggestions</string>
+    <string name="search_no_quick_matches">No quick matches. Search to see every result.</string>
+    <string name="search_insert_query">Insert into search field</string>
+    <string name="search_top_result">Top result</string>
+    <string name="search_type_song">Song</string>
+    <string name="search_type_album">Album</string>
+    <string name="search_type_single">Single</string>
+    <string name="search_type_ep">EP</string>
+    <string name="search_type_playlist">Playlist</string>
+    <string name="search_type_episode">Episode</string>
+    <string name="search_pause">Pause</string>
+    <string name="search_suggested_songs">Songs for you</string>
+    <string name="search_suggested_artists">Artists to explore</string>
+    <string name="search_trending_albums">Trending albums</string>
 </resources>
