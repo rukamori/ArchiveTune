@@ -337,13 +337,13 @@ private fun AlbumGridCard(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                }.clip(MaterialTheme.shapes.extraLarge)
+                }.clip(libraryGridCardShape())
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
                     onLongClick = onLongClick,
-                ).padding(bottom = 8.dp),
+                ).padding(bottom = LibraryGridCardTextInset),
     ) {
         Box(
             modifier =
@@ -401,7 +401,7 @@ private fun AlbumGridCard(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
         if (supportingText.isNotEmpty()) {
             Text(
@@ -410,7 +410,7 @@ private fun AlbumGridCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
             )
         }
     }

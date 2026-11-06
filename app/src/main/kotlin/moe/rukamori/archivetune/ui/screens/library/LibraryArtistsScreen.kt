@@ -337,13 +337,13 @@ private fun ArtistGridAvatar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.extraLarge)
+                .clip(libraryGridCardShape())
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
                     onLongClick = onLongClick,
-                ).padding(horizontal = 4.dp, vertical = 6.dp),
+                ).padding(start = LibraryGridCardTextInset, top = 6.dp, end = LibraryGridCardTextInset, bottom = LibraryGridCardTextInset),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(

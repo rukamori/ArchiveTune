@@ -782,13 +782,13 @@ fun PlaylistGridCard(
                     scaleX = scale
                     scaleY = scale
                     alpha = hiddenAlpha
-                }.clip(MaterialTheme.shapes.extraLarge)
+                }.clip(libraryGridCardShape())
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
                     onLongClick = onLongClick,
-                ).padding(bottom = 8.dp),
+                ).padding(bottom = LibraryGridCardTextInset),
     ) {
         Box(
             modifier =
@@ -846,14 +846,14 @@ fun PlaylistGridCard(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
         Text(
             text = pluralStringResource(R.plurals.n_song, songCount, songCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
     }
 }

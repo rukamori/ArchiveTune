@@ -209,12 +209,12 @@ internal fun SpotifyPlaylistTile(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                }.clip(MaterialTheme.shapes.extraLarge)
+                }.clip(libraryGridCardShape())
                 .clickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
-                ).padding(bottom = 8.dp),
+                ).padding(bottom = LibraryGridCardTextInset),
     ) {
         Box(
             modifier =
@@ -252,7 +252,7 @@ internal fun SpotifyPlaylistTile(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
         Text(
             text = supportingText,
@@ -260,7 +260,7 @@ internal fun SpotifyPlaylistTile(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
     }
 }

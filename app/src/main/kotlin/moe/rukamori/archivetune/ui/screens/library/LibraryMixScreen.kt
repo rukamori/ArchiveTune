@@ -798,7 +798,7 @@ private fun RecentSongCard(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
-                ).padding(bottom = 6.dp),
+                ).padding(bottom = LibraryGridCardTextInset),
     ) {
         LibraryNowPlayingArtwork(
             thumbnailUrl = thumbnailUrl,
@@ -816,7 +816,7 @@ private fun RecentSongCard(
             color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
         Text(
             text = subtitle,
@@ -824,7 +824,7 @@ private fun RecentSongCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
     }
 }
@@ -848,12 +848,12 @@ private fun LibraryMixArtworkCard(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                }.clip(MaterialTheme.shapes.extraLarge)
+                }.clip(libraryGridCardShape())
                 .clickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
-                ).padding(bottom = 8.dp),
+                ).padding(bottom = LibraryGridCardTextInset),
     ) {
         Box(
             modifier =
@@ -889,7 +889,7 @@ private fun LibraryMixArtworkCard(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
         Text(
             text = subtitle,
@@ -897,7 +897,7 @@ private fun LibraryMixArtworkCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = LibraryGridCardTextInset),
         )
     }
 }
@@ -918,7 +918,7 @@ private fun MixArtistAvatar(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     onClick = onClick,
-                ).padding(vertical = 4.dp),
+                ).padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = LibraryGridCardTextInset),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         ItemThumbnail(

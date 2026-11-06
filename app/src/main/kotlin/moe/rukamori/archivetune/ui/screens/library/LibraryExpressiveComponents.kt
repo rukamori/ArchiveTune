@@ -44,6 +44,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -63,6 +65,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -97,6 +100,18 @@ import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.player.EditorialMorphShape
 
 internal val LibraryContentHorizontalPadding = 20.dp
+
+internal val LibraryGridCardTextInset = 10.dp
+
+private val LibraryGridCardBottomCorner = CornerSize(16.dp)
+
+@Composable
+@ReadOnlyComposable
+internal fun libraryGridCardShape(): CornerBasedShape =
+    MaterialTheme.shapes.extraLarge.copy(
+        bottomStart = LibraryGridCardBottomCorner,
+        bottomEnd = LibraryGridCardBottomCorner,
+    )
 
 internal fun Modifier.libraryHorizontalBleed(horizontal: Dp): Modifier =
     layout { measurable, constraints ->
