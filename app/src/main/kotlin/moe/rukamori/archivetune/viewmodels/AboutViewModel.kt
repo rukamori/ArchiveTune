@@ -596,7 +596,7 @@ class AboutViewModel
                         TeamMember(
                             avatarUrl = "https://avatars.githubusercontent.com/u/26746725?v=4",
                             name = "Boidushya",
-                            positionResId = "Creator of BetterLyrics Provider",
+                            positionResId = R.string.about_position_boidushya,
                             profileUrl = "https://github.com/boidushya",
                             links =
                                 AboutLinkCollection.of(
