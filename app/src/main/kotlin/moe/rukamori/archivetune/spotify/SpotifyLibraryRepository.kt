@@ -335,19 +335,20 @@ class SpotifyLibraryRepository
                     spotifyCallWithTokenRetry {
                         Spotify.myPlaylists(limit = limit, offset = offset).getOrThrow()
                     }
-                if (page.items.isEmpty()) break
-                playlists +=
-                    page.items.map { playlist ->
-                        if (playlist.tracks?.total != null) {
-                            playlist
-                        } else {
-                            playlistTrackCount(playlist.id)
-                                ?.let { playlist.copy(tracks = SpotifyPlaylistTracksRef(total = it)) }
-                                ?: playlist
+                if (page.items.isNotEmpty()) {
+                    playlists +=
+                        page.items.map { playlist ->
+                            if (playlist.tracks?.total != null) {
+                                playlist
+                            } else {
+                                playlistTrackCount(playlist.id)
+                                    ?.let { playlist.copy(tracks = SpotifyPlaylistTracksRef(total = it)) }
+                                    ?: playlist
+                            }
                         }
-                    }
-                offset += page.items.size
-                if (offset >= page.total || page.items.size < limit) break
+                }
+                offset += limit
+                if (offset >= page.total || page.items.isEmpty()) break
             }
 
             return playlists
