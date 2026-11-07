@@ -16,6 +16,12 @@ concurrency:
 
 jobs:
   duplicate-check:
+    if: >-
+      github.event.issue.state == 'open' &&
+      github.event.issue.user.type != 'Bot' &&
+      (github.event.action == 'opened' ||
+       github.event.changes.title != null ||
+       github.event.changes.body != null)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -23,7 +29,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up Python 3.10
+      - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.15"
@@ -38,4 +44,5 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body || '' }}
           REPOSITORY: ${{ github.repository }}
+          DUPLICATE_SIMILARITY_THRESHOLD: ${{ vars.DUPLICATE_SIMILARITY_THRESHOLD }}
         run: python duplicate_checker.py "$ISSUE_TITLE" "$ISSUE_BODY" "$REPOSITORY"
