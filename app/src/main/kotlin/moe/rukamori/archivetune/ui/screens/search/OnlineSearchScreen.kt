@@ -20,7 +20,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -46,10 +45,8 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -76,11 +73,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -97,12 +92,10 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.flow.drop
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -119,13 +112,12 @@ import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
-import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.viewmodels.OnlineSearchSuggestionViewModel
 import moe.rukamori.archivetune.viewmodels.SuggestionRemoteStatus
+import kotlinx.coroutines.flow.drop
 
 @Composable
 fun OnlineSearchScreen(
@@ -423,7 +415,9 @@ fun OnlineSearchScreen(
                                 pureBlack = pureBlack,
                                 onClick = { openItem(topResult) },
                                 onMenu = { openItemMenu(topResult) },
-                                modifier = searchItemModifier(itemMotion),
+                                modifier =
+                                    searchItemModifier(itemMotion)
+                                        .padding(horizontal = SearchListHorizontalPadding),
                             )
                         }
 
@@ -448,7 +442,9 @@ fun OnlineSearchScreen(
                                     pureBlack = pureBlack,
                                     onClick = { openItem(item) },
                                     onMenu = { openItemMenu(item) },
-                                    modifier = searchItemModifier(itemMotion),
+                                    modifier =
+                                        searchItemModifier(itemMotion)
+                                            .padding(horizontal = SearchListHorizontalPadding),
                                 )
                             }
                         }
@@ -824,263 +820,6 @@ private fun SearchSuggestionRow(
 }
 
 @Composable
-private fun TopResultCard(
-    item: YTItem,
-    isActive: Boolean,
-    isPlaying: Boolean,
-    pureBlack: Boolean,
-    onClick: () -> Unit,
-    onMenu: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptic = LocalHapticFeedback.current
-    val colorScheme = MaterialTheme.colorScheme
-    val hasMenu = item.hasSearchResultMenu()
-    val isPlayable = item is SongItem || item is EpisodeItem
-    val showPause = isActive && isPlaying && item is SongItem
-    val typeLabel = searchResultTypeLabel(item)
-    val subtitle = searchResultSubtitle(item)
-    val menuLabel = stringResource(R.string.more_options)
-    val containerColor =
-        when {
-            isActive -> colorScheme.secondaryContainer
-            pureBlack -> Color.White.copy(alpha = 0.10f)
-            else -> colorScheme.surfaceContainerHigh
-        }
-
-    Surface(
-        shape = TopResultShape,
-        color = containerColor,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = SearchListHorizontalPadding)
-                .clip(TopResultShape)
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClickLabel = if (hasMenu) menuLabel else null,
-                    onLongClick =
-                        if (hasMenu) {
-                            {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onMenu()
-                            }
-                        } else {
-                            null
-                        },
-                ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SearchResultThumbnail(
-                    item = item,
-                    isActive = isActive,
-                    isPlaying = isPlaying,
-                    size = TopResultThumbnailSize,
-                    cornerRadius = 20.dp,
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        shape = CircleShape,
-                        color = colorScheme.tertiaryContainer,
-                        contentColor = colorScheme.onTertiaryContainer,
-                    ) {
-                        Text(
-                            text = typeLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        )
-                    }
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (subtitle != null || item.explicit) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp),
-                        ) {
-                            if (item.explicit) {
-                                Icon(
-                                    painter = painterResource(R.drawable.explicit),
-                                    contentDescription = null,
-                                    tint = colorScheme.onSurfaceVariant,
-                                    modifier =
-                                        Modifier
-                                            .padding(end = 4.dp)
-                                            .size(16.dp),
-                                )
-                            }
-                            if (subtitle != null) {
-                                Text(
-                                    text = subtitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (isPlayable || hasMenu) {
-                Spacer(Modifier.size(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isPlayable) {
-                        Button(
-                            onClick = onClick,
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                        ) {
-                            Icon(
-                                painter = painterResource(if (showPause) R.drawable.pause else R.drawable.play),
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                            )
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text(stringResource(if (showPause) R.string.search_pause else R.string.play))
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (hasMenu) {
-                        IconButton(onClick = onMenu) {
-                            Icon(
-                                painter = painterResource(R.drawable.more_vert),
-                                contentDescription = menuLabel,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchResultRow(
-    item: YTItem,
-    index: Int,
-    count: Int,
-    isActive: Boolean,
-    isPlaying: Boolean,
-    pureBlack: Boolean,
-    onClick: () -> Unit,
-    onMenu: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptic = LocalHapticFeedback.current
-    val colorScheme = MaterialTheme.colorScheme
-    val hasMenu = item.hasSearchResultMenu()
-    val menuLabel = stringResource(R.string.more_options)
-    val supporting = joinByBullet(searchResultTypeLabel(item), searchResultSubtitle(item))
-
-    SegmentedListItem(
-        onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        colors =
-            ListItemDefaults.segmentedColors(
-                containerColor = if (isActive) colorScheme.secondaryContainer else searchRowContainerColor(pureBlack),
-            ),
-        onLongClick =
-            if (hasMenu) {
-                {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onMenu()
-                }
-            } else {
-                null
-            },
-        onLongClickLabel = if (hasMenu) menuLabel else null,
-        leadingContent = {
-            SearchResultThumbnail(
-                item = item,
-                isActive = isActive,
-                isPlaying = isPlaying,
-                size = SearchResultThumbnailSize,
-                cornerRadius = 12.dp,
-            )
-        },
-        supportingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.explicit) {
-                    Icon(
-                        painter = painterResource(R.drawable.explicit),
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .padding(end = 4.dp)
-                                .size(16.dp),
-                    )
-                }
-                Text(
-                    text = supporting,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        },
-        trailingContent =
-            if (hasMenu) {
-                {
-                    IconButton(onClick = onMenu) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = menuLabel,
-                        )
-                    }
-                }
-            } else {
-                null
-            },
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = SearchListHorizontalPadding),
-    ) {
-        Text(
-            text = item.title,
-            fontWeight = if (isActive) FontWeight.SemiBold else null,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun SearchResultThumbnail(
-    item: YTItem,
-    isActive: Boolean,
-    isPlaying: Boolean,
-    size: Dp,
-    cornerRadius: Dp,
-) {
-    val isArtist = item is ArtistItem
-    ItemThumbnail(
-        thumbnailUrl = item.thumbnail,
-        isActive = isActive,
-        isPlaying = isPlaying,
-        shape = if (isArtist) CircleShape else RoundedCornerShape(cornerRadius),
-        contentScale = if (isArtist) ContentScale.Crop else null,
-        modifier = Modifier.size(size),
-    )
-}
-
-@Composable
-private fun searchRowContainerColor(pureBlack: Boolean): Color =
-    if (pureBlack) {
-        Color.White.copy(alpha = 0.07f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
-    }
-
-@Composable
 private fun highlightQueryMatch(
     text: String,
     query: String,
@@ -1111,9 +850,6 @@ private fun highlightQueryMatch(
 private val SearchContentMaxWidth = 720.dp
 private val SearchRowSpacing = 2.dp
 private val QueryHeroShape = RoundedCornerShape(28.dp)
-private val TopResultShape = RoundedCornerShape(28.dp)
-private val TopResultThumbnailSize = 96.dp
-private val SearchResultThumbnailSize = 56.dp
 private val IdleHeroSize = 144.dp
 private val IdleHeroAccentSize = 48.dp
 private const val IdleHeroRotationMillis = 24_000

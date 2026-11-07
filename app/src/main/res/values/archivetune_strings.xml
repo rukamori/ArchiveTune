@@ -954,8 +954,20 @@
     <string name="search_type_ep">EP</string>
     <string name="search_type_playlist">Playlist</string>
     <string name="search_type_episode">Episode</string>
+    <string name="search_type_video">Video</string>
     <string name="search_pause">Pause</string>
     <string name="search_suggested_songs">Songs for you</string>
     <string name="search_suggested_artists">Artists to explore</string>
     <string name="search_trending_albums">Trending albums</string>
+    <string name="search_results_loading">Searching YouTube Music…</string>
+    <string name="search_results_empty_title">No results for “%1$s”</string>
+    <string name="search_results_empty_message">Try different keywords or another filter.</string>
+    <string name="search_results_failed">Couldn’t load results</string>
+    <string name="search_results_offline_message">Check your connection and try again.</string>
+    <string name="search_results_failed_message">Something went wrong while searching. Try again.</string>
+    <string name="search_loading_more">Loading more results…</string>
+    <string name="search_load_more_failed">Couldn’t load more results</string>
+    <string name="search_loading_sections">Loading more sections…</string>
+    <string name="search_filter_label">Filter results</string>
+    <string name="search_see_all_section">See all %1$s</string>
 </resources>

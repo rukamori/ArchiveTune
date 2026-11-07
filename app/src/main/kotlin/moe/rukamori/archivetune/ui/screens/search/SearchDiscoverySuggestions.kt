@@ -13,6 +13,7 @@
 
 package moe.rukamori.archivetune.ui.screens.search
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -323,8 +325,9 @@ internal fun SuggestedArtistsShelf(
                 key = { artist -> "artist_${artist.id}" },
                 contentType = { "artist_tile" },
             ) { artist ->
-                DiscoveryArtistTile(
+                SearchArtistTile(
                     artist = artist,
+                    modifier = Modifier.width(ArtistTileWidth),
                     onClick = { navController.navigateToArtist(artist.id) },
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -342,10 +345,11 @@ internal fun SuggestedArtistsShelf(
 }
 
 @Composable
-private fun DiscoveryArtistTile(
+internal fun SearchArtistTile(
     artist: ArtistItem,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -360,8 +364,7 @@ private fun DiscoveryArtistTile(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier =
-            Modifier
-                .width(ArtistTileWidth)
+            modifier
                 .clip(RoundedCornerShape(24.dp))
                 .combinedClickable(
                     interactionSource = interactionSource,
@@ -375,7 +378,9 @@ private fun DiscoveryArtistTile(
         Box(
             modifier =
                 Modifier
-                    .size(ArtistAvatarSize)
+                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
                     .graphicsLayer {
                         shape = EditorialMorphShape(morph, progress.coerceIn(0f, 1f))
                         clip = true
@@ -441,10 +446,16 @@ internal fun TrendingAlbumsShelf(
                 key = { album -> "album_${album.id}" },
                 contentType = { "album_card" },
             ) { album ->
-                DiscoveryAlbumCard(
-                    album = album,
+                SearchMediaCard(
+                    thumbnailUrl = album.thumbnail,
+                    title = album.title,
+                    subtitle = joinByBullet(album.artists?.joinToString { it.name }, album.year?.toString()),
+                    label = searchResultTypeLabel(album),
+                    explicit = album.explicit,
                     isActive = mediaMetadata?.album?.id == album.id,
                     isPlaying = isPlaying,
+                    placeholderIconRes = R.drawable.album,
+                    modifier = Modifier.width(AlbumCardWidth),
                     onClick = { navController.navigateToAlbum(album.id) },
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -463,83 +474,97 @@ internal fun TrendingAlbumsShelf(
 }
 
 @Composable
-private fun DiscoveryAlbumCard(
-    album: AlbumItem,
+internal fun SearchMediaCard(
+    thumbnailUrl: String?,
+    title: String,
+    subtitle: String,
+    label: String?,
+    explicit: Boolean,
     isActive: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    artworkRatio: Float = 1f,
+    @DrawableRes placeholderIconRes: Int? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val animationsDisabled = LocalAnimationsDisabled.current
     val scale by animateFloatAsState(
-        targetValue = if (pressed) AlbumPressedScale else 1f,
+        targetValue = if (pressed) MediaCardPressedScale else 1f,
         animationSpec = if (animationsDisabled) snap() else MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "albumCardScale",
+        label = "mediaCardScale",
     )
     val colorScheme = MaterialTheme.colorScheme
-    val subtitle = joinByBullet(album.artists?.joinToString { it.name }, album.year?.toString())
 
     Column(
         modifier =
-            Modifier
-                .width(AlbumCardWidth)
+            modifier
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                }.clip(AlbumArtworkShape)
+                }.clip(MediaArtworkShape)
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
                     role = Role.Button,
-                    onLongClickLabel = stringResource(R.string.more_options),
+                    onLongClickLabel = if (onLongClick != null) stringResource(R.string.more_options) else null,
                     onLongClick = onLongClick,
                     onClick = onClick,
                 ).padding(bottom = 8.dp),
     ) {
-        Box(modifier = Modifier.size(AlbumCardWidth)) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(artworkRatio),
+        ) {
             ItemThumbnail(
-                thumbnailUrl = album.thumbnail,
+                thumbnailUrl = thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = AlbumArtworkShape,
-                placeholderIconRes = R.drawable.album,
+                shape = MediaArtworkShape,
+                thumbnailRatio = artworkRatio,
+                contentScale = if (artworkRatio != 1f) ContentScale.Crop else null,
+                placeholderIconRes = placeholderIconRes,
                 modifier = Modifier.fillMaxSize(),
             )
-            Surface(
-                shape = CircleShape,
-                color = colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
-                contentColor = colorScheme.onSurface,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp),
-            ) {
-                Text(
-                    text = searchResultTypeLabel(album),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                )
+            if (!label.isNullOrEmpty()) {
+                Surface(
+                    shape = CircleShape,
+                    color = colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
+                    contentColor = colorScheme.onSurface,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp),
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
+                }
             }
         }
         Spacer(Modifier.size(10.dp))
         Text(
-            text = album.title,
+            text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
-        if (subtitle.isNotEmpty() || album.explicit) {
+        if (subtitle.isNotEmpty() || explicit) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
-                if (album.explicit) {
+                if (explicit) {
                     Icon(
                         painter = painterResource(R.drawable.explicit),
                         contentDescription = null,
@@ -564,11 +589,10 @@ private fun DiscoveryAlbumCard(
 
 private const val SongsPerPage = 4
 private const val NarrowPageWidthFraction = 0.88f
-private const val AlbumPressedScale = 0.95f
+private const val MediaCardPressedScale = 0.95f
 private val WideShelfBreakpoint = 600.dp
 private val ShelfPageSpacing = 12.dp
 private val DiscoverySongThumbnailSize = 52.dp
-private val ArtistTileWidth = 124.dp
-private val ArtistAvatarSize = 108.dp
-private val AlbumCardWidth = 160.dp
-private val AlbumArtworkShape = RoundedCornerShape(24.dp)
+internal val ArtistTileWidth = 124.dp
+internal val AlbumCardWidth = 160.dp
+private val MediaArtworkShape = RoundedCornerShape(24.dp)
