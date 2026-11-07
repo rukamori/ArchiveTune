@@ -1768,66 +1768,6 @@ fun LocalSongsGrid(
 )
 
 @Composable
-fun LocalArtistsGrid(
-    title: String,
-    subtitle: String,
-    badges: @Composable RowScope.() -> Unit = {},
-    thumbnailUrl: String?,
-    isActive: Boolean = false,
-    isPlaying: Boolean = false,
-    fillMaxWidth: Boolean = false,
-    modifier: Modifier = Modifier,
-) = GridItem(
-    title = title,
-    subtitle = subtitle,
-    badges = badges,
-    thumbnailContent = {
-        LocalThumbnail(
-            thumbnailUrl = thumbnailUrl,
-            isActive = false,
-            isPlaying = false,
-            shape = CircleShape,
-            modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
-            showCenterPlay = false,
-            playButtonVisible = false,
-        )
-    },
-    isArtist = true,
-    fillMaxWidth = fillMaxWidth,
-    modifier = modifier,
-)
-
-@Composable
-fun LocalAlbumsGrid(
-    title: String,
-    subtitle: String,
-    badges: @Composable RowScope.() -> Unit = {},
-    thumbnailUrl: String?,
-    isActive: Boolean = false,
-    isPlaying: Boolean = false,
-    fillMaxWidth: Boolean = false,
-    modifier: Modifier = Modifier,
-) = GridItem(
-    title = title,
-    subtitle = subtitle,
-    badges = badges,
-    thumbnailContent = {
-        LocalThumbnail(
-            thumbnailUrl = thumbnailUrl,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            shape = GridArtworkShape,
-            modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
-            showCenterPlay = false,
-            playButtonVisible = true,
-        )
-    },
-    isActive = isActive,
-    fillMaxWidth = fillMaxWidth,
-    modifier = modifier,
-)
-
-@Composable
 fun ItemThumbnail(
     thumbnailUrl: String?,
     isActive: Boolean,

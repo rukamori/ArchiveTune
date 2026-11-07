@@ -655,6 +655,14 @@
     <string name="stats_time_range">Time range</string>
     <string name="stats_listening_patterns">Listening patterns</string>
     <string name="stats_artist_breakdown">Artist breakdown</string>
+    <string name="stats_unique_albums">Unique Albums</string>
+    <string name="stats_most_active">Most active</string>
+    <string name="stats_rank">#%1$d</string>
+    <string name="stats_rank_description">Rank %1$d</string>
+    <string name="stats_pause_song">Pause</string>
+    <string name="stats_period_empty_title">Nothing played in this period</string>
+    <string name="stats_period_empty_message">Pick another time range, or play some music and it will show up here.</string>
+    <string name="stats_year_picker_message">Pick a year to open its recap.</string>
     <string name="day_sun">Sun</string>
     <string name="day_mon">Mon</string>
     <string name="day_tue">Tue</string>
