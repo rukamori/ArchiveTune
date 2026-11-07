@@ -5,23 +5,23 @@ on:
     types:
       - opened
       - edited
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to check for duplicates
+        required: true
+        type: number
 
 permissions:
   contents: read
   issues: write
 
 concurrency:
-  group: duplicate-check-${{ github.repository }}-${{ github.event.issue.number }}
+  group: duplicate-check-${{ github.repository }}-${{ github.event.issue.number || inputs.issue_number }}
   cancel-in-progress: true
 
 jobs:
   duplicate-check:
-    if: >-
-      github.event.issue.state == 'open' &&
-      github.event.issue.user.type != 'Bot' &&
-      (github.event.action == 'opened' ||
-       github.event.changes.title != null ||
-       github.event.changes.body != null)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -29,7 +29,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up Python
+      - name: Set up Python 3.10
         uses: actions/setup-python@v7
         with:
           python-version: "3.15"
@@ -37,12 +37,26 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check scikit-learn requests
 
+      - name: Load issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+          ISSUE_FILE: ${{ runner.temp }}/issue.json
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" > "$ISSUE_FILE"
+          if [ "$(jq -r '.pull_request != null' "$ISSUE_FILE")" = "true" ]; then
+            echo "::error::#$ISSUE_NUMBER is a pull request, not an issue."
+            exit 1
+          fi
+
       - name: Check for duplicate issues
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body || '' }}
+          GITHUB_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+          ISSUE_FILE: ${{ runner.temp }}/issue.json
           REPOSITORY: ${{ github.repository }}
-          DUPLICATE_SIMILARITY_THRESHOLD: ${{ vars.DUPLICATE_SIMILARITY_THRESHOLD }}
-        run: python duplicate_checker.py "$ISSUE_TITLE" "$ISSUE_BODY" "$REPOSITORY"
+        run: |
+          python duplicate_checker.py \
+            "$(jq -r '.title' "$ISSUE_FILE")" \
+            "$(jq -r '.body // ""' "$ISSUE_FILE")" \
+            "$REPOSITORY"
