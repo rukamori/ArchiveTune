@@ -5,9 +5,9 @@ import os
 import re
 import sys
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 from urllib.parse import quote
 
 import requests
@@ -108,6 +108,10 @@ class DuplicateCheckerError(RuntimeError):
     pass
 
 
+class RateLimitError(DuplicateCheckerError):
+    pass
+
+
 @dataclass(frozen=True)
 class Issue:
     id: int
@@ -144,7 +148,15 @@ class GitHubClient:
 
     def get_issue(self, issue_number: int) -> Issue:
         url = f"{self._issues_url()}/{issue_number}"
-        issue = parse_issue(self._json(self._request("GET", url)))
+        response = self._request("GET", url, expected_statuses={200, 404})
+        if response.status_code == 404:
+            raise DuplicateCheckerError(f"Issue #{issue_number} was not found.")
+        payload = self._json(response)
+        if isinstance(payload, dict) and "pull_request" in payload:
+            raise DuplicateCheckerError(
+                f"#{issue_number} is a pull request, not an issue."
+            )
+        issue = parse_issue(payload)
         if issue is None:
             raise DuplicateCheckerError(
                 "GitHub returned an unexpected response while reading the issue."
@@ -317,7 +329,7 @@ class GitHubClient:
             or remaining == "0"
             or "rate limit" in message.casefold()
         ):
-            raise DuplicateCheckerError(self._rate_limit_message(response, message))
+            raise RateLimitError(self._rate_limit_message(response, message))
 
         raise DuplicateCheckerError(
             f"GitHub API returned HTTP {response.status_code}: {message}"
@@ -565,80 +577,96 @@ def meaningful_token_count(text: str) -> int:
     return len(TOKEN_PATTERN.findall(text))
 
 
-def similarity_scores(
-    vectorizer: TfidfVectorizer,
-    documents: Sequence[str],
-    candidate_count: int,
-) -> Any:
+def build_similarity_matrix(documents: Sequence[str]) -> Any | None:
+    word_vectorizer = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2),
+        sublinear_tf=True,
+        token_pattern=TOKEN_PATTERN.pattern,
+    )
     try:
-        vectors = vectorizer.fit_transform(documents)
+        scores = WORD_WEIGHT * cosine_similarity(word_vectorizer.fit_transform(documents))
     except ValueError as error:
         if "empty vocabulary" in str(error).casefold():
             return None
         raise
-    return cosine_similarity(vectors[0:1], vectors[1 : candidate_count + 1]).ravel()
+
+    character_vectorizer = TfidfVectorizer(
+        analyzer="char_wb",
+        ngram_range=(3, 5),
+        sublinear_tf=True,
+    )
+    try:
+        scores += CHARACTER_WEIGHT * cosine_similarity(
+            character_vectorizer.fit_transform(documents)
+        )
+    except ValueError as error:
+        if "empty vocabulary" not in str(error).casefold():
+            raise
+    return scores
 
 
 def rank_duplicates(
-    title: str,
-    body: str,
-    candidates: Sequence[Issue],
-    reference_issues: Sequence[Issue] = (),
+    index: int,
+    issues: Sequence[Issue],
+    documents: Sequence[str],
+    scores: Any,
+    is_eligible: Callable[[Issue], bool],
 ) -> list[DuplicateMatch]:
-    if not candidates:
+    if meaningful_token_count(documents[index]) < MIN_MEANINGFUL_TOKENS:
+        logging.info(
+            "Issue #%d has too little descriptive text for duplicate comparison.",
+            issues[index].number,
+        )
         return []
 
-    query_document = issue_document(title, body)
-    if meaningful_token_count(query_document) < MIN_MEANINGFUL_TOKENS:
-        logging.info("The issue has too little descriptive text for duplicate comparison.")
-        return []
-
-    corpus_issues = [*candidates, *reference_issues]
-    documents = [query_document]
-    documents.extend(issue_document(issue.title, issue.body) for issue in corpus_issues)
-
-    word_scores = similarity_scores(
-        TfidfVectorizer(
-            stop_words="english",
-            ngram_range=(1, 2),
-            sublinear_tf=True,
-            token_pattern=TOKEN_PATTERN.pattern,
-        ),
-        documents,
-        len(candidates),
-    )
-    if word_scores is None:
-        logging.info("No meaningful terms were available for duplicate comparison.")
-        return []
-
-    character_scores = similarity_scores(
-        TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True),
-        documents,
-        len(candidates),
-    )
-    matches: list[DuplicateMatch] = []
-    for index, issue in enumerate(candidates):
-        score = WORD_WEIGHT * float(word_scores[index])
-        if character_scores is not None:
-            score += CHARACTER_WEIGHT * float(character_scores[index])
-        matches.append(DuplicateMatch(issue=issue, score=score))
-
+    matches = [
+        DuplicateMatch(issue=other, score=float(scores[index, other_index]))
+        for other_index, other in enumerate(issues)
+        if other_index != index and is_eligible(other)
+    ]
     return sorted(matches, key=lambda match: match.score, reverse=True)
 
 
-def read_positive_integer_environment(name: str) -> int:
-    value = os.environ.get(name, "")
+def select_match(
+    issue_number: int,
+    ranked_matches: Sequence[DuplicateMatch],
+    threshold: float,
+) -> tuple[DuplicateMatch, list[DuplicateMatch]] | None:
+    for ranked in ranked_matches[: MAX_RELATED_MATCHES + 1]:
+        logging.info(
+            "  #%d -> #%d scored %.4f",
+            issue_number,
+            ranked.issue.number,
+            ranked.score,
+        )
+
+    qualifying_matches = [match for match in ranked_matches if match.score >= threshold]
+    if not qualifying_matches:
+        logging.info(
+            "Issue #%d: no issue reached the %.2f similarity threshold.",
+            issue_number,
+            threshold,
+        )
+        return None
+    return qualifying_matches[0], qualifying_matches[1 : MAX_RELATED_MATCHES + 1]
+
+
+def parse_positive_integer(value: str, name: str) -> int:
     try:
         parsed_value = int(value)
     except ValueError as error:
-        raise DuplicateCheckerError(
-            f"The {name} environment variable must be a positive integer."
-        ) from error
+        raise DuplicateCheckerError(f"{name} must be a positive integer.") from error
     if parsed_value <= 0:
-        raise DuplicateCheckerError(
-            f"The {name} environment variable must be a positive integer."
-        )
+        raise DuplicateCheckerError(f"{name} must be a positive integer.")
     return parsed_value
+
+
+def read_positive_integer_environment(name: str) -> int:
+    return parse_positive_integer(
+        os.environ.get(name, "").strip(),
+        f"The {name} environment variable",
+    )
 
 
 def read_threshold_environment(name: str, default: float) -> float:
@@ -666,104 +694,201 @@ def validate_repository(repository: str) -> str:
     return repository
 
 
-def run(title: str, body: str, repository: str) -> None:
+def create_client(repository: str) -> GitHubClient:
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if not token:
         raise DuplicateCheckerError("The GITHUB_TOKEN environment variable is required.")
+    return GitHubClient(validate_repository(repository), token)
 
+
+def load_known_issues(client: GitHubClient) -> dict[int, Issue]:
+    open_issues = client.get_issues("open", "created")
+    closed_issues = client.get_issues("closed", "updated", MAX_CLOSED_ISSUES)
+    return {issue.number: issue for issue in (*closed_issues, *open_issues)}
+
+
+def close_as_duplicate(
+    client: GitHubClient,
+    issue_number: int,
+    match: DuplicateMatch,
+    related_matches: Sequence[DuplicateMatch],
+) -> None:
+    logging.info(
+        "Issue #%d matched issue #%d with similarity %.4f.",
+        issue_number,
+        match.issue.number,
+        match.score,
+    )
+    client.apply_duplicate_label(issue_number)
+    if client.add_duplicate_comment(issue_number, match, related_matches):
+        logging.info("Added a duplicate reference comment to issue #%d.", issue_number)
+    else:
+        logging.info("The duplicate reference comment already exists on #%d.", issue_number)
+
+    client.close_as_duplicate(issue_number, match.issue)
+    logging.info(
+        "Closed issue #%d as a duplicate of #%d.",
+        issue_number,
+        match.issue.number,
+    )
+
+
+def check_issue(client: GitHubClient, current_issue: Issue, threshold: float) -> None:
+    issue_number = current_issue.number
+    if current_issue.state != "open":
+        logging.info("Issue #%d is no longer open; skipping.", issue_number)
+        return
+    if current_issue.state_reason == "reopened":
+        logging.info(
+            "Issue #%d was reopened, so it is not closed again automatically.",
+            issue_number,
+        )
+        return
+
+    known_issues = load_known_issues(client)
+    known_issues.pop(issue_number, None)
+    issues = (current_issue, *known_issues.values())
+    documents = [issue_document(issue.title, issue.body) for issue in issues]
+    scores = build_similarity_matrix(documents)
+    if scores is None:
+        logging.info("No meaningful terms were available for duplicate comparison.")
+        return
+
+    closed_after = datetime.now(timezone.utc) - RECENTLY_CLOSED_WINDOW
+    ranked_matches = rank_duplicates(
+        0,
+        issues,
+        documents,
+        scores,
+        lambda candidate: is_candidate(candidate, issue_number, closed_after),
+    )
+    logging.info(
+        "Compared issue #%d with %d earlier issues (%d issues used for term weighting).",
+        issue_number,
+        len(ranked_matches),
+        len(issues),
+    )
+    selection = select_match(issue_number, ranked_matches, threshold)
+    if selection is None:
+        return
+
+    client.ensure_duplicate_label()
+    close_as_duplicate(client, issue_number, *selection)
+
+
+def scan_open_issues(client: GitHubClient, threshold: float) -> None:
+    issues = tuple(
+        sorted(load_known_issues(client).values(), key=lambda issue: issue.number)
+    )
+    targets = [
+        index
+        for index, issue in enumerate(issues)
+        if issue.state == "open"
+        and issue.state_reason != "reopened"
+        and not is_duplicate(issue)
+    ]
+    logging.info(
+        "Scanning %d open issues (%d issues used for term weighting).",
+        len(targets),
+        len(issues),
+    )
+    if not targets:
+        return
+
+    documents = [issue_document(issue.title, issue.body) for issue in issues]
+    scores = build_similarity_matrix(documents)
+    if scores is None:
+        logging.info("No meaningful terms were available for duplicate comparison.")
+        return
+
+    closed_after = datetime.now(timezone.utc) - RECENTLY_CLOSED_WINDOW
+    matched_numbers: set[int] = set()
+    failed_numbers: list[int] = []
+    label_ready = False
+    for index in targets:
+        issue = issues[index]
+        ranked_matches = rank_duplicates(
+            index,
+            issues,
+            documents,
+            scores,
+            lambda candidate: candidate.number not in matched_numbers
+            and is_candidate(candidate, issue.number, closed_after),
+        )
+        selection = select_match(issue.number, ranked_matches, threshold)
+        if selection is None:
+            continue
+
+        matched_numbers.add(issue.number)
+        try:
+            if not label_ready:
+                client.ensure_duplicate_label()
+                label_ready = True
+            close_as_duplicate(client, issue.number, *selection)
+        except RateLimitError:
+            raise
+        except DuplicateCheckerError as error:
+            logging.error("Could not close issue #%d: %s", issue.number, error)
+            failed_numbers.append(issue.number)
+
+    logging.info(
+        "Scan finished: %d of %d open issues matched as duplicates.",
+        len(matched_numbers),
+        len(targets),
+    )
+    if failed_numbers:
+        raise DuplicateCheckerError(
+            "Closing failed for issues: "
+            + ", ".join(f"#{number}" for number in failed_numbers)
+        )
+
+
+def run(title: str, body: str, repository: str) -> None:
     issue_number = read_positive_integer_environment("GITHUB_ISSUE_NUMBER")
     threshold = read_threshold_environment(
         "DUPLICATE_SIMILARITY_THRESHOLD",
         DEFAULT_SIMILARITY_THRESHOLD,
     )
-    validated_repository = validate_repository(repository)
-    client = GitHubClient(validated_repository, token)
+    client = create_client(repository)
     try:
-        current_issue = client.get_issue(issue_number)
-        if current_issue.state != "open":
-            logging.info("Issue #%d is no longer open; skipping.", issue_number)
-            return
-        if current_issue.state_reason == "reopened":
-            logging.info(
-                "Issue #%d was reopened, so it is not closed again automatically.",
-                issue_number,
-            )
-            return
+        current_issue = replace(client.get_issue(issue_number), title=title, body=body)
+        check_issue(client, current_issue, threshold)
+    finally:
+        client.close()
 
-        open_issues = client.get_issues("open", "created")
-        closed_issues = client.get_issues("closed", "updated", MAX_CLOSED_ISSUES)
-        closed_after = datetime.now(timezone.utc) - RECENTLY_CLOSED_WINDOW
-        known_issues = {
-            issue.number: issue
-            for issue in (*closed_issues, *open_issues)
-            if issue.number != issue_number
-        }
-        candidates = tuple(
-            issue
-            for issue in known_issues.values()
-            if is_candidate(issue, issue_number, closed_after)
-        )
-        candidate_numbers = {issue.number for issue in candidates}
-        reference_issues = tuple(
-            issue
-            for issue in known_issues.values()
-            if issue.number not in candidate_numbers
-        )
-        logging.info(
-            "Comparing issue #%d with %d earlier issues (%d more used for term weighting).",
-            issue_number,
-            len(candidates),
-            len(reference_issues),
-        )
 
-        ranked_matches = rank_duplicates(title, body, candidates, reference_issues)
-        for ranked in ranked_matches[: MAX_RELATED_MATCHES + 1]:
-            logging.info("  #%d scored %.4f", ranked.issue.number, ranked.score)
-
-        qualifying_matches = [
-            match for match in ranked_matches if match.score >= threshold
-        ]
-        if not qualifying_matches:
-            logging.info("No issue reached the %.2f similarity threshold.", threshold)
+def run_manual(repository: str) -> None:
+    requested_issue = os.environ.get("GITHUB_ISSUE_NUMBER", "").strip().lstrip("#")
+    threshold = read_threshold_environment(
+        "DUPLICATE_SIMILARITY_THRESHOLD",
+        DEFAULT_SIMILARITY_THRESHOLD,
+    )
+    client = create_client(repository)
+    try:
+        if not requested_issue:
+            scan_open_issues(client, threshold)
             return
 
-        match = qualifying_matches[0]
-        related_matches = qualifying_matches[1 : MAX_RELATED_MATCHES + 1]
-        logging.info(
-            "Issue #%d matched issue #%d with similarity %.4f.",
-            issue_number,
-            match.issue.number,
-            match.score,
-        )
-
-        client.ensure_duplicate_label()
-        client.apply_duplicate_label(issue_number)
-        if client.add_duplicate_comment(issue_number, match, related_matches):
-            logging.info("Added a duplicate reference comment to issue #%d.", issue_number)
-        else:
-            logging.info("The duplicate reference comment already exists.")
-
-        client.close_as_duplicate(issue_number, match.issue)
-        logging.info(
-            "Closed issue #%d as a duplicate of #%d.",
-            issue_number,
-            match.issue.number,
-        )
+        issue_number = parse_positive_integer(requested_issue, "The issue number")
+        check_issue(client, client.get_issue(issue_number), threshold)
     finally:
         client.close()
 
 
 def main(argv: Sequence[str]) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    if len(argv) != 3:
-        logging.error(
-            "Usage: duplicate_checker.py <issue-title> <issue-body> <owner/repository>"
-        )
-        return 2
-
-    title, body, repository = argv
     try:
-        run(title, body or "", repository)
+        if len(argv) == 2 and argv[0] == "--manual":
+            run_manual(argv[1])
+        elif len(argv) == 3:
+            title, body, repository = argv
+            run(title, body or "", repository)
+        else:
+            logging.error(
+                "Usage: duplicate_checker.py <issue-title> <issue-body> <owner/repository>\n"
+                "       duplicate_checker.py --manual <owner/repository>"
+            )
+            return 2
     except DuplicateCheckerError as error:
         logging.error("Duplicate check failed: %s", error)
         return 1
