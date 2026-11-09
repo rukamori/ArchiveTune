@@ -832,6 +832,7 @@
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
     <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, ArchiveTune, and other forks</string>
     <string name="about_position_boidushya">Creator of BetterLyrics Provider</string>
+    <string name="about_position_lrcred">Synced lyrics provider · Word-timed TTML lyrics API</string>
     <string name="about_content_desc_github">GitHub</string>
     <string name="about_content_desc_website">Website</string>
     <string name="about_content_desc_discord">Discord</string>

@@ -614,6 +614,21 @@ class AboutViewModel
                                 ),
                             ),
                         ),
+                        TeamMember(
+                            avatarUrl = LrcRedAvatarUri,
+                            name = "lrc.red",
+                            positionResId = R.string.about_position_lrcred,
+                            profileUrl = LrcRedUrl,
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "website",
+                                        iconResId = R.drawable.website,
+                                        labelResId = R.string.about_content_desc_website,
+                                        url = LrcRedUrl,
+                                    ),
+                                ),
+                        ),
                     ),
                 contributorsState = contributorsState,
                 contributorsReadMoreUrl = ContributorsReadMoreUrl,
@@ -670,5 +685,8 @@ class AboutViewModel
             const val MaxDisplayedContributors = 20
             const val DebugBuildBadge = "DEBUG"
             const val ContributorsReadMoreUrl = "https://github.com/rukamori/ArchiveTune/graphs/contributors"
+            const val LrcRedUrl = "https://lrc.red"
+            const val LrcRedAvatarUri =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAnklEQVR42u3RMQ0AQAjAQCYMvH91CAELP5JwTargIiRJkiRJkiRJkiR9VPn60gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJsBJEmSJEmSJEmSpJUNCtLbRu3GUiYAAAAASUVORK5CYII="
         }
     }

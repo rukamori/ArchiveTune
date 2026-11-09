@@ -661,6 +661,7 @@ private fun PreferredLyricsProvider.enableLabel(): String = stringResource(
         PreferredLyricsProvider.BETTER_LYRICS_PORTATO -> R.string.enable_betterlyrics_portato
         PreferredLyricsProvider.YOULY_PLUS -> R.string.enable_youlyplus_lyrics
         PreferredLyricsProvider.BINIMUM -> R.string.enable_binimum_lyrics
+        PreferredLyricsProvider.LRC_RED -> R.string.enable_lrcred_lyrics
         PreferredLyricsProvider.LRCLIB -> R.string.enable_lrclib
         PreferredLyricsProvider.KUGOU -> R.string.enable_kugou
         PreferredLyricsProvider.MEGALOBIZ -> R.string.enable_megalobiz_lyrics
@@ -684,6 +685,7 @@ private fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.BETTER_LYRICS_PORTATO -> "BetterLyrics Portato"
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
         PreferredLyricsProvider.BINIMUM -> stringResource(R.string.binimum_lyrics)
+        PreferredLyricsProvider.LRC_RED -> "lrc.red"
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> stringResource(R.string.paxsenix_apple_music)
         PreferredLyricsProvider.PAXSENIX_SPOTIFY -> stringResource(R.string.paxsenix_spotify)
