@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.db.entities.LikedSongDate
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
 import moe.rukamori.archivetune.db.entities.ListeningTotals
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.LyricsSyncOffsetEntity
 import moe.rukamori.archivetune.db.entities.LocalMusicAlias
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -857,6 +858,15 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM lyrics WHERE id IN (:ids)")
     suspend fun getLyricsByIds(ids: List<String>): List<LyricsEntity>
+
+    @Query("SELECT offsetMs FROM lyrics_sync_offset WHERE songId = :songId")
+    fun lyricsSyncOffset(songId: String): Flow<Int?>
+
+    @Upsert
+    suspend fun upsert(lyricsSyncOffset: LyricsSyncOffsetEntity)
+
+    @Query("DELETE FROM lyrics_sync_offset WHERE songId = :songId")
+    suspend fun deleteLyricsSyncOffset(songId: String)
 
     @Query("DELETE FROM lyrics")
     fun clearAllLyrics()

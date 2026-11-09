@@ -157,6 +157,7 @@ import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackViewModel
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackState
 import moe.rukamori.archivetune.viewmodels.ImmersivePlayerViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsSyncOffsetViewModel
 import moe.rukamori.archivetune.viewmodels.QueueViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
@@ -309,6 +310,7 @@ fun BottomSheetPlayer(
     canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
     immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
     queueViewModel: QueueViewModel = hiltViewModel(),
+    lyricsSyncOffsetViewModel: LyricsSyncOffsetViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -487,9 +489,11 @@ fun BottomSheetPlayer(
     var duration by rememberSaveable(mediaMetadata?.id) {
         mutableLongStateOf(playerConnection.player.duration)
     }
-    var lyricsSyncOffset by rememberSaveable(mediaMetadata?.id) {
-        mutableIntStateOf(0)
+    LaunchedEffect(lyricsSyncOffsetViewModel, mediaMetadata?.id) {
+        lyricsSyncOffsetViewModel.setSongId(mediaMetadata?.id)
     }
+    val lyricsSyncOffsetState by lyricsSyncOffsetViewModel.state.collectAsStateWithLifecycle()
+    val lyricsSyncOffset = lyricsSyncOffsetState.offsetFor(mediaMetadata?.id)
     var sliderPosition by remember(mediaMetadata?.id) {
         mutableStateOf<Long?>(null)
     }
@@ -1971,7 +1975,7 @@ fun BottomSheetPlayer(
                 mediaMetadata = metadata,
                 navController = navController,
                 lyricsSyncOffset = lyricsSyncOffset,
-                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                onLyricsSyncOffsetChange = { lyricsSyncOffsetViewModel.setOffset(metadata.id, it) },
                 onDismiss = { isLyricsScreenVisible = false },
                 onQueueClick = openQueue,
             )

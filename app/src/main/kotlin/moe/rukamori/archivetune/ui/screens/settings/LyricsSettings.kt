@@ -71,7 +71,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DefaultLyricsSyncOffsetMode
 import moe.rukamori.archivetune.constants.LyricsClickKey
+import moe.rukamori.archivetune.constants.LyricsGlobalSyncOffsetKey
 import moe.rukamori.archivetune.constants.LyricsLineBlurKey
 import moe.rukamori.archivetune.constants.LyricsLineSpacingKey
 import moe.rukamori.archivetune.constants.LyricsMode
@@ -83,6 +85,9 @@ import moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
 import moe.rukamori.archivetune.constants.LyricsScrollKey
+import moe.rukamori.archivetune.constants.LyricsSyncOffsetLimitMs
+import moe.rukamori.archivetune.constants.LyricsSyncOffsetMode
+import moe.rukamori.archivetune.constants.LyricsSyncOffsetModeKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
@@ -94,11 +99,13 @@ import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LyricsSyncOffsetDialog
 import moe.rukamori.archivetune.ui.component.MultiSelectListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.component.formatLyricsSyncOffset
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -154,6 +161,10 @@ fun LyricsSettings(
     val (lyricsTextSize, onLyricsTextSizeChange) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
     val (lyricsLineSpacing, onLyricsLineSpacingChange) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
     val (lyricsMode, onLyricsModeChange) = rememberEnumPreference(LyricsModeKey, defaultValue = LyricsMode.ENHANCED)
+    val (lyricsSyncOffsetMode, onLyricsSyncOffsetModeChange) =
+        rememberEnumPreference(LyricsSyncOffsetModeKey, defaultValue = DefaultLyricsSyncOffsetMode)
+    val (lyricsGlobalSyncOffset, onLyricsGlobalSyncOffsetChange) = rememberPreference(LyricsGlobalSyncOffsetKey, defaultValue = 0)
+    val globalSyncOffsetMs = lyricsGlobalSyncOffset.coerceIn(-LyricsSyncOffsetLimitMs, LyricsSyncOffsetLimitMs)
     val (paxsenixApiKey, onPaxsenixApiKeyChange) =
         rememberPreference(
             key = PaxsenixApiKeyKey,
@@ -201,6 +212,20 @@ fun LyricsSettings(
                 PaxsenixLyrics.setApiKey(normalizedValue)
             },
             onDismiss = { showPaxsenixApiKeyDialog = false },
+        )
+    }
+
+    var showGlobalSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showGlobalSyncOffsetDialog) {
+        LyricsSyncOffsetDialog(
+            initialOffsetMs = globalSyncOffsetMs,
+            supportingText = stringResource(R.string.lyrics_sync_offset_applies_global),
+            onDismiss = { showGlobalSyncOffsetDialog = false },
+            onConfirm = { offsetMs ->
+                onLyricsGlobalSyncOffsetChange(offsetMs)
+                showGlobalSyncOffsetDialog = false
+            },
         )
     }
 
@@ -427,6 +452,40 @@ fun LyricsSettings(
                     description = "${String.format("%.1f", lyricsLineSpacing)}x",
                     icon = { Icon(painterResource(R.drawable.text_fields), null) },
                     onClick = { showLyricsLineSpacingDialog = true },
+                )
+            }
+        }
+
+        PreferenceGroup(title = stringResource(R.string.lyrics_sync_offset)) {
+            item {
+                EnumListPreference(
+                    title = { Text(stringResource(R.string.lyrics_sync_offset_mode)) },
+                    icon = { Icon(painterResource(R.drawable.speed), null) },
+                    selectedValue = lyricsSyncOffsetMode,
+                    onValueSelected = onLyricsSyncOffsetModeChange,
+                    valueText = {
+                        when (it) {
+                            LyricsSyncOffsetMode.GLOBAL -> stringResource(R.string.lyrics_sync_offset_mode_global)
+                            LyricsSyncOffsetMode.PER_SONG -> stringResource(R.string.lyrics_sync_offset_mode_per_song)
+                        }
+                    },
+                )
+            }
+
+            item {
+                val isGlobalMode = lyricsSyncOffsetMode == LyricsSyncOffsetMode.GLOBAL
+
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.lyrics_global_sync_offset)) },
+                    description =
+                        if (isGlobalMode) {
+                            formatLyricsSyncOffset(globalSyncOffsetMs)
+                        } else {
+                            stringResource(R.string.lyrics_global_sync_offset_global_only)
+                        },
+                    icon = { Icon(painterResource(R.drawable.speed), null) },
+                    onClick = { showGlobalSyncOffsetDialog = true },
+                    isEnabled = isGlobalMode,
                 )
             }
         }

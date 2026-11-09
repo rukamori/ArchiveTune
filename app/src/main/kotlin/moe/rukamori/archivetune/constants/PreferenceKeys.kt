@@ -776,6 +776,18 @@ enum class LyricsMode {
     ENHANCED,
 }
 
+val LyricsSyncOffsetModeKey = stringPreferencesKey("lyricsSyncOffsetMode")
+val LyricsGlobalSyncOffsetKey = intPreferencesKey("lyricsGlobalSyncOffset")
+
+const val LyricsSyncOffsetLimitMs = 5000
+
+enum class LyricsSyncOffsetMode {
+    GLOBAL,
+    PER_SONG,
+}
+
+val DefaultLyricsSyncOffsetMode = LyricsSyncOffsetMode.PER_SONG
+
 val LyricsV2BounceFactorKey = floatPreferencesKey("lyricsV2BounceFactor")
 val LyricsV2GlowFactorKey = floatPreferencesKey("lyricsV2GlowFactor")
 val LyricsV2FillTransitionWidthKey = floatPreferencesKey("lyricsV2FillTransitionWidth")

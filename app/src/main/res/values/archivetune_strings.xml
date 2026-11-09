@@ -447,6 +447,13 @@
     <string name="lyrics_auto_scroll">Auto scroll lyrics</string>
     <string name="lyrics_text_size">Lyrics text size</string>
     <string name="lyrics_sync_offset">Lyrics sync offset</string>
+    <string name="lyrics_sync_offset_mode">Sync offset mode</string>
+    <string name="lyrics_sync_offset_mode_global">Global</string>
+    <string name="lyrics_sync_offset_mode_per_song">Per song</string>
+    <string name="lyrics_sync_offset_applies_global">Applies to all songs</string>
+    <string name="lyrics_sync_offset_applies_per_song">Applies to this song only</string>
+    <string name="lyrics_global_sync_offset">Global sync offset</string>
+    <string name="lyrics_global_sync_offset_global_only">Available when sync offset mode is Global</string>
     <string name="resume_autoscroll">Resume Autoscroll</string>
     <string name="lyrics_romanize_japanese">Romanize japanese lyrics</string>
     <string name="lyrics_romanize_korean">Romanize korean lyrics</string>

@@ -59,7 +59,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -68,7 +67,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -101,10 +99,14 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
+import moe.rukamori.archivetune.constants.DefaultLyricsSyncOffsetMode
+import moe.rukamori.archivetune.constants.LyricsSyncOffsetMode
+import moe.rukamori.archivetune.constants.LyricsSyncOffsetModeKey
 import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.DefaultDialog
+import moe.rukamori.archivetune.ui.component.LyricsSyncOffsetDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
@@ -122,7 +124,6 @@ import moe.rukamori.archivetune.viewmodels.LyricsSearchScreenState
 import moe.rukamori.archivetune.viewmodels.LyricsTranslationError
 import moe.rukamori.archivetune.viewmodels.LyricsTranslationScreenState
 import java.util.Locale
-import kotlin.math.roundToInt
 
 private enum class LyricsTranslationSource {
     AI_TRANSLATION,
@@ -168,6 +169,7 @@ fun LyricsMenu(
 
     var showTranslateDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
+    val (lyricsSyncOffsetMode) = rememberEnumPreference(LyricsSyncOffsetModeKey, DefaultLyricsSyncOffsetMode)
     val isRefetching by viewModel.isRefetching.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
@@ -358,65 +360,22 @@ fun LyricsMenu(
     }
 
     if (showLyricsSyncOffsetDialog) {
-        var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)) }
-
-        DefaultDialog(
-            onDismiss = {
-                tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
+        LyricsSyncOffsetDialog(
+            initialOffsetMs = lyricsSyncOffset,
+            supportingText =
+                stringResource(
+                    when (lyricsSyncOffsetMode) {
+                        LyricsSyncOffsetMode.GLOBAL -> R.string.lyrics_sync_offset_applies_global
+                        LyricsSyncOffsetMode.PER_SONG -> R.string.lyrics_sync_offset_applies_per_song
+                    },
+                ),
+            onDismiss = { showLyricsSyncOffsetDialog = false },
+            onConfirm = { offsetMs ->
+                onLyricsSyncOffsetChange(offsetMs)
                 showLyricsSyncOffsetDialog = false
+                onDismiss()
             },
-            icon = {
-                Icon(painter = painterResource(R.drawable.speed), contentDescription = null)
-            },
-            title = { Text(stringResource(R.string.lyrics_sync_offset)) },
-            buttons = {
-                TextButton(
-                    onClick = { tempLyricsSyncOffset = 0f },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(
-                    onClick = {
-                        tempLyricsSyncOffset = lyricsSyncOffset.toFloat().coerceIn(-5000f, 5000f)
-                        showLyricsSyncOffsetDialog = false
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(
-                    onClick = {
-                        onLyricsSyncOffsetChange(tempLyricsSyncOffset.roundToInt().coerceIn(-5000, 5000))
-                        showLyricsSyncOffsetDialog = false
-                        onDismiss()
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp),
-            ) {
-                Text(
-                    text = formatLyricsSyncOffset(tempLyricsSyncOffset.roundToInt()),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Slider(
-                    value = tempLyricsSyncOffset,
-                    onValueChange = { tempLyricsSyncOffset = it },
-                    valueRange = -5000f..5000f,
-                    steps = 199,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
+        )
     }
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -1354,8 +1313,6 @@ private fun LyricsSearchMessageContent(
         )
     }
 }
-
-private fun formatLyricsSyncOffset(offsetMs: Int): String = if (offsetMs > 0) "+$offsetMs ms" else "$offsetMs ms"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
