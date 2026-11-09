@@ -14,7 +14,6 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -38,7 +36,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
@@ -343,145 +340,6 @@ private val DiscoveryBadgeSize = 44.dp
 private const val SearchBadgeActiveRotation = 30f
 
 @Composable
-internal fun TopResultCard(
-    item: YTItem,
-    isActive: Boolean,
-    isPlaying: Boolean,
-    pureBlack: Boolean,
-    onClick: () -> Unit,
-    onMenu: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptic = LocalHapticFeedback.current
-    val colorScheme = MaterialTheme.colorScheme
-    val hasMenu = item.hasSearchResultMenu()
-    val isPlayable = item is SongItem || item is EpisodeItem
-    val showPause = isActive && isPlaying && item is SongItem
-    val typeLabel = searchResultTypeLabel(item)
-    val subtitle = searchResultSubtitle(item)
-    val menuLabel = stringResource(R.string.more_options)
-    val containerColor =
-        when {
-            isActive -> colorScheme.secondaryContainer
-            pureBlack -> Color.White.copy(alpha = 0.10f)
-            else -> colorScheme.surfaceContainerHigh
-        }
-
-    Surface(
-        shape = TopResultShape,
-        color = containerColor,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(TopResultShape)
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClickLabel = if (hasMenu) menuLabel else null,
-                    onLongClick =
-                        if (hasMenu) {
-                            {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onMenu()
-                            }
-                        } else {
-                            null
-                        },
-                ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SearchResultThumbnail(
-                    item = item,
-                    isActive = isActive,
-                    isPlaying = isPlaying,
-                    size = TopResultThumbnailSize,
-                    cornerRadius = 20.dp,
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        shape = CircleShape,
-                        color = colorScheme.tertiaryContainer,
-                        contentColor = colorScheme.onTertiaryContainer,
-                    ) {
-                        Text(
-                            text = typeLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        )
-                    }
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (subtitle != null || item.explicit) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp),
-                        ) {
-                            if (item.explicit) {
-                                Icon(
-                                    painter = painterResource(R.drawable.explicit),
-                                    contentDescription = null,
-                                    tint = colorScheme.onSurfaceVariant,
-                                    modifier =
-                                        Modifier
-                                            .padding(end = 4.dp)
-                                            .size(16.dp),
-                                )
-                            }
-                            if (subtitle != null) {
-                                Text(
-                                    text = subtitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (isPlayable || hasMenu) {
-                Spacer(Modifier.size(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isPlayable) {
-                        Button(
-                            onClick = onClick,
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                        ) {
-                            Icon(
-                                painter = painterResource(if (showPause) R.drawable.pause else R.drawable.play),
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                            )
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text(stringResource(if (showPause) R.string.search_pause else R.string.play))
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (hasMenu) {
-                        IconButton(onClick = onMenu) {
-                            Icon(
-                                painter = painterResource(R.drawable.more_vert),
-                                contentDescription = menuLabel,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 internal fun SearchResultRow(
     item: YTItem,
     index: Int,
@@ -605,8 +463,6 @@ internal fun searchRowContainerColor(pureBlack: Boolean): Color =
         MaterialTheme.colorScheme.surfaceContainerLow
     }
 
-private val TopResultShape = RoundedCornerShape(28.dp)
-private val TopResultThumbnailSize = 96.dp
 private val SearchResultThumbnailSize = 56.dp
 private const val WideThumbnailRatio = 16f / 9f
 

@@ -413,8 +413,10 @@ fun OnlineSearchScreen(
                                 isActive = isItemActive(topResult),
                                 isPlaying = isPlaying,
                                 pureBlack = pureBlack,
+                                navController = navController,
                                 onClick = { openItem(topResult) },
                                 onMenu = { openItemMenu(topResult) },
+                                onLeave = onDismiss,
                                 modifier =
                                     searchItemModifier(itemMotion)
                                         .padding(horizontal = SearchListHorizontalPadding),

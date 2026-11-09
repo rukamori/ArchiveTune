@@ -970,4 +970,8 @@
     <string name="search_loading_sections">Loading more sections…</string>
     <string name="search_filter_label">Filter results</string>
     <string name="search_see_all_section">See all %1$s</string>
+    <string name="search_action_radio">Radio</string>
+    <string name="search_action_open">Open</string>
+    <string name="search_queued_next">Up next</string>
+    <string name="search_explicit">Explicit</string>
 </resources>

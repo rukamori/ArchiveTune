@@ -263,6 +263,7 @@ fun OnlineSearchResult(
             isActive = isItemActive,
             onOpen = openItem,
             onMenu = openItemMenu,
+            navController = navController,
         )
 
     val topResults = viewModel.summaryPage?.summaries?.firstOrNull()?.items.orEmpty()
@@ -352,6 +353,7 @@ private class SearchResultActions(
     val isActive: (YTItem) -> Boolean,
     val onOpen: (YTItem) -> Unit,
     val onMenu: (YTItem) -> Unit,
+    val navController: NavController,
 )
 
 private fun LazyGridItemScope.gridItemModifier(motion: SearchItemMotion): Modifier =
@@ -426,6 +428,7 @@ private fun LazyGridScope.allModeContent(
                 isActive = actions.isActive(topResult),
                 isPlaying = actions.isPlaying,
                 pureBlack = false,
+                navController = actions.navController,
                 onClick = { actions.onOpen(topResult) },
                 onMenu = { actions.onMenu(topResult) },
                 modifier =
