@@ -336,14 +336,80 @@ jobs:
           exit 1
 
       - name: Sign APK
-        uses: ilharp/sign-android-release@v2.0.0
-        with:
-          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
-          signingKey: ${{ secrets.KEYSTORE }}
-          keyAlias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: 37.0.0
+        shell: bash
+        env:
+          RELEASE_DIR: ${{ steps.release_dir.outputs.release_dir }}
+          BUILD_TOOLS_VERSION: 35.0.0
+          KEYSTORE_B64: ${{ secrets.KEYSTORE }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS_INPUT: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}"
+          KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
+          trap 'rm -f "$KEYSTORE_FILE"' EXIT
+
+          for name in KEYSTORE_B64 KEY_ALIAS STORE_PASS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Signing secret for $name is empty"
+              exit 1
+            fi
+          done
+
+          if ! printf '%s' "$KEYSTORE_B64" | sed '/^-----/d' | tr -d '[:space:]' | base64 -d > "$KEYSTORE_FILE" 2>/dev/null \
+            || [ ! -s "$KEYSTORE_FILE" ]; then
+            echo "::error::KEYSTORE secret is not valid base64. Encode the keystore file as a single base64 string (e.g. 'base64 -w 0 release.keystore')."
+            exit 1
+          fi
+
+          if ! LIST_OUTPUT="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass:env STORE_PASS 2>&1)"; then
+            echo "::error::keytool could not open the keystore. Either KEYSTORE is not a keystore file or KEYSTORE_PASSWORD is wrong."
+            printf '%s\n' "$LIST_OUTPUT" | grep -iE 'exception|error' | head -n 5 || true
+            exit 1
+          fi
+
+          STORE_TYPE="$(printf '%s\n' "$LIST_OUTPUT" | sed -n 's/^Keystore type: *//p' | head -n 1)"
+          echo "Keystore type: ${STORE_TYPE:-unknown}"
+
+          if ! keytool -list -keystore "$KEYSTORE_FILE" -storepass:env STORE_PASS -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::KEY_ALIAS was not found in the keystore. Available aliases:"
+            printf '%s\n' "$LIST_OUTPUT" | sed -n 's/^Alias name: */  - /p'
+            exit 1
+          fi
+
+          KEY_PASS="${KEY_PASS_INPUT:-$STORE_PASS}"
+          if [ "${STORE_TYPE^^}" = "PKCS12" ] && [ "$KEY_PASS" != "$STORE_PASS" ]; then
+            echo "::warning::Keystore is PKCS12, which uses the store password for keys; ignoring KEY_PASSWORD."
+            KEY_PASS="$STORE_PASS"
+          fi
+          export KEY_PASS
+
+          mapfile -t UNSIGNED_APKS < <(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*-unsigned.apk" | sort)
+          if [ "${#UNSIGNED_APKS[@]}" -eq 0 ]; then
+            echo "::error::No unsigned APK found in $RELEASE_DIR"
+            exit 1
+          fi
+
+          for apk in "${UNSIGNED_APKS[@]}"; do
+            echo "Signing $(basename "$apk")"
+            aligned="${apk%.apk}-aligned.apk"
+            if "$BUILD_TOOLS/zipalign" -c 4 "$apk" > /dev/null 2>&1; then
+              cp "$apk" "$aligned"
+            else
+              "$BUILD_TOOLS/zipalign" -f -P 16 4 "$apk" "$aligned"
+            fi
+            signed="${apk%-unsigned.apk}-signed.apk"
+            "$BUILD_TOOLS/apksigner" sign \
+              --ks "$KEYSTORE_FILE" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass env:STORE_PASS \
+              --key-pass env:KEY_PASS \
+              --out "$signed" \
+              "$aligned"
+            rm -f "$aligned" "${signed}.idsig"
+            "$BUILD_TOOLS/apksigner" verify "$signed"
+          done
 
       - name: Move and rename APK
         shell: bash
