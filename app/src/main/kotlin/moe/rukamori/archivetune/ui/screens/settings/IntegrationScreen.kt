@@ -409,25 +409,6 @@ private fun SpotifyLoginSheet(
         }
     }
 
-    BackHandler(enabled = webView != null) {
-        val activeWebView = webView
-        val rootWebView = mainWebView
-        when {
-            activeWebView?.canGoBack() == true -> {
-                activeWebView.goBack()
-            }
-
-            activeWebView != null && rootWebView != null && activeWebView !== rootWebView -> {
-                activeWebView.destroySpotifyLoginWebView()
-                webView = rootWebView
-            }
-
-            else -> {
-                onDismiss()
-            }
-        }
-    }
-
     ModalBottomSheet(
         modifier = Modifier.fillMaxHeight(),
         onDismissRequest = onDismiss,
@@ -435,6 +416,25 @@ private fun SpotifyLoginSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
+        BackHandler(enabled = webView != null) {
+            val activeWebView = webView
+            val rootWebView = mainWebView
+            when {
+                activeWebView?.canGoBack() == true -> {
+                    activeWebView.goBack()
+                }
+
+                activeWebView != null && rootWebView != null && activeWebView !== rootWebView -> {
+                    activeWebView.destroySpotifyLoginWebView()
+                    webView = rootWebView
+                }
+
+                else -> {
+                    onDismiss()
+                }
+            }
+        }
+
         Column(
             modifier =
                 Modifier

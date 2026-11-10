@@ -143,6 +143,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -187,8 +188,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigationevent.NavigationEventDispatcherOwner
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import androidx.navigationevent.findViewTreeNavigationEventDispatcherOwner
 import androidx.window.core.layout.WindowSizeClass
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -1752,7 +1755,7 @@ class MainActivity : ComponentActivity() {
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
                     ) {
-                        CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides screenBackDispatcherOwner) {
+                        ProvideWindowScopedNavigationEventDispatcherOwner(screenBackDispatcherOwner) {
                             Row {
                                 AnimatedVisibility(
                                     visible =
@@ -2293,7 +2296,7 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }
 
-                                            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides playerBackDispatcherOwner) {
+                                            ProvideWindowScopedNavigationEventDispatcherOwner(playerBackDispatcherOwner) {
                                                 BottomSheetPlayer(
                                                     state = playerBottomSheetState,
                                                     navController = navController,
@@ -3173,6 +3176,22 @@ val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils p
 
 private val HomeOverflowFabSpacing = 12.dp
 private const val HomeOverflowFabIconRotation = 90f
+
+@Composable
+private fun ProvideWindowScopedNavigationEventDispatcherOwner(
+    owner: NavigationEventDispatcherOwner,
+    content: @Composable () -> Unit,
+) {
+    val hostWindowOwner = LocalView.current.findViewTreeNavigationEventDispatcherOwner()
+    CompositionLocalProvider(
+        LocalNavigationEventDispatcherOwner providesComputed {
+            LocalView.currentValue.findViewTreeNavigationEventDispatcherOwner()
+                ?.takeIf { it !== hostWindowOwner }
+                ?: owner
+        },
+        content = content,
+    )
+}
 
 @Composable
 private fun HomeOverflowFabVisibility(
