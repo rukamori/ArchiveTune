@@ -868,8 +868,8 @@ interface DatabaseDao {
     @Query("DELETE FROM lyrics_sync_offset WHERE songId = :songId")
     suspend fun deleteLyricsSyncOffset(songId: String)
 
-    @Query("DELETE FROM lyrics")
-    fun clearAllLyrics()
+    @Query("DELETE FROM lyrics WHERE source = 'REMOTE'")
+    fun clearRemoteLyrics()
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -2186,50 +2186,34 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(lyrics: LyricsEntity): Long
 
-    @Transaction
-    fun insertLyricsIfAbsent(
-        id: String,
-        lyrics: String,
-        provider: String?,
-        source: String = LyricsEntity.Source.REMOTE.value,
-        updatedAt: Long = System.currentTimeMillis(),
-    ) {
-        insert(
-            LyricsEntity(
-                id = id,
-                lyrics = lyrics,
-                source = source,
-                updatedAt = updatedAt,
-                provider = provider,
-            ),
-        )
-    }
-
     @Query("SELECT provider FROM lyrics WHERE id = :id")
     fun lyricsProvider(id: String): String?
 
     @Query(
         """
         UPDATE lyrics
-        SET lyrics = :lyrics, source = :source, updatedAt = :updatedAt
-        WHERE id = :id AND lyrics = :notFoundLyrics
+        SET lyrics = :lyrics, source = :source, updatedAt = :updatedAt, provider = :provider
+        WHERE id = :id AND lyrics = :notFoundLyrics AND source = :remoteSource
         """,
     )
-    fun replaceLyricsIfNotFound(
+    fun replaceRemoteNotFoundLyrics(
         id: String,
         lyrics: String,
         source: String,
+        provider: String?,
         updatedAt: Long,
         notFoundLyrics: String,
+        remoteSource: String,
     ): Int
 
     @Transaction
-    fun replaceLyricsIfAbsentOrNotFound(
+    fun saveFetchedLyrics(
         id: String,
         lyrics: String,
-        source: String = LyricsEntity.Source.REMOTE.value,
+        provider: String?,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
+        val source = LyricsEntity.Source.REMOTE.value
         val insertedRowId =
             insert(
                 LyricsEntity(
@@ -2237,15 +2221,18 @@ interface DatabaseDao {
                     lyrics = lyrics,
                     source = source,
                     updatedAt = updatedAt,
+                    provider = provider,
                 ),
             )
         if (insertedRowId == -1L) {
-            replaceLyricsIfNotFound(
+            replaceRemoteNotFoundLyrics(
                 id = id,
                 lyrics = lyrics,
                 source = source,
+                provider = provider,
                 updatedAt = updatedAt,
                 notFoundLyrics = LyricsEntity.LYRICS_NOT_FOUND,
+                remoteSource = source,
             )
         }
     }

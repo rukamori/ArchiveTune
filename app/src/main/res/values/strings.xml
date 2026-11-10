@@ -789,7 +789,7 @@
     <string name="max_song_cache_size">Max song cache size</string>
     <string name="clear_song_cache">Clear song cache</string>
     <string name="clear_lyrics_cache">Clear lyrics cache</string>
-    <string name="clear_lyrics_cache_confirm">Are you sure you want to clear all lyrics cache?</string>
+    <string name="clear_lyrics_cache_confirm">Downloaded lyrics will be removed and fetched again when needed. Lyrics you edited, picked from search or that are embedded in files are kept.</string>
     <string name="paxsenix_stats">Paxsenix API Stats</string>
     <string name="uptime">Uptime</string>
     <string name="total_requests">Total Requests</string>

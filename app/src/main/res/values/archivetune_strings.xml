@@ -339,6 +339,7 @@
     <string name="lyrics_searching_lyrics_providers">Searching lyrics providers…</string>
     <string name="lyrics_source_label">Source: %1$s</string>
     <string name="lyrics_source_embedded">Embedded in file</string>
+    <string name="lyrics_refetch_failed">Couldn\'t refresh lyrics. Check your connection and try again.</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>

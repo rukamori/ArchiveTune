@@ -117,6 +117,7 @@ import moe.rukamori.archivetune.utils.TranslatorLanguages
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LyricsMenuViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsRefetchResult
 import moe.rukamori.archivetune.viewmodels.LyricsRenderScreenState
 import moe.rukamori.archivetune.viewmodels.LyricsRenderViewModel
 import moe.rukamori.archivetune.viewmodels.LyricsSearchResultUiModel
@@ -173,7 +174,14 @@ fun LyricsMenu(
     val isRefetching by viewModel.isRefetching.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
-        viewModel.refetchCompletionEvents.collect {
+        viewModel.refetchCompletionEvents.collect { result ->
+            val messageResId =
+                when (result) {
+                    LyricsRefetchResult.Updated -> null
+                    LyricsRefetchResult.NotFound -> R.string.lyrics_not_found
+                    LyricsRefetchResult.Unavailable -> R.string.lyrics_refetch_failed
+                }
+            messageResId?.let { Toast.makeText(context, context.getString(it), Toast.LENGTH_SHORT).show() }
             onDismiss()
         }
     }

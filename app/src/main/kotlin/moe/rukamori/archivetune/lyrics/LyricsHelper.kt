@@ -30,6 +30,8 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
 import moe.rukamori.archivetune.constants.EnableBinimumLyricsKey
@@ -108,7 +110,7 @@ class LyricsHelper
             )
 
         private val cacheLock = Any()
-        private var cacheGeneration = 0L
+        private var searchCacheGeneration = 0L
         private val cache = object : LruCache<RequestKey, CachedResults>(SEARCH_CACHE_BYTES) {
             override fun sizeOf(key: RequestKey, value: CachedResults): Int =
                 value.results.sumOf { it.lyrics.length.toLong() * 2L }
@@ -147,11 +149,9 @@ class LyricsHelper
             while (true) {
                 currentCoroutineContext().ensureActive()
                 val candidate = CompletableDeferred<FetchedLyrics>()
-                val generation: Long
                 val shared: CompletableDeferred<FetchedLyrics>
                 synchronized(cacheLock) {
                     singleLyricsCache.get(request)?.let { return it }
-                    generation = cacheGeneration
                     shared = inFlight.getOrPut(request) { candidate }
                 }
                 if (shared !== candidate) {
@@ -167,20 +167,17 @@ class LyricsHelper
                     val lyrics = if (isNetworkAvailable()) {
                         fetchPriorityLyrics(providers, request)
                     } else {
-                        FetchedLyrics.NotFound
+                        FetchedLyrics.Unavailable
                     }
                     currentCoroutineContext().ensureActive()
                     synchronized(cacheLock) {
-                        if (generation == cacheGeneration && lyrics.lyrics != LYRICS_NOT_FOUND) {
+                        if (inFlight[request] === shared && lyrics.isFound) {
                             singleLyricsCache.put(request, lyrics)
                         }
                     }
                     shared.complete(lyrics)
                     return lyrics
                 } catch (e: Throwable) {
-                    synchronized(cacheLock) {
-                        if (inFlight[request] === shared) inFlight.remove(request)
-                    }
                     shared.completeExceptionally(e)
                     throw e
                 } finally {
@@ -208,8 +205,16 @@ class LyricsHelper
             val generation: Long
             val cached: CachedResults?
             synchronized(cacheLock) {
-                generation = cacheGeneration
-                cached = cache.get(request)?.takeIf { SystemClock.elapsedRealtime() < it.expiresAt }
+                generation = searchCacheGeneration
+                cached =
+                    cache.get(request)?.let { entry ->
+                        if (SystemClock.elapsedRealtime() < entry.expiresAt) {
+                            entry
+                        } else {
+                            cache.remove(request)
+                            null
+                        }
+                    }
             }
             if (cached != null) {
                 cached.results.forEach(callback)
@@ -218,6 +223,7 @@ class LyricsHelper
             if (!isNetworkAvailable()) return@withContext
 
             val results = mutableListOf<IndexedLyrics>()
+            val hadProviderFailure = AtomicBoolean(false)
             coroutineScope {
                 val channel = Channel<IndexedLyrics>(Channel.UNLIMITED)
                 val producer = launch {
@@ -241,10 +247,14 @@ class LyricsHelper
                                                 currentCoroutineContext().ensureActive()
                                                 true
                                             }
-                                            if (completed == null) logTimeout(provider)
+                                            if (completed == null) {
+                                                hadProviderFailure.set(true)
+                                                logTimeout(provider)
+                                            }
                                         } catch (e: CancellationException) {
                                             throw e
                                         } catch (e: Exception) {
+                                            hadProviderFailure.set(true)
                                             reportException(e)
                                         }
                                     }
@@ -271,9 +281,9 @@ class LyricsHelper
                     channel.cancel()
                 }
             }
-            if (results.isNotEmpty()) {
+            if (results.isNotEmpty() && !hadProviderFailure.get()) {
                 synchronized(cacheLock) {
-                    if (generation == cacheGeneration) {
+                    if (generation == searchCacheGeneration) {
                         cache.put(
                             request,
                             CachedResults(
@@ -290,19 +300,30 @@ class LyricsHelper
             providers: List<LyricsProvider>,
             request: RequestKey,
         ): FetchedLyrics = supervisorScope {
-            if (providers.isEmpty()) return@supervisorScope FetchedLyrics.NotFound
+            if (providers.isEmpty()) return@supervisorScope FetchedLyrics.Unavailable
+            val anyProviderAnswered = AtomicBoolean(false)
             val pending = providers.mapIndexed { index, provider ->
                 async(Dispatchers.IO) {
                     providerPermits.withPermit {
-                        fetchProviderLyrics(provider, request)?.let { result ->
-                            withContext(Dispatchers.Default) {
-                                Candidate(
-                                    index = index,
-                                    lyrics = result.lyrics,
-                                    sourceName = provider.sourceName(result.author),
-                                    quality = lyricsQuality(result.lyrics),
-                                )
+                        when (val outcome = fetchProviderLyrics(provider, request)) {
+                            is ProviderOutcome.Found -> {
+                                anyProviderAnswered.set(true)
+                                withContext(Dispatchers.Default) {
+                                    Candidate(
+                                        index = index,
+                                        lyrics = outcome.lyrics.lyrics,
+                                        sourceName = provider.sourceName(outcome.lyrics.author),
+                                        quality = lyricsQuality(outcome.lyrics.lyrics),
+                                    )
+                                }
                             }
+
+                            ProviderOutcome.Missing -> {
+                                anyProviderAnswered.set(true)
+                                null
+                            }
+
+                            ProviderOutcome.Failed -> null
                         }
                     }
                 }
@@ -344,7 +365,7 @@ class LyricsHelper
                     ) break
                 }
                 best?.let { FetchedLyrics(lyrics = it.lyrics, providerName = it.sourceName) }
-                    ?: FetchedLyrics.NotFound
+                    ?: if (anyProviderAnswered.get()) FetchedLyrics.NotFound else FetchedLyrics.Unavailable
             } finally {
                 jobs.forEach { it.cancel() }
             }
@@ -353,7 +374,7 @@ class LyricsHelper
         private suspend fun fetchProviderLyrics(
             provider: LyricsProvider,
             request: RequestKey,
-        ): ProviderLyrics? =
+        ): ProviderOutcome =
             try {
                 val result = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
                     provider.getAttributedLyrics(
@@ -362,7 +383,7 @@ class LyricsHelper
                 }
                 if (result == null) {
                     logTimeout(provider)
-                    null
+                    ProviderOutcome.Failed
                 } else {
                     result.fold(
                         onSuccess = { fetched ->
@@ -370,13 +391,14 @@ class LyricsHelper
                                 LyricsUtils
                                     .lyricsOrNotFound(fetched.lyrics)
                                     .takeIf { it != LYRICS_NOT_FOUND }
-                                    ?.let { fetched.copy(lyrics = it) }
+                                    ?.let { ProviderOutcome.Found(fetched.copy(lyrics = it)) }
+                                    ?: ProviderOutcome.Missing
                             }
                         },
                         onFailure = {
                             if (it is CancellationException) throw it
                             reportException(it)
-                            null
+                            it.toProviderFailureOutcome()
                         },
                     )
                 }
@@ -384,7 +406,14 @@ class LyricsHelper
                 throw e
             } catch (e: Exception) {
                 reportException(e)
-                null
+                e.toProviderFailureOutcome()
+            }
+
+        private fun Throwable.toProviderFailureOutcome(): ProviderOutcome =
+            if (generateSequence(this) { it.cause }.take(MAX_CAUSE_DEPTH).any { it is IOException }) {
+                ProviderOutcome.Failed
+            } else {
+                ProviderOutcome.Missing
             }
 
         private fun lyricsQuality(lyrics: String): Int = when {
@@ -441,7 +470,7 @@ class LyricsHelper
 
         fun clearCache() {
             synchronized(cacheLock) {
-                cacheGeneration++
+                searchCacheGeneration++
                 cache.evictAll()
                 singleLyricsCache.evictAll()
                 inFlight.clear()
@@ -450,7 +479,7 @@ class LyricsHelper
 
         private fun invalidateCache(request: RequestKey) {
             synchronized(cacheLock) {
-                cacheGeneration++
+                searchCacheGeneration++
                 cache.remove(request)
                 singleLyricsCache.remove(request)
                 inFlight.remove(request)
@@ -476,6 +505,14 @@ class LyricsHelper
             val result: LyricsResult,
         )
 
+        private sealed interface ProviderOutcome {
+            data class Found(val lyrics: ProviderLyrics) : ProviderOutcome
+
+            data object Missing : ProviderOutcome
+
+            data object Failed : ProviderOutcome
+        }
+
         private data class Candidate(
             val index: Int,
             val lyrics: String,
@@ -493,6 +530,7 @@ class LyricsHelper
             private const val PROVIDER_PRIORITY_GRACE_MS = 350L
             private const val SEARCH_CACHE_TTL_MS = 120_000L
             private const val WORD_SYNCED_QUALITY = 2
+            private const val MAX_CAUSE_DEPTH = 8
         }
     }
 
@@ -504,8 +542,13 @@ data class LyricsResult(
 data class FetchedLyrics(
     val lyrics: String,
     val providerName: String?,
+    val isConclusive: Boolean = true,
 ) {
+    val isFound: Boolean
+        get() = lyrics != LYRICS_NOT_FOUND
+
     companion object {
         val NotFound = FetchedLyrics(lyrics = LYRICS_NOT_FOUND, providerName = null)
+        val Unavailable = FetchedLyrics(lyrics = LYRICS_NOT_FOUND, providerName = null, isConclusive = false)
     }
 }

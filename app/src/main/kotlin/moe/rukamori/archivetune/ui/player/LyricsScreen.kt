@@ -144,6 +144,7 @@ import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.needsRemoteFetch
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
@@ -292,21 +293,22 @@ fun LyricsScreen(
 
     LaunchedEffect(mediaMetadata.id, currentLyrics?.lyrics) {
         if (mediaMetadata.isPodcast) return@LaunchedEffect
-        if (currentLyrics != null) return@LaunchedEffect
+        if (!currentLyrics.needsRemoteFetch()) return@LaunchedEffect
         try {
             val existingLyrics =
                 withContext(Dispatchers.IO) {
                     database.lyrics(mediaMetadata.id).first()
                 }
-            if (existingLyrics != null) return@LaunchedEffect
+            if (!existingLyrics.needsRemoteFetch()) return@LaunchedEffect
 
             val fetched =
                 withContext(Dispatchers.IO) {
                     lyricsHelper.getLyrics(mediaMetadata)
                 }
+            if (!fetched.isConclusive) return@LaunchedEffect
             withContext(Dispatchers.IO) {
                 database.query {
-                    insertLyricsIfAbsent(
+                    saveFetchedLyrics(
                         id = mediaMetadata.id,
                         lyrics = fetched.lyrics,
                         provider = fetched.providerName,

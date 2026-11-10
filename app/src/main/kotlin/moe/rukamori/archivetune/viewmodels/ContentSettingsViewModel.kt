@@ -237,7 +237,7 @@ class ContentSettingsViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 lyricsHelper.clearCache()
                 database.query {
-                    clearAllLyrics()
+                    clearRemoteLyrics()
                 }
             }
         }

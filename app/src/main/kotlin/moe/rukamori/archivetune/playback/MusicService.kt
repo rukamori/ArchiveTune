@@ -202,6 +202,7 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.db.entities.needsRemoteFetch
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.extensions.SilentHandler
@@ -1443,15 +1444,18 @@ class MusicService :
         }.collectLatest(ioScope) { (mediaMetadata, showLyrics) ->
             if (showLyrics && mediaMetadata != null && !mediaMetadata.isPodcast && database
                     .lyrics(mediaMetadata.id)
-                    .first() == null
+                    .first()
+                    .needsRemoteFetch()
             ) {
                 val fetched = lyricsHelper.getLyrics(mediaMetadata)
-                database.query {
-                    insertLyricsIfAbsent(
-                        id = mediaMetadata.id,
-                        lyrics = fetched.lyrics,
-                        provider = fetched.providerName,
-                    )
+                if (fetched.isConclusive) {
+                    database.query {
+                        saveFetchedLyrics(
+                            id = mediaMetadata.id,
+                            lyrics = fetched.lyrics,
+                            provider = fetched.providerName,
+                        )
+                    }
                 }
             }
         }
