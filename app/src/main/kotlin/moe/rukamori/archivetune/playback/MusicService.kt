@@ -81,6 +81,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -141,6 +142,7 @@ import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
+import moe.rukamori.archivetune.constants.DEFAULT_USB_DAC_VOLUME_PERCENT
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
@@ -186,6 +188,11 @@ import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectDriver
+import moe.rukamori.archivetune.constants.UsbBitPerfectDriverKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectFixedVolumeKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectKey
+import moe.rukamori.archivetune.constants.UsbDacVolumeKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.AlbumEntity
@@ -210,6 +217,7 @@ import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.extensions.toContinuationQueue
+import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.toPersistQueue
 import moe.rukamori.archivetune.extensions.toQueue
@@ -230,6 +238,10 @@ import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectAudioSink
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectEvent
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectOutput
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectRoutingSink
 import moe.rukamori.archivetune.playback.preload.NextStreamPreloader
 import moe.rukamori.archivetune.playback.preload.ObservePlaybackPreloadConfigurationUseCase
 import moe.rukamori.archivetune.playback.preload.PlaybackPreloadConfiguration
@@ -351,6 +363,9 @@ class MusicService :
     @Inject
     lateinit var sponsorBlockPlaybackController: SponsorBlockPlaybackController
 
+    @Inject
+    lateinit var bitPerfectOutput: BitPerfectOutput
+
     private var playbackPreloadConfiguration: PlaybackPreloadConfiguration? = null
 
     private lateinit var audioManager: AudioManager
@@ -375,6 +390,10 @@ class MusicService :
     private lateinit var audioOutputResolver: AudioOutputResolver
 
     val activeAudioDevice get() = audioOutputResolver.activeAudioDevice
+
+    val bitPerfectStatus get() = bitPerfectOutput.status
+
+    fun requestBitPerfectUsbPermission() = bitPerfectOutput.requestUsbPermission()
 
     fun refreshActiveDevice() = audioOutputResolver.refresh()
 
@@ -1203,6 +1222,12 @@ class MusicService :
             reportException(e)
         }
 
+        bitPerfectOutput.setDeviceVolume(dataStore.get(UsbDacVolumeKey, DEFAULT_USB_DAC_VOLUME_PERCENT) / 100f)
+        bitPerfectOutput.configure(
+            enabled = dataStore.get(UsbBitPerfectKey, false),
+            driver = dataStore[UsbBitPerfectDriverKey].toEnum(UsbBitPerfectDriver.ANDROID),
+            allowFixedVolume = dataStore.get(UsbBitPerfectFixedVolumeKey, false),
+        )
         localPlayer =
             ExoPlayer
                 .Builder(this)
@@ -1299,6 +1324,8 @@ class MusicService :
         audioDeviceCallbackRegistered = true
         lastAudioOutputDeviceSignature = currentAudioOutputDeviceSignature()
         audioOutputResolver.refresh()
+        bitPerfectOutput.refreshDevice()
+        updateAudioBecomingNoisyHandling()
 
         mediaLibrarySessionCallback.apply {
             toggleLike = ::toggleLike
@@ -1468,6 +1495,36 @@ class MusicService :
                     unregisterBluetoothReceiver()
                 }
             }
+
+        dataStore.data
+            .map { prefs ->
+                Triple(
+                    prefs[UsbBitPerfectKey] ?: false,
+                    prefs[UsbBitPerfectDriverKey].toEnum(UsbBitPerfectDriver.ANDROID),
+                    prefs[UsbBitPerfectFixedVolumeKey] ?: false,
+                )
+            }.distinctUntilChanged()
+            .collectLatest(scope) { (enabled, driver, allowFixedVolume) ->
+                if (bitPerfectOutput.configure(enabled, driver, allowFixedVolume)) {
+                    updateAudioBecomingNoisyHandling()
+                    reselectAudioSinkOutput()
+                }
+            }
+
+        dataStore.data
+            .map { (it[UsbDacVolumeKey] ?: DEFAULT_USB_DAC_VOLUME_PERCENT).coerceIn(0, 100) }
+            .distinctUntilChanged()
+            .collectLatest(scope) { percent ->
+                bitPerfectOutput.setDeviceVolume(percent / 100f)
+            }
+
+        bitPerfectOutput.events.collect(scope) { event ->
+            updateAudioBecomingNoisyHandling()
+            if (event == BitPerfectEvent.DAC_DETACHED && localPlayer.playWhenReady) {
+                localPlayer.pause()
+            }
+            reselectAudioSinkOutput()
+        }
 
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
@@ -2400,6 +2457,9 @@ class MusicService :
         if (outputSignature == lastAudioOutputDeviceSignature) return
         lastAudioOutputDeviceSignature = outputSignature
         audioOutputResolver.refresh()
+        bitPerfectOutput.refreshDevice()
+        updateAudioBecomingNoisyHandling()
+        if (bitPerfectOutput.ownsUsbDisconnectHandling) return
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         player.setAudioAttributes(playbackAudioAttributes(), false)
         audioRouteRecoveryJob?.cancel()
@@ -2415,7 +2475,10 @@ class MusicService :
 
         rebindAudioEffectsAfterRouteChange()
 
-        if (!shouldRebuildPlaybackForAudioRouteChange()) return
+        if (!shouldRebuildPlaybackForAudioRouteChange()) {
+            if (bitPerfectOutput.enabled) reselectAudioSinkOutput()
+            return
+        }
 
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastAudioRouteRecoveryRealtimeMs < AUDIO_ROUTE_RECOVERY_MIN_INTERVAL_MS) return
@@ -2456,6 +2519,18 @@ class MusicService :
         if (!player.playWhenReady) return
         delay(AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS)
         openAudioEffectSession()
+    }
+
+    private fun updateAudioBecomingNoisyHandling() {
+        if (!::localPlayer.isInitialized) return
+        localPlayer.setHandleAudioBecomingNoisy(!bitPerfectOutput.ownsUsbDisconnectHandling)
+    }
+
+    private fun reselectAudioSinkOutput() {
+        if (!::localPlayer.isInitialized || localPlayer.currentMediaItem == null) return
+        val state = localPlayer.playbackState
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return
+        localPlayer.seekTo(localPlayer.currentPosition.coerceAtLeast(0L))
     }
 
     private fun shouldRebuildPlaybackForAudioRouteChange(): Boolean {
@@ -8362,22 +8437,26 @@ class MusicService :
                 context: Context,
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
-            ) = DefaultAudioSink
-                .Builder(context)
-                .setEnableFloatOutput(false)
-                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessorChain(
-                    DefaultAudioSink.DefaultAudioProcessorChain(
-                        SilenceSkippingAudioProcessor(
-                            1_500_000L,
-                            0.35f,
-                            500_000L,
-                            10,
-                            150.toShort(),
-                        ),
-                        SonicAudioProcessor(),
-                    ),
-                ).build()
+            ): AudioSink {
+                val standardSink =
+                    DefaultAudioSink
+                        .Builder(context)
+                        .setEnableFloatOutput(false)
+                        .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                        .setAudioProcessorChain(
+                            DefaultAudioSink.DefaultAudioProcessorChain(
+                                SilenceSkippingAudioProcessor(
+                                    1_500_000L,
+                                    0.35f,
+                                    500_000L,
+                                    10,
+                                    150.toShort(),
+                                ),
+                                SonicAudioProcessor(),
+                            ),
+                        ).build()
+                return BitPerfectRoutingSink(standardSink, BitPerfectAudioSink(bitPerfectOutput))
+            }
         }
 
     override fun onPlaybackStatsReady(

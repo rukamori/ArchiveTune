@@ -1,0 +1,5 @@
+{
+    global:
+        Java_moe_rukamori_archivetune_playback_bitperfect_*;
+    local: *;
+};

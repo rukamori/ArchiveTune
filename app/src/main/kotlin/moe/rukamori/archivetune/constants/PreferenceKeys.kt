@@ -317,6 +317,16 @@ val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
 val AudioOffload = booleanPreferencesKey("audioOffload")
+val UsbBitPerfectKey = booleanPreferencesKey("usbBitPerfect")
+val UsbBitPerfectDriverKey = stringPreferencesKey("usbBitPerfectDriver")
+val UsbBitPerfectFixedVolumeKey = booleanPreferencesKey("usbBitPerfectFixedVolume")
+val UsbDacVolumeKey = intPreferencesKey("usbDacVolume")
+const val DEFAULT_USB_DAC_VOLUME_PERCENT = 25
+
+enum class UsbBitPerfectDriver {
+    ANDROID,
+    DIRECT,
+}
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
