@@ -368,12 +368,13 @@ fun LyricsV2(
         remember(listState, density, firstLyricIndex, lineBaseTopPadding, singerLaneHeight) {
             val baseTopPx = with(density) { lineBaseTopPadding.roundToPx() }
             val laneBottomPx = with(density) { (singerLaneHeight - V2SingerBubbleGap).roundToPx() }
-            {
+            val bubbleBottomProvider: () -> Int? = {
                 val activeIndex = currentLineIndexState.value
                 listState.layoutInfo.visibleItemsInfo
-                    .firstOrNull { it.index == activeIndex }
+                    .firstOrNull { item -> item.index == activeIndex }
                     ?.let { item -> item.offset + (if (item.index <= firstLyricIndex) 0 else baseTopPx) + laneBottomPx }
             }
+            bubbleBottomProvider
         }
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
