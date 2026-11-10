@@ -504,7 +504,7 @@ private fun LyricsSearchFieldFeedback(
                 .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
             AnimatedVisibility(
                 visible = showTitleRequired,
                 enter = fadeIn(motionScheme.fastEffectsSpec()) + expandVertically(motionScheme.fastSpatialSpec()),
