@@ -670,6 +670,7 @@ private fun PreferredLyricsProvider.enableLabel(): String = stringResource(
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> R.string.paxsenix_apple_music
         PreferredLyricsProvider.PAXSENIX_SPOTIFY -> R.string.paxsenix_spotify
         PreferredLyricsProvider.PAXSENIX_MUSIXMATCH -> R.string.paxsenix_musixmatch
+        PreferredLyricsProvider.MUSIXMATCH -> R.string.enable_musixmatch_lyrics
     },
 )
 
@@ -691,6 +692,7 @@ private fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.PAXSENIX_SPOTIFY -> stringResource(R.string.paxsenix_spotify)
         PreferredLyricsProvider.PAXSENIX_MUSIXMATCH -> stringResource(R.string.paxsenix_musixmatch)
         PreferredLyricsProvider.UNISON -> "Unison"
+        PreferredLyricsProvider.MUSIXMATCH -> "Musixmatch"
     }
 
 @Composable

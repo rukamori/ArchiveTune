@@ -3,7 +3,8 @@
 	url = https://github.com/rukamori/core.git
 [submodule "lyrics"]
 	path = lyrics
-	url = https://github.com/rukamori/lyrics.git
+	url = https://github.com/adam-adrian/lyrics
+	branch = feat/musicmatch-reimp
 [submodule "IconPack"]
 	path = IconPack
 	url = https://github.com/rukamori/IconPack
