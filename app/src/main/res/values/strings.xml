@@ -325,6 +325,14 @@
     <string name="edit_song">Edit song</string>
     <string name="song_title">Song title</string>
     <string name="song_artists">Song artists</string>
+    <string name="lyrics_search_filter_empty">No lyrics in this format</string>
+    <string name="lyrics_search_show_all_formats">Show all formats</string>
+    <string name="lyrics_search_title_required">Enter a song title to search</string>
+    <string name="lyrics_search_online_failed">Couldn\'t open a web search app.</string>
+    <plurals name="lyrics_search_format_filter_description">
+        <item quantity="one">%1$s, %2$d result</item>
+        <item quantity="other">%1$s, %2$d results</item>
+    </plurals>
     <string name="unsupported_language">Unsupported language: %1$s</string>
     <string name="source">Source</string>
     <string name="save">Save</string>

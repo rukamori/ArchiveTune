@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.common.collect.ImmutableList
+import com.google.common.collect.ImmutableMap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -64,6 +65,7 @@ sealed interface LyricsSearchScreenState {
     @Immutable
     data class Success(
         val results: ImmutableList<LyricsSearchResultUiModel>,
+        val formatCounts: ImmutableMap<LyricsSearchFormat, Int>,
         val isSearching: Boolean,
     ) : LyricsSearchScreenState
 
@@ -75,6 +77,12 @@ sealed interface LyricsSearchScreenState {
     ) : LyricsSearchScreenState
 }
 
+enum class LyricsSearchFormat {
+    WORD_SYNCED,
+    LINE_SYNCED,
+    PLAIN,
+}
+
 @Immutable
 data class LyricsSearchResultUiModel(
     val id: String,
@@ -83,8 +91,7 @@ data class LyricsSearchResultUiModel(
     val preview: String,
     val lineCount: Int,
     val characterCount: Int,
-    val isLineSynced: Boolean,
-    val isWordSynced: Boolean,
+    val format: LyricsSearchFormat,
 )
 
 @Immutable
@@ -188,21 +195,14 @@ class LyricsMenuViewModel
                             if (model.preview.isBlank()) return@getAllLyrics
 
                             resultModels += model
-                            _lyricsSearchState.value =
-                                LyricsSearchScreenState.Success(
-                                    results = ImmutableList.copyOf(resultModels),
-                                    isSearching = true,
-                                )
+                            _lyricsSearchState.value = resultModels.toSuccessState(isSearching = true)
                         }
                         if (generation != searchGeneration.get()) return@launch
                         _lyricsSearchState.value =
                             if (resultModels.isEmpty()) {
                                 LyricsSearchScreenState.Empty
                             } else {
-                                LyricsSearchScreenState.Success(
-                                    results = ImmutableList.copyOf(resultModels),
-                                    isSearching = false,
-                                )
+                                resultModels.toSuccessState(isSearching = false)
                             }
                     } catch (e: CancellationException) {
                         throw e
@@ -430,17 +430,33 @@ class LyricsMenuViewModel
             isAiTranslating.value = false
         }
 
+        private fun List<LyricsSearchResultUiModel>.toSuccessState(isSearching: Boolean): LyricsSearchScreenState.Success {
+            val counts = ImmutableMap.builder<LyricsSearchFormat, Int>()
+            LyricsSearchFormat.entries.forEach { format ->
+                counts.put(format, count { it.format == format })
+            }
+            return LyricsSearchScreenState.Success(
+                results = ImmutableList.copyOf(this),
+                formatCounts = counts.build(),
+                isSearching = isSearching,
+            )
+        }
+
         private fun LyricsResult.toUiModel(index: Int): LyricsSearchResultUiModel {
             val preview = displayLyricsText(lyrics)
             val lineCount = preview.lineSequence().count { it.isNotBlank() }
-            val isTtmlLyrics = isTtml(lyrics)
-            val ttmlEntries =
-                if (isTtmlLyrics) {
-                    runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList())
-                } else {
-                    emptyList()
+            val format =
+                when {
+                    LyricsUtils.hasWordSyncedLyrics(lyrics) -> LyricsSearchFormat.WORD_SYNCED
+                    isTtml(lyrics) ->
+                        if (runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList()).isNotEmpty()) {
+                            LyricsSearchFormat.LINE_SYNCED
+                        } else {
+                            LyricsSearchFormat.PLAIN
+                        }
+                    isLineSyncedLrc(lyrics) -> LyricsSearchFormat.LINE_SYNCED
+                    else -> LyricsSearchFormat.PLAIN
                 }
-            val isWordSynced = LyricsUtils.hasWordSyncedLyrics(lyrics)
 
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
@@ -449,13 +465,7 @@ class LyricsMenuViewModel
                 preview = preview,
                 lineCount = lineCount,
                 characterCount = preview.length,
-                isLineSynced =
-                    when {
-                        isWordSynced -> false
-                        isTtmlLyrics -> ttmlEntries.isNotEmpty()
-                        else -> isLineSyncedLrc(lyrics)
-                    },
-                isWordSynced = isWordSynced,
+                format = format,
             )
         }
     }
