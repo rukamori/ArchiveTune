@@ -87,6 +87,9 @@ enum class LyricsSearchFormat {
 data class LyricsSearchResultUiModel(
     val id: String,
     val providerName: String,
+    val providerUrl: String?,
+    val author: String?,
+    val authorUrl: String?,
     val lyrics: String,
     val preview: String,
     val lineCount: Int,
@@ -240,6 +243,9 @@ class LyricsMenuViewModel
                                         lyrics = fetched.lyrics,
                                         source = LyricsEntity.Source.REMOTE.value,
                                         provider = fetched.providerName,
+                                        providerUrl = fetched.providerUrl,
+                                        providerAuthor = fetched.author,
+                                        providerAuthorUrl = fetched.authorUrl,
                                     )
                                 }
                                 LyricsRefetchResult.Updated
@@ -251,6 +257,9 @@ class LyricsMenuViewModel
                                         id = mediaMetadata.id,
                                         lyrics = fetched.lyrics,
                                         provider = fetched.providerName,
+                                        providerUrl = fetched.providerUrl,
+                                        providerAuthor = fetched.author,
+                                        providerAuthorUrl = fetched.authorUrl,
                                     )
                                 }
                                 LyricsRefetchResult.NotFound
@@ -277,6 +286,9 @@ class LyricsMenuViewModel
             lyrics: String,
             source: LyricsEntity.Source = LyricsEntity.Source.USER_EDIT,
             provider: String? = null,
+            providerUrl: String? = null,
+            providerAuthor: String? = null,
+            providerAuthorUrl: String? = null,
         ) {
             viewModelScope.launch(Dispatchers.IO) {
                 val lyricsToSave =
@@ -299,6 +311,9 @@ class LyricsMenuViewModel
                         lyrics = lyricsToSave,
                         source = source.value,
                         provider = provider,
+                        providerUrl = providerUrl,
+                        providerAuthor = providerAuthor,
+                        providerAuthorUrl = providerAuthorUrl,
                     )
                 }
             }
@@ -461,6 +476,9 @@ class LyricsMenuViewModel
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
                 providerName = providerName,
+                providerUrl = providerUrl,
+                author = author,
+                authorUrl = authorUrl,
                 lyrics = lyrics,
                 preview = preview,
                 lineCount = lineCount,

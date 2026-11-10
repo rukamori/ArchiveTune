@@ -20,6 +20,9 @@ data class LyricsEntity(
     @ColumnInfo(defaultValue = "0")
     val updatedAt: Long = System.currentTimeMillis(),
     val provider: String? = null,
+    val providerUrl: String? = null,
+    val providerAuthor: String? = null,
+    val providerAuthorUrl: String? = null,
 ) {
     fun hasGenericSource(): Boolean =
         source == Source.REMOTE.value ||

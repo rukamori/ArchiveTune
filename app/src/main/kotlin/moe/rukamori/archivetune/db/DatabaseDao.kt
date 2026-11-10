@@ -2186,13 +2186,14 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(lyrics: LyricsEntity): Long
 
-    @Query("SELECT provider FROM lyrics WHERE id = :id")
-    fun lyricsProvider(id: String): String?
+    @Query("SELECT * FROM lyrics WHERE id = :id LIMIT 1")
+    fun lyricsBlocking(id: String): LyricsEntity?
 
     @Query(
         """
         UPDATE lyrics
-        SET lyrics = :lyrics, source = :source, updatedAt = :updatedAt, provider = :provider
+        SET lyrics = :lyrics, source = :source, updatedAt = :updatedAt, provider = :provider,
+            providerUrl = :providerUrl, providerAuthor = :providerAuthor, providerAuthorUrl = :providerAuthorUrl
         WHERE id = :id AND lyrics = :notFoundLyrics AND source = :remoteSource
         """,
     )
@@ -2201,6 +2202,9 @@ interface DatabaseDao {
         lyrics: String,
         source: String,
         provider: String?,
+        providerUrl: String?,
+        providerAuthor: String?,
+        providerAuthorUrl: String?,
         updatedAt: Long,
         notFoundLyrics: String,
         remoteSource: String,
@@ -2211,6 +2215,9 @@ interface DatabaseDao {
         id: String,
         lyrics: String,
         provider: String?,
+        providerUrl: String? = null,
+        providerAuthor: String? = null,
+        providerAuthorUrl: String? = null,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
         val source = LyricsEntity.Source.REMOTE.value
@@ -2222,6 +2229,9 @@ interface DatabaseDao {
                     source = source,
                     updatedAt = updatedAt,
                     provider = provider,
+                    providerUrl = providerUrl,
+                    providerAuthor = providerAuthor,
+                    providerAuthorUrl = providerAuthorUrl,
                 ),
             )
         if (insertedRowId == -1L) {
@@ -2230,6 +2240,9 @@ interface DatabaseDao {
                 lyrics = lyrics,
                 source = source,
                 provider = provider,
+                providerUrl = providerUrl,
+                providerAuthor = providerAuthor,
+                providerAuthorUrl = providerAuthorUrl,
                 updatedAt = updatedAt,
                 notFoundLyrics = LyricsEntity.LYRICS_NOT_FOUND,
                 remoteSource = source,
@@ -2243,6 +2256,9 @@ interface DatabaseDao {
         lyrics: String,
         source: String,
         provider: String?,
+        providerUrl: String? = null,
+        providerAuthor: String? = null,
+        providerAuthorUrl: String? = null,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
         upsert(
@@ -2252,6 +2268,9 @@ interface DatabaseDao {
                 source = source,
                 updatedAt = updatedAt,
                 provider = provider,
+                providerUrl = providerUrl,
+                providerAuthor = providerAuthor,
+                providerAuthorUrl = providerAuthorUrl,
             ),
         )
     }
@@ -2263,11 +2282,15 @@ interface DatabaseDao {
         source: String,
         updatedAt: Long = System.currentTimeMillis(),
     ) {
+        val existing = lyricsBlocking(id)
         replaceLyrics(
             id = id,
             lyrics = lyrics,
             source = source,
-            provider = lyricsProvider(id),
+            provider = existing?.provider,
+            providerUrl = existing?.providerUrl,
+            providerAuthor = existing?.providerAuthor,
+            providerAuthorUrl = existing?.providerAuthorUrl,
             updatedAt = updatedAt,
         )
     }

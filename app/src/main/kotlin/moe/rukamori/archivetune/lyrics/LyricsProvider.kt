@@ -12,6 +12,8 @@ import android.content.Context
 data class ProviderLyrics(
     val lyrics: String,
     val author: String? = null,
+    val sourceUrl: String? = null,
+    val authorUrl: String? = null,
 )
 
 interface LyricsProvider {
@@ -58,5 +60,13 @@ interface LyricsProvider {
     }
 }
 
-fun LyricsProvider.sourceName(author: String?): String =
-    author?.trim()?.takeIf { it.isNotEmpty() }?.let { "$name - $it" } ?: name
+fun LyricsProvider.toLyricsResult(result: ProviderLyrics): LyricsResult {
+    val author = result.author?.trim()?.takeIf { it.isNotEmpty() }
+    return LyricsResult(
+        providerName = author?.let { "$name - $it" } ?: name,
+        lyrics = result.lyrics,
+        providerUrl = result.sourceUrl,
+        author = author,
+        authorUrl = result.authorUrl?.takeIf { author != null },
+    )
+}

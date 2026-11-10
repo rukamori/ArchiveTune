@@ -79,5 +79,11 @@ object UnisonLyricsProvider : LyricsProvider {
         ) { callback(it.toProviderLyrics()) }
     }
 
-    private fun UnisonLyrics.toProviderLyrics() = ProviderLyrics(lyrics = lyrics, author = submitterName)
+    private fun UnisonLyrics.toProviderLyrics() =
+        ProviderLyrics(
+            lyrics = lyrics,
+            author = submitterName,
+            sourceUrl = Unison.lyricsPageUrl(this),
+            authorUrl = Unison.submitterPageUrl(this),
+        )
 }

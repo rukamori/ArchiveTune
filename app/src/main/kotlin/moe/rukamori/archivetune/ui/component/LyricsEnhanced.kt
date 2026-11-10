@@ -60,6 +60,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
@@ -81,6 +82,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -146,7 +148,7 @@ fun LyricsEnhanced(
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
-    sourceLabel: String? = null,
+    sourceLabel: AnnotatedString? = null,
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
     lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
@@ -713,7 +715,7 @@ private fun PlainLyricsView(
     lines: PlainLyrics,
     listState: LazyListState,
     selectedLineKeys: Set<String>,
-    sourceLabel: String?,
+    sourceLabel: AnnotatedString?,
     textColor: Color,
     textStyle: TextStyle,
     onLineClicked: (String) -> Unit,
@@ -767,7 +769,7 @@ private fun PlainLyricsView(
 
 @Composable
 private fun KaraokeLyricsSourceLabel(
-    text: String,
+    text: AnnotatedString,
     textColor: Color,
     listState: LyricsLazyListState,
     anchorOffset: Dp,
@@ -776,9 +778,16 @@ private fun KaraokeLyricsSourceLabel(
     val density = LocalDensity.current
     val anchorPx = with(density) { anchorOffset.toPx() }
     val gapPx = with(density) { LyricsSourceLabelGap.toPx() }
+    val isLabelVisible by remember(listState, anchorPx, gapPx) {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 &&
+                anchorPx - listState.firstVisibleItemScrollOffset - gapPx > 0f
+        }
+    }
+    val displayedText = remember(text, isLabelVisible) { if (isLabelVisible) text else text.withoutLinks() }
 
     LyricsSourceLabelText(
-        text = text,
+        text = displayedText,
         textColor = textColor,
         modifier =
             modifier
@@ -798,7 +807,7 @@ private fun KaraokeLyricsSourceLabel(
 
 @Composable
 private fun LyricsSourceLabelText(
-    text: String,
+    text: AnnotatedString,
     textColor: Color,
     modifier: Modifier = Modifier,
 ) {

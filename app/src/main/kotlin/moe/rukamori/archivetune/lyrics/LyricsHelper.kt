@@ -237,12 +237,7 @@ class LyricsHelper
                                                 provider.getAllAttributedLyrics(
                                                     mediaId, songTitle, songArtists, songAlbum, duration,
                                                 ) { result ->
-                                                    channel.trySend(
-                                                        IndexedLyrics(
-                                                            index,
-                                                            LyricsResult(provider.sourceName(result.author), result.lyrics),
-                                                        ),
-                                                    )
+                                                    channel.trySend(IndexedLyrics(index, provider.toLyricsResult(result)))
                                                 }
                                                 currentCoroutineContext().ensureActive()
                                                 true
@@ -272,7 +267,7 @@ class LyricsHelper
                         }
                         if (normalized == LYRICS_NOT_FOUND) continue
                         val entry = result.copy(result = result.result.copy(lyrics = normalized))
-                        if (results.any { it.result == entry.result }) continue
+                        if (results.any { it.result.isSameLyrics(entry.result) }) continue
                         results += entry
                         callback(entry.result)
                     }
@@ -311,8 +306,7 @@ class LyricsHelper
                                 withContext(Dispatchers.Default) {
                                     Candidate(
                                         index = index,
-                                        lyrics = outcome.lyrics.lyrics,
-                                        sourceName = provider.sourceName(outcome.lyrics.author),
+                                        result = provider.toLyricsResult(outcome.lyrics),
                                         quality = lyricsQuality(outcome.lyrics.lyrics),
                                     )
                                 }
@@ -364,7 +358,7 @@ class LyricsHelper
                         (0 until selected.index).all { completed[it] }
                     ) break
                 }
-                best?.let { FetchedLyrics(lyrics = it.lyrics, providerName = it.sourceName) }
+                best?.let { FetchedLyrics.from(it.result) }
                     ?: if (anyProviderAnswered.get()) FetchedLyrics.NotFound else FetchedLyrics.Unavailable
             } finally {
                 jobs.forEach { it.cancel() }
@@ -515,8 +509,7 @@ class LyricsHelper
 
         private data class Candidate(
             val index: Int,
-            val lyrics: String,
-            val sourceName: String,
+            val result: LyricsResult,
             val quality: Int,
         )
 
@@ -537,17 +530,34 @@ class LyricsHelper
 data class LyricsResult(
     val providerName: String,
     val lyrics: String,
-)
+    val providerUrl: String? = null,
+    val author: String? = null,
+    val authorUrl: String? = null,
+) {
+    fun isSameLyrics(other: LyricsResult): Boolean = providerName == other.providerName && lyrics == other.lyrics
+}
 
 data class FetchedLyrics(
     val lyrics: String,
     val providerName: String?,
     val isConclusive: Boolean = true,
+    val providerUrl: String? = null,
+    val author: String? = null,
+    val authorUrl: String? = null,
 ) {
     val isFound: Boolean
         get() = lyrics != LYRICS_NOT_FOUND
 
     companion object {
+        fun from(result: LyricsResult): FetchedLyrics =
+            FetchedLyrics(
+                lyrics = result.lyrics,
+                providerName = result.providerName,
+                providerUrl = result.providerUrl,
+                author = result.author,
+                authorUrl = result.authorUrl,
+            )
+
         val NotFound = FetchedLyrics(lyrics = LYRICS_NOT_FOUND, providerName = null)
         val Unavailable = FetchedLyrics(lyrics = LYRICS_NOT_FOUND, providerName = null, isConclusive = false)
     }

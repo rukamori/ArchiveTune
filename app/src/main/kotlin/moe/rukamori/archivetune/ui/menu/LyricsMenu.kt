@@ -354,6 +354,9 @@ fun LyricsMenu(
                     lyrics = result.lyrics,
                     source = LyricsEntity.Source.USER_SELECTION,
                     provider = result.providerName,
+                    providerUrl = result.providerUrl,
+                    providerAuthor = result.author,
+                    providerAuthorUrl = result.authorUrl,
                 )
             },
             onDismiss = {

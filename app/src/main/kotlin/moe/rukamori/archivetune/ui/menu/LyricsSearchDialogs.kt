@@ -115,6 +115,7 @@ import coil3.compose.AsyncImage
 import com.google.common.collect.ImmutableMap
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.buildLyricsSourceLabel
 import moe.rukamori.archivetune.ui.player.EditorialMorphShape
 import moe.rukamori.archivetune.viewmodels.LyricsSearchFormat
 import moe.rukamori.archivetune.viewmodels.LyricsSearchResultUiModel
@@ -1105,6 +1106,16 @@ private fun LyricsSearchResultCard(
         label = "lyricsResultExpansion",
     )
     val stats = stringResource(R.string.lyrics_search_result_stats, result.lineCount, result.characterCount)
+    val providerLabel =
+        remember(result.providerName, result.providerUrl, result.author, result.authorUrl) {
+            buildLyricsSourceLabel(
+                text = result.providerName,
+                providerName = result.providerName,
+                providerUrl = result.providerUrl,
+                author = result.author,
+                authorUrl = result.authorUrl,
+            )
+        }
 
     Surface(
         onClick = onExpandedChange,
@@ -1127,7 +1138,7 @@ private fun LyricsSearchResultCard(
                 LyricsSearchFormatGlyph(style = style, expansion = expansion)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = result.providerName,
+                        text = providerLabel,
                         style = MaterialTheme.typography.titleMediumEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

@@ -1454,6 +1454,9 @@ class MusicService :
                             id = mediaMetadata.id,
                             lyrics = fetched.lyrics,
                             provider = fetched.providerName,
+                            providerUrl = fetched.providerUrl,
+                            providerAuthor = fetched.author,
+                            providerAuthorUrl = fetched.authorUrl,
                         )
                     }
                 }

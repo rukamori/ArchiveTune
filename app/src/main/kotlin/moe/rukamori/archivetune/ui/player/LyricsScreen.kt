@@ -101,6 +101,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -151,6 +152,7 @@ import moe.rukamori.archivetune.ui.component.LyricsEnhanced
 import moe.rukamori.archivetune.ui.component.LyricsSearchingIndicator
 import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
+import moe.rukamori.archivetune.ui.component.buildLyricsSourceLabel
 import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -226,11 +228,22 @@ fun LyricsScreen(
             ?.let { entity ->
                 when {
                     entity.source == LyricsEntity.Source.EMBEDDED.value -> {
-                        stringResource(R.string.lyrics_source_label, stringResource(R.string.lyrics_source_embedded))
+                        AnnotatedString(
+                            stringResource(R.string.lyrics_source_label, stringResource(R.string.lyrics_source_embedded)),
+                        )
                     }
 
                     entity.provider != null -> {
-                        stringResource(R.string.lyrics_source_label, entity.provider)
+                        val label = stringResource(R.string.lyrics_source_label, entity.provider)
+                        remember(label, entity.provider, entity.providerUrl, entity.providerAuthor, entity.providerAuthorUrl) {
+                            buildLyricsSourceLabel(
+                                text = label,
+                                providerName = entity.provider,
+                                providerUrl = entity.providerUrl,
+                                author = entity.providerAuthor,
+                                authorUrl = entity.providerAuthorUrl,
+                            )
+                        }
                     }
 
                     else -> {
@@ -312,6 +325,9 @@ fun LyricsScreen(
                         id = mediaMetadata.id,
                         lyrics = fetched.lyrics,
                         provider = fetched.providerName,
+                        providerUrl = fetched.providerUrl,
+                        providerAuthor = fetched.author,
+                        providerAuthorUrl = fetched.authorUrl,
                     )
                 }
             }
@@ -972,7 +988,7 @@ private fun AppleMusicLyricsPane(
     lyricsState: LyricsRenderScreenState,
     foregroundColor: Color,
     sliderPositionProvider: () -> Long?,
-    sourceLabel: String?,
+    sourceLabel: AnnotatedString?,
     lyricsSyncOffset: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -1387,7 +1403,7 @@ private fun LyricsContent(
     lyricsMode: LyricsMode,
     lyricsState: LyricsRenderScreenState,
     sliderPositionProvider: () -> Long?,
-    sourceLabel: String?,
+    sourceLabel: AnnotatedString?,
     lyricsSyncOffset: Int,
     textColor: Color,
     modifier: Modifier = Modifier,
