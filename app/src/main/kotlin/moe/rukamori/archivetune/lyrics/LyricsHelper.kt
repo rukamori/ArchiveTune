@@ -228,10 +228,15 @@ class LyricsHelper
                                     providerPermits.withPermit {
                                         try {
                                             val completed = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
-                                                provider.getAllLyrics(
+                                                provider.getAllAttributedLyrics(
                                                     mediaId, songTitle, songArtists, songAlbum, duration,
-                                                ) { lyrics ->
-                                                    channel.trySend(IndexedLyrics(index, LyricsResult(provider.name, lyrics)))
+                                                ) { result ->
+                                                    channel.trySend(
+                                                        IndexedLyrics(
+                                                            index,
+                                                            LyricsResult(provider.sourceName(result.author), result.lyrics),
+                                                        ),
+                                                    )
                                                 }
                                                 currentCoroutineContext().ensureActive()
                                                 true
@@ -289,9 +294,14 @@ class LyricsHelper
             val pending = providers.mapIndexed { index, provider ->
                 async(Dispatchers.IO) {
                     providerPermits.withPermit {
-                        fetchProviderLyrics(provider, request)?.let { lyrics ->
+                        fetchProviderLyrics(provider, request)?.let { result ->
                             withContext(Dispatchers.Default) {
-                                Candidate(index, lyrics, lyricsQuality(lyrics))
+                                Candidate(
+                                    index = index,
+                                    lyrics = result.lyrics,
+                                    sourceName = provider.sourceName(result.author),
+                                    quality = lyricsQuality(result.lyrics),
+                                )
                             }
                         }
                     }
@@ -333,7 +343,7 @@ class LyricsHelper
                         (0 until selected.index).all { completed[it] }
                     ) break
                 }
-                best?.let { FetchedLyrics(lyrics = it.lyrics, providerName = providers[it.index].name) }
+                best?.let { FetchedLyrics(lyrics = it.lyrics, providerName = it.sourceName) }
                     ?: FetchedLyrics.NotFound
             } finally {
                 jobs.forEach { it.cancel() }
@@ -343,10 +353,10 @@ class LyricsHelper
         private suspend fun fetchProviderLyrics(
             provider: LyricsProvider,
             request: RequestKey,
-        ): String? =
+        ): ProviderLyrics? =
             try {
                 val result = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
-                    provider.getLyrics(
+                    provider.getAttributedLyrics(
                         request.mediaId, request.title, request.artists, request.album, request.duration,
                     ).also { currentCoroutineContext().ensureActive() }
                 }
@@ -355,9 +365,12 @@ class LyricsHelper
                     null
                 } else {
                     result.fold(
-                        onSuccess = { lyrics ->
+                        onSuccess = { fetched ->
                             withContext(Dispatchers.Default) {
-                                LyricsUtils.lyricsOrNotFound(lyrics).takeIf { it != LYRICS_NOT_FOUND }
+                                LyricsUtils
+                                    .lyricsOrNotFound(fetched.lyrics)
+                                    .takeIf { it != LYRICS_NOT_FOUND }
+                                    ?.let { fetched.copy(lyrics = it) }
                             }
                         },
                         onFailure = {
@@ -466,6 +479,7 @@ class LyricsHelper
         private data class Candidate(
             val index: Int,
             val lyrics: String,
+            val sourceName: String,
             val quality: Int,
         )
 
