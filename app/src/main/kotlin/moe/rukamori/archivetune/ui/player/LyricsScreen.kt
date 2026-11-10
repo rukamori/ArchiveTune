@@ -121,6 +121,9 @@ import coil3.request.allowHardware
 import coil3.size.Size
 import coil3.toBitmap
 import dagger.hilt.android.EntryPointAccessors
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -459,6 +462,8 @@ fun LyricsScreen(
 
     BackHandler(enabled = backHandlerEnabled, onBack = onBackClick)
 
+    val lyricsBackdropHazeState = rememberHazeState()
+
     Box(
         modifier =
             modifier
@@ -481,6 +486,7 @@ fun LyricsScreen(
             playerCustomBlur = playerCustomBlur,
             playerCustomContrast = playerCustomContrast,
             playerCustomBrightness = playerCustomBrightness,
+            modifier = Modifier.hazeSource(lyricsBackdropHazeState),
         )
 
         Box(
@@ -526,6 +532,7 @@ fun LyricsScreen(
                         sliderPositionProvider = { sliderPosition },
                         sourceLabel = lyricsSourceLabel,
                         lyricsSyncOffset = lyricsSyncOffset,
+                        backdropHazeState = lyricsBackdropHazeState,
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -608,6 +615,7 @@ fun LyricsScreen(
                     sliderPositionProvider = { sliderPosition },
                     sourceLabel = lyricsSourceLabel,
                     lyricsSyncOffset = lyricsSyncOffset,
+                    backdropHazeState = lyricsBackdropHazeState,
                     modifier =
                         Modifier
                             .weight(1f)
@@ -990,6 +998,7 @@ private fun AppleMusicLyricsPane(
     sliderPositionProvider: () -> Long?,
     sourceLabel: AnnotatedString?,
     lyricsSyncOffset: Int,
+    backdropHazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
     LyricsContent(
@@ -998,6 +1007,7 @@ private fun AppleMusicLyricsPane(
         sliderPositionProvider = sliderPositionProvider,
         sourceLabel = sourceLabel,
         lyricsSyncOffset = lyricsSyncOffset,
+        backdropHazeState = backdropHazeState,
         modifier =
             modifier
                 .fillMaxSize()
@@ -1406,6 +1416,7 @@ private fun LyricsContent(
     sourceLabel: AnnotatedString?,
     lyricsSyncOffset: Int,
     textColor: Color,
+    backdropHazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
     when (lyricsMode) {
@@ -1436,6 +1447,7 @@ private fun LyricsContent(
                     modifier = modifier,
                     sourceLabel = sourceLabel,
                     textColorOverride = textColor,
+                    backdropHazeState = backdropHazeState,
                 )
             }
         }
@@ -1448,6 +1460,7 @@ private fun LyricsContent(
                 modifier = modifier,
                 sourceLabel = sourceLabel,
                 textColorOverride = textColor,
+                backdropHazeState = backdropHazeState,
             )
         }
     }

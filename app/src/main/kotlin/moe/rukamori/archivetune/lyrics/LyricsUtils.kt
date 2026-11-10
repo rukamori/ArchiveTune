@@ -472,6 +472,7 @@ object LyricsUtils {
                             }.takeIf { it.isNotEmpty() },
                     agent = line.agent,
                     durationMs = ((line.endTime - line.startTime) * 1000.0).toLong().coerceAtLeast(0L),
+                    singers = listOfNotNull(line.agentName),
                 )
             }
         }

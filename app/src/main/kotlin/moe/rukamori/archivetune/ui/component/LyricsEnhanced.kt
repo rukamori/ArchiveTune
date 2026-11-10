@@ -109,16 +109,21 @@ import com.mocharealm.accompanist.lyrics.ui.composable.list.rememberLyricsLazyLi
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeBreathingDotsDefaults
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.LyricsAnchor
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.LyricsLineAlignment
 import moe.rukamori.archivetune.lyrics.LyricsSourceFormat
 import moe.rukamori.archivetune.lyrics.LyricsSyncType
 import moe.rukamori.archivetune.lyrics.LyricsTextDirection
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedTranslationTextForEntry
+import moe.rukamori.archivetune.lyrics.PreparedLyricsLine
 import moe.rukamori.archivetune.lyrics.WordTimestamp
 import moe.rukamori.archivetune.lyrics.toLyricsEntries
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
@@ -135,6 +140,10 @@ private const val LYRICS_SOURCE_LABEL_ALPHA = 0.6f
 
 private val LyricsFocusAnchor = 64.dp
 private val LyricsSourceLabelGap = 12.dp
+private val EnhancedLyricsItemSpacing = 16.dp
+private val EnhancedSingerLaneHeight = 22.dp
+private val EnhancedSingerBubbleGap = 2.dp
+private val EnhancedSingerBubbleInset = 16.dp
 private val LyricsScrollAnimationSpec =
     tween<Float>(
         durationMillis = 700,
@@ -150,14 +159,17 @@ fun LyricsEnhanced(
     sourceLabel: AnnotatedString? = null,
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
+    backdropHazeState: HazeState = rememberHazeState(),
     lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val density = LocalDensity.current
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
 
     val preparedLyrics = (lyricsState as? LyricsRenderScreenState.Success)?.lyrics
     val preferences = preparedLyrics?.preferences
@@ -297,6 +309,41 @@ fun LyricsEnhanced(
                     .toInt()
             }
         }
+    val showSingerBubble = isSynced && preparedLyrics?.showsSingerNames == true
+    val formatSingerLabel = rememberLyricsSingerLabelFormatter()
+    val singerLines =
+        remember(preparedLyrics, showSingerBubble) {
+            if (showSingerBubble) {
+                preparedLyrics?.lines?.filter { line -> line.startMs >= 0L }.orEmpty()
+            } else {
+                emptyList()
+            }
+        }
+    val activeSingerLineIndex by remember(singerLines, playbackSyncPosition) {
+        derivedStateOf { singerLines.activeLineIndexAt(playbackSyncPosition().toLong()) }
+    }
+    val singerCue by remember(singerLines, isWordSyncedFormat, formatSingerLabel) {
+        derivedStateOf {
+            singerLines
+                .getOrNull(activeSingerLineIndex)
+                ?.takeUnless(PreparedLyricsLine::isInstrumental)
+                ?.let { line ->
+                    formatSingerLabel(line.singers)?.let { label ->
+                        LyricsSingerCue(
+                            label = label,
+                            side =
+                                if (line.rendersRightAligned(isWordSyncedFormat)) {
+                                    LyricsSingerSide.RIGHT
+                                } else {
+                                    LyricsSingerSide.LEFT
+                                },
+                        )
+                    }
+                }
+        }
+    }
+    val singerLaneHeight = if (showSingerBubble) EnhancedSingerLaneHeight else 0.dp
+
     BackHandler(enabled = isSelectionModeActive) {
         isSelectionModeActive = false
         selectedLineKeys.clear()
@@ -516,7 +563,12 @@ fun LyricsEnhanced(
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    val lyricsViewportAnchor = remember(maxHeight) { LyricsAnchor.Fixed(lyricsFocusAnchor(maxHeight)) }
+                    val lyricsViewportAnchor =
+                        remember(maxHeight, singerLaneHeight) {
+                            LyricsAnchor.Fixed(lyricsFocusAnchor(maxHeight) + singerLaneHeight)
+                        }
+                    val singerBubbleBottomPx =
+                        with(density) { (lyricsViewportAnchor.offset - EnhancedSingerBubbleGap).roundToPx() }
 
                     CompositionLocalProvider(LocalLayoutDirection provides lyricsLayoutDirection) {
                         key(lyricsSessionKey, syncedLyrics) {
@@ -560,8 +612,12 @@ fun LyricsEnhanced(
                                 showPhonetic = showPhonetics,
                                 anchor = lyricsViewportAnchor,
                                 keepAliveZone = 72.dp,
+                                itemSpacing = EnhancedLyricsItemSpacing + singerLaneHeight,
                                 scrollAnimationSpec = LyricsScrollAnimationSpec,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .hazeSource(backdropHazeState, zIndex = 1f),
                             )
                         }
                         if (sourceLabel != null) {
@@ -569,7 +625,20 @@ fun LyricsEnhanced(
                                 text = sourceLabel,
                                 textColor = textColor,
                                 listState = karaokeLyricsListState,
-                                anchorOffset = lyricsViewportAnchor.offset,
+                                anchorOffset = lyricsViewportAnchor.offset - singerLaneHeight,
+                            )
+                        }
+                        if (showSingerBubble) {
+                            LyricsSingerBubble(
+                                cue = singerCue,
+                                hazeState = backdropHazeState,
+                                contentColor = textColor,
+                                isPlaying = isPlaying,
+                                bubbleBottomProvider = { singerBubbleBottomPx },
+                                modifier =
+                                    Modifier
+                                        .matchParentSize()
+                                        .padding(horizontal = EnhancedSingerBubbleInset),
                             )
                         }
                     }
@@ -1022,6 +1091,27 @@ private fun ISyncedLine.lineText(): String =
     }
 
 private fun ISyncedLine.selectionKey(text: String = lineText()): String = "$start:$end:${text.hashCode()}"
+
+private fun List<PreparedLyricsLine>.activeLineIndexAt(positionMs: Long): Int {
+    var startedIndex = -1
+    var activeIndex = -1
+    forEachIndexed { index, line ->
+        if (line.startMs <= positionMs) {
+            if (startedIndex < 0 || line.startMs >= this[startedIndex].startMs) startedIndex = index
+            if (positionMs < line.endMs && (activeIndex < 0 || line.startMs >= this[activeIndex].startMs)) {
+                activeIndex = index
+            }
+        }
+    }
+    return if (activeIndex >= 0) activeIndex else startedIndex
+}
+
+private fun PreparedLyricsLine.rendersRightAligned(isWordSynced: Boolean): Boolean {
+    val usesKaraokeAlignment =
+        isWordSynced && (main.words.isNotEmpty() || backgrounds.any { track -> track.words.isNotEmpty() })
+    val alignsEnd = usesKaraokeAlignment && alignment == LyricsLineAlignment.END
+    return alignsEnd != (direction == LyricsTextDirection.RTL)
+}
 
 private fun List<WordTimestamp>.toKaraokeSyllables(phonetics: List<String?>): List<KaraokeSyllable> =
     mapIndexed { index, word ->

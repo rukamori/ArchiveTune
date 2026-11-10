@@ -381,6 +381,8 @@
     <string name="undo">Undo</string>
     <string name="lyrics_not_found">Lyrics not found</string>
     <string name="lyrics_word_sync">Word Sync</string>
+    <string name="lyrics_now_singing">%1$s</string>
+    <string name="lyrics_resume_auto_scroll">Resume</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="end_of_song">End of song</string>
     <plurals name="minute">
