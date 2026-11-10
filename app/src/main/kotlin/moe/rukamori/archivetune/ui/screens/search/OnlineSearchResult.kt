@@ -58,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -275,6 +276,19 @@ fun OnlineSearchResult(
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { items -> option to viewModel.sortedItems(items, searchSort) }
         }
+    val allModeLeadingItem: Any? =
+        when {
+            searchFilter != null -> null
+            topResults.isNotEmpty() -> TopResultsLeadingItem
+            else -> allModeSections.firstOrNull()?.first?.filter ?: AllStateLeadingItem
+        }
+    DisposableEffect(gridState, allModeLeadingItem) {
+        if (gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
+            gridState.requestScrollToItem(0)
+        }
+        onDispose {}
+    }
+
     val filterKey = searchFilter?.value
     val itemsPage = filterKey?.let { viewModel.viewStateMap[it] }
     val filteredItems =
@@ -806,6 +820,8 @@ private fun SearchEmptyPanel(
 }
 
 private const val LoadMoreKey = "loading"
+private const val TopResultsLeadingItem = "top_results"
+private const val AllStateLeadingItem = "all_state"
 private const val MaxTopResultRows = 4
 private const val MaxSectionRows = 4
 private const val MaxShelfItems = 12
