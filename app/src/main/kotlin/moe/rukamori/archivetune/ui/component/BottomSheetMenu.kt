@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
@@ -77,7 +76,7 @@ fun BottomSheetMenu(
     state.dialogContent?.invoke()
 
     if (state.isVisible) {
-        ModalBottomSheet(
+        BackAwareModalBottomSheet(
             onDismissRequest = {
                 focusManager.clearFocus()
                 state.isVisible = false

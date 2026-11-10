@@ -51,7 +51,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
@@ -933,7 +933,7 @@ private fun AccountSwitcherSheet(
             .takeIf { it.size > 1 }
             .orEmpty()
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    BackAwareModalBottomSheet(onDismissRequest = onDismiss) {
         Text(
             text = stringResource(R.string.saved_accounts),
             style = MaterialTheme.typography.headlineSmall,

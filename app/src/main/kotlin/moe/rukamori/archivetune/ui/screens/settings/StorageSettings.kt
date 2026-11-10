@@ -67,7 +67,7 @@ import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -1132,7 +1132,7 @@ private fun StorageLimitSheet(
     val colorScheme = MaterialTheme.colorScheme
     var pendingMegabytes by rememberSaveable(target) { mutableIntStateOf(selectedMegabytes) }
 
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = colorScheme.surfaceContainerLow,
@@ -1234,7 +1234,7 @@ private fun StorageLocationPickerSheet(
     val currentOptionId = options.firstOrNull { option -> option.isSelected }?.id
     val canApplySelection = currentOptionId != selectedOptionId
 
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,

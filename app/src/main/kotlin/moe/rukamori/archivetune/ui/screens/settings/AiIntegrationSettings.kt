@@ -54,7 +54,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -641,7 +641,7 @@ private fun ModelPickerPreference(
         }
 
     if (showSheet) {
-        ModalBottomSheet(
+        BackAwareModalBottomSheet(
             onDismissRequest = onDismissSheet,
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),

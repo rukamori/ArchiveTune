@@ -90,7 +90,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -1282,7 +1282,7 @@ private fun MusicRecognitionSettingsBottomSheet(
     onDismiss: () -> Unit,
     onFloatingChange: (Boolean) -> Unit,
 ) {
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -1340,7 +1340,7 @@ private fun RecognitionHistoryBottomSheet(
     val keyboard = LocalSoftwareKeyboardController.current
     val keyboardActions = remember(keyboard) { KeyboardActions(onSearch = { keyboard?.hide() }) }
     val keyboardOptions = remember { KeyboardOptions(imeAction = ImeAction.Search) }
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = Modifier.fillMaxSize(),

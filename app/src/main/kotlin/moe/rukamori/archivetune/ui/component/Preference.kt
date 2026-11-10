@@ -58,7 +58,6 @@ import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
@@ -712,7 +711,7 @@ private fun PreferenceSheetScaffold(
     actions: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
