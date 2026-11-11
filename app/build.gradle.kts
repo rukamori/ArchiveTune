@@ -393,6 +393,7 @@ dependencies {
     implementation(project(":lyrics:lrcred"))
     implementation(project(":lyrics:binimum"))
     implementation(project(":lyrics:megalobiz"))
+    implementation(project(":lyrics:musixmatch"))
     implementation(project(":lastfm"))
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))

@@ -636,6 +636,7 @@
     <string name="enable_youlyplus_lyrics">Enable YouLyPlus lyrics</string>
     <string name="enable_binimum_lyrics">Enable Binimum lyrics</string>
     <string name="enable_lrcred_lyrics">Enable lrc.red lyrics</string>
+    <string name="enable_musixmatch_lyrics">Enable Musixmatch lyrics</string>
     <string name="binimum_lyrics" translatable="false">Binimum Lyrics</string>
     <string name="enable_unison_lyrics">Enable Unison lyrics</string>
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
