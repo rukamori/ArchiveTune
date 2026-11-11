@@ -11,7 +11,10 @@ import android.content.Context
 import android.os.Looper
 import android.os.SystemClock
 import androidx.annotation.WorkerThread
+import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -20,15 +23,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import moe.rukamori.archivetune.constants.DataSyncIdKey
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiNetworkConfiguration
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
+import moe.rukamori.archivetune.utils.toPlaybackAuthState
 import timber.log.Timber
 import java.io.InterruptedIOException
 import java.net.ConnectException
@@ -89,6 +97,7 @@ class ResolveAudioStreamUseCase
         private val inFlight = mutableMapOf<InFlightKey, InFlightResolution>()
         private val sessionResetMutex = Mutex()
         private val sessionResetRequired = AtomicBoolean(false)
+        private val loginContextMutex = Mutex()
 
         suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(request, ResolutionConsumer.PLAYBACK)
@@ -318,9 +327,11 @@ class ResolveAudioStreamUseCase
 
         fun reportRejectedStream(url: String): Boolean {
             if (YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(url)) return false
-            val rejected =
-                cache.values.firstOrNull { it.url == url && it.source == StreamSource.YOUTUBEI }
+            val rejectedEntry =
+                cache.entries.firstOrNull { it.value.url == url && it.value.source == StreamSource.YOUTUBEI }
                     ?: return false
+            if (rejectedEntry.key.network != playbackNetworkConfiguration(context)) return false
+            val rejected = rejectedEntry.value
             val rejectedBinding = rejected.gvsPoTokenBinding ?: return false
             youtubeiRepository.reportRejectedGvsPoToken(rejected.authFingerprint, rejectedBinding)
             synchronized(inFlightLock) {
@@ -364,6 +375,7 @@ class ResolveAudioStreamUseCase
             sessionResetMutex.withLock {
                 if (sessionResetRequired.getAndSet(false)) {
                     try {
+                        YTPlayerUtils.resetAnonymousFallbackSession()
                         BotGuardTokenGenerator.invalidateAll()
                         youtubeiRepository.invalidateSessions()
                     } catch (failure: Throwable) {
@@ -384,6 +396,7 @@ class ResolveAudioStreamUseCase
                     resolveWithAuth(request.copy(authState = PlaybackAuthState.EMPTY), priority)
                 } catch (anonymousFailure: Exception) {
                     if (anonymousFailure is CancellationException) throw anonymousFailure
+                    YTPlayerUtils.resetAnonymousFallbackSession()
                     if (anonymousFailure is YTPlayerUtils.LoginRequiredForPlaybackException ||
                         anonymousFailure is YTPlayerUtils.BadStreamPlayerResponseException
                     ) {
@@ -403,12 +416,60 @@ class ResolveAudioStreamUseCase
             val resolvedAuthState =
                 YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
                     videoId = request.mediaId,
-                    authState = request.authState,
+                    authState = restoreLoginContext(request),
                 )
             return youtubeiRepository.resolve(
                 request = request.copy(authState = resolvedAuthState),
                 priority = priority,
             )
+        }
+
+        private suspend fun restoreLoginContext(request: AudioStreamRequest): PlaybackAuthState {
+            val authState = request.authState
+            if (!authState.hasLoginCookie || authState.hasPlaybackLoginContext) return authState
+            val dataSyncId =
+                loginContextMutex.withLock {
+                    context.dataStore.data
+                        .first()
+                        .toPlaybackAuthState()
+                        .takeIf { it.cookie == authState.cookie }
+                        ?.dataSyncId
+                        ?: fetchLoginContext(request)
+                }
+            Timber.tag(TAG).i("Restored the account session for %s before stream resolution", request.mediaId)
+            return authState.copy(dataSyncId = dataSyncId).normalized()
+        }
+
+        private suspend fun fetchLoginContext(request: AudioStreamRequest): String {
+            val authState = request.authState
+            val targetUrl = "https://music.youtube.com/watch?v=${request.mediaId}"
+            if (YouTube.currentPlaybackAuthState().cookie != authState.cookie) {
+                throw YTPlayerUtils.InvalidPlaybackLoginContextException(
+                    videoId = request.mediaId,
+                    targetUrl = targetUrl,
+                    cause = IllegalStateException("YouTube account session is missing"),
+                )
+            }
+            val dataSyncId =
+                YouTube.accountDataSyncId().getOrElse { failure ->
+                    if (failure is CancellationException) throw failure
+                    val sessionRejected =
+                        failure is ClientRequestException ||
+                            failure is IllegalStateException && failure !is ResponseException
+                    if (!sessionRejected) throw failure
+                    throw YTPlayerUtils.InvalidPlaybackLoginContextException(
+                        videoId = request.mediaId,
+                        targetUrl = targetUrl,
+                        cause = failure,
+                    )
+                }
+            context.dataStore.edit { preferences ->
+                val persisted = preferences.toPlaybackAuthState()
+                if (persisted.cookie == authState.cookie && persisted.dataSyncId == null) {
+                    preferences[DataSyncIdKey] = dataSyncId
+                }
+            }
+            return dataSyncId
         }
 
         private fun AudioStreamRequest.resolutionPriority(

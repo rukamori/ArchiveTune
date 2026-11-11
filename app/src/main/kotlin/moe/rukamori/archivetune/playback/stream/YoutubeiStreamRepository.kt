@@ -171,9 +171,10 @@ class YoutubeiStreamRepository
                     else -> "other"
                 }
             Timber.tag("YoutubeiResolver").d(
-                "Stream contract signedIn=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
+                "Stream contract signedIn=%s accountSession=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
                     "signaturePresent=%s userAgentPresent=%s extractionProxy=%s streamProxy=%s",
                 authState.hasLoginCookie,
+                authState.hasPlaybackLoginContext,
                 resolved.formatId,
                 tokenBinding,
                 !streamUrl?.queryParameter("n").isNullOrBlank(),

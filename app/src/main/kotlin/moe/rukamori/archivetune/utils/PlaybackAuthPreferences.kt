@@ -89,7 +89,7 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
     val initialResult = block()
     if (initialResult.isSuccess) {
         val repairedAuthState = YouTube.currentPlaybackAuthState()
-        restoreTemporaryPlaybackLoginContext(initialAuthState, repairedAuthState)
+        restoreTemporaryPlaybackLoginContext(initialAuthState)
         persistPlaybackAuthRepair(
             initialAuthState = initialAuthState,
             repairedAuthState = repairedAuthState,
@@ -103,7 +103,13 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
         return initialResult
     }
 
-    YouTube.authState = currentAuthState.withoutPlaybackLoginContext()
+    YouTube.updateAuthState { latest ->
+        if (latest.cookie == currentAuthState.cookie && latest.dataSyncId == currentAuthState.dataSyncId) {
+            latest.withoutPlaybackLoginContext()
+        } else {
+            latest
+        }
+    }
     YTPlayerUtils.clearPlaybackAuthCaches()
     var retryAuthState: PlaybackAuthState? = null
     val retryResult =
@@ -112,10 +118,7 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
                 retryAuthState = YouTube.currentPlaybackAuthState()
             }
         } finally {
-            restoreTemporaryPlaybackLoginContext(
-                initialAuthState = currentAuthState,
-                repairedAuthState = retryAuthState ?: YouTube.currentPlaybackAuthState(),
-            )
+            restoreTemporaryPlaybackLoginContext(currentAuthState)
         }
     if (retryResult.isSuccess) {
         persistPlaybackAuthRepair(
@@ -126,15 +129,15 @@ suspend fun <T> Context.retryWithoutPlaybackLoginContext(block: suspend () -> Re
     return retryResult
 }
 
-private fun restoreTemporaryPlaybackLoginContext(
-    initialAuthState: PlaybackAuthState,
-    repairedAuthState: PlaybackAuthState,
-) {
+private fun restoreTemporaryPlaybackLoginContext(initialAuthState: PlaybackAuthState) {
     val dataSyncId = initialAuthState.dataSyncId ?: return
-    if (repairedAuthState.dataSyncId != null) return
-    if (repairedAuthState.cookie != initialAuthState.cookie) return
-    if (YouTube.currentPlaybackAuthState().fingerprint != repairedAuthState.fingerprint) return
-    YouTube.authState = repairedAuthState.copy(dataSyncId = dataSyncId).normalized()
+    YouTube.updateAuthState { current ->
+        if (current.cookie == initialAuthState.cookie && current.dataSyncId == null) {
+            current.copy(dataSyncId = dataSyncId)
+        } else {
+            current
+        }
+    }
 }
 
 private suspend fun Context.persistPlaybackAuthRepair(
