@@ -485,6 +485,7 @@ class MusicService :
                         request.url.host != chain.call().request().url.host,
                         chain.connection()?.route()?.proxy?.type()?.name ?: "UNKNOWN",
                     )
+                    resolveAudioStream.reportRejectedStream(chain.call().request().url.toString())
                 }
                 response
             }.build()
@@ -3870,21 +3871,11 @@ class MusicService :
         val failedUrl = responseException.dataSpec.uri.toString()
         val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
         val failedExpiredUrl = YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(failedUrl)
-        val rejectedPoTokenBinding =
-            responseException.responseCode == 403 && resolveAudioStream.reportRejectedStream(failedUrl)
 
         resolveAudioStream.invalidate(mediaId)
         YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
         if (!failedExpiredUrl && requestProfile.clientKey.isNotEmpty()) {
             YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)
-        }
-
-        if (rejectedPoTokenBinding && playbackStreamRecoveryTracker.registerTokenBindingRetryAttempt(mediaId)) {
-            Timber.tag("MusicService").i(
-                "Retrying playback for %s with the alternate stream PO token binding",
-                mediaId,
-            )
-            return preparePlaybackFromSnapshot(recoverySnapshot)
         }
 
         if (!playbackStreamRecoveryTracker.registerRetryAttempt(mediaId)) {

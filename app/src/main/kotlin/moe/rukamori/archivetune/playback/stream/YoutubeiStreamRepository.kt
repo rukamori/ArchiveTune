@@ -10,8 +10,10 @@ package moe.rukamori.archivetune.playback.stream
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.innertube.NetworkGatekeeper
+import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiAudioQuality
@@ -21,12 +23,22 @@ import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolutionPrio
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiStreamRequest
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import timber.log.Timber
+import java.io.IOException
 import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Singleton
 class YoutubeiStreamRepository
@@ -37,13 +49,24 @@ class YoutubeiStreamRepository
         private val resolver =
             YoutubeiResolver(
                 context = context,
-                diagnostics = { message -> Timber.tag("YoutubeiResolver").d(message) },
+                diagnostics = { message -> Timber.tag(LOG_TAG).d(message) },
             ) {
                 playbackNetworkConfiguration(context).copy(
                     interceptors = listOf(NetworkGatekeeper),
                 )
             }
-        private val gvsPoTokenBindings = ConcurrentHashMap<String, GvsPoTokenBinding>()
+        private val streamProbeClient =
+            PlaybackHttpClient(
+                context,
+                OkHttpClient
+                    .Builder()
+                    .addInterceptor(NetworkGatekeeper)
+                    .connectTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .readTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .callTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .build(),
+            )
+        private val gvsPoTokenBindings = ConcurrentHashMap<String, GvsPoTokenBindingState>()
 
         override suspend fun resolve(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(
@@ -144,33 +167,19 @@ class YoutubeiStreamRepository
                     throw failure
                 }
 
-            val sessionPoToken = authState.poTokenGvsSession
             val resolvedUrl = resolved.url.toHttpUrlOrNull()
-            val sessionBoundUrl =
-                resolvedUrl?.takeIf { url ->
-                    preferredGvsPoTokenBinding(authState.streamCacheFingerprint) == GvsPoTokenBinding.SESSION &&
-                        !sessionPoToken.isNullOrBlank() &&
-                        !url.queryParameter("pot").isNullOrBlank() &&
-                        url.queryParameter("pot") != sessionPoToken
-                }?.newBuilder()
-                    ?.setQueryParameter("pot", sessionPoToken)
-                    ?.build()
-            val streamUrl = sessionBoundUrl ?: resolvedUrl
-            val streamToken = streamUrl?.queryParameter("pot")
-            val gvsPoTokenBinding =
-                when {
-                    streamToken.isNullOrBlank() -> null
-                    streamToken == sessionPoToken -> GvsPoTokenBinding.SESSION
-                    else -> GvsPoTokenBinding.VIDEO
-                }
+            val selectedStream =
+                selectGvsPoTokenStream(
+                    mediaId = request.mediaId,
+                    authState = authState,
+                    resolvedUrl = resolvedUrl,
+                    requestHeaders = resolved.requestHeaders,
+                )
+            val streamUrl = selectedStream?.url ?: resolvedUrl
             val tokenBinding =
-                when {
-                    streamToken.isNullOrBlank() -> "missing"
-                    streamToken == sessionPoToken -> "session"
-                    streamToken == authState.poTokenGvs && authState.poTokenGvsVideoId == request.mediaId -> "video"
-                    else -> "other"
-                }
-            Timber.tag("YoutubeiResolver").d(
+                selectedStream?.binding?.name?.lowercase()
+                    ?: if (streamUrl?.queryParameter("pot").isNullOrBlank()) "missing" else "other"
+            Timber.tag(LOG_TAG).d(
                 "Stream contract signedIn=%s accountSession=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
                     "signaturePresent=%s userAgentPresent=%s extractionProxy=%s streamProxy=%s",
                 authState.hasLoginCookie,
@@ -186,7 +195,7 @@ class YoutubeiStreamRepository
                 YouTube.streamOkHttpProxy.type().name,
             )
             return ResolvedAudioStream(
-                url = sessionBoundUrl?.toString() ?: resolved.url,
+                url = streamUrl?.toString() ?: resolved.url,
                 requestHeaders = resolved.requestHeaders,
                 formatId = resolved.formatId,
                 mimeType = resolved.mimeType,
@@ -204,30 +213,131 @@ class YoutubeiStreamRepository
                 loudnessDb = resolved.loudnessDb,
                 perceptualLoudnessDb = resolved.perceptualLoudnessDb,
                 playbackTrackingUrl = resolved.playbackTrackingUrl,
-                gvsPoTokenBinding = gvsPoTokenBinding,
+                gvsPoTokenBinding = selectedStream?.binding,
             )
         }
 
-        private fun preferredGvsPoTokenBinding(authFingerprint: String): GvsPoTokenBinding =
-            gvsPoTokenBindings[authFingerprint] ?: GvsPoTokenBinding.VIDEO
+        private suspend fun selectGvsPoTokenStream(
+            mediaId: String,
+            authState: PlaybackAuthState,
+            resolvedUrl: HttpUrl?,
+            requestHeaders: Map<String, String>,
+        ): GvsPoTokenStream? {
+            val authFingerprint = authState.streamCacheFingerprint
+            val bindingState = gvsPoTokenBindings[authFingerprint]
+            val preferredBinding = bindingState?.binding ?: GvsPoTokenBinding.VIDEO
+            val candidates =
+                gvsPoTokenStreams(resolvedUrl, authState.poTokenGvsSession)
+                    .sortedByDescending { it.binding == preferredBinding }
+            val preferredStream = candidates.firstOrNull() ?: return null
+            if (bindingState?.confirmed == true && preferredStream.binding == bindingState.binding) {
+                return preferredStream
+            }
+            for (candidate in candidates) {
+                when (probeStream(candidate, requestHeaders)) {
+                    StreamProbeResult.ACCEPTED -> {
+                        gvsPoTokenBindings[authFingerprint] =
+                            GvsPoTokenBindingState(binding = candidate.binding, confirmed = true)
+                        return candidate
+                    }
+                    StreamProbeResult.INCONCLUSIVE -> return candidate
+                    StreamProbeResult.REJECTED -> Unit
+                }
+            }
+            gvsPoTokenBindings.remove(authFingerprint)
+            throw YoutubeiException(
+                kind = YoutubeiFailureKind.PO_TOKEN,
+                message = "YouTube rejected every playback token binding for $mediaId",
+                httpStatus = 403,
+            )
+        }
+
+        private fun gvsPoTokenStreams(
+            resolvedUrl: HttpUrl?,
+            sessionPoToken: String?,
+        ): List<GvsPoTokenStream> {
+            val streamToken = resolvedUrl?.queryParameter("pot")?.takeIf(String::isNotBlank) ?: return emptyList()
+            val sessionToken = sessionPoToken?.takeIf(String::isNotBlank)
+            return listOfNotNull(
+                GvsPoTokenStream(GvsPoTokenBinding.VIDEO, resolvedUrl).takeIf { streamToken != sessionToken },
+                sessionToken?.let { token ->
+                    GvsPoTokenStream(
+                        binding = GvsPoTokenBinding.SESSION,
+                        url = resolvedUrl.newBuilder().setQueryParameter("pot", token).build(),
+                    )
+                },
+            )
+        }
+
+        private suspend fun probeStream(
+            stream: GvsPoTokenStream,
+            requestHeaders: Map<String, String>,
+        ): StreamProbeResult {
+            val request =
+                Request
+                    .Builder()
+                    .url(stream.url)
+                    .apply { requestHeaders.forEach { (name, value) -> header(name, value) } }
+                    .header("Range", "bytes=0-0")
+                    .build()
+            val statusCode =
+                try {
+                    streamProbeClient.newCall(request).awaitStatusCode()
+                } catch (failure: IOException) {
+                    Timber.tag(LOG_TAG).w(
+                        "Stream probe binding=%s failed type=%s",
+                        stream.binding,
+                        failure.javaClass.simpleName,
+                    )
+                    return StreamProbeResult.INCONCLUSIVE
+                }
+            Timber.tag(LOG_TAG).d("Stream probe binding=%s status=%d", stream.binding, statusCode)
+            return when (statusCode) {
+                403 -> StreamProbeResult.REJECTED
+                in 200..299 -> StreamProbeResult.ACCEPTED
+                else -> StreamProbeResult.INCONCLUSIVE
+            }
+        }
+
+        private suspend fun Call.awaitStatusCode(): Int =
+            suspendCancellableCoroutine { continuation ->
+                continuation.invokeOnCancellation { cancel() }
+                enqueue(
+                    object : Callback {
+                        override fun onFailure(
+                            call: Call,
+                            e: IOException,
+                        ) {
+                            if (continuation.isActive) continuation.resumeWithException(e)
+                        }
+
+                        override fun onResponse(
+                            call: Call,
+                            response: Response,
+                        ) {
+                            val statusCode = response.use { it.code }
+                            if (continuation.isActive) continuation.resume(statusCode)
+                        }
+                    },
+                )
+            }
 
         internal fun reportRejectedGvsPoToken(
             authFingerprint: String,
             rejectedBinding: GvsPoTokenBinding,
         ) {
-            val alternateBinding =
-                when (rejectedBinding) {
-                    GvsPoTokenBinding.VIDEO -> GvsPoTokenBinding.SESSION
-                    GvsPoTokenBinding.SESSION -> GvsPoTokenBinding.VIDEO
-                }
-            val preferredBinding =
+            val updatedState =
                 gvsPoTokenBindings.compute(authFingerprint) { _, current ->
-                    if ((current ?: GvsPoTokenBinding.VIDEO) == rejectedBinding) alternateBinding else current
-                } ?: GvsPoTokenBinding.VIDEO
-            Timber.tag("YoutubeiResolver").w(
-                "Stream rejected %s-bound PO token; preferring %s-bound token",
+                    if (current == null || current.binding == rejectedBinding) {
+                        GvsPoTokenBindingState(binding = rejectedBinding.alternate(), confirmed = false)
+                    } else {
+                        current
+                    }
+                }
+            Timber.tag(LOG_TAG).w(
+                "Stream rejected %s-bound PO token; next resolution prefers %s-bound token",
                 rejectedBinding,
-                preferredBinding,
+                updatedState?.binding,
             )
         }
 
@@ -266,7 +376,31 @@ class YoutubeiStreamRepository
             return CONTENT_CONFIRMATION_REASONS.any { reason.contains(it, ignoreCase = true) }
         }
 
+        private data class GvsPoTokenBindingState(
+            val binding: GvsPoTokenBinding,
+            val confirmed: Boolean,
+        )
+
+        private data class GvsPoTokenStream(
+            val binding: GvsPoTokenBinding,
+            val url: HttpUrl,
+        )
+
+        private enum class StreamProbeResult {
+            ACCEPTED,
+            REJECTED,
+            INCONCLUSIVE,
+        }
+
+        private fun GvsPoTokenBinding.alternate(): GvsPoTokenBinding =
+            when (this) {
+                GvsPoTokenBinding.VIDEO -> GvsPoTokenBinding.SESSION
+                GvsPoTokenBinding.SESSION -> GvsPoTokenBinding.VIDEO
+            }
+
         private companion object {
+            const val LOG_TAG = "YoutubeiResolver"
+            const val STREAM_PROBE_TIMEOUT_SECONDS = 10L
             val CONTENT_CONFIRMATION_REASONS =
                 listOf(
                     "confirm your age",
