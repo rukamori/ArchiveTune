@@ -87,6 +87,11 @@
     #public static int e(...);
 }
 
+## Accompanist lyrics-ui tracing (uses API 29+ android.os.Trace without an SDK check)
+-assumevalues class com.mocharealm.accompanist.lyrics.ui.internal.diagnostics.** {
+    static boolean lyricsTraceEnabled() return false;
+}
+
 # Generated automatically by the Android Gradle plugin.
 -dontwarn java.beans.BeanDescriptor
 -dontwarn java.beans.BeanInfo
