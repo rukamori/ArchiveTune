@@ -537,6 +537,7 @@ fun RemoteQuickPicksSection(
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
     displayMode: QuickPicksDisplayMode,
+    isRefreshing: Boolean,
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
@@ -565,8 +566,15 @@ fun RemoteQuickPicksSection(
                 val requestWidthPx = with(density) { heroMaxWidth.roundToPx().coerceAtLeast(1) }
                 val requestHeightPx = with(density) { heroHeight.roundToPx().coerceAtLeast(1) }
 
+                val carouselState = rememberCarouselState { songs.size }
+                LaunchedEffect(isRefreshing) {
+                    if (isRefreshing && songs.isNotEmpty()) {
+                        carouselState.scrollToItem(0)
+                    }
+                }
+
                 HorizontalCenteredHeroCarousel(
-                    state = rememberCarouselState { songs.size },
+                    state = carouselState,
                     preferredItemWidth = heroMaxWidth,
                     itemSpacing = 10.dp,
                     contentPadding = PaddingValues(horizontal = 16.dp),
