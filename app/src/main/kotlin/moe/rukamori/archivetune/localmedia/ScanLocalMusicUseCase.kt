@@ -30,6 +30,8 @@ class ScanLocalMusicUseCase @Inject constructor(
     suspend fun setMinimumDuration(seconds: Int): LocalSongScanConfig =
         foldersRepository.setMinimumDuration(seconds.coerceIn(0, MaximumMinimumDurationSeconds))
 
+    suspend fun setAutoScan(enabled: Boolean): LocalSongScanConfig = foldersRepository.setAutoScan(enabled)
+
     suspend operator fun invoke(config: LocalSongScanConfig): LocalSongScanSummary =
         scanner.scanDevice(
             config.copy(

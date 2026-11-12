@@ -76,6 +76,7 @@ class LocalSongsViewModel @Inject constructor(
     private var settingsJob: Job? = null
     private var accessJob: Job? = null
     private var settingsMutationJob: Job? = null
+    private var autoScanJob: Job? = null
     private var initialScanRequested = false
     private val settingsValues = MutableStateFlow(SettingsValues())
     private val eventChannel = Channel<LocalSongSettingsEvent>(Channel.BUFFERED)
@@ -214,6 +215,7 @@ class LocalSongsViewModel @Inject constructor(
                 val seconds = settingsValues.value.durationDraft ?: return
                 editSettings { scanLocalMusic.setMinimumDuration(seconds) }
             }
+            is LocalSongSettingsAction.AutoScanChanged -> setAutoScan(action.enabled)
             is LocalSongSettingsAction.PermissionResult -> {
                 settingsValues.update { it.copy(requestingPermission = false) }
                 if (action.granted) scanDevice() else refreshSettings()
@@ -260,10 +262,26 @@ class LocalSongsViewModel @Inject constructor(
         editSettings { scanLocalMusic.includeFolder(uri) }
     }
 
+    private fun setAutoScan(enabled: Boolean) {
+        if (autoScanJob?.isActive == true || settingsValues.value.configuration?.autoScanEnabled == enabled) return
+        autoScanJob = viewModelScope.launch {
+            try {
+                val configuration = scanLocalMusic.setAutoScan(enabled)
+                settingsValues.update { it.copy(configuration = configuration, errorMessage = null) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                coroutineContext.ensureActive()
+                reportException(error)
+                settingsValues.update { it.copy(errorMessage = R.string.local_song_settings_save_failed) }
+            }
+        }
+    }
+
     private fun startScan(automatic: Boolean) {
         if (!canEdit()) return
         initialScanRequested = true
-        _scanState.value = LocalSongsScanState.Loading
+        if (!automatic) _scanState.value = LocalSongsScanState.Loading
         scanJob = viewModelScope.launch {
             try {
                 val configuration = scanLocalMusic.currentConfiguration()
@@ -272,12 +290,14 @@ class LocalSongsViewModel @Inject constructor(
                     it.copy(configuration = configuration, access = access, errorMessage = null,
                         configurationError = null, accessError = null)
                 }
+                if (automatic && !configuration.autoScanEnabled) return@launch
                 if (configuration.requiresMediaPermission && !access.hasMediaPermission) {
                     if (!automatic) settingsValues.update { it.copy(requestingPermission = true) }
                     _scanState.value = LocalSongsScanState.Empty
                     if (!automatic) eventChannel.send(LocalSongSettingsEvent.RequestAudioPermission)
                     return@launch
                 }
+                _scanState.value = LocalSongsScanState.Loading
                 _scanState.value = LocalSongsScanState.Success(scanLocalMusic(configuration))
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -308,6 +328,7 @@ class LocalSongsViewModel @Inject constructor(
             excludedFolders = folderModels(configuration.sanitizedExcludedFolders, access, included = false),
             hasMediaPermission = access.hasMediaPermission,
             requiresMediaPermission = configuration.requiresMediaPermission,
+            autoScanEnabled = configuration.autoScanEnabled,
             isScanning = scan.isScanning,
             isSaving = values.saving,
             canEdit = !scan.isScanning && !values.saving && !values.pickingFolder && !values.requestingPermission,
@@ -367,6 +388,7 @@ data class LocalSongSettingsUiModel(
     val excludedFolders: ImmutableList<LocalSongFolderUiModel>,
     val hasMediaPermission: Boolean,
     val requiresMediaPermission: Boolean,
+    val autoScanEnabled: Boolean,
     val isScanning: Boolean,
     val isSaving: Boolean,
     val canEdit: Boolean,
@@ -387,6 +409,7 @@ sealed interface LocalSongSettingsAction {
     data class RemoveFolder(val entry: String, val included: Boolean) : LocalSongSettingsAction
     data class DurationChanged(val seconds: Int) : LocalSongSettingsAction
     data object SaveDuration : LocalSongSettingsAction
+    data class AutoScanChanged(val enabled: Boolean) : LocalSongSettingsAction
     data class PermissionResult(val granted: Boolean) : LocalSongSettingsAction
     data object ExternalActionFailed : LocalSongSettingsAction
 }

@@ -126,6 +126,15 @@
     <string name="local_song_settings_load_failed">Couldn’t load local song settings.</string>
     <string name="local_song_settings_save_failed">Couldn’t save this change.</string>
     <string name="local_song_settings_open_failed">Couldn’t open the system picker or app settings.</string>
+    <string name="local_song_settings_auto_scan">Auto scan</string>
+    <string name="local_song_settings_auto_scan_on">Look for new and removed songs each time you open local songs.</string>
+    <string name="local_song_settings_auto_scan_off">Local songs update only when you scan the device yourself.</string>
+    <string name="local_song_settings_found">Found</string>
+    <string name="local_song_settings_removed">Removed</string>
+    <plurals name="local_song_settings_folder_count">
+        <item quantity="one">%d folder</item>
+        <item quantity="other">%d folders</item>
+    </plurals>
     <string name="local_songs_no_matches_title">No matching local songs</string>
     <string name="local_songs_no_matches_desc">Try a different song, artist, or album name.</string>
     <string name="local_library_overline">On this device</string>

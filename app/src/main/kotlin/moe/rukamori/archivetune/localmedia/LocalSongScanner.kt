@@ -60,6 +60,7 @@ data class LocalSongScanConfig(
     val minimumDurationSeconds: Int = 0,
     val includedFolders: Set<String> = emptySet(),
     val excludedFolders: Set<String> = emptySet(),
+    val autoScanEnabled: Boolean = true,
 ) {
     val sanitizedMinimumDurationSeconds: Int
         get() = minimumDurationSeconds.coerceAtLeast(0)

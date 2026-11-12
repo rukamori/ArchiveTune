@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.constants.LocalSongsAutoScanKey
 import moe.rukamori.archivetune.constants.LocalSongsExcludedFoldersKey
 import moe.rukamori.archivetune.constants.LocalSongsIncludedFoldersKey
 import moe.rukamori.archivetune.constants.LocalSongsMinDurationSecondsKey
@@ -53,6 +54,9 @@ class LocalMusicFoldersRepository @Inject constructor(
 
     suspend fun setMinimumDuration(seconds: Int): LocalSongScanConfig =
         readConfiguration(context.dataStore.edit { it[LocalSongsMinDurationSecondsKey] = seconds })
+
+    suspend fun setAutoScan(enabled: Boolean): LocalSongScanConfig =
+        readConfiguration(context.dataStore.edit { it[LocalSongsAutoScanKey] = enabled })
 
     suspend fun addExcludedFolder(uri: Uri): LocalSongScanConfig = withContext(Dispatchers.IO) {
         require(DocumentsContract.isTreeUri(uri))
@@ -94,6 +98,7 @@ class LocalMusicFoldersRepository @Inject constructor(
         minimumDurationSeconds = preferences[LocalSongsMinDurationSecondsKey] ?: 0,
         includedFolders = preferences[LocalSongsIncludedFoldersKey].orEmpty(),
         excludedFolders = preferences[LocalSongsExcludedFoldersKey].orEmpty(),
+        autoScanEnabled = preferences[LocalSongsAutoScanKey] ?: true,
     )
 
     internal suspend fun audioDocuments(
