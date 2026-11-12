@@ -11,6 +11,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -47,36 +48,26 @@ class CachePlaylistViewModel
                 while (true) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
-                    val cachedIds = playerCache.keys.toSet()
-                    val downloadedIds = downloadCache.keys.toSet()
-                    val pureCacheIds = cachedIds.subtract(downloadedIds)
+                    val pureCacheIds = playerCache.keys.toSet().subtract(downloadCache.keys.toSet())
 
                     val songs =
-                        if (pureCacheIds.isNotEmpty()) {
-                            database.getSongsByIds(pureCacheIds.toList())
-                        } else {
-                            emptyList()
-                        }
+                        pureCacheIds
+                            .chunked(SONG_QUERY_BATCH_SIZE)
+                            .flatMap { ids -> database.getSongsByIds(ids) }
 
-                    val completeSongs =
-                        songs.filter {
-                            val contentLength = it.format?.contentLength
-                            contentLength != null && playerCache.isCached(it.song.id, 0, contentLength)
-                        }
+                    val completeSongs = songs.filter { it.isFullyCached() }
 
-                    if (completeSongs.isNotEmpty()) {
+                    val cachedAt = LocalDateTime.now()
+                    val undatedSongs = completeSongs.filter { it.song.dateDownload == null }
+                    if (undatedSongs.isNotEmpty()) {
                         database.query {
-                            completeSongs.forEach {
-                                if (it.song.dateDownload == null) {
-                                    update(it.song.copy(dateDownload = LocalDateTime.now()))
-                                }
-                            }
+                            undatedSongs.forEach { update(it.song.copy(dateDownload = cachedAt)) }
                         }
                     }
 
                     _cachedSongs.value =
                         completeSongs
-                            .filter { it.song.dateDownload != null }
+                            .map { if (it.song.dateDownload == null) it.copy(song = it.song.copy(dateDownload = cachedAt)) else it }
                             .sortedByDescending { it.song.dateDownload }
                             .filterExplicit(hideExplicit)
                             .filterVideo(hideVideo)
@@ -88,5 +79,19 @@ class CachePlaylistViewModel
 
         fun removeSongFromCache(songId: String) {
             playerCache.removeResource(songId)
+        }
+
+        private fun Song.isFullyCached(): Boolean {
+            val contentLength =
+                ContentMetadata
+                    .getContentLength(playerCache.getContentMetadata(id))
+                    .takeIf { it > 0L }
+                    ?: format?.contentLength?.takeIf { it > 0L }
+                    ?: return false
+            return playerCache.isCached(id, 0L, contentLength)
+        }
+
+        private companion object {
+            const val SONG_QUERY_BATCH_SIZE = 500
         }
     }
