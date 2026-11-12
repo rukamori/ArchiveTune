@@ -16,19 +16,20 @@ class CrossfadeHandoffPolicyTest {
     @Test
     fun correctiveSeek_isSkipped_whenDriftIsWithinTolerance() {
         assertFalse(
-            needsCorrectiveCrossfadeSeek(
+            needsForwardCorrectiveCrossfadeSeek(
                 primaryPositionMs = 10_040L,
                 secondaryPositionMs = 10_000L,
                 maximumDriftMs = 75L,
             ),
         )
-        assertFalse(needsCorrectiveCrossfadeSeek(10_075L, 10_000L, maximumDriftMs = 75L))
+        assertFalse(needsForwardCorrectiveCrossfadeSeek(10_075L, 10_000L, maximumDriftMs = 75L))
     }
 
     @Test
-    fun correctiveSeek_isRequired_whenDriftExceedsTolerance_inEitherDirection() {
-        assertTrue(needsCorrectiveCrossfadeSeek(9_900L, 10_000L, maximumDriftMs = 75L))
-        assertTrue(needsCorrectiveCrossfadeSeek(10_100L, 10_000L, maximumDriftMs = 75L))
+    fun correctiveSeek_isRequired_onlyWhenPrimaryLagsBeyondTolerance() {
+        assertTrue(needsForwardCorrectiveCrossfadeSeek(9_900L, 10_000L, maximumDriftMs = 75L))
+        assertFalse(needsForwardCorrectiveCrossfadeSeek(10_100L, 10_000L, maximumDriftMs = 75L))
+        assertFalse(needsForwardCorrectiveCrossfadeSeek(9_925L, 10_000L, maximumDriftMs = 75L))
     }
 
     @Test
@@ -41,6 +42,76 @@ class CrossfadeHandoffPolicyTest {
         )
         assertTrue(
             hasPlaybackPositionAdvanced(positionAfterSeekMs = 10_000L, currentPositionMs = 10_001L),
+        )
+    }
+
+    @Test
+    fun fadeProgressRequiresBothPlayersToBePlayingAndAdvancing() {
+        assertTrue(
+            bothCrossfadePlayersAdvanced(
+                primaryIsPlaying = true,
+                incomingIsPlaying = true,
+                previousPrimaryPositionMs = 1_000L,
+                currentPrimaryPositionMs = 1_032L,
+                previousIncomingPositionMs = 2_000L,
+                currentIncomingPositionMs = 2_032L,
+            ),
+        )
+        assertFalse(
+            bothCrossfadePlayersAdvanced(
+                primaryIsPlaying = true,
+                incomingIsPlaying = true,
+                previousPrimaryPositionMs = 1_000L,
+                currentPrimaryPositionMs = 1_032L,
+                previousIncomingPositionMs = 2_000L,
+                currentIncomingPositionMs = 2_000L,
+            ),
+        )
+        assertFalse(
+            bothCrossfadePlayersAdvanced(
+                primaryIsPlaying = true,
+                incomingIsPlaying = false,
+                previousPrimaryPositionMs = 1_000L,
+                currentPrimaryPositionMs = 1_032L,
+                previousIncomingPositionMs = 2_000L,
+                currentIncomingPositionMs = 2_032L,
+            ),
+        )
+    }
+
+    @Test
+    fun abortFallbackDoesNotRestartAnAlreadyCurrentTargetUnlessRepeatOne() {
+        assertTrue(
+            shouldSeekToCrossfadeTargetOnAbort(
+                primaryAtEnd = true,
+                targetAvailable = true,
+                primaryAlreadyAtTarget = false,
+                repeatOne = false,
+            ),
+        )
+        assertFalse(
+            shouldSeekToCrossfadeTargetOnAbort(
+                primaryAtEnd = true,
+                targetAvailable = true,
+                primaryAlreadyAtTarget = true,
+                repeatOne = false,
+            ),
+        )
+        assertTrue(
+            shouldSeekToCrossfadeTargetOnAbort(
+                primaryAtEnd = true,
+                targetAvailable = true,
+                primaryAlreadyAtTarget = true,
+                repeatOne = true,
+            ),
+        )
+        assertFalse(
+            shouldSeekToCrossfadeTargetOnAbort(
+                primaryAtEnd = false,
+                targetAvailable = true,
+                primaryAlreadyAtTarget = false,
+                repeatOne = false,
+            ),
         )
     }
 

@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.playback
 
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -17,19 +16,41 @@ internal data class EqualPowerGains(
     val incoming: Float,
 )
 
-internal fun needsCorrectiveCrossfadeSeek(
+internal fun needsForwardCorrectiveCrossfadeSeek(
     primaryPositionMs: Long,
     secondaryPositionMs: Long,
     maximumDriftMs: Long,
 ): Boolean {
     require(maximumDriftMs >= 0L)
-    return abs(primaryPositionMs - secondaryPositionMs) > maximumDriftMs
+    return secondaryPositionMs > primaryPositionMs &&
+        secondaryPositionMs - primaryPositionMs > maximumDriftMs
 }
 
 internal fun hasPlaybackPositionAdvanced(
     positionAfterSeekMs: Long,
     currentPositionMs: Long,
 ): Boolean = currentPositionMs > positionAfterSeekMs
+
+internal fun bothCrossfadePlayersAdvanced(
+    primaryIsPlaying: Boolean,
+    incomingIsPlaying: Boolean,
+    previousPrimaryPositionMs: Long,
+    currentPrimaryPositionMs: Long,
+    previousIncomingPositionMs: Long,
+    currentIncomingPositionMs: Long,
+): Boolean =
+    primaryIsPlaying &&
+        incomingIsPlaying &&
+        hasPlaybackPositionAdvanced(previousPrimaryPositionMs, currentPrimaryPositionMs) &&
+        hasPlaybackPositionAdvanced(previousIncomingPositionMs, currentIncomingPositionMs)
+
+internal fun shouldSeekToCrossfadeTargetOnAbort(
+    primaryAtEnd: Boolean,
+    targetAvailable: Boolean,
+    primaryAlreadyAtTarget: Boolean,
+    repeatOne: Boolean,
+): Boolean =
+    primaryAtEnd && targetAvailable && (!primaryAlreadyAtTarget || repeatOne)
 
 internal fun equalPowerGains(progress: Float): EqualPowerGains {
     val clampedProgress = progress.coerceIn(0f, 1f)
