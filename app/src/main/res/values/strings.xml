@@ -385,6 +385,22 @@
     <string name="lyrics_resume_auto_scroll">Resume</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="end_of_song">End of song</string>
+    <string name="sleep_timer_mode_timer">Timer</string>
+    <string name="sleep_timer_start">Start timer</string>
+    <string name="sleep_timer_ends_at">Ends at %1$s</string>
+    <string name="sleep_timer_end_of_song_description">Playback pauses when the current song finishes</string>
+    <plurals name="sleep_timer_minutes_unit">
+        <item quantity="one">minute</item>
+        <item quantity="other">minutes</item>
+    </plurals>
+    <plurals name="sleep_timer_decrease">
+        <item quantity="one">Decrease by %d minute</item>
+        <item quantity="other">Decrease by %d minutes</item>
+    </plurals>
+    <plurals name="sleep_timer_increase">
+        <item quantity="one">Increase by %d minute</item>
+        <item quantity="other">Increase by %d minutes</item>
+    </plurals>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="other">%d minutes</item>

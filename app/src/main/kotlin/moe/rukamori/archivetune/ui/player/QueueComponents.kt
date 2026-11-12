@@ -44,8 +44,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,9 +52,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -91,10 +87,8 @@ import moe.rukamori.archivetune.db.entities.formattedFileSize
 import moe.rukamori.archivetune.db.entities.formattedSampleRate
 import moe.rukamori.archivetune.models.ActiveOutputDevice
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.roundToInt
 
 @Composable
 fun QueueHeader(
@@ -245,89 +239,6 @@ fun QueueRecommendationChips(model: QueueUiModel, onAction: (QueueAction) -> Uni
             }
         }
     }
-}
-
-/**
- * Shared Sleep Timer Dialog component used in both Queue and Player.
- */
-@Composable
-fun SleepTimerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-    onEndOfSong: () -> Unit,
-    initialValue: Float = 30f,
-) {
-    var sleepTimerValue by remember { mutableFloatStateOf(initialValue) }
-
-    SleepTimerDialog(
-        value = sleepTimerValue,
-        onValueChange = { sleepTimerValue = it },
-        onDismiss = onDismiss,
-        onConfirm = onConfirm,
-        onEndOfSong = onEndOfSong,
-    )
-}
-
-@Composable
-fun SleepTimerDialog(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-    onEndOfSong: () -> Unit,
-) {
-    ActionPromptDialog(
-        titleBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.sleep_timer),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-            }
-        },
-        onDismiss = onDismiss,
-        onConfirm = {
-            onConfirm(value.roundToInt())
-        },
-        onCancel = onDismiss,
-        onReset = {
-            onValueChange(30f)
-        },
-        content = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.minute,
-                            value.roundToInt(),
-                            value.roundToInt(),
-                        ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                Slider(
-                    value = value,
-                    onValueChange = onValueChange,
-                    valueRange = 5f..120f,
-                    steps = (120 - 5) / 5 - 1,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedButton(onClick = onEndOfSong, shapes = ButtonDefaults.shapes()) {
-                    Text(stringResource(R.string.end_of_song))
-                }
-            }
-        },
-    )
 }
 
 /**
