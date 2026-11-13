@@ -403,15 +403,28 @@ fun Bitmap.extractThemeColor(): Color {
 
     val swatch =
         palette.vibrantSwatch
+            ?: palette.dominantChromaticSwatch()
             ?: palette.dominantSwatch
-            ?: palette.mutedSwatch
-            ?: palette.lightVibrantSwatch
-            ?: palette.darkVibrantSwatch
-            ?: palette.lightMutedSwatch
-            ?: palette.darkMutedSwatch
 
     return swatch?.rgb?.toComposeColor() ?: DefaultThemeColor
 }
+
+private fun Palette.dominantChromaticSwatch(): Palette.Swatch? {
+    val total = swatches.sumOf { it.population }
+    if (total <= 0) return null
+    return swatches
+        .filter { swatch ->
+            val (_, saturation, lightness) = swatch.hsl
+            saturation >= MinThemeSaturation &&
+                lightness in MinThemeLightness..MaxThemeLightness &&
+                swatch.population >= total * MinChromaticPopulationShare
+        }.maxByOrNull { it.population }
+}
+
+private const val MinThemeSaturation = 0.2f
+private const val MinThemeLightness = 0.12f
+private const val MaxThemeLightness = 0.88f
+private const val MinChromaticPopulationShare = 0.05f
 
 fun Bitmap.extractGradientColors(): List<Color> {
     val palette =

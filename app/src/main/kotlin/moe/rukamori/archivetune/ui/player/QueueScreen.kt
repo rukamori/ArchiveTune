@@ -270,6 +270,17 @@ private fun QueueSongRow(
         else -> colors.surfaceContainerLow
     }
     val container by animateColorAsState(target, MaterialTheme.motionScheme.fastEffectsSpec(), label = "QueueRowColor")
+    val highlighted = entry.current && !dragging
+    val content by animateColorAsState(
+        if (highlighted) colors.onPrimaryContainer else colors.onSurface,
+        MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "QueueRowContentColor",
+    )
+    val secondaryContent by animateColorAsState(
+        if (highlighted) colors.onPrimaryContainer else colors.onSurfaceVariant,
+        MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "QueueRowSecondaryContentColor",
+    )
     val click = remember(entry.id, onAction) { { onAction(QueueAction.Play(entry.id)) } }
     val select = remember(entry.id, onAction) { { onAction(QueueAction.Select(entry.id)) } }
     val menu = remember(entry.id, onAction) { { onAction(QueueAction.Menu(entry.id)) } }
@@ -304,7 +315,14 @@ private fun QueueSongRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
             .semantics { customActions = accessibility },
-        colors = ListItemDefaults.segmentedColors(containerColor = container),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = container,
+            contentColor = content,
+            leadingContentColor = secondaryContent,
+            trailingContentColor = secondaryContent,
+            overlineContentColor = secondaryContent,
+            supportingContentColor = secondaryContent,
+        ),
         leadingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!controls.locked) {
