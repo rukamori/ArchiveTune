@@ -146,13 +146,13 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
+import moe.rukamori.archivetune.ui.utils.parseArtistCompactCount
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ArtistAction
 import moe.rukamori.archivetune.viewmodels.ArtistBlockState
 import moe.rukamori.archivetune.viewmodels.ArtistEvent
 import moe.rukamori.archivetune.viewmodels.ArtistViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -1361,28 +1361,8 @@ private fun compactCountText(
     return if (hasMore) "$value+" else value
 }
 
-private val CompactArtistCountPattern = Regex("""\d+(?:[.,]\d+)?\s*[KMB]""", RegexOption.IGNORE_CASE)
-private val ArtistCountPattern = Regex("""\d+(?:[.,]\d+)*""")
-
-private fun String.toArtistCompactCountText(): String? {
-    val compactText = CompactArtistCountPattern.find(this)?.value
-    if (compactText != null) {
-        return compactText
-            .filterNot { it.isWhitespace() }
-            .replace(',', '.')
-            .uppercase(Locale.US)
-    }
-
-    val count =
-        ArtistCountPattern
-            .find(this)
-            ?.value
-            ?.filter { it.isDigit() }
-            ?.toLongOrNull()
-            ?: return null
-
-    return formatCompactCount(count)
-}
+private fun String.toArtistCompactCountText(): String? =
+    parseArtistCompactCount(this)
 
 private fun buildArtistItemsRoute(
     artistId: String,
