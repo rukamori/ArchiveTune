@@ -44,7 +44,6 @@ import java.net.ConnectException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
@@ -99,8 +98,6 @@ class ResolveAudioStreamUseCase
         private val inFlight = mutableMapOf<InFlightKey, InFlightResolution>()
         private val sessionResetMutex = Mutex()
         private val sessionResetRequired = AtomicBoolean(false)
-        private val playbackSessionGeneration = AtomicLong(0L)
-        private val rejectedAccountStreamsUntil = ConcurrentHashMap<String, Long>()
         private val loginContextMutex = Mutex()
 
         suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
@@ -341,12 +338,10 @@ class ResolveAudioStreamUseCase
             if (YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(url)) return
             if (rejectedEntry.key.network != playbackNetworkConfiguration(context)) return
             val rejectedBinding = rejected.gvsPoTokenBinding ?: return
-            youtubeiRepository.reportRejectedGvsPoToken(rejected.authFingerprint, rejectedBinding)
+            val rejectedGeneration = rejected.gvsPoTokenMinterGeneration ?: return
+            youtubeiRepository.reportRejectedGvsPoToken(rejectedGeneration, rejectedBinding)
             synchronized(inFlightLock) {
-                cache.entries.removeIf {
-                    it.value.authFingerprint == rejected.authFingerprint &&
-                        it.value.gvsPoTokenBinding == rejectedBinding
-                }
+                cache.entries.removeIf { it.value.gvsPoTokenMinterGeneration == rejectedGeneration }
             }
         }
 
@@ -382,126 +377,39 @@ class ResolveAudioStreamUseCase
             sessionResetMutex.withLock {
                 if (sessionResetRequired.getAndSet(false)) {
                     try {
-                        resetPlaybackSessionLocked()
+                        YTPlayerUtils.resetAnonymousFallbackSession()
+                        BotGuardTokenGenerator.invalidateAll()
+                        youtubeiRepository.invalidateSessions()
                     } catch (failure: Throwable) {
                         sessionResetRequired.set(true)
                         throw failure
                     }
                 }
             }
-            val authState = request.authState
-            var signedOutFailure: Exception? = null
-            if (authState.hasLoginCookie && isAccountStreamRejected(authState.streamCacheFingerprint)) {
-                try {
-                    return resolveSignedOut(request, priority)
-                } catch (failure: Exception) {
-                    if (failure is CancellationException || !failure.requiresAccountPlayback()) throw failure
-                    signedOutFailure = failure
-                }
-            }
             return try {
-                resolveWithTokenRenewal(request, priority).also {
-                    rejectedAccountStreamsUntil.remove(authState.streamCacheFingerprint)
-                }
+                resolveWithAuth(request, priority)
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
-                val streamRejected = failure.isRejectedStreamToken()
                 val rejectedLogin = failure is YTPlayerUtils.InvalidPlaybackLoginContextException ||
                     failure is YoutubeiException && failure.kind == YoutubeiFailureKind.HTTP &&
-                    failure.httpStatus in setOf(401, 403) ||
-                    streamRejected
-                if (!authState.hasLoginCookie || !rejectedLogin) {
-                    signedOutFailure?.let(failure::addSuppressed)
-                    throw failure
-                }
-                if (streamRejected) {
-                    rejectedAccountStreamsUntil[authState.streamCacheFingerprint] =
-                        SystemClock.elapsedRealtime() + REJECTED_ACCOUNT_STREAM_COOLDOWN_MS
-                    Timber.tag(TAG).w(
-                        "YouTube rejected the account stream for %s with renewed tokens; using signed-out playback",
-                        request.mediaId,
-                    )
-                }
-                val anonymousFailure =
-                    signedOutFailure
-                        ?: try {
-                            return resolveSignedOut(request, priority)
-                        } catch (signedOutError: Exception) {
-                            if (signedOutError is CancellationException) throw signedOutError
-                            signedOutError
-                        }
-                if (!anonymousFailure.requiresAccountPlayback()) {
+                    failure.httpStatus in setOf(401, 403)
+                if (!request.authState.hasLoginCookie || !rejectedLogin) throw failure
+                try {
+                    resolveWithAuth(request.copy(authState = PlaybackAuthState.EMPTY), priority)
+                } catch (anonymousFailure: Exception) {
+                    if (anonymousFailure is CancellationException) throw anonymousFailure
+                    YTPlayerUtils.resetAnonymousFallbackSession()
+                    if (anonymousFailure is YTPlayerUtils.LoginRequiredForPlaybackException ||
+                        anonymousFailure is YTPlayerUtils.BadStreamPlayerResponseException
+                    ) {
+                        failure.addSuppressed(anonymousFailure)
+                        throw failure
+                    }
                     anonymousFailure.addSuppressed(failure)
                     throw anonymousFailure
                 }
-                val accountFailure =
-                    if (streamRejected) {
-                        YTPlayerUtils.InvalidPlaybackLoginContextException(
-                            videoId = request.mediaId,
-                            targetUrl = "https://music.youtube.com/watch?v=${request.mediaId}",
-                            cause = failure,
-                        )
-                    } else {
-                        failure
-                    }
-                accountFailure.addSuppressed(anonymousFailure)
-                throw accountFailure
             }
         }
-
-        private suspend fun resolveSignedOut(
-            request: AudioStreamRequest,
-            priority: StreamResolutionPriority,
-        ): ResolvedAudioStream =
-            try {
-                resolveWithTokenRenewal(request.copy(authState = PlaybackAuthState.EMPTY), priority)
-            } catch (failure: Exception) {
-                if (failure !is CancellationException) YTPlayerUtils.resetAnonymousFallbackSession()
-                throw failure
-            }
-
-        private suspend fun resolveWithTokenRenewal(
-            request: AudioStreamRequest,
-            priority: StreamResolutionPriority,
-        ): ResolvedAudioStream {
-            val sessionGeneration = playbackSessionGeneration.get()
-            return try {
-                resolveWithAuth(request, priority)
-            } catch (failure: YoutubeiException) {
-                if (!failure.isRejectedStreamToken()) throw failure
-                Timber.tag(TAG).w(
-                    "Renewing the playback token session for %s after YouTube rejected the stream",
-                    request.mediaId,
-                )
-                sessionResetMutex.withLock {
-                    if (playbackSessionGeneration.get() == sessionGeneration) resetPlaybackSessionLocked()
-                }
-                resolveWithAuth(request, priority)
-            }
-        }
-
-        private suspend fun resetPlaybackSessionLocked() {
-            YTPlayerUtils.resetAnonymousFallbackSession()
-            BotGuardTokenGenerator.invalidateAll()
-            youtubeiRepository.invalidateSessions()
-            playbackSessionGeneration.incrementAndGet()
-        }
-
-        private fun isAccountStreamRejected(authFingerprint: String): Boolean {
-            val rejectedUntil = rejectedAccountStreamsUntil[authFingerprint] ?: return false
-            if (SystemClock.elapsedRealtime() < rejectedUntil) return true
-            rejectedAccountStreamsUntil.remove(authFingerprint, rejectedUntil)
-            return false
-        }
-
-        private fun String.canonicalStreamUrl(): String = toHttpUrlOrNull()?.toString() ?: this
-
-        private fun Throwable.isRejectedStreamToken(): Boolean =
-            this is YoutubeiException && kind == YoutubeiFailureKind.PO_TOKEN && httpStatus == 403
-
-        private fun Throwable.requiresAccountPlayback(): Boolean =
-            this is YTPlayerUtils.LoginRequiredForPlaybackException ||
-                this is YTPlayerUtils.BadStreamPlayerResponseException
 
         private suspend fun resolveWithAuth(
             request: AudioStreamRequest,
@@ -637,10 +545,11 @@ class ResolveAudioStreamUseCase
         private fun isFresh(stream: ResolvedAudioStream): Boolean =
             stream.expiresAtMs > System.currentTimeMillis() + STREAM_EXPIRY_SAFETY_MS
 
+        private fun String.canonicalStreamUrl(): String = toHttpUrlOrNull()?.toString() ?: this
+
         private companion object {
             const val TAG = "AudioStreamResolver"
             const val STREAM_EXPIRY_SAFETY_MS = 60_000L
-            const val REJECTED_ACCOUNT_STREAM_COOLDOWN_MS = 10L * 60L * 1000L
             const val MAX_CACHE_ENTRIES = 256
         }
     }

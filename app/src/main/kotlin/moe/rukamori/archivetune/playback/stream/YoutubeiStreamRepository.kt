@@ -23,6 +23,7 @@ import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolutionPrio
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiStreamRequest
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -33,7 +34,6 @@ import okhttp3.Response
 import timber.log.Timber
 import java.io.IOException
 import java.util.TimeZone
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -66,7 +66,12 @@ class YoutubeiStreamRepository
                     .callTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .build(),
             )
-        private val gvsPoTokenBindings = ConcurrentHashMap<String, GvsPoTokenBindingState>()
+        private val gvsPoTokenVerifier =
+            GvsPoTokenVerifier(
+                maxMinterAttempts = MAX_TOKEN_GENERATOR_ATTEMPTS,
+                replaceMinter = BotGuardTokenGenerator::discardMinter,
+                probeStatus = ::probeStreamStatus,
+            )
 
         override suspend fun resolve(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(
@@ -92,6 +97,7 @@ class YoutubeiStreamRepository
             }
 
             val locale = YouTube.locale
+            var streamMediaId = request.mediaId
             val resolved =
                 try {
                     resolver.resolve(
@@ -117,6 +123,7 @@ class YoutubeiStreamRepository
                             ),
                         priority = priority.toYoutubeiPriority(),
                         videoPoTokenProvider = { replacementMediaId ->
+                            streamMediaId = replacementMediaId
                             val replacementAuthState =
                                 YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
                                     videoId = replacementMediaId,
@@ -168,17 +175,21 @@ class YoutubeiStreamRepository
                 }
 
             val resolvedUrl = resolved.url.toHttpUrlOrNull()
-            val selectedStream =
-                selectGvsPoTokenStream(
-                    mediaId = request.mediaId,
-                    authState = authState,
-                    resolvedUrl = resolvedUrl,
-                    requestHeaders = resolved.requestHeaders,
-                )
-            val streamUrl = selectedStream?.url ?: resolvedUrl
+            val verifiedStream =
+                resolvedUrl?.let { url ->
+                    verifyGvsPoToken(
+                        mediaId = request.mediaId,
+                        streamMediaId = streamMediaId,
+                        authState = authState,
+                        streamUrl = url,
+                        contentLength = resolved.contentLength,
+                        requestHeaders = resolved.requestHeaders,
+                    )
+                }
+            val streamUrl = verifiedStream?.url ?: resolvedUrl
             val tokenBinding =
-                selectedStream?.binding?.name?.lowercase()
-                    ?: if (streamUrl?.queryParameter("pot").isNullOrBlank()) "missing" else "other"
+                verifiedStream?.binding?.name?.lowercase()
+                    ?: if (streamUrl?.queryParameter("pot").isNullOrBlank()) "missing" else "unverified"
             Timber.tag(LOG_TAG).d(
                 "Stream contract signedIn=%s accountSession=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
                     "signaturePresent=%s userAgentPresent=%s extractionProxy=%s streamProxy=%s",
@@ -213,89 +224,63 @@ class YoutubeiStreamRepository
                 loudnessDb = resolved.loudnessDb,
                 perceptualLoudnessDb = resolved.perceptualLoudnessDb,
                 playbackTrackingUrl = resolved.playbackTrackingUrl,
-                gvsPoTokenBinding = selectedStream?.binding,
+                gvsPoTokenBinding = verifiedStream?.binding,
+                gvsPoTokenMinterGeneration = verifiedStream?.minterGeneration,
             )
         }
 
-        private suspend fun selectGvsPoTokenStream(
+        private suspend fun verifyGvsPoToken(
             mediaId: String,
+            streamMediaId: String,
             authState: PlaybackAuthState,
-            resolvedUrl: HttpUrl?,
+            streamUrl: HttpUrl,
+            contentLength: Long,
             requestHeaders: Map<String, String>,
-        ): GvsPoTokenStream? {
-            val authFingerprint = authState.streamCacheFingerprint
-            val bindingState = gvsPoTokenBindings[authFingerprint]
-            val preferredBinding = bindingState?.binding ?: GvsPoTokenBinding.VIDEO
-            val candidates =
-                gvsPoTokenStreams(resolvedUrl, authState.poTokenGvsSession)
-                    .sortedByDescending { it.binding == preferredBinding }
-            val preferredStream = candidates.firstOrNull() ?: return null
-            if (bindingState?.confirmed == true && preferredStream.binding == bindingState.binding) {
-                return preferredStream
+        ): VerifiedGvsStream? {
+            if (streamUrl.queryParameter("pot").isNullOrBlank() || streamUrl.queryParameter("sabr") == "1") return null
+            return try {
+                gvsPoTokenVerifier.verify(
+                    streamUrl = streamUrl,
+                    contentLength = contentLength,
+                    mint = {
+                        val tokens = YTPlayerUtils.mintYoutubeiPoTokens(streamMediaId, authState)
+                        MintedGvsPoTokens(
+                            videoToken = tokens.playerToken,
+                            sessionToken = tokens.sessionToken,
+                            minterGeneration = tokens.minterGeneration,
+                        )
+                    },
+                    requestHeaders = requestHeaders,
+                )
+            } catch (failure: YoutubeiException) {
+                if (failure.kind != YoutubeiFailureKind.PO_TOKEN) throw failure
+                throw YTPlayerUtils.BotDetectionPlaybackException(
+                    videoId = mediaId,
+                    clients = setOf(if (authState.hasLoginCookie) "WEB_CREATOR" else "MWEB"),
+                    cause = failure,
+                )
             }
-            for (candidate in candidates) {
-                when (probeStream(candidate, requestHeaders)) {
-                    StreamProbeResult.ACCEPTED -> {
-                        gvsPoTokenBindings[authFingerprint] =
-                            GvsPoTokenBindingState(binding = candidate.binding, confirmed = true)
-                        return candidate
-                    }
-                    StreamProbeResult.INCONCLUSIVE -> return candidate
-                    StreamProbeResult.REJECTED -> Unit
-                }
-            }
-            gvsPoTokenBindings.remove(authFingerprint)
-            throw YoutubeiException(
-                kind = YoutubeiFailureKind.PO_TOKEN,
-                message = "YouTube rejected every playback token binding for $mediaId",
-                httpStatus = 403,
-            )
         }
 
-        private fun gvsPoTokenStreams(
-            resolvedUrl: HttpUrl?,
-            sessionPoToken: String?,
-        ): List<GvsPoTokenStream> {
-            val streamToken = resolvedUrl?.queryParameter("pot")?.takeIf(String::isNotBlank) ?: return emptyList()
-            val sessionToken = sessionPoToken?.takeIf(String::isNotBlank)
-            return listOfNotNull(
-                GvsPoTokenStream(GvsPoTokenBinding.VIDEO, resolvedUrl).takeIf { streamToken != sessionToken },
-                sessionToken?.let { token ->
-                    GvsPoTokenStream(
-                        binding = GvsPoTokenBinding.SESSION,
-                        url = resolvedUrl.newBuilder().setQueryParameter("pot", token).build(),
-                    )
-                },
-            )
-        }
-
-        private suspend fun probeStream(
-            stream: GvsPoTokenStream,
+        private suspend fun probeStreamStatus(
+            url: HttpUrl,
+            byteRange: LongRange,
             requestHeaders: Map<String, String>,
-        ): StreamProbeResult {
+        ): Int? {
             val request =
                 Request
                     .Builder()
-                    .url(stream.url)
+                    .url(url)
                     .apply { requestHeaders.forEach { (name, value) -> header(name, value) } }
-                    .header("Range", "bytes=0-0")
+                    .header("Range", "bytes=${byteRange.first}-${byteRange.last}")
                     .build()
-            val statusCode =
-                try {
-                    streamProbeClient.newCall(request).awaitStatusCode()
-                } catch (failure: IOException) {
-                    Timber.tag(LOG_TAG).w(
-                        "Stream probe binding=%s failed type=%s",
-                        stream.binding,
-                        failure.javaClass.simpleName,
-                    )
-                    return StreamProbeResult.INCONCLUSIVE
+            return try {
+                streamProbeClient.newCall(request).awaitStatusCode().also { statusCode ->
+                    Timber.tag(LOG_TAG).d("Stream token check status=%d", statusCode)
                 }
-            Timber.tag(LOG_TAG).d("Stream probe binding=%s status=%d", stream.binding, statusCode)
-            return when (statusCode) {
-                403 -> StreamProbeResult.REJECTED
-                in 200..299 -> StreamProbeResult.ACCEPTED
-                else -> StreamProbeResult.INCONCLUSIVE
+            } catch (failure: IOException) {
+                Timber.tag(LOG_TAG).w("Stream token check failed type=%s", failure.javaClass.simpleName)
+                null
             }
         }
 
@@ -323,21 +308,14 @@ class YoutubeiStreamRepository
             }
 
         internal fun reportRejectedGvsPoToken(
-            authFingerprint: String,
-            rejectedBinding: GvsPoTokenBinding,
+            minterGeneration: Long,
+            binding: GvsPoTokenBinding,
         ) {
-            val updatedState =
-                gvsPoTokenBindings.compute(authFingerprint) { _, current ->
-                    if (current == null || current.binding == rejectedBinding) {
-                        GvsPoTokenBindingState(binding = rejectedBinding.alternate(), confirmed = false)
-                    } else {
-                        current
-                    }
-                }
+            gvsPoTokenVerifier.reportRejected(minterGeneration, binding)
             Timber.tag(LOG_TAG).w(
-                "Stream rejected %s-bound PO token; next resolution prefers %s-bound token",
-                rejectedBinding,
-                updatedState?.binding,
+                "Stream rejected %s-bound PO token from token generator %d; next resolution checks it again",
+                binding,
+                minterGeneration,
             )
         }
 
@@ -376,31 +354,10 @@ class YoutubeiStreamRepository
             return CONTENT_CONFIRMATION_REASONS.any { reason.contains(it, ignoreCase = true) }
         }
 
-        private data class GvsPoTokenBindingState(
-            val binding: GvsPoTokenBinding,
-            val confirmed: Boolean,
-        )
-
-        private data class GvsPoTokenStream(
-            val binding: GvsPoTokenBinding,
-            val url: HttpUrl,
-        )
-
-        private enum class StreamProbeResult {
-            ACCEPTED,
-            REJECTED,
-            INCONCLUSIVE,
-        }
-
-        private fun GvsPoTokenBinding.alternate(): GvsPoTokenBinding =
-            when (this) {
-                GvsPoTokenBinding.VIDEO -> GvsPoTokenBinding.SESSION
-                GvsPoTokenBinding.SESSION -> GvsPoTokenBinding.VIDEO
-            }
-
         private companion object {
             const val LOG_TAG = "YoutubeiResolver"
             const val STREAM_PROBE_TIMEOUT_SECONDS = 10L
+            const val MAX_TOKEN_GENERATOR_ATTEMPTS = 3
             val CONTENT_CONFIRMATION_REASONS =
                 listOf(
                     "confirm your age",

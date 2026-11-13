@@ -114,6 +114,7 @@ object BotGuardTokenGenerator {
     private var engineCookie: String? = null
     private var cachedSessionToken: String? = null
     private var engineReady = false
+    private var engineGeneration = 0L
 
     /**
      * LRU cache for per-video player tokens.
@@ -280,6 +281,15 @@ object BotGuardTokenGenerator {
         }
     }
 
+    suspend fun discardMinter(generation: Long) {
+        mutex.withLock {
+            if (engine == null || engineGeneration != generation) return@withLock
+            Timber.tag(TAG).w("Discarding token generator %d after YouTube rejected its playback tokens", generation)
+            playerTokenCache.clear()
+            destroyEngineLocked()
+        }
+    }
+
     // ── internal ─────────────────────────────────────────────────────
 
     private suspend fun ensureEngineReady(
@@ -306,7 +316,11 @@ object BotGuardTokenGenerator {
         if (!isEngineReadyForSession(sessionId)) {
             throw ConnectException("Playback network or account changed during token generation")
         }
-        return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
+        return PoTokenResult(
+            playerToken = playerTok,
+            sessionToken = sessionTok,
+            minterGeneration = engineGeneration,
+        )
     }
 
     private suspend fun mintTokenLocked(
@@ -339,6 +353,7 @@ object BotGuardTokenGenerator {
                 return PoTokenResult(
                     playerToken = cachedPlayer,
                     sessionToken = sessionToken,
+                    minterGeneration = engineGeneration,
                 )
             }
         }
@@ -419,6 +434,7 @@ object BotGuardTokenGenerator {
             engineCookie = cookie
             cachedSessionToken = newSessionToken
             engineReady = true
+            engineGeneration += 1
         }
 
         return Pair(

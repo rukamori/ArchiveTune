@@ -408,18 +408,31 @@ object YTPlayerUtils {
             } else {
                 authState
             }
-        val contentBinding = resolvedAuthState.poTokenContentBinding()
+        return resolvedAuthState.withGeneratedPoTokens(videoId, mintRequiredYoutubeiPoTokens(videoId, resolvedAuthState))
+    }
+
+    suspend fun mintYoutubeiPoTokens(
+        videoId: String,
+        authState: PlaybackAuthState,
+    ): PoTokenResult =
+        mintRequiredYoutubeiPoTokens(videoId, authState).also { tokenResult ->
+            authState.withGeneratedPoTokens(videoId, tokenResult)
+        }
+
+    private suspend fun mintRequiredYoutubeiPoTokens(
+        videoId: String,
+        authState: PlaybackAuthState,
+    ): PoTokenResult {
+        val contentBinding = authState.poTokenContentBinding()
             ?: throw InvalidPlaybackLoginContextException(
                 videoId = videoId,
                 targetUrl = "https://music.youtube.com/watch?v=$videoId",
                 cause = IllegalStateException("YouTube playback token binding is missing"),
             )
-        val tokenResult =
-            BotGuardTokenGenerator.mintRequiredToken(
-                videoId = videoId,
-                sessionId = contentBinding,
-            )
-        return resolvedAuthState.withGeneratedPoTokens(videoId, tokenResult)
+        return BotGuardTokenGenerator.mintRequiredToken(
+            videoId = videoId,
+            sessionId = contentBinding,
+        )
     }
 
     suspend fun preWarmYoutubeiPoTokens(authState: PlaybackAuthState) {
