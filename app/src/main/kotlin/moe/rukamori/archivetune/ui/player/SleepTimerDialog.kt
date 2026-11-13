@@ -617,7 +617,6 @@ private fun SleepTimerDurationControls(
                 ToggleButton(
                     checked = minutes == preset,
                     onCheckedChange = { onMinutesChange(preset) },
-                    shapes = ToggleButtonDefaults.shapes(),
                     colors = presetColors,
                     contentPadding = PaddingValues(horizontal = 4.dp),
                     modifier =
