@@ -75,6 +75,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -104,6 +105,7 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.AlbumReleaseType
 import moe.rukamori.archivetune.innertube.models.ArtistItem
@@ -142,11 +144,11 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.artistCountStat
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
-import moe.rukamori.archivetune.ui.utils.parseArtistCompactCount
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ArtistAction
@@ -358,6 +360,9 @@ fun ArtistScreen(
                     val albumsLabel = stringResource(R.string.albums)
                     val monthlyListenersLabel = stringResource(R.string.monthly_listeners)
                     val subscribersLabel = stringResource(R.string.subscribers)
+                    // Counts arrive localised in the content language, but are rendered in the app language.
+                    val contentLanguage = YouTube.locale.hl
+                    val displayLanguage = LocalConfiguration.current.locales[0].toLanguageTag()
                     val artistStats =
                         remember(
                             showLocal,
@@ -368,6 +373,8 @@ fun ArtistScreen(
                             albumsLabel,
                             monthlyListenersLabel,
                             subscribersLabel,
+                            contentLanguage,
+                            displayLanguage,
                         ) {
                             buildArtistStats(
                                 showLocal = showLocal,
@@ -378,6 +385,8 @@ fun ArtistScreen(
                                 albumsLabel = albumsLabel,
                                 monthlyListenersLabel = monthlyListenersLabel,
                                 subscribersLabel = subscribersLabel,
+                                contentLanguage = contentLanguage,
+                                displayLanguage = displayLanguage,
                             )
                         }
                     val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
@@ -1280,6 +1289,8 @@ private fun buildArtistStats(
     albumsLabel: String,
     monthlyListenersLabel: String,
     subscribersLabel: String,
+    contentLanguage: String,
+    displayLanguage: String,
 ): ArtistStatsUi {
     val songSections =
         artistPage?.sections?.filter { section ->
@@ -1317,13 +1328,21 @@ private fun buildArtistStats(
 
     val audience =
         buildList {
-            artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
-                add("$value $monthlyListenersLabel")
-            }
+            artistCountStat(
+                rawText = artistPage?.artist?.monthlyListenerCountText,
+                label = monthlyListenersLabel,
+                contentLanguage = contentLanguage,
+                displayLanguage = displayLanguage,
+                rawTextIncludesLabel = true,
+            )?.let { add(it) }
 
-            artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
-                add("$value $subscribersLabel")
-            }
+            artistCountStat(
+                rawText = artistPage?.artist?.subscriberCountText,
+                label = subscribersLabel,
+                contentLanguage = contentLanguage,
+                displayLanguage = displayLanguage,
+                rawTextIncludesLabel = false,
+            )?.let { add(it) }
         }.joinToString(ArtistStatSeparator)
     val catalog =
         buildList {
@@ -1360,9 +1379,6 @@ private fun compactCountText(
     val value = formatCompactCount(count.toLong())
     return if (hasMore) "$value+" else value
 }
-
-private fun String.toArtistCompactCountText(): String? =
-    parseArtistCompactCount(this)
 
 private fun buildArtistItemsRoute(
     artistId: String,
