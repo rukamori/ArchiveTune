@@ -887,7 +887,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">ערבוב מופעל</string>
     <string name="together_shuffle_off">ערבוב מושבת</string>
-    <string name="together_repeat_mode">חזור %1$d</string>
     <string name="together_participants_empty">עדיין אין משתתפים</string>
     <string name="together_participants_empty_body">אנשים שיצטרפו לסשן הזה יופיעו כאן.</string>
     <string name="together_activity_log">יומן פעילות</string>

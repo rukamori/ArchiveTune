@@ -1332,7 +1332,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Shuffle on</string>
     <string name="together_shuffle_off">Shuffle off</string>
-    <string name="together_repeat_mode">Repeat %1$d</string>
     <string name="together_participants_empty">No participants yet</string>
     <string name="together_participants_empty_body">People who join this session will appear here.</string>
     <string name="together_activity_log">Activity log</string>
@@ -1360,6 +1359,15 @@
     <string name="together_welcome_join_body">Open the shared link, or enter code and tap Join. Your queue and playback will follow the host.</string>
     <string name="together_welcome_permissions_title">Permissions and safety</string>
     <string name="together_welcome_permissions_body">Hosts can decide whether guests can add songs, control playback, or require approval to join.</string>
+    <string name="together_lan_description">Devices on the same Wi-Fi</string>
+    <string name="together_online_description">Anyone with the session code</string>
+    <string name="together_room_rules">Room rules</string>
+    <string name="together_room_rules_live">Changes apply to everyone in the room right away</string>
+    <string name="together_you">You</string>
+    <string name="together_participant_disconnected">Disconnected</string>
+    <string name="together_participant_actions">Actions for %1$s</string>
+    <string name="together_local_address">Local address</string>
+    <string name="together_copy_code">Copy code</string>
     <string name="saved_accounts">Saved accounts</string>
     <string name="save_current_account">Save current account</string>
     <string name="no_saved_accounts">No saved accounts yet</string>

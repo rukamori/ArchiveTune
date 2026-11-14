@@ -898,7 +898,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Lecture aléatoire activée</string>
     <string name="together_shuffle_off">Lecture aléatoire désactivée</string>
-    <string name="together_repeat_mode">Répéter %1$d</string>
     <string name="together_activity_playback_paused">%1$s a mis la lecture en pause</string>
     <string name="together_activity_playback_resumed">%1$s a repris la lecture</string>
     <string name="together_activity_song_changed">%1$s a remplacé le titre par %2$s</string>

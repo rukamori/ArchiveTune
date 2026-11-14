@@ -866,7 +866,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Aleatório ativado</string>
     <string name="together_shuffle_off">Aleatório desativado</string>
-    <string name="together_repeat_mode">Repetir %1$d</string>
     <string name="together_participants_empty">Ainda sem participantes</string>
     <string name="together_participants_empty_body">As pessoas que entrarem nesta sessão aparecerão aqui.</string>
     <string name="together_activity_log">Log de atividade</string>

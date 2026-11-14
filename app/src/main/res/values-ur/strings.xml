@@ -966,7 +966,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">گڈمڈ مؤثر</string>
     <string name="together_shuffle_off">گڈمڈ بند</string>
-    <string name="together_repeat_mode">%1$d دہرایا جائے</string>
     <string name="together_participants_empty">ابھی تک کوئی شریک نہیں</string>
     <string name="together_participants_empty_body">جو لوگ اس سشن میں شامل ہوں گے انہیں ادھر دکھایا جائے گا۔</string>
     <string name="together_activity_log">سرگرمی کا لاگ</string>

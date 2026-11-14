@@ -848,7 +848,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">隨機播放：開啟</string>
     <string name="together_shuffle_off">隨機播放：關閉</string>
-    <string name="together_repeat_mode">重複 %1$d 次</string>
     <string name="together_participants_empty">目前尚無參與者</string>
     <string name="together_participants_empty_body">加入此房間的使用者將會顯示在這裡。</string>
     <string name="together_activity_log">活動紀錄</string>

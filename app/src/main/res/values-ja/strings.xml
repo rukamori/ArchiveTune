@@ -967,7 +967,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">シャッフルオン</string>
     <string name="together_shuffle_off">シャッフルオフ</string>
-    <string name="together_repeat_mode">%1$dを繰り返します</string>
     <string name="together_participants_empty">まだ参加者はいません</string>
     <string name="together_participants_empty_body">このセッションに参加した人がここに表示されます。</string>
     <string name="together_activity_log">アクティビティログ</string>

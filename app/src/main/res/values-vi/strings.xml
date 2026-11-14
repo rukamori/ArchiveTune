@@ -792,7 +792,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Bật xáo trộn</string>
     <string name="together_shuffle_off">Tắt xáo trộn</string>
-    <string name="together_repeat_mode">Lặp lại %1$d</string>
     <string name="together_participants_empty">Chưa có người tham gia</string>
     <string name="together_participants_empty_body">Những người tham gia phiên này sẽ xuất hiện ở đây.</string>
     <string name="together_activity_log">Nhật ký hoạt động</string>

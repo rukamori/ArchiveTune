@@ -997,7 +997,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Acak aktif</string>
     <string name="together_shuffle_off">Acak nonaktif</string>
-    <string name="together_repeat_mode">Ulangi %1$d</string>
     <string name="together_participants_empty">Belum ada peserta</string>
     <string name="together_participants_empty_body">Orang yang bergabung dengan sesi ini akan muncul di sini.</string>
     <string name="together_activity_log">Log aktivitas</string>

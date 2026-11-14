@@ -861,7 +861,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">임의 재생 켜짐</string>
     <string name="together_shuffle_off">임의 재생 꺼짐</string>
-    <string name="together_repeat_mode">반복 모드: %1$d</string>
     <string name="together_participants_empty">참여 중인 인원 없음</string>
     <string name="together_participants_empty_body">함께 듣기 세션에 참여 중인 친구가 없습니다. 어서 초대 링크를 공유해 보세요!</string>
     <string name="together_activity_log">활동 로그</string>

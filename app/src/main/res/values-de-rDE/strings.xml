@@ -961,7 +961,6 @@
     <string name="together_welcome_host_body">Tippe Sitzung starten und teile dann den Sitzungslink. Lasse ArchiveTune während dem Hosten im Hintergrund offen.</string>
     <string name="together_activity_log_empty_body">Sitzungsereignisse werden hier erscheinen wenn sie passieren.</string>
     <string name="together_activity_log">Aktivitätslog</string>
-    <string name="together_repeat_mode">Wiederhole %1$d</string>
     <string name="together_playback_playing">Spielt</string>
     <string name="together_playback_empty">Nichts spielt</string>
     <string name="together_hosting">Hoste Sitzung</string>

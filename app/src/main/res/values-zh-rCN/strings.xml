@@ -959,7 +959,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">随机播放已开启</string>
     <string name="together_shuffle_off">随机播放已关闭</string>
-    <string name="together_repeat_mode">循环模式：%1$d</string>
     <string name="together_participants_empty">暂无参与者</string>
     <string name="together_participants_empty_body">加入此房间成员将显示在此处</string>
     <string name="together_activity_log">活动日志</string>

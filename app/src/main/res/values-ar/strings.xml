@@ -1010,7 +1010,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">التشغيل العشوائي مفعل</string>
     <string name="together_shuffle_off">التشغيل العشوائي معطل</string>
-    <string name="together_repeat_mode">تكرار %1$d</string>
     <string name="together_participants_empty">لا يوجد مشاركون بعد</string>
     <string name="together_participants_empty_body">سيظهر الأشخاص الذين ينضمون إلى هذه الجلسة هنا.</string>
     <string name="together_activity_log">سجل النشاط</string>

@@ -878,7 +878,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">تشغيل عشوائي مفعل</string>
     <string name="together_shuffle_off">التشغيل العشوائي متوقف</string>
-    <string name="together_repeat_mode">تكرار %1$d</string>
     <string name="together_participants_empty">مفيش مشاركين لسه</string>
     <string name="together_participants_empty_body">الناس اللي هتنضم للجلسة دي هتظهر هنا.</string>
     <string name="together_activity_log">سجل النشاط</string>

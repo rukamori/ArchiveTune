@@ -110,12 +110,23 @@ sealed interface MusicTogetherDialogUiState {
     ) : MusicTogetherDialogUiState
 }
 
+enum class MusicTogetherPhase {
+    Idle,
+    Connecting,
+    Live,
+    WaitingApproval,
+    Error,
+}
+
 @Immutable
 data class MusicTogetherStatusUiModel(
     @StringRes val titleResId: Int,
     @StringRes val stateLabelResId: Int,
     val errorMessage: String?,
     @DrawableRes val iconResId: Int,
+    val phase: MusicTogetherPhase,
+    val onlineTransport: Boolean?,
+    val connectedCount: Int,
     val active: Boolean,
     val error: Boolean,
     val waitingApproval: Boolean,
@@ -127,17 +138,44 @@ data class MusicTogetherSessionShareUiModel(
     @StringRes val labelResId: Int,
     val value: String,
     val maxLines: Int,
+    val isCode: Boolean,
+    val addressHint: String?,
 )
 
 @Immutable
 data class MusicTogetherPlaybackUiModel(
+    val hasRoom: Boolean,
+    val trackId: String?,
     val title: String?,
     val artists: String?,
+    val thumbnailUrl: String?,
+    val durationMs: Long,
+    val positionMs: Long,
+    val isPlaying: Boolean,
     @StringRes val playbackStateResId: Int,
     val queueSize: Int,
     val currentIndexLabel: String?,
     val shuffleEnabled: Boolean,
     val repeatMode: Int,
+    val upNext: MusicTogetherTrackUiModels,
+)
+
+@Immutable
+data class MusicTogetherTrackUiModels(
+    private val values: List<MusicTogetherTrackUiModel>,
+) {
+    val size: Int get() = values.size
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun get(index: Int): MusicTogetherTrackUiModel = values[index]
+}
+
+@Immutable
+data class MusicTogetherTrackUiModel(
+    val key: String,
+    val title: String,
+    val artists: String?,
+    val thumbnailUrl: String?,
 )
 
 @Immutable
@@ -182,6 +220,7 @@ data class MusicTogetherParticipantUiModel(
     val host: Boolean,
     val pending: Boolean,
     val connected: Boolean,
+    val isSelf: Boolean,
     val showApproveActions: Boolean,
     val showModerationActions: Boolean,
     val showTransferHostAction: Boolean,
@@ -564,6 +603,34 @@ class MusicTogetherViewModel
             val isJoinedAsAcceptedGuest = isJoinedAsGuest && !isWaitingApproval
             val disableJoinUi = isHostRole || isCreatingSessionLoading || isJoinedAsGuest
             val active = state.isConnectedToSession
+            val selfParticipantId =
+                when (state) {
+                    is TogetherSessionState.Joined -> state.selfParticipantId
+                    is TogetherSessionState.Hosting,
+                    is TogetherSessionState.HostingOnline,
+                    -> roomState?.hostId
+                    else -> null
+                }
+            val phase =
+                when {
+                    state is TogetherSessionState.Error -> MusicTogetherPhase.Error
+                    state == TogetherSessionState.Idle -> MusicTogetherPhase.Idle
+                    isWaitingApproval -> MusicTogetherPhase.WaitingApproval
+                    active -> MusicTogetherPhase.Live
+                    else -> MusicTogetherPhase.Connecting
+                }
+            val onlineTransport =
+                when (state) {
+                    is TogetherSessionState.Hosting,
+                    is TogetherSessionState.Joining,
+                    -> false
+
+                    is TogetherSessionState.HostingOnline,
+                    is TogetherSessionState.JoiningOnline,
+                    -> true
+
+                    else -> null
+                }
             val status =
                 MusicTogetherStatusUiModel(
                     titleResId = R.string.together_status,
@@ -595,6 +662,9 @@ class MusicTogetherViewModel
                         },
                     errorMessage = (state as? TogetherSessionState.Error)?.message,
                     iconResId = if (state is TogetherSessionState.Error) R.drawable.error else R.drawable.fire,
+                    phase = phase,
+                    onlineTransport = onlineTransport,
+                    connectedCount = roomState?.participants.orEmpty().count { it.isConnected && !it.isPending },
                     active = active,
                     error = state is TogetherSessionState.Error,
                     waitingApproval = isWaitingApproval,
@@ -607,6 +677,8 @@ class MusicTogetherViewModel
                             labelResId = R.string.session_link,
                             value = state.joinLink,
                             maxLines = 3,
+                            isCode = false,
+                            addressHint = state.localAddressHint?.takeIf { it.isNotBlank() }?.let { "$it:${state.port}" },
                         )
                     }
 
@@ -615,6 +687,8 @@ class MusicTogetherViewModel
                             labelResId = R.string.session_code,
                             value = state.code,
                             maxLines = 2,
+                            isCode = true,
+                            addressHint = null,
                         )
                     }
 
@@ -666,6 +740,7 @@ class MusicTogetherViewModel
                                 host = participant.isHost,
                                 pending = participant.isPending,
                                 connected = participant.isConnected,
+                                isSelf = participant.id == selfParticipantId,
                                 showApproveActions =
                                     isHostRole && showModerationActions && participant.isPending &&
                                         roomState?.settings?.requireHostApprovalToJoin == true,
@@ -690,9 +765,31 @@ class MusicTogetherViewModel
 
         private fun TogetherRoomState?.toPlaybackUiModel(): MusicTogetherPlaybackUiModel {
             val track = this?.queue?.getOrNull(currentIndex)
+            val upNext =
+                if (this != null && track != null) {
+                    queue
+                        .drop(currentIndex.coerceAtLeast(0) + 1)
+                        .take(MaxUpNextTracks)
+                        .mapIndexed { offset, upcoming ->
+                            MusicTogetherTrackUiModel(
+                                key = "${currentIndex + 1 + offset}:${upcoming.id}",
+                                title = upcoming.title,
+                                artists = upcoming.artists.joinToString().takeIf { it.isNotBlank() },
+                                thumbnailUrl = upcoming.thumbnailUrl?.takeIf { it.isNotBlank() },
+                            )
+                        }
+                } else {
+                    emptyList()
+                }
             return MusicTogetherPlaybackUiModel(
+                hasRoom = this != null,
+                trackId = track?.id,
                 title = track?.title,
                 artists = track?.artists?.joinToString()?.takeIf { it.isNotBlank() },
+                thumbnailUrl = track?.thumbnailUrl?.takeIf { it.isNotBlank() },
+                durationMs = track?.durationSec?.takeIf { it > 0 }?.times(1000L) ?: 0L,
+                positionMs = this?.positionMs?.coerceAtLeast(0L) ?: 0L,
+                isPlaying = this?.isPlaying == true && track != null,
                 playbackStateResId =
                     when {
                         this == null -> R.string.together_playback_empty
@@ -712,6 +809,7 @@ class MusicTogetherViewModel
                     },
                 shuffleEnabled = this?.shuffleEnabled ?: false,
                 repeatMode = this?.repeatMode ?: 0,
+                upNext = MusicTogetherTrackUiModels(upNext),
             )
         }
 
@@ -916,5 +1014,6 @@ class MusicTogetherViewModel
 
         private companion object {
             const val MaxActivityLogSize = 80
+            const val MaxUpNextTracks = 3
         }
     }
