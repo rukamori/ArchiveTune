@@ -28,6 +28,7 @@ import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -616,7 +617,19 @@ class MainActivity : ComponentActivity() {
         // top-level screen sends the app to the background instead of destroying it, so playback and
         // the mini-player survive - a press made while the player is still collapsing no longer kills
         // the activity. Registered before setContent so every Compose handler outranks it.
-        onBackPressedDispatcher.addCallback(this) { moveTaskToBack(true) }
+        //
+        // Two consequences, both deliberate: while this callback is enabled `hasEnabledCallbacks()`
+        // stays true, so the system never runs its own close-to-home preview and the app answers the
+        // root press itself; and because `moveTaskToBack` is not `finish()`, this activity is never
+        // destroyed by back - anything registered for `onDestroy` runs when the system reclaims it.
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    moveTaskToBack(true)
+                }
+            },
+        )
 
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
