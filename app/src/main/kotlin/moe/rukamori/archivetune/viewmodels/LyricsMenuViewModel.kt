@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ai.AiLyricsSongContext
 import moe.rukamori.archivetune.ai.AiLyricsTranslator
 import moe.rukamori.archivetune.ai.AiServiceConfig
 import moe.rukamori.archivetune.constants.AiApiKeyKey
@@ -406,6 +407,11 @@ class LyricsMenuViewModel
                                     ),
                                 lyrics = lyrics,
                                 targetLanguage = targetLanguage.ifBlank { "ENGLISH" },
+                                song =
+                                    AiLyricsSongContext(
+                                        title = mediaMetadata.title,
+                                        artist = mediaMetadata.artists.joinToString(", ") { it.name },
+                                    ),
                                 customPrompt = prefs[AiCustomPromptKey].orEmpty(),
                             )
                         val usableLyrics = usableTranslatedLyrics(translatedLyrics)

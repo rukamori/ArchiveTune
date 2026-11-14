@@ -64,41 +64,106 @@ object AiTextService {
         config: AiServiceConfig,
         targetLanguage: String,
         lines: List<String>,
+        precedingLines: List<String>,
+        song: AiLyricsSongContext,
         formatName: String,
         customPrompt: String,
     ): List<String> {
         if (lines.isEmpty()) return emptyList()
-        val payload = JSONArray()
-        lines.forEach { payload.put(it) }
-        val defaultSystemPrompt =
-            """
-            You are an expert song lyrics translator.
-            Translate each input string into $targetLanguage with natural, accurate lyric phrasing.
-            Preserve meaning, tone, profanity level, names, repeated hooks, and line-level intent.
-            Do not add timestamps, IDs, XML, markdown, explanations, or extra lines.
-            Return only a JSON array of strings with exactly ${lines.size} items in the same order.
-            The caller will reconstruct the $formatName lyrics container separately.
-            """.trimIndent()
         val response =
             complete(
                 config = config,
-                systemPrompt = defaultSystemPrompt.appendCustomPrompt(customPrompt),
-                userPrompt = payload.toString(),
+                systemPrompt =
+                    lyricsTranslationSystemPrompt(
+                        targetLanguage = targetLanguage,
+                        lineCount = lines.size,
+                        formatName = formatName,
+                    ).appendCustomPrompt(customPrompt),
+                userPrompt = lyricsTranslationPayload(lines, precedingLines, song),
                 temperature = 0.15,
                 maxTokens = 8192,
             )
         val array = extractJsonArray(response)
         require(array.length() == lines.size) { "AI response changed the lyric segment count" }
         return List(array.length()) { index ->
-            array.get(index) as? String
-                ?: throw AiServiceException("AI response contained a non-text lyric segment")
+            val text =
+                when (val item = array.get(index)) {
+                    is String -> item
+                    is JSONObject -> item.opt("text") as? String
+                    else -> null
+                } ?: throw AiServiceException("AI response contained a non-text lyric segment")
+            text.replace(LineBreakRegex, " ").trim()
         }
+    }
+
+    private fun lyricsTranslationSystemPrompt(
+        targetLanguage: String,
+        lineCount: Int,
+        formatName: String,
+    ): String =
+        """
+        You are a professional song lyrics translator. Your translations are shown line by line beside the original lyrics while the song plays, so every line must be accurate on its own and read naturally in $targetLanguage.
+
+        INPUT
+        A JSON object:
+        - "song": title and artist. Context only (genre, era, slang, references). Never translate or output it.
+        - "precedingLines": lines sung just before this batch. Context only, for continuity. Never output them.
+        - "lines": the lines to translate, each with its position "n" and its "text".
+
+        TRANSLATION RULES
+        1. Meaning first. Convey the exact meaning of each line, including idioms, slang, metaphors, wordplay and cultural references, phrased the way a fluent native $targetLanguage speaker would write a lyric. Translate what an idiom means, not its literal words.
+        2. Read every line before translating. Resolve subjects, pronouns, tense, number and gender from the surrounding lines, and use one consistent rendering for repeated lines, hooks and recurring terms.
+        3. Keep tone and register. Mood, formality, intensity, humor and profanity level stay exactly as in the original. Never soften, censor, intensify, explain or add meaning that is not there.
+        4. One line in, one line out. Each output string translates only its own input line. Never merge, split, reorder, summarize or move words between lines, even when a sentence continues across lines.
+        5. Return the original text exactly, unchanged, for: lines already written entirely in $targetLanguage; non-lexical vocals such as "oh", "yeah", "la la la", "na na"; onomatopoeia; and lines made only of names, numbers or symbols.
+        6. Mixed-language lines: translate the parts that are not in $targetLanguage and keep the parts already in $targetLanguage as written.
+        7. Keep personal names, artist names, brands, places and song or album titles in their original form, unless $targetLanguage has a standard established form for them.
+        8. Write in the standard native script of $targetLanguage. Do not romanize or transliterate unless $targetLanguage is normally written that way.
+        9. Keep inline structure: parentheses around background vocals, speaker labels such as "Name:", and punctuation that marks emphasis, pauses or trailing off. Translate the words inside them.
+        10. No notes, alternatives, explanations, transliterations in brackets, or quotation marks added around a line.
+
+        OUTPUT FORMAT (STRICT)
+        Return only a JSON array of exactly $lineCount strings, in the same order as "lines": the first string translates n=1 and the last translates n=$lineCount.
+        No markdown, code fences, object keys, line breaks inside a string, or any text before or after the array. Escape double quotes and backslashes as JSON requires.
+        Never output timestamps, tags or XML. The caller rebuilds the $formatName lyrics around your strings.
+        """.trimIndent()
+
+    private fun lyricsTranslationPayload(
+        lines: List<String>,
+        precedingLines: List<String>,
+        song: AiLyricsSongContext,
+    ): String {
+        val payload = JSONObject()
+        val songJson = JSONObject()
+        song.title.trim().takeIf { it.isNotEmpty() }?.let { songJson.put("title", it) }
+        song.artist.trim().takeIf { it.isNotEmpty() }?.let { songJson.put("artist", it) }
+        if (songJson.length() > 0) payload.put("song", songJson)
+        if (precedingLines.isNotEmpty()) {
+            payload.put("precedingLines", JSONArray().apply { precedingLines.forEach { put(it) } })
+        }
+        payload.put(
+            "lines",
+            JSONArray().apply {
+                lines.forEachIndexed { index, line ->
+                    put(JSONObject().put("n", index + 1).put("text", line))
+                }
+            },
+        )
+        return payload.toString()
     }
 
     private fun String.appendCustomPrompt(customPrompt: String): String {
         val normalizedPrompt = customPrompt.trim()
-        return if (normalizedPrompt.isEmpty()) this else "$this\n\n$normalizedPrompt"
+        if (normalizedPrompt.isEmpty()) return this
+        return buildString {
+            append(this@appendCustomPrompt)
+            append("\n\nUSER PREFERENCES\n")
+            append("Apply these to style and word choice. They never override the line-for-line rule or the strict output format above.\n")
+            append(normalizedPrompt)
+        }
     }
+
+    private val LineBreakRegex = Regex("""\s*[\r\n]+\s*""")
 
     suspend fun complete(
         config: AiServiceConfig,

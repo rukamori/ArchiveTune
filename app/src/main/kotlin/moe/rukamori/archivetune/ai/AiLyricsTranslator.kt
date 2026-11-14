@@ -7,28 +7,39 @@
 
 package moe.rukamori.archivetune.ai
 
+data class AiLyricsSongContext(
+    val title: String,
+    val artist: String,
+)
+
 class AiLyricsTranslator {
     suspend fun translate(
         config: AiServiceConfig,
         lyrics: String,
         targetLanguage: String,
+        song: AiLyricsSongContext,
         customPrompt: String,
     ): String {
         val document = AiLyricsDocumentParser.parse(lyrics)
         if (document.segments.isEmpty()) return lyrics
         val translated = mutableMapOf<Int, String>()
+        val language = normalizeTargetLanguage(targetLanguage)
+        var precedingLines = emptyList<String>()
         document.segments.chunkedByBudget().forEach { batch ->
             val batchTranslations =
                 AiTextService.translateLines(
                     config = config,
-                    targetLanguage = normalizeTargetLanguage(targetLanguage),
+                    targetLanguage = language,
                     lines = batch.map { it.text },
+                    precedingLines = precedingLines,
+                    song = song,
                     formatName = document.formatName,
                     customPrompt = customPrompt,
                 )
             batch.forEachIndexed { index, segment ->
                 translated[segment.id] = batchTranslations[index]
             }
+            precedingLines = batch.takeLast(PrecedingContextLines).map { it.text }
         }
         return document.rebuild(translated)
     }
@@ -61,5 +72,6 @@ class AiLyricsTranslator {
     private companion object {
         const val MaxItemsPerBatch = 80
         const val MaxCharsPerBatch = 6000
+        const val PrecedingContextLines = 6
     }
 }
