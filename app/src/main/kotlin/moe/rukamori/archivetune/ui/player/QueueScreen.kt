@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -74,6 +76,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.materialkolor.ktx.toColor
+import com.materialkolor.ktx.toHct
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.utils.joinByBullet
 import sh.calvin.reorderable.DragGestureDetector
@@ -262,9 +266,10 @@ private fun QueueSongRow(
     handle: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val highlight = remember(colors.surface, colors.primaryContainer, colors.onPrimaryContainer) { colors.queueHighlight() }
     val target = when {
         dragging -> colors.surfaceContainerHighest
-        entry.current -> colors.primaryContainer
+        entry.current -> highlight.container
         pureBlack -> colors.surface
         entry.recommended -> colors.surfaceContainer
         else -> colors.surfaceContainerLow
@@ -272,12 +277,12 @@ private fun QueueSongRow(
     val container by animateColorAsState(target, MaterialTheme.motionScheme.fastEffectsSpec(), label = "QueueRowColor")
     val highlighted = entry.current && !dragging
     val content by animateColorAsState(
-        if (highlighted) colors.onPrimaryContainer else colors.onSurface,
+        if (highlighted) highlight.content else colors.onSurface,
         MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "QueueRowContentColor",
     )
     val secondaryContent by animateColorAsState(
-        if (highlighted) colors.onPrimaryContainer else colors.onSurfaceVariant,
+        if (highlighted) highlight.content else colors.onSurfaceVariant,
         MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "QueueRowSecondaryContentColor",
     )
@@ -377,6 +382,22 @@ private fun QueueSongRow(
             fontWeight = if (entry.current) FontWeight.Bold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
+
+@Immutable
+private data class QueueHighlight(val container: Color, val content: Color)
+
+private fun ColorScheme.queueHighlight(): QueueHighlight {
+    val darkTheme = surface.luminance() < MidToneLuminance
+    val darkContainer = primaryContainer.luminance() < MidToneLuminance
+    if (darkTheme == darkContainer) return QueueHighlight(primaryContainer, onPrimaryContainer)
+    val hct = primaryContainer.toHct()
+    return QueueHighlight(
+        container = hct.withTone(if (darkTheme) 30.0 else 90.0).toColor(),
+        content = hct.withTone(if (darkTheme) 90.0 else 10.0).toColor(),
+    )
+}
+
+private const val MidToneLuminance = 0.18f
 
 @Composable
 private fun QueueArtwork(url: String?, current: Boolean, load: Boolean) {
