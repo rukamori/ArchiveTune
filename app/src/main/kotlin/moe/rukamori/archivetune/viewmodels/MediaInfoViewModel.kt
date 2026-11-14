@@ -28,7 +28,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.mediainfo.MediaInfoData
 import moe.rukamori.archivetune.mediainfo.MediaInfoDetail
 import moe.rukamori.archivetune.mediainfo.MediaInfoEvent
-import moe.rukamori.archivetune.mediainfo.MediaInfoMetric
+import moe.rukamori.archivetune.mediainfo.MediaInfoNumbers
 import moe.rukamori.archivetune.mediainfo.MediaInfoQuickFact
 import moe.rukamori.archivetune.mediainfo.MediaInfoState
 import moe.rukamori.archivetune.mediainfo.MediaInfoTab
@@ -54,11 +54,13 @@ class MediaInfoViewModel @Inject constructor(
     val events = eventChannel.receiveAsFlow()
     private var loadJob: Job? = null
     private var currentVideoId: String? = null
+    private var currentVolume: Float? = null
 
     fun open(videoId: String, volume: Float?) {
         if (currentVideoId == videoId && loadJob?.isActive == true) return
         loadJob?.cancel()
         currentVideoId = videoId
+        currentVolume = volume
         if (savedStateHandle.get<String>(VideoIdKey) != videoId) {
             savedStateHandle[VideoIdKey] = videoId
             selectTab(MediaInfoTab.Information)
@@ -83,7 +85,15 @@ class MediaInfoViewModel @Inject constructor(
         loadJob?.cancel()
         loadJob = null
         currentVideoId = null
+        currentVolume = null
         mutableState.value = MediaInfoState.Loading
+    }
+
+    fun retry() {
+        val videoId = currentVideoId ?: return
+        loadJob?.cancel()
+        loadJob = null
+        open(videoId, currentVolume)
     }
 
     fun selectTab(tab: MediaInfoTab) {
@@ -138,8 +148,8 @@ class MediaInfoViewModel @Inject constructor(
                 add(MediaInfoQuickFact(R.drawable.graphic_eq, it))
             }
             bitrate?.let { add(MediaInfoQuickFact(R.drawable.waves, it)) }
+            format?.sampleRate?.takeIf { it > 0 }?.let { add(MediaInfoQuickFact(R.drawable.speed, "$it Hz")) }
             fileSize?.let { add(MediaInfoQuickFact(R.drawable.storage, it)) }
-            metadata?.subscribers?.takeIf(String::isNotBlank)?.let { add(MediaInfoQuickFact(R.drawable.person, it)) }
         }
         return MediaInfoUiModel(
             videoId = videoId,
@@ -161,13 +171,20 @@ class MediaInfoViewModel @Inject constructor(
                 MediaInfoDetail(R.string.media_id, videoId),
             ),
             quickFacts = ImmutableList.copyOf(facts),
-            metrics = ImmutableList.of(
-                MediaInfoMetric(R.string.subscribers, metadata?.subscribers),
-                MediaInfoMetric(R.string.views, statistics?.views?.let(::numberFormatter)),
-                MediaInfoMetric(R.string.likes, statistics?.likes?.let(::numberFormatter)),
-                MediaInfoMetric(R.string.dislikes, statistics?.dislikes?.let(::numberFormatter)),
+            numbers = MediaInfoNumbers(
+                views = statistics?.views?.let(::numberFormatter),
+                likes = statistics?.likes?.let(::numberFormatter),
+                dislikes = statistics?.dislikes?.let(::numberFormatter),
+                subscribers = metadata?.subscribers?.takeIf(String::isNotBlank),
+                likeRatio = likeRatio(statistics?.likes, statistics?.dislikes),
             ),
         )
+    }
+
+    private fun likeRatio(likes: Int?, dislikes: Int?): Float? {
+        if (likes == null || dislikes == null || likes < 0 || dislikes < 0) return null
+        val total = likes.toLong() + dislikes.toLong()
+        return if (total > 0) (likes.toDouble() / total).toFloat() else null
     }
 
     private companion object {

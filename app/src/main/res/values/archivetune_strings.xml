@@ -886,6 +886,11 @@
     <string name="media_info_empty">No information available</string>
     <string name="media_info_load_error">Couldn’t load this information</string>
     <string name="media_info_itag" translatable="false">Itag</string>
+    <string name="media_info_copy_id">Copy ID</string>
+    <string name="media_info_show_more">Show more</string>
+    <string name="media_info_show_less">Show less</string>
+    <string name="media_info_like_ratio">%1$d%% liked</string>
+    <string name="create_playlist_confirm">Create</string>
     <string name="android_auto">Android Auto</string>
     <string name="android_auto_settings_subtitle">Driving playback, browsing and data</string>
     <string name="android_auto_connection">Connection</string>
