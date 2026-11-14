@@ -70,7 +70,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -1000,13 +999,14 @@ fun BottomSheetPlayer(
             }
         }
 
-    val isPlayerVisible by remember(state) {
-        derivedStateOf { state.isExpandedOrExpanding || state.progress > 0f }
-    }
-    BackHandler(enabled = !aodModeEnabled && isPlayerVisible && !queueVisible) {
-        when {
-            isLyricsScreenVisible -> isLyricsScreenVisible = false
-            state.isExpandedOrExpanding -> state.collapseSoft()
+    // Back belongs to the player only while it is open or opening. Gating on the animated
+    // value (`progress > 0f`) kept the handler alive through a collapse, and since it then
+    // had nothing to act on it silently consumed the press until the animation settled.
+    BackHandler(enabled = !aodModeEnabled && !queueVisible && state.isExpandedOrExpanding) {
+        if (isLyricsScreenVisible) {
+            isLyricsScreenVisible = false
+        } else {
+            state.collapseSoft()
         }
     }
 
