@@ -314,8 +314,8 @@ private fun MediaInfoStage(
     val colors = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
     val animationsDisabled = LocalAnimationsDisabled.current
-    val haloShape = remember { MaterialShapes.SoftBurst.toShape() }
-    val artworkShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val haloShape = MaterialShapes.SoftBurst.toShape()
+    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
     val rotation = rememberAmbientRotation(durationMillis = 36_000)
     val entrance = remember { Animatable(if (animationsDisabled) 1f else 0.82f) }
 
@@ -802,8 +802,8 @@ private fun MediaInfoLinerNotes(
 private fun MediaInfoNumbersBoard(numbers: MediaInfoNumbers) {
     val colors = MaterialTheme.colorScheme
     val unknownText = stringResource(R.string.unknown)
-    val badgeShape = remember { MaterialShapes.Cookie4Sided.toShape() }
-    val sunnyShape = remember { MaterialShapes.Sunny.toShape() }
+    val badgeShape = MaterialShapes.Cookie4Sided.toShape()
+    val sunnyShape = MaterialShapes.Sunny.toShape()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1015,7 +1015,7 @@ private fun MediaInfoStatusPanel(
     onRetry: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val glyphShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val glyphShape = MaterialShapes.Cookie9Sided.toShape()
     val message = stringResource(
         when (state) {
             MediaInfoState.Loading -> R.string.please_wait
@@ -1088,7 +1088,7 @@ private fun MediaInfoPlaceholder(
     onClose: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val haloShape = remember { MaterialShapes.SoftBurst.toShape() }
+    val haloShape = MaterialShapes.SoftBurst.toShape()
     val rotation = rememberAmbientRotation(durationMillis = 12_000)
 
     Box(modifier = Modifier.fillMaxWidth()) {
