@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -20,6 +21,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -56,14 +58,42 @@ fun BackAwareModalBottomSheet(
         contentColor = contentColor,
         dragHandle = dragHandle,
         contentWindowInsets = contentWindowInsets,
+        // Back is answered by the handler below, not by material3: `BottomSheet`'s own
+        // `PredictiveBackHandler` sits outside the provider below and would resolve the screen
+        // dispatcher these sheets are trying to escape. The cost is that a press is binary - with
+        // the native path the sheet would follow the finger through a predictive back gesture.
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
     ) {
         val scope = rememberCoroutineScope()
+
+        // The screen tree above publishes its own dispatcher through the composition local, and
+        // that dispatcher is switched off while the player is expanded. Inheriting it here wires
+        // this sheet's handlers to a dispatcher that never sees presses from the sheet's own window.
+        // Resolve the owner of that window instead: ComponentDialog tags its decor view from
+        // `setContentView()`, which `ModalBottomSheet` calls in the dialog wrapper's `init` before it
+        // composes this content, so the view tree already carries a valid owner right here - no
+        // attach listener, and no frame where the sheet has no handler at all.
+        val hostOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
+            "No NavigationEventDispatcherOwner in the composition hosting this modal bottom sheet"
+        }
+        val view = LocalView.current
         val windowOwner =
-            LocalView.current.findViewTreeNavigationEventDispatcherOwner()
-                ?: checkNotNull(LocalNavigationEventDispatcherOwner.current) {
-                    "No NavigationEventDispatcherOwner available for the modal bottom sheet window"
+            remember(view, hostOwner) {
+                val resolved = view.findViewTreeNavigationEventDispatcherOwner()
+                if (resolved == null || resolved === hostOwner) {
+                    // Same shape as the bug this wrapper exists for: the sheet answers on a
+                    // dispatcher whose window never receives the press. Loud instead of silent.
+                    Log.w(
+                        SheetBackTag,
+                        "No window-scoped NavigationEventDispatcherOwner for this sheet: back " +
+                            "will land on the host dispatcher and never reach the sheet.",
+                    )
+                    hostOwner
+                } else {
+                    resolved
                 }
+            }
+
         CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides windowOwner) {
             BackHandler(enabled = sheetState.isVisible) {
                 scope.launch { sheetState.hide() }.invokeOnCompletion {
@@ -74,3 +104,5 @@ fun BackAwareModalBottomSheet(
         }
     }
 }
+
+private const val SheetBackTag = "BackAwareModalBottomSheet"
