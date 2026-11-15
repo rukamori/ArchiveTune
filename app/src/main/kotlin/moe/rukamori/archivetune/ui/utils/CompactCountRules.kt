@@ -7,6 +7,8 @@
 
 package moe.rukamori.archivetune.ui.utils
 
+import java.util.Locale
+
 private const val NO_BREAK_SPACE = "\u00A0"
 
 internal data class CompactUnit(
@@ -20,6 +22,8 @@ internal data class CompactCountRules(
     val units: List<CompactUnit>,
     /** Highest value YouTube still renders as a plain grouped number instead of a unit token. */
     val plainNumberLimit: Long? = null,
+    /** `ja`/`zh` send four plain digits below 10^4 and never group them (`2490`). */
+    val plainNumberGrouping: Boolean = true,
 )
 
 private fun unit(
@@ -35,16 +39,52 @@ private fun plainNumberRules(
     vararg units: CompactUnit,
 ): CompactCountRules = CompactCountRules(units.toList(), limit)
 
+/** Plain counts that YouTube prints without a grouping separator (`2490`, not `2,490`). */
+private fun ungroupedPlainNumberRules(
+    limit: Long,
+    vararg units: CompactUnit,
+): CompactCountRules = CompactCountRules(units.toList(), limit, plainNumberGrouping = false)
+
 /**
  * Resolves an `hl` tag to its rules: exact match first, then the base language, so `pt-BR`,
  * `ar-EG`, `en-NG` and `zh-CN` inherit from `pt`, `ar`, `en` and `zh`. Unknown tags return null.
  */
 internal fun compactCountRulesFor(languageTag: String?): CompactCountRules? {
-    val tag = languageTag?.trim()?.replace('_', '-').orEmpty()
-    if (tag.isEmpty()) return null
+    val tag = normalizeCompactCountTag(languageTag) ?: return null
     CompactCountRulesByLanguage[tag]?.let { return it }
     return CompactCountRulesByLanguage[tag.substringBefore('-')]
 }
+
+/**
+ * Canonicalises the tags the app hands in. Android reports script and region where `hl` reports
+ * only the variant: `zh-Hant-TW` is `zh-TW` to YouTube, and Java keeps `nb`/`nn` where the table
+ * says `no`. Every other tag is returned as sent so the base-language fallback still applies.
+ */
+internal fun normalizeCompactCountTag(languageTag: String?): String? {
+    val raw = languageTag?.trim()?.replace('_', '-')?.takeIf { it.isNotEmpty() } ?: return null
+    // The language subtag is taken from the string, not from Locale.language: JDK 11 rewrites
+    // `id` and `he` to their legacy codes (`in`, `iw`), JDK 25 does not.
+    val language = LEGACY_LANGUAGE_CODES[raw.substringBefore('-').lowercase()]
+        ?: raw.substringBefore('-').lowercase()
+    if (language.isEmpty()) return null
+    val locale = Locale.forLanguageTag(raw)
+    if (language == "zh") {
+        when {
+            locale.script == "Hant" || locale.country in TRADITIONAL_CHINESE_REGIONS -> return "zh-TW"
+            locale.script == "Hans" -> return "zh"
+        }
+    }
+    if (language == "nb" || language == "nn") return "no"
+    return buildList {
+        add(language)
+        if (locale.script.isNotEmpty()) add(locale.script)
+        if (locale.country.isNotEmpty()) add(locale.country)
+    }.joinToString("-")
+}
+
+private val LEGACY_LANGUAGE_CODES = mapOf("in" to "id", "iw" to "he", "ji" to "yi", "jw" to "jv", "mo" to "ro")
+
+private val TRADITIONAL_CHINESE_REGIONS = setOf("TW", "HK", "MO")
 
 /**
  * Compact count tokens per content language, measured from WEB_REMIX `browse` payloads
@@ -63,6 +103,9 @@ internal fun compactCountRulesFor(languageTag: String?): CompactCountRules? {
  *
  * Sampled magnitudes: 10^3, 10^4, 10^5, 10^6, 10^7, 10^8. No 10^9 sample exists, so billion
  * tokens are deliberately absent: a payload using one parses to null instead of a guess.
+ *
+ * `ko` attaches `천` and `th` spaces `พัน` for 10^3, while `ja`/`zh`/`zh-TW` send four plain
+ * digits below 10^4 (`2490`), hence the plain-number limit there.
  */
 internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
     mapOf(
@@ -77,23 +120,27 @@ internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
                 unit("m", 1_000_000L, separator = ""),
             ),
         "ja" to
-            compactRules(
+            ungroupedPlainNumberRules(
+                10_000L,
                 unit("万", 10_000L, separator = ""),
                 unit("億", 100_000_000L, separator = ""),
             ),
         "ko" to
             compactRules(
+                unit("천", 1_000L, separator = ""),
                 unit("만", 10_000L, separator = ""),
                 unit("억", 100_000_000L, separator = ""),
             ),
         "vi" to compactRules(unit("N", 1_000L), unit("Tr", 1_000_000L)),
         "zh" to
-            compactRules(
+            ungroupedPlainNumberRules(
+                10_000L,
                 unit("万", 10_000L, separator = ""),
                 unit("亿", 100_000_000L, separator = ""),
             ),
         "zh-TW" to
-            compactRules(
+            ungroupedPlainNumberRules(
+                10_000L,
                 unit("萬", 10_000L, separator = ""),
                 unit("億", 100_000_000L, separator = ""),
             ),
@@ -123,6 +170,7 @@ internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
             ),
         "th" to
             compactRules(
+                unit("พัน", 1_000L, separator = " "),
                 unit("หมื่น", 10_000L, separator = " "),
                 unit("แสน", 100_000L, separator = " "),
                 unit("ล้าน", 1_000_000L, separator = " "),
@@ -158,4 +206,35 @@ internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
         "lt" to compactRules(unit("tūkst", 1_000L), unit("mln", 1_000_000L)),
         "lv" to compactRules(unit("tūkst", 1_000L), unit("milj", 1_000_000L)),
         "et" to compactRules(unit("tuh", 1_000L), unit("mln", 1_000_000L)),
+    )
+
+/** Every unit token the table knows, across all languages. */
+internal val knownCompactUnitTokens: Set<String> =
+    CompactCountRulesByLanguage.values.flatMap { rules -> rules.units.map { it.token.lowercase() } }.toSet()
+
+/**
+ * Tokens for scales that were never sampled (10^9 and above). A payload that still contains one
+ * parses to null instead of an integer that is off by 10^6 or more. This is a reject list only:
+ * no multiplier is guessed, so a wrong entry can hide a stat but never show a wrong number.
+ */
+internal val unsampledScaleTokens: Set<String> =
+    setOf(
+        "b",
+        "mrd",
+        "mld",
+        "mlrd",
+        "mljrd",
+        "mia",
+        "md",
+        "miliar",
+        "miljard",
+        "milliard",
+        "miliard",
+        "milyar",
+        "billion",
+        "млрд",
+        "миллиард",
+        "δισ",
+        "مليار",
+        "अरब",
     )

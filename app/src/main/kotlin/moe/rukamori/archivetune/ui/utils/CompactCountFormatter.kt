@@ -11,7 +11,6 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
-import java.util.Locale
 import kotlin.math.absoluteValue
 
 private val HUNDRED = BigDecimal(100)
@@ -27,30 +26,56 @@ private const val SCALED_UNIT_CEILING = 1_000L
  * can decide what to show instead.
  *
  * Precision follows YouTube: three significant digits (`4.08億`, `40.8 क॰`, `408 M`, `6350万`).
+ * Rounding can reach the next token, which is decided per language: `999.5K` is `1M`, but
+ * `9999.5万` is `1億` and `9995천` is `1만`, so the comparison is against the next multiplier
+ * rather than a fixed 1000.
  */
 fun formatCompactCountLocalized(
     value: Long,
     languageTag: String?,
 ): String? {
-    val tag = languageTag?.trim()?.replace('_', '-').orEmpty()
+    val tag = normalizeCompactCountTag(languageTag) ?: return null
     val rules = compactCountRulesFor(tag) ?: return null
-    val locale = Locale.forLanguageTag(tag)
+    val symbols = countSymbols(tag)
     val absolute = value.absoluteValue
+    fun plain(): String = formatPlainNumber(value, symbols, rules.plainNumberGrouping)
 
     val plainNumberLimit = rules.plainNumberLimit
-    if (plainNumberLimit != null && absolute < plainNumberLimit) return formatPlainNumber(value, locale)
+    if (plainNumberLimit != null && absolute < plainNumberLimit) return plain()
 
-    val largestUnit = rules.units.maxByOrNull { it.multiplier } ?: return formatPlainNumber(value, locale)
+    val largestUnit = rules.units.maxByOrNull { it.multiplier } ?: return plain()
 
     // No sampled language has a token above 10^8; refuse to fake one and print the full number.
-    if (absolute >= largestUnit.multiplier * SCALED_UNIT_CEILING) return formatPlainNumber(value, locale)
+    if (absolute >= largestUnit.multiplier * SCALED_UNIT_CEILING) return plain()
 
-    val unit =
+    var unit =
         rules.units
             .filter { it.multiplier <= absolute }
             .maxByOrNull { it.multiplier }
-            ?: return formatPlainNumber(value, locale)
+            ?: return plain()
+    var number = roundedNumber(absolute, unit)
+    while (true) {
+        val next = rules.units.filter { it.multiplier > unit.multiplier }.minByOrNull { it.multiplier }
+        if (next == null) {
+            // Rounding past the largest sampled token (`999.5M` -> `1000M`) has no honest token:
+            // print the full number instead of inventing `1B`.
+            val ceiling = BigDecimal.valueOf(largestUnit.multiplier * SCALED_UNIT_CEILING)
+            if (number.multiply(BigDecimal(unit.multiplier)) >= ceiling) return plain()
+            break
+        }
+        if (number.multiply(BigDecimal(unit.multiplier)) < BigDecimal(next.multiplier)) break
+        unit = next
+        number = roundedNumber(absolute, unit)
+    }
+    val prefix = if (value < 0) "-" else ""
+    return "$prefix${number.toPlainString().replace('.', symbols.decimalSeparator)}${unit.separator}${unit.token}"
+}
 
+/** [absolute] at [unit], rounded the way YouTube does: three significant digits. */
+private fun roundedNumber(
+    absolute: Long,
+    unit: CompactUnit,
+): BigDecimal {
     val scaled = BigDecimal(absolute).divide(BigDecimal(unit.multiplier), 4, RoundingMode.HALF_UP)
     val decimals =
         when {
@@ -58,20 +83,14 @@ fun formatCompactCountLocalized(
             scaled >= TEN -> 1
             else -> 2
         }
-    val number =
-        scaled
-            .setScale(decimals, RoundingMode.HALF_UP)
-            .stripTrailingZeros()
-            .toPlainString()
-            .replace('.', DecimalFormatSymbols.getInstance(locale).decimalSeparator)
-    val prefix = if (value < 0) "-" else ""
-    return "$prefix$number${unit.separator}${unit.token}"
+    return scaled.setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros()
 }
 
 private fun formatPlainNumber(
     value: Long,
-    locale: Locale,
-): String = DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(locale)).format(value)
+    symbols: DecimalFormatSymbols,
+    grouping: Boolean,
+): String = DecimalFormat(if (grouping) "#,##0" else "0", symbols).format(value)
 
 /**
  * Text for one audience stat: the number re-rendered in the display language when it can be
@@ -90,7 +109,7 @@ fun artistCountStat(
 ): String? {
     val text = rawText?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     val formatted =
-        parseCompactCount(text, contentLanguage)
+        parseCompactCount(text, contentLanguage, isBareCount = !rawTextIncludesLabel)
             ?.let { count -> formatCompactCountLocalized(count, displayLanguage) }
     return when {
         formatted != null -> "$formatted $label"

@@ -110,6 +110,10 @@ class ArtistViewModel
         val artistId = savedStateHandle.get<String>("artistId")!!
         private val _artistPage = MutableStateFlow<ArtistPage?>(null)
         val artistPage = _artistPage.asStateFlow()
+
+        /** `hl` the current [artistPage] was fetched with; payload counts are formatted in it. */
+        private val _artistPageContentLanguage = MutableStateFlow<String?>(null)
+        val artistPageContentLanguage = _artistPageContentLanguage.asStateFlow()
         private val showLibrary = MutableStateFlow(false)
         private var fetchJob: Job? = null
         private val eventChannel = Channel<ArtistEvent>(capacity = Channel.BUFFERED)
@@ -181,6 +185,9 @@ class ArtistViewModel
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    // Snapshot before the request: the payload is formatted in the `hl` it was
+                    // asked with, not in whatever the setting says once the response lands.
+                    val requestLanguage = YouTube.locale.hl
                     val page = YouTube.artist(storedArtist?.id ?: artistId).getOrThrow()
                     val filteredSections = page.sections.map { section ->
                         section.copy(
@@ -191,6 +198,7 @@ class ArtistViewModel
                         )
                     }
                     currentCoroutineContext().ensureActive()
+                    _artistPageContentLanguage.value = requestLanguage
                     _artistPage.value = page.copy(sections = filteredSections)
                     database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
                         database.update(artistEntity, page)

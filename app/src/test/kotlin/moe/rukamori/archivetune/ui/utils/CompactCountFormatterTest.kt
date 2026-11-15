@@ -29,6 +29,8 @@ class CompactCountFormatterTest {
         assertEquals("65.3\u00A0हज़ार", formatCompactCountLocalized(65_300L, "hi"))
         assertEquals("4.08億", formatCompactCountLocalized(408_000_000L, "ja"))
         assertEquals("6350万", formatCompactCountLocalized(63_500_000L, "ja"))
+        // 9999.5万 rounds to 10000万, which is exactly 1億.
+        assertEquals("1億", formatCompactCountLocalized(99_995_000L, "ja"))
         assertEquals("4.08억", formatCompactCountLocalized(408_000_000L, "ko"))
         assertEquals("4.08億", formatCompactCountLocalized(408_000_000L, "zh-TW"))
         assertEquals("6.53万", formatCompactCountLocalized(65_300L, "zh-CN"))
@@ -66,6 +68,41 @@ class CompactCountFormatterTest {
                 assertEquals("$language cannot format $value", value, parseCompactCount(formatted, language))
             }
         }
+    }
+
+    @Test
+    fun promotesToTheNextTokenOfThatLanguage() {
+        // The ratio between tokens is 1000x in `en`, 100x in `hi` and 10x in `th`/`ko`.
+        assertEquals("1M", formatCompactCountLocalized(999_500L, "en"))
+        assertEquals("1\u00A0लाख", formatCompactCountLocalized(99_950L, "hi"))
+        assertEquals("1 หมื่น", formatCompactCountLocalized(9_995L, "th"))
+        assertEquals("1만", formatCompactCountLocalized(9_995L, "ko"))
+        // No sampled billion token exists, so the full number is printed instead of `1000M`.
+        assertEquals("999,950,000", formatCompactCountLocalized(999_950_000L, "en"))
+        assertEquals("6350万", formatCompactCountLocalized(63_500_000L, "ja"))
+    }
+
+    @Test
+    fun rendersMeasuredThousands() {
+        assertEquals("2.49천", formatCompactCountLocalized(2_490L, "ko"))
+        assertEquals("2.49 พัน", formatCompactCountLocalized(2_490L, "th"))
+        assertEquals("2490", formatCompactCountLocalized(2_490L, "ja"))
+        assertEquals("2490", formatCompactCountLocalized(2_490L, "zh-TW"))
+    }
+
+    @Test
+    fun keepsLatinDigitsForArabic() {
+        assertEquals("63.5\u00A0مليون", formatCompactCountLocalized(63_500_000L, "ar-EG"))
+        assertEquals("850", formatCompactCountLocalized(850L, "ar-EG"))
+    }
+
+    @Test
+    fun resolvesDeviceTagForms() {
+        assertEquals("2490", formatCompactCountLocalized(2_490L, "zh-Hant-TW"))
+        assertEquals("65,3k", formatCompactCountLocalized(65_300L, "nb-NO"))
+        // Legacy codes: JDK 11 hands `in`/`iw` back from `Locale.forLanguageTag("id"/"he")`.
+        assertEquals("408\u00A0jt", formatCompactCountLocalized(408_000_000L, "in-ID"))
+        assertEquals("408M", formatCompactCountLocalized(408_000_000L, "iw-IL"))
     }
 
     @Test

@@ -90,6 +90,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.valentinilk.shimmer.shimmer
+import java.util.Locale
 import kotlinx.coroutines.flow.collect
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -172,6 +173,7 @@ fun ArtistScreen(
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val loadedArtistPage = viewModel.artistPage.collectAsStateWithLifecycle().value
+    val loadedArtistPageContentLanguage = viewModel.artistPageContentLanguage.collectAsStateWithLifecycle().value
     val libraryArtist by viewModel.libraryArtist.collectAsStateWithLifecycle()
     val loadedLibrarySongs by viewModel.librarySongs.collectAsStateWithLifecycle()
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
@@ -360,9 +362,13 @@ fun ArtistScreen(
                     val albumsLabel = stringResource(R.string.albums)
                     val monthlyListenersLabel = stringResource(R.string.monthly_listeners)
                     val subscribersLabel = stringResource(R.string.subscribers)
-                    // Counts arrive localised in the content language, but are rendered in the app language.
-                    val contentLanguage = YouTube.locale.hl
-                    val displayLanguage = LocalConfiguration.current.locales[0].toLanguageTag()
+                    // Counts arrive localised in the content language, but are rendered in the app
+                    // language. The page carries the `hl` it was fetched with, so a language
+                    // change cannot re-read a payload with the wrong separators.
+                    val contentLanguage = loadedArtistPageContentLanguage ?: YouTube.locale.hl
+                    val displayLanguage =
+                        LocalConfiguration.current.locales[0]?.toLanguageTag()
+                            ?: Locale.getDefault().toLanguageTag()
                     val artistStats =
                         remember(
                             showLocal,
