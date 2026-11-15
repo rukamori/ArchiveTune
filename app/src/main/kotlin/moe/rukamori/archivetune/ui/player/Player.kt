@@ -184,6 +184,7 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
@@ -1002,7 +1003,14 @@ fun BottomSheetPlayer(
     // Back belongs to the player only while it is open or opening. Gating on the animated
     // value (`progress > 0f`) kept the handler alive through a collapse, and since it then
     // had nothing to act on it silently consumed the press until the animation settled.
-    BackHandler(enabled = !aodModeEnabled && !queueVisible && state.isExpandedOrExpanding) {
+    BackHandler(
+        enabled =
+            BackOwnershipPolicy.playerHandlesBack(
+                aodModeEnabled = aodModeEnabled,
+                queueVisible = queueVisible,
+                isExpandedOrExpanding = state.isExpandedOrExpanding,
+            ),
+    ) {
         if (isLyricsScreenVisible) {
             isLyricsScreenVisible = false
         } else {

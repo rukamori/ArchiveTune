@@ -280,6 +280,7 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 import moe.rukamori.archivetune.ui.component.BottomSheetMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
@@ -1754,7 +1755,10 @@ class MainActivity : ComponentActivity() {
                             // Hand over the moment the player loses its own back action, not when the
                             // collapse animation ends: the previous `progress <= 0f` left a window where
                             // the player owned back with nothing to do and the screens could not answer.
-                            isAppUpdateScreen || !playerBottomSheetState.isExpandedOrExpanding
+                            BackOwnershipPolicy.screensHandleBack(
+                                isAppUpdateScreen = isAppUpdateScreen,
+                                isExpandedOrExpanding = playerBottomSheetState.isExpandedOrExpanding,
+                            )
                         }
                     }
                     val screenBackDispatcherOwner =
