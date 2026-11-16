@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.findViewTreeNavigationEventDispatcherOwner
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,26 +63,27 @@ fun BackAwareModalBottomSheet(
     ) {
         val scope = rememberCoroutineScope()
 
-        val hostOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
+        val inheritedScreenOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
             "No NavigationEventDispatcherOwner in the composition hosting this modal bottom sheet"
         }
         val view = LocalView.current
-        val windowOwner =
-            remember(view, hostOwner) {
+        val sheetWindowOwner =
+            remember(view, inheritedScreenOwner) {
                 val resolved = view.findViewTreeNavigationEventDispatcherOwner()
-                if (resolved == null || resolved === hostOwner) {
+                val picked = BackOwnershipPolicy.pickSheetOwner(resolved, inheritedScreenOwner)
+                if (picked != null) {
+                    picked
+                } else {
                     Log.w(
                         SheetBackTag,
                         "No window-scoped NavigationEventDispatcherOwner for this sheet: back " +
-                            "will land on the host dispatcher and never reach the sheet.",
+                            "will land on the inherited screen dispatcher and never reach the sheet.",
                     )
-                    hostOwner
-                } else {
-                    resolved
+                    inheritedScreenOwner
                 }
             }
 
-        CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides windowOwner) {
+        CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides sheetWindowOwner) {
             BackHandler(enabled = sheetState.isVisible) {
                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                     if (!sheetState.isVisible) currentOnDismissRequest()

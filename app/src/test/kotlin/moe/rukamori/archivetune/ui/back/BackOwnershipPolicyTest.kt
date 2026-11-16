@@ -8,6 +8,8 @@
 package moe.rukamori.archivetune.ui.back
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -121,5 +123,15 @@ class BackOwnershipPolicyTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun sheetOwner_isNeverTheInheritedOwner() {
+        val inherited = Any()
+        val window = Any()
+
+        assertNull(BackOwnershipPolicy.pickSheetOwner(resolved = inherited, inherited = inherited))
+        assertNull(BackOwnershipPolicy.pickSheetOwner(resolved = null, inherited = inherited))
+        assertSame(window, BackOwnershipPolicy.pickSheetOwner(resolved = window, inherited = inherited))
     }
 }

@@ -18,4 +18,9 @@ internal object BackOwnershipPolicy {
         isAppUpdateScreen: Boolean,
         isExpandedOrExpanding: Boolean,
     ): Boolean = isAppUpdateScreen || !isExpandedOrExpanding
+
+    fun <T : Any> pickSheetOwner(
+        resolved: T?,
+        inherited: T,
+    ): T? = resolved?.takeUnless { it === inherited }
 }
