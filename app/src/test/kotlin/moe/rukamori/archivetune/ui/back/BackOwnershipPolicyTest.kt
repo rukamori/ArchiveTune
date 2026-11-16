@@ -125,10 +125,16 @@ class BackOwnershipPolicyTest {
         }
     }
 
+    private class AlwaysEqual {
+        override fun equals(other: Any?) = true
+
+        override fun hashCode() = 0
+    }
+
     @Test
     fun sheetOwner_isNeverTheInheritedOwner() {
-        val inherited = Any()
-        val window = Any()
+        val inherited = AlwaysEqual()
+        val window = AlwaysEqual()
 
         assertNull(BackOwnershipPolicy.pickSheetOwner(resolved = inherited, inherited = inherited))
         assertNull(BackOwnershipPolicy.pickSheetOwner(resolved = null, inherited = inherited))
