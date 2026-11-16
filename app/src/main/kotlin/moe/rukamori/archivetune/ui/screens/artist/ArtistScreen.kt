@@ -362,9 +362,6 @@ fun ArtistScreen(
                     val albumsLabel = stringResource(R.string.albums)
                     val monthlyListenersLabel = stringResource(R.string.monthly_listeners)
                     val subscribersLabel = stringResource(R.string.subscribers)
-                    // Counts arrive localised in the content language, but are rendered in the app
-                    // language. The page carries the `hl` it was fetched with, so a language
-                    // change cannot re-read a payload with the wrong separators.
                     val contentLanguage = loadedArtistPageContentLanguage ?: YouTube.locale.hl
                     val displayLanguage =
                         LocalConfiguration.current.locales[0]?.toLanguageTag()

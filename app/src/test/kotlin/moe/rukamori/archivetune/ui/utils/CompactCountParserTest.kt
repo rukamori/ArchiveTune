@@ -11,10 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/**
- * Fixtures are verbatim values captured from WEB_REMIX `browse` responses, with NBSP kept as
- * `\u00A0` because YouTube separates the number from the unit with it in most languages.
- */
 class CompactCountParserTest {
     private data class Case(
         val language: String,
@@ -175,12 +171,10 @@ class CompactCountParserTest {
     fun parsesMeasuredThousands() {
         assertCases(
             listOf(
-                // Measured on channels with 1.08K / 2.49K / 9.96K subscribers.
                 Case("ko", "2.49천", 2_490L),
                 Case("ko", "9.96천", 9_960L),
                 Case("th", "2.49 พัน", 2_490L),
                 Case("th", "9.96 พัน", 9_960L),
-                // ja/zh send four plain digits below 10^4.
                 Case("ja", "2490", 2_490L),
                 Case("ja", "9960", 9_960L),
                 Case("zh-CN", "1080", 1_080L),
@@ -197,31 +191,25 @@ class CompactCountParserTest {
 
     @Test
     fun refusesUnsampledOrUnreadableUnits() {
-        // A unit token that is not in the language's table must not degrade to its digits.
         assertNull(parseCompactCount("1B monthly audience", "en"))
         assertNull(parseCompactCount("2B", "en"))
         assertNull(parseCompactCount("408M monthly audience", "tr"))
-        // Billion-scale tokens are known but never sampled: refuse instead of guessing.
         assertNull(parseCompactCount("1\u00A0млрд слушателей в месяц", "ru"))
         assertNull(parseCompactCount("1\u00A0Mrd.\u00A0Zuschauer/Monat", "de"))
         assertNull(parseCompactCount("1,2\u00A0mia. månedlige publikummer", "da"))
-        // Units of another language under a stale `hl`.
         assertNull(parseCompactCount("2천", "en"))
         assertNull(parseCompactCount("5 พัน", "en"))
         assertNull(parseCompactCount("408 M monthly audience", "th"))
-        // Billion tokens of the remaining languages, measured as unsampled elsewhere.
         assertNull(parseCompactCount("1 bi ouvintes mensais", "pt-BR"))
         assertNull(parseCompactCount("1 tỷ khán thính giả mỗi tháng", "vi"))
         assertNull(parseCompactCount("Aylık kitle: 1 Mr", "tr"))
         assertNull(parseCompactCount("1兆 人", "ja"))
         assertNull(parseCompactCount("1조 명", "ko"))
-        // The Devanagari abbreviation sign is punctuation: trimming it would turn `क॰` into `क`.
         assertNull(parseCompactCount("40\u00A0क॰ दर्शक", "en"))
     }
 
     @Test
     fun bareCountsStopAtTheNumber() {
-        // Hebrew payloads wrap the count in bidi control marks.
         assertEquals(770L, parseCompactCount("\u202B770\u202C", "he", isBareCount = true))
         assertEquals(2_490L, parseCompactCount("\u202B2.49K\u200F\u202C", "he", isBareCount = true))
         assertNull(parseCompactCount("1\u00A0Mrd.", "de", isBareCount = true))
@@ -242,22 +230,17 @@ class CompactCountParserTest {
 
     @Test
     fun parsesArabicWithLatinSeparators() {
-        // YouTube always ships Latin digits and separators for Arabic, whatever ICU does.
         assertEquals(63_500_000L, parseCompactCount("63.5\u00A0مليون", "ar-EG"))
         assertEquals(65_300L, parseCompactCount("65.3\u00A0ألف", "ar-SA"))
     }
 
     @Test
     fun refusesToGuess() {
-        // Language missing from the table.
         assertNull(parseCompactCount("408M monthly audience", "xx"))
         assertNull(parseCompactCount("408M monthly audience", null))
-        // Unit that was never sampled: 10^9 has no measured token in any language.
         assertNull(parseCompactCount("1,2 млрд слушателей в месяц", "ru"))
         assertNull(parseCompactCount("1.2B monthly audience", "en"))
-        // Fractional number with an unknown trailing token: the token is not a label either.
         assertNull(parseCompactCount("40.8 कXYZ दर्शक", "hi"))
-        // No digits at all.
         assertNull(parseCompactCount("No subscribers", "en"))
         assertNull(parseCompactCount("", "en"))
         assertNull(parseCompactCount(null, "en"))

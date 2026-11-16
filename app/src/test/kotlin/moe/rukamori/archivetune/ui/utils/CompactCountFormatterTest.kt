@@ -11,10 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/**
- * Expected strings are the shapes YouTube itself renders for the same value, captured from
- * WEB_REMIX payloads (label dropped, NBSP kept as `\u00A0`).
- */
 class CompactCountFormatterTest {
     @Test
     fun matchesMeasuredShapes() {
@@ -29,7 +25,6 @@ class CompactCountFormatterTest {
         assertEquals("65.3\u00A0हज़ार", formatCompactCountLocalized(65_300L, "hi"))
         assertEquals("4.08億", formatCompactCountLocalized(408_000_000L, "ja"))
         assertEquals("6350万", formatCompactCountLocalized(63_500_000L, "ja"))
-        // 9999.5万 rounds to 10000万, which is exactly 1億.
         assertEquals("1億", formatCompactCountLocalized(99_995_000L, "ja"))
         assertEquals("4.08억", formatCompactCountLocalized(408_000_000L, "ko"))
         assertEquals("4.08億", formatCompactCountLocalized(408_000_000L, "zh-TW"))
@@ -72,12 +67,10 @@ class CompactCountFormatterTest {
 
     @Test
     fun promotesToTheNextTokenOfThatLanguage() {
-        // The ratio between tokens is 1000x in `en`, 100x in `hi` and 10x in `th`/`ko`.
         assertEquals("1M", formatCompactCountLocalized(999_500L, "en"))
         assertEquals("1\u00A0लाख", formatCompactCountLocalized(99_950L, "hi"))
         assertEquals("1 หมื่น", formatCompactCountLocalized(9_995L, "th"))
         assertEquals("1만", formatCompactCountLocalized(9_995L, "ko"))
-        // No sampled billion token exists, so the full number is printed instead of `1000M`.
         assertEquals("999,950,000", formatCompactCountLocalized(999_950_000L, "en"))
         assertEquals("6350万", formatCompactCountLocalized(63_500_000L, "ja"))
     }
@@ -100,7 +93,6 @@ class CompactCountFormatterTest {
     fun resolvesDeviceTagForms() {
         assertEquals("2490", formatCompactCountLocalized(2_490L, "zh-Hant-TW"))
         assertEquals("65,3k", formatCompactCountLocalized(65_300L, "nb-NO"))
-        // Legacy codes: JDK 11 hands `in`/`iw` back from `Locale.forLanguageTag("id"/"he")`.
         assertEquals("408\u00A0jt", formatCompactCountLocalized(408_000_000L, "in-ID"))
         assertEquals("408M", formatCompactCountLocalized(408_000_000L, "iw-IL"))
     }
@@ -113,17 +105,14 @@ class CompactCountFormatterTest {
 
     @Test
     fun keepsServerTextWhenItCannotBeRendered() {
-        // "jv" is an app locale without a table entry: the phrase is shown untouched.
         assertEquals(
             "408\u00A0jt\u00A0audiens bulanan",
             artistCountStat("408\u00A0jt\u00A0audiens bulanan", "Pendengar bulanan", "id", "jv", rawTextIncludesLabel = true),
         )
-        // Subscriber payloads have no label of their own, so ours is appended to the raw count.
         assertEquals(
             "63,5\u00A0jt Subscriber",
             artistCountStat("63,5\u00A0jt", "Subscriber", "id", "jv", rawTextIncludesLabel = false),
         )
-        // Unknown content language: nothing is parsed, the phrase still shows.
         assertEquals(
             "4 080万 monthly",
             artistCountStat("4 080万 monthly", "Pendengar bulanan", "xx", "id", rawTextIncludesLabel = true),

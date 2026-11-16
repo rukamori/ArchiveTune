@@ -14,15 +14,12 @@ private const val NO_BREAK_SPACE = "\u00A0"
 internal data class CompactUnit(
     val token: String,
     val multiplier: Long,
-    /** Exactly what YouTube puts between the number and the token: "", " " or NBSP. */
     val separator: String = NO_BREAK_SPACE,
 )
 
 internal data class CompactCountRules(
     val units: List<CompactUnit>,
-    /** Highest value YouTube still renders as a plain grouped number instead of a unit token. */
     val plainNumberLimit: Long? = null,
-    /** `ja`/`zh` send four plain digits below 10^4 and never group them (`2490`). */
     val plainNumberGrouping: Boolean = true,
 )
 
@@ -39,31 +36,19 @@ private fun plainNumberRules(
     vararg units: CompactUnit,
 ): CompactCountRules = CompactCountRules(units.toList(), limit)
 
-/** Plain counts that YouTube prints without a grouping separator (`2490`, not `2,490`). */
 private fun ungroupedPlainNumberRules(
     limit: Long,
     vararg units: CompactUnit,
 ): CompactCountRules = CompactCountRules(units.toList(), limit, plainNumberGrouping = false)
 
-/**
- * Resolves an `hl` tag to its rules: exact match first, then the base language, so `pt-BR`,
- * `ar-EG`, `en-NG` and `zh-CN` inherit from `pt`, `ar`, `en` and `zh`. Unknown tags return null.
- */
 internal fun compactCountRulesFor(languageTag: String?): CompactCountRules? {
     val tag = normalizeCompactCountTag(languageTag) ?: return null
     CompactCountRulesByLanguage[tag]?.let { return it }
     return CompactCountRulesByLanguage[tag.substringBefore('-')]
 }
 
-/**
- * Canonicalises the tags the app hands in. Android reports script and region where `hl` reports
- * only the variant: `zh-Hant-TW` is `zh-TW` to YouTube, and Java keeps `nb`/`nn` where the table
- * says `no`. Every other tag is returned as sent so the base-language fallback still applies.
- */
 internal fun normalizeCompactCountTag(languageTag: String?): String? {
     val raw = languageTag?.trim()?.replace('_', '-')?.takeIf { it.isNotEmpty() } ?: return null
-    // The language subtag is taken from the string, not from Locale.language: JDK 11 rewrites
-    // `id` and `he` to their legacy codes (`in`, `iw`), JDK 25 does not.
     val language = LEGACY_LANGUAGE_CODES[raw.substringBefore('-').lowercase()]
         ?: raw.substringBefore('-').lowercase()
     if (language.isEmpty()) return null
@@ -86,27 +71,6 @@ private val LEGACY_LANGUAGE_CODES = mapOf("in" to "id", "iw" to "he", "ji" to "y
 
 private val TRADITIONAL_CHINESE_REGIONS = setOf("TW", "HK", "MO")
 
-/**
- * Compact count tokens per content language, measured from WEB_REMIX `browse` payloads
- * (`clientName=WEB_REMIX`, one request per `hl`, artist page header fields
- * `musicImmersiveHeaderRenderer.monthlyListenerCount` and
- * `subscriptionButton.subscribeButtonRenderer.subscriberCountText`).
- *
- * These are not CLDR patterns. YouTube deviates from CLDR repeatedly: `es` uses `K` where CLDR
- * uses `mil`, `de`/`da`/`sv` send plain grouped numbers below one million, `it`/`nl`/`no`/`ms`
- * attach the thousand token but space the million one, `ms` glues `J` for millions next to its
- * English `K` for thousands, and `he` returns English tokens entirely.
- *
- * Keys are `hl` values from `LanguageCodeToName`. Region variants resolve to their base
- * language (`en-NG`, `pt-BR`, `ar-EG`, `zh-CN`), so only the variants that actually differ are
- * listed: `en-GB` (lowercase tokens) and `zh-TW` (different ideographs).
- *
- * Sampled magnitudes: 10^3, 10^4, 10^5, 10^6, 10^7, 10^8. No 10^9 sample exists, so billion
- * tokens are deliberately absent: a payload using one parses to null instead of a guess.
- *
- * `ko` attaches `천` and `th` spaces `พัน` for 10^3, while `ja`/`zh`/`zh-TW` send four plain
- * digits below 10^4 (`2490`), hence the plain-number limit there.
- */
 internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
     mapOf(
         "en" to
@@ -208,15 +172,9 @@ internal val CompactCountRulesByLanguage: Map<String, CompactCountRules> =
         "et" to compactRules(unit("tuh", 1_000L), unit("mln", 1_000_000L)),
     )
 
-/** Every unit token the table knows, across all languages. */
 internal val knownCompactUnitTokens: Set<String> =
     CompactCountRulesByLanguage.values.flatMap { rules -> rules.units.map { it.token.lowercase() } }.toSet()
 
-/**
- * Tokens for scales that were never sampled (10^9 and above). A payload that still contains one
- * parses to null instead of an integer that is off by 10^6 or more. This is a reject list only:
- * no multiplier is guessed, so a wrong entry can hide a stat but never show a wrong number.
- */
 internal val unsampledScaleTokens: Set<String> =
     setOf(
         "b",
