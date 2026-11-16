@@ -25,8 +25,6 @@ class BackOwnershipPolicyTest {
 
     @Test
     fun player_releasesBack_theMomentCollapseStarts() {
-        // Regression guard: the old predicate OR-ed in `progress > 0f`, which stays true for the
-        // whole spring after the collapse has already been accepted.
         assertFalse(
             BackOwnershipPolicy.playerHandlesBack(
                 aodModeEnabled = false,
@@ -86,8 +84,6 @@ class BackOwnershipPolicyTest {
 
     @Test
     fun neitherSideOwnsBack_whileTheQueueSheetIsUp() {
-        // The queue's own sheet answers the press here. Neither side may claim it, otherwise back
-        // would collapse the player or pop a screen behind a sheet that is still on screen.
         assertFalse(
             BackOwnershipPolicy.playerHandlesBack(
                 aodModeEnabled = false,
@@ -105,9 +101,6 @@ class BackOwnershipPolicyTest {
 
     @Test
     fun handOver_leavesNoGap_betweenPlayerAndScreens() {
-        // The invariant the fix is built on: whenever the player is not expanded the screens must
-        // be able to answer, otherwise a press lands on the activity-level last resort and the app
-        // backgrounds with something still on screen.
         for (aodModeEnabled in booleanArrayOf(true, false)) {
             for (queueVisible in booleanArrayOf(true, false)) {
                 val case = "aod=$aodModeEnabled queue=$queueVisible"

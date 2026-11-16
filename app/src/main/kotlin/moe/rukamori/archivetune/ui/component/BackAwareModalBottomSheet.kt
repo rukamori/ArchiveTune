@@ -58,21 +58,10 @@ fun BackAwareModalBottomSheet(
         contentColor = contentColor,
         dragHandle = dragHandle,
         contentWindowInsets = contentWindowInsets,
-        // Back is answered by the handler below, not by material3: `BottomSheet`'s own
-        // `PredictiveBackHandler` sits outside the provider below and would resolve the screen
-        // dispatcher these sheets are trying to escape. The cost is that a press is binary - with
-        // the native path the sheet would follow the finger through a predictive back gesture.
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
     ) {
         val scope = rememberCoroutineScope()
 
-        // The screen tree above publishes its own dispatcher through the composition local, and
-        // that dispatcher is switched off while the player is expanded. Inheriting it here wires
-        // this sheet's handlers to a dispatcher that never sees presses from the sheet's own window.
-        // Resolve the owner of that window instead: ComponentDialog tags its decor view from
-        // `setContentView()`, which `ModalBottomSheet` calls in the dialog wrapper's `init` before it
-        // composes this content, so the view tree already carries a valid owner right here - no
-        // attach listener, and no frame where the sheet has no handler at all.
         val hostOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
             "No NavigationEventDispatcherOwner in the composition hosting this modal bottom sheet"
         }
@@ -81,8 +70,6 @@ fun BackAwareModalBottomSheet(
             remember(view, hostOwner) {
                 val resolved = view.findViewTreeNavigationEventDispatcherOwner()
                 if (resolved == null || resolved === hostOwner) {
-                    // Same shape as the bug this wrapper exists for: the sheet answers on a
-                    // dispatcher whose window never receives the press. Loud instead of silent.
                     Log.w(
                         SheetBackTag,
                         "No window-scoped NavigationEventDispatcherOwner for this sheet: back " +

@@ -614,15 +614,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Lowest-priority back callback: it only runs when no composable wants the press. Back from a
-        // top-level screen sends the app to the background instead of destroying it, so playback and
-        // the mini-player survive - a press made while the player is still collapsing no longer kills
-        // the activity. Registered before setContent so every Compose handler outranks it.
-        //
-        // Two consequences, both deliberate: while this callback is enabled `hasEnabledCallbacks()`
-        // stays true, so the system never runs its own close-to-home preview and the app answers the
-        // root press itself; and because `moveTaskToBack` is not `finish()`, this activity is never
-        // destroyed by back - anything registered for `onDestroy` runs when the system reclaims it.
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -1752,9 +1743,6 @@ class MainActivity : ComponentActivity() {
                     val playerBackDispatcherOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current)
                     val screenBackEnabled by remember(playerBottomSheetState, isAppUpdateScreen) {
                         derivedStateOf {
-                            // Hand over the moment the player loses its own back action, not when the
-                            // collapse animation ends: the previous `progress <= 0f` left a window where
-                            // the player owned back with nothing to do and the screens could not answer.
                             BackOwnershipPolicy.screensHandleBack(
                                 isAppUpdateScreen = isAppUpdateScreen,
                                 isExpandedOrExpanding = playerBottomSheetState.isExpandedOrExpanding,

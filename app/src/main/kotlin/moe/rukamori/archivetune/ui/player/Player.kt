@@ -1000,9 +1000,6 @@ fun BottomSheetPlayer(
             }
         }
 
-    // Back belongs to the player only while it is open or opening. Gating on the animated
-    // value (`progress > 0f`) kept the handler alive through a collapse, and since it then
-    // had nothing to act on it silently consumed the press until the animation settled.
     BackHandler(
         enabled =
             BackOwnershipPolicy.playerHandlesBack(
