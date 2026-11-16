@@ -27,8 +27,8 @@ private val DECIMAL_SEPARATORS = charArrayOf('.', ',')
  * read as the digits in front of it.
  *
  * Returns null whenever the value cannot be determined exactly, including languages that are
- * not in [CompactCountRulesByLanguage] and unit tokens that were never sampled. Callers are
- * expected to drop the stat instead of showing a guess.
+ * not in [CompactCountRulesByLanguage] and unit tokens that were never sampled; callers then
+ * keep the server text instead of showing a guess.
  */
 fun parseCompactCount(
     rawText: String?,
@@ -233,9 +233,11 @@ private fun Char.isWordChar(): Boolean =
 private fun Char.isNumberPadding(): Boolean =
     isWhitespace() || category == CharCategory.FORMAT || this in NUMBER_GROUPING_WHITESPACE
 
-/** CJK counter glued to the number (`명`, `位`), as opposed to a CJK unit token (`천`, `억`). */
-private fun Char.isCjkCounter(): Boolean =
-    isCjkScript() && toString().lowercase() !in knownCompactUnitTokens
+/** CJK counter glued to the number (`명`, `位`), as opposed to a CJK unit token (`천`, `억`, `兆`). */
+private fun Char.isCjkCounter(): Boolean {
+    val lower = toString().lowercase()
+    return isCjkScript() && lower !in knownCompactUnitTokens && lower !in unsampledScaleTokens
+}
 
 /** Han, Hiragana, Katakana and Hangul are the scripts whose units glue to their label. */
 private fun Char.isCjkScript(): Boolean =

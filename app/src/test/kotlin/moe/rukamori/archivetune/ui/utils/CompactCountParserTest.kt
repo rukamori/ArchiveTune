@@ -209,6 +209,12 @@ class CompactCountParserTest {
         assertNull(parseCompactCount("2천", "en"))
         assertNull(parseCompactCount("5 พัน", "en"))
         assertNull(parseCompactCount("408 M monthly audience", "th"))
+        // Billion tokens of the remaining languages, measured as unsampled elsewhere.
+        assertNull(parseCompactCount("1 bi ouvintes mensais", "pt-BR"))
+        assertNull(parseCompactCount("1 tỷ khán thính giả mỗi tháng", "vi"))
+        assertNull(parseCompactCount("Aylık kitle: 1 Mr", "tr"))
+        assertNull(parseCompactCount("1兆 人", "ja"))
+        assertNull(parseCompactCount("1조 명", "ko"))
         // The Devanagari abbreviation sign is punctuation: trimming it would turn `क॰` into `क`.
         assertNull(parseCompactCount("40\u00A0क॰ दर्शक", "en"))
     }

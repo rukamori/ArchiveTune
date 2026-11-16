@@ -27,7 +27,7 @@ private const val SCALED_UNIT_CEILING = 1_000L
  *
  * Precision follows YouTube: three significant digits (`4.08億`, `40.8 क॰`, `408 M`, `6350万`).
  * Rounding can reach the next token, which is decided per language: `999.5K` is `1M`, but
- * `9999.5万` is `1億` and `9995천` is `1만`, so the comparison is against the next multiplier
+ * `9999.5万` is `1億` and `9.995천` is `1만`, so the comparison is against the next multiplier
  * rather than a fixed 1000.
  */
 fun formatCompactCountLocalized(

@@ -94,8 +94,8 @@ private val TRADITIONAL_CHINESE_REGIONS = setOf("TW", "HK", "MO")
  *
  * These are not CLDR patterns. YouTube deviates from CLDR repeatedly: `es` uses `K` where CLDR
  * uses `mil`, `de`/`da`/`sv` send plain grouped numbers below one million, `it`/`nl`/`no`/`ms`
- * attach the thousand token but space the million one, `ms` mixes `J` for millions with English
- * `K` for thousands, and `he` returns English tokens entirely.
+ * attach the thousand token but space the million one, `ms` glues `J` for millions next to its
+ * English `K` for thousands, and `he` returns English tokens entirely.
  *
  * Keys are `hl` values from `LanguageCodeToName`. Region variants resolve to their base
  * language (`en-NG`, `pt-BR`, `ar-EG`, `zh-CN`), so only the variants that actually differ are
@@ -231,10 +231,16 @@ internal val unsampledScaleTokens: Set<String> =
         "milliard",
         "miliard",
         "milyar",
+        "bi",
+        "bilhão",
+        "tỷ",
+        "mr",
         "billion",
         "млрд",
         "миллиард",
         "δισ",
         "مليار",
         "अरब",
+        "兆",
+        "조",
     )
