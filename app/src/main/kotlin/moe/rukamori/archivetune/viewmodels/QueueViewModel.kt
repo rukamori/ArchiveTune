@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.domain.player.EditQueueUseCase
 import moe.rukamori.archivetune.domain.player.ObserveQueueUseCase
@@ -226,7 +228,7 @@ class QueueViewModel @Inject constructor(
     }
 
     suspend fun prepareSelectedSongs(): List<String> = try {
-        edit.prepareSongs(selected)
+        withContext(Dispatchers.Main.immediate) { edit.prepareSongs(selected.toSet()) }
     } catch (error: CancellationException) { throw error } catch (error: Exception) { failure(error); emptyList() }
 
     fun playlistAdded(count: Int, names: List<String>) {

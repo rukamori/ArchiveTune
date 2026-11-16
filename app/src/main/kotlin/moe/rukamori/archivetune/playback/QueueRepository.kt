@@ -195,7 +195,8 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
 
     suspend fun prepareSongs(ids: Set<String>): List<String> {
         val database = connection.value?.database ?: return emptyList()
-        val songs = windows().filter { key(it) in ids }.mapNotNull { it.mediaItem.metadata }
+        val songs = windows().filter { key(it) in ids }.mapNotNull { it.mediaItem.metadata }.distinctBy { it.id }
+        if (songs.isEmpty()) return emptyList()
         return withContext(Dispatchers.IO) {
             database.withTransaction { songs.forEach { insert(it) } }
             songs.map { it.id }
