@@ -288,6 +288,8 @@ private object DisabledMotionScheme : MotionScheme {
     override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
 
+fun ThemeSeedPalette.toColorScheme(isDark: Boolean): ColorScheme = exactPaletteColorScheme(this, isDark)
+
 private fun exactPaletteColorScheme(
     palette: ThemeSeedPalette,
     isDark: Boolean,

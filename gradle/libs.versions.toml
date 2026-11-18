@@ -41,7 +41,6 @@ markwon = "4.6.2"
 okhttp = "5.5.1"
 accompanist = "2.0.0-rc.2"
 accompanist-core = "0.5.1"
-androidsvg = "1.4"
 aboutLibraries = "15.3.0"
 leakCanary = "2.14"
 spotless = "8.11.0"
@@ -155,7 +154,6 @@ markwon-simple-ext = { module = "io.noties.markwon:simple-ext", version.ref = "m
 
 accompanist-lyrics-ui = { module = "com.mocharealm.accompanist:lyrics-ui", version.ref = "accompanist" }
 accompanist-lyrics-core = { module = "com.mocharealm.accompanist:lyrics-core", version.ref = "accompanist-core" }
-androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakCanary" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjsKt" }
