@@ -35,12 +35,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -76,10 +74,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -92,10 +88,8 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -157,6 +151,12 @@ import moe.rukamori.archivetune.playback.notification.MediaNotificationNavigatio
 import moe.rukamori.archivetune.playback.notification.MediaNotificationSystemStatus
 import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.PreferenceEntry
+import moe.rukamori.archivetune.ui.component.PreferenceGroup
+import moe.rukamori.archivetune.ui.component.PreferenceGroupTitle
+import moe.rukamori.archivetune.ui.component.SegmentedPreference
+import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.viewmodels.MediaNotificationSettingsEvent
@@ -170,11 +170,11 @@ private val PreviewCornerRadius = 32.dp
 private val PreviewArtworkSize = 64.dp
 private val PreviewPlayButtonSize = 56.dp
 private val PreviewControlSize = 44.dp
-private val SectionCardCornerRadius = 28.dp
 private val SlotOuterCornerRadius = 24.dp
 private val SlotInnerCornerRadius = 8.dp
 private val SlotBadgeSize = 48.dp
 private val SlotGap = 2.dp
+private val PreferenceGroupInset = 30.dp
 
 private val SlotBadgeShapes = listOf(
     MaterialShapes.Cookie9Sided,
@@ -389,6 +389,7 @@ private fun MediaNotificationContent(
         }
     val moveUpLabel = stringResource(R.string.queue_move_up)
     val moveDownLabel = stringResource(R.string.queue_move_down)
+    val health = state.systemStatus.health
 
     LazyColumn(
         state = lazyListState,
@@ -396,13 +397,7 @@ private fun MediaNotificationContent(
             Modifier
                 .widthIn(max = SettingsDimensions.HubContentMaxWidth)
                 .fillMaxSize(),
-        contentPadding =
-            PaddingValues(
-                start = SettingsDimensions.ScreenHorizontalPadding,
-                end = SettingsDimensions.ScreenHorizontalPadding,
-                top = 8.dp,
-                bottom = bottomPadding,
-            ),
+        contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(SlotGap),
     ) {
         item(key = "preview", contentType = "preview") {
@@ -410,45 +405,58 @@ private fun MediaNotificationContent(
                 configuration = configuration,
                 preview = preview,
                 reducedMotion = reducedMotion,
-                modifier = itemMotion(reducedMotion),
+                modifier =
+                    itemMotion(reducedMotion)
+                        .padding(horizontal = PreferenceGroupInset),
             )
         }
 
-        item(key = "health", contentType = "health") {
-            AnimatedVisibility(
-                visible = state.systemStatus.health != MediaNotificationHealth.READY,
-                enter = expandVertically(spatialSpec(reducedMotion)) + fadeIn(effectsSpec(reducedMotion)),
-                exit = shrinkVertically(spatialSpec(reducedMotion)) + fadeOut(effectsSpec(reducedMotion)),
-                modifier = itemMotion(reducedMotion),
-            ) {
-                HealthBanner(
-                    status = state.systemStatus,
-                    onRequestPermission = onRequestPermission,
-                    onOpenAppNotificationSettings = onOpenAppNotificationSettings,
-                    onOpenChannelSettings = onOpenChannelSettings,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
+        if (health != MediaNotificationHealth.READY) {
+            item(key = "health", contentType = "group") {
+                PreferenceGroup(
+                    modifier =
+                        itemMotion(reducedMotion)
+                            .padding(top = 12.dp),
+                ) {
+                    item {
+                        HealthPreference(
+                            health = health,
+                            onRequestPermission = onRequestPermission,
+                            onOpenAppNotificationSettings = onOpenAppNotificationSettings,
+                            onOpenChannelSettings = onOpenChannelSettings,
+                        )
+                    }
+                }
             }
         }
 
         item(key = "buttons_header", contentType = "header") {
-            SectionHeader(
-                title = stringResource(R.string.media_notification_buttons_title),
-                description = stringResource(R.string.media_notification_buttons_desc, MediaNotificationAction.MAX_ACTIONS),
-                trailing = {
-                    SlotCounter(
-                        used = actions.size,
-                        total = MediaNotificationAction.MAX_ACTIONS,
-                        reducedMotion = reducedMotion,
-                    )
-                },
-                modifier = itemMotion(reducedMotion),
-            )
+            Row(
+                modifier =
+                    itemMotion(reducedMotion)
+                        .fillMaxWidth()
+                        .padding(start = PreferenceGroupInset, end = PreferenceGroupInset, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PreferenceGroupTitle(
+                    title = stringResource(R.string.media_notification_buttons_title),
+                    modifier = Modifier.weight(1f),
+                )
+                SlotCounter(
+                    used = actions.size,
+                    total = MediaNotificationAction.MAX_ACTIONS,
+                    reducedMotion = reducedMotion,
+                )
+            }
         }
 
         if (actions.isEmpty()) {
             item(key = "buttons_empty", contentType = "empty") {
-                EmptySlots(modifier = itemMotion(reducedMotion))
+                EmptySlots(
+                    modifier =
+                        itemMotion(reducedMotion)
+                            .padding(horizontal = PreferenceGroupInset),
+                )
             }
         }
 
@@ -479,7 +487,10 @@ private fun MediaNotificationContent(
                     dragging = dragging,
                     reducedMotion = reducedMotion,
                     onRemove = { onRemove(action) },
-                    modifier = accessibility,
+                    modifier =
+                        Modifier
+                            .padding(horizontal = PreferenceGroupInset)
+                            .then(accessibility),
                     handle = {
                         Box(
                             modifier =
@@ -503,132 +514,153 @@ private fun MediaNotificationContent(
             }
         }
 
-        item(key = "add_button", contentType = "add") {
-            AddActionRow(
-                canAdd = state.canAddAction,
-                full = actions.size >= MediaNotificationAction.MAX_ACTIONS,
-                onAddClick = onAddClick,
-                modifier = itemMotion(reducedMotion),
-            )
-        }
-
-        item(key = "navigation", contentType = "section") {
-            NavigationSection(
-                configuration = configuration,
-                reducedMotion = reducedMotion,
-                onNavigationChange = onNavigationChange,
-                onSeekIncrementChange = onSeekIncrementChange,
-                modifier = itemMotion(reducedMotion),
-            )
-        }
-
-        item(key = "sleep_timer", contentType = "section") {
-            AnimatedVisibility(
-                visible = MediaNotificationAction.SLEEP_TIMER in actions,
-                enter = expandVertically(spatialSpec(reducedMotion)) + fadeIn(effectsSpec(reducedMotion)),
-                exit = shrinkVertically(spatialSpec(reducedMotion)) + fadeOut(effectsSpec(reducedMotion)),
-                modifier = itemMotion(reducedMotion),
+        item(key = "add_button", contentType = "group") {
+            val full = actions.size >= MediaNotificationAction.MAX_ACTIONS
+            PreferenceGroup(
+                modifier =
+                    itemMotion(reducedMotion)
+                        .padding(top = 10.dp),
             ) {
-                SleepTimerSection(
-                    selectedMinutes = configuration.sleepTimerMinutes,
-                    onMinutesChange = onSleepTimerMinutesChange,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.media_notification_add_button)) },
+                        description =
+                            if (full) {
+                                stringResource(R.string.media_notification_buttons_full, MediaNotificationAction.MAX_ACTIONS)
+                            } else {
+                                stringResource(R.string.media_notification_buttons_desc, MediaNotificationAction.MAX_ACTIONS)
+                            },
+                        icon = { Icon(painterResource(R.drawable.add), null) },
+                        trailingContent = { EntryChevron() },
+                        onClick = onAddClick,
+                        isEnabled = state.canAddAction,
+                    )
+                }
             }
         }
 
-        item(key = "behavior_header", contentType = "header") {
-            SectionHeader(
+        item(key = "behavior", contentType = "group") {
+            PreferenceGroup(
                 title = stringResource(R.string.media_notification_behavior_title),
-                modifier = itemMotion(reducedMotion),
-            )
-        }
-
-        item(key = "stop_on_dismiss", contentType = "row") {
-            SegmentedListItem(
-                checked = configuration.stopOnDismiss,
-                onCheckedChange = onStopOnDismissChange,
-                shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = itemMotion(reducedMotion).fillMaxWidth(),
-                leadingContent = {
-                    RowGlyph(
-                        iconRes = R.drawable.close,
-                        active = configuration.stopOnDismiss,
-                        reducedMotion = reducedMotion,
-                    )
-                },
-                supportingContent = { Text(stringResource(R.string.media_notification_dismiss_desc)) },
-                trailingContent = {
-                    Switch(
-                        checked = configuration.stopOnDismiss,
-                        onCheckedChange = null,
-                    )
-                },
+                modifier =
+                    itemMotion(reducedMotion)
+                        .padding(top = 8.dp),
             ) {
-                Text(stringResource(R.string.media_notification_dismiss_title))
+                item {
+                    SegmentedPreference(
+                        title = { Text(stringResource(R.string.media_notification_navigation_title)) },
+                        description = stringResource(R.string.media_notification_navigation_desc),
+                        icon = { Icon(painterResource(R.drawable.skip_next), null) },
+                        selectedValue = configuration.navigation,
+                        values = MediaNotificationNavigation.entries,
+                        valueText = { stringResource(it.labelRes()) },
+                        onValueSelected = onNavigationChange,
+                    )
+                }
+                item(visible = configuration.navigation == MediaNotificationNavigation.SEEK) {
+                    SegmentedPreference(
+                        title = { Text(stringResource(R.string.media_notification_seek_increment)) },
+                        icon = { Icon(painterResource(R.drawable.replay), null) },
+                        selectedValue = configuration.seekIncrementSeconds,
+                        values = MediaNotificationConfiguration.SeekIncrementOptions,
+                        valueText = { stringResource(R.string.media_notification_seconds_short, it) },
+                        onValueSelected = onSeekIncrementChange,
+                    )
+                }
+                item(visible = MediaNotificationAction.SLEEP_TIMER in actions) {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.media_notification_sleep_timer_title)) },
+                        description = stringResource(R.string.media_notification_sleep_timer_desc),
+                        icon = { Icon(painterResource(R.drawable.bedtime), null) },
+                        selectedValue = configuration.sleepTimerMinutes,
+                        values = MediaNotificationConfiguration.SleepTimerOptions,
+                        valueText = { pluralStringResource(R.plurals.minute, it, it) },
+                        onValueSelected = onSleepTimerMinutesChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.media_notification_dismiss_title)) },
+                        description = stringResource(R.string.media_notification_dismiss_desc),
+                        icon = { Icon(painterResource(R.drawable.close), null) },
+                        checked = configuration.stopOnDismiss,
+                        onCheckedChange = onStopOnDismissChange,
+                    )
+                }
             }
         }
 
-        item(key = "system_header", contentType = "header") {
-            SectionHeader(
+        item(key = "system", contentType = "group") {
+            PreferenceGroup(
                 title = stringResource(R.string.media_notification_system_title),
                 modifier = itemMotion(reducedMotion),
-            )
-        }
-
-        item(key = "system_channel", contentType = "row") {
-            SegmentedListItem(
-                onClick = onOpenChannelSettings,
-                shapes = ListItemDefaults.segmentedShapes(index = 0, count = 2),
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = itemMotion(reducedMotion).fillMaxWidth(),
-                leadingContent = {
-                    RowGlyph(
-                        iconRes = R.drawable.notifications,
-                        active = state.systemStatus.health == MediaNotificationHealth.READY,
-                        reducedMotion = reducedMotion,
-                    )
-                },
-                supportingContent = { Text(stringResource(state.systemStatus.channelImportance.labelRes())) },
-                trailingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_forward),
-                        contentDescription = null,
-                        modifier = Modifier.size(SettingsDimensions.ChevronSize),
-                    )
-                },
             ) {
-                Text(stringResource(R.string.media_notification_channel))
-            }
-        }
-
-        item(key = "system_app", contentType = "row") {
-            SegmentedListItem(
-                onClick = onOpenAppNotificationSettings,
-                shapes = ListItemDefaults.segmentedShapes(index = 1, count = 2),
-                colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = itemMotion(reducedMotion).fillMaxWidth(),
-                leadingContent = {
-                    RowGlyph(
-                        iconRes = R.drawable.settings,
-                        active = false,
-                        reducedMotion = reducedMotion,
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.media_notification_channel)) },
+                        description = stringResource(state.systemStatus.channelImportance.labelRes()),
+                        icon = { Icon(painterResource(R.drawable.notifications), null) },
+                        trailingContent = { EntryChevron() },
+                        onClick = onOpenChannelSettings,
                     )
-                },
-                supportingContent = { Text(stringResource(R.string.media_notification_app_notifications_desc)) },
-                trailingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_forward),
-                        contentDescription = null,
-                        modifier = Modifier.size(SettingsDimensions.ChevronSize),
+                }
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.media_notification_app_notifications)) },
+                        description = stringResource(R.string.media_notification_app_notifications_desc),
+                        icon = { Icon(painterResource(R.drawable.settings), null) },
+                        trailingContent = { EntryChevron() },
+                        onClick = onOpenAppNotificationSettings,
                     )
-                },
-            ) {
-                Text(stringResource(R.string.media_notification_app_notifications))
+                }
             }
         }
     }
+}
+
+@Composable
+private fun HealthPreference(
+    health: MediaNotificationHealth,
+    onRequestPermission: () -> Unit,
+    onOpenAppNotificationSettings: () -> Unit,
+    onOpenChannelSettings: () -> Unit,
+) {
+    val (titleRes, descriptionRes) = health.messageRes()
+    val onClick: (() -> Unit)? =
+        when (health) {
+            MediaNotificationHealth.PERMISSION_REQUIRED -> onRequestPermission
+            MediaNotificationHealth.APP_BLOCKED -> onOpenAppNotificationSettings
+            MediaNotificationHealth.CHANNEL_BLOCKED -> onOpenChannelSettings
+            MediaNotificationHealth.CHANNEL_NOT_CREATED,
+            MediaNotificationHealth.READY,
+            -> null
+        }
+    PreferenceEntry(
+        title = {
+            Text(
+                text = stringResource(titleRes),
+                color = if (onClick != null) MaterialTheme.colorScheme.error else LocalContentColor.current,
+            )
+        },
+        description = stringResource(descriptionRes),
+        icon = {
+            Icon(
+                painter = painterResource(if (onClick != null) R.drawable.error else R.drawable.info),
+                contentDescription = null,
+            )
+        },
+        trailingContent = if (onClick != null) { { EntryChevron() } } else null,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun EntryChevron() {
+    Icon(
+        painter = painterResource(R.drawable.arrow_forward),
+        contentDescription = null,
+        modifier = Modifier.size(20.dp),
+    )
 }
 
 @Immutable
@@ -1120,131 +1152,6 @@ private fun MediaNotificationAction.previewVisual(preview: NotificationPreviewSt
     }
 
 @Composable
-private fun HealthBanner(
-    status: MediaNotificationSystemStatus,
-    onRequestPermission: () -> Unit,
-    onOpenAppNotificationSettings: () -> Unit,
-    onOpenChannelSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaterialTheme.colorScheme
-    val informational = status.health == MediaNotificationHealth.CHANNEL_NOT_CREATED
-    val container = if (informational) colors.tertiaryContainer else colors.errorContainer
-    val content = if (informational) colors.onTertiaryContainer else colors.onErrorContainer
-    val (titleRes, descriptionRes) = status.health.messageRes()
-
-    Surface(
-        shape = RoundedCornerShape(SectionCardCornerRadius),
-        color = container,
-        contentColor = content,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(SettingsDimensions.BannerIconSize)
-                        .clip(MaterialShapes.Cookie6Sided.toShape())
-                        .background(content.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(if (informational) R.drawable.info else R.drawable.notifications),
-                    contentDescription = null,
-                    modifier = Modifier.size(SettingsDimensions.BannerIconInnerSize),
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(titleRes),
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                )
-                Spacer(Modifier.size(2.dp))
-                Text(
-                    text = stringResource(descriptionRes),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                when (status.health) {
-                    MediaNotificationHealth.PERMISSION_REQUIRED ->
-                        Row(
-                            modifier = Modifier.padding(top = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            FilledTonalButton(
-                                onClick = onRequestPermission,
-                                shapes = ButtonDefaults.shapes(),
-                                enabled = status.permissionRequestable,
-                            ) { Text(stringResource(R.string.allow)) }
-                            TextButton(
-                                onClick = onOpenAppNotificationSettings,
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text(stringResource(R.string.onboarding_open_settings), color = content) }
-                        }
-
-                    MediaNotificationHealth.APP_BLOCKED ->
-                        FilledTonalButton(
-                            onClick = onOpenAppNotificationSettings,
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.padding(top = 12.dp),
-                        ) { Text(stringResource(R.string.onboarding_open_settings)) }
-
-                    MediaNotificationHealth.CHANNEL_BLOCKED ->
-                        FilledTonalButton(
-                            onClick = onOpenChannelSettings,
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.padding(top = 12.dp),
-                        ) { Text(stringResource(R.string.onboarding_open_settings)) }
-
-                    MediaNotificationHealth.CHANNEL_NOT_CREATED,
-                    MediaNotificationHealth.READY,
-                    -> Unit
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    modifier: Modifier = Modifier,
-    description: String? = null,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, top = 28.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (description != null) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (trailing != null) {
-            Spacer(Modifier.width(12.dp))
-            trailing()
-        }
-    }
-}
-
-@Composable
 private fun SlotCounter(
     used: Int,
     total: Int,
@@ -1439,265 +1346,6 @@ private fun ActionSlotRow(
             }
             handle()
         }
-    }
-}
-
-@Composable
-private fun AddActionRow(
-    canAdd: Boolean,
-    full: Boolean,
-    onAddClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        FilledTonalButton(
-            onClick = onAddClick,
-            enabled = canAdd,
-            shapes = ButtonDefaults.shapes(),
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.add),
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.IconSize),
-            )
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text(stringResource(R.string.media_notification_add_button))
-        }
-        if (full) {
-            Text(
-                text = stringResource(R.string.media_notification_buttons_full, MediaNotificationAction.MAX_ACTIONS),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun NavigationSection(
-    configuration: MediaNotificationConfiguration,
-    reducedMotion: Boolean,
-    onNavigationChange: (MediaNotificationNavigation) -> Unit,
-    onSeekIncrementChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val seek = configuration.navigation == MediaNotificationNavigation.SEEK
-    Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(
-            title = stringResource(R.string.media_notification_navigation_title),
-            description = stringResource(R.string.media_notification_navigation_desc),
-        )
-        Surface(
-            shape = RoundedCornerShape(SectionCardCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .padding(16.dp)
-                        .animateContentSize(spatialSpec(reducedMotion)),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                ) {
-                    MediaNotificationNavigation.entries.forEachIndexed { index, navigation ->
-                        val checked = configuration.navigation == navigation
-                        ToggleButton(
-                            checked = checked,
-                            onCheckedChange = { onNavigationChange(navigation) },
-                            shapes =
-                                if (index == 0) {
-                                    ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                } else {
-                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                },
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .heightIn(min = 56.dp),
-                        ) {
-                            if (navigation == MediaNotificationNavigation.SEEK) {
-                                SeekGlyph(
-                                    forward = false,
-                                    seconds = configuration.seekIncrementSeconds,
-                                    size = 22.dp,
-                                    tint = LocalContentColor.current,
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(R.drawable.skip_next),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text(
-                                text = stringResource(navigation.labelRes()),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-                AnimatedVisibility(
-                    visible = seek,
-                    enter = expandVertically(spatialSpec(reducedMotion)) + fadeIn(effectsSpec(reducedMotion)),
-                    exit = shrinkVertically(spatialSpec(reducedMotion)) + fadeOut(effectsSpec(reducedMotion)),
-                ) {
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(
-                            text = stringResource(R.string.media_notification_seek_increment),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        ConnectedOptionRow(
-                            options = MediaNotificationConfiguration.SeekIncrementOptions,
-                            selected = configuration.seekIncrementSeconds,
-                            label = { seconds -> stringResource(R.string.media_notification_seconds_short, seconds) },
-                            contentDescription = { seconds -> pluralStringResource(R.plurals.seconds, seconds, seconds) },
-                            onSelect = onSeekIncrementChange,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SleepTimerSection(
-    selectedMinutes: Int,
-    onMinutesChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaterialTheme.colorScheme
-    Surface(
-        shape = RoundedCornerShape(SectionCardCornerRadius),
-        color = colors.surfaceContainer,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(SettingsDimensions.RowIconSize)
-                            .clip(MaterialShapes.Clover4Leaf.toShape())
-                            .background(colors.tertiaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.bedtime),
-                        contentDescription = null,
-                        tint = colors.onTertiaryContainer,
-                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.media_notification_sleep_timer_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        text = stringResource(R.string.media_notification_sleep_timer_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-            }
-            Spacer(Modifier.size(14.dp))
-            ConnectedOptionRow(
-                options = MediaNotificationConfiguration.SleepTimerOptions,
-                selected = selectedMinutes,
-                label = { minutes -> stringResource(R.string.sleep_timer_minutes_compact, minutes) },
-                contentDescription = { minutes -> pluralStringResource(R.plurals.minute, minutes, minutes) },
-                onSelect = onMinutesChange,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ConnectedOptionRow(
-    options: List<Int>,
-    selected: Int,
-    label: @Composable (Int) -> String,
-    contentDescription: @Composable (Int) -> String,
-    onSelect: (Int) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-    ) {
-        options.forEachIndexed { index, option ->
-            val description = contentDescription(option)
-            ToggleButton(
-                checked = option == selected,
-                onCheckedChange = { onSelect(option) },
-                shapes =
-                    when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    },
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .semantics {
-                            this.contentDescription = description
-                        },
-            ) {
-                Text(
-                    text = label(option),
-                    maxLines = 1,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RowGlyph(
-    @DrawableRes iconRes: Int,
-    active: Boolean,
-    reducedMotion: Boolean,
-) {
-    val colors = MaterialTheme.colorScheme
-    val container by animateColorAsState(
-        targetValue = if (active) colors.primaryContainer else colors.surfaceContainerHighest,
-        animationSpec = effectsSpec(reducedMotion),
-        label = "row_glyph_container",
-    )
-    Box(
-        modifier =
-            Modifier
-                .size(SettingsDimensions.RowIconSize)
-                .clip(MaterialShapes.Cookie6Sided.toShape())
-                .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = if (active) colors.onPrimaryContainer else colors.onSurfaceVariant,
-            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-        )
     }
 }
 
