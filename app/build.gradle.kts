@@ -335,6 +335,7 @@ dependencies {
     implementation(libs.haze.glass)
     implementation(libs.androidx.graphics.shapes)
     implementation(libs.palette)
+    implementation(libs.androidsvg)
     implementation(libs.aboutlibraries.core)
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.strikethrough)
