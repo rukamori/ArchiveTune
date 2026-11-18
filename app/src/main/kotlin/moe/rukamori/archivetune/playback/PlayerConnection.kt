@@ -66,7 +66,7 @@ class PlayerConnection(
 ) : Player.Listener {
     val service = binder.service
     val player = service.player
-    val localPlayer = service.localPlayer
+    val localPlayer get() = service.localPlayer
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val _isPlaying = MutableStateFlow(player.isPlaying)

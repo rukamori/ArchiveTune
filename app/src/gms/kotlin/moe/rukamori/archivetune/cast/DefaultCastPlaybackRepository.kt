@@ -24,7 +24,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.PlayerTransferState
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
@@ -95,7 +94,7 @@ class DefaultCastPlaybackRepository(
 
     override fun createPlayer(
         context: Context,
-        localPlayer: ExoPlayer,
+        localPlayer: Player,
         mediaItemResolver: CastMediaItemResolver,
     ): Player {
         val contextResult = castContext(context)
