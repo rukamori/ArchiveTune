@@ -62,6 +62,7 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -7019,6 +7020,41 @@ class MusicService :
                 ?.localConfiguration
                 ?.uri
                 ?.shouldBypassPlayerCache() == true
+
+    override fun onTracksChanged(tracks: Tracks) {
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val selection = activeModuleAudio[mediaId] ?: return
+        val sampleRate =
+            tracks.groups
+                .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+                ?.takeIf { it.length > 0 }
+                ?.getTrackFormat(0)
+                ?.sampleRate
+                ?.takeIf { it > 0 }
+        ioScope.launch {
+            val stored = database.getFormatByIdBlocking(mediaId) ?: return@launch
+            if (sampleRate != null && stored.sampleRate == null) {
+                database.updateLocalAudioMetadata(mediaId, stored.bitrate, sampleRate)
+            }
+            if (stored.contentLength <= 0) {
+                val size = moduleStreamSize(selection)
+                if (size > 0) database.updateFormatContentLength(mediaId, size)
+            }
+        }
+    }
+
+    private fun moduleStreamSize(selection: ModuleAudioSelection): Long {
+        ContentMetadata
+            .getContentLength(playerCache.getContentMetadata(selection.cacheKey))
+            .takeIf { it > 0 }
+            ?.let { return it }
+        val completed =
+            moduleDownloadUtil.downloadManager.downloadIndex
+                .getDownload(selection.originalId)
+                ?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
+        if (!completed) return 0
+        return downloadCache.getCachedSpans(selection.cacheKey).sumOf { span -> span.length.coerceAtLeast(0L) }
+    }
 
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,

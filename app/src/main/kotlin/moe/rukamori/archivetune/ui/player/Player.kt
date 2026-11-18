@@ -70,7 +70,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -185,6 +184,7 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
@@ -1000,13 +1000,18 @@ fun BottomSheetPlayer(
             }
         }
 
-    val isPlayerVisible by remember(state) {
-        derivedStateOf { state.isExpandedOrExpanding || state.progress > 0f }
-    }
-    BackHandler(enabled = !aodModeEnabled && isPlayerVisible && !queueVisible) {
-        when {
-            isLyricsScreenVisible -> isLyricsScreenVisible = false
-            state.isExpandedOrExpanding -> state.collapseSoft()
+    BackHandler(
+        enabled =
+            BackOwnershipPolicy.playerHandlesBack(
+                aodModeEnabled = aodModeEnabled,
+                queueVisible = queueVisible,
+                isExpandedOrExpanding = state.isExpandedOrExpanding,
+            ),
+    ) {
+        if (isLyricsScreenVisible) {
+            isLyricsScreenVisible = false
+        } else {
+            state.collapseSoft()
         }
     }
 

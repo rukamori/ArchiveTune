@@ -86,7 +86,7 @@ class CachePlaylistViewModel
                 ContentMetadata
                     .getContentLength(playerCache.getContentMetadata(id))
                     .takeIf { it > 0L }
-                    ?: format?.contentLength?.takeIf { it > 0L }
+                    ?: format?.takeIf { it.sourceId == null }?.contentLength?.takeIf { it > 0L }
                     ?: return false
             return playerCache.isCached(id, 0L, contentLength)
         }

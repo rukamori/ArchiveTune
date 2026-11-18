@@ -86,8 +86,11 @@ class ModuleMediaStorage @Inject constructor(
 
     suspend fun record(selection: ModuleAudioSelection) = withContext(Dispatchers.IO) {
         database.withTransaction {
+            val learned = getFormatByIdBlocking(selection.originalId)
+                ?.takeIf { it.sourceId == selection.module.id && it.streamVariant == selection.stream.variant }
             upsert(FormatEntity(selection.originalId, -1, selection.stream.mimeType, selection.stream.codecs,
-                selection.stream.bitrate, selection.stream.sampleRate, selection.stream.contentLength, null, null, null,
+                selection.stream.bitrate, selection.stream.sampleRate ?: learned?.sampleRate,
+                selection.stream.contentLength.takeIf { it > 0 } ?: learned?.contentLength ?: 0L, null, null, null,
                 listOf(selection.module.manifest.name, selection.stream.upstreamProvider).filter(String::isNotBlank)
                     .distinct().joinToString(" \u00b7 "), selection.module.id, selection.stream.variant))
         }

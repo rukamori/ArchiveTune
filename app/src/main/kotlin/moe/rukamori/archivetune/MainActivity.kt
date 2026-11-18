@@ -28,6 +28,7 @@ import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -279,6 +280,7 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 import moe.rukamori.archivetune.ui.component.BottomSheetMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
@@ -611,6 +613,16 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    moveTaskToBack(true)
+                }
+            },
+        )
+
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -1731,8 +1743,10 @@ class MainActivity : ComponentActivity() {
                     val playerBackDispatcherOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current)
                     val screenBackEnabled by remember(playerBottomSheetState, isAppUpdateScreen) {
                         derivedStateOf {
-                            isAppUpdateScreen ||
-                                (!playerBottomSheetState.isExpandedOrExpanding && playerBottomSheetState.progress <= 0f)
+                            BackOwnershipPolicy.screensHandleBack(
+                                isAppUpdateScreen = isAppUpdateScreen,
+                                isExpandedOrExpanding = playerBottomSheetState.isExpandedOrExpanding,
+                            )
                         }
                     }
                     val screenBackDispatcherOwner =

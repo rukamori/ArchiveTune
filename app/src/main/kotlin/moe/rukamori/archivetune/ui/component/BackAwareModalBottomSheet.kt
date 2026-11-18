@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -20,6 +21,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.findViewTreeNavigationEventDispatcherOwner
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,12 +62,28 @@ fun BackAwareModalBottomSheet(
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
     ) {
         val scope = rememberCoroutineScope()
-        val windowOwner =
-            LocalView.current.findViewTreeNavigationEventDispatcherOwner()
-                ?: checkNotNull(LocalNavigationEventDispatcherOwner.current) {
-                    "No NavigationEventDispatcherOwner available for the modal bottom sheet window"
+
+        val inheritedScreenOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
+            "No NavigationEventDispatcherOwner in the composition hosting this modal bottom sheet"
+        }
+        val view = LocalView.current
+        val sheetWindowOwner =
+            remember(view, inheritedScreenOwner) {
+                val resolved = view.findViewTreeNavigationEventDispatcherOwner()
+                val picked = BackOwnershipPolicy.pickSheetOwner(resolved, inheritedScreenOwner)
+                if (picked != null) {
+                    picked
+                } else {
+                    Log.w(
+                        SheetBackTag,
+                        "No window-scoped NavigationEventDispatcherOwner for this sheet: back " +
+                            "will land on the inherited screen dispatcher and never reach the sheet.",
+                    )
+                    inheritedScreenOwner
                 }
-        CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides windowOwner) {
+            }
+
+        CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides sheetWindowOwner) {
             BackHandler(enabled = sheetState.isVisible) {
                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                     if (!sheetState.isVisible) currentOnDismissRequest()
@@ -74,3 +93,5 @@ fun BackAwareModalBottomSheet(
         }
     }
 }
+
+private const val SheetBackTag = "BackAwareModalBottomSheet"
