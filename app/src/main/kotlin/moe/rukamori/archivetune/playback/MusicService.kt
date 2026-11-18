@@ -62,6 +62,7 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -7019,6 +7020,25 @@ class MusicService :
                 ?.localConfiguration
                 ?.uri
                 ?.shouldBypassPlayerCache() == true
+
+    override fun onTracksChanged(tracks: Tracks) {
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        if (!activeModuleAudio.containsKey(mediaId)) return
+        val sampleRate =
+            tracks.groups
+                .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+                ?.takeIf { it.length > 0 }
+                ?.getTrackFormat(0)
+                ?.sampleRate
+                ?.takeIf { it > 0 }
+                ?: return
+        ioScope.launch {
+            val stored = database.getFormatByIdBlocking(mediaId) ?: return@launch
+            if (stored.sampleRate == null) {
+                database.updateLocalAudioMetadata(mediaId, stored.bitrate, sampleRate)
+            }
+        }
+    }
 
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,
