@@ -7023,7 +7023,7 @@ class MusicService :
 
     override fun onTracksChanged(tracks: Tracks) {
         val mediaId = player.currentMediaItem?.mediaId ?: return
-        if (!activeModuleAudio.containsKey(mediaId)) return
+        val selection = activeModuleAudio[mediaId] ?: return
         val sampleRate =
             tracks.groups
                 .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
@@ -7031,13 +7031,29 @@ class MusicService :
                 ?.getTrackFormat(0)
                 ?.sampleRate
                 ?.takeIf { it > 0 }
-                ?: return
         ioScope.launch {
             val stored = database.getFormatByIdBlocking(mediaId) ?: return@launch
-            if (stored.sampleRate == null) {
+            if (sampleRate != null && stored.sampleRate == null) {
                 database.updateLocalAudioMetadata(mediaId, stored.bitrate, sampleRate)
             }
+            if (stored.contentLength <= 0) {
+                val size = moduleStreamSize(selection)
+                if (size > 0) database.updateFormatContentLength(mediaId, size)
+            }
         }
+    }
+
+    private fun moduleStreamSize(selection: ModuleAudioSelection): Long {
+        ContentMetadata
+            .getContentLength(playerCache.getContentMetadata(selection.cacheKey))
+            .takeIf { it > 0 }
+            ?.let { return it }
+        val completed =
+            moduleDownloadUtil.downloadManager.downloadIndex
+                .getDownload(selection.originalId)
+                ?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
+        if (!completed) return 0
+        return downloadCache.getCachedSpans(selection.cacheKey).sumOf { span -> span.length.coerceAtLeast(0L) }
     }
 
     override fun onPlaybackStateChanged(

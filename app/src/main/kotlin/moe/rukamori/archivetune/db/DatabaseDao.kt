@@ -2305,6 +2305,12 @@ interface DatabaseDao {
         sampleRate: Int?,
     )
 
+    @Query("UPDATE format SET contentLength = :contentLength WHERE id = :id")
+    suspend fun updateFormatContentLength(
+        id: String,
+        contentLength: Long,
+    )
+
     @Query("SELECT * FROM format WHERE id IN (:ids)")
     suspend fun getFormatsByIds(ids: List<String>): List<FormatEntity>
 
