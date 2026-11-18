@@ -615,7 +615,6 @@
     <string name="together_server_error">중계 서버 측에서 알 수 없는 시스템 장애가 발생했습니다. 잠시 후 시도하세요.</string>
     <string name="leave">퇴장</string>
     <string name="join">참가</string>
-    <string name="joined">입장 완료</string>
     <string name="loading">로딩 중</string>
     <string name="connecting">연결 중</string>
     <string name="copy_link">링크 클립보드 복사</string>

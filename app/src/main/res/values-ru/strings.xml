@@ -553,7 +553,6 @@
     <string name="together_server_error">Ошибка сервера, попробуйте позже</string>
     <string name="leave">Покинуть</string>
     <string name="join">Присоединиться</string>
-    <string name="joined">Присоединился</string>
     <string name="loading">Загрузка</string>
     <string name="connecting">Подключение…</string>
     <string name="copy_link">Скопировать ссылку</string>

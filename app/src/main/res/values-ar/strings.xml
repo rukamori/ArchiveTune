@@ -989,7 +989,6 @@
     <string name="together_server_error">خطأ في الخادم، يرجى المحاولة لاحقًا</string>
     <string name="leave">مغادرة</string>
     <string name="join">انضمام</string>
-    <string name="joined">تم الانضمام</string>
     <string name="loading">جاري التحميل</string>
     <string name="connecting">جاري الاتصال</string>
     <string name="copy_link">نسخ الرابط</string>

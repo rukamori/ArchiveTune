@@ -670,7 +670,6 @@
     <string name="together_server_error">Serverfehler, bitte später erneut versuchen</string>
     <string name="leave">Verlassen</string>
     <string name="join">Beitreten</string>
-    <string name="joined">Beigetreten</string>
     <string name="loading">Wird geladen</string>
     <string name="connecting">Verbinde</string>
     <string name="copy_link">Link kopieren</string>

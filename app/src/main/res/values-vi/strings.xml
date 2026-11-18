@@ -596,7 +596,6 @@
     <string name="together_server_error">Lỗi máy chủ, vui lòng thử lại sau</string>
     <string name="leave">Rời đi</string>
     <string name="join">Tham gia</string>
-    <string name="joined">Đã tham gia</string>
     <string name="loading">Đang tải</string>
     <string name="connecting">Đang kết nối</string>
     <string name="copy_link">Sao chép liên kết</string>

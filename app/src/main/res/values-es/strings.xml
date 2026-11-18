@@ -548,7 +548,6 @@
     <string name="together_server_error">Error del servidor, por favor, inténtalo de nuevo más tarde</string>
     <string name="leave">Dejar</string>
     <string name="join">Únete</string>
-    <string name="joined">Te uniste</string>
     <string name="loading">Cargando</string>
     <string name="connecting">Conectando</string>
     <string name="copy_link">Copiar enlace</string>

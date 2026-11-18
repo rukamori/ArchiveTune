@@ -827,7 +827,6 @@
     <string name="together_server_error">伺服器錯誤，請稍後再試</string>
     <string name="leave">離開</string>
     <string name="join">加入</string>
-    <string name="joined">已加入</string>
     <string name="loading">載入中</string>
     <string name="connecting">連線中</string>
     <string name="copy_link">複製</string>

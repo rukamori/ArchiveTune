@@ -582,7 +582,6 @@
     <string name="together_server_error">Помилка сервера. Спробуйте ще раз пізніше</string>
     <string name="leave">Вийти</string>
     <string name="join">Доєднатися</string>
-    <string name="joined">Приєднався</string>
     <string name="loading">Завантаження</string>
     <string name="connecting">З\'єднання…</string>
     <string name="copy_link">Скопіювати посилання</string>

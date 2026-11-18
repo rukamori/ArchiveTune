@@ -956,7 +956,6 @@
     <string name="together_server_error">Erro do servidor, tenta novamente mais tarde</string>
     <string name="leave">Sair</string>
     <string name="join">Entrar</string>
-    <string name="joined">Entraste</string>
     <string name="loading">A carregar</string>
     <string name="connecting">A conectar</string>
     <string name="copy_link">Copiar link</string>

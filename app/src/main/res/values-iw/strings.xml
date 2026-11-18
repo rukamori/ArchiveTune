@@ -771,7 +771,6 @@
     <string name="together_server_error">שגיאת שרת, אנא נסה שוב מאוחר יותר</string>
     <string name="leave">יציאה</string>
     <string name="join">הצטרפות</string>
-    <string name="joined">הצטרף</string>
     <string name="loading">טוען</string>
     <string name="connecting">מתחבר</string>
     <string name="copy_link">העתקת קישור</string>

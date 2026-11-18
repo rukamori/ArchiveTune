@@ -1305,7 +1305,6 @@
     <string name="together_server_error">サーバーエラー。後でもう一度お試しください</string>
     <string name="leave">休暇を取る</string>
     <string name="join">参加する</string>
-    <string name="joined">参加しました</string>
     <string name="loading">読み込み中</string>
     <string name="connecting">接続中</string>
     <string name="copy_link">リンクをコピー</string>

@@ -538,7 +538,6 @@
     <string name="together_server_error">服务器错误，请稍后再试</string>
     <string name="leave">离开</string>
     <string name="join">加入</string>
-    <string name="joined">已加入</string>
     <string name="loading">加载中</string>
     <string name="connecting">连接中…</string>
     <string name="copy_link">复制链接</string>
