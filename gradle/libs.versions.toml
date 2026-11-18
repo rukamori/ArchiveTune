@@ -95,7 +95,7 @@ media3-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.r
 media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 media3-cast = { module = "androidx.media3:media3-cast", version.ref = "media3" }
 car-app = { module = "androidx.car.app:app", version.ref = "carApp" }
-mediarouter = { module = "androidx.mediarouter:mediarouter", version = "1.8.1" }
+mediarouter = { module = "androidx.mediarouter:mediarouter", version = "1.9.0" }
 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
