@@ -125,6 +125,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.utils.highRes
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -725,7 +726,7 @@ private fun V11Metadata(
                         .basicMarquee()
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                            indication = tvFocusIndicationOrNull(),
                             onClick = onTitleClick,
                             onLongClick = onTitleLongClick,
                         ),

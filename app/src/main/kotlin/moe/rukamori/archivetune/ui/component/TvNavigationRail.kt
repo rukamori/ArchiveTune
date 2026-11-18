@@ -7,15 +7,13 @@
 
 package moe.rukamori.archivetune.ui.component
 
-import android.view.KeyEvent.KEYCODE_DPAD_CENTER
-import android.view.KeyEvent.KEYCODE_ENTER
-import android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -41,11 +39,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -58,13 +51,16 @@ fun TvNavigationRail(
     items: List<Screens>,
     selectedItemRoute: String?,
     modifier: Modifier = Modifier,
-    firstItemFocusRequester: FocusRequester? = null,
+    selectedItemFocusRequester: FocusRequester? = null,
     contentFocusRequester: FocusRequester? = null,
     onItemClick: (Screens) -> Unit,
 ) {
-    LaunchedEffect(firstItemFocusRequester) {
-        firstItemFocusRequester?.requestFocus()
+    LaunchedEffect(selectedItemFocusRequester) {
+        selectedItemFocusRequester?.requestFocus()
     }
+
+    val focusAnchorIndex =
+        items.indexOfFirst { it.route == selectedItemRoute }.takeIf { it >= 0 } ?: 0
 
     Surface(
         modifier = modifier.fillMaxHeight(),
@@ -74,6 +70,15 @@ fun TvNavigationRail(
         Column(
             modifier =
                 Modifier
+                    .then(
+                        if (selectedItemFocusRequester != null) {
+                            Modifier.focusProperties {
+                                onEnter = { selectedItemFocusRequester.requestFocus() }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ).focusGroup()
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -86,8 +91,8 @@ fun TvNavigationRail(
                     modifier =
                         Modifier
                             .then(
-                                if (index == 0 && firstItemFocusRequester != null) {
-                                    Modifier.focusRequester(firstItemFocusRequester)
+                                if (index == focusAnchorIndex && selectedItemFocusRequester != null) {
+                                    Modifier.focusRequester(selectedItemFocusRequester)
                                 } else {
                                     Modifier
                                 },
@@ -151,22 +156,7 @@ private fun TvNavigationRailItem(
                 .width(104.dp)
                 .clip(RoundedCornerShape(28.dp))
                 .background(containerColor)
-                .onKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    when (event.key) {
-                        Key(KEYCODE_DPAD_CENTER.toLong()),
-                        Key(KEYCODE_ENTER.toLong()),
-                        Key(KEYCODE_NUMPAD_ENTER.toLong()),
-                        -> {
-                            onClick()
-                            true
-                        }
-
-                        else -> {
-                            false
-                        }
-                    }
-                }.clickable(
+                .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     role = Role.Tab,

@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -50,10 +51,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.ui.utils.LocalIsTvDevice
 import moe.rukamori.archivetune.ui.utils.top
 
 val LocalBottomSheetPageState = compositionLocalOf { BottomSheetPageState() }
@@ -84,6 +90,8 @@ fun BottomSheetPage(
     contentWindowInsets: WindowInsets = WindowInsets.navigationBars,
 ) {
     val focusManager = LocalFocusManager.current
+    val isTvDevice = LocalIsTvDevice.current
+    val pageFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
     var dragOffset by remember { mutableFloatStateOf(0f) }
 
@@ -161,6 +169,14 @@ fun BottomSheetPage(
             Column(
                 modifier =
                     Modifier
+                        .focusRequester(pageFocusRequester)
+                        .focusProperties {
+                            onExit = {
+                                if (isTvDevice && state.isVisible && requestedFocusDirection != FocusDirection.Exit) {
+                                    cancelFocusChange()
+                                }
+                            }
+                        }.focusGroup()
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .windowInsetsPadding(contentWindowInsets),
@@ -170,9 +186,13 @@ fun BottomSheetPage(
         }
     }
 
-    LaunchedEffect(state.isVisible) {
+    LaunchedEffect(state.isVisible, isTvDevice) {
         if (state.isVisible) {
-            focusManager.clearFocus()
+            if (isTvDevice) {
+                pageFocusRequester.requestFocus()
+            } else {
+                focusManager.clearFocus()
+            }
         }
     }
 }

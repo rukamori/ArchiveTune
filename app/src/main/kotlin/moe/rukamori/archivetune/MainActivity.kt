@@ -16,8 +16,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -50,7 +48,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -87,6 +84,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalRippleThemeConfiguration
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
@@ -130,6 +128,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -326,8 +325,11 @@ import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.theme.extractWallpaperThemeColor
+import moe.rukamori.archivetune.ui.utils.LocalIsTvDevice
+import moe.rukamori.archivetune.ui.utils.TvRippleThemeConfiguration
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.isTvDevice
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
@@ -1090,6 +1092,7 @@ class MainActivity : ComponentActivity() {
                     val searchBarFocusRequester = remember { FocusRequester() }
                     val tvRailFocusRequester = remember { FocusRequester() }
                     val contentAreaFocusRequester = remember { FocusRequester() }
+                    val playerFocusRequester = remember { FocusRequester() }
 
 
                     val openSearch: () -> Unit = {
@@ -1755,6 +1758,9 @@ class MainActivity : ComponentActivity() {
                         LocalDownloadUtil provides downloadUtil,
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSyncUtils provides syncUtils,
+                        LocalIsTvDevice provides isTvDevice,
+                        LocalRippleThemeConfiguration provides
+                            if (isTvDevice) TvRippleThemeConfiguration else LocalRippleThemeConfiguration.current,
                         moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                         moe.rukamori.archivetune.ui.component.LocalMenuState provides menuState,
                     ) {
@@ -1778,9 +1784,11 @@ class MainActivity : ComponentActivity() {
                                                     currentRoute
                                                 },
                                             modifier = Modifier,
-                                            firstItemFocusRequester = tvRailFocusRequester,
+                                            selectedItemFocusRequester = tvRailFocusRequester,
                                             contentFocusRequester =
-                                                if (active ||
+                                                if (playerBottomSheetState.isExpandedOrExpanding) {
+                                                    playerFocusRequester
+                                                } else if (active ||
                                                     navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == true
                                                 ) {
                                                     searchBarFocusRequester
@@ -2318,6 +2326,8 @@ class MainActivity : ComponentActivity() {
                                                     pureBlack = pureBlack,
                                                     navigationProximityProvider = navigationProximityProvider,
                                                     navigationBarMode = navigationBarMode,
+                                                    focusRequester = playerFocusRequester,
+                                                    exitLeftFocusRequester = if (isTvDevice && useRail) tvRailFocusRequester else null,
                                                 )
                                             }
 
@@ -2645,8 +2655,13 @@ class MainActivity : ComponentActivity() {
                                                     if (isTvDevice) {
                                                         Modifier
                                                             .focusRequester(contentAreaFocusRequester)
-                                                            .focusGroup()
-                                                            .focusable()
+                                                            .focusProperties {
+                                                                onEnter = {
+                                                                    if (playerBottomSheetState.isExpandedOrExpanding) {
+                                                                        cancelFocusChange()
+                                                                    }
+                                                                }
+                                                            }.focusGroup()
                                                     } else {
                                                         Modifier
                                                     },
@@ -3368,13 +3383,4 @@ private fun TranslucentTopAppBarIconButton(
             ),
         content = content,
     )
-}
-
-private fun Context.isTvDevice(): Boolean {
-    val isTelevisionUiMode =
-        (resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) ==
-            Configuration.UI_MODE_TYPE_TELEVISION
-    return isTelevisionUiMode ||
-        packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
-        packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
 }

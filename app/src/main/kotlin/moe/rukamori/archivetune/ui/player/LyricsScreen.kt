@@ -170,6 +170,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 
 private val AppleMusicFallbackGradient =
     listOf(
@@ -864,7 +865,7 @@ private fun AppleMusicGrabber(
                 .semantics { contentDescription = closeDescription }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
+                    indication = tvFocusIndicationOrNull(),
                     role = Role.Button,
                     onClick = onClick,
                 ),
@@ -1315,7 +1316,7 @@ private fun AppleMusicPressableIcon(
                 .size(touchSize)
                 .clickable(
                     interactionSource = interactionSource,
-                    indication = null,
+                    indication = tvFocusIndicationOrNull(),
                     role = Role.Button,
                     onClick = onClick,
                 ),

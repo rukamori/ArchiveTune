@@ -164,6 +164,7 @@ import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
 import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.highRes
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -263,7 +264,7 @@ fun PlayerTitleSection(
                     .basicMarquee()
                     .combinedClickable(
                         enabled = true,
-                        indication = null,
+                        indication = tvFocusIndicationOrNull(),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = actions.onTitleClick,
                         onLongClick = actions.onCopyTitle,
@@ -2724,7 +2725,7 @@ private fun V8MetadataActions(
                     Modifier
                         .basicMarquee()
                         .clickable(
-                            indication = null,
+                            indication = tvFocusIndicationOrNull(),
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = onTitleClick,
                         ),
@@ -3365,7 +3366,7 @@ private fun V9PortraitContent(
                             .fillMaxWidth()
                             .basicMarquee()
                             .clickable(
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 interactionSource = remember { MutableInteractionSource() },
                                 onClick = onTitleClick,
                             ),
@@ -3773,7 +3774,7 @@ private fun V9Metadata(
                     .fillMaxWidth()
                     .basicMarquee()
                     .clickable(
-                        indication = null,
+                        indication = tvFocusIndicationOrNull(),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = onTitleClick,
                     ),
@@ -4780,7 +4781,7 @@ fun V10PlayerContent(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .clickable(
-                        indication = null,
+                        indication = tvFocusIndicationOrNull(),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = onTitleClick,
                     )

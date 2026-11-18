@@ -32,6 +32,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -88,8 +89,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -151,6 +155,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.CanvasPlaybackRequest
+import moe.rukamori.archivetune.ui.utils.LocalIsTvDevice
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackViewModel
@@ -206,6 +211,7 @@ import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -311,6 +317,8 @@ fun BottomSheetPlayer(
     immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
     queueViewModel: QueueViewModel = hiltViewModel(),
     lyricsSyncOffsetViewModel: LyricsSyncOffsetViewModel = hiltViewModel(),
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    exitLeftFocusRequester: FocusRequester? = null,
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -1015,14 +1023,23 @@ fun BottomSheetPlayer(
         }
     }
 
-    val focusRequester = remember { FocusRequester() }
+    val isTvDevice = LocalIsTvDevice.current
+    var isSheetSelfFocused by remember { mutableStateOf(false) }
+    var expandedPlayerHeldFocus by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isExpanded) {
         if (state.isExpanded) {
-            focusRequester.requestFocus()
+            expandedPlayerHeldFocus = focusRequester.requestFocus()
         }
         if (!state.isExpanded && aodModeEnabled) {
             playerConnection.aodModeEnabled.value = false
+        }
+    }
+
+    LaunchedEffect(state.isCollapsed, isTvDevice) {
+        if (isTvDevice && state.isCollapsed && expandedPlayerHeldFocus) {
+            expandedPlayerHeldFocus = false
+            focusRequester.requestFocus()
         }
     }
 
@@ -1031,9 +1048,42 @@ fun BottomSheetPlayer(
         modifier =
             modifier
                 .focusRequester(focusRequester)
-                .focusable()
+                .focusProperties {
+                    onExit = {
+                        if (state.isExpandedOrExpanding) {
+                            val railTarget = exitLeftFocusRequester
+                            when (requestedFocusDirection) {
+                                FocusDirection.Left -> {
+                                    if (railTarget != null) railTarget.requestFocus() else cancelFocusChange()
+                                }
+
+                                FocusDirection.Up,
+                                FocusDirection.Down,
+                                FocusDirection.Right,
+                                FocusDirection.Next,
+                                FocusDirection.Previous,
+                                -> {
+                                    cancelFocusChange()
+                                }
+
+                                else -> {}
+                            }
+                        }
+                    }
+                }.onFocusChanged { focusState ->
+                    isSheetSelfFocused = focusState.isFocused
+                    if (!state.isCollapsed) {
+                        expandedPlayerHeldFocus = focusState.hasFocus
+                    }
+                }.then(if (isTvDevice) Modifier.focusGroup() else Modifier.focusable())
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.type != KeyEventType.KeyDown || state.isCollapsed) return@onKeyEvent false
+                    val isDirectionalKey =
+                        keyEvent.key == Key.DirectionLeft ||
+                            keyEvent.key == Key.DirectionRight ||
+                            keyEvent.key == Key.DirectionUp ||
+                            keyEvent.key == Key.DirectionDown
+                    if (isDirectionalKey && !isSheetSelfFocused) return@onKeyEvent false
 
                     when (keyEvent.key) {
                         Key.DirectionLeft -> {
@@ -2420,7 +2470,7 @@ private fun LittlePlayerContent(
                             .size(collapseIconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onCollapse,
                             ),
                 )
@@ -2441,7 +2491,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onToggleLike,
                             ),
                 )
@@ -2457,7 +2507,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onExpandQueue,
                             ),
                 )
@@ -2473,7 +2523,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onMenuClick,
                             ),
                 )

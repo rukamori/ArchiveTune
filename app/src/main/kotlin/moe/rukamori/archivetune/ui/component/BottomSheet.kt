@@ -76,6 +76,7 @@ import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.BottomSheetAnimationSpec
 import moe.rukamori.archivetune.constants.BottomSheetSoftAnimationSpec
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 
 /**
  * Bottom Sheet
@@ -138,7 +139,7 @@ fun BottomSheet(
                             alpha = 1f - (state.progress * 4).coerceAtMost(1f)
                         }.clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                            indication = tvFocusIndicationOrNull(),
                             onClick = onCollapsedContentClick ?: state::expandSoft,
                         ).fillMaxWidth()
                         .height(state.collapsedBound),

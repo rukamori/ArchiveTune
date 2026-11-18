@@ -12,8 +12,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,8 +46,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -58,6 +63,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -786,6 +796,10 @@ private fun ThinProgressSlider(
     val fraction = ((value - valueRange.first).toFloat() / span.toFloat()).coerceIn(0f, 1f)
     val currentOnValueChange by rememberUpdatedState(onValueChange)
     val currentOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
+    val focusInteractionSource = remember { MutableInteractionSource() }
+    val isFocused by focusInteractionSource.collectIsFocusedAsState()
+    var keySeekValue by remember { mutableStateOf<Long?>(null) }
+    val keyStep = (span / 100L).coerceAtLeast(1L)
     val interactionModifier =
         remember(valueRange) {
             Modifier
@@ -813,6 +827,35 @@ private fun ThinProgressSlider(
             modifier
                 .fillMaxWidth()
                 .height(24.dp)
+                .onKeyEvent { event ->
+                    when (event.type) {
+                        KeyEventType.KeyDown -> {
+                            val base = keySeekValue ?: value
+                            val target =
+                                when (event.key) {
+                                    Key.DirectionRight -> base + keyStep
+                                    Key.DirectionLeft -> base - keyStep
+                                    Key.PageUp -> base + keyStep * 10L
+                                    Key.PageDown -> base - keyStep * 10L
+                                    Key.MoveHome -> valueRange.first
+                                    Key.MoveEnd -> valueRange.last
+                                    else -> return@onKeyEvent false
+                                }.coerceIn(valueRange.first, valueRange.last)
+                            keySeekValue = target
+                            currentOnValueChange(target)
+                            true
+                        }
+
+                        KeyEventType.KeyUp -> {
+                            if (keySeekValue == null) return@onKeyEvent false
+                            keySeekValue = null
+                            currentOnValueChangeFinished()
+                            true
+                        }
+
+                        else -> false
+                    }
+                }.focusable(interactionSource = focusInteractionSource)
                 .semantics {
                     contentDescription = accessibilityLabel
                     progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
@@ -840,5 +883,12 @@ private fun ThinProgressSlider(
             strokeWidth = 6.dp.toPx(),
             cap = StrokeCap.Round,
         )
+        if (isFocused) {
+            drawCircle(
+                color = ImmersiveContentColor,
+                radius = 8.dp.toPx(),
+                center = Offset(size.width * fraction, centerY),
+            )
+        }
     }
 }
