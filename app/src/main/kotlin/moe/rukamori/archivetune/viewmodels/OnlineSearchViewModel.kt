@@ -19,6 +19,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
 import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
@@ -32,7 +34,11 @@ import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_PODCAST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_SONG
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_VIDEO
+import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.ArtistItem
+import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -45,12 +51,25 @@ import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.reportException
 import java.io.IOException
+import java.text.Collator
+import java.util.Locale
 import javax.inject.Inject
 
-enum class OnlineSearchSort {
-    DEFAULT,
-    VIEWS,
+enum class OnlineSearchSortKey(
+    val defaultDescending: Boolean,
+) {
+    RELEVANCE(defaultDescending = false),
+    VIEWS(defaultDescending = true),
+    TITLE(defaultDescending = false),
+    ARTIST(defaultDescending = false),
+    DURATION(defaultDescending = true),
+    YEAR(defaultDescending = true),
 }
+
+data class OnlineSearchSort(
+    val key: OnlineSearchSortKey = OnlineSearchSortKey.RELEVANCE,
+    val descending: Boolean = key.defaultDescending,
+)
 
 enum class SearchLoadError {
     Offline,
@@ -62,7 +81,7 @@ class OnlineSearchViewModel
     @Inject
     constructor(
         @ApplicationContext val context: Context,
-        savedStateHandle: SavedStateHandle,
+        private val savedStateHandle: SavedStateHandle,
         private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
         private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
@@ -81,6 +100,8 @@ class OnlineSearchViewModel
             private set
         var loadMoreError by mutableStateOf<SearchLoadError?>(null)
             private set
+        private val _sort = MutableStateFlow(restoreSort())
+        val sort: StateFlow<OnlineSearchSort> = _sort.asStateFlow()
 
         private val allModeFilters =
             listOf(
@@ -130,6 +151,35 @@ class OnlineSearchViewModel
             if (filter.value != selectedFilter) {
                 filter.value = selectedFilter
             }
+        }
+
+        fun selectSortKey(key: OnlineSearchSortKey) {
+            if (_sort.value.key == key) return
+            updateSort(OnlineSearchSort(key = key))
+        }
+
+        fun selectSortDescending(descending: Boolean) {
+            val current = _sort.value
+            if (current.key == OnlineSearchSortKey.RELEVANCE || current.descending == descending) return
+            updateSort(current.copy(descending = descending))
+        }
+
+        private fun updateSort(sort: OnlineSearchSort) {
+            _sort.value = sort
+            savedStateHandle[SortKeyStateKey] = sort.key.name
+            savedStateHandle[SortDescendingStateKey] = sort.descending
+        }
+
+        private fun restoreSort(): OnlineSearchSort {
+            val key =
+                savedStateHandle
+                    .get<String>(SortKeyStateKey)
+                    ?.let { name -> OnlineSearchSortKey.entries.firstOrNull { it.name == name } }
+                    ?: return OnlineSearchSort()
+            return OnlineSearchSort(
+                key = key,
+                descending = savedStateHandle.get<Boolean>(SortDescendingStateKey) ?: key.defaultDescending,
+            )
         }
 
         fun retry() {
@@ -256,25 +306,91 @@ class OnlineSearchViewModel
 
         fun sortedItems(
             items: List<YTItem>,
-            sort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
-        ): List<YTItem> =
-            when (sort) {
-                OnlineSearchSort.DEFAULT -> {
-                    items
+            sort: OnlineSearchSort,
+        ): List<YTItem> {
+            val key = sort.key
+            if (key == OnlineSearchSortKey.RELEVANCE || items.size < 2) return items
+            val (ranked, unranked) = items.withIndex().partition { it.value.hasSortValue(key) }
+            if (ranked.size < 2) return items
+            val valueComparator: Comparator<IndexedValue<YTItem>> =
+                if (key.isTextual) {
+                    val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
+                    compareBy<IndexedValue<YTItem>, String?>(collator) { it.value.textSortValue(key) }
+                } else {
+                    compareBy<IndexedValue<YTItem>> { it.value.numericSortValue(key) }
                 }
+            val directedComparator =
+                Comparator<IndexedValue<YTItem>> { first, second ->
+                    val result = valueComparator.compare(first, second)
+                    if (sort.descending) -result else result
+                }.thenBy { it.index }
+            return ranked.sortedWith(directedComparator).map { it.value } + unranked.map { it.value }
+        }
 
-                OnlineSearchSort.VIEWS -> {
-                    items
-                        .withIndex()
-                        .sortedWith(
-                            compareByDescending<IndexedValue<YTItem>> {
-                                when (val item = it.value) {
-                                    is SongItem -> item.viewCount
-                                    is PlaylistItem -> item.viewCount
-                                    else -> null
-                                } ?: Long.MIN_VALUE
-                            }.thenBy { it.index },
-                        ).map { it.value }
-                }
-            }
+        private companion object {
+            const val SortKeyStateKey = "online_search_sort_key"
+            const val SortDescendingStateKey = "online_search_sort_descending"
+        }
     }
+
+private val OnlineSearchSortKey.isTextual: Boolean
+    get() = this == OnlineSearchSortKey.TITLE || this == OnlineSearchSortKey.ARTIST
+
+private fun YTItem.hasSortValue(key: OnlineSearchSortKey): Boolean =
+    if (key.isTextual) textSortValue(key) != null else numericSortValue(key) != null
+
+private fun YTItem.numericSortValue(key: OnlineSearchSortKey): Long? =
+    when (key) {
+        OnlineSearchSortKey.VIEWS -> {
+            when (this) {
+                is SongItem -> viewCount
+                is PlaylistItem -> viewCount
+                else -> null
+            }
+        }
+
+        OnlineSearchSortKey.DURATION -> {
+            when (this) {
+                is SongItem -> duration
+                is EpisodeItem -> duration
+                else -> null
+            }?.takeIf { it > 0 }?.toLong()
+        }
+
+        OnlineSearchSortKey.YEAR -> {
+            (this as? AlbumItem)?.year?.toLong()
+        }
+
+        OnlineSearchSortKey.RELEVANCE,
+        OnlineSearchSortKey.TITLE,
+        OnlineSearchSortKey.ARTIST,
+        -> {
+            null
+        }
+    }
+
+private fun YTItem.textSortValue(key: OnlineSearchSortKey): String? =
+    when (key) {
+        OnlineSearchSortKey.TITLE -> {
+            title
+        }
+
+        OnlineSearchSortKey.ARTIST -> {
+            when (this) {
+                is SongItem -> artists.firstOrNull()?.name
+                is AlbumItem -> artists?.firstOrNull()?.name
+                is PlaylistItem -> author?.name
+                is PodcastItem -> author?.name
+                is EpisodeItem -> podcast?.name
+                is ArtistItem -> title
+            }
+        }
+
+        OnlineSearchSortKey.RELEVANCE,
+        OnlineSearchSortKey.VIEWS,
+        OnlineSearchSortKey.DURATION,
+        OnlineSearchSortKey.YEAR,
+        -> {
+            null
+        }
+    }?.trim()?.takeIf { it.isNotEmpty() }

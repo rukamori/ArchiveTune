@@ -110,10 +110,10 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
-import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 import moe.rukamori.archivetune.viewmodels.SearchLoadError
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 private enum class SearchResultLayout {
@@ -168,7 +168,6 @@ private fun SearchFilterOption.badgeShape(): RoundedPolygon =
 @Composable
 fun OnlineSearchResult(
     navController: NavController,
-    searchSort: OnlineSearchSort,
     viewModel: OnlineSearchViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -181,6 +180,7 @@ fun OnlineSearchResult(
     val itemMotion = rememberSearchItemMotion()
 
     val searchFilter by viewModel.filter.collectAsStateWithLifecycle()
+    val searchSort by viewModel.sort.collectAsStateWithLifecycle()
     val selectedOption = SearchFilterOptions.first { it.filter == searchFilter }
     val isScrolled by remember { derivedStateOf { gridState.canScrollBackward } }
 
@@ -192,6 +192,10 @@ fun OnlineSearchResult(
             .collect { (loadMoreVisible, _) ->
                 if (loadMoreVisible) viewModel.loadMore()
             }
+    }
+
+    LaunchedEffect(gridState, viewModel) {
+        viewModel.sort.drop(1).collect { gridState.scrollToItem(0) }
     }
 
     val selectFilter: (YouTube.SearchFilter?) -> Unit = { filter ->
@@ -268,14 +272,17 @@ fun OnlineSearchResult(
         )
 
     val topResults = viewModel.summaryPage?.summaries?.firstOrNull()?.items.orEmpty()
-    val allModeSections =
-        SearchFilterOptions.drop(1).mapNotNull { option ->
-            val filterKey = option.filter?.value ?: return@mapNotNull null
-            viewModel.viewStateMap[filterKey]
-                ?.items
-                ?.takeIf { it.isNotEmpty() }
-                ?.let { items -> option to viewModel.sortedItems(items, searchSort) }
+    val allModeSections by remember(viewModel, searchSort) {
+        derivedStateOf {
+            SearchFilterOptions.drop(1).mapNotNull { option ->
+                val filterKey = option.filter?.value ?: return@mapNotNull null
+                viewModel.viewStateMap[filterKey]
+                    ?.items
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { items -> option to viewModel.sortedItems(items, searchSort) }
+            }
         }
+    }
     val allModeLeadingItem: Any? =
         when {
             searchFilter != null -> null

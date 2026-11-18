@@ -79,8 +79,6 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -118,6 +116,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -317,6 +316,7 @@ import moe.rukamori.archivetune.ui.screens.search.LocalSearchScreen
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchScreen
+import moe.rukamori.archivetune.ui.screens.search.OnlineSearchSortMenu
 import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
@@ -349,7 +349,7 @@ import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import moe.rukamori.archivetune.viewmodels.MainMenuViewModel
 import moe.rukamori.archivetune.viewmodels.NetworkBannerViewModel
 import moe.rukamori.archivetune.viewmodels.NewsViewModel
-import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
+import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 import moe.rukamori.archivetune.viewmodels.WhatsNewState
 import moe.rukamori.archivetune.viewmodels.WhatsNewViewModel
 import java.util.Locale
@@ -1031,13 +1031,6 @@ class MainActivity : ComponentActivity() {
                     val isAppUpdateScreen = currentRoute?.substringBefore('?') == AppUpdateRoute
                     val currentNavigationLifecycle = navBackStackEntry?.lifecycle?.currentStateFlow
                         ?.collectAsStateWithLifecycle()?.value
-                    val onlineSearchEncodedQuery =
-                        navBackStackEntry
-                            ?.takeIf {
-                                it.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true
-                            }?.arguments
-                            ?.getString(OnlineSearchResultArgument)
-                    var onlineSearchSort by rememberSaveable { mutableStateOf(OnlineSearchSort.DEFAULT) }
                     val isYearInMusicScreen = currentRoute?.startsWith("year_in_music") == true
                     val isYearInMusicStory = if (isYearInMusicScreen) {
                         navBackStackEntry?.savedStateHandle?.getStateFlow("recap_immersive", false)
@@ -1098,9 +1091,6 @@ class MainActivity : ComponentActivity() {
                     val tvRailFocusRequester = remember { FocusRequester() }
                     val contentAreaFocusRequester = remember { FocusRequester() }
 
-                    LaunchedEffect(onlineSearchEncodedQuery) {
-                        onlineSearchSort = OnlineSearchSort.DEFAULT
-                    }
 
                     val openSearch: () -> Unit = {
                         onActiveChange(true)
@@ -2201,10 +2191,21 @@ class MainActivity : ComponentActivity() {
                                                                 )
                                                             }
                                                         } else if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true) {
-                                                            OnlineSearchSortMenu(
-                                                                selectedSort = onlineSearchSort,
-                                                                onSortSelected = { onlineSearchSort = it },
-                                                            )
+                                                            navBackStackEntry?.let { onlineSearchEntry ->
+                                                                key(onlineSearchEntry.id) {
+                                                                    val onlineSearchViewModel: OnlineSearchViewModel =
+                                                                        hiltViewModel(onlineSearchEntry)
+                                                                    val onlineSearchSort by
+                                                                        onlineSearchViewModel.sort.collectAsStateWithLifecycle()
+                                                                    OnlineSearchSortMenu(
+                                                                        sort = onlineSearchSort,
+                                                                        pureBlack = pureBlack,
+                                                                        onSortKeySelected = onlineSearchViewModel::selectSortKey,
+                                                                        onSortDescendingChange =
+                                                                            onlineSearchViewModel::selectSortDescending,
+                                                                    )
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 },
@@ -2666,7 +2667,6 @@ class MainActivity : ComponentActivity() {
                                             homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                                             searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                                             libraryScrollBehavior = libraryScrollBehavior,
-                                            onlineSearchSort = onlineSearchSort,
                                         )
                                     }
                                 }
@@ -3368,65 +3368,6 @@ private fun TranslucentTopAppBarIconButton(
             ),
         content = content,
     )
-}
-
-@Composable
-private fun OnlineSearchSortMenu(
-    selectedSort: OnlineSearchSort,
-    onSortSelected: (OnlineSearchSort) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val options =
-        remember {
-            listOf(
-                OnlineSearchSort.DEFAULT,
-                OnlineSearchSort.VIEWS,
-            )
-        }
-
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                painter = painterResource(R.drawable.filter_alt),
-                contentDescription = null,
-            )
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { sort ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text =
-                                stringResource(
-                                    when (sort) {
-                                        OnlineSearchSort.DEFAULT -> R.string.default_style
-                                        OnlineSearchSort.VIEWS -> R.string.views
-                                    },
-                                ),
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onSortSelected(sort)
-                    },
-                    leadingIcon = {
-                        if (sort == selectedSort) {
-                            Icon(
-                                painter = painterResource(R.drawable.done),
-                                contentDescription = null,
-                            )
-                        } else {
-                            Spacer(Modifier.size(24.dp))
-                        }
-                    },
-                )
-            }
-        }
-    }
 }
 
 private fun Context.isTvDevice(): Boolean {
