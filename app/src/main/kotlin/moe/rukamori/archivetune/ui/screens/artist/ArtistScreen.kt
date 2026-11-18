@@ -75,6 +75,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -89,6 +90,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.valentinilk.shimmer.shimmer
+import java.util.Locale
 import kotlinx.coroutines.flow.collect
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -104,6 +106,7 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.AlbumReleaseType
 import moe.rukamori.archivetune.innertube.models.ArtistItem
@@ -142,6 +145,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
+import moe.rukamori.archivetune.ui.utils.artistCountStat
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
@@ -152,7 +156,6 @@ import moe.rukamori.archivetune.viewmodels.ArtistAction
 import moe.rukamori.archivetune.viewmodels.ArtistBlockState
 import moe.rukamori.archivetune.viewmodels.ArtistEvent
 import moe.rukamori.archivetune.viewmodels.ArtistViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -170,6 +173,7 @@ fun ArtistScreen(
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val loadedArtistPage = viewModel.artistPage.collectAsStateWithLifecycle().value
+    val loadedArtistPageContentLanguage = viewModel.artistPageContentLanguage.collectAsStateWithLifecycle().value
     val libraryArtist by viewModel.libraryArtist.collectAsStateWithLifecycle()
     val loadedLibrarySongs by viewModel.librarySongs.collectAsStateWithLifecycle()
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
@@ -358,6 +362,10 @@ fun ArtistScreen(
                     val albumsLabel = stringResource(R.string.albums)
                     val monthlyListenersLabel = stringResource(R.string.monthly_listeners)
                     val subscribersLabel = stringResource(R.string.subscribers)
+                    val contentLanguage = loadedArtistPageContentLanguage ?: YouTube.locale.hl
+                    val displayLanguage =
+                        LocalConfiguration.current.locales[0]?.toLanguageTag()
+                            ?: Locale.getDefault().toLanguageTag()
                     val artistStats =
                         remember(
                             showLocal,
@@ -368,6 +376,8 @@ fun ArtistScreen(
                             albumsLabel,
                             monthlyListenersLabel,
                             subscribersLabel,
+                            contentLanguage,
+                            displayLanguage,
                         ) {
                             buildArtistStats(
                                 showLocal = showLocal,
@@ -378,6 +388,8 @@ fun ArtistScreen(
                                 albumsLabel = albumsLabel,
                                 monthlyListenersLabel = monthlyListenersLabel,
                                 subscribersLabel = subscribersLabel,
+                                contentLanguage = contentLanguage,
+                                displayLanguage = displayLanguage,
                             )
                         }
                     val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
@@ -1280,6 +1292,8 @@ private fun buildArtistStats(
     albumsLabel: String,
     monthlyListenersLabel: String,
     subscribersLabel: String,
+    contentLanguage: String,
+    displayLanguage: String,
 ): ArtistStatsUi {
     val songSections =
         artistPage?.sections?.filter { section ->
@@ -1317,13 +1331,21 @@ private fun buildArtistStats(
 
     val audience =
         buildList {
-            artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
-                add("$value $monthlyListenersLabel")
-            }
+            artistCountStat(
+                rawText = artistPage?.artist?.monthlyListenerCountText,
+                label = monthlyListenersLabel,
+                contentLanguage = contentLanguage,
+                displayLanguage = displayLanguage,
+                rawTextIncludesLabel = true,
+            )?.let { add(it) }
 
-            artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
-                add("$value $subscribersLabel")
-            }
+            artistCountStat(
+                rawText = artistPage?.artist?.subscriberCountText,
+                label = subscribersLabel,
+                contentLanguage = contentLanguage,
+                displayLanguage = displayLanguage,
+                rawTextIncludesLabel = false,
+            )?.let { add(it) }
         }.joinToString(ArtistStatSeparator)
     val catalog =
         buildList {
@@ -1359,29 +1381,6 @@ private fun compactCountText(
 ): String {
     val value = formatCompactCount(count.toLong())
     return if (hasMore) "$value+" else value
-}
-
-private val CompactArtistCountPattern = Regex("""\d+(?:[.,]\d+)?\s*[KMB]""", RegexOption.IGNORE_CASE)
-private val ArtistCountPattern = Regex("""\d+(?:[.,]\d+)*""")
-
-private fun String.toArtistCompactCountText(): String? {
-    val compactText = CompactArtistCountPattern.find(this)?.value
-    if (compactText != null) {
-        return compactText
-            .filterNot { it.isWhitespace() }
-            .replace(',', '.')
-            .uppercase(Locale.US)
-    }
-
-    val count =
-        ArtistCountPattern
-            .find(this)
-            ?.value
-            ?.filter { it.isDigit() }
-            ?.toLongOrNull()
-            ?: return null
-
-    return formatCompactCount(count)
 }
 
 private fun buildArtistItemsRoute(
