@@ -7,14 +7,11 @@
 
 package moe.rukamori.archivetune.viewmodels
 
-import android.content.Context
-import android.text.format.Formatter
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -35,13 +32,13 @@ import moe.rukamori.archivetune.mediainfo.MediaInfoTab
 import moe.rukamori.archivetune.mediainfo.MediaInfoUiModel
 import moe.rukamori.archivetune.mediainfo.ObserveMediaInfoUseCase
 import moe.rukamori.archivetune.mediainfo.asMediaInfoError
+import moe.rukamori.archivetune.ui.utils.formatFileSize
 import moe.rukamori.archivetune.ui.utils.numberFormatter
 
 @HiltViewModel
 class MediaInfoViewModel @Inject constructor(
     private val observeMediaInfo: ObserveMediaInfoUseCase,
     private val savedStateHandle: SavedStateHandle,
-    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow<MediaInfoState<MediaInfoUiModel>>(MediaInfoState.Loading)
     val state = mutableState.asStateFlow()
@@ -124,8 +121,8 @@ class MediaInfoViewModel @Inject constructor(
         val format = local?.format
         val title = local?.title ?: metadata?.title ?: videoId
         val artists = local?.artists ?: metadata?.author
-        val fileSize = format?.contentLength?.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) }
-        val bitrate = format?.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} Kbps" }
+        val fileSize = format?.contentLength?.takeIf { it > 0 }?.let(::formatFileSize)
+        val bitrate = format?.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} kbps" }
         val technical = buildList {
             format?.let {
                 add(MediaInfoDetail(R.string.media_info_itag, it.itag.toString()))
