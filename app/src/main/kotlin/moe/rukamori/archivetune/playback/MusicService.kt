@@ -42,6 +42,8 @@ import android.os.Handler
 import android.os.PowerManager
 import android.util.LruCache
 import android.widget.Toast
+import androidx.annotation.DrawableRes
+import androidx.compose.runtime.snapshotFlow
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
@@ -79,6 +81,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.audio.AudioSink
@@ -91,6 +95,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -112,6 +117,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -170,9 +176,15 @@ import moe.rukamori.archivetune.constants.LastFMUseNowPlaying
 import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
 import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandClosePlayback
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandSeekBackIncrement
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandSeekForwardIncrement
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleDownload
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleLibrary
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleLike
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleRepeatMode
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleShuffle
+import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleSleepTimer
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleStartRadio
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
@@ -185,6 +197,8 @@ import moe.rukamori.archivetune.constants.ScrobbleDelaySecondsKey
 import moe.rukamori.archivetune.constants.ScrobbleMinSongDurationKey
 import moe.rukamori.archivetune.constants.ShowLyricsKey
 import moe.rukamori.archivetune.constants.SkipSilenceKey
+import moe.rukamori.archivetune.constants.SleepTimerFadeOutKey
+import moe.rukamori.archivetune.constants.SleepTimerFinishSongKey
 import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
@@ -240,6 +254,10 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectAudioSink
+import moe.rukamori.archivetune.playback.notification.MediaNotificationAction
+import moe.rukamori.archivetune.playback.notification.MediaNotificationConfiguration
+import moe.rukamori.archivetune.playback.notification.MediaNotificationNavigation
+import moe.rukamori.archivetune.playback.notification.MediaNotificationSettingsRepository
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectEvent
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectOutput
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectRoutingSink
@@ -328,6 +346,14 @@ class MusicService :
 
     @Inject
     lateinit var androidAutoSettings: AndroidAutoSettingsUseCases
+
+    @Inject
+    lateinit var mediaNotificationSettings: MediaNotificationSettingsRepository
+
+    @Volatile
+    private var notificationConfiguration = MediaNotificationConfiguration()
+
+    private var currentDownloadState: Int? = null
 
     @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
@@ -1311,6 +1337,10 @@ class MusicService :
             toggleLike = ::toggleLike
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
+            toggleDownload = ::toggleCurrentDownload
+            toggleSleepTimer = ::toggleSleepTimerFromNotification
+            closePlayback = ::closePlaybackFromNotification
+            seekByIncrement = ::seekByNotificationIncrement
             carMediaButtonPreferences = ::buildAndroidAutoButtons
             adoptQueueContinuation = ::adoptQueueContinuation
         }
@@ -1335,7 +1365,24 @@ class MusicService :
         setMediaNotificationProvider(mediaNotificationProvider)
         addSession(mediaSession)
 
+        notificationConfiguration = mediaNotificationSettings.currentConfiguration()
         updateNotification()
+        mediaNotificationSettings.configuration.collect(scope) { configuration ->
+            notificationConfiguration = configuration
+            updateNotification()
+        }
+        snapshotFlow { sleepTimer.isActive }
+            .distinctUntilChanged()
+            .collect(scope) { updateNotification() }
+        currentMediaMetadata
+            .flatMapLatest { mediaMetadata ->
+                if (mediaMetadata == null) flowOf(null) else moduleDownloadUtil.getDownload(mediaMetadata.id)
+            }.map { it?.state }
+            .distinctUntilChanged()
+            .collect(scope) { state ->
+                currentDownloadState = state
+                updateNotification()
+            }
         scope.launch {
             combine(
                 androidAutoSettings.configuration,
@@ -2713,6 +2760,7 @@ class MusicService :
         localPlayer.playWhenReady = false
         sleepTimer.clear()
         applyEffectiveVolumeImmediately()
+        updateNotification()
     }
 
     private fun scheduleCrossfade() {
@@ -3465,61 +3513,272 @@ class MusicService :
 
     private fun updateNotification() {
         try {
-            val customLayout =
-                listOf(
-                    CommandButton
-                        .Builder()
-                        .setDisplayName(
-                            getString(
-                                if (currentSong.value?.song?.liked == true) {
-                                    R.string.action_remove_like
-                                } else {
-                                    R.string.action_like
-                                },
-                            ),
-                        ).setIconResId(if (currentSong.value?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border)
-                        .setSessionCommand(CommandToggleLike)
-                        .setEnabled(currentSong.value != null)
-                        .build(),
-                    CommandButton
-                        .Builder()
-                        .setDisplayName(
-                            getString(
-                                when (player.repeatMode) {
-                                    REPEAT_MODE_OFF -> R.string.repeat_mode_off
-                                    REPEAT_MODE_ONE -> R.string.repeat_mode_one
-                                    REPEAT_MODE_ALL -> R.string.repeat_mode_all
-                                    else -> R.string.repeat_mode_off
-                                },
-                            ),
-                        ).setIconResId(
-                            when (player.repeatMode) {
-                                REPEAT_MODE_OFF -> R.drawable.repeat
-                                REPEAT_MODE_ONE -> R.drawable.repeat_one_on
-                                REPEAT_MODE_ALL -> R.drawable.repeat_on
-                                else -> R.drawable.repeat
-                            },
-                        ).setSessionCommand(CommandToggleRepeatMode)
-                        .build(),
-                    CommandButton
-                        .Builder()
-                        .setDisplayName(
-                            getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
-                        ).setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
-                        .setSessionCommand(CommandToggleShuffle)
-                        .build(),
-                    CommandButton
-                        .Builder()
-                        .setDisplayName(getString(R.string.start_radio))
-                        .setIconResId(R.drawable.radio)
-                        .setSessionCommand(CommandToggleStartRadio)
-                        .setEnabled(currentSong.value != null && currentMediaMetadata.value?.isPodcast != true)
-                        .build(),
-                )
-            mediaSession.setCustomLayout(customLayout)
+            mediaSession.setMediaButtonPreferences(buildNotificationButtons(notificationConfiguration))
             updateAndroidAutoButtons()
         } catch (e: Exception) {
             reportException(e)
+        }
+    }
+
+    private fun buildNotificationButtons(configuration: MediaNotificationConfiguration): List<CommandButton> {
+        val navigationButtons =
+            if (configuration.navigation == MediaNotificationNavigation.SEEK) {
+                listOf(
+                    seekNotificationButton(forward = false, seconds = configuration.seekIncrementSeconds),
+                    seekNotificationButton(forward = true, seconds = configuration.seekIncrementSeconds),
+                )
+            } else {
+                emptyList()
+            }
+        return navigationButtons + configuration.actions.map { action -> notificationActionButton(action, configuration) }
+    }
+
+    private fun seekNotificationButton(
+        forward: Boolean,
+        seconds: Int,
+    ): CommandButton =
+        CommandButton
+            .Builder(
+                if (forward) {
+                    when (seconds) {
+                        5 -> CommandButton.ICON_SKIP_FORWARD_5
+                        10 -> CommandButton.ICON_SKIP_FORWARD_10
+                        15 -> CommandButton.ICON_SKIP_FORWARD_15
+                        30 -> CommandButton.ICON_SKIP_FORWARD_30
+                        else -> CommandButton.ICON_SKIP_FORWARD
+                    }
+                } else {
+                    when (seconds) {
+                        5 -> CommandButton.ICON_SKIP_BACK_5
+                        10 -> CommandButton.ICON_SKIP_BACK_10
+                        15 -> CommandButton.ICON_SKIP_BACK_15
+                        30 -> CommandButton.ICON_SKIP_BACK_30
+                        else -> CommandButton.ICON_SKIP_BACK
+                    }
+                },
+            ).setDisplayName(
+                resources.getQuantityString(
+                    if (forward) R.plurals.media_notification_seek_forward else R.plurals.media_notification_seek_back,
+                    seconds,
+                    seconds,
+                ),
+            ).setCustomIconResId(if (forward) R.drawable.seek_forward else R.drawable.replay)
+            .setSessionCommand(if (forward) CommandSeekForwardIncrement else CommandSeekBackIncrement)
+            .setSlots(if (forward) CommandButton.SLOT_FORWARD else CommandButton.SLOT_BACK)
+            .setEnabled(player.currentMediaItem != null)
+            .build()
+
+    private fun notificationActionButton(
+        action: MediaNotificationAction,
+        configuration: MediaNotificationConfiguration,
+    ): CommandButton {
+        val song = currentSong.value
+        val mediaMetadata = currentMediaMetadata.value
+        return when (action) {
+            MediaNotificationAction.LIKE -> {
+                val liked = song?.song?.liked == true
+                customNotificationButton(
+                    displayName = getString(if (liked) R.string.action_remove_like else R.string.action_like),
+                    iconResId = if (liked) R.drawable.favorite else R.drawable.favorite_border,
+                    command = CommandToggleLike,
+                    enabled = song != null,
+                )
+            }
+
+            MediaNotificationAction.REPEAT ->
+                customNotificationButton(
+                    displayName =
+                        getString(
+                            when (player.repeatMode) {
+                                REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                                REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                                else -> R.string.repeat_mode_off
+                            },
+                        ),
+                    iconResId =
+                        when (player.repeatMode) {
+                            REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                            REPEAT_MODE_ALL -> R.drawable.repeat_on
+                            else -> R.drawable.repeat
+                        },
+                    command = CommandToggleRepeatMode,
+                )
+
+            MediaNotificationAction.SHUFFLE ->
+                customNotificationButton(
+                    displayName = getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on),
+                    iconResId = if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
+                    command = CommandToggleShuffle,
+                )
+
+            MediaNotificationAction.START_RADIO ->
+                customNotificationButton(
+                    displayName = getString(R.string.start_radio),
+                    iconResId = R.drawable.radio,
+                    command = CommandToggleStartRadio,
+                    enabled = song != null && mediaMetadata?.isPodcast != true,
+                )
+
+            MediaNotificationAction.LIBRARY -> {
+                val inLibrary = song?.song?.inLibrary != null
+                customNotificationButton(
+                    displayName = getString(if (inLibrary) R.string.remove_from_library else R.string.add_to_library),
+                    iconResId = if (inLibrary) R.drawable.library_add_check else R.drawable.library_add,
+                    command = CommandToggleLibrary,
+                    enabled = song != null,
+                )
+            }
+
+            MediaNotificationAction.DOWNLOAD -> {
+                val downloadState = currentDownloadState
+                customNotificationButton(
+                    displayName =
+                        getString(
+                            when (downloadState) {
+                                Download.STATE_COMPLETED -> R.string.remove_download
+                                Download.STATE_QUEUED, Download.STATE_DOWNLOADING, Download.STATE_RESTARTING -> R.string.downloading
+                                else -> R.string.action_download
+                            },
+                        ),
+                    iconResId = if (downloadState == Download.STATE_COMPLETED) R.drawable.offline else R.drawable.download,
+                    command = CommandToggleDownload,
+                    enabled = canDownloadFromNotification(mediaMetadata, song) && downloadState != Download.STATE_REMOVING,
+                )
+            }
+
+            MediaNotificationAction.SLEEP_TIMER -> {
+                val active = ::sleepTimer.isInitialized && sleepTimer.isActive
+                customNotificationButton(
+                    displayName =
+                        if (active) {
+                            getString(R.string.media_notification_sleep_timer_cancel)
+                        } else {
+                            getString(
+                                R.string.media_notification_sleep_timer_start,
+                                resources.getQuantityString(
+                                    R.plurals.minute,
+                                    configuration.sleepTimerMinutes,
+                                    configuration.sleepTimerMinutes,
+                                ),
+                            )
+                        },
+                    iconResId = if (active) R.drawable.bedtime else R.drawable.timer,
+                    command = CommandToggleSleepTimer,
+                    enabled = active || mediaMetadata != null,
+                )
+            }
+
+            MediaNotificationAction.CLOSE ->
+                customNotificationButton(
+                    displayName = getString(R.string.close),
+                    iconResId = R.drawable.close,
+                    command = CommandClosePlayback,
+                    enabled = mediaMetadata != null && isTogetherSessionIdle(),
+                )
+        }
+    }
+
+    private fun customNotificationButton(
+        displayName: String,
+        @DrawableRes iconResId: Int,
+        command: SessionCommand,
+        enabled: Boolean = true,
+    ): CommandButton =
+        CommandButton
+            .Builder(CommandButton.ICON_UNDEFINED)
+            .setDisplayName(displayName)
+            .setCustomIconResId(iconResId)
+            .setSessionCommand(command)
+            .setEnabled(enabled)
+            .build()
+
+    private fun canDownloadFromNotification(
+        mediaMetadata: moe.rukamori.archivetune.models.MediaMetadata?,
+        song: Song?,
+    ): Boolean = mediaMetadata != null && !mediaMetadata.id.isLocalMediaId() && song?.song?.isLocal != true
+
+    private fun isTogetherSessionIdle(): Boolean =
+        togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle
+
+    private fun toggleCurrentDownload() {
+        val mediaMetadata = currentMediaMetadata.value ?: return
+        if (!canDownloadFromNotification(mediaMetadata, currentSong.value)) return
+        when (moduleDownloadUtil.downloads.value[mediaMetadata.id]?.state) {
+            Download.STATE_COMPLETED,
+            Download.STATE_QUEUED,
+            Download.STATE_DOWNLOADING,
+            Download.STATE_RESTARTING,
+            -> DownloadService.sendRemoveDownload(this, ExoDownloadService::class.java, mediaMetadata.id, false)
+
+            Download.STATE_REMOVING -> Unit
+
+            else ->
+                ioScope.launch {
+                    try {
+                        database.withTransaction { insert(mediaMetadata) }
+                        val downloadRequest =
+                            androidx.media3.exoplayer.offline.DownloadRequest
+                                .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                .setCustomCacheKey(mediaMetadata.id)
+                                .setData(mediaMetadata.title.toByteArray())
+                                .build()
+                        DownloadService.sendAddDownload(
+                            this@MusicService,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        reportException(error)
+                    }
+                }
+        }
+    }
+
+    private fun toggleSleepTimerFromNotification() {
+        if (!::sleepTimer.isInitialized) return
+        if (sleepTimer.isActive) {
+            sleepTimer.clear()
+        } else {
+            if (currentMediaMetadata.value == null) return
+            sleepTimer.start(
+                minutes = notificationConfiguration.sleepTimerMinutes,
+                finishCurrentSong = dataStore.get(SleepTimerFinishSongKey, false),
+                fadeOut = dataStore.get(SleepTimerFadeOutKey, true),
+            )
+        }
+        updateNotification()
+    }
+
+    private fun seekByNotificationIncrement(forward: Boolean) {
+        if (player.currentMediaItem == null || !player.isCurrentMediaItemSeekable) return
+        val incrementMs = notificationConfiguration.seekIncrementMs
+        val duration = player.duration
+        val target =
+            if (forward) {
+                val next = player.currentPosition + incrementMs
+                if (duration != C.TIME_UNSET && duration > 0L) next.coerceAtMost(duration) else next
+            } else {
+                (player.currentPosition - incrementMs).coerceAtLeast(0L)
+            }
+        player.seekTo(target)
+    }
+
+    private fun closePlaybackFromNotification() {
+        if (!isTogetherSessionIdle()) return
+        scope.launch {
+            if (dataStore.getAsync(PersistentQueueKey, true) && player.mediaItemCount > 0) {
+                saveQueueToDisk()
+            }
+            if (::sleepTimer.isInitialized) sleepTimer.clear()
+            stopAndClearPlayback(clearPersistentState = false)
+            requestDiscordSync(
+                reason = "media_notification_closed",
+                force = true,
+            )
+            stopForegroundAndSelf()
         }
     }
 
@@ -8463,6 +8722,10 @@ class MusicService :
             originalDeleteIntent?.send()
         }.onFailure {
             Timber.tag(DISCORD_SYNC_TAG).w(it, "failed to forward original notification delete intent")
+        }
+
+        if (notificationConfiguration.stopOnDismiss && !player.isPlaying) {
+            closePlaybackFromNotification()
         }
     }
 

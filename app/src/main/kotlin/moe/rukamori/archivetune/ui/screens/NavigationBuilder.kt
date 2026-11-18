@@ -77,6 +77,7 @@ import moe.rukamori.archivetune.ui.screens.settings.LocalSongSettingsRoute
 import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
 import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
+import moe.rukamori.archivetune.ui.screens.settings.MediaNotificationSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
 import moe.rukamori.archivetune.ui.screens.settings.PalettePickerScreen
 import moe.rukamori.archivetune.ui.screens.settings.PlayerSettings
@@ -458,6 +459,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/player") {
         PlayerSettings(navController)
+    }
+    composable("settings/media_notification") {
+        MediaNotificationSettings(navController)
     }
     composable("settings/modules") {
         moe.rukamori.archivetune.ui.screens.settings.ModulesSettings(navController)

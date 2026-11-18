@@ -105,6 +105,10 @@ class MediaLibrarySessionCallback
         var toggleLike: () -> Unit = {}
         var toggleStartRadio: () -> Unit = {}
         var toggleLibrary: () -> Unit = {}
+        var toggleDownload: () -> Unit = {}
+        var toggleSleepTimer: () -> Unit = {}
+        var closePlayback: () -> Unit = {}
+        var seekByIncrement: (forward: Boolean) -> Unit = {}
         var carMediaButtonPreferences: (AndroidAutoConfiguration) -> List<CommandButton> = { emptyList() }
         var adoptQueueContinuation: (Queue, String?) -> Unit = { _, _ -> }
 
@@ -166,6 +170,11 @@ class MediaLibrarySessionCallback
                 .add(MediaSessionConstants.CommandToggleLibrary)
                 .add(MediaSessionConstants.CommandToggleShuffle)
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
+                .add(MediaSessionConstants.CommandToggleDownload)
+                .add(MediaSessionConstants.CommandToggleSleepTimer)
+                .add(MediaSessionConstants.CommandClosePlayback)
+                .add(MediaSessionConstants.CommandSeekBackIncrement)
+                .add(MediaSessionConstants.CommandSeekForwardIncrement)
                 .build()
             builder
                 .setAvailableSessionCommands(availableSessionCommands)
@@ -270,6 +279,31 @@ class MediaLibrarySessionCallback
 
                 MediaSessionConstants.ACTION_TOGGLE_REPEAT_MODE -> {
                     session.player.toggleRepeatMode()
+                    true
+                }
+
+                MediaSessionConstants.ACTION_TOGGLE_DOWNLOAD -> {
+                    toggleDownload()
+                    true
+                }
+
+                MediaSessionConstants.ACTION_TOGGLE_SLEEP_TIMER -> {
+                    toggleSleepTimer()
+                    true
+                }
+
+                MediaSessionConstants.ACTION_CLOSE_PLAYBACK -> {
+                    closePlayback()
+                    true
+                }
+
+                MediaSessionConstants.ACTION_SEEK_BACK_INCREMENT -> {
+                    seekByIncrement(false)
+                    true
+                }
+
+                MediaSessionConstants.ACTION_SEEK_FORWARD_INCREMENT -> {
+                    seekByIncrement(true)
                     true
                 }
                 else -> false

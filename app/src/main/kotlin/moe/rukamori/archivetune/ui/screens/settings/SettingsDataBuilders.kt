@@ -105,6 +105,15 @@ fun buildSettingsContent(
             accentColor = MaterialTheme.colorScheme.primary,
             onClick = { navController.navigate("settings/content") },
         )
+    val mediaNotification =
+        SettingsItem(
+            key = "media_notification",
+            icon = painterResource(R.drawable.notifications),
+            title = stringResource(R.string.settings_media_notification_title),
+            subtitle = stringResource(R.string.settings_media_notification_subtitle),
+            accentColor = MaterialTheme.colorScheme.primary,
+            onClick = { navController.navigate("settings/media_notification") },
+        )
     val behavior =
         SettingsItem(
             key = "behavior",
@@ -281,7 +290,7 @@ fun buildSettingsContent(
                 SettingsGroup(
                     key = "player_content",
                     title = stringResource(R.string.settings_section_player_content),
-                    items = listOf(canvas, content, behavior),
+                    items = listOf(canvas, content, mediaNotification, behavior),
                 ),
             )
             add(
