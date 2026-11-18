@@ -5,7 +5,7 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 
 package moe.rukamori.archivetune.ui.screens.settings
 
@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
@@ -70,6 +71,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.player.EditorialMorphShape
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.toColorScheme
@@ -446,6 +448,7 @@ internal fun ColorChannelSlider(
     modifier: Modifier = Modifier,
 ) {
     val pill = RoundedCornerShape(50)
+    val sliderState = rememberControlledSliderState(value = value, valueRange = valueRange)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -464,9 +467,11 @@ internal fun ColorChannelSlider(
             )
         }
         Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
+            state = sliderState,
+            onValueChange = { next ->
+                sliderState.value = next
+                onValueChange(next)
+            },
             modifier =
                 Modifier
                     .fillMaxWidth()
