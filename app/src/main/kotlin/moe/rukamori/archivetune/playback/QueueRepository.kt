@@ -104,8 +104,8 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
     fun observe(): Flow<QueueSnapshot?> = connection.flatMapLatest { player ->
         if (player == null) flowOf(null) else {
             val playback = combine(
-                player.queueWindows, player.currentWindowIndex, player.isPlaying, player.repeatMode, player.shuffleModeEnabled,
-            ) { windows, current, playing, repeat, shuffle ->
+                player.queue, player.isPlaying, player.repeatMode, player.shuffleModeEnabled,
+            ) { (windows, current), playing, repeat, shuffle ->
                 val liveUids = windows.mapTo(mutableSetOf()) { it.uid }
                 identities.keys.retainAll(liveUids)
                 QueuePlaybackData(

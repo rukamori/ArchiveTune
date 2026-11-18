@@ -245,8 +245,8 @@ fun V11PlayerContent(
             isMusicVideo = mediaMetadata.isMusicVideo,
         )
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
-    val windowIndex by playerConnection.currentWindowIndex.collectAsState()
-    val trackKey = V11TrackKey(mediaMetadata.id, windowIndex)
+    val queue by playerConnection.queue.collectAsState()
+    val trackKey = V11TrackKey(mediaMetadata.id, queue.currentIndex)
     val frame = V11Frame(trackKey, mediaMetadata, thumbnailSwapState.displayUrl)
     val swipeState = remember { V11SwipeState() }
     val isBuffering = playbackState == STATE_BUFFERING

@@ -432,8 +432,7 @@ fun BottomSheetPlayer(
     val currentSongLiked = currentSong?.song?.liked == true
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
-    val queueWindows by playerConnection.queueWindows.collectAsState()
-    val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
+    val queue by playerConnection.queue.collectAsState()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
     val onPlayerVolumeChange =
         remember(deviceMusicVolumeController) {
@@ -1175,8 +1174,8 @@ fun BottomSheetPlayer(
         val updatedOnSliderValueChangeFinished by rememberUpdatedState(onSliderValueChangeFinished)
 
         val nextUpMetadata =
-            remember(queueWindows, currentWindowIndex) {
-                queueWindows.getOrNull(currentWindowIndex + 1)?.mediaItem?.metadata
+            remember(queue) {
+                queue.windows.getOrNull(queue.currentIndex + 1)?.mediaItem?.metadata
             }
 
         val enrichedMetadata =

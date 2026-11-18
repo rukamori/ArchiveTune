@@ -52,6 +52,11 @@ internal enum class CanvasArtworkRefetchResult {
     AlreadyRunning,
 }
 
+data class PlayerQueueSnapshot(
+    val windows: List<Timeline.Window> = emptyList(),
+    val currentIndex: Int = -1,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
     context: Context,
@@ -82,9 +87,9 @@ class PlayerConnection(
         }
 
     val queueTitle = MutableStateFlow<String?>(null)
-    val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
+    private val _queue = MutableStateFlow(PlayerQueueSnapshot())
+    val queue = _queue.asStateFlow()
     val currentMediaItemIndex = MutableStateFlow(-1)
-    val currentWindowIndex = MutableStateFlow(-1)
 
     val shuffleModeEnabled = MutableStateFlow(false)
     val repeatMode = MutableStateFlow(REPEAT_MODE_OFF)
@@ -117,9 +122,7 @@ class PlayerConnection(
         _isPlaying.value = player.isPlaying
         playbackParameters.value = player.playbackParameters
         queueTitle.value = service.queueTitle
-        queueWindows.value = player.getQueueWindows()
-        currentWindowIndex.value = player.getCurrentQueueIndex()
-        currentMediaItemIndex.value = player.currentMediaItemIndex
+        refreshQueue()
         shuffleModeEnabled.value = player.shuffleModeEnabled
         repeatMode.value = player.repeatMode
         if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
@@ -351,8 +354,6 @@ class PlayerConnection(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        currentMediaItemIndex.value = player.currentMediaItemIndex
-        currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
     }
 
@@ -360,18 +361,34 @@ class PlayerConnection(
         timeline: Timeline,
         reason: Int,
     ) {
-        queueWindows.value = player.getQueueWindows()
         queueTitle.value = service.queueTitle
-        currentMediaItemIndex.value = player.currentMediaItemIndex
-        currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
     }
 
     override fun onShuffleModeEnabledChanged(enabled: Boolean) {
         shuffleModeEnabled.value = enabled
-        queueWindows.value = player.getQueueWindows()
-        currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
+    }
+
+    override fun onEvents(
+        player: Player,
+        events: Player.Events,
+    ) {
+        if (
+            events.containsAny(
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_POSITION_DISCONTINUITY,
+            )
+        ) {
+            refreshQueue()
+        }
+    }
+
+    private fun refreshQueue() {
+        _queue.value = PlayerQueueSnapshot(player.getQueueWindows(), player.getCurrentQueueIndex())
+        currentMediaItemIndex.value = player.currentMediaItemIndex
     }
 
     override fun onRepeatModeChanged(mode: Int) {
