@@ -278,7 +278,6 @@
     <string name="blur">Desenfoque</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Brillo</string>
-    <string name="custom_value">Valor personalizado</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animar la portada del álbum mientras se reproduce</string>
     <string name="show_button1_description">Alternar la visibilidad del botón 1 en Discord Rich Presence</string>

@@ -252,7 +252,6 @@
     <string name="blur">Floue</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Luminosité</string>
-    <string name="custom_value">Valeur personnalisée</string>
     <string name="show_button1_description">Afficher/masquer le bouton 1 dans Discord Rich Presence</string>
     <string name="show_button2_description">Afficher/masquer le bouton 2 dans Discord Rich Presence</string>
     <string name="discord_activity_type">Type d\'activité</string>

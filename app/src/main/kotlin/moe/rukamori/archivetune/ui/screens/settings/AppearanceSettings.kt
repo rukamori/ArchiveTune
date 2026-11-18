@@ -118,7 +118,6 @@ import moe.rukamori.archivetune.constants.SliderStyleKey
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
 import moe.rukamori.archivetune.constants.SwipeThumbnailKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.constants.WallpaperExtractionFailedKey
 import moe.rukamori.archivetune.constants.toLibraryFilterOrder
 import moe.rukamori.archivetune.constants.toLibraryFilterPreference
@@ -192,11 +191,6 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             HidePlayerThumbnailKey,
             defaultValue = false,
-        )
-    val (thumbnailCornerRadius, onThumbnailCornerRadiusChange) =
-        rememberPreference(
-            key = ThumbnailCornerRadiusKey,
-            defaultValue = 16f, // default dp
         )
     val (cropThumbnailToSquare, onCropThumbnailToSquareChange) =
         rememberPreference(

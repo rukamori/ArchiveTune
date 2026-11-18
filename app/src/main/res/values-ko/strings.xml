@@ -273,7 +273,6 @@
     <string name="blur">흐림 효과</string>
     <string name="contrast">대비</string>
     <string name="brightness">밝기</string>
-    <string name="custom_value">사용자 지정 값</string>
     <string name="archivetune_canvas">ArchiveTune 캔버스</string>
     <string name="archivetune_canvas_desc">음악이 재생되는 동안 움직이는 앨범 아트워크 표시</string>
     <string name="show_button1_description">Discord Rich Presence에서 버튼 1의 가시성(표시 여부)을 설정합니다.</string>

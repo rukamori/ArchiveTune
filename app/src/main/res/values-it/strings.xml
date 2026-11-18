@@ -247,7 +247,6 @@
     <string name="blur">Sfocatura</string>
     <string name="contrast">Contrasto</string>
     <string name="brightness">Luminosità</string>
-    <string name="custom_value">Valore personalizzato</string>
     <string name="show_button1_description">Attiva/disattiva la visibilità del pulsante 1 in Discord Rich Presence</string>
     <string name="show_button2_description">Attiva/disattiva la visibilità del pulsante 2 in Discord Rich Presence</string>
     <string name="discord_activity_type">Tipo di attività</string>

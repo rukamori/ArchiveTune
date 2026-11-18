@@ -385,7 +385,6 @@
     <string name="blur">模糊</string>
     <string name="contrast">對比</string>
     <string name="brightness">亮度</string>
-    <string name="custom_value">自訂值</string>
     <string name="archivetune_canvas">ArchiveTune 畫布</string>
     <string name="archivetune_canvas_desc">播放時為專輯封面加入動畫效果</string>
     <string name="player_background_style_v8_v9_desc">V8 和 V9 播放器樣式不支援此功能</string>

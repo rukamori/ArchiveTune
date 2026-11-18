@@ -404,7 +404,6 @@
     <string name="blur">Desfoque</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Brilho</string>
-    <string name="custom_value">Valor personalizado</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animar a capa do álbum durante a reprodução</string>
     <string name="player_background_style_v8_v9_desc">Indisponível com os estilos de player V8 e V9</string>

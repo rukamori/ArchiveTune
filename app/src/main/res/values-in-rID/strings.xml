@@ -432,7 +432,6 @@
     <string name="blur">Blur</string>
     <string name="contrast">Kontras</string>
     <string name="brightness">Kecerahan</string>
-    <string name="custom_value">Nilai khusus</string>
     <string name="archivetune_canvas">Kanvas ArchiveTune</string>
     <string name="archivetune_canvas_desc">Menganimasikan sampul album saat diputar</string>
     <string name="player_background_style_v8_v9_desc">Tidak tersedia untuk gaya pemutar V8, V9, dan V10</string>

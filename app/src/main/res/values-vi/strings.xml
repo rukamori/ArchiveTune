@@ -302,7 +302,6 @@
     <string name="blur">Làm mờ</string>
     <string name="contrast">Độ tương phản</string>
     <string name="brightness">Độ sáng</string>
-    <string name="custom_value">Giá trị tùy chỉnh</string>
     <string name="show_button1_description">Bật/tắt hiển thị nút 1 trong Discord Rich Presence</string>
     <string name="show_button2_description">Bật/tắt hiển thị nút 2 trong Discord Rich Presence</string>
     <string name="discord_activity_type">Loại hoạt động</string>

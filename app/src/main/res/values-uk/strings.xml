@@ -297,7 +297,6 @@
     <string name="blur">Розмиття</string>
     <string name="contrast">Контраст</string>
     <string name="brightness">Яскравість</string>
-    <string name="custom_value">Власне значення</string>
     <string name="show_button1_description">Увімкнути/вимкнути відображення кнопки 1 у функції «Rich Presence» Discord</string>
     <string name="show_button2_description">Увімкнути/вимкнути відображення кнопки 2 у функції «Rich Presence» Discord</string>
     <string name="discord_activity_type">Тип активності</string>

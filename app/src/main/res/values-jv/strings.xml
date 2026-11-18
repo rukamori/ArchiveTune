@@ -276,7 +276,6 @@
     <string name="blur">Blur</string>
     <string name="contrast">Kontras</string>
     <string name="brightness">Kecerahan</string>
-    <string name="custom_value">Nilai khusus</string>
     <string name="archivetune_canvas">Kanvas ArchiveTune</string>
     <string name="archivetune_canvas_desc">Menganimasikan sampul album saat diputer</string>
     <string name="show_button1_description">Alihkan visibilitas tombol 1 di Discord Rich Presence</string>

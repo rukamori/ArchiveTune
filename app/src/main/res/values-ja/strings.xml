@@ -546,7 +546,6 @@
     <string name="blur">ぼかし</string>
     <string name="contrast">コントラスト</string>
     <string name="brightness">明るさ</string>
-    <string name="custom_value">カスタム値</string>
     <string name="archivetune_canvas">アーカイブチューン キャンバス</string>
     <string name="archivetune_canvas_desc">再生中にアルバムのアートワークをアニメーション化する</string>
     <string name="player_background_style_v8_v9_desc">V8、V9、および V10 プレーヤー スタイルでは利用できません</string>

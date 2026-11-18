@@ -527,6 +527,12 @@
     <string name="cancel_button">Cancel</string>
     <string name="ok_button">OK</string>
     <string name="custom_radius">Customize thumbnail corner radius</string>
+    <string name="thumbnail_corner_radius_supporting">Shapes the artwork corners on the player and the always-on display</string>
+    <string name="thumbnail_corner_radius_value">%1$d dp</string>
+    <string name="thumbnail_corner_radius_preview_description">Player artwork preview with %1$d dp corners</string>
+    <string name="thumbnail_corner_radius_presets">Presets</string>
+    <string name="thumbnail_corner_radius_decrease">Decrease corner radius</string>
+    <string name="thumbnail_corner_radius_increase">Increase corner radius</string>
     <string name="custom">Custom</string>
     <string name="customized_background">Customized background</string>
     <string name="customize_background_title">Customize background</string>
@@ -546,7 +552,6 @@
     <string name="blur">Blur</string>
     <string name="contrast">Contrast</string>
     <string name="brightness">Brightness</string>
-    <string name="custom_value">Custom value</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animate album artwork while playing</string>
     <string name="player_background_style_v8_v9_desc">Unavailable with V8, V9, and V10 player styles</string>

@@ -390,7 +390,6 @@
     <string name="default_open_tab">默认打开标签页</string>
     <string name="action_shuffle_on">打开随机</string>
     <string name="custom">自定义</string>
-    <string name="custom_value">自定义变量</string>
     <string name="player">播放器</string>
     <string name="audio_quality_auto">自动</string>
     <string name="audio_quality_high">高质量</string>

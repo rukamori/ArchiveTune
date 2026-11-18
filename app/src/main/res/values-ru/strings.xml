@@ -287,7 +287,6 @@
     <string name="blur">Размытие</string>
     <string name="contrast">Контраст</string>
     <string name="brightness">Яркость</string>
-    <string name="custom_value">Пользовательское</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Анимировать обложку альбома при воспроизведении</string>
     <string name="show_button1_description">Включить видимость кнопки 1 в Discord Rich Presence</string>

@@ -249,7 +249,6 @@
     <string name="blur">Bulanıklaştırma</string>
     <string name="contrast">Kontrast</string>
     <string name="brightness">Parlaklık</string>
-    <string name="custom_value">Özel değer</string>
     <string name="show_button1_description">Discord Rich Presence\'da düğme 1\'in görünürlüğünü değiştir</string>
     <string name="show_button2_description">Discord Rich Presence\'da 2. düğmenin görünürlüğünü değiştir</string>
     <string name="discord_activity_type">Etkinlik türü</string>

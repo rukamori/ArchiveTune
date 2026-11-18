@@ -237,7 +237,6 @@
     <string name="ok_button">OK</string>
     <string name="custom_radius">Eckenradius des Thumbnails anpassen</string>
     <string name="custom">Benutzerdefiniert</string>
-    <string name="custom_value">Benutzerdefinierter Wert</string>
     <string name="customized_background">Angepasster Hintergrund</string>
     <string name="customize_background_title">Hintergrund anpassen</string>
     <string name="add_image">Bild hinzufügen</string>
