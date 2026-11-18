@@ -53,9 +53,9 @@ data class IconScreenUiModel(
     val selectedIcon: AppIconUiModel,
     val selectionInProgressId: String?,
     val hasCommunityIcons: Boolean,
+    val hasNoSearchMatches: Boolean,
     val searchQuery: String,
     val sortOrder: AppIconSortOrder,
-    val isSortMenuExpanded: Boolean,
 )
 
 enum class AppIconSortOrder {
@@ -70,6 +70,7 @@ data class AppIconUiModel(
     @StringRes val nameResId: Int?,
     val author: String?,
     val githubAuthorUrl: String?,
+    val sourceUrl: String?,
     @DrawableRes val previewDrawableResId: Int,
     val isSelected: Boolean,
     val isDefault: Boolean,
@@ -82,6 +83,8 @@ data class AppIconUiCollection private constructor(
     val size: Int get() = values.size
 
     operator fun get(index: Int): AppIconUiModel = values[index]
+
+    fun findById(iconId: String): AppIconUiModel? = values.firstOrNull { icon -> icon.id == iconId }
 
     companion object {
         fun from(values: List<AppIconUiModel>): AppIconUiCollection = AppIconUiCollection(values.toList())
@@ -106,7 +109,6 @@ class IconViewModel
         private var catalogIcons: List<AppIconUiModel> = emptyList()
         private var searchQuery: String = ""
         private var sortOrder: AppIconSortOrder = AppIconSortOrder.NEW_ADDED
-        private var isSortMenuExpanded: Boolean = false
 
         init {
             load()
@@ -141,8 +143,15 @@ class IconViewModel
         fun openAuthorProfile(iconId: String) {
             val icon =
                 catalogIcons.findById(iconId) ?: return
-            val githubAuthorUrl = icon.githubAuthorUrl?.takeIf(String::isNotBlank) ?: return
+            val githubAuthorUrl = icon.githubAuthorUrl?.takeIf(String::isWebUrl) ?: return
             _effects.tryEmit(IconScreenEffect.OpenUri(githubAuthorUrl))
+        }
+
+        fun openSource(iconId: String) {
+            val icon =
+                catalogIcons.findById(iconId) ?: return
+            val sourceUrl = icon.sourceUrl?.takeIf(String::isWebUrl) ?: return
+            _effects.tryEmit(IconScreenEffect.OpenUri(sourceUrl))
         }
 
         fun updateSearchQuery(query: String) {
@@ -153,22 +162,9 @@ class IconViewModel
             publishSuccess()
         }
 
-        fun showSortMenu() {
-            if (_state.value !is IconScreenState.Success || isSortMenuExpanded) return
-            isSortMenuExpanded = true
-            publishSuccess()
-        }
-
-        fun dismissSortMenu() {
-            if (_state.value !is IconScreenState.Success || !isSortMenuExpanded) return
-            isSortMenuExpanded = false
-            publishSuccess()
-        }
-
         fun updateSortOrder(order: AppIconSortOrder) {
-            if (_state.value !is IconScreenState.Success) return
+            if (_state.value !is IconScreenState.Success || sortOrder == order) return
             sortOrder = order
-            isSortMenuExpanded = false
             publishSuccess()
         }
 
@@ -197,6 +193,7 @@ class IconViewModel
                         nameResId = if (icon.isDefault) R.string.app_icon_default else null,
                         author = icon.author,
                         githubAuthorUrl = icon.githubAuthorUrl,
+                        sourceUrl = icon.sourceUrl,
                         previewDrawableResId = icon.previewDrawableResId,
                         isSelected = icon.id == selectedIconId,
                         isDefault = icon.isDefault,
@@ -216,15 +213,17 @@ class IconViewModel
             val selectedIcon =
                 catalogIcons.firstOrNull(AppIconUiModel::isSelected)
                     ?: catalogIcons.first()
+            val visibleIcons = visibleIcons()
             return IconScreenState.Success(
                 IconScreenUiModel(
-                    icons = AppIconUiCollection.from(visibleIcons()),
+                    icons = AppIconUiCollection.from(visibleIcons),
                     selectedIcon = selectedIcon,
                     selectionInProgressId = selectionInProgressId,
                     hasCommunityIcons = catalogIcons.any { icon -> !icon.isDefault },
+                    hasNoSearchMatches =
+                        searchQuery.isNotBlank() && visibleIcons.all(AppIconUiModel::isDefault),
                     searchQuery = searchQuery,
                     sortOrder = sortOrder,
-                    isSortMenuExpanded = isSortMenuExpanded,
                 ),
             )
         }
@@ -272,3 +271,5 @@ class IconViewModel
             const val MaxSearchQueryLength = 100
         }
     }
+
+private fun String.isWebUrl(): Boolean = startsWith("https://", ignoreCase = true) || startsWith("http://", ignoreCase = true)

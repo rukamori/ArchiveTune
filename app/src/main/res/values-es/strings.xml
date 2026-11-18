@@ -771,6 +771,11 @@
     <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
     <string name="library_top_mixes_configure_ai">Configurar la IA</string>
     <string name="app_icon_change_failed">No he podido cambiar el icono de la aplicación</string>
+    <string name="app_icon_applying">Aplicando %1$s…</string>
+    <string name="app_icon_by_author">por %1$s</string>
+    <string name="app_icon_github_profile">Perfil de GitHub</string>
+    <string name="app_icon_details">Detalles del icono</string>
+    <string name="app_icon_use">Usar este icono</string>
     <string name="app_icon_load_failed">No se han podido cargar los iconos de las aplicaciones</string>
     <string name="app_icon_empty">Sin iconos para la aplicación</string>
     <plurals name="app_icon_count">

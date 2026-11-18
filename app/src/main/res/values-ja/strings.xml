@@ -434,6 +434,11 @@
     <string name="app_icon_empty">使用できるアプリアイコンがありません</string>
     <string name="app_icon_load_failed">アプリアイコンを読み込めませんでした</string>
     <string name="app_icon_change_failed">アプリのアイコンを変更できませんでした</string>
+    <string name="app_icon_applying">%1$s を適用中…</string>
+    <string name="app_icon_by_author">作成者: %1$s</string>
+    <string name="app_icon_github_profile">GitHub プロフィール</string>
+    <string name="app_icon_details">アイコンの詳細</string>
+    <string name="app_icon_use">このアイコンを使用</string>
     <string name="theme">テーマ</string>
     <string name="enable_dynamic_theme">動的テーマを有効にする</string>
     <string name="wallpaper_permission">壁紙の色の許可</string>

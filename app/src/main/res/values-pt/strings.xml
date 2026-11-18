@@ -334,6 +334,11 @@
     <string name="app_icon_empty">Sem ícones da app disponíveis</string>
     <string name="app_icon_load_failed">Impossível carregar os ícones da app</string>
     <string name="app_icon_change_failed">Imposssível alterar o ícone da app</string>
+    <string name="app_icon_applying">A aplicar %1$s…</string>
+    <string name="app_icon_by_author">por %1$s</string>
+    <string name="app_icon_github_profile">Perfil do GitHub</string>
+    <string name="app_icon_details">Detalhes do ícone</string>
+    <string name="app_icon_use">Usar este ícone</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Ativar tema dinâmico</string>
     <string name="random_theme_on_startup">Tema aleatório ao iniciar</string>

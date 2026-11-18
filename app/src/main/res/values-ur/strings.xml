@@ -540,6 +540,11 @@
     <string name="app_icon_empty">ایپ کی کوئ تصویرات دستیاب نہیں</string>
     <string name="app_icon_load_failed">ایپ کی تصویرات لاد نہیں سکا</string>
     <string name="app_icon_change_failed">ایپ کی تصویر بدل میں ناکام</string>
+    <string name="app_icon_applying">%1$s لاگو ہو رہا ہے…</string>
+    <string name="app_icon_by_author">از %1$s</string>
+    <string name="app_icon_github_profile">GitHub پروفائل</string>
+    <string name="app_icon_details">آئیکن کی تفصیلات</string>
+    <string name="app_icon_use">یہ آئیکن استعمال کریں</string>
     <string name="cache">کیش</string>
     <string name="image_cache">تصویراتی کیش</string>
     <string name="song_cache">گیت کا کیش</string>

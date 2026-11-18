@@ -908,6 +908,11 @@
     <string name="app_icon_empty">Không có biểu tượng</string>
     <string name="app_icon_load_failed">Không thể tải biểu tượng ứng dụng</string>
     <string name="app_icon_change_failed">Không thể đổi biểu tượng ứng dụng</string>
+    <string name="app_icon_applying">Đang áp dụng %1$s…</string>
+    <string name="app_icon_by_author">bởi %1$s</string>
+    <string name="app_icon_github_profile">Hồ sơ GitHub</string>
+    <string name="app_icon_details">Chi tiết biểu tượng</string>
+    <string name="app_icon_use">Dùng biểu tượng này</string>
     <string name="force_high_refresh_rate">Ép tần số quét cao</string>
     <string name="max_supported_refresh_rate">Cao nhất được hỗ trợ: %1$d Hz</string>
     <string name="view_debug_logs_description">Xem và lọc nhật ký ứng dụng</string>

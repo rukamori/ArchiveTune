@@ -771,6 +771,11 @@
     <string name="app_icon_empty">Keine App-Symbole verfügbar</string>
     <string name="app_icon_load_failed">App-Symbole konnten nicht geladen werden</string>
     <string name="app_icon_change_failed">App-Symbol konnte nicht geändert werden</string>
+    <string name="app_icon_applying">%1$s wird angewendet…</string>
+    <string name="app_icon_by_author">von %1$s</string>
+    <string name="app_icon_github_profile">GitHub-Profil</string>
+    <string name="app_icon_details">Symboldetails</string>
+    <string name="app_icon_use">Dieses Symbol verwenden</string>
     <string name="app_icon_current">Aktuelles Symbol</string>
     <string name="together_unknown_participant">Jemand</string>
     <string name="lyrics_searching_providers">Suche Anbieter</string>

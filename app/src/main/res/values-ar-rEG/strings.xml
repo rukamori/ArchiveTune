@@ -340,6 +340,11 @@
     <string name="app_icon_empty">مفيش أي أيقونات متاحة للتطبيق</string>
     <string name="app_icon_load_failed">معرفناش نحمل أيقونات التطبيق</string>
     <string name="app_icon_change_failed">معرفناش نغير أيقونة التطبيق</string>
+    <string name="app_icon_applying">جارٍ تطبيق %1$s…</string>
+    <string name="app_icon_by_author">بواسطة %1$s</string>
+    <string name="app_icon_github_profile">ملف GitHub الشخصي</string>
+    <string name="app_icon_details">تفاصيل الأيقونة</string>
+    <string name="app_icon_use">استخدام هذه الأيقونة</string>
     <string name="theme">الثيم</string>
     <string name="enable_dynamic_theme">تفعيل الثيم الديناميكي</string>
     <string name="random_theme_on_startup">ثيم عشوائي أول ما يفتح التطبيق</string>

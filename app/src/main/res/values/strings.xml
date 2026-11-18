@@ -434,6 +434,11 @@
     <string name="app_icon_empty">No app icons are available</string>
     <string name="app_icon_load_failed">Couldn\'t load app icons</string>
     <string name="app_icon_change_failed">Couldn\'t change the app icon</string>
+    <string name="app_icon_applying">Applying %1$s…</string>
+    <string name="app_icon_by_author">by %1$s</string>
+    <string name="app_icon_github_profile">GitHub profile</string>
+    <string name="app_icon_details">Icon details</string>
+    <string name="app_icon_use">Use this icon</string>
     <string name="theme">Theme</string>
     <string name="enable_dynamic_theme">Enable dynamic theme</string>
     <string name="wallpaper_permission">Wallpaper color permission</string>

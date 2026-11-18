@@ -306,6 +306,11 @@
     <string name="app_icon_empty">ไม่มีไอคอนที่พร้อมใช้</string>
     <string name="app_icon_load_failed">ไม่สามารถโหลดไอคอนแอปได้</string>
     <string name="app_icon_change_failed">ไม่สามารถเปลี่ยนไอคอนแอปได้</string>
+    <string name="app_icon_applying">กำลังใช้ %1$s…</string>
+    <string name="app_icon_by_author">โดย %1$s</string>
+    <string name="app_icon_github_profile">โปรไฟล์ GitHub</string>
+    <string name="app_icon_details">รายละเอียดไอคอน</string>
+    <string name="app_icon_use">ใช้ไอคอนนี้</string>
     <string name="theme">ธีม</string>
     <string name="enable_dynamic_theme">เปิดใช้งานธีมไดนามิก</string>
     <string name="random_theme_on_startup">สุ่มธีมเมื่อเริ่มแอป</string>

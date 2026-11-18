@@ -924,6 +924,11 @@
     <string name="app_icon_empty">Aucune icône d\'application n\'est disponible</string>
     <string name="app_icon_load_failed">Impossible de charger les icônes des applications</string>
     <string name="app_icon_change_failed">Impossible de modifier l\'icône de l\'application</string>
+    <string name="app_icon_applying">Application de %1$s…</string>
+    <string name="app_icon_by_author">par %1$s</string>
+    <string name="app_icon_github_profile">Profil GitHub</string>
+    <string name="app_icon_details">Détails de l\'icône</string>
+    <string name="app_icon_use">Utiliser cette icône</string>
     <string name="together_room_closed_inactivity_notification">La salle a été fermée car personne ne s\'y est connecté pendant 10 minutes</string>
     <string name="show_player_volume_bar">Afficher la barre de volume</string>
     <string name="player_volume_bar_v7_v8_only">Disponible uniquement avec les modèles de lecteurs V7 et V8</string>

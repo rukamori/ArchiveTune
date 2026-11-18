@@ -913,6 +913,11 @@
     <string name="app_icon_empty">沒有可用的應用圖標</string>
     <string name="app_icon_load_failed">無法加載應用圖標</string>
     <string name="app_icon_change_failed">無法更改應用圖標</string>
+    <string name="app_icon_applying">正在套用 %1$s…</string>
+    <string name="app_icon_by_author">作者：%1$s</string>
+    <string name="app_icon_github_profile">GitHub 個人檔案</string>
+    <string name="app_icon_details">圖示詳細資料</string>
+    <string name="app_icon_use">使用此圖示</string>
     <string name="custom_background_subtitle">預覽並調整播放器及歌詞背景</string>
     <string name="custom_background_preview_player">播放器</string>
     <string name="custom_background_preview_lyrics">歌詞</string>

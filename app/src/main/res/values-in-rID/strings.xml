@@ -320,6 +320,11 @@
     <string name="app_icon_empty">Tidak ada ikon aplikasi yang tersedia</string>
     <string name="app_icon_load_failed">Tidak dapat memuat ikon aplikasi</string>
     <string name="app_icon_change_failed">Tidak dapat mengubah ikon aplikasi</string>
+    <string name="app_icon_applying">Menerapkan %1$s…</string>
+    <string name="app_icon_by_author">oleh %1$s</string>
+    <string name="app_icon_github_profile">Profil GitHub</string>
+    <string name="app_icon_details">Detail ikon</string>
+    <string name="app_icon_use">Gunakan ikon ini</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Aktifkan tema dinamis</string>
     <string name="wallpaper_permission">Izin warna wallpaper</string>
