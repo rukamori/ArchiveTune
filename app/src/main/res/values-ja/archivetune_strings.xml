@@ -402,7 +402,7 @@
         <item quantity="other">%d 要素</item>
     </plurals>
     <plurals name="n_time">
-        <item quantity="one">%d時間</item>
+        <item quantity="one">%d time</item>
         <item quantity="other">%d回</item>
     </plurals>
     <string name="seek_forward_dynamic">+%1$d 秒進む</string>
@@ -711,6 +711,56 @@
     <string name="theme_editor_hex_input">16 進値 (#RRGGBB または #AARRGGBB)</string>
     <string name="theme_presets_title">プリセット</string>
     <string name="copy">コピー</string>
+    <string name="navigate_back">Navigate back</string>
+    <string name="theme_preview_light">ライト</string>
+    <string name="theme_preview_dark">暗い</string>
+    <string name="palette_in_use">In use</string>
+    <string name="palette_catalog_title">パレット</string>
+    <plurals name="palette_count">
+        <item quantity="one">%dパレット</item>
+        <item quantity="other">%d palettes</item>
+    </plurals>
+    <string name="palette_family_all">すべて</string>
+    <string name="palette_family_blue">ブルース</string>
+    <string name="palette_family_green">グリーンズ</string>
+    <string name="palette_family_warm">暖かい</string>
+    <string name="palette_family_purple">パープル</string>
+    <string name="palette_family_pink">ピンク</string>
+    <string name="palette_family_red">レッズ</string>
+    <string name="palette_family_neutral">ニュートラル</string>
+    <string name="palette_family_earth">素朴な</string>
+    <string name="palette_family_pastel">パステル</string>
+    <string name="palette_family_neon">Neon</string>
+    <string name="palette_family_mood">気分</string>
+    <string name="custom_theme_cta_desc">4 つのシードカラーからテーマを構築する</string>
+    <string name="custom_theme_in_use">%1$s · In use</string>
+    <string name="theme_untitled">Untitled theme</string>
+    <string name="theme_unsaved_changes">未保存の変更</string>
+    <string name="theme_discard_title">Leave without applying?</string>
+    <string name="theme_discard_text">このテーマに対する編集はまだ適用されていません。</string>
+    <string name="theme_discard_confirm">廃棄する</string>
+    <string name="theme_reset_done">Colors reset to default</string>
+    <string name="theme_import_failed_desc">このファイルは有効な ArchiveTune テーマではありません。</string>
+    <string name="theme_hex_invalid">#ED5564 のように 6 桁または 8 桁の 16 進数を使用します</string>
+    <string name="theme_seed_colors_desc">ロールを選択してシードカラーを編集します</string>
+    <string name="theme_editor_mode_hsv" translatable="false">HSV</string>
+    <string name="theme_editor_mode_rgb" translatable="false">RGB</string>
+    <string name="theme_channel_hue">色相</string>
+    <string name="theme_channel_saturation">彩度</string>
+    <string name="theme_channel_red">赤</string>
+    <string name="theme_channel_green">緑</string>
+    <string name="theme_channel_blue">ブルー</string>
+    <string name="theme_channel_degrees">%1$d°</string>
+    <string name="theme_channel_percent">%1$d%%</string>
+    <string name="theme_harmony_title">Harmonies</string>
+    <string name="theme_harmony_desc">主要なシードから派生した色</string>
+    <string name="theme_harmony_match">プライマリと一致する</string>
+    <string name="theme_harmony_analogous">Analogous</string>
+    <string name="theme_harmony_triadic">トライアド</string>
+    <string name="theme_harmony_split">スプリットコンプリメンタリー</string>
+    <string name="theme_harmony_complementary">補完的</string>
+    <string name="theme_presets_desc">この役割にはパレットの色を使用してください</string>
+    <string name="theme_name_counter">%1$d/%2$d</string>
     <string name="backup_in_progress">バックアップ中です</string>
     <string name="restore_in_progress">復元中です</string>
     <string name="backup_step_export_settings">設定をバックアップする</string>
@@ -1021,6 +1071,19 @@
     <string name="search_load_more_failed">これ以上の結果を読み込めませんでした</string>
     <string name="search_loading_sections">さらにセクションを読み込んでいます…</string>
     <string name="search_filter_label">フィルタ結果</string>
+    <string name="search_sort_results">結果の並べ替え</string>
+    <string name="search_sort_active">Sorted by %1$s</string>
+    <string name="search_sort_by">並べ替え順</string>
+    <string name="search_sort_order">注文</string>
+    <string name="search_sort_relevance">関連性</string>
+    <string name="search_sort_views_scope">曲、ビデオ、プレイリスト</string>
+    <string name="search_sort_duration_scope">曲、ビデオ、エピソード</string>
+    <string name="search_sort_most_viewed">最も閲覧された</string>
+    <string name="search_sort_least_viewed">最も閲覧されていない</string>
+    <string name="search_sort_longest">Longest first</string>
+    <string name="search_sort_shortest">Shortest first</string>
+    <string name="search_sort_newest">新しい順</string>
+    <string name="search_sort_oldest">古い順</string>
     <string name="search_see_all_section">%1$s をすべて表示</string>
     <string name="search_action_radio">ラジオ</string>
     <string name="search_action_open">開く</string>
