@@ -145,7 +145,6 @@
     <string name="undo">Annuler</string>
     <string name="lyrics_not_found">Paroles introuvables</string>
     <string name="sleep_timer">Minuterie de Sommeil</string>
-    <string name="end_of_song">Fin du titre</string>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="many">%d minutes</item>

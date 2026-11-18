@@ -287,7 +287,6 @@
     <string name="lyrics_not_found">歌詞が見つかりません</string>
     <string name="lyrics_word_sync">ワードシンク</string>
     <string name="sleep_timer">スリープタイマー</string>
-    <string name="end_of_song">曲の終わり</string>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="other">%d分</item>

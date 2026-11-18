@@ -590,6 +590,7 @@ class MusicService :
     private var audioNormalizationEnabled = true
     var playerVolume = MutableStateFlow(1f)
     private val audioFocusVolumeFactor = MutableStateFlow(1f)
+    private val sleepTimerVolumeFactor = MutableStateFlow(1f)
     val recapAudioMuted = MutableStateFlow(false)
     val recapQueueActive = MutableStateFlow(false)
     private var recapAudioQueue: Queue? = null
@@ -1396,7 +1397,13 @@ class MusicService :
             }
         }
 
-        combine(playerVolume, normalizeFactor, audioFocusVolumeFactor, recapAudioMuted) { playerVolume, normalizeFactor, audioFocusVolumeFactor, _ ->
+        combine(
+            playerVolume,
+            normalizeFactor,
+            audioFocusVolumeFactor,
+            recapAudioMuted,
+            sleepTimerVolumeFactor,
+        ) { playerVolume, normalizeFactor, audioFocusVolumeFactor, _, _ ->
             calculateEffectivePlayerVolume(playerVolume, normalizeFactor, audioFocusVolumeFactor)
         }.collectLatest(scope) { finalVolume ->
             updateEffectiveVolume(finalVolume)
@@ -2568,8 +2575,17 @@ class MusicService :
             normalizeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_NORMALIZATION_FACTOR, MAX_AUDIO_NORMALIZATION_FACTOR) ?: 1f
         val safeAudioFocusVolumeFactor =
             audioFocusVolumeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_FOCUS_VOLUME_FACTOR, 1f) ?: 1f
+        val safeSleepTimerVolumeFactor = sleepTimerVolumeFactor.value.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
         return if (recapAudioMuted.value) 0f else
-            (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor).coerceIn(0f, maxSafeGainFactor)
+            (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor * safeSleepTimerVolumeFactor)
+                .coerceIn(0f, maxSafeGainFactor)
+    }
+
+    fun setSleepTimerVolumeFactor(factor: Float) {
+        val safeFactor = factor.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
+        if (sleepTimerVolumeFactor.value == safeFactor) return
+        sleepTimerVolumeFactor.value = safeFactor
+        if (::player.isInitialized) applyEffectiveVolumeImmediately()
     }
 
     fun setRecapMuted(muted: Boolean) {
@@ -2704,12 +2720,13 @@ class MusicService :
     }
 
     fun pauseFromSleepTimer() {
-        sleepTimer.clear()
-        cancelCrossfade(resetVolume = true)
+        cancelCrossfade(resetVolume = false)
         player.pause()
         player.playWhenReady = false
         localPlayer.pause()
         localPlayer.playWhenReady = false
+        sleepTimer.clear()
+        applyEffectiveVolumeImmediately()
     }
 
     private fun scheduleCrossfade() {

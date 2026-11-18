@@ -193,7 +193,6 @@
     <string name="undo">Khôi phục</string>
     <string name="lyrics_not_found">Không tìm thấy lời bài hát</string>
     <string name="sleep_timer">Hẹn giờ ngủ</string>
-    <string name="end_of_song">Cuối bài hát</string>
     <plurals name="minute">
         <item quantity="other">%d phút</item>
     </plurals>

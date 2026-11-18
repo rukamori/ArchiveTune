@@ -179,7 +179,6 @@
     <string name="undo">Скасувати</string>
     <string name="lyrics_not_found">Текст пісні не знайдено</string>
     <string name="sleep_timer">Таймер вимкнення</string>
-    <string name="end_of_song">Кінець пісні</string>
     <plurals name="minute">
         <item quantity="one">%d хвилина</item>
         <item quantity="few">%d хвилини</item>

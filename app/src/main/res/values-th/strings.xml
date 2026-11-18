@@ -272,7 +272,6 @@
     <string name="lyrics_not_found">ไม่พบเนื้อเพลง</string>
     <string name="lyrics_word_sync">ซิงค์คำ</string>
     <string name="sleep_timer">ตั้งเวลาปิด</string>
-    <string name="end_of_song">หลังจบเพลง</string>
     <plurals name="minute">
         <item quantity="other">%d นาที</item>
     </plurals>

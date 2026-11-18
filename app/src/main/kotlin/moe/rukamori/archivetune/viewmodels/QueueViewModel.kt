@@ -116,7 +116,8 @@ class QueueViewModel @Inject constructor(
     }
     fun dismissSleepTimer() { mutableChrome.value = mutableChrome.value.copy(showSleepTimer = false) }
     fun sleepTimerValue(value: Float) { mutableChrome.value = mutableChrome.value.copy(sleepTimerValue = value) }
-    fun startSleepTimer(minutes: Int) { edit.startSleepTimer(minutes); dismissSleepTimer() }
+    fun startSleepTimer(minutes: Int, finishCurrentSong: Boolean, fadeOut: Boolean) =
+        edit.startSleepTimer(minutes, finishCurrentSong, fadeOut)
 
     private fun publish() {
         val model = latest

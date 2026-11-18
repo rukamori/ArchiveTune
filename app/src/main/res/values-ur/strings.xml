@@ -276,7 +276,6 @@
     <string name="lyrics_not_found">بول نہ مل سکے</string>
     <string name="lyrics_word_sync">الفاظ کی ہم عہدی</string>
     <string name="sleep_timer">نیند ٹائمر</string>
-    <string name="end_of_song">گیت کا اختتام</string>
     <plurals name="minute">
         <item quantity="one">ایک منٹ</item>
         <item quantity="other">%d منٹ</item>

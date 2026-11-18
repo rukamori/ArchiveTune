@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.playback
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
@@ -31,19 +32,27 @@ class SleepTimer(
     val isActive: Boolean
         get() = triggerTime != -1L || pauseWhenSongEnd
 
-    fun start(minute: Int) {
-        sleepTimerJob?.cancel()
-        sleepTimerJob = null
-        if (minute == -1) {
-            pauseWhenSongEnd = true
-        } else {
-            triggerTime = System.currentTimeMillis() + minute.minutes.inWholeMilliseconds
-            sleepTimerJob =
-                scope.launch {
-                    delay(minute.minutes)
+    fun start(
+        minutes: Int,
+        finishCurrentSong: Boolean,
+        fadeOut: Boolean,
+    ) {
+        clear()
+        val durationMs = minutes.coerceAtLeast(1).minutes.inWholeMilliseconds
+        val target = System.currentTimeMillis() + durationMs
+        triggerTime = target
+        sleepTimerJob =
+            scope.launch {
+                if (finishCurrentSong) {
+                    delay(durationMs)
+                    triggerTime = -1L
+                    pauseWhenSongEnd = true
+                    if (fadeOut) fadeBeforeSongEnd()
+                } else {
+                    if (fadeOut) fadeUntil(target) else delay(durationMs)
                     service.pauseFromSleepTimer()
                 }
-        }
+            }
     }
 
     fun clear() {
@@ -51,6 +60,36 @@ class SleepTimer(
         sleepTimerJob = null
         pauseWhenSongEnd = false
         triggerTime = -1L
+        service.setSleepTimerVolumeFactor(1f)
+    }
+
+    private suspend fun fadeUntil(target: Long) {
+        val fadeStart = target - FadeOutDurationMs
+        val wait = fadeStart - System.currentTimeMillis()
+        if (wait > 0) delay(wait)
+        while (true) {
+            val remaining = target - System.currentTimeMillis()
+            if (remaining <= 0L) break
+            service.setSleepTimerVolumeFactor(remaining.toFloat() / FadeOutDurationMs)
+            delay(FadeOutFrameMs)
+        }
+        service.setSleepTimerVolumeFactor(0f)
+    }
+
+    private suspend fun fadeBeforeSongEnd() {
+        while (pauseWhenSongEnd) {
+            val duration = player.duration
+            if (duration == C.TIME_UNSET || duration <= 0L) {
+                service.setSleepTimerVolumeFactor(1f)
+                delay(FadeOutIdleCheckMs)
+                continue
+            }
+            val remaining = (duration - player.currentPosition).coerceAtLeast(0L)
+            service.setSleepTimerVolumeFactor((remaining.toFloat() / FadeOutDurationMs).coerceIn(0f, 1f))
+            val speed = player.playbackParameters.speed.takeIf { it > 0f } ?: 1f
+            val untilFade = ((remaining - FadeOutDurationMs) / speed).toLong()
+            delay(if (untilFade > 0L) untilFade.coerceAtMost(FadeOutIdleCheckMs) else FadeOutFrameMs)
+        }
     }
 
     override fun onMediaItemTransition(
@@ -68,5 +107,11 @@ class SleepTimer(
         if (playbackState == Player.STATE_ENDED && pauseWhenSongEnd) {
             service.pauseFromSleepTimer()
         }
+    }
+
+    companion object {
+        const val FadeOutDurationMs = 10_000L
+        private const val FadeOutFrameMs = 50L
+        private const val FadeOutIdleCheckMs = 500L
     }
 }

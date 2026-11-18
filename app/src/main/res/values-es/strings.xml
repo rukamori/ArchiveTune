@@ -165,7 +165,6 @@
     <string name="undo">Deshacer</string>
     <string name="lyrics_not_found">Letras no encontradas</string>
     <string name="sleep_timer">Temporizador de reposo</string>
-    <string name="end_of_song">Fin de la canción</string>
     <plurals name="minute">
         <item quantity="one">%d minuto</item>
         <item quantity="many">%d minutos</item>

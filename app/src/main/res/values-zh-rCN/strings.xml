@@ -103,7 +103,6 @@
     <string name="undo">撤销</string>
     <string name="lyrics_not_found">未找到歌词</string>
     <string name="sleep_timer">睡眠计时器</string>
-    <string name="end_of_song">歌曲结束</string>
     <string name="error_no_internet">无网络连接</string>
     <string name="error_unknown">未知错误</string>
     <string name="action_like">喜爱</string>

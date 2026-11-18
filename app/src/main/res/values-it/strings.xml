@@ -139,7 +139,6 @@
     <string name="undo">Annulla</string>
     <string name="lyrics_not_found">Testo non trovato</string>
     <string name="sleep_timer">Temporizzatore di sonno</string>
-    <string name="end_of_song">Fine della canzone</string>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="other">%d minuti</item>

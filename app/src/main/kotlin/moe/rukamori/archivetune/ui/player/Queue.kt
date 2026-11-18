@@ -89,7 +89,7 @@ fun Queue(
     val screenState by viewModel.state.collectAsStateWithLifecycle()
     val chrome by viewModel.chrome.collectAsStateWithLifecycle()
     val latestChrome by rememberUpdatedState(chrome)
-    val showSleepTimerDialog = chrome.showSleepTimer
+    val showSleepTimerSheet = chrome.showSleepTimer
     val model = when (val screen = screenState) {
         is QueueScreenState.Success -> screen.model
         is QueueScreenState.Error -> screen.previous
@@ -172,13 +172,12 @@ fun Queue(
             onDone = { onAction(QueueAction.CreatePlaylist(it)) },
         )
     }
-    if (showSleepTimerDialog) {
-        SleepTimerDialog(
-            onDismiss = viewModel::dismissSleepTimer,
-            onConfirm = viewModel::startSleepTimer,
-            onEndOfSong = { viewModel.startSleepTimer(-1) },
+    if (showSleepTimerSheet) {
+        SleepTimerBottomSheet(
             value = chrome.sleepTimerValue,
             onValueChange = viewModel::sleepTimerValue,
+            onDismiss = viewModel::dismissSleepTimer,
+            onStart = viewModel::startSleepTimer,
         )
     }
     if (queueVisible) {

@@ -295,7 +295,6 @@
     <string name="lyrics_not_found">Letra não encontrada</string>
     <string name="lyrics_word_sync">Sincronização por Palavra</string>
     <string name="sleep_timer">Temporizador de sono</string>
-    <string name="end_of_song">Fim da música</string>
     <plurals name="minute">
         <item quantity="one">1 minuto</item>
         <item quantity="many">%d minutos</item>

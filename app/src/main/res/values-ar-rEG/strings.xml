@@ -304,7 +304,6 @@
     <string name="lyrics_not_found">ملقناش الكلمات بتاعة الأغنية</string>
     <string name="lyrics_word_sync">مزامنة الكلمات</string>
     <string name="sleep_timer">تايمر النوم</string>
-    <string name="end_of_song">نهاية الأغنية</string>
     <plurals name="minute">
         <item quantity="one">ولا دقيقة</item>
         <item quantity="other">دقيقة واحدة</item>

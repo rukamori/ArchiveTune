@@ -92,7 +92,9 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
         }
     }
 
-    fun startSleepTimer(minutes: Int) { connection.value?.service?.sleepTimer?.start(minutes) }
+    fun startSleepTimer(minutes: Int, finishCurrentSong: Boolean, fadeOut: Boolean) {
+        connection.value?.service?.sleepTimer?.start(minutes, finishCurrentSong, fadeOut)
+    }
     fun clearSleepTimer() { connection.value?.service?.sleepTimer?.clear() }
 
     private fun key(window: Timeline.Window): String =

@@ -332,6 +332,8 @@ enum class UsbBitPerfectDriver {
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
+val SleepTimerFinishSongKey = booleanPreferencesKey("sleepTimerFinishSong")
+val SleepTimerFadeOutKey = booleanPreferencesKey("sleepTimerFadeOut")
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")
 val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")

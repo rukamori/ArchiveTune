@@ -164,7 +164,6 @@
     <string name="lyrics_not_found">가사를 찾을 수 없습니다</string>
     <string name="lyrics_word_sync">단어 동기화</string>
     <string name="sleep_timer">취침 타이머</string>
-    <string name="end_of_song">곡이 끝날 때</string>
     <plurals name="minute">
         <item quantity="other">%d분</item>
     </plurals>

@@ -174,7 +174,6 @@
     <string name="playlist_synced">Плейлист синхронизирован</string>
     <string name="undo">Отменить</string>
     <string name="sleep_timer">Таймер сна</string>
-    <string name="end_of_song">Конец песни</string>
     <plurals name="minute">
         <item quantity="one">%d минута</item>
         <item quantity="few">%d минуты</item>

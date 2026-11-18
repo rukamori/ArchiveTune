@@ -137,7 +137,6 @@
     <string name="undo">Rückgängig machen</string>
     <string name="lyrics_not_found">Songtext nicht gefunden</string>
     <string name="sleep_timer">Sleep-Timer</string>
-    <string name="end_of_song">Songende</string>
     <plurals name="minute">
         <item quantity="one">1 Minute</item>
         <item quantity="other">%d Minuten</item>
