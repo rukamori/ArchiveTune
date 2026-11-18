@@ -116,6 +116,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -467,7 +468,7 @@ private fun CarDashboardHero(
         } else {
             null
         }
-    val backdropShape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val backdropShape = MaterialShapes.Cookie12Sided.toShape()
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -573,6 +574,7 @@ private fun DashboardConsole(
     onSlotSelected: (AndroidAutoActionSlot) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
     val primaryLabel = stringResource(configuration.primaryAction.labelResource())
     val caption =
         if (configuration.secondaryAction == AndroidAutoCustomAction.NONE) {
@@ -637,8 +639,7 @@ private fun DashboardConsole(
             AnimatedContent(
                 targetState = caption,
                 transitionSpec = {
-                    fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) togetherWith
-                        fadeOut(MaterialTheme.motionScheme.fastEffectsSpec())
+                    fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
                 },
                 label = "consoleCaption",
             ) { text ->
@@ -798,7 +799,8 @@ private fun SectionHeader(
     modifier: Modifier = Modifier,
     trailing: String? = null,
 ) {
-    val accent = remember { MaterialShapes.Cookie4Sided.toShape() }
+    val motion = MaterialTheme.motionScheme
+    val accent = MaterialShapes.Cookie4Sided.toShape()
     Row(
         modifier = modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 28.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -819,11 +821,9 @@ private fun SectionHeader(
             AnimatedContent(
                 targetState = trailing,
                 transitionSpec = {
-                    (slideInVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it } +
-                        fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()))
+                    (slideInVertically(motion.fastSpatialSpec()) { it } + fadeIn(motion.fastEffectsSpec()))
                         .togetherWith(
-                            slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { -it } +
-                                fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+                            slideOutVertically(motion.fastSpatialSpec()) { -it } + fadeOut(motion.fastEffectsSpec()),
                         )
                 },
                 label = "headerTrailing",
@@ -1263,6 +1263,7 @@ private fun SlotSwitcher(
     onSlotSelected: (AndroidAutoActionSlot) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motion = MaterialTheme.motionScheme
     val height = ButtonDefaults.MediumContainerHeight
     val slots = AndroidAutoActionSlot.entries
     Row(
@@ -1288,9 +1289,8 @@ private fun SlotSwitcher(
                 AnimatedContent(
                     targetState = configuration.actionFor(slot),
                     transitionSpec = {
-                        (scaleIn(MaterialTheme.motionScheme.fastSpatialSpec(), initialScale = 0.5f) +
-                            fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()))
-                            .togetherWith(fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()))
+                        (scaleIn(motion.fastSpatialSpec(), initialScale = 0.5f) + fadeIn(motion.fastEffectsSpec()))
+                            .togetherWith(fadeOut(motion.fastEffectsSpec()))
                     },
                     label = "switcherIcon",
                 ) { action ->
@@ -1415,7 +1415,7 @@ private fun AndroidAutoSettingsFailure(
     @StringRes messageRes: Int = R.string.android_auto_settings_load_failed,
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val shape = MaterialShapes.Cookie9Sided.toShape()
     Column(
         modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
