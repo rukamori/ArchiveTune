@@ -5,10 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.aboutlibraries.android) apply false
-}
-
-tasks.named<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+    base
 }
 
 if (tasks.findByName("prepareKotlinBuildScriptModel") == null) {
