@@ -1442,7 +1442,6 @@
         <item quantity="one">%1$d frame</item>
         <item quantity="other">%1$d frames</item>
     </plurals>
-<<<<<<< HEAD
     <plurals name="crash_report_show_full_trace">
         <item quantity="one">Show full trace (%1$d line)</item>
         <item quantity="other">Show full trace (%1$d lines)</item>
@@ -1473,7 +1472,6 @@
         <item quantity="other">%d songs couldn\'t be imported</item>
     </plurals>
     <string name="import_result_failed_items">Couldn\'t import</string>
-=======
     <string name="home_jump_back_in_badge">Jump back in</string>
     <string name="home_recently_played">Recently Played</string>
     <string name="navigation_bar_tint_frosted_blur">Tint navigation bar</string>
@@ -1833,5 +1831,4 @@
     <string name="flamingo_settings_lyric_font_weight">Lyric font weight</string>
     <string name="flamingo_settings_lyric_line_balance">Balanced lyric lines</string>
     <string name="flamingo_settings_lyric_line_balance_desc">Balance line breaks across lyric lines</string>
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
 </resources>
