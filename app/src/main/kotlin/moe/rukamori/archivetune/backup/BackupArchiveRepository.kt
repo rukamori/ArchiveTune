@@ -223,6 +223,7 @@ class BackupArchiveRepository
             val ACCOUNT_PREFERENCE_KEYS: Set<String> =
                 setOf(
                     "innerTubeCookie",
+                    "accountSessionIndex",
                     "visitorData",
                     "dataSyncId",
                     "poToken",

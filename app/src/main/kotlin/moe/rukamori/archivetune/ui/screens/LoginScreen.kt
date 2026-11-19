@@ -60,7 +60,7 @@ private const val LOGIN_CONTEXT_RETRY_DELAY_MS = 1_000L
 private const val LOGIN_CONTEXT_EXTRACTION_ATTEMPTS = 10
 
 private const val LOGIN_CONTEXT_SCRIPT =
-    "(function(){try{var c=window.ytcfg;var y=window.yt&&window.yt.config_;var s=document.querySelectorAll('script');var v=c&&c.get&&c.get('VISITOR_DATA')||y&&y.VISITOR_DATA;var d=c&&c.get&&c.get('DATASYNC_ID')||y&&y.DATASYNC_ID;for(var i=0;i<s.length&&(!v||!d);i++){var x=s[i].textContent;if(!v){var vm=x.match(/[\"']VISITOR_DATA[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(vm)v=vm[1]}if(!d){var dm=x.match(/[\"'](?:DATASYNC_ID|dataSyncId)[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(dm)d=dm[1]}}if(v)Android.onRetrieveVisitorData(v);if(d)Android.onRetrieveDataSyncId(d)}catch(e){}})();"
+    "(function(){try{var c=window.ytcfg;var y=window.yt&&window.yt.config_;var s=document.querySelectorAll('script');var v=c&&c.get&&c.get('VISITOR_DATA')||y&&y.VISITOR_DATA;var d=c&&c.get&&c.get('DATASYNC_ID')||y&&y.DATASYNC_ID;var n=c&&c.get?c.get('SESSION_INDEX'):undefined;if(n==null&&y)n=y.SESSION_INDEX;for(var i=0;i<s.length&&(!v||!d||n==null);i++){var x=s[i].textContent;if(!v){var vm=x.match(/[\"']VISITOR_DATA[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(vm)v=vm[1]}if(!d){var dm=x.match(/[\"'](?:DATASYNC_ID|dataSyncId)[\"']\\s*:\\s*[\"']([^\"']+)[\"']/);if(dm)d=dm[1]}if(n==null){var nm=x.match(/[\"']SESSION_INDEX[\"']\\s*:\\s*[\"']?(\\d+)/);if(nm)n=nm[1]}}if(v)Android.onRetrieveVisitorData(v);if(d)Android.onRetrieveDataSyncId(d);if(n!=null)Android.onRetrieveAccountIndex(String(n))}catch(e){}})();"
 
 private val YOUTUBE_COOKIE_URLS =
     listOf(
@@ -130,6 +130,13 @@ fun LoginScreen(
                         fun onRetrieveDataSyncId(newDataSyncId: String?) {
                             loginWebView.post {
                                 viewModel.onDataSyncIdExtracted(newDataSyncId)
+                            }
+                        }
+
+                        @JavascriptInterface
+                        fun onRetrieveAccountIndex(newAccountIndex: String?) {
+                            loginWebView.post {
+                                viewModel.onAccountIndexExtracted(newAccountIndex)
                             }
                         }
 

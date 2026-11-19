@@ -103,6 +103,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
+import moe.rukamori.archivetune.constants.AccountSessionIndexKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
 import moe.rukamori.archivetune.constants.ForceSyncOnAccountSwitchKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
@@ -125,6 +126,7 @@ import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.decodeSavedAccounts
 import moe.rukamori.archivetune.utils.encodeSavedAccounts
+import moe.rukamori.archivetune.utils.putInnerTubeCookie
 import moe.rukamori.archivetune.utils.putLegacyPoToken
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.AccountChannelUiModel
@@ -139,6 +141,7 @@ private val AvatarRingWidth = 6.dp
 private val HeroAvatarOuterSize = AvatarSize + AvatarRingWidth * 2
 private val RowIconSize = 40.dp
 private val RowIconCorner = 12.dp
+private const val UNKNOWN_ACCOUNT_SESSION_INDEX = -1
 
 @Immutable
 private data class SavedAccountCollection(
@@ -165,6 +168,7 @@ fun AccountSettings(
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val (visitorData, onVisitorDataChange) = rememberPreference(VisitorDataKey, "")
     val (dataSyncId, onDataSyncIdChange) = rememberPreference(DataSyncIdKey, "")
+    val (accountSessionIndex, _) = rememberPreference(AccountSessionIndexKey, UNKNOWN_ACCOUNT_SESSION_INDEX)
     val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
     val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
     val (forceSyncOnAccountSwitch, onForceSyncOnAccountSwitchChange) =
@@ -179,6 +183,12 @@ fun AccountSettings(
     val onLegacyPoTokenChange: (String) -> Unit = { value ->
         PreferenceStore.launchEdit(context.dataStore) {
             putLegacyPoToken(value)
+        }
+    }
+
+    val onEditedInnerTubeCookieChange: (String) -> Unit = { value ->
+        PreferenceStore.launchEdit(context.dataStore) {
+            putInnerTubeCookie(value)
         }
     }
 
@@ -246,6 +256,7 @@ fun AccountSettings(
                     dataSyncId = dataSyncId,
                     ytmSync = ytmSync,
                     selectedYtmPlaylists = selectedYtmPlaylists,
+                    accountIndex = accountSessionIndex.takeIf { it >= 0 },
                 )
             onSavedAccountsJsonChange(encodeSavedAccounts(existing + newAccount))
         }
@@ -512,7 +523,7 @@ fun AccountSettings(
             accountNamePref = accountNamePref,
             accountEmail = accountEmail,
             accountChannelHandle = accountChannelHandle,
-            onInnerTubeCookieChange = onInnerTubeCookieChange,
+            onInnerTubeCookieChange = onEditedInnerTubeCookieChange,
             onPoTokenChange = onLegacyPoTokenChange,
             onVisitorDataChange = onVisitorDataChange,
             onDataSyncIdChange = onDataSyncIdChange,

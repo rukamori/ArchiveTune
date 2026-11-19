@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
+import moe.rukamori.archivetune.constants.AccountSessionIndexKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.PoTokenGvsKey
@@ -34,6 +35,7 @@ fun Preferences.toPlaybackAuthState(): PlaybackAuthState {
         cookie = this[InnerTubeCookieKey],
         visitorData = this[VisitorDataKey],
         dataSyncId = this[DataSyncIdKey],
+        accountIndex = this[AccountSessionIndexKey],
         poToken = legacyPoToken,
         poTokenGvs = null,
         poTokenGvsSession = null,
@@ -44,6 +46,7 @@ fun Preferences.toPlaybackAuthState(): PlaybackAuthState {
 
 fun MutablePreferences.clearPlaybackAuthSession(clearAccountIdentity: Boolean = true) {
     remove(InnerTubeCookieKey)
+    remove(AccountSessionIndexKey)
     remove(VisitorDataKey)
     remove(DataSyncIdKey)
     remove(PoTokenKey)
@@ -62,6 +65,22 @@ fun MutablePreferences.clearPlaybackLoginContext() {
 }
 
 fun PlaybackAuthState.withoutPlaybackLoginContext(): PlaybackAuthState = copy(dataSyncId = null).normalized()
+
+fun MutablePreferences.putInnerTubeCookie(value: String) {
+    if (this[InnerTubeCookieKey] != value) {
+        remove(AccountSessionIndexKey)
+    }
+    this[InnerTubeCookieKey] = value
+}
+
+fun MutablePreferences.putAccountSessionIndex(value: Int?) {
+    val normalized = value?.takeIf { it >= 0 }
+    if (normalized == null) {
+        remove(AccountSessionIndexKey)
+    } else {
+        this[AccountSessionIndexKey] = normalized
+    }
+}
 
 fun MutablePreferences.putLegacyPoToken(value: String?) {
     val normalized = value?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }

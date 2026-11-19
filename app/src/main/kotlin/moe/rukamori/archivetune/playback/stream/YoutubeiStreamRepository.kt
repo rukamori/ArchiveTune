@@ -112,6 +112,7 @@ class YoutubeiStreamRepository
                                 cookie = authState.cookie.takeIf { authState.hasLoginCookie },
                                 visitorData = authState.visitorData,
                                 dataSyncId = authState.dataSyncId.takeIf { authState.hasLoginCookie },
+                                accountIndex = authState.accountIndex.takeIf { authState.hasLoginCookie },
                                 sessionPoToken = authState.poTokenGvsSession,
                                 videoPoToken =
                                     authState.poTokenGvs?.takeIf {

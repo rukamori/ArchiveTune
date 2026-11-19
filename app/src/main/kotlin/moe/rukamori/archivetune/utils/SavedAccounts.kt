@@ -25,6 +25,7 @@ data class SavedAccount(
     val dataSyncId: String,
     val ytmSync: Boolean,
     val selectedYtmPlaylists: String,
+    val accountIndex: Int? = null,
 )
 
 private val savedAccountJson = Json { ignoreUnknownKeys = true }

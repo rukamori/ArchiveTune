@@ -62,6 +62,7 @@ class LoginViewModel
 
         private var latestVisitorData: String? = null
         private var latestDataSyncId: String? = null
+        private var latestAccountIndex: Int? = null
         private var loginJob: Job? = null
         private var activeCookie: String? = null
         private var completedCookie: String? = null
@@ -88,6 +89,15 @@ class LoginViewModel
             activeCookie?.let { startLogin(it, replaceActive = true) }
         }
 
+        fun onAccountIndexExtracted(accountIndex: String?) {
+            val normalized = accountIndex?.trim()?.toIntOrNull()?.takeIf { it >= 0 } ?: return
+            if (latestAccountIndex == normalized) return
+            if (_screenState.value is LoginScreenState.Success) return
+
+            latestAccountIndex = normalized
+            activeCookie?.let { startLogin(it, replaceActive = true) }
+        }
+
         fun onCookiesCaptured(cookie: String?) {
             val normalizedCookie = cookie.normalizeAuthValue() ?: return
             startLogin(normalizedCookie, replaceActive = false)
@@ -109,10 +119,12 @@ class LoginViewModel
                         cookie = normalizedCookie,
                         visitorData = latestVisitorData,
                         dataSyncId = latestDataSyncId,
+                        accountIndex = latestAccountIndex,
                     ).onSuccess { session ->
                         completedCookie = normalizedCookie
                         latestVisitorData = session.authState.visitorData
                         latestDataSyncId = session.authState.dataSyncId
+                        latestAccountIndex = session.authState.accountIndex
                         _screenState.value =
                             LoginScreenState.Success(
                                 LoginAccountUiModel(
