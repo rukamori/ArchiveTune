@@ -1,0 +1,39 @@
+name: Auto Sync and Build
+on:
+  schedule:
+    - cron: "0 6 * * 1" 
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: am-blend
+          submodules: recursive  # <--- This fixes the missing folder error
+          
+      - name: Sync with Main Rukamori Repo
+        run: |
+          git config user.name "auto-sync"
+          git config user.email "sync@local"
+          git remote add upstream https://github.com/rukamori/ArchiveTune.git || true
+          git fetch upstream main
+          git merge -X ours upstream/main -m "auto-sync stable" || true
+          git submodule update --init --recursive || true
+          git push origin am-blend || true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          
+      - name: Build All APKs (Debug, GMS Release, FOSS Release)
+        run: ./gradlew assemble
+        
+      - name: Save All APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivetune-all-variants
+          path: app/build/outputs/apk/**/*.apk
+          
