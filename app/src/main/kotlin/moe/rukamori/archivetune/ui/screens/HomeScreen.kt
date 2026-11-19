@@ -400,6 +400,7 @@ private fun HomeContent(
                                 mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
                                 displayMode = uiState.quickPicksDisplayMode,
+                                isRefreshing = uiState.isRefreshing,
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
