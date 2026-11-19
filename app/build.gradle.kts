@@ -131,6 +131,14 @@ android {
                 ?: githubRepo
         buildConfigField("String", "RELEASE_GITHUB_OWNER", releaseGithubOwner.asBuildConfigString())
         buildConfigField("String", "RELEASE_GITHUB_REPO", releaseGithubRepo.asBuildConfigString())
+        
+        externalNativeBuild {
+            cmake {
+                cFlags("-ffile-prefix-map=${rootProject.projectDir}=.")
+                cppFlags("-ffile-prefix-map=${rootProject.projectDir}=.")
+                arguments("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--build-id=none")
+            }
+        }
     }
 
     externalNativeBuild {
