@@ -340,6 +340,7 @@ class ModuleRepository @Inject constructor(@ApplicationContext private val conte
         .put("displayName", manifest.displayName).put("homepage", manifest.homepage).put("repository", manifest.repository).put("license", manifest.license)
         .put("type", JSONArray(manifest.types)).put("minAppVersion", manifest.minAppVersion).put("requiredRuntimeFeatures", JSONArray(manifest.requiredRuntimeFeatures))
         .put("iconBase64", manifest.icon?.base64()).put("authentication", manifest.authentication)
+        .put("appAttestation", manifest.appAttestation)
         .put("settings", JSONObject().apply {
             manifest.settings.forEach { field -> put(field.key, JSONObject().put("label", field.label).put("description", field.description)
                 .put("type", if (field.integerOnly) "integer" else field.type.name.lowercase(java.util.Locale.ROOT)).put("defaultValue", parseJsonValue(field.defaultJson)).put("required", field.required)

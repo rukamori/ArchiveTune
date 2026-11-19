@@ -41,6 +41,7 @@ internal class ModuleExtensionHost(
 ) {
     private val storage = installation?.let { ModuleRuntimeStorage(context, it.substringBefore(':')) }
     private val cookies = storage?.let { ModuleCookieJar(it) }
+    private val attestation = installation?.let { ModuleAppAttestation(context, it.substringBefore(':')) }
     private val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     private var permissions = ModuleNetworkPermissions(emptyList())
     var domains: List<String>? = null
@@ -50,6 +51,13 @@ internal class ModuleExtensionHost(
     private var session: ModuleSignedSession? = null
     var authentication: Boolean = false
         private set
+    var attestationDeclared: Boolean = false
+        private set
+    @Volatile var attestedModule: String? = null
+    val requestSigner = ModuleRequestSigner { method, url, body ->
+        val (keys, module) = attestationTarget()
+        keys.headers(module, method, url, body)
+    }
     @Volatile private var cancelled = false
     @Volatile private var signal = CountDownLatch(1)
     private var deadline = SystemClock.elapsedRealtime() + 5_000
@@ -88,6 +96,7 @@ internal class ModuleExtensionHost(
             permissions = ModuleNetworkPermissions(checkNotNull(domains))
             storageAllowed = declared.optBoolean("storage")
             authentication = metadata.optJSONObject("signedSession") != null
+            attestationDeclared = metadata.optJSONArray("extensionRuntimeFeatures").strings().contains(ModuleAppAttestation.FEATURE)
             session = metadata.optJSONObject("signedSession")?.let { config ->
                 storage?.let { ModuleSignedSession(config, it, ::request) }
             }
@@ -108,6 +117,7 @@ internal class ModuleExtensionHost(
                     }
                 }
                 "sessionStatus" -> JSONObject().put("authenticated", session?.authenticated() == true)
+                "attest" -> attest(input.getString("nonce"))
                 "clearCookies" -> { cookies?.clear(); true }
                 "sessionClear" -> { (session ?: throw ModuleException(ModuleFailure.INVALID_CONFIGURATION)).clear(); JSONObject().put("success", true) }
                 "storageGet", "storageSet", "storageRemove", "storageClear", "storageKeys" -> {
@@ -149,11 +159,24 @@ internal class ModuleExtensionHost(
         }
     }
 
+    fun attest(nonce: String): JSONObject {
+        val (keys, module) = attestationTarget()
+        return keys.attest(module, nonce)
+    }
+
+    private fun attestationTarget(): Pair<ModuleAppAttestation, String> {
+        val module = attestedModule ?: throw ModuleException(ModuleFailure.UNSUPPORTED, stage = ModuleLoadStage.PROVIDER,
+            diagnosticCode = "ATTESTATION_NOT_DECLARED")
+        val keys = attestation ?: throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER,
+            diagnosticCode = "ATTESTATION_INSPECTION")
+        return keys to module
+    }
+
     private fun request(input: JSONObject): JSONObject {
         checkActive()
         if (storage == null) throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "EXT_INITIALIZATION_IO")
         val request = JSONObject(input.toString()).put("id", UUID.randomUUID().toString())
-        val value = JSONObject(http.fetchBlocking(request.toString(), origin, namespace, permissions, cookies) { status ->
+        val value = JSONObject(http.fetchBlocking(request.toString(), origin, namespace, permissions, cookies, requestSigner) { status ->
             if (status !in 200..299) problem(ModuleFailure.NETWORK, "HTTP_$status")
         })
         checkActive()

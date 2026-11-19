@@ -320,7 +320,7 @@ internal fun ModuleInformation(item: ModuleInfoUi, onAction: (ModuleSettingsActi
         Text(stringResource(item.label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (item.link) TextButton(onClick = remember(item.value, onAction) { { onAction(ModuleSettingsAction.OpenLink(item.value)) } }, contentPadding = PaddingValues(0.dp)) {
             Text(item.value, style = MaterialTheme.typography.bodyMedium)
-        } else Text(item.value, style = MaterialTheme.typography.bodyMedium)
+        } else Text(item.valueRes?.let { stringResource(it) } ?: item.value, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

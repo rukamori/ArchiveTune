@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.withPermit
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.CookieJar
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -72,24 +73,26 @@ class ModuleHttpClient(configuredClient: OkHttpClient? = null) {
     private suspend fun sourceResponse(url: String): JSONObject =
         execute(Request.Builder().url(webUrl(url)).build(), "document:${java.util.UUID.randomUUID()}", ModuleSourceDecoder.MAX_SOURCE_BYTES)
 
-    suspend fun fetch(json: String, baseUrl: String, namespace: String, permissions: ModuleNetworkPermissions? = null, onStatus: (Int) -> Unit = {}): String {
+    suspend fun fetch(json: String, baseUrl: String, namespace: String, permissions: ModuleNetworkPermissions? = null,
+        signer: ModuleRequestSigner? = null, onStatus: (Int) -> Unit = {}): String {
         val input = JSONObject(json)
         val id = namespace + ":" + input.getString("id")
-        val request = request(input, baseUrl).newBuilder().tag(ModuleNetworkPermissions::class.java, permissions).build()
+        val request = request(input, baseUrl, signer).newBuilder().tag(ModuleNetworkPermissions::class.java, permissions).build()
         permissions?.requireAllowed(request.url.toString())
-        return execute(request, id, MAX_BODY_BYTES).also { onStatus(it.getInt("status")) }.toString()
+        val selected = if (input.optBoolean("attest")) exactClient else client
+        return execute(request, id, MAX_BODY_BYTES, selected).also { onStatus(it.getInt("status")) }.toString()
     }
 
     internal fun fetchBlocking(json: String, baseUrl: String, namespace: String, permissions: ModuleNetworkPermissions,
-        cookieJar: CookieJar? = null,
+        cookieJar: CookieJar? = null, signer: ModuleRequestSigner? = null,
         onStatus: (Int) -> Unit = {}): String {
         val input = JSONObject(json)
         val id = namespace + ":" + input.getString("id")
         if (!activeRequests.tryAcquire()) throw ModuleException(ModuleFailure.EXECUTION)
         try {
-            val request = request(input, baseUrl).newBuilder().tag(ModuleNetworkPermissions::class.java, permissions).build()
+            val request = request(input, baseUrl, signer).newBuilder().tag(ModuleNetworkPermissions::class.java, permissions).build()
             permissions.requireAllowed(request.url.toString())
-            val selected = if (input.optBoolean("exact")) exactClient else client
+            val selected = if (input.optBoolean("exact") || input.optBoolean("attest")) exactClient else client
             val call = (cookieJar?.let { selected.newBuilder().cookieJar(it).build() } ?: selected).newCall(request)
             if (!register(id, call)) throw ModuleException(ModuleFailure.EXECUTION)
             try {
@@ -113,7 +116,7 @@ class ModuleHttpClient(configuredClient: OkHttpClient? = null) {
         }
     }
 
-    private fun request(input: JSONObject, baseUrl: String): Request {
+    private fun request(input: JSONObject, baseUrl: String, signer: ModuleRequestSigner? = null): Request {
         val url = webUrl(resolveUrl(input.getString("url"), baseUrl))
         val method = input.optString("method", "GET").uppercase(java.util.Locale.ROOT)
         val headers = input.optJSONObject("headers") ?: JSONObject()
@@ -128,6 +131,12 @@ class ModuleHttpClient(configuredClient: OkHttpClient? = null) {
         val requestBody = if (method in listOf("GET", "HEAD")) null else
             (body ?: byteArrayOf()).toRequestBody(headers.optString("content-type", headers.optString("Content-Type")).toMediaTypeOrNull())
         builder.method(method, requestBody)
+        if (input.optBoolean("attest")) {
+            val attestation = signer ?: throw ModuleException(ModuleFailure.UNSUPPORTED, stage = ModuleLoadStage.PROVIDER,
+                diagnosticCode = "ATTESTATION_NOT_DECLARED")
+            val sent = if (requestBody == null) byteArrayOf() else body ?: byteArrayOf()
+            attestation.headers(method, url.toHttpUrl(), sent).forEach { (key, value) -> builder.header(key, value) }
+        }
         return builder.build()
     }
 
@@ -146,16 +155,16 @@ class ModuleHttpClient(configuredClient: OkHttpClient? = null) {
         }
     }
 
-    private suspend fun execute(request: Request, id: String, maximumBytes: Int): JSONObject {
+    private suspend fun execute(request: Request, id: String, maximumBytes: Int, selected: OkHttpClient = client): JSONObject {
         if (!requestSlots.tryAcquire()) throw ModuleException(ModuleFailure.EXECUTION)
         try {
-            return activeRequests.withPermit { executeActive(request, id, maximumBytes) }
+            return activeRequests.withPermit { executeActive(request, id, maximumBytes, selected) }
         } finally { requestSlots.release() }
     }
 
-    private suspend fun executeActive(request: Request, id: String, maximumBytes: Int): JSONObject =
+    private suspend fun executeActive(request: Request, id: String, maximumBytes: Int, selected: OkHttpClient): JSONObject =
         suspendCancellableCoroutine { continuation ->
-            val call = client.newCall(request)
+            val call = selected.newCall(request)
             val accepted = register(id, call)
             if (!accepted) {
                 continuation.resumeWithException(ModuleException(ModuleFailure.EXECUTION))

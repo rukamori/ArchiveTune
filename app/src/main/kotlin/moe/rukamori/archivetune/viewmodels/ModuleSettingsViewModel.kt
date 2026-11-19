@@ -67,7 +67,7 @@ data class ModuleOperationFailureUi(@param:StringRes val stage: Int, val code: S
 data class ModuleOptionUi(val label: String, val json: String, val description: String)
 
 @Immutable
-data class ModuleInfoUi(@param:StringRes val label: Int, val value: String, val link: Boolean = false)
+data class ModuleInfoUi(@param:StringRes val label: Int, val value: String, val link: Boolean = false, @param:StringRes val valueRes: Int? = null)
 
 @Immutable
 data class ModuleFieldUi(val key: String, val label: String, val description: String, val type: ModuleSettingType,
@@ -466,6 +466,7 @@ class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSe
         if (manifest.repository.isNotBlank()) add(ModuleInfoUi(R.string.modules_metadata_repository, manifest.repository, true))
         if (manifest.minAppVersion.isNotBlank()) add(ModuleInfoUi(R.string.modules_metadata_min_app, manifest.minAppVersion))
         if (manifest.requiredRuntimeFeatures.isNotEmpty()) add(ModuleInfoUi(R.string.modules_metadata_runtime, manifest.requiredRuntimeFeatures.joinToString()))
+        if (manifest.appAttestation) add(ModuleInfoUi(R.string.modules_metadata_app_attestation, "", valueRes = R.string.modules_app_attestation_description))
     })
 
     private fun qualityTags(labels: List<String>, settings: List<ModuleSetting>): ImmutableList<Int> =

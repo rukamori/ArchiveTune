@@ -56,6 +56,7 @@ data class ModuleManifest(
     val requiredRuntimeFeatures: List<String> = emptyList(),
     val icon: ByteString? = null,
     val authentication: Boolean = false,
+    val appAttestation: Boolean = false,
 ) {
     companion object {
         fun parse(value: JSONObject): ModuleManifest {
@@ -90,14 +91,16 @@ data class ModuleManifest(
                     rawType == "integer",
                 )
             }.toList()
+            val requiredFeatures = stringList(value, "requiredRuntimeFeatures")
             return ModuleManifest(
                 value.optString("id"), value.optString("name"), value.optString("version"),
                 value.optString("author"), value.optString("description"),
                 (value.optJSONArray("labels").strings() + value.optJSONArray("tags").strings()).distinct(), fields, value.optJSONArray("capabilities").strings(),
                 value.optString("displayName"), projectUrl(value, "homepage"), projectUrl(value, "repository"), value.optString("license"),
-                stringList(value, "type"), value.optString("minAppVersion"), stringList(value, "requiredRuntimeFeatures"),
+                stringList(value, "type"), value.optString("minAppVersion"), requiredFeatures,
                 value.optString("iconBase64").takeIf(String::isNotBlank)?.let(::moduleIcon),
                 value.optBoolean("authentication"),
+                value.optBoolean("appAttestation") || ModuleAppAttestation.FEATURE in requiredFeatures,
             ).also {
                 if (it.id.isBlank() || it.name.isBlank() || !it.capabilities.containsAll(listOf("searchTracks", "getTrackStreamUrl"))) {
                     throw ModuleException(ModuleFailure.UNSUPPORTED)
@@ -138,7 +141,7 @@ fun moduleIcon(encoded: String): ByteString {
 }
 
 fun ModuleManifest.requireCompatible(appVersion: String) {
-    val features = setOf("fetch@1", "settings@1", "streamResolution@1", "packagedIcon@1", "qualityOptions@1")
+    val features = setOf("fetch@1", "settings@1", "streamResolution@1", "packagedIcon@1", "qualityOptions@1", ModuleAppAttestation.FEATURE)
     if (requiredRuntimeFeatures.any { it !in features }) throw ModuleException(ModuleFailure.UNSUPPORTED,
         stage = ModuleLoadStage.MANIFEST, diagnosticCode = "ARCH_RUNTIME_FEATURE")
     if (minAppVersion.isBlank()) return

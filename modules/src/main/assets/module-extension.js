@@ -35,7 +35,7 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
       Object.values(value).forEach(child => { if (child && typeof child === 'object') pending.push([child, depth+1]); });
     }
   }
-  function request(method, url, body, headers) {
+  function request(method, url, body, headers, attest = false) {
     active();
     const options=headers || {};
     if (options.params) {
@@ -47,7 +47,7 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
     if (options.params) delete headers.params;
     if (body != null && typeof body !== 'string') body=JSON.stringify(body);
     if (body != null && !Object.keys(headers).some(key=>key.toLowerCase()==='content-type')) headers['Content-Type']='application/json';
-    const response = native({action:'request', method, url:String(url), body:body ?? null, headers});
+    const response = native({action:'request', method, url:String(url), body:body ?? null, headers, attest});
     remember(response.body, response.url);
     return response;
   }
@@ -58,12 +58,18 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
     request:(url,options={})=>request(options.method || 'GET',url,options.body,options.headers),
     clearCookies:()=>native({action:'clearCookies'})
   });
-  function fetch(url, options={}) {
-    const response=http.request(String(url),options);
+  function fetchResponse(response) {
     return Object.freeze({ok:response.ok,status:response.status,statusText:response.statusText,url:response.url,headers:new Headers(response.headers),
       text:()=>response.body,json:()=>JSON.parse(response.body),arrayBuffer:()=>Uint8Array.from(atob(response.base64),c=>c.charCodeAt(0)).buffer});
   }
+  function fetch(url, options={}) { return fetchResponse(http.request(String(url),options)); }
   globalThis.fetch=fetch;
+  const attestedRequest=(url,options={})=>request(options.method || 'GET',String(url),options.body,options.headers,true);
+  globalThis.appAttestation = Object.freeze({
+    attest:nonce=>{active();return native({action:'attest',nonce:String(nonce)});},
+    request:attestedRequest,
+    fetch:(url,options={})=>fetchResponse(attestedRequest(url,options))
+  });
   const storage = Object.freeze({
     get:key=>{active();return native({action:'storageGet',key:String(key)});},
     set:(key,value)=>{active();return native({action:'storageSet',key:String(key),value});},

@@ -140,5 +140,7 @@
     <string name="modules_metadata_repository">Source repository</string>
     <string name="modules_metadata_min_app">Minimum ArchiveTune version</string>
     <string name="modules_metadata_runtime">Required runtime features</string>
+    <string name="modules_metadata_app_attestation">App verification</string>
+    <string name="modules_app_attestation_description">This module can prove to its service that requests come from this ArchiveTune build. The proof uses a hardware-backed key and shares the app package and signing certificate, your Android version, security patch level, and boot verification state with that service.</string>
     <string name="modules_link_failed">No application could open this link.</string>
 </resources>

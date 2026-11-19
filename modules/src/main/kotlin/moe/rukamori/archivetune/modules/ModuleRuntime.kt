@@ -175,6 +175,7 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
     suspend fun forget(id: String) = withContext(Dispatchers.IO) {
         unload(id)
         ModuleRuntimeStorage(applicationContext, id).remove()
+        ModuleAppAttestation(applicationContext, id).remove()
     }
 
     suspend fun unload(id: String) {
@@ -284,13 +285,23 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
             engine.function("__moduleExtensionCall") { args -> extensionHost.invoke(args.firstOrNull()?.toString().orEmpty()) }
             engine.asyncFunction<String, String>("__moduleFetch") { json ->
                 try {
-                    http.fetch(json, origin, namespace, extensionHost.networkPermissions) { status ->
+                    http.fetch(json, origin, namespace, extensionHost.networkPermissions, extensionHost.requestSigner) { status ->
                         if (status !in 200..299) requestProblem.set(RequestProblem(ModuleFailure.NETWORK, "HTTP_$status"))
                     }
                 } catch (error: CancellationException) { throw error }
                 catch (error: Exception) {
                     val failure = (error as? ModuleException)?.failure ?: ModuleFailure.NETWORK
-                    requestProblem.set(RequestProblem(failure, "REQUEST_${failure.name}"))
+                    requestProblem.set(RequestProblem(failure, (error as? ModuleException)?.diagnosticCode
+                        ?.takeIf { it.startsWith("ATTESTATION_") } ?: "REQUEST_${failure.name}"))
+                    throw error
+                }
+            }
+            engine.asyncFunction<String, String>("__moduleAttest") { nonce ->
+                try { withContext(Dispatchers.IO) { extensionHost.attest(nonce) }.toString() }
+                catch (error: CancellationException) { throw error }
+                catch (error: Exception) {
+                    val failure = (error as? ModuleException)?.failure ?: ModuleFailure.EXECUTION
+                    requestProblem.set(RequestProblem(failure, (error as? ModuleException)?.diagnosticCode ?: "ATTESTATION_${failure.name}"))
                     throw error
                 }
             }
@@ -368,7 +379,9 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
                 "labels:[...(Array.isArray(p.labels)?p.labels:[]),...(Array.isArray(p.tags)?p.tags:[])]," +
                 "settings:p.settings||{},capabilities:['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist'].filter(k=>typeof p[k]==='function')};})());",
         )
-        return ModuleManifest.parse(JSONObject(manifest).put("authentication", host.authentication))
+        val parsed = ModuleManifest.parse(JSONObject(manifest).put("authentication", host.authentication).put("appAttestation", host.attestationDeclared))
+        host.attestedModule = if (parsed.appAttestation) parsed.id else null
+        return parsed
     }
 
     private suspend fun evaluate(runtime: QuickJs, host: ModuleExtensionHost, code: String, filename: String = "module-manifest.js"): String =

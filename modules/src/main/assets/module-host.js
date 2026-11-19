@@ -138,7 +138,7 @@ globalThis.FormData = class FormData {
   [Symbol.iterator]() { return this.entries(); }
 };
 let requestSequence = 0;
-globalThis.fetch = async function(input,options = {}) {
+async function moduleFetch(input,options,attest) {
   const headers = new Headers(options.headers || {});
   let body = options.body;
   if (body instanceof URLSearchParams) { body = body.toString(); if(!headers.has('content-type'))headers.set('content-type','application/x-www-form-urlencoded;charset=UTF-8'); }
@@ -156,6 +156,7 @@ globalThis.fetch = async function(input,options = {}) {
     headers.set('content-type','multipart/form-data; boundary=' + boundary);
   }
   const request = {id:String(++requestSequence),url:String(input),method:options.method || 'GET',headers:headers.values};
+  if (attest) request.attest = true;
   if (body instanceof Blob || body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
     const bytes = body instanceof Blob ? body.bytes() : body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(body.buffer,body.byteOffset,body.byteLength);
     request.bodyBase64 = btoa(Array.from(bytes,b => String.fromCharCode(b)).join(''));
@@ -175,4 +176,9 @@ globalThis.fetch = async function(input,options = {}) {
     if (signal?.aborted) { const aborted = new Error('Aborted'); aborted.name = 'AbortError'; throw aborted; }
     throw error;
   } finally { signal?.removeEventListener('abort',abort); }
-};
+}
+globalThis.fetch = function(input,options = {}) { return moduleFetch(input,options || {},false); };
+globalThis.appAttestation = Object.freeze({
+  async attest(nonce) { return JSON.parse(await __moduleAttest(String(nonce))); },
+  fetch(input,options = {}) { return moduleFetch(input,options || {},true); }
+});

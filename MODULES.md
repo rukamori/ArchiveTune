@@ -22,6 +22,7 @@ not provide an audio service or a working lossless provider.
 - [Track search](#track-search)
 - [Stream resolution and lossless audio](#stream-resolution-and-lossless-audio)
 - [Host APIs and limits](#host-apis-and-limits)
+- [App attestation](#app-attestation)
 - [Package and install](#package-and-install)
 - [URLs, catalogs, and updates](#urls-catalogs-and-updates)
 - [Failures and diagnostics](#failures-and-diagnostics)
@@ -143,7 +144,7 @@ the credential setting when your service does not need one.
 | `module.qualityLabel` | Optional label for the generated quality setting, defaults to the key `quality`. |
 
 Supported required feature IDs are `fetch@1`, `settings@1`, `streamResolution@1`,
-`packagedIcon@1`, and `qualityOptions@1`. These describe the host functionality
+`packagedIcon@1`, `qualityOptions@1`, and `appAttestation@1`. These describe the host functionality
 implemented by this build. publish the exact app build you verified, not just API v1.
 
 ### Optional icon
@@ -396,6 +397,7 @@ particular quality.
 | `setTimeout`, `clearTimeout` | One-shot timers, at most 128 active, delay bounded to 15 seconds. Timers are cleared after a method finishes. No interval API. |
 | `AbortController` | Request cancellation through the fetch `signal` option. No automatic context signal is supplied. |
 | `console` | log/info/warn/error/debug exist but do not publish logs. Use app diagnostics to investigate host failures. |
+| `appAttestation` | Hardware-backed proof that requests come from ArchiveTune. Requires the `appAttestation@1` feature, see [App attestation](#app-attestation). |
 
 Fetch does not throw solely because a server returns HTTP 4xx/5xx, check
 `response.ok` before parsing. Redirects are followed by the HTTP client, which
@@ -416,6 +418,152 @@ Cancellation propagates from the owning app operation to host requests and
 execution. Do not busy-loop, poll a download task, swallow abort errors, or keep
 background work after returning. Do not depend on the exact number of cached
 engines, it is an application implementation detail.
+
+## App attestation
+
+App attestation is optional. It lets your service accept requests only from a
+genuine ArchiveTune build and refuse forks, repackaged copies, scripts, and
+other apps that load your module. ArchiveTune does not decide who is refused.
+Your server verifies the evidence described here and applies its own policy.
+
+A module opts in by listing `appAttestation@1` in `module.requiredRuntimeFeatures`.
+For the extension runtime, list it in that manifest's `requiredRuntimeFeatures`.
+Builds without this feature reject the package during installation, so it cannot
+silently run without attestation. Without the declaration every
+`appAttestation` call fails with `ATTESTATION_NOT_DECLARED`. Installation review
+and module details show users an **App verification** notice.
+
+### What the proof establishes
+
+The evidence is an [Android Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation)
+certificate chain. Each module installation has its own EC P-256 signing key in the
+Android Keystore. The chain is signed by the device's secure hardware, and
+its attestation extension records the following:
+
+- `attestationApplicationId`: the package name and SHA-256 digests of the signing
+  certificates of the app that owns the key. The Android system supplies these
+  values, the app cannot choose them. A fork signed with another key, or an app
+  with another package name, produces different values.
+- `attestationChallenge`: the challenge derived below, binding the key to your nonce and module ID.
+- The security level (`TrustedEnvironment` or `StrongBox`) and root of trust,
+  including verified-boot state, plus the OS version and patch level.
+
+The private key never leaves the keystore and the module's JavaScript cannot
+read it. Other apps cannot use it, and neither can other modules in the same
+ArchiveTune install. Signed requests therefore come from this module running
+inside the attested app.
+
+### Flow
+
+1. Your server issues a single-use random nonce: 16–512 characters from
+   `A-Z a-z 0-9 . _ ~ + / = -`. Store it with a short expiry.
+2. The module calls `appAttestation.attest(nonce)`. This creates a fresh key for
+   the installation, replacing any previous one, and returns:
+
+   ```json
+   {
+     "format": "android-key-attestation",
+     "version": 1,
+     "moduleId": "org.example.my-provider",
+     "packageName": "moe.rukamori.archivetune",
+     "keyId": "base64url(SHA-256(leaf SubjectPublicKeyInfo DER))",
+     "certificateChain": ["base64 DER leaf", "...", "base64 DER root"]
+   }
+   ```
+
+   `packageName` is informational. Trust only the values inside the verified chain.
+3. The module sends this object to your server, which verifies it (see below) and
+   stores the leaf public key under `keyId`.
+4. The module sends protected requests with `appAttestation.fetch(url, options)`.
+   This has the same options and response as `fetch` (`appAttestation.fetch`
+   and `appAttestation.request` in the extension runtime, matching `fetch` and
+   `http.request`). The host signs the exact outgoing request with the attested key.
+
+Call `attest` only when your server reports that no valid key is registered.
+Each call rotates the key, and the old key can no longer sign. Key generation is
+done on the device and can take a moment. Inspection and top-level code cannot
+attest (`ATTESTATION_INSPECTION`). Removing the module deletes its key.
+
+### Challenge derivation
+
+The keystore challenge is not your raw nonce. It is:
+
+```text
+SHA-256(UTF-8("ARCHIVETUNE-MODULE-ATTESTATION-V1\n" + moduleId + "\n" + nonce))
+```
+
+`moduleId` is your manifest `module.id`. Recompute this value and compare it with
+`attestationChallenge` byte for byte. This prevents a key that was attested for
+another module, or for a nonce you did not issue, from being registered with your service.
+
+### Signed requests
+
+Attested requests must use HTTPS and do not follow redirects, 3xx responses
+are returned to the script. The host adds these headers, which replace any
+header of the same name set by the script:
+
+| Header | Value |
+| --- | --- |
+| `X-ArchiveTune-Attestation-Module` | `module.id` |
+| `X-ArchiveTune-Attestation-Key` | `keyId` from registration |
+| `X-ArchiveTune-Attestation-Timestamp` | Unix time in milliseconds |
+| `X-ArchiveTune-Attestation-Nonce` | 32 lowercase hexadecimal characters, unique per request |
+| `X-ArchiveTune-Attestation-Signature` | base64url, unpadded, DER ECDSA signature (`SHA256withECDSA`) |
+
+The signature covers these eight lines, joined by `\n` with no trailing newline:
+
+```text
+ARCHIVETUNE-MODULE-REQUEST-V1
+<module id>
+<HTTP method, uppercase>
+<scheme>://<host>[:<port>]      lowercase, port only when not the scheme default
+<encoded path>[?<encoded query>] exactly as sent
+<SHA-256 of the exact body bytes, lowercase hex, empty body for GET/HEAD>
+<timestamp>
+<nonce>
+```
+
+The script cannot add or alter these headers in a way that verifies, because it
+never holds the key.
+
+### Server verification
+
+Verify the chain on your server, never inside the module. The official
+[attestation verification library](https://github.com/android/keyattestation)
+handles chain validation, revocation, and expiry edge cases. At registration, reject the request unless:
+
+1. Every certificate signs the next, and the root is a Google hardware attestation
+   root from <https://android.googleapis.com/attestation/root>.
+2. No certificate serial appears in <https://android.googleapis.com/attestation/status>.
+3. `attestationSecurityLevel` is `TrustedEnvironment` or `StrongBox`.
+4. `attestationChallenge` equals the derived challenge for a nonce you issued,
+   that has not expired and has not been used before. Consume the nonce.
+5. `attestationApplicationId` contains package `moe.rukamori.archivetune` and the
+   SHA-256 digest of the official ArchiveTune release signing certificate you
+   accept. Debug builds use `moe.rukamori.archivetune.debug` and a debug key. Do
+   not accept them in production.
+6. Optionally, the root of trust reports a locked bootloader and `Verified` boot state, and the patch level meets your minimum.
+
+Read only the first attestation extension found from the root side of the chain,
+as described in the official guide.
+
+For each signed request, look up `keyId`, require the module header to match the
+registered module, and rebuild the canonical string from the request you received.
+Then verify the ECDSA signature with the registered public key. Reject
+timestamps outside a small window (for example ±5 minutes) and nonces already
+seen within it. Answer `401` and require a new registration when a key is
+unknown or revoked.
+
+### Limits
+
+Attestation proves which app holds the key, not what the user does with
+responses. Content you return can still be shared once it reaches the device.
+Devices without hardware-backed attestation, emulators, and devices that do not
+chain to the Google root cannot pass this check. Decide whether to refuse them
+or degrade service. A device whose hardware attestation key has leaked can forge
+evidence until Google revokes that key, so always check the status list. On
+failure the host throws an error with one of the diagnostic codes listed under
+[Failures and diagnostics](#failures-and-diagnostics).
 
 ## Package and install
 
@@ -643,6 +791,12 @@ and redacted codes, arbitrary provider exception messages are not displayed.
 | `EXT_NETWORK_PERMISSION` | Include the service, verification, and media domains in the extension's network declaration. Redirect destinations also need permission. |
 | `EXT_INITIALIZATION_IO` | Move network requests out of top-level registration and into initialization or a provider method. Import inspection performs no network I/O. |
 | `SESSION_VERIFICATION_REQUIRED` | Open installed module details and choose **Verify connection**. |
+| `ATTESTATION_NOT_DECLARED` | Add `appAttestation@1` to the manifest's required runtime features. |
+| `ATTESTATION_NONCE` | The nonce must be 16–512 characters from the documented alphabet. |
+| `ATTESTATION_REQUIRED` | No attested key exists for this installation. Call `appAttestation.attest` with a server nonce first. |
+| `ATTESTATION_HTTPS` | Attested requests are only sent over HTTPS. |
+| `ATTESTATION_UNAVAILABLE` | This device's keystore cannot create an attested key. |
+| `ATTESTATION_INSPECTION` | Attestation was used during installation inspection or top-level code. Move it into a provider method. |
 | `EXT_SESSION_SCHEME` | Declare the service's signing-protocol identifier in `signedSession.schemeLabel`. |
 | `SESSION_CALLBACK_STATE`, `SESSION_CALLBACK_EXPIRED` | Start verification again from that module's settings. A callback must match a pending, unexpired state. |
 | Provider TypeError during installation | Export an object and implement exactly the declared known capabilities. |
@@ -690,8 +844,8 @@ and unknown required runtime features reject the staged import.
 An imported extension's `minAppVersion` refers to its originating host. It is retained as
 extension data, not compared numerically with ArchiveTune's version. Required
 runtime features determine host compatibility. This implementation recognizes
-`signedSession@3`, `sessionGrant@1`, `downloadSegments@1`, and
-`preparedContext@1`, `apiV3@1` is not implemented.
+`signedSession@3`, `sessionGrant@1`, `downloadSegments@1`,
+`preparedContext@1`, and `appAttestation@1`, `apiV3@1` is not implemented.
 
 ### Authoring a compatible `.arch`
 
@@ -795,6 +949,8 @@ target app/device before publishing compatibility claims.
 - Verify the actual returned encoding at every declared quality, a tag alone is
   not a quality check.
 - Check that changing YouTube quality does not change your module's request.
+- If you use app attestation, confirm that your server rejects a debug build, a
+  build signed with another key, and a replayed nonce or request signature.
 - Verify playback and applicable downloads against your real service.
 - Publish source, service requirements, supported qualities, version history,
   and the ArchiveTune build/API versions you actually checked. Do not claim
