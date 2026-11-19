@@ -11,7 +11,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: am-blend
-          submodules: recursive  # <--- This fixes the missing folder error
+          # We removed 'submodules: recursive' from here to prevent hard crashes
+      
+      - name: Initialize Submodules Safely
+        run: |
+          git submodule sync --recursive
+          # Use protocol v2 which handles missing/rewritten submodule commits much better
+          git -c protocol.version=2 submodule update --init --recursive --force || {
+            echo "Warning: Some submodules failed to fetch exact commits. Fetching latest defaults..."
+            git submodule foreach 'git fetch origin && git checkout $(git remote show origin | grep HEAD | cut -d" " -f5) || true'
+            git submodule update --init --recursive || true
+          }
           
       - name: Sync with Main Rukamori Repo
         run: |
@@ -20,7 +30,6 @@ jobs:
           git remote add upstream https://github.com/rukamori/ArchiveTune.git || true
           git fetch upstream main
           git merge -X ours upstream/main -m "auto-sync stable" || true
-          git submodule update --init --recursive || true
           git push origin am-blend || true
 
       - uses: actions/setup-java@v4
@@ -36,4 +45,3 @@ jobs:
         with:
           name: archivetune-all-variants
           path: app/build/outputs/apk/**/*.apk
-          
