@@ -1,0 +1,55 @@
+name: auto-sync-stable
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Runs once a week (Mondays) to check for new releases
+  workflow_dispatch:    # Allows you to click "Run workflow" manually
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: am-blend
+          fetch-depth: 0
+          submodules: false
+
+      - name: Init Submodules (with fallback for unadvertised SHAs)
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive || {
+            git submodule foreach --recursive '
+              git fetch --no-tags origin || true
+              git checkout --detach FETCH_HEAD 2>/dev/null || git checkout --detach origin/HEAD 2>/dev/null || true
+            '
+          }
+
+      - name: Sync Stable Release Only
+        run: |
+          git config user.name "auto-sync"
+          git config user.email "sync@local"
+          git remote add upstream https://github.com/rukamori/ArchiveTune.git || true
+          git fetch upstream --tags
+
+          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+          echo "Syncing to stable tag: $LATEST_TAG"
+
+          git merge -X ours "$LATEST_TAG" -m "auto-sync stable $LATEST_TAG" || true
+          git submodule update --init --recursive || true
+          git push origin am-blend || true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivetune-stable
+          path: app/build/outputs/apk/debug/*.apk
