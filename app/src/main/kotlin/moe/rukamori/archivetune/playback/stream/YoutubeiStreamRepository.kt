@@ -171,6 +171,18 @@ class YoutubeiStreamRepository
                             cause = failure,
                         )
                     }
+                    if (failure.kind == YoutubeiFailureKind.NO_FORMAT) {
+                        throw YTPlayerUtils.BadStreamPlayerResponseException(
+                            videoId = request.mediaId,
+                            failedClients =
+                                if (authState.hasLoginCookie) {
+                                    AUTHENTICATED_STREAM_CLIENTS
+                                } else {
+                                    ANONYMOUS_STREAM_CLIENTS
+                                },
+                            cause = failure,
+                        )
+                    }
                     throw failure
                 }
 
@@ -358,6 +370,8 @@ class YoutubeiStreamRepository
             const val LOG_TAG = "YoutubeiResolver"
             const val STREAM_PROBE_TIMEOUT_SECONDS = 10L
             const val MAX_TOKEN_GENERATOR_ATTEMPTS = 3
+            val AUTHENTICATED_STREAM_CLIENTS = setOf("WEB_CREATOR")
+            val ANONYMOUS_STREAM_CLIENTS = setOf("MWEB", "VISIONOS")
             val CONTENT_CONFIRMATION_REASONS =
                 listOf(
                     "confirm your age",
