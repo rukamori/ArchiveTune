@@ -339,7 +339,7 @@ jobs:
         shell: bash
         env:
           RELEASE_DIR: ${{ steps.release_dir.outputs.release_dir }}
-          BUILD_TOOLS_VERSION: 35.0.0
+          BUILD_TOOLS_VERSION: 37.0.0
           KEYSTORE_B64: ${{ secrets.KEYSTORE }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
