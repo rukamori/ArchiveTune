@@ -393,7 +393,10 @@ class ResolveAudioStreamUseCase
                 val rejectedLogin = failure is YTPlayerUtils.InvalidPlaybackLoginContextException ||
                     failure is YoutubeiException && failure.kind == YoutubeiFailureKind.HTTP &&
                     failure.httpStatus in setOf(401, 403)
-                if (!request.authState.hasLoginCookie || !rejectedLogin) throw failure
+                val accountWithoutDirectStream =
+                    failure is YTPlayerUtils.BadStreamPlayerResponseException &&
+                        (failure.cause as? YoutubeiException)?.kind == YoutubeiFailureKind.NO_FORMAT
+                if (!request.authState.hasLoginCookie || !rejectedLogin && !accountWithoutDirectStream) throw failure
                 try {
                     resolveWithAuth(request.copy(authState = PlaybackAuthState.EMPTY), priority)
                 } catch (anonymousFailure: Exception) {
