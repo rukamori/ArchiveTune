@@ -591,9 +591,6 @@
     <string name="haptics_desc">Enable haptic feedback on interactive elements</string>
     <string name="default_open_tab">Default open tab</string>
     <string name="lyrics_animation_style">Lyrics animation style</string>
-    <string name="lyrics_mode">Lyrics mode</string>
-    <string name="lyrics_mode_v2">V2 Legacy</string>
-    <string name="lyrics_mode_enhanced">Enhanced</string>
     <string name="lyrics_animation_style_v2_only">Available only in V2 lyrics mode</string>
     <string name="lyrics_line_spacing">Lyrics line spacing</string>
     <string name="content">Content</string>
@@ -1314,7 +1311,6 @@
     <string name="together_session_not_found">Session not found</string>
     <string name="together_server_error">Server error, please try again later</string>
     <string name="leave">Leave</string>
-    <string name="join">Join</string>
     <string name="loading">Loading</string>
     <string name="connecting">Connecting</string>
     <string name="copy_link">Copy link</string>
@@ -1722,7 +1718,6 @@
     <string name="user_blocked_by_host">User blocked by host</string>
     <string name="waiting_for_approval">Waiting for approval from host</string>
     <string name="you_label">You</string>
-
 
     <string name="track_info_specs">Track info &amp; specs</string>
     <string name="copy_info">Copy info</string>
