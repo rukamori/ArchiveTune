@@ -412,7 +412,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
     implementation(libs.translator)
-    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.11.1")
     implementation("androidx.compose.material3.adaptive:adaptive:1.4.0-alpha03")
     implementation(libs.accompanist.lyrics.ui)
     implementation(libs.accompanist.lyrics.core)
