@@ -79,6 +79,9 @@ class BitPerfectOutput
         private val _events = MutableSharedFlow<BitPerfectEvent>(extraBufferCapacity = 8)
         val events: SharedFlow<BitPerfectEvent> = _events.asSharedFlow()
 
+        private val _dacClaimed = MutableStateFlow(false)
+        val dacClaimed: StateFlow<Boolean> = _dacClaimed.asStateFlow()
+
         @Volatile
         var enabled = false
             private set
@@ -133,15 +136,21 @@ class BitPerfectOutput
         fun refreshDevice() {
             var name: String? = null
             var permissionRequired = false
+            var claimed = false
             if (enabled && driver == UsbBitPerfectDriver.DIRECT) {
                 usbDevices.audioDevice()?.let { device ->
                     name = device.productName?.takeIf { it.isNotBlank() } ?: DEFAULT_DEVICE_NAME
                     permissionRequired = !usbDevices.hasPermission(device)
+                    claimed = !permissionRequired
                 }
                 if (permissionRequired) usbDevices.requestPermission(force = false)
             } else if (enabled) {
-                name = audioManager.usbOutputDevice()?.usbDisplayName()
+                audioManager.usbOutputDevice()?.let { device ->
+                    name = device.usbDisplayName()
+                    claimed = isMixerSupported && UsbBitPerfectTransport.supportsBitPerfect(audioManager, device)
+                }
             }
+            _dacClaimed.value = claimed || synchronized(this) { activeTransport != null }
             _status.update { current ->
                 if (current.dacName == name && current.permissionRequired == permissionRequired) {
                     current
@@ -256,6 +265,7 @@ class BitPerfectOutput
             if (activeTransport is UsbDirectTransport) directReleasedAtMs = SystemClock.elapsedRealtime()
             owner = null
             activeTransport = null
+            if (!enabled) _dacClaimed.value = false
             _status.update { current ->
                 BitPerfectStatus(
                     dacName = current.dacName,

@@ -23,6 +23,7 @@ internal interface BitPerfectTransport {
     val validBits: Int get() = outputBits
     val bufferSizeFrames: Long
     val releasesWhenIdle: Boolean
+    val failure: String?
 
     fun write(buffer: ByteBuffer): Int
 

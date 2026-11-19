@@ -1412,7 +1412,7 @@ class MusicService :
             withContext(Dispatchers.Main) {
                 player.repeatMode = repeatMode
                 playerVolume.value = volume
-                updateAudioOffload(offload && !crossfadePrefEnabled)
+                updateAudioOffload(offload && !crossfadePrefEnabled && !bitPerfectOutput.dacClaimed.value)
             }
         }
 
@@ -1496,9 +1496,12 @@ class MusicService :
             }
         }
 
-        dataStore.data
-            .map { it[SkipSilenceKey] ?: false }
-            .distinctUntilChanged()
+        combine(
+            dataStore.data.map { it[SkipSilenceKey] ?: false },
+            bitPerfectOutput.dacClaimed,
+        ) { skipSilence, dacClaimed ->
+            skipSilence && !dacClaimed
+        }.distinctUntilChanged()
             .collectLatest(scope) {
                 localPlayer.skipSilenceEnabled = it
             }
@@ -1568,11 +1571,11 @@ class MusicService :
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
             dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
-        ) { offloadEnabled, crossfadeEnabled ->
-            offloadEnabled to crossfadeEnabled
+            bitPerfectOutput.dacClaimed,
+        ) { offloadEnabled, crossfadeEnabled, dacClaimed ->
+            offloadEnabled && !crossfadeEnabled && !dacClaimed
         }.distinctUntilChanged()
-            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled) ->
-                val effectiveOffload = offloadEnabled && !crossfadeEnabled
+            .collectLatest(scope) { effectiveOffload ->
                 updateAudioOffload(effectiveOffload)
                 if (effectiveOffload) {
                     val skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
@@ -1609,6 +1612,14 @@ class MusicService :
                     cancelCrossfade(resetVolume = true)
                 }
             }
+
+        bitPerfectOutput.dacClaimed.collect(scope) { claimed ->
+            if (claimed) {
+                cancelCrossfade(resetVolume = true)
+            } else if (crossfadeEnabled && crossfadeDurationMs > 0L) {
+                scheduleCrossfade()
+            }
+        }
 
         dataStore.data
             .map { it[WakelockKey] ?: false }
@@ -2775,7 +2786,7 @@ class MusicService :
     private fun resolveCrossfadePlan(): CrossfadePlan? {
         if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
         if (sleepTimer.pauseWhenSongEnd) return null
-        if (bitPerfectOutput.status.value.active) return null
+        if (bitPerfectOutput.dacClaimed.value || bitPerfectOutput.status.value.active) return null
         if (!isLocalPlaybackActive()) return null
         if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
         if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null

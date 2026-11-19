@@ -80,6 +80,7 @@ internal class BitPerfectRoutingSink(
 
     override fun play() {
         playing = true
+        reselectOutput()
         (retiring ?: active).play()
     }
 
@@ -173,8 +174,12 @@ internal class BitPerfectRoutingSink(
 
     private fun finishRetiring(): Boolean {
         val outgoing = retiring ?: return true
-        outgoing.playToEndOfStream()
-        if (!outgoing.isEnded()) return false
+        try {
+            outgoing.playToEndOfStream()
+            if (!outgoing.isEnded()) return false
+        } catch (error: AudioSink.WriteException) {
+            Timber.tag(TAG).w(error, "Previous output failed while draining")
+        }
         outgoing.reset()
         retiring = null
         if (playing) active.play()
@@ -190,17 +195,17 @@ internal class BitPerfectRoutingSink(
 
     private fun reselectOutput() {
         val config = lastConfig ?: return
-        if (wantsBitPerfect(config.format) == (active === bitPerfect)) return
-        val outgoing = active
+        if (retiring != null) return
+        val wanted = wantsBitPerfect(config.format)
+        if (wanted == (active === bitPerfect)) return
+        val target = if (wanted) bitPerfect else normal
         try {
-            val target = configureTarget(config)
-            if (target === outgoing) return
-            active = target
-            outgoing.reset()
-            if (playing) target.play()
+            target.configure(config)
         } catch (error: AudioSink.ConfigurationException) {
             Timber.tag(TAG).w(error, "Could not move playback between bit-perfect and standard output")
+            return
         }
+        switchTo(target)
     }
 
     private fun leaveBitPerfectForProcessing() {

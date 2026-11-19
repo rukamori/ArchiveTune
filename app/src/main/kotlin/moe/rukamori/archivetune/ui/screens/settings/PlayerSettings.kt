@@ -397,10 +397,7 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.animation), null) },
                         checked = crossfadeEnabled,
                         onCheckedChange = { enabled ->
-                            if (enabled) {
-                                onAudioOffloadChange(false)
-                                onUsbBitPerfectChange(false)
-                            }
+                            if (enabled) onAudioOffloadChange(false)
                             onCrossfadeEnabledChange(enabled)
                         },
                     )
@@ -431,7 +428,7 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                         checked = skipSilence,
                         onCheckedChange = onSkipSilenceChange,
-                        isEnabled = !audioOffload && !usbBitPerfect,
+                        isEnabled = !audioOffload,
                     )
                 }
 
@@ -455,7 +452,6 @@ fun PlayerSettings(navController: NavController) {
                             if (enabled) {
                                 onSkipSilenceChange(false)
                                 onCrossfadeEnabledChange(false)
-                                onUsbBitPerfectChange(false)
                             }
                         },
                     )
@@ -467,14 +463,7 @@ fun PlayerSettings(navController: NavController) {
                         description = stringResource(R.string.usb_bit_perfect_desc),
                         icon = { Icon(Icons.Rounded.Usb, null) },
                         checked = usbBitPerfect,
-                        onCheckedChange = { enabled ->
-                            onUsbBitPerfectChange(enabled)
-                            if (enabled) {
-                                onAudioOffloadChange(false)
-                                onSkipSilenceChange(false)
-                                onCrossfadeEnabledChange(false)
-                            }
-                        },
+                        onCheckedChange = onUsbBitPerfectChange,
                     )
                 }
 

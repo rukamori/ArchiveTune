@@ -709,7 +709,7 @@
     <string name="audio_offload">Audio offload</string>
     <string name="audio_offload_desc">Let supported devices play audio using low-power hardware decoding. Some audio processing features are disabled.</string>
     <string name="usb_bit_perfect">USB DAC bit-perfect output</string>
-    <string name="usb_bit_perfect_desc">Send audio to a USB DAC unchanged, at each track\'s own sample rate and bit depth. Equalizer, normalization, crossfade, and playback speed don\'t apply.</string>
+    <string name="usb_bit_perfect_desc">Send audio to a USB DAC unchanged, at each track\'s own sample rate and bit depth. While the DAC is in use, crossfade, skip silence, and audio offload pause, and equalizer, normalization, and playback speed don\'t apply.</string>
     <string name="usb_bit_perfect_driver">Output driver</string>
     <string name="usb_bit_perfect_driver_desc">Android\'s mixer needs Android 14 and leaves volume to the DAC, so set it there first. The direct driver works on any Android version, sets the DAC\'s own volume, and keeps the DAC from other apps while it plays.</string>
     <string name="usb_bit_perfect_driver_android">Android bit-perfect mixer</string>

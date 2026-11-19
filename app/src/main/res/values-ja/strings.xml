@@ -709,7 +709,7 @@
     <string name="audio_offload">オーディオオフロード</string>
     <string name="audio_offload_desc">サポートされているデバイスで、低電力ハードウェア デコーディングを使用してオーディオを再生できるようにします。一部の音声処理機能が無効になります。</string>
     <string name="usb_bit_perfect">USB DAC ビットパーフェクト出力</string>
-    <string name="usb_bit_perfect_desc">オーディオを変更せずに、各トラック独自のサンプル レートとビット深度で USB DAC に送信します。イコライザー、正規化、クロスフェード、再生速度は適用されません。</string>
+    <string name="usb_bit_perfect_desc">オーディオを変更せずに、各トラック独自のサンプル レートとビット深度で USB DAC に送信します。DAC の使用中はクロスフェード、無音スキップ、オーディオオフロードが一時停止し、イコライザー、正規化、再生速度は適用されません。</string>
     <string name="usb_bit_perfect_driver">出力ドライバー</string>
     <string name="usb_bit_perfect_driver_desc">Android のミキサーには Android 14 が必要で、ボリュームは DAC に任せられるため、最初にそこに設定します。ダイレクト ドライバーはどの Android バージョンでも動作し、DAC 自体の音量を設定し、DAC の再生中に他のアプリから DAC を保護します。</string>
     <string name="usb_bit_perfect_driver_android">Android のビットパーフェクト ミキサー</string>

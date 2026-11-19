@@ -105,7 +105,8 @@ internal class UsbDirectTransport private constructor(
     override val releasesWhenIdle = true
 
     @Volatile
-    private var failure: String? = null
+    override var failure: String? = null
+        private set
     private var lastFrames = 0L
 
     private val control = controlFor(handle)

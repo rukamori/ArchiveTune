@@ -41,7 +41,8 @@ internal class UsbBitPerfectTransport private constructor(
     override val releasesWhenIdle = false
 
     @Volatile
-    private var failure: String? = null
+    override var failure: String? = null
+        private set
     private var nextRouteCheckMs = 0L
     private var previousHead = 0L
     private var headWraps = 0L
@@ -155,6 +156,14 @@ internal class UsbBitPerfectTransport private constructor(
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build()
+
+        fun supportsBitPerfect(
+            manager: AudioManager,
+            device: AudioDeviceInfo,
+        ): Boolean =
+            runCatching { manager.getSupportedMixerAttributes(device) }
+                .getOrDefault(emptyList())
+                .any { it.mixerBehavior == AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT }
 
         fun matchingFormat(
             manager: AudioManager,

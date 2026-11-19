@@ -206,6 +206,10 @@ internal class BitPerfectAudioSink(
 
     override fun playToEndOfStream() {
         endOfStream = true
+        pendingFailure?.let { failure ->
+            pendingFailure = null
+            throw writeException(failure)
+        }
         releaseIfIdle()
         if (suspended) {
             if (!playing) return
@@ -216,6 +220,7 @@ internal class BitPerfectAudioSink(
             }
         }
         val active = transport ?: return
+        active.failure?.let { throw writeException(BitPerfectTransportException(it)) }
         try {
             if (!writeResumeTail(active)) return
             if (outputBuffer.hasRemaining()) writeOutput(active)
