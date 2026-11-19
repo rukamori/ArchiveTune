@@ -88,6 +88,7 @@ import moe.rukamori.archivetune.constants.LyricsSyncOffsetMode
 import moe.rukamori.archivetune.constants.LyricsSyncOffsetModeKey
 import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.LyricsSyncOffsetDialog
@@ -403,10 +404,12 @@ fun LyricsMenu(
     val isTranslationInProgress = isStandardTranslating || isAiTranslating
 
     if (showTranslateDialog) {
-        val initialText = lyricsProvider()?.lyrics.orEmpty()
+        val rawLyrics = lyricsProvider()?.lyrics.orEmpty()
+        val isTtmlLyrics = LyricsUtils.isTtml(rawLyrics)
+        val initialDisplayText = if (isTtmlLyrics) LyricsUtils.displayLyricsText(rawLyrics) else rawLyrics
         val (textFieldValue, setTextFieldValue) =
-            rememberSaveable(stateSaver = TextFieldValue.Saver) {
-                mutableStateOf(TextFieldValue(text = initialText))
+            rememberSaveable(mediaMetadataProvider().id, stateSaver = TextFieldValue.Saver) {
+                mutableStateOf(TextFieldValue(text = initialDisplayText))
             }
 
         val languages by produceState(initialValue = emptyList<TranslatorLang>()) {
@@ -625,7 +628,12 @@ fun LyricsMenu(
                         FilledTonalButton(
                             enabled = !isTranslationInProgress && canUseSelectedSource,
                             onClick = {
-                                val inputText = textFieldValue.text
+                                val inputText =
+                                    if (isTtmlLyrics && textFieldValue.text == initialDisplayText) {
+                                        rawLyrics
+                                    } else {
+                                        textFieldValue.text
+                                    }
                                 val languageCode = selectedLanguageCode
                                 val languageName = selectedLanguageName
                                 setTargetLanguage(languageCode)
