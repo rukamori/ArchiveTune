@@ -12,14 +12,19 @@ package moe.rukamori.archivetune.ui.player
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -27,6 +32,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +40,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -57,9 +64,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -72,10 +81,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.materialkolor.ktx.toColor
+import com.materialkolor.ktx.toHct
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.utils.joinByBullet
+import sh.calvin.reorderable.DragGestureDetector
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+
+private val QueueDragGestureDetector = DragGestureDetector { onDragStart, onDragEnd, onDragCancel, onDrag ->
+    detectDragGestures(
+        orientationLock = Orientation.Vertical,
+        shouldAwaitTouchSlop = { false },
+        onDragStart = { _, change, _ -> onDragStart(change.position) },
+        onDragEnd = { onDragEnd() },
+        onDragCancel = onDragCancel,
+        onDrag = onDrag,
+    )
+}
 
 @Composable
 fun QueueScreen(
@@ -120,9 +143,6 @@ fun QueueScreen(
             val source = from.key as? String
             val target = to.key as? String
             if (source != null && target != null) onAction(QueueAction.Drag(source, target))
-        }
-        LaunchedEffect(reorderable.isAnyItemDragging) {
-            if (!reorderable.isAnyItemDragging) onAction(QueueAction.FinishDrag)
         }
         LaunchedEffect(visible) {
             if (visible) {
@@ -176,7 +196,10 @@ fun QueueScreen(
                             LaunchedEffect(swipe.currentValue) {
                                 if (swipe.currentValue != SwipeToDismissBoxValue.Settled) onAction(QueueAction.Remove(entry.id))
                             }
-                            val handle = if (model.locked) Modifier else Modifier.draggableHandle()
+                            val handle = Modifier.draggableHandle(
+                                enabled = !model.locked,
+                                dragGestureDetector = QueueDragGestureDetector,
+                            )
                             val previousId = model.entries.values.getOrNull(index - 1)?.id
                             val nextId = model.entries.values.getOrNull(index + 1)?.id
                             val playing = entry.current && model.playing
@@ -196,12 +219,9 @@ fun QueueScreen(
                                 index < currentIndex -> currentIndex
                                 else -> model.entries.values.size - currentIndex - 1
                             }
-                            val content: @Composable () -> Unit = remember(entry, groupIndex, groupCount, controls, dragging, pureBlack, visible, onAction, handle) {
-                                { QueueSongRow(entry, groupIndex, groupCount, controls, dragging, pureBlack, visible, onAction, handle) }
-                            }
-                            if (model.locked || model.selectionCount > 0 || dragging) content()
-                            else SwipeToDismissBox(
+                            SwipeToDismissBox(
                                 state = swipe,
+                                gesturesEnabled = !model.locked && !selecting && !reorderable.isAnyItemDragging,
                                 backgroundContent = {
                                     if (swipe.dismissDirection != SwipeToDismissBoxValue.Settled) {
                                         Box(
@@ -217,7 +237,9 @@ fun QueueScreen(
                                         }
                                     }
                                 },
-                            ) { content() }
+                            ) {
+                                QueueSongRow(entry, groupIndex, groupCount, controls, dragging, pureBlack, visible, onAction, handle)
+                            }
                         }
                     }
                 }
@@ -249,14 +271,26 @@ private fun QueueSongRow(
     handle: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val highlight = remember(colors.surface, colors.primaryContainer, colors.onPrimaryContainer) { colors.queueHighlight() }
     val target = when {
         dragging -> colors.surfaceContainerHighest
-        entry.current -> colors.primaryContainer
+        entry.current -> highlight.container
         pureBlack -> colors.surface
         entry.recommended -> colors.surfaceContainer
         else -> colors.surfaceContainerLow
     }
     val container by animateColorAsState(target, MaterialTheme.motionScheme.fastEffectsSpec(), label = "QueueRowColor")
+    val highlighted = entry.current && !dragging
+    val content by animateColorAsState(
+        if (highlighted) highlight.content else colors.onSurface,
+        MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "QueueRowContentColor",
+    )
+    val secondaryContent by animateColorAsState(
+        if (highlighted) highlight.content else colors.onSurfaceVariant,
+        MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "QueueRowSecondaryContentColor",
+    )
     val click = remember(entry.id, onAction) { { onAction(QueueAction.Play(entry.id)) } }
     val select = remember(entry.id, onAction) { { onAction(QueueAction.Select(entry.id)) } }
     val menu = remember(entry.id, onAction) { { onAction(QueueAction.Menu(entry.id)) } }
@@ -269,14 +303,12 @@ private fun QueueSongRow(
                 controls.previousId?.let { id ->
                     add(CustomAccessibilityAction(moveUp) {
                         onAction(QueueAction.Drag(entry.id, id))
-                        onAction(QueueAction.FinishDrag)
                         true
                     })
                 }
                 controls.nextId?.let { id ->
                     add(CustomAccessibilityAction(moveDown) {
                         onAction(QueueAction.Drag(entry.id, id))
-                        onAction(QueueAction.FinishDrag)
                         true
                     })
                 }
@@ -284,6 +316,16 @@ private fun QueueSongRow(
         }
     }
     val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
+    val defaultPadding = ListItemDefaults.ContentPadding
+    val layoutDirection = LocalLayoutDirection.current
+    // Split the leading padding around the handle without moving the artwork.
+    val handleSpacing = defaultPadding.calculateStartPadding(layoutDirection) / 2
+    val contentPadding = if (controls.locked) defaultPadding else PaddingValues(
+        start = handleSpacing,
+        top = defaultPadding.calculateTopPadding(),
+        end = defaultPadding.calculateEndPadding(layoutDirection),
+        bottom = defaultPadding.calculateBottomPadding(),
+    )
     SegmentedListItem(
         selected = entry.selected,
         onClick = click,
@@ -291,9 +333,17 @@ private fun QueueSongRow(
         onLongClickLabel = stringResource(R.string.queue_select_song),
         shapes = shapes,
         verticalAlignment = Alignment.CenterVertically,
+        contentPadding = contentPadding,
         modifier = Modifier.fillMaxWidth()
             .semantics { customActions = accessibility },
-        colors = ListItemDefaults.segmentedColors(containerColor = container),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = container,
+            contentColor = content,
+            leadingContentColor = secondaryContent,
+            trailingContentColor = secondaryContent,
+            overlineContentColor = secondaryContent,
+            supportingContentColor = secondaryContent,
+        ),
         leadingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!controls.locked) {
@@ -303,6 +353,7 @@ private fun QueueSongRow(
                     ) {
                         Icon(painterResource(R.drawable.drag_handle), null, Modifier.size(24.dp))
                     }
+                    Spacer(Modifier.width(handleSpacing))
                 }
                 QueueArtwork(entry.artworkUrl, entry.current && controls.locked, loadArtwork)
             }
@@ -348,6 +399,22 @@ private fun QueueSongRow(
             fontWeight = if (entry.current) FontWeight.Bold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
+
+@Immutable
+private data class QueueHighlight(val container: Color, val content: Color)
+
+private fun ColorScheme.queueHighlight(): QueueHighlight {
+    val darkTheme = surface.luminance() < MidToneLuminance
+    val darkContainer = primaryContainer.luminance() < MidToneLuminance
+    if (darkTheme == darkContainer) return QueueHighlight(primaryContainer, onPrimaryContainer)
+    val hct = primaryContainer.toHct()
+    return QueueHighlight(
+        container = hct.withTone(if (darkTheme) 30.0 else 90.0).toColor(),
+        content = hct.withTone(if (darkTheme) 90.0 else 10.0).toColor(),
+    )
+}
+
+private const val MidToneLuminance = 0.18f
 
 @Composable
 private fun QueueArtwork(url: String?, current: Boolean, load: Boolean) {

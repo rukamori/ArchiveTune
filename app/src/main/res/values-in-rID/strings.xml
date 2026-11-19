@@ -79,11 +79,8 @@
     <string name="recently_added">Baru ditambahkan</string>
     <string name="sort_descending">Urutkan menurun</string>
     <string name="sort_ascending">Urutkan menaik</string>
-    <string name="your_collection">Koleksi Anda</string>
     <string name="playing_desc">Memutar</string>
     <string name="tracks_label">trek</string>
-    <string name="song_singular">Lagu</string>
-    <string name="more_playlists_desc">Playlist Lainnya</string>
     <string name="more_label">Lainnya</string>
     <string name="tracks_count_label">Jumlah trek</string>
     <string name="recently_updated">Baru saja diperbarui</string>
@@ -93,23 +90,18 @@
     <string name="personal_label">Pribadi</string>
     <string name="youtube_synced">Sinkron YouTube</string>
     <string name="options_label">Pilihan</string>
-    <string name="top_artist_badge">ARTIS TERATAS</string>
-    <string name="no_artist_yet">Belum Ada Artis</string>
-    <string name="total_label">total</string>
     <string name="most_tracks">Lagu terbanyak</string>
     <string name="least_tracks">Lagu sedikit</string>
     <string name="play_time">Waktu putar</string>
     <string name="subscribed_only">Hanya Di-subscribe</string>
     <string name="all_artists_filter">Semua Artis</string>
     <string name="artist_subtitle">Artis</string>
-    <string name="recently_played_artists">Artis yang Baru-baru Ini Diputar</string>
     <string name="newest_year">Tahun terbaru</string>
     <string name="oldest_year">Tahun tertua</string>
     <string name="longest_duration">Durasi terlama</string>
     <string name="shortest_duration">Durasi tersingkat</string>
     <string name="year_sort">Tahun</string>
     <string name="duration_sort">Durasi</string>
-    <string name="featured_album_badge">ALBUM UNGGULAN</string>
     <string name="other_versions">Versi lainnya</string>
     <string name="liked_songs">Disukai</string>
     <string name="downloaded_songs">Lagu yang diunduh</string>
@@ -293,7 +285,6 @@
     <string name="lyrics_not_found">Lirik tidak ditemukan</string>
     <string name="lyrics_word_sync">Sinkron Kata</string>
     <string name="sleep_timer">Pengatur waktu tidur</string>
-    <string name="end_of_song">Akhir lagu</string>
     <plurals name="minute">
         <item quantity="other">%d menit</item>
     </plurals>
@@ -329,6 +320,11 @@
     <string name="app_icon_empty">Tidak ada ikon aplikasi yang tersedia</string>
     <string name="app_icon_load_failed">Tidak dapat memuat ikon aplikasi</string>
     <string name="app_icon_change_failed">Tidak dapat mengubah ikon aplikasi</string>
+    <string name="app_icon_applying">Menerapkan %1$s…</string>
+    <string name="app_icon_by_author">oleh %1$s</string>
+    <string name="app_icon_github_profile">Profil GitHub</string>
+    <string name="app_icon_details">Detail ikon</string>
+    <string name="app_icon_use">Gunakan ikon ini</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Aktifkan tema dinamis</string>
     <string name="wallpaper_permission">Izin warna wallpaper</string>
@@ -441,7 +437,6 @@
     <string name="blur">Blur</string>
     <string name="contrast">Kontras</string>
     <string name="brightness">Kecerahan</string>
-    <string name="custom_value">Nilai khusus</string>
     <string name="archivetune_canvas">Kanvas ArchiveTune</string>
     <string name="archivetune_canvas_desc">Menganimasikan sampul album saat diputar</string>
     <string name="player_background_style_v8_v9_desc">Tidak tersedia untuk gaya pemutar V8, V9, dan V10</string>
@@ -516,7 +511,6 @@
     <string name="enable_simpmusic_lyrics">Aktifkan lirik SimpMusic</string>
     <string name="enable_megalobiz_lyrics">Aktifkan lirik Megalobiz</string>
     <string name="player_and_audio">Pemutar dan audio</string>
-    <string name="audio_quality">Kualitas audio</string>
     <string name="audio_quality_auto">Otomatis</string>
     <string name="audio_quality_high">Tinggi</string>
     <string name="audio_quality_low">Rendah</string>
@@ -576,7 +570,6 @@
     <string name="eq_sound_shaping_on">Pembentukan suara aktif</string>
     <string name="eq_sound_shaping_off">Pembentukan suara nonaktif</string>
     <string name="eq_enable_description">Terapkan kontrol ini ke pemutaran ArchiveTune</string>
-    <string name="eq_control_mode">Mode kontrol</string>
     <string name="eq_basic">Dasar</string>
     <string name="eq_advanced">Lanjutan</string>
     <string name="eq_basic_description">Preset cepat dan pembentukan nada luas</string>
@@ -866,8 +859,6 @@
     <string name="new_version_available">Versi baru tersedia</string>
     <string name="updates">Pembaruan</string>
     <string name="current_version">Versi Saat Ini</string>
-    <string name="latest_version_format">Terbaru: %s</string>
-    <string name="updates_status_checking">Memeriksa rilis terbaru</string>
     <string name="updates_status_current">Anda sedang menggunakan rilis terbaru yang tersedia</string>
     <string name="enable_update_notification">Aktifkan Pemberitahuan Pembaruan</string>
     <string name="enable_update_notification_channel_desc">Dapatkan pemberitahuan ketika rilis baru tersedia di saluran yang dipilih</string>
@@ -886,7 +877,6 @@
     <string name="update_notification_title">Pembaruan Tersedia</string>
     <string name="update_notification_text">ArchiveTune %s kini tersedia</string>
     <string name="download">Unduh</string>
-    <string name="download_complete">Pengunduhan selesai</string>
     <string name="downloads">Unduhan</string>
     <string name="download_in_progress">Sedang berlangsung</string>
     <string name="no_downloads">Belum ada musik yang diunduh</string>
@@ -929,7 +919,6 @@
     <string name="onboarding_foss_variant">Edisi FOSS</string>
     <string name="onboarding_version_label">Versi %1$s</string>
     <string name="onboarding_empty_title">Penyiapan tidak tersedia</string>
-    <string name="onboarding_empty_subtitle">Lanjutkan ke ArchiveTune.</string>
     <string name="onboarding_error_generic">Tidak dapat memuat penyiapan</string>
     <string name="onboarding_permission_allowed_by_install">Diizinkan saat instal</string>
     <string name="onboarding_permission_unavailable">Tidak tersedia</string>
@@ -991,7 +980,6 @@
     <string name="together_server_error">Kesalahan server, silakan coba lagi nanti</string>
     <string name="leave">Pergi</string>
     <string name="join">Bergabunglah</string>
-    <string name="joined">Bergabung</string>
     <string name="loading">Memuat</string>
     <string name="connecting">Menghubungkan...</string>
     <string name="copy_link">Salin tautan</string>
@@ -1011,7 +999,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Acak aktif</string>
     <string name="together_shuffle_off">Acak nonaktif</string>
-    <string name="together_repeat_mode">Ulangi %1$d</string>
     <string name="together_participants_empty">Belum ada peserta</string>
     <string name="together_participants_empty_body">Orang yang bergabung dengan sesi ini akan muncul di sini.</string>
     <string name="together_activity_log">Log aktivitas</string>

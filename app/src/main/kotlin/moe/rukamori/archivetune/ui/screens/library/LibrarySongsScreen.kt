@@ -7,14 +7,12 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,14 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,56 +37,48 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.HideExplicitKey
-import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.SongFilter
 import moe.rukamori.archivetune.constants.SongFilterKey
 import moe.rukamori.archivetune.constants.SongSortDescendingKey
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.constants.SongSortTypeKey
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.SongMenu
-import moe.rukamori.archivetune.ui.screens.library.rememberArtworkGradient
 import moe.rukamori.archivetune.ui.screens.Screens
-import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibrarySongsViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
+private val SongFilterOptions = listOf(SongFilter.LIKED, SongFilter.DOWNLOADED, SongFilter.LIBRARY)
+
 @Composable
 fun LibrarySongsScreen(
     navController: NavController,
-    onDeselect: () -> Unit,
     viewModel: LibrarySongsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -104,63 +87,56 @@ fun LibrarySongsScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-    val isDarkTheme = isSystemInDarkTheme()
-    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
 
-    val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            SongSortTypeKey,
-            SongSortType.CREATE_DATE,
-        )
+    val (sortType, onSortTypeChange) = rememberEnumPreference(SongSortTypeKey, SongSortType.CREATE_DATE)
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
-    val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
 
     val songs by viewModel.allSongs.collectAsStateWithLifecycle()
     val refreshState by viewModel.refreshState.collectAsStateWithLifecycle()
-
-    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
     val refreshLibrary = remember(viewModel, filter) { { viewModel.refresh(filter) } }
     val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
     val lazyListState = rememberLazyListState()
     val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
 
-    // Issue 2: player-aware bottom padding so content is never hidden behind nav bar + miniplayer
     val playerAwareBottomPadding =
         LocalPlayerAwareWindowInsets.current
             .only(WindowInsetsSides.Bottom)
             .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
+            .calculateBottomPadding() + 16.dp
 
-    val wrappedSongs = remember(songs) { songs.map { item -> ItemWrapper(item) }.toMutableList() }
-
-    val filteredSongs =
-        remember(wrappedSongs, hideExplicit) {
-            if (hideExplicit) {
-                wrappedSongs.filter { !it.item.song.explicit }
-            } else {
-                wrappedSongs
-            }
+    val queueTitle = stringResource(R.string.queue_all_songs)
+    val mediaItems = remember(songs) { songs.map { it.toMediaItem() } }
+    val totalDurationSeconds = remember(songs) { songs.sumOf { it.song.duration.coerceAtLeast(0).toLong() } }
+    val totalListenedSeconds = remember(songs) { songs.sumOf { it.song.totalPlayTime } / 1_000L }
+    val heroArtwork =
+        remember(songs) {
+            songs.asSequence().mapNotNull { it.song.thumbnailUrl }.distinct().take(2).toList()
+        }
+    val durationText = libraryDurationText(totalDurationSeconds)
+    val listenedText = libraryDurationText(totalListenedSeconds)
+    val heroStats =
+        buildList {
+            add(
+                LibraryHeroStat(
+                    value = songs.size.toString(),
+                    label = pluralStringResource(R.plurals.library_stat_songs, songs.size),
+                ),
+            )
+            durationText?.let { add(LibraryHeroStat(value = it, label = stringResource(R.string.library_stat_total_length))) }
+            listenedText?.let { add(LibraryHeroStat(value = it, label = stringResource(R.string.library_stat_listened))) }
         }
 
-    val totalDurationSec = remember(filteredSongs) { filteredSongs.sumOf { it.item.song.duration } }
-    val totalDurationText =
-        remember(totalDurationSec) {
-            if (totalDurationSec <= 0) {
-                ""
-            } else {
-                val days = totalDurationSec / 86400
-                var remaining = totalDurationSec % 86400
-                val hours = remaining / 3600
-                remaining %= 3600
-                val minutes = remaining / 60
-                val seconds = remaining % 60
-
-                when {
-                    days > 0 -> "${days}d ${hours}h ${minutes}m"
-                    hours > 0 -> "${hours}h ${minutes}m"
-                    minutes > 0 -> "${minutes}m ${seconds}s"
-                    else -> "${seconds}s"
+    val playAll: (Boolean) -> Unit =
+        remember(mediaItems, playerConnection, queueTitle) {
+            { shuffled ->
+                if (mediaItems.isNotEmpty()) {
+                    playerConnection.playQueue(
+                        ListQueue(
+                            title = queueTitle,
+                            items = if (shuffled) mediaItems.shuffled() else mediaItems,
+                        ),
+                    )
                 }
             }
         }
@@ -172,470 +148,259 @@ fun LibrarySongsScreen(
         modifier = Modifier.fillMaxSize(),
         indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = LibraryHeaderContentPadding),
+        LazyColumn(
+            state = lazyListState,
+            contentPadding =
+                PaddingValues(
+                    start = LibraryContentHorizontalPadding,
+                    top = LibraryHeaderContentPadding + 8.dp,
+                    end = LibraryContentHorizontalPadding,
+                    bottom = playerAwareBottomPadding,
+                ),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            // Sub-Filters Row (All Songs, Downloaded, Liked)
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Liked
-                SongSubFilterChip(
-                    label = stringResource(R.string.filter_liked),
-                    selected = filter == SongFilter.LIKED,
-                    onClick = { filter = SongFilter.LIKED },
+            item(key = "songs_hero", contentType = "library_hero") {
+                LibraryCollectionHero(
+                    overline = stringResource(R.string.songs),
+                    title = stringResource(filter.titleRes()),
+                    stats = heroStats,
+                    artworkUrls = heroArtwork,
+                    fallbackIconRes = R.drawable.music_note,
+                    primaryLabel = stringResource(R.string.play),
+                    primaryEnabled = mediaItems.isNotEmpty(),
+                    onPrimary = { playAll(false) },
+                    onShuffle = { playAll(true) },
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
-                // Downloaded
-                SongSubFilterChip(
-                    label = stringResource(R.string.filter_downloaded),
-                    selected = filter == SongFilter.DOWNLOADED,
-                    onClick = { filter = SongFilter.DOWNLOADED },
-                )
-                // All Songs
-                SongSubFilterChip(
-                    label = stringResource(R.string.all_songs),
-                    selected = filter == SongFilter.LIBRARY,
-                    onClick = { filter = SongFilter.LIBRARY },
-                )
+            }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Dropdown sort trigger
-                var showSortMenu by remember { mutableStateOf(false) }
-                // Issue 4 fix: A-Z label shows ascending direction arrow
-                val currentSortLabel =
-                    when (sortType) {
-                        SongSortType.CREATE_DATE -> {
-                            if (sortDescending) {
-                                stringResource(
-                                    R.string.newest_first,
-                                )
-                            } else {
-                                stringResource(R.string.oldest_first)
-                            }
-                        }
-
-                        SongSortType.NAME -> {
-                            if (sortDescending) stringResource(R.string.sort_z_to_a) else stringResource(R.string.sort_a_to_z)
-                        }
-
-                        SongSortType.ARTIST -> {
-                            stringResource(R.string.sort_artist)
-                        }
-
-                        SongSortType.PLAY_TIME -> {
-                            stringResource(R.string.most_played_sort)
-                        }
-                    }
-
-                Box {
-                    Row(
-                        modifier =
-                            Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showSortMenu = true }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = currentSortLabel,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            painter = painterResource(id = R.drawable.expand_more),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                    ) {
+            item(key = "songs_controls", contentType = "library_controls") {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(bottom = 12.dp),
+                ) {
+                    LibraryFilterGroup(
+                        options = SongFilterOptions,
+                        selected = filter,
+                        label = { option -> stringResource(option.chipLabelRes()) },
+                        onSelect = { option -> filter = option },
+                    )
+                    LibrarySortButton(
+                        label = stringResource(sortType.labelRes(sortDescending)),
+                        descending = sortDescending,
+                        directionEnabled = true,
+                        onToggleDirection = { onSortDescendingChange(!sortDescending) },
+                    ) { dismiss ->
                         SongSortType.entries.forEach { type ->
-                            val label =
-                                when (type) {
-                                    SongSortType.CREATE_DATE -> stringResource(R.string.recently_added)
-
-                                    // Issue 4: select NAME always sets ascending (A→Z) by default
-                                    SongSortType.NAME -> stringResource(R.string.sort_a_to_z)
-
-                                    SongSortType.ARTIST -> stringResource(R.string.sort_artist)
-
-                                    SongSortType.PLAY_TIME -> stringResource(R.string.most_played_sort)
-                                }
-                            DropdownMenuItem(
-                                text = { Text(label) },
+                            LibrarySortMenuItem(
+                                label = stringResource(type.menuLabelRes()),
+                                selected = type == sortType,
                                 onClick = {
                                     onSortTypeChange(type)
-                                    // A-Z sort should default to ascending
                                     if (type == SongSortType.NAME) onSortDescendingChange(false)
-                                    showSortMenu = false
+                                    dismiss()
                                 },
                             )
                         }
                     }
                 }
+            }
 
-                // Sort direction toggle button
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier =
-                        Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .clickable { onSortDescendingChange(!sortDescending) }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                id = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
-                            ),
-                        contentDescription =
-                            if (sortDescending) {
-                                stringResource(
-                                    R.string.sort_descending,
-                                )
-                            } else {
-                                stringResource(R.string.sort_ascending)
-                            },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
+            if (songs.isEmpty()) {
+                item(key = "songs_empty", contentType = "library_empty_state") {
+                    LibraryEmptyState(
+                        iconRes = R.drawable.music_note,
+                        titleRes = R.string.library_empty_songs_title,
+                        descriptionRes = R.string.library_empty_songs_desc,
+                        actionLabelRes = R.string.search_yt_music,
+                        onAction = openSearch,
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LazyColumn(
-                state = lazyListState,
-                // Issue 2: use player-aware window insets for bottom padding
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                // Spotlight Collection Card
-                item(key = "collection_spotlight") {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(28.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors =
-                                            listOf(
-                                                MaterialTheme.colorScheme.secondaryContainer,
-                                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
-                                            ),
-                                    ),
-                                ).padding(20.dp),
-                    ) {
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.your_collection),
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    val songsCountText =
-                                        if (filteredSongs.size ==
-                                            1
-                                        ) {
-                                            "1 ${stringResource(R.string.song_singular)}"
-                                        } else {
-                                            "${filteredSongs.size} ${stringResource(R.string.songs)}"
-                                        }
-                                    Text(
-                                        text =
-                                            if (totalDurationText.isNotEmpty()) {
-                                                "$songsCountText • $totalDurationText"
-                                            } else {
-                                                songsCountText
-                                            },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                                    )
-                                }
-
-                                // Play Button inside spotlight
-                                Button(
-                                    onClick = {
-                                        if (filteredSongs.isNotEmpty()) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = context.getString(R.string.queue_all_songs),
-                                                    items = filteredSongs.map { it.item.toMediaItem() },
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    shape = CircleShape,
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.play),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = stringResource(R.string.play),
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                if (filteredSongs.isEmpty()) {
-                    item(key = "songs_empty", contentType = "library_empty_state") {
-                        LibraryEmptyState(
-                            iconRes = R.drawable.music_note,
-                            actionLabelRes = R.string.search_yt_music,
-                            onAction = openSearch,
-                        )
-                    }
-                }
-
-                itemsIndexed(
-                    items = filteredSongs,
-                    key = { _, item -> item.item.song.id },
-                ) { index, songWrapper ->
-                    val song = songWrapper.item
-                    val isActive = song.id == mediaMetadata?.id
-
-                    // Issue 7: active song gets fully rounded shape + artwork-based color
-                    // inactive songs use theme color and are more rounded than before
-                    val activeCardColor =
-                        rememberArtworkCardColor(
-                            thumbnailUrl = song.song.thumbnailUrl,
-                            fallbackColor = MaterialTheme.colorScheme.primaryContainer,
-                        )
-                    val inactiveCardColor = MaterialTheme.colorScheme.surfaceContainerLow
-
-                    // Issue 6: divider between cards visible in pure black dark theme
-                    val showDivider = isDarkTheme && pureBlack && index > 0
-                    if (showDivider) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                            thickness = 0.5.dp,
-                        )
-                    }
-
-                    // Issue 7: Active corners 36.dp, inactive 24.dp
-                    val cornerRadius = if (isActive) 36.dp else 24.dp
-                    val topPadding = if (index == 0 || showDivider) 0.dp else 8.dp
-
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = topPadding, bottom = 0.dp)
-                                .clip(RoundedCornerShape(cornerRadius))
-                                .background(
-                                    if (isActive) activeCardColor else inactiveCardColor,
-                                ).combinedClickable(
-                                    onClick = {
-                                        if (song.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
-                                        } else {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = context.getString(R.string.queue_all_songs),
-                                                    items = filteredSongs.map { it.item.toMediaItem() },
-                                                    startIndex = index,
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuState.show {
-                                            SongMenu(
-                                                originalSong = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ).padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // Thumbnail — fully circular when active
-                        val thumbCorner = if (isActive) 26.dp else 10.dp
-                        ItemThumbnail(
-                            thumbnailUrl = song.song.thumbnailUrl,
-                            isActive = isActive,
-                            isPlaying = isPlaying,
-                            shape = RoundedCornerShape(thumbCorner),
-                            contentScale = ContentScale.Crop,
-                            showPlaceholder = true,
-                            modifier =
-                                Modifier
-                                    .size(52.dp),
-                        )
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        // Song Details (Issue 7: onPrimaryContainer on active dynamic background for legibility)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = song.song.title,
-                                style =
-                                    MaterialTheme.typography.bodyLarge.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 16.sp,
-                                    ),
-                                color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = song.artists.joinToString(", ") { it.name },
-                                style = MaterialTheme.typography.bodySmall,
-                                color =
-                                    if (isActive) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.60f)
-                                    },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+            itemsIndexed(
+                items = songs,
+                key = { _, song -> song.song.id },
+                contentType = { _, _ -> "library_song" },
+            ) { index, song ->
+                val isActive = song.id == mediaMetadata?.id
+                LibrarySongRow(
+                    song = song,
+                    isActive = isActive,
+                    isPlaying = isActive && isPlaying,
+                    showLikedBadge = filter != SongFilter.LIKED,
+                    onClick = {
+                        if (isActive) {
+                            playerConnection.player.togglePlayPause()
+                        } else {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = context.getString(R.string.queue_all_songs),
+                                    items = mediaItems,
+                                    startIndex = index,
+                                ),
                             )
                         }
-
-                        // Play/Wave indicators & duration pill
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            if (isActive && isPlaying) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.graphic_eq),
-                                    contentDescription = stringResource(R.string.playing_desc),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-
-                            // Issue 1: Real duration pill using makeTimeString
-                            val durationText = makeTimeString(song.song.duration * 1000L)
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isActive) 0.5f else 0.8f))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                            ) {
-                                Text(
-                                    text = durationText,
-                                    style =
-                                        MaterialTheme.typography.labelSmall.copy(
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        ),
-                                    color =
-                                        if (isActive) {
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                )
-                            }
-
-                            // More options
-                            IconButton(
-                                onClick = {
-                                    menuState.show {
-                                        SongMenu(
-                                            originalSong = song,
-                                            navController = navController,
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.size(24.dp),
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.more_vert),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
+                    },
+                    onShowMenu = { fromLongPress ->
+                        if (fromLongPress) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuState.show {
+                            SongMenu(
+                                originalSong = song,
+                                navController = navController,
+                                onDismiss = menuState::dismiss,
+                            )
                         }
-                    }
-                }
+                    },
+                    modifier =
+                        Modifier.animateItem(
+                            fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                            placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                            fadeOutSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+                        ),
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SongSubFilterChip(
-    label: String,
-    selected: Boolean,
+private fun LibrarySongRow(
+    song: Song,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    showLikedBadge: Boolean,
     onClick: () -> Unit,
+    onShowMenu: (fromLongPress: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val bgColor =
-        if (selected) {
-            MaterialTheme.colorScheme.secondary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val motion = MaterialTheme.motionScheme
+    val containerColor by animateColorAsState(
+        targetValue = if (isActive) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+        animationSpec = motion.defaultEffectsSpec(),
+        label = "LibrarySongRowContainer",
+    )
+    val contentColor by animateColorAsState(
+        targetValue =
+            if (isActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+        animationSpec = motion.defaultEffectsSpec(),
+        label = "LibrarySongRowContent",
+    )
+    val corner by animateDpAsState(
+        targetValue = if (isActive) 28.dp else 16.dp,
+        animationSpec = motion.defaultSpatialSpec(),
+        label = "LibrarySongRowCorner",
+    )
+    val supportingText =
+        remember(song) {
+            val artists = song.artists.joinToString(", ") { it.name }
+            val duration = song.song.duration.takeIf { it > 0 }?.let { makeTimeString(it * 1000L) }
+            listOfNotNull(artists.ifBlank { null }, duration).joinToString(" • ")
         }
 
-    val contentColor =
-        if (selected) {
-            MaterialTheme.colorScheme.onSecondary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
-
-    Box(
+    Row(
         modifier =
-            Modifier
-                .clip(CircleShape)
-                .background(bgColor)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(corner))
+                .background(containerColor)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { onShowMenu(true) },
+                ).padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style =
-                MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                ),
-            color = contentColor,
+        LibraryNowPlayingArtwork(
+            thumbnailUrl = song.song.thumbnailUrl,
+            isActive = isActive,
+            isPlaying = isPlaying,
+            modifier = Modifier.size(56.dp),
         )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.song.title,
+                style =
+                    if (isActive) {
+                        MaterialTheme.typography.titleMediumEmphasized
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (song.song.explicit) {
+                    Icon(
+                        painter = painterResource(R.drawable.explicit),
+                        contentDescription = stringResource(R.string.library_explicit),
+                        tint = contentColor.copy(alpha = 0.72f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                if (showLikedBadge && song.song.liked) {
+                    Icon(
+                        painter = painterResource(R.drawable.favorite),
+                        contentDescription = stringResource(R.string.filter_liked),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor.copy(alpha = 0.72f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        IconButton(onClick = { onShowMenu(false) }) {
+            Icon(
+                painter = painterResource(R.drawable.more_vert),
+                contentDescription = stringResource(R.string.options_label),
+                tint = contentColor,
+            )
+        }
     }
 }
+
+private fun SongFilter.titleRes(): Int =
+    when (this) {
+        SongFilter.LIKED -> R.string.liked_songs
+        SongFilter.DOWNLOADED -> R.string.downloaded_songs
+        SongFilter.LIBRARY -> R.string.all_songs
+    }
+
+private fun SongFilter.chipLabelRes(): Int =
+    when (this) {
+        SongFilter.LIKED -> R.string.filter_liked
+        SongFilter.DOWNLOADED -> R.string.filter_downloaded
+        SongFilter.LIBRARY -> R.string.filter_all
+    }
+
+private fun SongSortType.labelRes(descending: Boolean): Int =
+    when (this) {
+        SongSortType.CREATE_DATE -> if (descending) R.string.newest_first else R.string.oldest_first
+        SongSortType.NAME -> if (descending) R.string.sort_z_to_a else R.string.sort_a_to_z
+        SongSortType.ARTIST -> R.string.sort_artist
+        SongSortType.PLAY_TIME -> R.string.most_played_sort
+    }
+
+private fun SongSortType.menuLabelRes(): Int =
+    when (this) {
+        SongSortType.CREATE_DATE -> R.string.recently_added
+        SongSortType.NAME -> R.string.sort_a_to_z
+        SongSortType.ARTIST -> R.string.sort_artist
+        SongSortType.PLAY_TIME -> R.string.most_played_sort
+    }

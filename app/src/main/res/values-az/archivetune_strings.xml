@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">Emal olunur…</string>
     <string name="music_recognition_listen_again">Yenidən dinləyin</string>
     <string name="music_recognition_no_match">Uyğunluq tapılmadı</string>
-    <string name="music_recognition_signature_failed">İmza yaratmaq mümkün olmadı</string>
-    <string name="music_recognition_recognition_failed">Tanınma uğursuz oldu</string>
     <string name="music_recognition_open_shazam">Shazam aç</string>
     <string name="music_recognition_lyrics_preview">Mahnılara baxış</string>
     <string name="music_recognition_permission_title">Mikrofon icazəsi</string>
@@ -16,16 +14,12 @@
     <string name="music_recognition_permission_action">İcazə verin</string>
     <string name="music_recognition_error">Nəsə səhv getdi</string>
     <string name="music_recognition_settings">Musiqi tanıma parametrləri</string>
-    <string name="music_recognition_background_title">Arxa planda tanınma</string>
-    <string name="music_recognition_background_description">Aktivləşdirildikdə, \"Tez-tez istifadə olunan parametrlər\" (Quick Settings) paneli \"ArchiveTune\" tətbiqini açmadan bu cihazda səsləndirilən audionu tanıyır.</string>
-    <string name="music_recognition_background_foss_description">FOSS versiyasında fon rejimində tanıma funksiyası mövcud deyil. Bunun əvəzinə, \"Tez tənzimləmələr\" panelindəki düymə tanıma ekranını açır.</string>
     <string name="music_recognition_notification_channel_name">Musiqinin tanınması</string>
     <string name="music_recognition_notification_channel_description">Musiqinin tanınması sahəsində irəliləyiş və nəticələr</string>
     <string name="music_recognition_notification_status_listening">DİNLƏMƏ</string>
     <string name="music_recognition_notification_status_processing">Emal</string>
     <string name="music_recognition_notification_status_result">NƏTİCƏ</string>
     <string name="music_recognition_notification_listening_title">Musiqiyə qulaq asmaq</string>
-    <string name="music_recognition_notification_listening_text">Bu cihazda səsləndirilən səsin yazılması</string>
     <string name="music_recognition_notification_processing_title">Audio emal edilir</string>
     <string name="music_recognition_notification_processing_text">Əldə edilmiş audio barmaq izinin uyğunlaşdırılması</string>
     <string name="music_recognition_notification_artist">İfaçı: %1$s</string>
@@ -34,10 +28,7 @@
     <string name="music_recognition_notification_release">Buraxılış tarixi: %1$s</string>
     <string name="music_recognition_notification_label">Etiket: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Heç bir mahnı tapılmadı</string>
     <string name="music_recognition_notification_no_match_text">Musiqinin aydın şəkildə səslənməsini təmin edin, sonra yenidən tanımağa cəhd edin.</string>
-    <string name="music_recognition_notification_recording_failed_title">Cihazın səsi əldə edilə bilmədi</string>
-    <string name="music_recognition_notification_recording_failed_text">İşləyən tətbiq səs yazılmasını bloklaya bilər və ya səsləndirmə dayanmış ola bilər.</string>
     <string name="music_recognition_notification_signature_failed_text">Yazılmış audio, identifikasiya üçün kifayət qədər musiqi ehtiva etmirdi.</string>
     <string name="music_recognition_notification_recognition_failed_text">Tanıma xidməti bu səsi müəyyən edə bilmədi. Bir azdan yenidən cəhd edin.</string>
     <string name="music_recognition_history">Tanınma tarixi</string>

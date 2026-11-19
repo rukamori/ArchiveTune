@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">प्रक्रिया चलि रहल अछि…</string>
     <string name="music_recognition_listen_again">दोबारा सुनू</string>
     <string name="music_recognition_no_match">कोनो मेल नहि भेटल अछि</string>
-    <string name="music_recognition_signature_failed">सिग्नेचर नहि बना सकल अछि</string>
-    <string name="music_recognition_recognition_failed">पहिचान असफल रहल अछि</string>
     <string name="music_recognition_open_shazam">Shazam खोलू</string>
     <string name="music_recognition_lyrics_preview">गीतक बोलक पूर्वावलोकन</string>
     <string name="music_recognition_permission_title">माइक्रोफोनक अनुमति</string>
@@ -16,16 +14,12 @@
     <string name="music_recognition_permission_action">अनुमति दिअ</string>
     <string name="music_recognition_error">किछु गड़बड़ भऽ गेल अछि</string>
     <string name="music_recognition_settings">संगीत पहिचानक सेटिंग्स</string>
-    <string name="music_recognition_background_title">पृष्ठभूमिमे संगीत पहिचान</string>
-    <string name="music_recognition_background_description">सक्षम केलापर, क्विक सेटिंग्स टाइल ArchiveTune खोलने बिना एहि डिवाइस पर बजि रहल ऑडियोक पहिचान करैत अछि।</string>
-    <string name="music_recognition_background_foss_description">FOSS संस्करणमे पृष्ठभूमिमे पहिचान अनुपलब्ध अछि। क्विक सेटिंग्स टाइल एकर बदला पहिचान स्क्रीन खोलैत अछि।</string>
     <string name="music_recognition_notification_channel_name">संगीत पहिचान</string>
     <string name="music_recognition_notification_channel_description">संगीत पहिचानक प्रगति आ परिणाम</string>
     <string name="music_recognition_notification_status_listening">सुनि रहल अछि</string>
     <string name="music_recognition_notification_status_processing">प्रक्रिया चलि रहल अछि</string>
     <string name="music_recognition_notification_status_result">परिणाम</string>
     <string name="music_recognition_notification_listening_title">संगीत सुनि रहल अछि</string>
-    <string name="music_recognition_notification_listening_text">एहि डिवाइस पर बजि रहल ऑडियो कैप्चर कऽ रहल अछि</string>
     <string name="music_recognition_notification_processing_title">ऑडियो संसाधित कऽ रहल अछि</string>
     <string name="music_recognition_notification_processing_text">कैप्चर कएल ऑडियो फिंगरप्रिन्टसँ मिलान कऽ रहल अछि</string>
     <string name="music_recognition_notification_artist">कलाकार: %1$s</string>
@@ -34,7 +28,5 @@
     <string name="music_recognition_notification_release">रिलीज: %1$s</string>
     <string name="music_recognition_notification_label">लेबल: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">कोनो गीत नहि भेटल अछि</string>
     <string name="music_recognition_notification_no_match_text">संगीतकेँ स्पष्ट रूपसँ बजैत रहए दिअ, तकर बाद फेरसँ पहिचानक प्रयास करू।</string>
-    <string name="music_recognition_notification_recording_failed_title">डिवाइसक ऑडियो कैप्चर नहि कऽ सकल अछि</string>
 </resources>

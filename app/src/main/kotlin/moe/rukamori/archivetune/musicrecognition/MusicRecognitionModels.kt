@@ -51,7 +51,7 @@ data class RecognitionHistoryEntry(
         get() = "$title $artist".trim()
 }
 
-data class BackgroundRecognitionSetting(
+data class FloatingRecognitionSetting(
     val enabled: Boolean,
     val available: Boolean,
 )
@@ -60,6 +60,11 @@ enum class RecognitionPhase {
     Listening,
     Processing,
 }
+
+data class AudioCaptureProgress(
+    val level: Float,
+    val fraction: Float,
+)
 
 sealed interface MusicRecognitionFailure {
     data object NoMatch : MusicRecognitionFailure

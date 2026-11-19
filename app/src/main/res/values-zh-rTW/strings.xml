@@ -73,11 +73,8 @@
     <string name="recently_added">最近新增</string>
     <string name="sort_descending">遞減</string>
     <string name="sort_ascending">遞增</string>
-    <string name="your_collection">您的收藏</string>
     <string name="playing_desc">播放中</string>
     <string name="tracks_label">曲目</string>
-    <string name="song_singular">歌曲</string>
-    <string name="more_playlists_desc">更多播放清單</string>
     <string name="more_label">更多</string>
     <string name="tracks_count_label">曲目數量</string>
     <string name="recently_updated">最近更新</string>
@@ -87,23 +84,18 @@
     <string name="personal_label">個人</string>
     <string name="youtube_synced">已同步</string>
     <string name="options_label">選項</string>
-    <string name="top_artist_badge">最愛藝人</string>
-    <string name="no_artist_yet">暫無藝人</string>
-    <string name="total_label">位</string>
     <string name="most_tracks">最愛曲目</string>
     <string name="least_tracks">上次播放</string>
     <string name="play_time">播放時間</string>
     <string name="subscribed_only">僅限已訂閱</string>
     <string name="all_artists_filter">所有藝人</string>
     <string name="artist_subtitle">藝人</string>
-    <string name="recently_played_artists">最近播放的藝人</string>
     <string name="newest_year">最新年份</string>
     <string name="oldest_year">最早年份</string>
     <string name="longest_duration">最長持續時間</string>
     <string name="shortest_duration">最短持續時間</string>
     <string name="year_sort">年</string>
     <string name="duration_sort">期間</string>
-    <string name="featured_album_badge">精選專輯</string>
     <string name="other_versions">其他版本</string>
     <string name="liked_songs">喜歡的歌曲</string>
     <string name="downloaded_songs">已下載的歌曲</string>
@@ -276,7 +268,6 @@
     <string name="lyrics_not_found">找不到歌詞</string>
     <string name="lyrics_word_sync">逐字同步</string>
     <string name="sleep_timer">睡眠定時</string>
-    <string name="end_of_song">歌曲結束</string>
     <plurals name="minute">
         <item quantity="other">%d分</item>
     </plurals>
@@ -394,7 +385,6 @@
     <string name="blur">模糊</string>
     <string name="contrast">對比</string>
     <string name="brightness">亮度</string>
-    <string name="custom_value">自訂值</string>
     <string name="archivetune_canvas">ArchiveTune 畫布</string>
     <string name="archivetune_canvas_desc">播放時為專輯封面加入動畫效果</string>
     <string name="player_background_style_v8_v9_desc">V8 和 V9 播放器樣式不支援此功能</string>
@@ -465,7 +455,6 @@
     <string name="enable_unison_lyrics">啟用 Unison 歌詞來源</string>
     <string name="enable_simpmusic_lyrics">啟用 SimpMusic 歌詞來源</string>
     <string name="player_and_audio">播放器與音訊</string>
-    <string name="audio_quality">音訊品質</string>
     <string name="audio_quality_auto">自動</string>
     <string name="audio_quality_high">高</string>
     <string name="audio_quality_low">低</string>
@@ -743,8 +732,6 @@
     <string name="new_version_available">新版本可用</string>
     <string name="updates">更新</string>
     <string name="current_version">目前版本</string>
-    <string name="latest_version_format">最新： %s</string>
-    <string name="updates_status_checking">正在檢查最新版本</string>
     <string name="updates_status_current">您目前使用的是最新版本</string>
     <string name="enable_update_notification">啟用更新通知</string>
     <string name="update_channel">更新頻道</string>
@@ -762,7 +749,6 @@
     <string name="update_notification_title">有可用更新</string>
     <string name="update_notification_text">ArchiveTune %s 現已推出</string>
     <string name="download">下載</string>
-    <string name="download_complete">下載完成</string>
     <string name="permissions_title">讓 ArchiveTune 發揮最佳效能</string>
     <string name="permissions_subtitle">我們需要一些權限來可靠地播放和管理您的音樂，您可以隨時在系統設定中變更這些權限。</string>
     <string name="permission_storage_title">儲存權限</string>
@@ -781,7 +767,6 @@
     <string name="onboarding_foss_variant">FOSS 版本</string>
     <string name="onboarding_version_label">版本 %1$s</string>
     <string name="onboarding_empty_title">設定不可用</string>
-    <string name="onboarding_empty_subtitle">繼續使用 ArchiveTune。</string>
     <string name="onboarding_error_generic">無法載入設定程式</string>
     <string name="onboarding_permission_allowed_by_install">已允許 (安裝)</string>
     <string name="onboarding_permission_unavailable">不可用</string>
@@ -841,7 +826,6 @@
     <string name="together_server_error">伺服器錯誤，請稍後再試</string>
     <string name="leave">離開</string>
     <string name="join">加入</string>
-    <string name="joined">已加入</string>
     <string name="loading">載入中</string>
     <string name="connecting">連線中</string>
     <string name="copy_link">複製</string>
@@ -861,7 +845,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">隨機播放：開啟</string>
     <string name="together_shuffle_off">隨機播放：關閉</string>
-    <string name="together_repeat_mode">重複 %1$d 次</string>
     <string name="together_participants_empty">目前尚無參與者</string>
     <string name="together_participants_empty_body">加入此房間的使用者將會顯示在這裡。</string>
     <string name="together_activity_log">活動紀錄</string>
@@ -930,6 +913,11 @@
     <string name="app_icon_empty">沒有可用的應用圖標</string>
     <string name="app_icon_load_failed">無法加載應用圖標</string>
     <string name="app_icon_change_failed">無法更改應用圖標</string>
+    <string name="app_icon_applying">正在套用 %1$s…</string>
+    <string name="app_icon_by_author">作者：%1$s</string>
+    <string name="app_icon_github_profile">GitHub 個人檔案</string>
+    <string name="app_icon_details">圖示詳細資料</string>
+    <string name="app_icon_use">使用此圖示</string>
     <string name="custom_background_subtitle">預覽並調整播放器及歌詞背景</string>
     <string name="custom_background_preview_player">播放器</string>
     <string name="custom_background_preview_lyrics">歌詞</string>
@@ -949,7 +937,6 @@
     <string name="eq_sound_shaping_on">聲音塑形功能已開啟</string>
     <string name="eq_sound_shaping_off">聲音塑形功能已關閉</string>
     <string name="eq_enable_description">將這些控制項應用於 ArchiveTune 播放</string>
-    <string name="eq_control_mode">控制模式</string>
     <string name="eq_basic">基本</string>
     <string name="eq_advanced">高級</string>
     <string name="eq_basic_description">快速預設與音色調節</string>

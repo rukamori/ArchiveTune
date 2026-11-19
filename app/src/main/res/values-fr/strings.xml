@@ -145,7 +145,6 @@
     <string name="undo">Annuler</string>
     <string name="lyrics_not_found">Paroles introuvables</string>
     <string name="sleep_timer">Minuterie de Sommeil</string>
-    <string name="end_of_song">Fin du titre</string>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="many">%d minutes</item>
@@ -253,7 +252,6 @@
     <string name="blur">Floue</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Luminosité</string>
-    <string name="custom_value">Valeur personnalisée</string>
     <string name="show_button1_description">Afficher/masquer le bouton 1 dans Discord Rich Presence</string>
     <string name="show_button2_description">Afficher/masquer le bouton 2 dans Discord Rich Presence</string>
     <string name="discord_activity_type">Type d\'activité</string>
@@ -279,7 +277,6 @@
     <string name="proxy_type">Type de proxy</string>
     <string name="enable_betterlyrics">Activer BetterLyrics</string>
     <string name="player_and_audio">Lecteur &amp; Audio</string>
-    <string name="audio_quality">Qualité audio</string>
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">Haute</string>
     <string name="audio_quality_low">Basse</string>
@@ -422,7 +419,6 @@
     <string name="hide_video">Masquer les clips musicaux</string>
     <string name="updates">Mises à jour</string>
     <string name="current_version">Version actuelle</string>
-    <string name="latest_version_format">Dernière mise à jour : %s</string>
     <string name="enable_update_notification">Activer les notifications de mise à jour</string>
     <string name="update_channel">Chaîne de mise à jour</string>
     <string name="recent_commits">Engagements récents</string>
@@ -546,7 +542,6 @@
     <string name="together_server_error">Erreur serveur, veuillez réessayer plus tard</string>
     <string name="leave">Quitter</string>
     <string name="join">Rejoindre</string>
-    <string name="joined">A rejoint</string>
     <string name="loading">Chargement</string>
     <string name="connecting">Connexion en cours</string>
     <string name="copy_link">Copier le lien</string>
@@ -601,7 +596,6 @@
     <string name="sort_order_descending">Décroissant</string>
     <string name="disable_animations">Désactiver les animations</string>
     <string name="disable_animations_desc">Désactivez la plupart des animations de l\'application. Recommandé pour les appareils bas de gamme</string>
-    <string name="updates_status_checking">Vérification de la dernière version</string>
     <string name="updates_status_current">Vous utilisez la dernière version disponible</string>
     <string name="updates_loading_commits">Chargement des modifications récentes</string>
     <string name="updates_recent_commits_count">%1$d modifications récentes</string>
@@ -682,7 +676,6 @@
     <string name="sort_z_to_a">Z → A</string>
     <string name="album_name">Nom de l\'album</string>
     <string name="oldest_first">Du plus ancien au plus récent</string>
-    <string name="song_singular">Titre</string>
     <string name="font_preference_default">Par défaut</string>
     <string name="haptics">Vibration</string>
     <string name="play_time">Temps d\'écoute</string>
@@ -697,7 +690,6 @@
     <string name="app_icon">Icône de l\'application</string>
     <string name="display">Affichage</string>
     <string name="youtube_synced">Synchronisé avec YouTube</string>
-    <string name="your_collection">Votre Collection</string>
     <string name="discord_login_description">Connectez votre compte Discord via OAuth afin qu\'ArchiveTune puisse publier des informations de présence enrichies.</string>
     <string name="personal_label">Personnel</string>
     <string name="lyrics_animation_style_v2_only">Disponible uniquement en mode paroles V2</string>
@@ -723,8 +715,6 @@
     <string name="most_tracks">La plupart des titres</string>
     <string name="remove_account">Supprimer le compte</string>
     <string name="paxsenix_status_degraded">Dégradé</string>
-    <string name="featured_album_badge">ALBUM À L\'AFFICHE</string>
-    <string name="recently_played_artists">Artistes récemment écoutés</string>
     <string name="discord_authorization_success">Compte Discord connecté</string>
     <string name="tracks_label">titres</string>
     <string name="newest_year">Année en cours</string>
@@ -734,11 +724,8 @@
     <string name="saved_accounts">Comptes enregistrés</string>
     <string name="widget_tap_to_open">Appuyez pour ouvrir ArchiveTune</string>
     <string name="discord_refresh_failed">Échec de l\'actualisation de la présence sur Discord</string>
-    <string name="top_artist_badge">MEILLEUR ARTISTE</string>
     <string name="youtube_channels">Chaînes YouTube</string>
-    <string name="no_artist_yet">Aucun artiste pour l\'instant</string>
     <string name="discord_url_source_custom">URL personnalisée</string>
-    <string name="total_label">total</string>
     <string name="list_view">Affichage sous forme de liste</string>
     <string name="player_background_style_v8_v9_desc">Non disponible avec les styles de lecteur V8 et V9</string>
     <string name="account_integrations_summary">Discord, Last.fm, Libre.fm, ListenBrainz</string>
@@ -754,7 +741,6 @@
     <string name="recently_added">Ajoutés récemment</string>
     <string name="top_mixes">Les Meilleurs Mixages pour Vous</string>
     <string name="sort_a_to_z">A → Z</string>
-    <string name="more_playlists_desc">Plus de Playlists</string>
     <string name="tracks_count_label">Nombre de titres</string>
     <string name="discord_url_source_artist">URL de l\'artiste</string>
     <string name="font_preference">Police</string>
@@ -838,7 +824,6 @@
     <string name="lastfm_endpoint_invalid">Saisissez un point de terminaison HTTP ou HTTPS valide.</string>
     <string name="lastfm_service_not_configured">Configurez le service de scrobbling avant de vous connecter.</string>
     <string name="onboarding_empty_title">Configuration indisponible</string>
-    <string name="onboarding_empty_subtitle">Continuez vers ArchiveTune.</string>
     <string name="onboarding_error_generic">Impossible de charger le programme d\'installation</string>
     <string name="onboarding_permission_allowed_by_install">Autorisé par l\'installation</string>
     <string name="lyrics_search_result_stats">%1$d lignes, %2$d caractères</string>
@@ -881,7 +866,6 @@
     <string name="together_activity_join_requested">%1$s a demandé à rejoindre le groupe</string>
     <string name="together_activity_host_transferred">L\'hôte a été transféré vers %1$s</string>
     <string name="unhide">Afficher</string>
-    <string name="download_complete">Téléchargement complet</string>
     <string name="onboarding_welcome_title">Bienvenue sur ArchiveTune</string>
     <string name="onboarding_welcome_subtitle">Configurez la lecture, la musique locale et les autorisations de mise à jour avant de commencer à écouter.</string>
     <string name="onboarding_permissions_title">Vérifier les autorisations</string>
@@ -911,7 +895,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Lecture aléatoire activée</string>
     <string name="together_shuffle_off">Lecture aléatoire désactivée</string>
-    <string name="together_repeat_mode">Répéter %1$d</string>
     <string name="together_activity_playback_paused">%1$s a mis la lecture en pause</string>
     <string name="together_activity_playback_resumed">%1$s a repris la lecture</string>
     <string name="together_activity_song_changed">%1$s a remplacé le titre par %2$s</string>
@@ -941,6 +924,11 @@
     <string name="app_icon_empty">Aucune icône d\'application n\'est disponible</string>
     <string name="app_icon_load_failed">Impossible de charger les icônes des applications</string>
     <string name="app_icon_change_failed">Impossible de modifier l\'icône de l\'application</string>
+    <string name="app_icon_applying">Application de %1$s…</string>
+    <string name="app_icon_by_author">par %1$s</string>
+    <string name="app_icon_github_profile">Profil GitHub</string>
+    <string name="app_icon_details">Détails de l\'icône</string>
+    <string name="app_icon_use">Utiliser cette icône</string>
     <string name="together_room_closed_inactivity_notification">La salle a été fermée car personne ne s\'y est connecté pendant 10 minutes</string>
     <string name="show_player_volume_bar">Afficher la barre de volume</string>
     <string name="player_volume_bar_v7_v8_only">Disponible uniquement avec les modèles de lecteurs V7 et V8</string>
@@ -978,7 +966,6 @@
     <string name="eq_sound_shaping_on">Le façonnage du son est activé</string>
     <string name="eq_sound_shaping_off">Le façonnage du son est désactivé</string>
     <string name="eq_enable_description">Applique ces commandes à la lecture d\'ArchiveTune</string>
-    <string name="eq_control_mode">Mode de commande</string>
     <string name="eq_basic">Basique</string>
     <string name="eq_advanced">Avancé</string>
     <string name="eq_basic_description">Préréglages rapides et large palette de modulations sonores</string>

@@ -179,7 +179,6 @@
     <string name="undo">Скасувати</string>
     <string name="lyrics_not_found">Текст пісні не знайдено</string>
     <string name="sleep_timer">Таймер вимкнення</string>
-    <string name="end_of_song">Кінець пісні</string>
     <plurals name="minute">
         <item quantity="one">%d хвилина</item>
         <item quantity="few">%d хвилини</item>
@@ -298,7 +297,6 @@
     <string name="blur">Розмиття</string>
     <string name="contrast">Контраст</string>
     <string name="brightness">Яскравість</string>
-    <string name="custom_value">Власне значення</string>
     <string name="show_button1_description">Увімкнути/вимкнути відображення кнопки 1 у функції «Rich Presence» Discord</string>
     <string name="show_button2_description">Увімкнути/вимкнути відображення кнопки 2 у функції «Rich Presence» Discord</string>
     <string name="discord_activity_type">Тип активності</string>
@@ -334,7 +332,6 @@
     <string name="enable_betterlyrics">Увімкнути BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Увімкнути SimpMusic</string>
     <string name="player_and_audio">Плеєр та аудіо</string>
-    <string name="audio_quality">Якість звуку</string>
     <string name="audio_quality_auto">Авто</string>
     <string name="audio_quality_high">Висока</string>
     <string name="audio_quality_low">Низька</string>
@@ -532,7 +529,6 @@
     <string name="new_version_available">Доступна нова версія</string>
     <string name="updates">Оновлення</string>
     <string name="current_version">Поточна версія</string>
-    <string name="latest_version_format">Остання: %s</string>
     <string name="enable_update_notification">Увімкнути сповіщення про оновлення</string>
     <string name="update_channel">Канал оновлень</string>
     <string name="recent_commits">Останні зміни</string>
@@ -585,7 +581,6 @@
     <string name="together_server_error">Помилка сервера. Спробуйте ще раз пізніше</string>
     <string name="leave">Вийти</string>
     <string name="join">Доєднатися</string>
-    <string name="joined">Приєднався</string>
     <string name="loading">Завантаження</string>
     <string name="connecting">З\'єднання…</string>
     <string name="copy_link">Скопіювати посилання</string>
@@ -637,7 +632,6 @@
     <string name="total_requests">Загальна кількість запитів</string>
     <string name="success_rate">Відсоток успішності</string>
     <string name="providers">Провайдери</string>
-    <string name="updates_status_checking">Перевірка наявності останньої версії</string>
     <string name="updates_status_current">Ви використовуєте останню доступну версію</string>
     <string name="updates_loading_commits">Завантаження останніх комітів</string>
     <string name="updates_recent_commits_count">%1$d останніх комітів</string>

@@ -87,7 +87,13 @@ data class MediaInfoQuickFact(@param:DrawableRes val iconRes: Int, val text: Str
 data class MediaInfoDetail(@param:StringRes val labelRes: Int, val value: String?)
 
 @Immutable
-data class MediaInfoMetric(@param:StringRes val labelRes: Int, val value: String?)
+data class MediaInfoNumbers(
+    val views: String?,
+    val likes: String?,
+    val dislikes: String?,
+    val subscribers: String?,
+    val likeRatio: Float?,
+)
 
 @Immutable
 data class MediaInfoUiModel(
@@ -101,7 +107,7 @@ data class MediaInfoUiModel(
     val statistics: MediaInfoState<MediaInfoStatistics>,
     val overview: ImmutableList<MediaInfoDetail>,
     val quickFacts: ImmutableList<MediaInfoQuickFact>,
-    val metrics: ImmutableList<MediaInfoMetric>,
+    val numbers: MediaInfoNumbers,
 )
 
 sealed interface MediaInfoEvent {

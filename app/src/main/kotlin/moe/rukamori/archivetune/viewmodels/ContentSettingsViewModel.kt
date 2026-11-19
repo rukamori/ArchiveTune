@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.viewmodels
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.aicontentfilter.AiContentFilterRefreshResult
@@ -34,6 +36,9 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.paxsenix.models.PaxsenixStats
+import moe.rukamori.archivetune.settings.AppLanguageOption
+import moe.rukamori.archivetune.settings.AppLanguageSettingsUseCases
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed interface PaxsenixStatsState {
@@ -45,6 +50,23 @@ sealed interface PaxsenixStatsState {
 
     data object Error : PaxsenixStatsState
 }
+
+@Immutable
+sealed interface AppLanguageSettingsState {
+    data object Loading : AppLanguageSettingsState
+    data class Success(val model: AppLanguageSettingsUiModel) : AppLanguageSettingsState
+    data object Empty : AppLanguageSettingsState
+    data class Error(val messageResId: Int) : AppLanguageSettingsState
+}
+
+@Immutable
+data class AppLanguageSettingsUiModel(
+    val useSystemLanguage: Boolean,
+    val selectedLanguage: AppLanguageOption,
+    val languages: ImmutableList<AppLanguageOption>,
+    val saving: Boolean,
+    val selectorVisible: Boolean,
+)
 
 sealed interface AiContentFilterSettingsState {
     data object Loading : AiContentFilterSettingsState
@@ -89,7 +111,18 @@ class ContentSettingsViewModel
         observeAiContentFilter: ObserveAiContentFilterUseCase,
         private val updateAiContentFilterSettings: UpdateAiContentFilterSettingsUseCase,
         private val refreshAiContentFilterLists: RefreshAiContentFilterUseCase,
+        private val appLanguageSettings: AppLanguageSettingsUseCases,
     ) : ViewModel() {
+        private val _appLanguageState = MutableStateFlow<AppLanguageSettingsState>(AppLanguageSettingsState.Loading)
+        val appLanguageState = _appLanguageState.asStateFlow()
+        private data class AppLanguageControls(
+            val saving: Boolean = false,
+            val selectorVisible: Boolean = false,
+        )
+
+        private val appLanguageControls = MutableStateFlow(AppLanguageControls())
+        private var appLanguageObservationJob: Job? = null
+        private var appLanguageUpdateJob: Job? = null
         private val _paxsenixStatsState = MutableStateFlow<PaxsenixStatsState>(PaxsenixStatsState.Loading)
         val paxsenixStatsState = _paxsenixStatsState.asStateFlow()
         private val refreshingAiContentFilter = MutableStateFlow(false)
@@ -123,7 +156,71 @@ class ContentSettingsViewModel
             )
 
         init {
+            loadAppLanguageSettings()
             startAiContentFilterRefresh(force = false, showSuccess = false)
+        }
+
+        fun loadAppLanguageSettings() {
+            appLanguageObservationJob?.cancel()
+            _appLanguageState.value = AppLanguageSettingsState.Loading
+            appLanguageObservationJob = viewModelScope.launch {
+                combine(appLanguageSettings.observeSettings(), appLanguageControls) { settings, controls ->
+                    AppLanguageSettingsUiModel(
+                        useSystemLanguage = settings.useSystemLanguage,
+                        selectedLanguage = appLanguageSettings.languages.first { it.languageTag == settings.languageTag },
+                        languages = appLanguageSettings.languages,
+                        saving = controls.saving,
+                        selectorVisible = controls.selectorVisible && !settings.useSystemLanguage,
+                    )
+                }.catch { exception ->
+                    if (exception is CancellationException) throw exception
+                    Timber.e(exception, "Failed to observe app language settings")
+                    _appLanguageState.value = AppLanguageSettingsState.Error(R.string.error_unknown)
+                }.collect { model ->
+                    _appLanguageState.value = AppLanguageSettingsState.Success(model)
+                }
+            }
+        }
+
+        fun setUseSystemLanguage(enabled: Boolean) {
+            val model = (_appLanguageState.value as? AppLanguageSettingsState.Success)?.model ?: return
+            if (model.useSystemLanguage == enabled) return
+            updateAppLanguage { appLanguageSettings.setUseSystemLanguage(enabled) }
+        }
+
+        fun setAppLanguage(language: AppLanguageOption) {
+            val model = (_appLanguageState.value as? AppLanguageSettingsState.Success)?.model ?: return
+            dismissAppLanguageSelector()
+            if (model.useSystemLanguage || model.selectedLanguage == language) return
+            updateAppLanguage { appLanguageSettings.setLanguage(language.languageTag) }
+        }
+
+        fun openAppLanguageSelector() {
+            val model = (_appLanguageState.value as? AppLanguageSettingsState.Success)?.model ?: return
+            if (model.useSystemLanguage || model.saving) return
+            appLanguageControls.update { it.copy(selectorVisible = true) }
+        }
+
+        fun dismissAppLanguageSelector() {
+            appLanguageControls.update { it.copy(selectorVisible = false) }
+        }
+
+        private fun updateAppLanguage(update: suspend () -> Unit) {
+            if (appLanguageUpdateJob?.isActive == true) return
+            appLanguageUpdateJob = viewModelScope.launch {
+                appLanguageControls.update { it.copy(saving = true, selectorVisible = false) }
+                try {
+                    update()
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Timber.e(exception, "Failed to save app language settings")
+                    appLanguageObservationJob?.cancel()
+                    _appLanguageState.value = AppLanguageSettingsState.Error(R.string.error_unknown)
+                } finally {
+                    appLanguageControls.update { it.copy(saving = false) }
+                }
+            }
         }
 
         fun fetchPaxsenixStats() {
@@ -140,7 +237,7 @@ class ContentSettingsViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 lyricsHelper.clearCache()
                 database.query {
-                    clearAllLyrics()
+                    clearRemoteLyrics()
                 }
             }
         }

@@ -11,16 +11,14 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
-import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -34,6 +32,8 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.text.TextAlign
+import moe.rukamori.archivetune.R
 
 class AlbumArtWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -53,43 +53,52 @@ class AlbumArtWidget : GlanceAppWidget() {
 private fun AlbumArtWidgetContent(context: Context) {
     val state = currentState<Preferences>().toWidgetPlaybackState(context)
     val size = LocalSize.current
-    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
-    val frame = if (minOf(size.width, size.height) < 112.dp) 6.dp else 12.dp
-    val horizontal = size.width >= size.height + 112.dp * textScale
-    val showCaption = size.height >= size.width + 40.dp * textScale
-    val coverSize = minOf(
-        size.width - frame * 2,
-        size.height - frame * 2 - if (showCaption) 48.dp * textScale else 0.dp,
-    ).coerceAtLeast(48.dp)
+    val textScale = context.widgetTextScale()
+    val frame = if (minOf(size.width, size.height) < 120.dp) 8.dp else 12.dp
+    val horizontal = size.width >= size.height + 120.dp * textScale
+    val captionHeight = 44.dp * textScale
+    val showCaption = !horizontal && size.height >= size.width + captionHeight - 8.dp
 
-    WidgetTheme(state.dominantColor) { palette ->
-        Box(
-            modifier = GlanceModifier.fillMaxSize().background(palette.surface)
-                .cornerRadius(20.dp).clickable(openArchiveTuneAction(context)).padding(frame),
-        ) {
+    WidgetTheme(state.dominantColor, WidgetSurfaceStyle.Ambient, context) { palette ->
+        WidgetSurface(state, palette, context, contentPadding = frame) {
             if (horizontal) {
-                Row(
-                    modifier = GlanceModifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AlbumArtCover(state, palette, context, coverSize, showMetadata = true)
-                    Spacer(GlanceModifier.width(12.dp))
-                    WidgetTrackInfo(
-                        state, palette, GlanceModifier.defaultWeight(), titleSize = 14,
-                        titleLines = if (size.height >= 88.dp * textScale) 2 else 1,
-                        showArtist = size.height - frame * 2 >= 40.dp * textScale,
-                    )
+                val coverSize = (size.height - frame * 2).coerceAtLeast(48.dp)
+                Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    AlbumFrameCover(state, palette, context, coverSize, describeCover = false)
+                    Spacer(GlanceModifier.width(14.dp))
+                    Column(modifier = GlanceModifier.defaultWeight()) {
+                        WidgetOverline(context.getString(R.string.widget_now_playing), palette, context)
+                        Spacer(GlanceModifier.height(4.dp))
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.fillMaxWidth(),
+                            titleSize = 16.sp,
+                            titleLines = if (size.height >= 120.dp * textScale) 2 else 1,
+                        )
+                    }
                 }
             } else {
+                val coverSize =
+                    minOf(
+                        size.width - frame * 2,
+                        size.height - frame * 2 - if (showCaption) captionHeight else 0.dp,
+                    ).coerceAtLeast(48.dp)
                 Column(
                     modifier = GlanceModifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AlbumArtCover(state, palette, context, coverSize, showMetadata = showCaption)
+                    AlbumFrameCover(state, palette, context, coverSize, describeCover = !showCaption)
                     if (showCaption) {
                         Spacer(GlanceModifier.height(8.dp))
-                        WidgetTrackInfo(state, palette, GlanceModifier.fillMaxWidth(), titleSize = 14)
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.fillMaxWidth(),
+                            titleSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
@@ -98,23 +107,27 @@ private fun AlbumArtWidgetContent(context: Context) {
 }
 
 @Composable
-private fun AlbumArtCover(
+private fun AlbumFrameCover(
     state: WidgetPlaybackState,
     palette: WidgetPalette,
     context: Context,
     coverSize: Dp,
-    showMetadata: Boolean,
+    describeCover: Boolean,
 ) {
     Box(modifier = GlanceModifier.size(coverSize), contentAlignment = Alignment.BottomEnd) {
         WidgetArtwork(
-            artPath = state.artPath, context = context,
-            contentDescription = if (showMetadata) null else state.title,
-            targetSize = coverSize, cornerRadius = 8.dp,
-            palette = palette, modifier = GlanceModifier.fillMaxSize(),
+            artPath = state.artPath,
+            context = context,
+            contentDescription = if (describeCover) state.title else null,
+            targetSize = coverSize,
+            shape = WidgetArtShape.Rounded,
+            cornerRadius = 18.dp,
+            palette = palette,
+            modifier = GlanceModifier.fillMaxSize(),
         )
         if (state.isAvailable) {
-            Box(modifier = GlanceModifier.padding(4.dp)) {
-                WidgetPlayPauseButton(state, palette, context, cornerRadius = 12.dp)
+            Box(modifier = GlanceModifier.padding(8.dp)) {
+                WidgetHeroPlayButton(state, palette, context, (coverSize * 0.3f).coerceIn(36.dp, 56.dp))
             }
         }
     }

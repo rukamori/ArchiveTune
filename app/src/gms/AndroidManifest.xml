@@ -10,7 +10,7 @@
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application>
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
@@ -24,9 +24,9 @@
             android:theme="@style/Theme.ArchiveTune.Transparent" />
 
         <service
-            android:name=".musicrecognition.BackgroundMusicRecognitionService"
+            android:name=".musicrecognition.FloatingMusicRecognitionService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone"
+            android:foregroundServiceType="microphone"
             android:stopWithTask="false" />
 
         <meta-data

@@ -13,15 +13,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
+import moe.rukamori.archivetune.repository.MoodAndGenresArtworkRepository
 import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
 
 @HiltViewModel
 class MoodAndGenresViewModel
     @Inject
-    constructor() : ViewModel() {
+    constructor(
+        artworkRepository: MoodAndGenresArtworkRepository,
+    ) : ViewModel() {
         val moodAndGenres = MutableStateFlow<List<MoodAndGenres.Item>?>(null)
+        private val artworkLoader = MoodAndGenresArtworkLoader(artworkRepository, viewModelScope)
+        val artwork = artworkLoader.state
 
         init {
             viewModelScope.launch {
@@ -33,5 +39,9 @@ class MoodAndGenresViewModel
                         reportException(it)
                     }
             }
+        }
+
+        fun setVisibleArtwork(endpoints: List<BrowseEndpoint>) {
+            artworkLoader.setVisible(endpoints)
         }
     }

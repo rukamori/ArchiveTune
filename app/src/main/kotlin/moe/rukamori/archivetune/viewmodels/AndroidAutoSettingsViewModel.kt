@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.androidauto.AndroidAutoActionSlot
 import moe.rukamori.archivetune.androidauto.AndroidAutoCustomAction
+import moe.rukamori.archivetune.androidauto.AndroidAutoNetworkState
 import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsSnapshot
 import moe.rukamori.archivetune.androidauto.AndroidAutoSettingsUseCases
 import timber.log.Timber
@@ -42,6 +43,9 @@ sealed interface AndroidAutoSettingsState {
 @Immutable
 data class AndroidAutoSettingsUiModel(
     val snapshot: AndroidAutoSettingsSnapshot,
+    val network: AndroidAutoNetworkState,
+    val onlinePlaybackAllowed: Boolean,
+    val remoteArtworkAllowed: Boolean,
     val busy: Boolean,
 )
 
@@ -85,13 +89,17 @@ class AndroidAutoSettingsViewModel @Inject constructor(
 
     val state = combine(
         useCases.observeSettings(),
+        useCases.networkState,
         controls,
         permissionVersion,
-    ) { snapshot, controls, _ ->
+    ) { snapshot, network, controls, _ ->
         controls.error?.let(AndroidAutoSettingsState::Error)
             ?: AndroidAutoSettingsState.Success(
                 AndroidAutoSettingsUiModel(
                     snapshot = snapshot.copy(hasLocalAudioPermission = useCases.hasLocalAudioPermission()),
+                    network = network,
+                    onlinePlaybackAllowed = useCases.isOnlinePlaybackAllowed(snapshot.configuration, network),
+                    remoteArtworkAllowed = useCases.isRemoteArtworkAllowed(snapshot.configuration, network),
                     busy = controls.busy,
                 ),
             )

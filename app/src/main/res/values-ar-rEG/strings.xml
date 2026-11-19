@@ -108,12 +108,9 @@
     <string name="blur">تغبيش</string>
     <string name="contrast">وضوح الألوان</string>
     <string name="brightness">السطوع</string>
-    <string name="custom_value">قيمة على ذوقك</string>
     <string name="new_version_available">إصدار جديد متاح</string>
     <string name="updates">تحديثات</string>
     <string name="current_version">الإصدار الحالي</string>
-    <string name="latest_version_format">آخر إصدار: %s</string>
-    <string name="updates_status_checking">بنشوفلك آخر إصدار</string>
     <string name="updates_status_current">معاك أحدث إصدار متاح دلوقتي</string>
     <string name="enable_update_notification">فعل إشعارات التحديث</string>
     <string name="unknown">مش معروف</string>
@@ -159,11 +156,8 @@
     <string name="recently_added">المتضافة جديد</string>
     <string name="sort_descending">ترتيب تنازلي</string>
     <string name="sort_ascending">ترتيب تصاعدي</string>
-    <string name="your_collection">مجموعتك</string>
     <string name="playing_desc">شغال دلوقتي</string>
     <string name="tracks_label">تراكات</string>
-    <string name="song_singular">أغنية</string>
-    <string name="more_playlists_desc">بلاي ليستات أكتر</string>
     <string name="more_label">أكتر</string>
     <string name="tracks_count_label">عدد التراكات</string>
     <string name="recently_updated">المتحدثة قريب</string>
@@ -173,23 +167,18 @@
     <string name="personal_label">شخصي</string>
     <string name="youtube_synced">متزامن مع يوتيوب</string>
     <string name="options_label">خيارات</string>
-    <string name="top_artist_badge">أحسن فنان</string>
-    <string name="no_artist_yet">مفيش فنانين لسه</string>
-    <string name="total_label">الإجمالي</string>
     <string name="most_tracks">أكتر التراكات</string>
     <string name="least_tracks">أقل التراكات</string>
     <string name="play_time">وقت التشغيل</string>
     <string name="subscribed_only">المشترك فيهم بس</string>
     <string name="all_artists_filter">كل الفنانين</string>
     <string name="artist_subtitle">الفنان</string>
-    <string name="recently_played_artists">الفنانين اللي اتشغلوا قريب</string>
     <string name="newest_year">أجدد سنة</string>
     <string name="oldest_year">أقدم سنة</string>
     <string name="longest_duration">أطول مدة</string>
     <string name="shortest_duration">أقصر مدة</string>
     <string name="year_sort">السنة</string>
     <string name="duration_sort">المدة</string>
-    <string name="featured_album_badge">ألبوم مميز</string>
     <string name="cast">بث</string>
     <string name="cast_devices">أجهزة البث</string>
     <string name="cast_sheet_subtitle">اختار المكان اللي عايز ArchiveTune يشتغل فيه</string>
@@ -314,7 +303,6 @@
     <string name="lyrics_not_found">ملقناش الكلمات بتاعة الأغنية</string>
     <string name="lyrics_word_sync">مزامنة الكلمات</string>
     <string name="sleep_timer">تايمر النوم</string>
-    <string name="end_of_song">نهاية الأغنية</string>
     <plurals name="minute">
         <item quantity="one">ولا دقيقة</item>
         <item quantity="other">دقيقة واحدة</item>
@@ -352,6 +340,11 @@
     <string name="app_icon_empty">مفيش أي أيقونات متاحة للتطبيق</string>
     <string name="app_icon_load_failed">معرفناش نحمل أيقونات التطبيق</string>
     <string name="app_icon_change_failed">معرفناش نغير أيقونة التطبيق</string>
+    <string name="app_icon_applying">جارٍ تطبيق %1$s…</string>
+    <string name="app_icon_by_author">بواسطة %1$s</string>
+    <string name="app_icon_github_profile">ملف GitHub الشخصي</string>
+    <string name="app_icon_details">تفاصيل الأيقونة</string>
+    <string name="app_icon_use">استخدام هذه الأيقونة</string>
     <string name="theme">الثيم</string>
     <string name="enable_dynamic_theme">تفعيل الثيم الديناميكي</string>
     <string name="random_theme_on_startup">ثيم عشوائي أول ما يفتح التطبيق</string>
@@ -509,7 +502,6 @@
     <string name="enable_unison_lyrics">تفعيل كلمات Unison</string>
     <string name="enable_simpmusic_lyrics">تفعيل كلمات SimpMusic</string>
     <string name="player_and_audio">المشغل والصوت</string>
-    <string name="audio_quality">جودة الصوت</string>
     <string name="audio_quality_auto">تلقائي</string>
     <string name="audio_quality_high">عالية</string>
     <string name="audio_quality_low">منخفضة</string>
@@ -792,7 +784,6 @@
     <string name="update_notification_title">في تحديث جديد نزل</string>
     <string name="update_notification_text">تحديث ArchiveTune %s بقى متاح دلوقتي</string>
     <string name="download">تنزيل</string>
-    <string name="download_complete">اكتمل التنزيل</string>
     <string name="permissions_title">خلي ArchiveTune يشتغل بأفضل أداء</string>
     <string name="permissions_subtitle">بنحتاج شوية صلاحيات عشان نشغل وننظم مزيكتك من غير مشاكل. تقدر تغيرهم في أي وقت من إعدادات النظام.</string>
     <string name="permission_storage_title">الوصول للمساحة</string>
@@ -811,7 +802,6 @@
     <string name="onboarding_foss_variant">نسخة المصدر المفتوح (FOSS)</string>
     <string name="onboarding_version_label">إصدار %1$s</string>
     <string name="onboarding_empty_title">الإعداد مش متاح</string>
-    <string name="onboarding_empty_subtitle">كمل لـ ArchiveTune.</string>
     <string name="onboarding_error_generic">معرفناش نحمل الإعداد</string>
     <string name="onboarding_permission_allowed_by_install">مسموح بيه مع التثبيت</string>
     <string name="onboarding_permission_unavailable">مش متاح</string>
@@ -871,7 +861,6 @@
     <string name="together_server_error">خطأ في السيرفر، جرب تاني بعدين</string>
     <string name="leave">مغادرة</string>
     <string name="join">انضمام</string>
-    <string name="joined">انضممت</string>
     <string name="loading">جاري التحميل</string>
     <string name="connecting">جاري الاتصال</string>
     <string name="copy_link">نسخ الرابط</string>
@@ -891,7 +880,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">تشغيل عشوائي مفعل</string>
     <string name="together_shuffle_off">التشغيل العشوائي متوقف</string>
-    <string name="together_repeat_mode">تكرار %1$d</string>
     <string name="together_participants_empty">مفيش مشاركين لسه</string>
     <string name="together_participants_empty_body">الناس اللي هتنضم للجلسة دي هتظهر هنا.</string>
     <string name="together_activity_log">سجل النشاط</string>
@@ -960,7 +948,6 @@
     <string name="eq_sound_shaping_on">تعديل الصوت مفعل</string>
     <string name="eq_sound_shaping_off">تعديل الصوت معطل</string>
     <string name="eq_enable_description">بيطبق الإعدادات دي على تشغيل ArchiveTune</string>
-    <string name="eq_control_mode">وضع التحكم</string>
     <string name="eq_basic">بسيط</string>
     <string name="eq_advanced">متقدم</string>
     <string name="eq_basic_description">إعدادات جاهزة سريعة وتعديل عام للنغمة</string>

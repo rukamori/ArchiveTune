@@ -29,6 +29,7 @@ data class AppIcon(
     val name: String?,
     val author: String?,
     val githubAuthorUrl: String?,
+    val sourceUrl: String?,
     @DrawableRes val previewDrawableResId: Int,
     val isDefault: Boolean,
 )
@@ -44,6 +45,7 @@ private data class GeneratedAppIcon(
     val name: String,
     val author: String,
     val githubAuthorUrl: String = "",
+    val link: String = "",
     val source: String,
     val drawableResourceName: String,
     val aliasClassName: String,
@@ -139,6 +141,7 @@ class AppIconRepository
                         name = null,
                         author = null,
                         githubAuthorUrl = null,
+                        sourceUrl = null,
                         previewDrawableResId = R.drawable.app_icon_small,
                         isDefault = true,
                     ),
@@ -161,6 +164,7 @@ class AppIconRepository
                 name = generated.name,
                 author = generated.author,
                 githubAuthorUrl = generated.githubAuthorUrl.takeIf(String::isNotBlank),
+                sourceUrl = generated.link.takeIf(String::isNotBlank),
                 previewDrawableResId = drawableResId,
                 isDefault = false,
             )

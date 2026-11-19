@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,6 +62,7 @@ import moe.rukamori.archivetune.viewmodels.LocalPlaylistViewModel
 @Composable
 fun PlaylistSuggestionsSection(
     modifier: Modifier = Modifier,
+    swipeContentBackgroundColor: Color? = null,
     viewModel: LocalPlaylistViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -184,6 +186,7 @@ fun PlaylistSuggestionsSection(
             suggestions.items.forEach { item ->
                 YouTubeListItem(
                     item = item,
+                    swipeContentBackgroundColor = swipeContentBackgroundColor,
                     isActive = item.id == mediaMetadata?.id,
                     isPlaying = isPlaying == true,
                     trailingContent = {

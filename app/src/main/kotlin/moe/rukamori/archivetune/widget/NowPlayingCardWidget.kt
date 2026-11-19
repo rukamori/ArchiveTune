@@ -10,19 +10,16 @@ package moe.rukamori.archivetune.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
-import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -30,10 +27,10 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
+import moe.rukamori.archivetune.R
 
 class NowPlayingCardWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -53,98 +50,119 @@ class NowPlayingCardWidget : GlanceAppWidget() {
 private fun NowPlayingCardContent(context: Context) {
     val state = currentState<Preferences>().toWidgetPlaybackState(context)
     val size = LocalSize.current
-    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
-    val split = size.width >= 300.dp && size.height >= 96.dp + 40.dp * textScale
-    val stacked = !split && size.height >= 200.dp + 56.dp * textScale
-    val compactTransport = state.isAvailable && size.height >= 92.dp + 44.dp * textScale
-    val compactProgress = state.isAvailable && size.height >= 100.dp
-    val compactTextHeight = size.height - 16.dp -
-        (if (compactTransport) 56.dp else 0.dp) - (if (compactProgress) 12.dp else 0.dp)
+    val textScale = context.widgetTextScale()
+    val padding = 14.dp
+    val split = size.width >= 280.dp && size.height >= 120.dp + 40.dp * textScale
+    val stacked = !split && size.height >= 240.dp + 64.dp * textScale
 
-    WidgetTheme(state.dominantColor) { palette ->
-        Box(
-            modifier = GlanceModifier.fillMaxSize().background(palette.surface)
-                .cornerRadius(28.dp).clickable(openArchiveTuneAction(context)),
-        ) {
+    WidgetTheme(state.dominantColor, WidgetSurfaceStyle.Ambient, context) { palette ->
+        WidgetSurface(state, palette, context, contentPadding = padding) {
             when {
                 split -> {
-                    val artworkWidth = minOf(size.height, size.width * 0.38f, size.width - 180.dp)
-                    Row(modifier = GlanceModifier.fillMaxSize()) {
+                    val artSize = minOf(size.height - padding * 2, size.width * 0.42f).coerceAtLeast(64.dp)
+                    Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         WidgetArtwork(
-                            artPath = state.artPath, context = context, contentDescription = null,
-                            targetSize = maxOf(artworkWidth, size.height), cornerRadius = 0.dp,
+                            artPath = state.artPath,
+                            context = context,
+                            contentDescription = null,
+                            targetSize = artSize,
+                            shape = WidgetArtShape.Rounded,
+                            cornerRadius = 20.dp,
                             palette = palette,
-                            modifier = GlanceModifier.width(artworkWidth).fillMaxHeight(),
+                            modifier = GlanceModifier.size(artSize),
                         )
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(12.dp),
-                        ) {
-                            WidgetTrackInfo(
-                                state, palette, GlanceModifier.defaultWeight().fillMaxWidth(),
-                                titleLines = if (size.height >= 136.dp + 64.dp * textScale) 2 else 1,
+                        Spacer(GlanceModifier.width(14.dp))
+                        Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight()) {
+                            CardHeader(state, palette, context)
+                            Spacer(GlanceModifier.defaultWeight())
+                            WidgetTrackText(
+                                state,
+                                palette,
+                                GlanceModifier.fillMaxWidth(),
+                                titleSize = 17.sp,
+                                titleLines = if (size.height >= 170.dp + 64.dp * textScale) 2 else 1,
                             )
                             if (state.isAvailable) {
                                 Spacer(GlanceModifier.height(8.dp))
-                                WidgetPlaybackProgress(state, palette)
-                                Spacer(GlanceModifier.height(8.dp))
-                                WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                                WidgetProgress(state, palette)
+                                Spacer(GlanceModifier.height(4.dp))
+                                WidgetTransport(state, palette, context, GlanceModifier.fillMaxWidth(), heroSize = 44.dp)
                             }
                         }
                     }
                 }
                 stacked -> {
-                    val artworkHeight = size.height - (96.dp + 56.dp * textScale)
-                    Column(modifier = GlanceModifier.fillMaxSize()) {
+                    val artSize =
+                        minOf(size.width - padding * 2, size.height - padding * 2 - (128.dp + 40.dp * textScale))
+                            .coerceAtLeast(64.dp)
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        CardHeader(state, palette, context)
+                        Spacer(GlanceModifier.height(8.dp))
                         WidgetArtwork(
-                            artPath = state.artPath, context = context, contentDescription = null,
-                            targetSize = maxOf(size.width, artworkHeight), cornerRadius = 0.dp,
+                            artPath = state.artPath,
+                            context = context,
+                            contentDescription = null,
+                            targetSize = artSize,
+                            shape = WidgetArtShape.Rounded,
+                            cornerRadius = 22.dp,
                             palette = palette,
-                            modifier = GlanceModifier.fillMaxWidth().height(artworkHeight),
+                            modifier = GlanceModifier.size(artSize),
                         )
-                        Column(modifier = GlanceModifier.fillMaxWidth().defaultWeight().padding(12.dp)) {
-                            WidgetTrackInfo(state, palette, GlanceModifier.defaultWeight().fillMaxWidth())
-                            if (state.isAvailable) {
-                                WidgetPlaybackProgress(state, palette)
-                                Spacer(GlanceModifier.height(8.dp))
-                                WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
-                            }
+                        Spacer(GlanceModifier.defaultWeight())
+                        WidgetTrackText(state, palette, GlanceModifier.fillMaxWidth(), titleSize = 17.sp)
+                        if (state.isAvailable) {
+                            Spacer(GlanceModifier.height(8.dp))
+                            WidgetProgress(state, palette)
+                            Spacer(GlanceModifier.height(4.dp))
+                            WidgetTransport(state, palette, context, GlanceModifier.fillMaxWidth())
                         }
                     }
                 }
                 else -> {
-                    Column(modifier = GlanceModifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        Row(
-                            modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (size.width >= 240.dp) {
-                                WidgetArtwork(
-                                    artPath = state.artPath, context = context, contentDescription = null,
-                                    targetSize = 48.dp, cornerRadius = 8.dp,
-                                    palette = palette, modifier = GlanceModifier.size(48.dp),
-                                )
-                                Spacer(GlanceModifier.width(12.dp))
-                            }
-                            WidgetTrackInfo(
-                                state, palette, GlanceModifier.defaultWeight(), titleSize = 14,
-                                showArtist = compactTextHeight >= 40.dp * textScale,
-                            )
-                            if (state.isAvailable && !compactTransport) {
-                                Spacer(GlanceModifier.width(8.dp))
-                                WidgetPlayPauseButton(state, palette, context, cornerRadius = 12.dp)
-                            }
-                        }
-                        if (compactTransport) {
-                            Spacer(GlanceModifier.height(8.dp))
-                            WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
-                        }
-                        if (compactProgress) {
-                            Spacer(GlanceModifier.height(8.dp))
-                            WidgetPlaybackProgress(state, palette)
+                    val artSize = (size.height - padding * 2).coerceIn(40.dp, 64.dp)
+                    Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        WidgetArtwork(
+                            artPath = state.artPath,
+                            context = context,
+                            contentDescription = null,
+                            targetSize = artSize,
+                            shape = WidgetArtShape.Rounded,
+                            cornerRadius = 14.dp,
+                            palette = palette,
+                            modifier = GlanceModifier.size(artSize),
+                        )
+                        Spacer(GlanceModifier.width(12.dp))
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.defaultWeight(),
+                            titleSize = 15.sp,
+                            showArtist = size.height - padding * 2 >= 36.dp * textScale,
+                        )
+                        if (state.isAvailable) {
+                            Spacer(GlanceModifier.width(8.dp))
+                            WidgetHeroPlayButton(state, palette, context, minOf(artSize, 48.dp))
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CardHeader(
+    state: WidgetPlaybackState,
+    palette: WidgetPalette,
+    context: Context,
+) {
+    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        WidgetEqualizer(state.isPlaying, palette, context, size = 14.dp)
+        Spacer(GlanceModifier.width(6.dp))
+        WidgetOverline(context.getString(R.string.widget_now_playing), palette, context, GlanceModifier.defaultWeight())
+        WidgetBrandGlyph(palette)
     }
 }

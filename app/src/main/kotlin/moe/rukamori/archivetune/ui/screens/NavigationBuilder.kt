@@ -16,6 +16,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.navigation.NavGraphBuilder
@@ -23,7 +24,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.updates.AppUpdateRelease
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionDetailsRoute
 import moe.rukamori.archivetune.ui.screens.BrowseScreen
@@ -54,6 +57,8 @@ import moe.rukamori.archivetune.ui.screens.settings.AccountSettings
 import moe.rukamori.archivetune.ui.screens.settings.AiIntegrationSettings
 import moe.rukamori.archivetune.ui.screens.settings.AodCustomizedScreen
 import moe.rukamori.archivetune.ui.screens.settings.AndroidAutoSettings
+import moe.rukamori.archivetune.ui.screens.settings.AppUpdateRoute
+import moe.rukamori.archivetune.ui.screens.settings.AppUpdateScreen
 import moe.rukamori.archivetune.ui.screens.settings.CanvasSettings
 import moe.rukamori.archivetune.ui.screens.settings.AppearanceSettings
 import moe.rukamori.archivetune.ui.screens.settings.BackupAndRestore
@@ -67,9 +72,12 @@ import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
 import moe.rukamori.archivetune.ui.screens.settings.LastFMSettings
+import moe.rukamori.archivetune.ui.screens.settings.LocalSongSettings
+import moe.rukamori.archivetune.ui.screens.settings.LocalSongSettingsRoute
 import moe.rukamori.archivetune.ui.screens.settings.LogcatScreen
 import moe.rukamori.archivetune.ui.screens.settings.LyricsAnimationSettings
 import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
+import moe.rukamori.archivetune.ui.screens.settings.MediaNotificationSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
 import moe.rukamori.archivetune.ui.screens.settings.PalettePickerScreen
 import moe.rukamori.archivetune.ui.screens.settings.PlayerSettings
@@ -79,19 +87,17 @@ import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
-import moe.rukamori.archivetune.viewmodels.OnlineSearchSort
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
     navController: NavHostController,
     scrollBehavior: TopAppBarScrollBehavior,
     homeViewModel: HomeViewModel,
-    latestVersionName: () -> String,
+    latestVersionName: () -> String?,
     disableAnimations: Boolean = false,
-    onClearUpdateBadge: () -> Unit = {},
+    onUpdateReleaseChecked: (AppUpdateRelease?) -> Unit = {},
     homeScrollConnection: NestedScrollConnection? = null,
     searchScrollConnection: NestedScrollConnection? = null,
-    onlineSearchSort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
     libraryScrollBehavior: TopAppBarScrollBehavior,
 ) {
     composable(Screens.Home.route) {
@@ -119,6 +125,10 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("local_songs") {
         LocalSongScreen(navController)
+    }
+    composable(LocalSongSettingsRoute) { backStackEntry ->
+        val localSongsEntry = remember(backStackEntry) { navController.getBackStackEntry("local_songs") }
+        LocalSongSettings(navController, hiltViewModel(localSongsEntry))
     }
     composable("history") {
         HistoryScreen(navController)
@@ -227,10 +237,7 @@ fun NavGraphBuilder.navigationBuilder(
             }
         },
     ) {
-        OnlineSearchResult(
-            navController = navController,
-            searchSort = onlineSearchSort,
-        )
+        OnlineSearchResult(navController = navController)
     }
     composable(
         route = "album/{albumId}",
@@ -380,7 +387,7 @@ fun NavGraphBuilder.navigationBuilder(
         TopPlaylistScreen(navController, scrollBehavior)
     }
     composable(
-        route = "youtube_browse/{browseId}?params={params}",
+        route = "youtube_browse/{browseId}?params={params}&genreTitle={genreTitle}",
         arguments =
             listOf(
                 navArgument("browseId") {
@@ -390,18 +397,28 @@ fun NavGraphBuilder.navigationBuilder(
                 navArgument("params") {
                     type = NavType.StringType
                     nullable = true
+                    defaultValue = null
+                },
+                navArgument("genreTitle") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 },
             ),
     ) {
         YouTubeBrowseScreen(navController)
     }
     composable("settings") {
-        SettingsScreen(navController, latestVersionName())
+        SettingsScreen(
+            navController = navController,
+            latestVersionName = latestVersionName() ?: BuildConfig.VERSION_NAME,
+            viewModel = homeViewModel,
+        )
     }
     composable("settings/account") {
         AccountSettings(
             navController = navController,
-            latestVersionName = latestVersionName(),
+            latestVersionName = latestVersionName() ?: BuildConfig.VERSION_NAME,
             viewModel = homeViewModel,
         )
     }
@@ -437,6 +454,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/player") {
         PlayerSettings(navController)
+    }
+    composable("settings/media_notification") {
+        MediaNotificationSettings(navController)
     }
     composable("settings/modules") {
         moe.rukamori.archivetune.ui.screens.settings.ModulesSettings(navController)
@@ -482,8 +502,19 @@ fun NavGraphBuilder.navigationBuilder(
         LogcatScreen(navController)
     }
     if (BuildConfig.UPDATER_AVAILABLE) {
+        composable(
+            route = "$AppUpdateRoute?forceRefresh={forceRefresh}",
+            arguments = listOf(
+                navArgument("forceRefresh") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) {
+            AppUpdateScreen(navController, onReleaseChecked = onUpdateReleaseChecked)
+        }
         composable("settings/update") {
-            UpdateScreen(navController, onUpToDate = onClearUpdateBadge)
+            UpdateScreen(navController, latestVersion = latestVersionName())
         }
     }
     composable("settings/changelog") {

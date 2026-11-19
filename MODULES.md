@@ -423,13 +423,11 @@ Python 3.9 or newer with its standard library is sufficient for the supplied
 packager. Cloning ArchiveTune is optional: download the standalone script with
 `curl` and run it against your own provider directory.
 
-### Without cloning ArchiveTune
-
 On Linux, macOS, or another POSIX shell:
 
 ```sh
 curl --fail --silent --show-error --location --output package_module.py \
-  https://raw.githubusercontent.com/rukamori/ArchiveTune/dev/scripts/package_module.py &&
+  https://raw.githubusercontent.com/rukamori/ArchiveTuneModules/main/scripts/package_module.py &&
 python3 package_module.py "./my-provider" "./my-provider.arch"
 ```
 
@@ -437,7 +435,7 @@ On Windows PowerShell, use `curl.exe` to select the curl executable rather than
 the Windows PowerShell alias:
 
 ```powershell
-curl.exe --fail --silent --show-error --location --output package_module.py "https://raw.githubusercontent.com/rukamori/ArchiveTune/dev/scripts/package_module.py"
+curl.exe --fail --silent --show-error --location --output package_module.py "https://raw.githubusercontent.com/rukamori/ArchiveTuneModules/main/scripts/package_module.py"
 if ($LASTEXITCODE -eq 0) {
     py -3 .\package_module.py ".\my-provider" ".\my-provider.arch"
 }
@@ -448,18 +446,6 @@ file. The commands save `package_module.py` in the current directory and run it
 only after curl succeeds. They download the packager, not a provider or the full
 ArchiveTune repository. On Windows, `python` can replace `py -3` when that is how
 Python 3.9 or newer is installed.
-
-The URL above follows the `dev` branch, where the packager is currently
-published. To use a fixed revision, replace `dev` in the URL with a commit SHA
-or tag that contains `scripts/package_module.py`.
-
-### From an existing checkout
-
-From the ArchiveTune repository root:
-
-```text
-python scripts/package_module.py path/to/my-provider path/to/my-provider.arch
-```
 
 ### Interactive terminal studio
 
@@ -613,6 +599,14 @@ objects with a `url`, an optional `baseUrl` changes their module download base.
 The reader limits catalog depth to four, documents to 32, and entries to 1,000,
 it deduplicates repeated URLs to stop cycles. A direct JSON catalog URL is the
 most predictable publishing target.
+
+A GitHub repository URL is also accepted as a catalog URL, for example
+`https://github.com/rukamori/ArchiveTuneModules`. The reader looks for
+`registry.json`, `index.json`, `catalog.json`, then `source.json` at the root
+of the default branch through `raw.githubusercontent.com`. A `/tree/<ref>/<folder>`
+URL searches that branch and folder instead, and a `/blob/<ref>/<file>` URL reads
+that file directly. Relative download paths resolve against the raw file, and
+the GitHub URL is kept so refreshing follows the branch's latest catalog.
 
 For URL installations, Check for update revisits the original import URL. If
 the original URL is a descriptor, update that descriptor to point to the new

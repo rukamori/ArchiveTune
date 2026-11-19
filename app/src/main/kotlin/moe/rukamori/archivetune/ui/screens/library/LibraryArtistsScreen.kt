@@ -7,20 +7,18 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,39 +26,36 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -78,7 +73,10 @@ import moe.rukamori.archivetune.constants.ArtistSongSortType
 import moe.rukamori.archivetune.constants.ArtistSortDescendingKey
 import moe.rukamori.archivetune.constants.ArtistSortType
 import moe.rukamori.archivetune.constants.ArtistSortTypeKey
+import moe.rukamori.archivetune.constants.ArtistViewTypeKey
+import moe.rukamori.archivetune.constants.LibraryViewType
 import moe.rukamori.archivetune.constants.YtmSyncKey
+import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
@@ -90,28 +88,25 @@ import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryArtistsViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
+private val ArtistFilterOptions = listOf(ArtistFilter.LIKED, ArtistFilter.LIBRARY)
+
 @Composable
 fun LibraryArtistsScreen(
     navController: NavController,
-    onDeselect: () -> Unit,
     viewModel: LibraryArtistsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
-    val playerConnection = LocalPlayerConnection.current
+    val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
 
-    val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            ArtistSortTypeKey,
-            ArtistSortType.CREATE_DATE,
-        )
+    val (sortType, onSortTypeChange) = rememberEnumPreference(ArtistSortTypeKey, ArtistSortType.CREATE_DATE)
     val (sortDescending, onSortDescendingChange) = rememberPreference(ArtistSortDescendingKey, true)
-    val (ytmSync) = rememberPreference(YtmSyncKey, true)
-
     var filter by rememberEnumPreference(ArtistFilterKey, ArtistFilter.LIKED)
+    var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
+    val (ytmSync) = rememberPreference(YtmSyncKey, true)
+    val isGridView = viewType == LibraryViewType.GRID
 
     LaunchedEffect(ytmSync, filter) {
         if (ytmSync) {
@@ -124,15 +119,70 @@ fun LibraryArtistsScreen(
     val refreshLibrary = remember(viewModel, filter) { { viewModel.refresh(filter) } }
     val onRefreshErrorShown = remember(viewModel) { { viewModel.onRefreshErrorShown() } }
     val openSearch = remember(navController) { { navController.navigate(Screens.Search.route) } }
+    val gridState = rememberLazyGridState()
 
-    val topArtist = artists.firstOrNull()
-
-    // Issue 2: player-aware bottom padding
     val playerAwareBottomPadding =
         LocalPlayerAwareWindowInsets.current
             .only(WindowInsetsSides.Bottom)
             .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
+            .calculateBottomPadding() + 16.dp
+
+    val totalSongs = remember(artists) { artists.sumOf { it.songCount.coerceAtLeast(0) } }
+    val heroArtwork =
+        remember(artists) {
+            artists.asSequence().mapNotNull { it.artist.thumbnailUrl }.distinct().take(2).toList()
+        }
+    val heroStats =
+        buildList {
+            add(
+                LibraryHeroStat(
+                    value = artists.size.toString(),
+                    label = pluralStringResource(R.plurals.library_stat_artists, artists.size),
+                ),
+            )
+            if (totalSongs > 0) {
+                add(
+                    LibraryHeroStat(
+                        value = totalSongs.toString(),
+                        label = pluralStringResource(R.plurals.library_stat_songs, totalSongs),
+                    ),
+                )
+            }
+        }
+
+    val playArtist: (Artist) -> Unit =
+        remember(database, playerConnection, coroutineScope) {
+            { artist ->
+                coroutineScope.launch {
+                    val songs =
+                        database
+                            .artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
+                            .first()
+                            .map { it.toMediaItem() }
+                    if (songs.isNotEmpty()) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = artist.artist.name,
+                                items = songs,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    val showArtistMenu: (Artist, Boolean) -> Unit =
+        remember(menuState, coroutineScope, haptic) {
+            { artist, fromLongPress ->
+                if (fromLongPress) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                menuState.show {
+                    ArtistMenu(
+                        originalArtist = artist,
+                        coroutineScope = coroutineScope,
+                        onDismiss = menuState::dismiss,
+                    )
+                }
+            }
+        }
 
     LibraryRefreshContainer(
         state = refreshState,
@@ -142,353 +192,84 @@ fun LibraryArtistsScreen(
         indicatorOffset = LibraryPullToRefreshIndicatorOffset,
     ) {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            state = gridState,
+            columns = if (isGridView) GridCells.Adaptive(minSize = 108.dp) else GridCells.Fixed(1),
             contentPadding =
                 PaddingValues(
-                    start = 24.dp,
-                    top = LibraryHeaderContentPadding,
-                    end = 24.dp,
+                    start = LibraryContentHorizontalPadding,
+                    top = LibraryHeaderContentPadding + 8.dp,
+                    end = LibraryContentHorizontalPadding,
                     bottom = playerAwareBottomPadding,
                 ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isGridView) 20.dp else 8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Featured Spotlight Row
-            item(span = { GridItemSpan(2) }, key = "spotlight_row") {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max)
-                            .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    // Left Card: Top Artist
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1.3f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(36.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable {
-                                    topArtist?.let { navController.navigateToArtist(it.artist.id) }
-                                }.padding(16.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxHeight(),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.person),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.top_artist_badge),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    Text(
-                                        text = topArtist?.artist?.name ?: stringResource(R.string.no_artist_yet),
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Button(
-                                    onClick = {
-                                        topArtist?.let { artist ->
-                                            coroutineScope.launch {
-                                                val songs =
-                                                    database
-                                                        .artistSongs(
-                                                            artist.id,
-                                                            ArtistSongSortType.CREATE_DATE,
-                                                            true,
-                                                        ).first()
-                                                        .map { it.toMediaItem() }
-                                                if (songs.isNotEmpty()) {
-                                                    playerConnection?.playQueue(
-                                                        ListQueue(
-                                                            title = artist.artist.name,
-                                                            items = songs,
-                                                        ),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    shape = CircleShape,
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                    modifier = Modifier.height(32.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.play_all),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        topArtist?.let { artist ->
-                                            menuState.show {
-                                                ArtistMenu(
-                                                    originalArtist = artist,
-                                                    coroutineScope = coroutineScope,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.more_vert),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Right Card: Total Count
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(36.dp))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .clickable {
-                                    filter = if (filter == ArtistFilter.LIKED) ArtistFilter.LIBRARY else ArtistFilter.LIKED
-                                }.padding(16.dp),
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.artists),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                                Icon(
-                                    painter = painterResource(id = R.drawable.arrow_forward),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            Column {
-                                Text(
-                                    text = "${artists.size}",
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = stringResource(R.string.total_label),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
-                                )
-                            }
-                        }
-                    }
-                }
+            item(
+                key = "artists_hero",
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = "library_hero",
+            ) {
+                LibraryCollectionHero(
+                    overline = stringResource(R.string.filter_library),
+                    title = stringResource(if (filter == ArtistFilter.LIKED) R.string.your_artists else R.string.artists),
+                    stats = heroStats,
+                    artworkUrls = heroArtwork,
+                    fallbackIconRes = R.drawable.person,
+                    primaryLabel = stringResource(R.string.library_random_artist),
+                    primaryIconRes = R.drawable.shuffle,
+                    primaryEnabled = artists.isNotEmpty(),
+                    onPrimary = { artists.randomOrNull()?.let(playArtist) },
+                    circularArtwork = true,
+                )
             }
 
-            // Sub-Header Controls (Sort dropdown, genres, view list/grid, etc)
-            item(span = { GridItemSpan(2) }, key = "sub_header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+            item(
+                key = "artists_controls",
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = "library_controls",
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 ) {
-                    var showSortMenu by remember { mutableStateOf(false) }
-                    val currentSortLabel =
-                        when (sortType) {
-                            ArtistSortType.CREATE_DATE -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.newest_first,
-                                    )
-                                } else {
-                                    stringResource(R.string.oldest_first)
-                                }
-                            }
-
-                            ArtistSortType.NAME -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.sort_z_to_a,
-                                    )
-                                } else {
-                                    stringResource(R.string.sort_a_to_z)
-                                }
-                            }
-
-                            ArtistSortType.SONG_COUNT -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.most_tracks,
-                                    )
-                                } else {
-                                    stringResource(R.string.least_tracks)
-                                }
-                            }
-
-                            ArtistSortType.PLAY_TIME -> {
-                                stringResource(R.string.play_time)
-                            }
-                        }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                        .clickable { showSortMenu = true }
-                                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = currentSortLabel,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    painter = painterResource(id = R.drawable.expand_more),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false },
-                            ) {
-                                ArtistSortType.entries.forEach { type ->
-                                    val label =
-                                        when (type) {
-                                            ArtistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
-                                            ArtistSortType.NAME -> stringResource(R.string.sort_a_to_z)
-                                            ArtistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
-                                            ArtistSortType.PLAY_TIME -> stringResource(R.string.play_time)
-                                        }
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            onSortTypeChange(type)
-                                            if (type == ArtistSortType.NAME) onSortDescendingChange(false)
-                                            showSortMenu = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        // Sort direction toggle button
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Box(
-                            modifier =
-                                Modifier
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable { onSortDescendingChange(!sortDescending) }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                        ) {
-                            Icon(
-                                painter =
-                                    painterResource(
-                                        id = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
-                                    ),
-                                contentDescription =
-                                    if (sortDescending) {
-                                        stringResource(
-                                            R.string.sort_descending,
-                                        )
-                                    } else {
-                                        stringResource(R.string.sort_ascending)
-                                    },
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp),
+                    LibraryFilterGroup(
+                        options = ArtistFilterOptions,
+                        selected = filter,
+                        label = { option ->
+                            stringResource(
+                                if (option == ArtistFilter.LIKED) R.string.subscribed_only else R.string.all_artists_filter,
                             )
-                        }
-                    }
-
-                    // Translucent Chips Row (translucent filter indicator)
+                        },
+                        onSelect = { option -> filter = option },
+                    )
                     Row(
-                        modifier =
-                            Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text =
-                                if (filter ==
-                                    ArtistFilter.LIKED
-                                ) {
-                                    stringResource(R.string.subscribed_only)
-                                } else {
-                                    stringResource(R.string.all_artists_filter)
-                                },
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.primary,
+                        LibrarySortButton(
+                            label = stringResource(sortType.labelRes(sortDescending)),
+                            descending = sortDescending,
+                            directionEnabled = true,
+                            onToggleDirection = { onSortDescendingChange(!sortDescending) },
+                            modifier = Modifier.weight(1f, fill = false),
+                        ) { dismiss ->
+                            ArtistSortType.entries.forEach { type ->
+                                LibrarySortMenuItem(
+                                    label = stringResource(type.menuLabelRes()),
+                                    selected = type == sortType,
+                                    onClick = {
+                                        onSortTypeChange(type)
+                                        if (type == ArtistSortType.NAME) onSortDescendingChange(false)
+                                        dismiss()
+                                    },
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        LibraryViewModeToggle(
+                            isGrid = isGridView,
+                            onGridChange = { grid -> viewType = if (grid) LibraryViewType.GRID else LibraryViewType.LIST },
                         )
                     }
                 }
@@ -496,162 +277,206 @@ fun LibraryArtistsScreen(
 
             if (artists.isEmpty()) {
                 item(
-                    span = { GridItemSpan(2) },
                     key = "artists_empty",
+                    span = { GridItemSpan(maxLineSpan) },
                     contentType = "library_empty_state",
                 ) {
                     LibraryEmptyState(
-                        iconRes = R.drawable.artist,
+                        iconRes = R.drawable.person,
+                        titleRes = R.string.library_empty_artists_title,
+                        descriptionRes = R.string.library_empty_artists_desc,
                         actionLabelRes = R.string.search_yt_music,
                         onAction = openSearch,
                     )
                 }
             }
 
-            // Artists Grid: 2-column capsule artist cards
-            items(artists, key = { it.id }) { artistWrapper ->
-                val artist = artistWrapper.artist
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .combinedClickable(
-                                onClick = { navController.navigateToArtist(artist.id) },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
-                                        ArtistMenu(
-                                            originalArtist = artistWrapper,
-                                            coroutineScope = coroutineScope,
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                            ).padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Avatar image circle
-                    ItemThumbnail(
-                        thumbnailUrl = artist.thumbnailUrl,
-                        isActive = false,
-                        isPlaying = false,
-                        shape = CircleShape,
-                        contentScale = ContentScale.Crop,
-                        showPlaceholder = true,
-                        modifier =
-                            Modifier
-                                .size(52.dp),
+            items(
+                items = artists,
+                key = { artist -> artist.id },
+                contentType = { if (isGridView) "library_artist_grid" else "library_artist_list" },
+            ) { artist ->
+                val itemModifier =
+                    Modifier.animateItem(
+                        fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                        placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                        fadeOutSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
                     )
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = artist.name,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(R.string.artist_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        )
-                    }
-
-                    // Play & More button
-                    IconButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                val songs =
-                                    database
-                                        .artistSongs(
-                                            artistWrapper.id,
-                                            ArtistSongSortType.CREATE_DATE,
-                                            true,
-                                        ).first()
-                                        .map { it.toMediaItem() }
-                                if (songs.isNotEmpty()) {
-                                    playerConnection?.playQueue(
-                                        ListQueue(
-                                            title = artistWrapper.artist.name,
-                                            items = songs,
-                                        ),
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.size(28.dp),
-                        colors =
-                            IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                contentColor = MaterialTheme.colorScheme.primary,
-                            ),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.play),
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
-                }
-            }
-
-            // Recently Played Artists Section
-            if (artists.size > 2) {
-                item(span = { GridItemSpan(2) }, key = "recent_artists_header") {
-                    Text(
-                        text = stringResource(R.string.recently_played_artists),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(top = 8.dp),
-                        color = MaterialTheme.colorScheme.onBackground,
+                if (isGridView) {
+                    ArtistGridAvatar(
+                        artist = artist,
+                        onClick = { navController.navigateToArtist(artist.id) },
+                        onLongClick = { showArtistMenu(artist, true) },
+                        modifier = itemModifier,
                     )
-                }
-
-                item(span = { GridItemSpan(2) }, key = "recent_artists_row") {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        items(artists.take(5)) { artistWrapper ->
-                            val artist = artistWrapper.artist
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .width(72.dp)
-                                        .clickable {
-                                            navController.navigateToArtist(artist.id)
-                                        },
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                ItemThumbnail(
-                                    thumbnailUrl = artist.thumbnailUrl,
-                                    isActive = false,
-                                    isPlaying = false,
-                                    shape = CircleShape,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier
-                                            .size(60.dp),
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = artist.name,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                            }
-                        }
-                    }
+                } else {
+                    ArtistListRow(
+                        artist = artist,
+                        onClick = { navController.navigateToArtist(artist.id) },
+                        onPlay = { playArtist(artist) },
+                        onShowMenu = { fromLongPress -> showArtistMenu(artist, fromLongPress) },
+                        modifier = itemModifier,
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun ArtistGridAvatar(
+    artist: Artist,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val scale by rememberLibraryPressScale(interactionSource, pressedScale = 0.92f)
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(libraryGridCardShape())
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ).padding(start = LibraryGridCardTextInset, top = 6.dp, end = LibraryGridCardTextInset, bottom = LibraryGridCardTextInset),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }.background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                    .padding(3.dp),
+        ) {
+            ItemThumbnail(
+                thumbnailUrl = artist.artist.thumbnailUrl,
+                isActive = false,
+                isPlaying = false,
+                shape = CircleShape,
+                contentScale = ContentScale.Crop,
+                showPlaceholder = true,
+                placeholderIconRes = R.drawable.person,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = artist.artist.name,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun ArtistListRow(
+    artist: Artist,
+    onClick: () -> Unit,
+    onPlay: () -> Unit,
+    onShowMenu: (fromLongPress: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val scale by rememberLibraryPressScale(interactionSource, pressedScale = 0.98f)
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }.clip(MaterialTheme.shapes.largeIncreased)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = onClick,
+                    onLongClick = { onShowMenu(true) },
+                ).padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ItemThumbnail(
+            thumbnailUrl = artist.artist.thumbnailUrl,
+            isActive = false,
+            isPlaying = false,
+            shape = CircleShape,
+            contentScale = ContentScale.Crop,
+            showPlaceholder = true,
+            placeholderIconRes = R.drawable.person,
+            modifier = Modifier.size(60.dp),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = artist.artist.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        FilledTonalIconButton(
+            onClick = onPlay,
+            enabled = artist.songCount > 0,
+            shapes = IconButtonDefaults.shapes(),
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.play),
+                contentDescription = stringResource(R.string.play),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        IconButton(onClick = { onShowMenu(false) }) {
+            Icon(
+                painter = painterResource(R.drawable.more_vert),
+                contentDescription = stringResource(R.string.options_label),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun ArtistSortType.labelRes(descending: Boolean): Int =
+    when (this) {
+        ArtistSortType.CREATE_DATE -> if (descending) R.string.newest_first else R.string.oldest_first
+        ArtistSortType.NAME -> if (descending) R.string.sort_z_to_a else R.string.sort_a_to_z
+        ArtistSortType.SONG_COUNT -> if (descending) R.string.most_tracks else R.string.least_tracks
+        ArtistSortType.PLAY_TIME -> R.string.play_time
+    }
+
+private fun ArtistSortType.menuLabelRes(): Int =
+    when (this) {
+        ArtistSortType.CREATE_DATE -> R.string.recently_added
+        ArtistSortType.NAME -> R.string.sort_a_to_z
+        ArtistSortType.SONG_COUNT -> R.string.tracks_count_label
+        ArtistSortType.PLAY_TIME -> R.string.play_time
+    }

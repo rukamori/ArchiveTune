@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
@@ -30,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.ui.utils.LocalIsTvDevice
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -73,13 +73,14 @@ fun BottomSheetMenu(
     background: Color = MaterialTheme.colorScheme.surface,
 ) {
     val focusManager = LocalFocusManager.current
+    val isTvDevice = LocalIsTvDevice.current
 
     state.dialogContent?.invoke()
 
     if (state.isVisible) {
-        ModalBottomSheet(
+        BackAwareModalBottomSheet(
             onDismissRequest = {
-                focusManager.clearFocus()
+                if (!isTvDevice) focusManager.clearFocus()
                 state.isVisible = false
             },
             containerColor = background,

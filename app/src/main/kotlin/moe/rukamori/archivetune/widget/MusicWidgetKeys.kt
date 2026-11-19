@@ -26,4 +26,7 @@ object MusicWidgetKeys {
     val GENRES = stringPreferencesKey("widget_genres")
     val RECOMMENDATIONS = stringPreferencesKey("widget_recommendations")
     val TOP_SONG_SUMMARY = stringPreferencesKey("widget_top_song_summary")
+    val CURRENT_MEDIA_ID = stringPreferencesKey("widget_current_media_id")
+    val UP_NEXT = stringPreferencesKey("widget_up_next")
+    val RECENT_ITEMS = stringPreferencesKey("widget_recent_items")
 }

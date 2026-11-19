@@ -115,8 +115,11 @@ If you choose to use a fork, you do so at your own risk.
         <ul>
           <li>Multiple account support with quick switching</li>
           <li>Ad-free playback with background listening</li>
+          <li>Sponsor blocks support</li>
           <li>Your playlists, liked songs, and subscriptions appear after sign-in</li>
-          <li>Support local file and local song playback
+          <li>Support local file and local song playback</li>
+          <li>Customizable player and notification interface</li>
+          <li>Highly support android auto</li>
           <li>Fast startup and lightweight performance</li>
           <li>Built for a private, uninterrupted listening experience</li>
         </ul>
@@ -127,9 +130,11 @@ If you choose to use a fork, you do so at your own risk.
         <h3>Audio</h3>
         <ul>
           <li>EBU R128 loudness normalization</li>
+          <li>Bit perfect and DAC support</li>
           <li>Tempo, pitch, and playback speed controls</li>
           <li>Crossfade between tracks</li>
-          <li>System equalizer and spatial audio integration</li>
+          <li>Customizable Equalizer, Equalizer system and spatial audio integration</li>
+          <li>Hi-res audio playback modules.</li>
         </ul>
       </div>
     </td>
@@ -140,6 +145,7 @@ If you choose to use a fork, you do so at your own risk.
         <h3>Lyrics &amp; Discovery</h3>
         <ul>
           <li>Live synced lyrics</li>
+          <li>Apple music lyrics feels</li>
           <li>Lyrics translation, AI Lyrics translation and romanization</li>
           <li>Music recognition for songs around you</li>
           <li>Listening statistics whenever you want them</li>
@@ -151,10 +157,11 @@ If you choose to use a fork, you do so at your own risk.
         <h3>Sync &amp; Social</h3>
         <ul>
           <li>Import playlist from spotify</li>
+          <li>Online and offline backup and restore support</li>
           <li>YouTube Music account integration</li>
-          <li>Last.fm scrobbling</li>
+          <li>Last.fm, libre.fm and custom scrobbling</li>
           <li>ListenBrainz history sync</li>
-          <li>Discord rich presence support</li>
+          <li>Customizable discord rich presence support</li>
         </ul>
       </div>
     </td>
@@ -164,11 +171,13 @@ If you choose to use a fork, you do so at your own risk.
       <div align="left">
         <h3>Interface</h3>
         <ul>
-          <li>Material 3 design language</li>
+          <li>Built with material 3 expressive</li>
+          <li>Multi customizable interface</li>
           <li>Album-art powered dynamic colors</li>
-          <li>Up to 9 different player styles</li>
+          <li>Up to 11 different player styles</li>
           <li>Up to 8 different player background styles</li>
           <li>Responsive layouts for different screen sizes</li>
+          <li>Animated Artwork while playing</li>
           <li>Clean browsing, player, artist, album, and lyrics views</li>
         </ul>
       </div>

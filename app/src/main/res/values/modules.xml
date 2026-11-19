@@ -7,7 +7,6 @@
     <string name="modules_enabled_description">Try enabled providers in order, then use YouTube when no matching stream is available.</string>
     <string name="modules_installed">Installed</string>
     <string name="modules_catalogs">Catalogs</string>
-    <string name="modules_counts">%1$d installed · %2$d enabled</string>
     <string name="modules_order_hint">Tried from top to bottom. Drag a handle or use Move up and Move down.</string>
     <string name="modules_order_failed">The order could not be saved. The previous order was restored. Try moving the module again.</string>
     <string name="modules_off">Module playback is off. You can still manage providers.</string>
@@ -18,6 +17,8 @@
     <string name="modules_import_file">Import file</string>
     <string name="modules_add_url">Add module URL</string>
     <string name="modules_add_catalog">Add catalog URL</string>
+    <string name="modules_add_menu_expanded">Add options shown</string>
+    <string name="modules_add_menu_collapsed">Add options hidden</string>
     <string name="modules_url">URL</string>
     <string name="modules_url_hint">A direct module, descriptor, or catalog URL</string>
     <string name="modules_continue">Continue</string>
@@ -123,7 +124,6 @@
     <string name="modules_match_explicit">The closest result has conflicting explicit-content metadata.</string>
     <string name="modules_upstream">Upstream: %1$s</string>
     <string name="modules_variant">Selected quality: %1$s</string>
-    <string name="modules_playback">Playback</string>
     <string name="modules_unsaved_changes">Unsaved changes</string>
     <string name="modules_quality_hi_res">Hi-Res</string>
     <string name="modules_quality_max">Max quality</string>

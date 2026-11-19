@@ -27,6 +27,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.db.entities.AlbumArtistMap
 import moe.rukamori.archivetune.db.entities.AlbumEntity
@@ -36,6 +38,7 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.LyricsSyncOffsetEntity
 import moe.rukamori.archivetune.db.entities.LocalMusicAlias
 import moe.rukamori.archivetune.db.entities.LibrarySongArtistMap
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
@@ -54,6 +57,7 @@ import moe.rukamori.archivetune.db.entities.SortedSongAlbumMap
 import moe.rukamori.archivetune.db.entities.SortedSongArtistMap
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.extensions.toSQLiteQuery
+import moe.rukamori.archivetune.recap.RecapDao
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -62,11 +66,18 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 38
+private const val CURRENT_VERSION = 41
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
 ) : DatabaseDao by delegate.dao {
+    val recapDao: RecapDao
+        get() = delegate.recapDao
+
+    fun recapChanges(): Flow<Unit> = delegate.invalidationTracker.createFlow(
+        "event", "song", "artist", "album", "song_artist_map", "song_album_map", "album_artist_map",
+    ).map { }
+
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
 
@@ -132,6 +143,7 @@ class MusicDatabase(
         PlaylistTagMap::class,
         LibraryTopMixEntity::class,
         LibraryTopMixSongMap::class,
+        LyricsSyncOffsetEntity::class,
     ],
     views = [
         LibrarySongArtistMap::class,
@@ -166,6 +178,7 @@ class MusicDatabase(
 )
 @TypeConverters(Converters::class)
 abstract class InternalDatabase : RoomDatabase() {
+    abstract val recapDao: RecapDao
     abstract val dao: DatabaseDao
 
     companion object {

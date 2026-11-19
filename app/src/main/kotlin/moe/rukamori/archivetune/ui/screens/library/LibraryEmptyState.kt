@@ -5,10 +5,14 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,71 +21,105 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import moe.rukamori.archivetune.R
+import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 
 @Composable
 internal fun LibraryEmptyState(
     @DrawableRes iconRes: Int,
-    @StringRes actionLabelRes: Int,
-    onAction: () -> Unit,
+    @StringRes titleRes: Int,
+    @StringRes descriptionRes: Int,
     modifier: Modifier = Modifier,
+    @StringRes actionLabelRes: Int? = null,
+    onAction: (() -> Unit)? = null,
 ) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.fillMaxWidth(),
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val motion = MaterialTheme.motionScheme
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
+    val badgeScale = remember { Animatable(if (animationsDisabled) 1f else 0.6f) }
+    val badgeRotation = remember { Animatable(if (animationsDisabled) 0f else -40f) }
+
+    LaunchedEffect(animationsDisabled) {
+        if (animationsDisabled) {
+            badgeScale.snapTo(1f)
+            badgeRotation.snapTo(0f)
+        } else {
+            launch { badgeScale.animateTo(1f, motion.slowSpatialSpec()) }
+            launch { badgeRotation.animateTo(0f, motion.slowSpatialSpec()) }
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(112.dp)
+                    .graphicsLayer {
+                        scaleX = badgeScale.value
+                        scaleY = badgeScale.value
+                    },
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(64.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(30.dp),
-                    )
-                }
-            }
-
-            Text(
-                text = stringResource(R.string.no_results_found),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            Box(
+                modifier =
+                    Modifier
+                        .size(112.dp)
+                        .graphicsLayer { rotationZ = badgeRotation.value }
+                        .background(MaterialTheme.colorScheme.primaryContainer, badgeShape),
             )
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(44.dp),
+            )
+        }
 
-            Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        Text(
+            text = stringResource(titleRes),
+            style = MaterialTheme.typography.titleLargeEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(descriptionRes),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        if (actionLabelRes != null && onAction != null) {
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onAction,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(text = stringResource(actionLabelRes))
             }

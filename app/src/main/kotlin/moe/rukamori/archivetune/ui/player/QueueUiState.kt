@@ -85,7 +85,6 @@ sealed interface QueueAction {
     data class Drag(val from: String, val to: String) : QueueAction
     data class CreatePlaylist(val name: String) : QueueAction
     data class PlaylistName(val value: String) : QueueAction
-    data object FinishDrag : QueueAction
     data object ToggleShuffle : QueueAction
     data object ToggleRepeat : QueueAction
     data object ToggleAutoplay : QueueAction

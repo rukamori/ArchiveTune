@@ -139,7 +139,6 @@
     <string name="undo">Annulla</string>
     <string name="lyrics_not_found">Testo non trovato</string>
     <string name="sleep_timer">Temporizzatore di sonno</string>
-    <string name="end_of_song">Fine della canzone</string>
     <plurals name="minute">
         <item quantity="one">1 minute</item>
         <item quantity="other">%d minuti</item>
@@ -248,7 +247,6 @@
     <string name="blur">Sfocatura</string>
     <string name="contrast">Contrasto</string>
     <string name="brightness">Luminosità</string>
-    <string name="custom_value">Valore personalizzato</string>
     <string name="show_button1_description">Attiva/disattiva la visibilità del pulsante 1 in Discord Rich Presence</string>
     <string name="show_button2_description">Attiva/disattiva la visibilità del pulsante 2 in Discord Rich Presence</string>
     <string name="discord_activity_type">Tipo di attività</string>
@@ -275,7 +273,6 @@
     <string name="enable_betterlyrics">Abilita BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Abilita i testi di SimpMusic</string>
     <string name="player_and_audio">Lettore e audio</string>
-    <string name="audio_quality">Qualità audio</string>
     <string name="audio_quality_auto">Automatico</string>
     <string name="audio_quality_high">Alto</string>
     <string name="audio_quality_low">Basso</string>
@@ -438,7 +435,6 @@
     <string name="new_version_available">Nuova versione disponibile</string>
     <string name="updates">Aggiornamenti</string>
     <string name="current_version">Versione attuale</string>
-    <string name="latest_version_format">Latest: %s</string>
     <string name="enable_update_notification">Abilita notifica di aggiornamento</string>
     <string name="update_channel">Aggiorna canale</string>
     <string name="recent_commits">Impegni recenti</string>

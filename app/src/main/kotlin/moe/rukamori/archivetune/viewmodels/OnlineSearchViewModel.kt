@@ -17,7 +17,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
 import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
@@ -31,7 +34,11 @@ import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_PODCAST
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_SONG
 import moe.rukamori.archivetune.innertube.YouTube.SearchFilter.Companion.FILTER_VIDEO
+import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.ArtistItem
+import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -41,13 +48,32 @@ import moe.rukamori.archivetune.models.ItemsPage
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.reportException
+import java.io.IOException
+import java.text.Collator
+import java.util.Locale
 import javax.inject.Inject
 
-enum class OnlineSearchSort {
-    DEFAULT,
-    VIEWS,
+enum class OnlineSearchSortKey(
+    val defaultDescending: Boolean,
+) {
+    RELEVANCE(defaultDescending = false),
+    VIEWS(defaultDescending = true),
+    TITLE(defaultDescending = false),
+    ARTIST(defaultDescending = false),
+    DURATION(defaultDescending = true),
+    YEAR(defaultDescending = true),
+}
+
+data class OnlineSearchSort(
+    val key: OnlineSearchSortKey = OnlineSearchSortKey.RELEVANCE,
+    val descending: Boolean = key.defaultDescending,
+)
+
+enum class SearchLoadError {
+    Offline,
+    Failed,
 }
 
 @HiltViewModel
@@ -55,7 +81,7 @@ class OnlineSearchViewModel
     @Inject
     constructor(
         @ApplicationContext val context: Context,
-        savedStateHandle: SavedStateHandle,
+        private val savedStateHandle: SavedStateHandle,
         private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
         private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
@@ -65,7 +91,17 @@ class OnlineSearchViewModel
             )
         val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
         var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
+            private set
+        var summaryError by mutableStateOf<SearchLoadError?>(null)
+            private set
         val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
+        val filterErrors = mutableStateMapOf<String, SearchLoadError>()
+        var isLoadingMore by mutableStateOf(false)
+            private set
+        var loadMoreError by mutableStateOf<SearchLoadError?>(null)
+            private set
+        private val _sort = MutableStateFlow(restoreSort())
+        val sort: StateFlow<OnlineSearchSort> = _sort.asStateFlow()
 
         private val allModeFilters =
             listOf(
@@ -80,29 +116,100 @@ class OnlineSearchViewModel
         private var isSummaryLoading = false
         private val loadingFilters = mutableSetOf<String>()
 
+        val allModeResolved: Boolean
+            get() =
+                (summaryPage != null || summaryError != null) &&
+                    allModeFilters.all { viewStateMap.containsKey(it.value) || filterErrors.containsKey(it.value) }
+
         init {
             viewModelScope.launch {
                 filter.collect { selectedFilter ->
+                    loadMoreError = null
                     if (selectedFilter == null) {
-                        viewModelScope.launch {
-                            loadSummaryIfNeeded()
-                        }
-                        allModeFilters.forEach { allModeFilter ->
-                            viewModelScope.launch {
-                                loadFilterIfNeeded(allModeFilter)
-                            }
-                        }
+                        loadAllMode()
                     } else {
-                        loadFilterIfNeeded(selectedFilter)
+                        viewModelScope.launch {
+                            loadFilterIfNeeded(selectedFilter)
+                        }
                     }
                 }
             }
+        }
+
+        private fun loadAllMode() {
+            viewModelScope.launch {
+                loadSummaryIfNeeded()
+            }
+            allModeFilters.forEach { allModeFilter ->
+                viewModelScope.launch {
+                    loadFilterIfNeeded(allModeFilter)
+                }
+            }
+        }
+
+        fun selectFilter(selectedFilter: YouTube.SearchFilter?) {
+            if (filter.value != selectedFilter) {
+                filter.value = selectedFilter
+            }
+        }
+
+        fun selectSortKey(key: OnlineSearchSortKey) {
+            if (_sort.value.key == key) return
+            updateSort(OnlineSearchSort(key = key))
+        }
+
+        fun selectSortDescending(descending: Boolean) {
+            val current = _sort.value
+            if (current.key == OnlineSearchSortKey.RELEVANCE || current.descending == descending) return
+            updateSort(current.copy(descending = descending))
+        }
+
+        private fun updateSort(sort: OnlineSearchSort) {
+            _sort.value = sort
+            savedStateHandle[SortKeyStateKey] = sort.key.name
+            savedStateHandle[SortDescendingStateKey] = sort.descending
+        }
+
+        private fun restoreSort(): OnlineSearchSort {
+            val key =
+                savedStateHandle
+                    .get<String>(SortKeyStateKey)
+                    ?.let { name -> OnlineSearchSortKey.entries.firstOrNull { it.name == name } }
+                    ?: return OnlineSearchSort()
+            return OnlineSearchSort(
+                key = key,
+                descending = savedStateHandle.get<Boolean>(SortDescendingStateKey) ?: key.defaultDescending,
+            )
+        }
+
+        fun retry() {
+            val selectedFilter = filter.value
+            if (selectedFilter == null) {
+                summaryError = null
+                filterErrors.clear()
+                loadAllMode()
+            } else {
+                filterErrors.remove(selectedFilter.value)
+                viewModelScope.launch {
+                    loadFilterIfNeeded(selectedFilter)
+                }
+            }
+        }
+
+        private suspend fun hideExplicit() = context.dataStore.getAsync(HideExplicitKey, false)
+
+        private suspend fun hideVideo() = context.dataStore.getAsync(HideVideoKey, false)
+
+        private fun Throwable.toSearchLoadError(): SearchLoadError {
+            if (this is CancellationException) throw this
+            return if (this is IOException) SearchLoadError.Offline else SearchLoadError.Failed
         }
 
         private suspend fun loadSummaryIfNeeded() {
             if (summaryPage != null || isSummaryLoading) return
 
             isSummaryLoading = true
+            summaryError = null
             try {
                 YouTube
                     .searchSummary(query)
@@ -110,8 +217,8 @@ class OnlineSearchViewModel
                         val aiContentFilterPolicy = loadAiContentFilterPolicy()
                         val contentFilteredPage =
                             it
-                                .filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                                .filterVideo(context.dataStore.get(HideVideoKey, false))
+                                .filterExplicit(hideExplicit())
+                                .filterVideo(hideVideo())
                         summaryPage =
                             contentFilteredPage.copy(
                                 summaries =
@@ -122,6 +229,7 @@ class OnlineSearchViewModel
                                     },
                             )
                     }.onFailure {
+                        summaryError = it.toSearchLoadError()
                         reportException(it)
                     }
             } finally {
@@ -133,6 +241,7 @@ class OnlineSearchViewModel
             val filterKey = filter.value
             if (viewStateMap.containsKey(filterKey) || !loadingFilters.add(filterKey)) return
 
+            filterErrors.remove(filterKey)
             try {
                 YouTube
                     .search(query, filter)
@@ -143,17 +252,14 @@ class OnlineSearchViewModel
                                 filterAiContent(
                                     result.items
                                         .distinctBy { it.id }
-                                        .filterExplicit(
-                                            context.dataStore.get(
-                                                HideExplicitKey,
-                                                false,
-                                            ),
-                                        ).filterVideo(context.dataStore.get(HideVideoKey, false)),
+                                        .filterExplicit(hideExplicit())
+                                        .filterVideo(hideVideo()),
                                     aiContentFilterPolicy,
                                 ),
                                 result.continuation,
                             )
                     }.onFailure {
+                        filterErrors[filterKey] = it.toSearchLoadError()
                         reportException(it)
                     }
             } finally {
@@ -162,52 +268,129 @@ class OnlineSearchViewModel
         }
 
         fun loadMore() {
-            val filter = filter.value?.value
+            val filterKey = filter.value?.value ?: return
+            if (isLoadingMore) return
+            val viewState = viewStateMap[filterKey] ?: return
+            val continuation = viewState.continuation ?: return
+
+            isLoadingMore = true
+            loadMoreError = null
             viewModelScope.launch {
-                if (filter == null) return@launch
-                val viewState = viewStateMap[filter] ?: return@launch
-                val continuation = viewState.continuation
-                if (continuation != null) {
-                    val searchResult =
-                        YouTube.searchContinuation(continuation).getOrNull() ?: return@launch
-                    val aiContentFilterPolicy = loadAiContentFilterPolicy()
-                    val continuedItems =
-                        filterAiContent(
-                            searchResult.items
-                                .filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                                .filterVideo(context.dataStore.get(HideVideoKey, false)),
-                            aiContentFilterPolicy,
-                        )
-                    viewStateMap[filter] =
-                        ItemsPage(
-                            (viewState.items + continuedItems).distinctBy { it.id },
-                            searchResult.continuation,
-                        )
+                try {
+                    YouTube
+                        .searchContinuation(continuation)
+                        .onSuccess { searchResult ->
+                            val aiContentFilterPolicy = loadAiContentFilterPolicy()
+                            val continuedItems =
+                                filterAiContent(
+                                    searchResult.items
+                                        .filterExplicit(hideExplicit())
+                                        .filterVideo(hideVideo()),
+                                    aiContentFilterPolicy,
+                                )
+                            val current = viewStateMap[filterKey] ?: viewState
+                            viewStateMap[filterKey] =
+                                ItemsPage(
+                                    (current.items + continuedItems).distinctBy { it.id },
+                                    searchResult.continuation,
+                                )
+                        }.onFailure {
+                            loadMoreError = it.toSearchLoadError()
+                            reportException(it)
+                        }
+                } finally {
+                    isLoadingMore = false
                 }
             }
         }
 
         fun sortedItems(
             items: List<YTItem>,
-            sort: OnlineSearchSort = OnlineSearchSort.DEFAULT,
-        ): List<YTItem> =
-            when (sort) {
-                OnlineSearchSort.DEFAULT -> {
-                    items
+            sort: OnlineSearchSort,
+        ): List<YTItem> {
+            val key = sort.key
+            if (key == OnlineSearchSortKey.RELEVANCE || items.size < 2) return items
+            val (ranked, unranked) = items.withIndex().partition { it.value.hasSortValue(key) }
+            if (ranked.size < 2) return items
+            val valueComparator: Comparator<IndexedValue<YTItem>> =
+                if (key.isTextual) {
+                    val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
+                    compareBy<IndexedValue<YTItem>, String?>(collator) { it.value.textSortValue(key) }
+                } else {
+                    compareBy<IndexedValue<YTItem>> { it.value.numericSortValue(key) }
                 }
+            val directedComparator =
+                Comparator<IndexedValue<YTItem>> { first, second ->
+                    val result = valueComparator.compare(first, second)
+                    if (sort.descending) -result else result
+                }.thenBy { it.index }
+            return ranked.sortedWith(directedComparator).map { it.value } + unranked.map { it.value }
+        }
 
-                OnlineSearchSort.VIEWS -> {
-                    items
-                        .withIndex()
-                        .sortedWith(
-                            compareByDescending<IndexedValue<YTItem>> {
-                                when (val item = it.value) {
-                                    is SongItem -> item.viewCount
-                                    is PlaylistItem -> item.viewCount
-                                    else -> null
-                                } ?: Long.MIN_VALUE
-                            }.thenBy { it.index },
-                        ).map { it.value }
-                }
-            }
+        private companion object {
+            const val SortKeyStateKey = "online_search_sort_key"
+            const val SortDescendingStateKey = "online_search_sort_descending"
+        }
     }
+
+private val OnlineSearchSortKey.isTextual: Boolean
+    get() = this == OnlineSearchSortKey.TITLE || this == OnlineSearchSortKey.ARTIST
+
+private fun YTItem.hasSortValue(key: OnlineSearchSortKey): Boolean =
+    if (key.isTextual) textSortValue(key) != null else numericSortValue(key) != null
+
+private fun YTItem.numericSortValue(key: OnlineSearchSortKey): Long? =
+    when (key) {
+        OnlineSearchSortKey.VIEWS -> {
+            when (this) {
+                is SongItem -> viewCount
+                is PlaylistItem -> viewCount
+                else -> null
+            }
+        }
+
+        OnlineSearchSortKey.DURATION -> {
+            when (this) {
+                is SongItem -> duration
+                is EpisodeItem -> duration
+                else -> null
+            }?.takeIf { it > 0 }?.toLong()
+        }
+
+        OnlineSearchSortKey.YEAR -> {
+            (this as? AlbumItem)?.year?.toLong()
+        }
+
+        OnlineSearchSortKey.RELEVANCE,
+        OnlineSearchSortKey.TITLE,
+        OnlineSearchSortKey.ARTIST,
+        -> {
+            null
+        }
+    }
+
+private fun YTItem.textSortValue(key: OnlineSearchSortKey): String? =
+    when (key) {
+        OnlineSearchSortKey.TITLE -> {
+            title
+        }
+
+        OnlineSearchSortKey.ARTIST -> {
+            when (this) {
+                is SongItem -> artists.firstOrNull()?.name
+                is AlbumItem -> artists?.firstOrNull()?.name
+                is PlaylistItem -> author?.name
+                is PodcastItem -> author?.name
+                is EpisodeItem -> podcast?.name
+                is ArtistItem -> title
+            }
+        }
+
+        OnlineSearchSortKey.RELEVANCE,
+        OnlineSearchSortKey.VIEWS,
+        OnlineSearchSortKey.DURATION,
+        OnlineSearchSortKey.YEAR,
+        -> {
+            null
+        }
+    }?.trim()?.takeIf { it.isNotEmpty() }

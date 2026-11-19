@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,6 +34,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.storage.ClearStorageCacheUseCase
 import moe.rukamori.archivetune.storage.ObserveStorageFoldersUseCase
+import moe.rukamori.archivetune.storage.ObserveStorageUsageUseCase
 import moe.rukamori.archivetune.storage.SetStorageFolderUseCase
 import moe.rukamori.archivetune.storage.StorageCacheClearProgress
 import moe.rukamori.archivetune.storage.StorageCacheClearResult
@@ -40,6 +46,7 @@ import moe.rukamori.archivetune.storage.StorageLocationOption
 import moe.rukamori.archivetune.storage.StorageLocationOptions
 import moe.rukamori.archivetune.storage.StorageMigrationPhase
 import moe.rukamori.archivetune.storage.StorageMigrationProgress
+import moe.rukamori.archivetune.storage.StorageUsage
 import javax.inject.Inject
 
 sealed interface StorageSettingsScreenState {
@@ -63,6 +70,7 @@ data class StorageSettingsUiModel(
     val picker: StorageLocationPickerUiModel,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
+    val usage: StorageUsageUiModel?,
 )
 
 @Immutable
@@ -71,7 +79,18 @@ data class StorageFolderUiModel(
     val kind: StorageLocationKind,
     val volumeLabel: String?,
     val availableBytes: Long,
+    val totalBytes: Long,
 )
+
+@Immutable
+data class StorageUsageUiModel(
+    val downloadsBytes: Long,
+    val songCacheBytes: Long,
+    val imageCacheBytes: Long,
+    val canvasCacheBytes: Long,
+) {
+    val totalBytes: Long get() = downloadsBytes + songCacheBytes + imageCacheBytes + canvasCacheBytes
+}
 
 @Immutable
 data class StorageLocationUiOptions(
@@ -94,6 +113,7 @@ data class StorageLocationUiModel(
     val kind: StorageLocationKind,
     val volumeLabel: String?,
     val availableBytes: Long,
+    val totalBytes: Long,
     val isSelected: Boolean,
 )
 
@@ -133,11 +153,13 @@ data class StorageSettingsEffect(
     val restartApp: Boolean,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class StorageSettingsViewModel
     @Inject
     constructor(
         observeStorageFolders: ObserveStorageFoldersUseCase,
+        observeStorageUsage: ObserveStorageUsageUseCase,
         private val setStorageFolder: SetStorageFolderUseCase,
         private val clearStorageCache: ClearStorageCacheUseCase,
     ) : ViewModel() {
@@ -148,13 +170,27 @@ class StorageSettingsViewModel
         private val cacheClearState = MutableStateFlow<StorageCacheClearUiModel?>(null)
         private val activeCacheClearKinds = mutableSetOf<StorageCacheKind>()
 
+        private val usageState =
+            combine(migrationState, cacheClearState) { migration, cacheClear ->
+                migration != null || cacheClear != null
+            }.distinctUntilChanged()
+                .flatMapLatest { storageBusy ->
+                    if (storageBusy) emptyFlow() else observeStorageUsage()
+                }.map<StorageUsage, StorageUsageUiModel?> { usage -> usage.toUiModel() }
+                .onStart { emit(null) }
+                .catch { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    emit(null)
+                }
+
         val state: StateFlow<StorageSettingsScreenState> =
             combine(
                 observeStorageFolders(),
                 pickerState,
                 migrationState,
                 cacheClearState,
-            ) { selection, picker, migration, cacheClear ->
+                usageState,
+            ) { selection, picker, migration, cacheClear, usage ->
                 val selectedOptionId =
                     picker.selectedOptionId
                         ?.takeIf { optionId ->
@@ -167,6 +203,7 @@ class StorageSettingsViewModel
                     picker = normalizedPicker,
                     migration = migration,
                     cacheClear = cacheClear,
+                    usage = usage,
                 )
             }.map<StorageSettingsStatePayload, StorageSettingsScreenState> { payload ->
                 StorageSettingsScreenState.Success(
@@ -176,6 +213,7 @@ class StorageSettingsViewModel
                         picker = payload.picker,
                         migration = payload.migration,
                         cacheClear = payload.cacheClear,
+                        usage = payload.usage,
                     ),
                 )
             }.catch { throwable ->
@@ -232,6 +270,10 @@ class StorageSettingsViewModel
 
         fun clearImageCache(showFeedback: Boolean = true) {
             clearCache(StorageCacheKind.IMAGES, showFeedback)
+        }
+
+        fun clearCanvasCache() {
+            clearCache(StorageCacheKind.CANVAS, showFeedback = true)
         }
 
         private fun selectStorageLocation(optionId: String) {
@@ -316,6 +358,7 @@ class StorageSettingsViewModel
                 kind = selectedOption.kind,
                 volumeLabel = selectedOption.volumeLabel,
                 availableBytes = selectedOption.availableBytes,
+                totalBytes = selectedOption.totalBytes,
             )
 
         private fun StorageLocationOptions.toUiOptions(): StorageLocationUiOptions {
@@ -332,7 +375,16 @@ class StorageSettingsViewModel
                 kind = kind,
                 volumeLabel = volumeLabel,
                 availableBytes = availableBytes,
+                totalBytes = totalBytes,
                 isSelected = isSelected,
+            )
+
+        private fun StorageUsage.toUiModel(): StorageUsageUiModel =
+            StorageUsageUiModel(
+                downloadsBytes = downloadsBytes.coerceAtLeast(0L),
+                songCacheBytes = songCacheBytes.coerceAtLeast(0L),
+                imageCacheBytes = imageCacheBytes.coerceAtLeast(0L),
+                canvasCacheBytes = canvasCacheBytes.coerceAtLeast(0L),
             )
 
         private fun StorageMigrationProgress.toUiModel(): StorageMigrationUiModel =
@@ -365,4 +417,5 @@ private data class StorageSettingsStatePayload(
     val picker: StorageLocationPickerUiModel,
     val migration: StorageMigrationUiModel?,
     val cacheClear: StorageCacheClearUiModel?,
+    val usage: StorageUsageUiModel?,
 )

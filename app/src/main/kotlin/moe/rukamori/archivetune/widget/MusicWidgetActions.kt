@@ -21,7 +21,7 @@ class PlayPauseAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        sendWidgetAction(context, ACTION_PLAY_PAUSE)
+        sendWidgetAction(context, WidgetServiceActions.PLAY_PAUSE)
     }
 }
 
@@ -31,7 +31,7 @@ class SkipNextAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        sendWidgetAction(context, ACTION_SKIP_NEXT)
+        sendWidgetAction(context, WidgetServiceActions.SKIP_NEXT)
     }
 }
 
@@ -41,20 +41,55 @@ class SkipPrevAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        sendWidgetAction(context, ACTION_SKIP_PREV)
+        sendWidgetAction(context, WidgetServiceActions.SKIP_PREV)
     }
 }
 
-private const val ACTION_PLAY_PAUSE = "moe.rukamori.archivetune.WIDGET_PLAY_PAUSE"
-private const val ACTION_SKIP_NEXT = "moe.rukamori.archivetune.WIDGET_SKIP_NEXT"
-private const val ACTION_SKIP_PREV = "moe.rukamori.archivetune.WIDGET_SKIP_PREV"
+class PlayQueueItemAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val mediaId = parameters[WidgetActionKeys.MediaId]?.takeIf { it.isNotBlank() } ?: return
+        sendWidgetAction(context, WidgetServiceActions.PLAY_QUEUE_ITEM) {
+            putExtra(WidgetServiceActions.EXTRA_MEDIA_ID, mediaId)
+            putExtra(WidgetServiceActions.EXTRA_QUEUE_INDEX, parameters[WidgetActionKeys.QueueIndex] ?: NoQueueIndex)
+        }
+    }
+}
+
+class PlaySongAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val mediaId = parameters[WidgetActionKeys.MediaId]?.takeIf { it.isNotBlank() } ?: return
+        sendWidgetAction(context, WidgetServiceActions.PLAY_SONG) {
+            putExtra(WidgetServiceActions.EXTRA_MEDIA_ID, mediaId)
+        }
+    }
+}
+
+internal object WidgetServiceActions {
+    const val PLAY_PAUSE = "moe.rukamori.archivetune.WIDGET_PLAY_PAUSE"
+    const val SKIP_NEXT = "moe.rukamori.archivetune.WIDGET_SKIP_NEXT"
+    const val SKIP_PREV = "moe.rukamori.archivetune.WIDGET_SKIP_PREV"
+    const val PLAY_QUEUE_ITEM = "moe.rukamori.archivetune.WIDGET_PLAY_QUEUE_ITEM"
+    const val PLAY_SONG = "moe.rukamori.archivetune.WIDGET_PLAY_SONG"
+    const val EXTRA_MEDIA_ID = "moe.rukamori.archivetune.extra.WIDGET_MEDIA_ID"
+    const val EXTRA_QUEUE_INDEX = "moe.rukamori.archivetune.extra.WIDGET_QUEUE_INDEX"
+}
+
 private const val TAG = "MusicWidgetActions"
 
-private fun sendWidgetAction(
+private inline fun sendWidgetAction(
     context: Context,
     action: String,
+    configure: Intent.() -> Unit = {},
 ) {
-    val intent = Intent(action).setClass(context, MusicService::class.java)
+    val intent = Intent(action).setClass(context, MusicService::class.java).apply(configure)
     runCatching {
         context.startService(intent)
     }.onFailure { error ->

@@ -18,6 +18,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -27,7 +28,12 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.updates.ObserveUpdateSettingsUseCase
 import moe.rukamori.archivetune.updates.UpdateUpdateSettingsUseCase
+import moe.rukamori.archivetune.utils.GitCommit
+import moe.rukamori.archivetune.utils.Updater
 import timber.log.Timber
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import javax.inject.Inject
 
 @Immutable
@@ -52,12 +58,43 @@ data class UpdateSettingsUiModel(
     val notificationsEnabled: Boolean,
 )
 
+@Immutable
+data class CommitUiModel(
+    val sha: String,
+    val message: String,
+    val author: String,
+    val url: String,
+    val avatarUrl: String?,
+    val committedAtMillis: Long?,
+)
+
+@Immutable
+data class CommitDayGroup(
+    val dayStartMillis: Long?,
+    val commits: List<CommitUiModel>,
+)
+
+@Immutable
+sealed interface CommitHistoryState {
+    data object Loading : CommitHistoryState
+
+    data class Content(
+        val groups: List<CommitDayGroup>,
+        val commitCount: Int,
+    ) : CommitHistoryState
+
+    data object Empty : CommitHistoryState
+
+    data object Error : CommitHistoryState
+}
+
 sealed interface UpdateSettingsAction {
     data class SetAutomaticChecksEnabled(val enabled: Boolean) : UpdateSettingsAction
     data class SetNotificationsEnabled(val enabled: Boolean) : UpdateSettingsAction
     data object JoinEarlyAccess : UpdateSettingsAction
     data object EarlyAccessLinkFailed : UpdateSettingsAction
     data object DismissError : UpdateSettingsAction
+    data object RetryCommitHistory : UpdateSettingsAction
 }
 
 sealed interface UpdateSettingsEvent {
@@ -74,8 +111,11 @@ class UpdateSettingsViewModel
         private val error = MutableStateFlow<Int?>(null)
         private var automaticChecksJob: Job? = null
         private var notificationsJob: Job? = null
+        private var commitHistoryJob: Job? = null
         private val eventChannel = Channel<UpdateSettingsEvent>(Channel.CONFLATED)
         val events = eventChannel.receiveAsFlow()
+        private val mutableCommitHistory = MutableStateFlow<CommitHistoryState>(CommitHistoryState.Loading)
+        val commitHistory: StateFlow<CommitHistoryState> = mutableCommitHistory.asStateFlow()
 
         val state: StateFlow<UpdateSettingsScreenState> =
             combine(observeSettings(), error) { settings, errorRes ->
@@ -101,6 +141,10 @@ class UpdateSettingsViewModel
                 initialValue = UpdateSettingsScreenState.Loading,
             )
 
+        init {
+            loadCommitHistory()
+        }
+
         fun onAction(action: UpdateSettingsAction) {
             when (action) {
                 is UpdateSettingsAction.SetAutomaticChecksEnabled -> setAutomaticChecksEnabled(action.enabled)
@@ -111,7 +155,37 @@ class UpdateSettingsViewModel
                     )
                 UpdateSettingsAction.EarlyAccessLinkFailed -> error.value = R.string.early_access_open_failed
                 UpdateSettingsAction.DismissError -> error.value = null
+                UpdateSettingsAction.RetryCommitHistory -> {
+                    if (mutableCommitHistory.value is CommitHistoryState.Error) loadCommitHistory()
+                }
             }
+        }
+
+        private fun loadCommitHistory() {
+            commitHistoryJob?.cancel()
+            mutableCommitHistory.value = CommitHistoryState.Loading
+            commitHistoryJob =
+                viewModelScope.launch {
+                    mutableCommitHistory.value =
+                        Updater
+                            .getCommitHistory(COMMIT_HISTORY_COUNT)
+                            .fold(
+                                onSuccess = { commits ->
+                                    if (commits.isEmpty()) {
+                                        CommitHistoryState.Empty
+                                    } else {
+                                        CommitHistoryState.Content(
+                                            groups = commits.map(GitCommit::toUiModel).groupByDay(ZoneId.systemDefault()),
+                                            commitCount = commits.size,
+                                        )
+                                    }
+                                },
+                                onFailure = { throwable ->
+                                    Timber.w(throwable, "Failed to load commit history")
+                                    CommitHistoryState.Error
+                                },
+                            )
+                }
         }
 
         private fun setAutomaticChecksEnabled(enabled: Boolean) {
@@ -142,6 +216,8 @@ class UpdateSettingsViewModel
             }
 
         private companion object {
+            const val COMMIT_HISTORY_COUNT = 30
+
             val DEFAULT_MODEL =
                 UpdateSettingsUiModel(
                     automaticChecksEnabled = true,
@@ -149,3 +225,43 @@ class UpdateSettingsViewModel
                 )
         }
     }
+
+private fun GitCommit.toUiModel(): CommitUiModel =
+    CommitUiModel(
+        sha = sha,
+        message = message,
+        author = author,
+        url = url,
+        avatarUrl = authorAvatarUrl,
+        committedAtMillis =
+            date.takeIf(String::isNotBlank)?.let { isoDate ->
+                try {
+                    Instant.parse(isoDate).toEpochMilli()
+                } catch (_: DateTimeParseException) {
+                    null
+                }
+            },
+    )
+
+private fun List<CommitUiModel>.groupByDay(zone: ZoneId): List<CommitDayGroup> {
+    val groups = mutableListOf<CommitDayGroup>()
+    forEach { commit ->
+        val dayStartMillis =
+            commit.committedAtMillis?.let { millis ->
+                Instant
+                    .ofEpochMilli(millis)
+                    .atZone(zone)
+                    .toLocalDate()
+                    .atStartOfDay(zone)
+                    .toInstant()
+                    .toEpochMilli()
+            }
+        val last = groups.lastOrNull()
+        if (last != null && last.dayStartMillis == dayStartMillis) {
+            groups[groups.lastIndex] = last.copy(commits = last.commits + commit)
+        } else {
+            groups += CommitDayGroup(dayStartMillis = dayStartMillis, commits = listOf(commit))
+        }
+    }
+    return groups
+}

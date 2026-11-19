@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.InternalDatabase
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.zipOutputStream
+import moe.rukamori.archivetune.updates.WhatsNewRepository
 import moe.rukamori.archivetune.utils.dataStore
 import java.io.FileInputStream
 import java.io.OutputStream
@@ -174,6 +175,7 @@ class BackupArchiveRepository
             preferences.forEach { (key, value) ->
                 if (
                     key.name !in excludedKeyNames &&
+                    key.name !in WhatsNewRepository.LOCAL_PREFERENCE_KEYS &&
                     key.name !in ScheduledBackupRepository.NON_PORTABLE_PREFERENCE_KEYS
                 ) {
                     serializer.writePreference(key, value)

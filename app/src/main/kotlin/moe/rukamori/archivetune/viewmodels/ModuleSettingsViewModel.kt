@@ -40,7 +40,7 @@ sealed interface ModuleSettingsState {
 }
 
 enum class ModuleSettingsPage { HOME, MODULE, CATALOG }
-enum class ModuleSettingsDialog { ADD, MODULE_URL, CATALOG_URL, REVIEW, REMOVE_MODULE, REMOVE_CATALOG, DISCARD, DIAGNOSTICS, EDIT_METADATA, DISCARD_METADATA }
+enum class ModuleSettingsDialog { MODULE_URL, CATALOG_URL, REVIEW, REMOVE_MODULE, REMOVE_CATALOG, DISCARD, DIAGNOSTICS, EDIT_METADATA, DISCARD_METADATA }
 
 enum class ModuleMetadataField { NAME, AUTHOR, DESCRIPTION }
 
@@ -109,7 +109,6 @@ sealed interface ModuleSettingsAction {
     data object Retry : ModuleSettingsAction
     data class Tab(val index: Int) : ModuleSettingsAction
     data object Back : ModuleSettingsAction
-    data object Add : ModuleSettingsAction
     data object File : ModuleSettingsAction
     data class FileSelected(val uri: Uri) : ModuleSettingsAction
     data class Url(val catalog: Boolean, val editId: String? = null) : ModuleSettingsAction
@@ -205,7 +204,6 @@ class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSe
             ModuleSettingsAction.Retry -> observe()
             is ModuleSettingsAction.Tab -> { tab = action.index; render() }
             ModuleSettingsAction.Back -> back()
-            ModuleSettingsAction.Add -> { dialog = ModuleSettingsDialog.ADD; render() }
             ModuleSettingsAction.File -> { dialog = null; eventChannel.trySend(ModuleSettingsEvent.PickFile); render() }
             is ModuleSettingsAction.Url -> {
                 dialog = if (action.catalog) ModuleSettingsDialog.CATALOG_URL else ModuleSettingsDialog.MODULE_URL

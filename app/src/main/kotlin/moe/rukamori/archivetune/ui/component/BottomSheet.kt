@@ -76,6 +76,7 @@ import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.BottomSheetAnimationSpec
 import moe.rukamori.archivetune.constants.BottomSheetSoftAnimationSpec
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 
 /**
  * Bottom Sheet
@@ -138,7 +139,7 @@ fun BottomSheet(
                             alpha = 1f - (state.progress * 4).coerceAtMost(1f)
                         }.clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                            indication = tvFocusIndicationOrNull(),
                             onClick = onCollapsedContentClick ?: state::expandSoft,
                         ).fillMaxWidth()
                         .height(state.collapsedBound),
@@ -229,7 +230,7 @@ class BottomSheetState(
     }
 
     val isCollapsed by derivedStateOf {
-        value == collapsedBound
+        value == this.collapsedBound
     }
 
     val isExpanded by derivedStateOf {
@@ -240,7 +241,7 @@ class BottomSheetState(
         get() = targetAnchor == EXPANDED_ANCHOR
 
     val progress by derivedStateOf {
-        1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
+        1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - this.collapsedBound)
     }
 
     private fun updateAnchor(anchor: Int) {
@@ -539,7 +540,7 @@ fun Modifier.bottomSheetDraggable(
                     }
                 } finally {
                     velocityTracker.resetTracking()
-                    if (dragStarted && !dragCompleted) {
+                    if (dragStarted && !dragCompleted && state.targetAnchor == initialAnchor) {
                         when (initialAnchor) {
                             EXPANDED_ANCHOR -> state.expandSoft()
                             COLLAPSED_ANCHOR -> state.collapseSoft()

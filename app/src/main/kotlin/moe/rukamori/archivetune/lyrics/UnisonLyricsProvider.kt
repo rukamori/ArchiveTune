@@ -11,6 +11,7 @@ import android.content.Context
 import android.util.Log
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.unison.Unison
+import moe.rukamori.archivetune.unison.models.UnisonLyrics
 import moe.rukamori.archivetune.utils.GlobalLog
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
@@ -32,14 +33,7 @@ object UnisonLyricsProvider : LyricsProvider {
         artist: String,
         album: String?,
         duration: Int,
-    ): Result<String> =
-        Unison.getLyrics(
-            videoId = id,
-            title = title,
-            artist = artist,
-            album = album,
-            durationSeconds = duration,
-        )
+    ): Result<String> = getAttributedLyrics(id, title, artist, album, duration).map { it.lyrics }
 
     override suspend fun getAllLyrics(
         id: String,
@@ -49,13 +43,47 @@ object UnisonLyricsProvider : LyricsProvider {
         duration: Int,
         callback: (String) -> Unit,
     ) {
+        getAllAttributedLyrics(id, title, artist, album, duration) { callback(it.lyrics) }
+    }
+
+    override suspend fun getAttributedLyrics(
+        id: String,
+        title: String,
+        artist: String,
+        album: String?,
+        duration: Int,
+    ): Result<ProviderLyrics> =
+        Unison
+            .getLyrics(
+                videoId = id,
+                title = title,
+                artist = artist,
+                album = album,
+                durationSeconds = duration,
+            ).map { it.toProviderLyrics() }
+
+    override suspend fun getAllAttributedLyrics(
+        id: String,
+        title: String,
+        artist: String,
+        album: String?,
+        duration: Int,
+        callback: (ProviderLyrics) -> Unit,
+    ) {
         Unison.getAllLyrics(
             videoId = id,
             title = title,
             artist = artist,
             album = album,
             durationSeconds = duration,
-            callback = callback,
-        )
+        ) { callback(it.toProviderLyrics()) }
     }
+
+    private fun UnisonLyrics.toProviderLyrics() =
+        ProviderLyrics(
+            lyrics = lyrics,
+            author = submitterName,
+            sourceUrl = Unison.lyricsPageUrl(this),
+            authorUrl = Unison.submitterPageUrl(this),
+        )
 }

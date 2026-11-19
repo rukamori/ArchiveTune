@@ -7,10 +7,12 @@
 
 package moe.rukamori.archivetune.viewmodels
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.domain.player.EditQueueUseCase
 import moe.rukamori.archivetune.domain.player.ObserveQueueUseCase
@@ -33,12 +36,16 @@ import moe.rukamori.archivetune.ui.player.QueueUiModel
 import timber.log.Timber
 import javax.inject.Inject
 
+private const val QueueVisibilityKey = "queue_visible"
+
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val repository: QueueRepository,
     private val observeQueue: ObserveQueueUseCase,
     private val edit: EditQueueUseCase,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    val isQueueVisible = savedStateHandle.getStateFlow(QueueVisibilityKey, false)
     private val mutableState = MutableStateFlow<QueueScreenState>(QueueScreenState.Loading)
     val state = mutableState.asStateFlow()
     private val eventChannel = Channel<QueueEvent>(Channel.BUFFERED)
@@ -47,8 +54,6 @@ class QueueViewModel @Inject constructor(
     val chrome = mutableChrome.asStateFlow()
     private var latest: QueueUiModel? = null
     private var selected = emptySet<String>()
-    private var dragOrder: List<String>? = null
-    private var draggedId: String? = null
     private var overflow = false
     private var playlist = false
     private var createPlaylist = false
@@ -83,7 +88,6 @@ class QueueViewModel @Inject constructor(
                 observationError = null
                 latest = model
                 selected = selected.intersect(model?.entries?.values.orEmpty().mapTo(mutableSetOf()) { it.id })
-                if (model?.locked == true) { dragOrder = null; draggedId = null }
                 publish()
             }
         }
@@ -93,13 +97,27 @@ class QueueViewModel @Inject constructor(
     fun unbind(connection: PlayerConnection) = repository.detach(connection)
     fun visible() = edit.refresh()
 
+    fun openQueue() {
+        savedStateHandle[QueueVisibilityKey] = true
+    }
+
+    fun dismissQueue() {
+        savedStateHandle[QueueVisibilityKey] = false
+        if (selected.isNotEmpty() || overflow) {
+            selected = emptySet()
+            overflow = false
+            publish()
+        }
+    }
+
     fun sleepTimerClick() {
         if (mutableChrome.value.sleepTimerEnabled) edit.clearSleepTimer()
         else mutableChrome.value = mutableChrome.value.copy(showSleepTimer = true)
     }
     fun dismissSleepTimer() { mutableChrome.value = mutableChrome.value.copy(showSleepTimer = false) }
     fun sleepTimerValue(value: Float) { mutableChrome.value = mutableChrome.value.copy(sleepTimerValue = value) }
-    fun startSleepTimer(minutes: Int) { edit.startSleepTimer(minutes); dismissSleepTimer() }
+    fun startSleepTimer(minutes: Int, finishCurrentSong: Boolean, fadeOut: Boolean) =
+        edit.startSleepTimer(minutes, finishCurrentSong, fadeOut)
 
     private fun publish() {
         val model = latest
@@ -107,9 +125,7 @@ class QueueViewModel @Inject constructor(
             mutableState.value = observationError?.let { QueueScreenState.Error(it) } ?: QueueScreenState.Empty
             return
         }
-        val rows = model.entries.values.associateBy { it.id }
-        val order = dragOrder?.let { it.filter(rows::containsKey) + rows.keys.filterNot(it::contains) }
-        val entries = (order?.mapNotNull(rows::get) ?: model.entries.values).map { it.copy(selected = it.id in selected) }
+        val entries = model.entries.values.map { it.copy(selected = it.id in selected) }
         val updated = model.copy(
             entries = QueueEntries(entries), selectionCount = selected.size, overflowOpen = overflow,
             playlistDialog = playlist, createPlaylistDialog = createPlaylist, savingPlaylist = playlistJob?.isActive == true,
@@ -170,25 +186,12 @@ class QueueViewModel @Inject constructor(
             is QueueAction.PlaylistName -> { playlistName = action.value; publish() }
             is QueueAction.Drag -> {
                 if (model.locked) return
-                val order = (dragOrder ?: model.entries.values.map { it.id }).toMutableList()
+                val order = model.entries.values.map { it.id }.toMutableList()
                 val source = order.indexOf(action.from)
                 val target = order.indexOf(action.to)
-                if (source < 0 || target < 0) return
+                if (source < 0 || target < 0 || source == target) return
                 order.add(target, order.removeAt(source))
-                draggedId = action.from
-                dragOrder = order
-                publish()
-            }
-            QueueAction.FinishDrag -> {
-                val id = draggedId
-                val order = dragOrder
-                if (!model.locked && id != null && order != null) {
-                    val index = order.indexOf(id)
-                    edit.move(id, order.getOrNull(index - 1))
-                }
-                dragOrder = null
-                draggedId = null
-                publish()
+                edit.move(action.from, order.getOrNull(target - 1))
             }
             QueueAction.Retry -> edit.refresh(force = true)
         }
@@ -226,7 +229,7 @@ class QueueViewModel @Inject constructor(
     }
 
     suspend fun prepareSelectedSongs(): List<String> = try {
-        edit.prepareSongs(selected)
+        withContext(Dispatchers.Main.immediate) { edit.prepareSongs(selected.toSet()) }
     } catch (error: CancellationException) { throw error } catch (error: Exception) { failure(error); emptyList() }
 
     fun playlistAdded(count: Int, names: List<String>) {

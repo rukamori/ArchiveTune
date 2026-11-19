@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,10 +77,12 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.ImmersiveMediaHeader
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MediaDetailHero
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.immersiveTopAppBarColors
+import moe.rukamori.archivetune.ui.component.rememberImmersiveDetailColors
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
@@ -187,7 +188,7 @@ fun CachePlaylistScreen(
             }
         }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val immersiveColors = rememberImmersiveDetailColors(filteredSongs.firstOrNull()?.item?.thumbnailUrl)
 
     val showTopBarTitle by remember {
         derivedStateOf {
@@ -214,7 +215,7 @@ fun CachePlaylistScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(surfaceColor),
+                .background(immersiveColors.backdrop),
     ) {
         LazyColumn(
             state = lazyListState,
@@ -249,11 +250,11 @@ fun CachePlaylistScreen(
                 if (filteredSongs.isNotEmpty() && !isSearching) {
                     // Hero Header Item
                     item(key = "header") {
-                        MediaDetailHero(
+                        ImmersiveMediaHeader(
                             title = stringResource(R.string.cached_playlist),
                             thumbnailUrl = filteredSongs.firstOrNull()?.item?.thumbnailUrl,
                             fallbackIcon = R.drawable.music_note,
-                            systemBarsTopPadding = systemBarsTopPadding,
+                            colors = immersiveColors,
                             metadata =
                                 pluralStringResource(
                                     R.plurals.n_song,
@@ -313,6 +314,7 @@ fun CachePlaylistScreen(
                 // Song items
                 itemsIndexed(filteredSongs, key = { _, song -> song.item.id }) { index, songWrapper ->
                     SongListItem(
+                        swipeContentBackgroundColor = immersiveColors.backdrop,
                         song = songWrapper.item,
                         isActive = songWrapper.item.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
@@ -385,20 +387,7 @@ fun CachePlaylistScreen(
         TopAppBar(
             scrollBehavior = scrollBehavior,
             colors =
-                if (transparentAppBar) {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                        navigationIconContentColor = Color.White,
-                        titleContentColor = Color.White,
-                        actionIconContentColor = Color.White,
-                    )
-                } else {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    )
-                },
+                immersiveTopAppBarColors(immersiveColors, overArtwork = transparentAppBar),
             title = {
                 when {
                     selection -> {

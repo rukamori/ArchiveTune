@@ -52,6 +52,8 @@ data class ResolvedAudioStream(
     val loudnessDb: Double? = null,
     val perceptualLoudnessDb: Double? = null,
     val playbackTrackingUrl: String? = null,
+    val gvsPoTokenBinding: GvsPoTokenBinding? = null,
+    val gvsPoTokenMinterGeneration: Long? = null,
     val moduleSelection: moe.rukamori.archivetune.modules.ModuleAudioSelection? = null,
 )
 

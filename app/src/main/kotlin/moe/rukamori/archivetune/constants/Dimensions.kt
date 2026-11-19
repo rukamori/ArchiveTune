@@ -40,7 +40,7 @@ val GridThumbnailHeight = 128.dp
 val AlbumThumbnailSize = 144.dp
 
 val ThumbnailCornerRadius = 10.dp
-val GridThumbnailCornerRadius = 8.dp
+val GridThumbnailCornerRadius = 16.dp
 
 val PlayerHorizontalPadding = 32.dp
 

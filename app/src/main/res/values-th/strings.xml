@@ -73,11 +73,8 @@
     <string name="recently_added">เพิ่มล่าสุด</string>
     <string name="sort_descending">เรียงลำดับจากมากไปน้อย</string>
     <string name="sort_ascending">เรียงลำดับจากน้อยไปมาก</string>
-    <string name="your_collection">คอลเลกชันของคุณ</string>
     <string name="playing_desc">กำลังเล่น</string>
     <string name="tracks_label">แทร็ก</string>
-    <string name="song_singular">เพลง</string>
-    <string name="more_playlists_desc">เพลย์ลิสต์เพิ่มเติม</string>
     <string name="more_label">เพิ่มเติม</string>
     <string name="tracks_count_label">จำนวนแทร็ก</string>
     <string name="recently_updated">เพื่งอัพเดท</string>
@@ -85,23 +82,18 @@
     <string name="personal_label">ส่วนตัว</string>
     <string name="youtube_synced">ซิงค์กับ Youtubbe แล้ว</string>
     <string name="options_label">ตัวเลือก</string>
-    <string name="top_artist_badge">ศิลปินยอดฮิต</string>
-    <string name="no_artist_yet">ยังไม่มีศิลปิน</string>
-    <string name="total_label">ทั้งหมด</string>
     <string name="play_time">เวลาเล่น</string>
     <string name="subscribed_only">สมาชิกเท่านั้น</string>
     <string name="all_artists_filter">ศิลปินทั้งหมด</string>
     <string name="list_view">มุมมองรายการ</string>
     <string name="grid_view">มุมมองตาราง</string>
     <string name="artist_subtitle">ศิลปิน</string>
-    <string name="recently_played_artists">ศิลปินที่เล่นล่าสุด</string>
     <string name="newest_year">ปีล่าสุด</string>
     <string name="oldest_year">ปีเก่าที่สุด</string>
     <string name="longest_duration">ระยะเวลานานที่สุด</string>
     <string name="shortest_duration">ระยะเวลาสั้นที่สุด</string>
     <string name="year_sort">ปี</string>
     <string name="duration_sort">ระยะเวลา</string>
-    <string name="featured_album_badge">อัลบั้มแนะนำ</string>
     <string name="other_versions">เวอร์ชันอื่น</string>
     <string name="liked_songs">เพลงที่ถูกใจ</string>
     <string name="downloaded_songs">เพลงที่ดาวน์โหลดแล้ว</string>
@@ -280,7 +272,6 @@
     <string name="lyrics_not_found">ไม่พบเนื้อเพลง</string>
     <string name="lyrics_word_sync">ซิงค์คำ</string>
     <string name="sleep_timer">ตั้งเวลาปิด</string>
-    <string name="end_of_song">หลังจบเพลง</string>
     <plurals name="minute">
         <item quantity="other">%d นาที</item>
     </plurals>
@@ -315,6 +306,11 @@
     <string name="app_icon_empty">ไม่มีไอคอนที่พร้อมใช้</string>
     <string name="app_icon_load_failed">ไม่สามารถโหลดไอคอนแอปได้</string>
     <string name="app_icon_change_failed">ไม่สามารถเปลี่ยนไอคอนแอปได้</string>
+    <string name="app_icon_applying">กำลังใช้ %1$s…</string>
+    <string name="app_icon_by_author">โดย %1$s</string>
+    <string name="app_icon_github_profile">โปรไฟล์ GitHub</string>
+    <string name="app_icon_details">รายละเอียดไอคอน</string>
+    <string name="app_icon_use">ใช้ไอคอนนี้</string>
     <string name="theme">ธีม</string>
     <string name="enable_dynamic_theme">เปิดใช้งานธีมไดนามิก</string>
     <string name="random_theme_on_startup">สุ่มธีมเมื่อเริ่มแอป</string>

@@ -62,6 +62,7 @@ data class PreparedLyricsLine(
     val text: String,
     val alignment: LyricsLineAlignment,
     val direction: LyricsTextDirection,
+    val singers: ImmutableList<String>,
     val main: PreparedLyricsTrack,
     val backgrounds: ImmutableList<PreparedLyricsTrack>,
     val translation: String?,
@@ -93,4 +94,11 @@ data class PreparedLyrics(
     val preferences: LyricsRenderingPreferences,
 ) {
     val hasTranslations: Boolean = lines.any { !it.translation.isNullOrBlank() }
+
+    val showsSingerNames: Boolean =
+        lines.any { it.singers.isNotEmpty() } &&
+            (
+                lines.asSequence().filterNot(PreparedLyricsLine::isInstrumental).map(PreparedLyricsLine::alignment).distinct().count() > 1 ||
+                    lines.asSequence().flatMap { it.singers.asSequence() }.distinct().take(2).count() > 1
+            )
 }

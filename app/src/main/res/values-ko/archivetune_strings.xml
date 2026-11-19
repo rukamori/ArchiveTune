@@ -6,8 +6,6 @@
     <string name="music_recognition_processing">분석 중…</string>
     <string name="music_recognition_listen_again">다시 듣기</string>
     <string name="music_recognition_no_match">일치하는 노래를 찾을 수 없습니다.</string>
-    <string name="music_recognition_signature_failed">오디오 서명을 생성할 수 없습니다.</string>
-    <string name="music_recognition_recognition_failed">인식 실패</string>
     <string name="music_recognition_open_shazam">Shazam 열기</string>
     <string name="music_recognition_lyrics_preview">가사 미리보기</string>
     <string name="music_recognition_permission_title">마이크 권한</string>
@@ -73,7 +71,6 @@
     <string name="no_title">제목 없음</string>
     <string name="unknown_artist">알 수 없는 아티스트</string>
     <string name="retry_button">재시도</string>
-    <string name="album_cover_desc">앨범 커버</string>
     <string name="top_music_videos">인기 뮤직비디오</string>
     <string name="trending">인기 급상승</string>
     <string name="weeks">주</string>
@@ -282,12 +279,9 @@
     <string name="settings_account_subtitle">로그인 및 계정 동기화 설정</string>
     <string name="settings_stats_title">음악 감상 통계</string>
     <string name="settings_stats_subtitle">가장 많이 들은 곡, 아티스트 및 재생 기록 요약</string>
-    <string name="similar_content">유사한 콘텐츠</string>
     <string name="year_in_music">Year in Music</string>
-    <string name="total_listening_time">총 감상 시간</string>
     <string name="top_artists">인기 아티스트</string>
     <string name="share_summary">요약 공유</string>
-    <string name="no_listening_data">올해 감상한 기록이 없습니다.</string>
     <string name="stats_favourite_artist">가장 좋아하는 아티스트</string>
     <string name="stats_favourite_song">가장 좋아하는 노래</string>
     <string name="stats_total_time_listened">총 누적 감상 시간</string>
@@ -381,7 +375,6 @@
     <string name="year_in_music_minutes_unit">분</string>
     <string name="music_recognition_history_recognized_at">%1$s에 인식됨</string>
     <string name="import_csv_format">CSV 재생목록 파일</string>
-    <string name="year_in_music_recap_word">RECAP</string>
     <string name="music_recognition_history_no_results_body">다른 곡, 아티스트, 앨범 또는 코드를 입력해 보세요.</string>
     <string name="about_lead_developer">리드 개발자</string>
     <string name="aod_customize_text_alignment">텍스트 정렬</string>
@@ -400,7 +393,6 @@
     <string name="aod_customize_sample_duration">3:48</string>
     <string name="aod_customize_accent_style">강조 색상 스타일</string>
     <string name="music_recognition_history_search">인식된 곡 검색</string>
-    <string name="year_in_music_top_pick">가장 즐겨 들은 음악</string>
     <string name="aod_shape_arch">아치형</string>
     <string name="aod_customize_sample_album">Always On Sessions</string>
     <string name="aod_shape_flower">꽃 모양</string>
@@ -408,7 +400,6 @@
     <string name="lyrics_share_style_deep_blur">딥 블러</string>
     <string name="aod_shape_pentagon">오각형</string>
     <string name="about_archive_tune_team">ArchiveTune 팀</string>
-    <string name="storage_migration_cache_progress">캐시 이동 중… %1$d%%</string>
     <string name="aod_customize_horizontal_padding">가로 여백</string>
     <string name="local_songs_scan_included_folders_empty">모든 폴더가 포함됩니다.</string>
     <string name="aod_position_bottom">하단</string>
@@ -426,7 +417,6 @@
     <string name="year_in_music_minutes_label">총 재생 시간</string>
     <string name="storage_folder_invalid">올바른 폴더를 선택해 주세요.</string>
     <string name="aod_background_pure_black">트루 블랙</string>
-    <string name="year_in_music_musical_passport">나만의 음악 여권</string>
     <string name="music_recognition_history_empty_body">음악 인식에 성공하면 일치하는 곡이 여기에 표시됩니다.</string>
     <string name="aod_shape_ghostish">고스트</string>
     <string name="storage_location_removable_named">SD 카드 (%s)</string>
@@ -451,7 +441,6 @@
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="android_auto_suggested_songs">추천 곡 목록</string>
     <string name="music_recognition_history_no_results_title">일치하는 인식 기록이 없습니다.</string>
-    <string name="year_in_music_totals_title">당신이 채워온 음악 속 일상</string>
     <string name="aod_customize_show_controls">컨트롤 버튼 표시</string>
     <string name="spotify_not_connected">Spotify가 연결되지 않았습니다.</string>
     <string name="about_position_lead_dev">네?</string>
@@ -465,7 +454,6 @@
     <string name="storage_folder">저장 폴더</string>
     <string name="internal_service">내부 서비스</string>
     <string name="spotify_show_playlist_desc">보관함에 Spotify 재생목록을 표시합니다.</string>
-    <string name="year_in_music_ranked_artists">자주 들은 아티스트</string>
     <string name="backup_create_backup_desc">보관함, 설정 및 계정 정보를 내보냅니다.</string>
     <string name="local_songs_scan_included_folders_add">폴더 추가</string>
     <string name="aod_customize_control_style">컨트롤 스타일</string>
@@ -478,10 +466,8 @@
     <string name="playlist_sync_failed">재생목록 동기화 실패: %1$s</string>
     <string name="storage_location_sheet_title">저장 위치</string>
     <string name="music_recognition_history_empty_title">인식된 곡이 아직 없습니다.</string>
-    <string name="year_in_music_ranked_albums">자주 찾은 앨범</string>
     <string name="about_content_desc_website">웹사이트</string>
     <string name="aod_customize_background_style">배경 스타일</string>
-    <string name="year_in_music_recap">Recap</string>
     <string name="about_content_desc_github">GitHub</string>
     <string name="player_design_v9">머티리얼 익스텐디드</string>
     <string name="aod_customize_show_time_labels">시간 정보 표시</string>
@@ -491,16 +477,13 @@
     <string name="lyrics_share_style_frosted_light">프로스테드 라이트</string>
     <string name="aod_shape_triangle">삼각형</string>
     <string name="aod_customize_entry_desc">Always On Display 재생 화면을 취향에 맞게 설정합니다.</string>
-    <string name="year_in_music_intro_hero">드디어 공개합니다! 당신만의 올해의 음악</string>
     <string name="year_in_music_empty_title">아직 보여드릴 요약이 없습니다</string>
     <string name="spotify_loading_library">Spotify 보관함 로드 중</string>
     <string name="local_songs_scan_included_folders_title">포함할 폴더</string>
     <string name="spotify_reload_playlist_desc">Spotify 계정에서 재생목록을 새로고침합니다.</string>
     <string name="lyrics_share_style_vivid_glow">비비드 글로우</string>
     <string name="aod_shape_pill">알약 모양</string>
-    <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="aod_shape_slanted">기울임</string>
-    <string name="year_in_music_current_card">공유 카드</string>
     <string name="lyrics_share_style_album_tint">앨범 색조</string>
     <string name="playlist_sync_progress_step">%1$d / %2$d곡</string>
     <string name="spotify_account">Spotify 계정</string>
@@ -516,12 +499,9 @@
     <string name="storage_folder_unsupported">이 폴더는 파일 기반 음악 캐시에 사용할 수 없습니다.</string>
     <string name="aod_customize_sample_elapsed">1:24</string>
     <string name="mini_player_background_style">미니 플레이어 배경 스타일</string>
-    <string name="year_in_music_swipe_begin">쓸어넘겨 시작하기</string>
     <string name="aod_shape_soft_burst">소프트 버스트</string>
-    <string name="storage_folder_pick">대상 폴더 선택</string>
     <string name="spotify_no_tracks">Spotify 노래를 찾을 수 없습니다.</string>
     <string name="android_auto_sort_playlist">재생목록 정렬</string>
-    <string name="year_in_music_intro_details">가장 많이 들은 노래, 아티스트, 앨범 및 총 감상 시간을 한눈에 확인해 보세요.</string>
     <string name="spotify_no_sources">Spotify 재생목록을 찾을 수 없습니다.</string>
     <string name="storage_location_removable">SD 카드</string>
     <string name="aod_control_tonal">톤온톤</string>
@@ -533,17 +513,11 @@
     <string name="storage_cache_clear_failed">캐시를 비울 수 없습니다. SD 카드 접근 권한을 확인해 주세요.</string>
     <string name="aod_customize_show_album">앨범명 표시</string>
     <string name="aod_customize_show_exit_button">나가기 버튼 표시</string>
-    <string name="storage_migration_downloads_progress">오프라인 저장한 음악 이동 중… %1$d%%</string>
     <string name="aod_customize_content_position">콘텐츠 위치</string>
     <string name="suggestions">추천</string>
-    <string name="storage_clear_song_cache_progress">음악 캐시 삭제 중</string>
-    <string name="storage_clear_downloads_progress">오프라인 저장한 음악 삭제 중</string>
-    <string name="storage_clear_image_cache_progress">이미지 캐시 삭제 중</string>
-    <string name="storage_clear_canvas_cache_progress">캔버스 캐시 삭제 중</string>
     <string name="storage_cache_clear_warning">정말로 캐시 데이터를 모두 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다.)</string>
     <string name="history_duration_desc">기록에 반영할 최소 감상 시간 설정</string>
     <string name="history_duration_seconds">%1$s 초</string>
-    <string name="top_albums">인기 앨범</string>
     <string name="theme_creator_title">테마 제작기</string>
     <string name="theme_import_failed_title">테마 가져오기 실패</string>
     <string name="theme_applied">테마가 성공적으로 적용되었습니다.</string>

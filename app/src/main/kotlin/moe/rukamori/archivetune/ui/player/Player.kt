@@ -32,6 +32,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -70,7 +71,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -81,6 +81,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -88,8 +89,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -144,16 +148,21 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.CanvasPlaybackRequest
+import moe.rukamori.archivetune.ui.utils.LocalIsTvDevice
 import moe.rukamori.archivetune.ui.utils.navigateToAlbum
 import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackViewModel
 import moe.rukamori.archivetune.viewmodels.CanvasPlaybackState
 import moe.rukamori.archivetune.viewmodels.ImmersivePlayerViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsSyncOffsetViewModel
+import moe.rukamori.archivetune.viewmodels.QueueViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -180,11 +189,12 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.back.BackOwnershipPolicy
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
+import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
@@ -201,6 +211,7 @@ import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.YtimgResizePolicy
 import moe.rukamori.archivetune.ui.utils.getNextFallbackUrl
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.tvFocusIndicationOrNull
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -304,6 +315,10 @@ fun BottomSheetPlayer(
     navigationBarMode: NavigationBarMode = NavigationBarMode.CONNECTED,
     canvasViewModel: CanvasPlaybackViewModel = hiltViewModel(),
     immersivePlayerViewModel: ImmersivePlayerViewModel = hiltViewModel(),
+    queueViewModel: QueueViewModel = hiltViewModel(),
+    lyricsSyncOffsetViewModel: LyricsSyncOffsetViewModel = hiltViewModel(),
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    exitLeftFocusRequester: FocusRequester? = null,
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -352,7 +367,10 @@ fun BottomSheetPlayer(
         defaultValue = PlayerBackgroundStyle.DEFAULT,
     )
     val playerUsesFixedBackground =
-        playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10
+        playerDesignStyle == PlayerDesignStyle.V8 ||
+            playerDesignStyle == PlayerDesignStyle.V9 ||
+            playerDesignStyle == PlayerDesignStyle.V10 ||
+            playerDesignStyle == PlayerDesignStyle.V11
     val playerBackground =
         if (playerUsesFixedBackground) PlayerBackgroundStyle.DEFAULT else storedPlayerBackground
 
@@ -422,8 +440,7 @@ fun BottomSheetPlayer(
     val currentSongLiked = currentSong?.song?.liked == true
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
-    val queueWindows by playerConnection.queueWindows.collectAsState()
-    val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
+    val queue by playerConnection.queue.collectAsState()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
     val onPlayerVolumeChange =
         remember(deviceMusicVolumeController) {
@@ -479,9 +496,11 @@ fun BottomSheetPlayer(
     var duration by rememberSaveable(mediaMetadata?.id) {
         mutableLongStateOf(playerConnection.player.duration)
     }
-    var lyricsSyncOffset by rememberSaveable(mediaMetadata?.id) {
-        mutableIntStateOf(0)
+    LaunchedEffect(lyricsSyncOffsetViewModel, mediaMetadata?.id) {
+        lyricsSyncOffsetViewModel.setSongId(mediaMetadata?.id)
     }
+    val lyricsSyncOffsetState by lyricsSyncOffsetViewModel.state.collectAsStateWithLifecycle()
+    val lyricsSyncOffset = lyricsSyncOffsetState.offsetFor(mediaMetadata?.id)
     var sliderPosition by remember(mediaMetadata?.id) {
         mutableStateOf<Long?>(null)
     }
@@ -497,10 +516,10 @@ fun BottomSheetPlayer(
     }
 
     // Exact seeds from artwork color scheme
-    var v10ArtworkSeeds by remember {
+    var artworkSeeds by remember {
         mutableStateOf<Pair<Color, Color>?>(null)
     }
-    val v10ArtworkSeedsCache = remember { mutableMapOf<String, Pair<Color, Color>>() }
+    val artworkSeedsCache = remember { mutableMapOf<String, Pair<Color, Color>>() }
 
     // Previous background states for smooth transitions
     var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
@@ -525,6 +544,7 @@ fun BottomSheetPlayer(
     LaunchedEffect(mediaMetadata?.id, playerSwapState.displayUrl, playerBackground, playerDesignStyle) {
         if (aodModeEnabled) return@LaunchedEffect
         if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10 ||
+            playerDesignStyle == PlayerDesignStyle.V11 ||
             playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
             playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
             playerBackground == PlayerBackgroundStyle.GLOW ||
@@ -535,10 +555,10 @@ fun BottomSheetPlayer(
             if (currentMetadata != null && displayThumbnail != null) {
                 // Check cache first
                 val cachedColors = gradientColorsCache[currentMetadata.id]
-                val cachedV10Seeds = v10ArtworkSeedsCache[currentMetadata.id]
-                if (cachedColors != null && cachedV10Seeds != null) {
+                val cachedSeeds = artworkSeedsCache[currentMetadata.id]
+                if (cachedColors != null && cachedSeeds != null) {
                     gradientColors = cachedColors
-                    v10ArtworkSeeds = cachedV10Seeds
+                    artworkSeeds = cachedSeeds
                 } else {
                     val request =
                         ImageRequest
@@ -596,8 +616,8 @@ fun BottomSheetPlayer(
                             gradientColorsCache[currentMetadata.id] = extractedColors
                             gradientColors = extractedColors
                             if (seeds != null) {
-                                v10ArtworkSeedsCache[currentMetadata.id] = seeds
-                                v10ArtworkSeeds = seeds
+                                artworkSeedsCache[currentMetadata.id] = seeds
+                                artworkSeeds = seeds
                             }
                         } else {
                             gradientColors = defaultGradientColors
@@ -643,8 +663,8 @@ fun BottomSheetPlayer(
     )
 
     // EXACT artwork accents using HCT (Hue-Chroma-Tone) for correct toning
-    val targetV10FieldColor = remember(v10ArtworkSeeds, useDarkTheme) {
-        val seeds = v10ArtworkSeeds
+    val targetV10FieldColor = remember(artworkSeeds, useDarkTheme) {
+        val seeds = artworkSeeds
         if (seeds == null) {
             dominantColor
         } else {
@@ -665,8 +685,8 @@ fun BottomSheetPlayer(
         label = "dynamicV10FieldColor"
     )
 
-    val targetV10AccentColor = remember(v10ArtworkSeeds, useDarkTheme) {
-        val seeds = v10ArtworkSeeds
+    val targetV10AccentColor = remember(artworkSeeds, useDarkTheme) {
+        val seeds = artworkSeeds
         if (seeds == null) {
             dominantColor
         } else {
@@ -686,6 +706,13 @@ fun BottomSheetPlayer(
         animationSpec = tween(durationMillis = 800),
         label = "dynamicV10AccentColor"
     )
+
+    val v11BaseColorScheme = MaterialTheme.colorScheme
+    val targetV11Palette =
+        remember(artworkSeeds, useDarkTheme, v11BaseColorScheme) {
+            v11PaletteFrom(artworkSeeds, useDarkTheme, v11BaseColorScheme)
+        }
+    val v11Palette = animateV11Palette(targetV11Palette)
 
     val targetTextColor = remember(dominantColor, useDarkTheme) {
         val hsv = FloatArray(3)
@@ -716,7 +743,11 @@ fun BottomSheetPlayer(
     )
 
     val TextBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
+        if (playerDesignStyle == PlayerDesignStyle.V11) {
+            v11Palette.onField
+        } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+            dynamicV10AccentColor
+        } else if (playerDesignStyle == PlayerDesignStyle.V9) {
             dynamicTextColor
         } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.White
@@ -734,7 +765,9 @@ fun BottomSheetPlayer(
         }
 
     val icBackgroundColor =
-        if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
+        if (playerDesignStyle == PlayerDesignStyle.V11) {
+            v11Palette.field
+        } else if (playerDesignStyle == PlayerDesignStyle.V9 || playerDesignStyle == PlayerDesignStyle.V10) {
             dynamicBgColor
         } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
             Color.Black
@@ -752,28 +785,36 @@ fun BottomSheetPlayer(
         }
 
     val (textButtonColor, iconButtonColor) =
-        if (playerDesignStyle == PlayerDesignStyle.V9) {
-            Pair(dynamicAccentColor, dynamicIconButtonColor)
-        } else {
-            when (playerButtonsStyle) {
-                PlayerButtonsStyle.DEFAULT -> {
-                    Pair(TextBackgroundColor, icBackgroundColor)
-                }
-
-                PlayerButtonsStyle.SECONDARY -> {
-                    Pair(
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.onSecondary,
-                    )
-                }
-            }
-        }.let { (tb, ib) ->
-            if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
+        when (playerDesignStyle) {
+            PlayerDesignStyle.V7, PlayerDesignStyle.V8 -> {
                 Pair(Color.White, Color.Black)
-            } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+            }
+
+            PlayerDesignStyle.V9 -> {
                 Pair(dynamicAccentColor, dynamicIconButtonColor)
-            } else {
-                Pair(tb, ib)
+            }
+
+            PlayerDesignStyle.V10 -> {
+                Pair(dynamicV10FieldColor, dynamicV10AccentColor)
+            }
+
+            PlayerDesignStyle.V11 -> {
+                Pair(v11Palette.accent, v11Palette.onAccent)
+            }
+
+            else -> {
+                when (playerButtonsStyle) {
+                    PlayerButtonsStyle.DEFAULT -> {
+                        Pair(TextBackgroundColor, icBackgroundColor)
+                    }
+
+                    PlayerButtonsStyle.SECONDARY -> {
+                        Pair(
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.onSecondary,
+                        )
+                    }
+                }
             }
         }
 
@@ -807,26 +848,21 @@ fun BottomSheetPlayer(
         }
     }
 
-    var showSleepTimerDialog by remember {
+    var showSleepTimerSheet by remember {
         mutableStateOf(false)
     }
 
     var sleepTimerValue by remember {
         mutableFloatStateOf(30f)
     }
-    if (showSleepTimerDialog) {
-        SleepTimerDialog(
-            onDismiss = { showSleepTimerDialog = false },
-            onConfirm = { mins ->
-                showSleepTimerDialog = false
-                sleepTimerValue = mins.toFloat()
-                playerConnection.service.sleepTimer.start(mins)
+    if (showSleepTimerSheet) {
+        SleepTimerBottomSheet(
+            value = sleepTimerValue,
+            onValueChange = { sleepTimerValue = it },
+            onDismiss = { showSleepTimerSheet = false },
+            onStart = { minutes, finishCurrentSong, fadeOut ->
+                playerConnection.service.sleepTimer.start(minutes, finishCurrentSong, fadeOut)
             },
-            onEndOfSong = {
-                showSleepTimerDialog = false
-                playerConnection.service.sleepTimer.start(-1)
-            },
-            initialValue = sleepTimerValue
         )
     }
 
@@ -853,7 +889,7 @@ fun BottomSheetPlayer(
                                 if (sleepTimerEnabled) {
                                     playerConnection.service.sleepTimer.clear()
                                 } else {
-                                    showSleepTimerDialog = true
+                                    showSleepTimerSheet = true
                                 }
                             },
                             onShowDetailsDialog = {
@@ -946,64 +982,64 @@ fun BottomSheetPlayer(
         }
     }
 
-    val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.V10) {
-            0.dp
-        } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-            88.dp +
-                (if (showCodecOnPlayer) 24.dp else 0.dp) +
-                (if (sleepTimerEnabled) 42.dp else 0.dp)
-        } else if (playerDesignStyle == PlayerDesignStyle.V7) {
-            72.dp
-        } else if (showCodecOnPlayer) {
-            88.dp
-        } else {
-            QueuePeekHeight
+
+    val queueVisible by queueViewModel.isQueueVisible.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state, queueViewModel) {
+        snapshotFlow { state.targetAnchor }.drop(1).collect { anchor ->
+            if (anchor != EXPANDED_ANCHOR) queueViewModel.dismissQueue()
         }
-
-    val dismissedBound = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
-
-    val queueSheetState =
-        rememberBottomSheetState(
-            dismissedBound = dismissedBound,
-            expandedBound = state.expandedBound,
-            collapsedBound = dismissedBound,
-            initialAnchor = 0,
-        )
+    }
+    LaunchedEffect(aodModeEnabled, queueViewModel) {
+        if (aodModeEnabled) queueViewModel.dismissQueue()
+    }
 
     var isLyricsScreenVisible by rememberSaveable {
         mutableStateOf(false)
     }
     val openQueue =
-        remember(state, queueSheetState) {
+        remember(state, queueViewModel) {
             {
                 isLyricsScreenVisible = false
                 if (!state.isExpandedOrExpanding) {
                     state.expandSoft()
                 }
-                queueSheetState.expandSoft()
+                queueViewModel.openQueue()
             }
         }
 
-    val isPlayerVisible by remember(state) {
-        derivedStateOf { state.isExpandedOrExpanding || state.progress > 0f }
-    }
-    BackHandler(enabled = !aodModeEnabled && isPlayerVisible) {
-        when {
-            isLyricsScreenVisible -> isLyricsScreenVisible = false
-            queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
-            state.isExpandedOrExpanding -> state.collapseSoft()
+    BackHandler(
+        enabled =
+            BackOwnershipPolicy.playerHandlesBack(
+                aodModeEnabled = aodModeEnabled,
+                queueVisible = queueVisible,
+                isExpandedOrExpanding = state.isExpandedOrExpanding,
+            ),
+    ) {
+        if (isLyricsScreenVisible) {
+            isLyricsScreenVisible = false
+        } else {
+            state.collapseSoft()
         }
     }
 
-    val focusRequester = remember { FocusRequester() }
+    val isTvDevice = LocalIsTvDevice.current
+    var isSheetSelfFocused by remember { mutableStateOf(false) }
+    var expandedPlayerHeldFocus by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isExpanded) {
         if (state.isExpanded) {
-            focusRequester.requestFocus()
+            expandedPlayerHeldFocus = focusRequester.requestFocus()
         }
         if (!state.isExpanded && aodModeEnabled) {
             playerConnection.aodModeEnabled.value = false
+        }
+    }
+
+    LaunchedEffect(state.isCollapsed, isTvDevice) {
+        if (isTvDevice && state.isCollapsed && expandedPlayerHeldFocus) {
+            expandedPlayerHeldFocus = false
+            focusRequester.requestFocus()
         }
     }
 
@@ -1012,9 +1048,42 @@ fun BottomSheetPlayer(
         modifier =
             modifier
                 .focusRequester(focusRequester)
-                .focusable()
+                .focusProperties {
+                    onExit = {
+                        if (state.isExpandedOrExpanding) {
+                            val railTarget = exitLeftFocusRequester
+                            when (requestedFocusDirection) {
+                                FocusDirection.Left -> {
+                                    if (railTarget != null) railTarget.requestFocus() else cancelFocusChange()
+                                }
+
+                                FocusDirection.Up,
+                                FocusDirection.Down,
+                                FocusDirection.Right,
+                                FocusDirection.Next,
+                                FocusDirection.Previous,
+                                -> {
+                                    cancelFocusChange()
+                                }
+
+                                else -> {}
+                            }
+                        }
+                    }
+                }.onFocusChanged { focusState ->
+                    isSheetSelfFocused = focusState.isFocused
+                    if (!state.isCollapsed) {
+                        expandedPlayerHeldFocus = focusState.hasFocus
+                    }
+                }.then(if (isTvDevice) Modifier.focusGroup() else Modifier.focusable())
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.type != KeyEventType.KeyDown || state.isCollapsed) return@onKeyEvent false
+                    val isDirectionalKey =
+                        keyEvent.key == Key.DirectionLeft ||
+                            keyEvent.key == Key.DirectionRight ||
+                            keyEvent.key == Key.DirectionUp ||
+                            keyEvent.key == Key.DirectionDown
+                    if (isDirectionalKey && !isSheetSelfFocused) return@onKeyEvent false
 
                     when (keyEvent.key) {
                         Key.DirectionLeft -> {
@@ -1093,7 +1162,7 @@ fun BottomSheetPlayer(
                     }
                 },
         backgroundColor =
-            if (playerDesignStyle == PlayerDesignStyle.V9) {
+            run {
                 val progress =
                     ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                         .coerceIn(0f, 1f)
@@ -1103,72 +1172,18 @@ fun BottomSheetPlayer(
                     } else {
                         0f
                     }
-                dynamicBgColor.copy(alpha = 1f - fadeProgress)
-            } else if (playerDesignStyle == PlayerDesignStyle.V10) {
-                val progress =
-                    ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                        .coerceIn(0f, 1f)
-                val fadeProgress =
-                    if (progress < 0.2f) {
-                        ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                    } else {
-                        0f
+                val sheetColor =
+                    when {
+                        playerDesignStyle == PlayerDesignStyle.V9 -> dynamicBgColor
+                        playerDesignStyle == PlayerDesignStyle.V10 -> dynamicV10FieldColor
+                        playerDesignStyle == PlayerDesignStyle.V11 -> v11Palette.field
+                        playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8 -> Color.Black
+                        playerBackground == PlayerBackgroundStyle.BLUR || playerBackground == PlayerBackgroundStyle.GRADIENT ->
+                            MaterialTheme.colorScheme.surface
+                        useBlackBackground -> Color.Black
+                        else -> MaterialTheme.colorScheme.surface
                     }
-                dynamicV10FieldColor.copy(alpha = 1f - fadeProgress)
-            } else if (playerDesignStyle == PlayerDesignStyle.V7 || playerDesignStyle == PlayerDesignStyle.V8) {
-                val progress =
-                    ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                        .coerceIn(0f, 1f)
-                val fadeProgress =
-                    if (progress < 0.2f) {
-                        ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                    } else {
-                        0f
-                    }
-                Color.Black.copy(alpha = 1f - fadeProgress)
-            } else {
-                when (playerBackground) {
-                    PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
-                        // Apply same enhanced fade logic to blur/gradient backgrounds
-                        val progress =
-                            ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                                .coerceIn(0f, 1f)
-
-                        // Only start fading when very close to dismissal (last 20%)
-                        val fadeProgress =
-                            if (progress < 0.2f) {
-                                ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-
-                        MaterialTheme.colorScheme.surface.copy(alpha = 1f - fadeProgress)
-                    }
-
-                    else -> {
-                        // Enhanced background - stable until last 20% of drag (both normal and pure black)
-                        // Calculate progress for fade effect
-                        val progress =
-                            ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                                .coerceIn(0f, 1f)
-
-                        // Only start fading when very close to dismissal (last 20%)
-                        val fadeProgress =
-                            if (progress < 0.2f) {
-                                ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-
-                        if (useBlackBackground) {
-                            // Apply same logic to pure black background
-                            Color.Black.copy(alpha = 1f - fadeProgress)
-                        } else {
-                            // Apply same logic to normal theme
-                            MaterialTheme.colorScheme.surface.copy(alpha = 1f - fadeProgress)
-                        }
-                    }
-                }
+                sheetColor.copy(alpha = 1f - fadeProgress)
             },
         onDismiss = {
             playerConnection.service.stopAndClearPlayback(clearPersistentState = true)
@@ -1209,8 +1224,8 @@ fun BottomSheetPlayer(
         val updatedOnSliderValueChangeFinished by rememberUpdatedState(onSliderValueChangeFinished)
 
         val nextUpMetadata =
-            remember(queueWindows, currentWindowIndex) {
-                queueWindows.getOrNull(currentWindowIndex + 1)?.mediaItem?.metadata
+            remember(queue) {
+                queue.windows.getOrNull(queue.currentIndex + 1)?.mediaItem?.metadata
             }
 
         val enrichedMetadata =
@@ -1246,6 +1261,31 @@ fun BottomSheetPlayer(
             ?.takeIf { it.request == canvasRequest }
             ?.video
         val artworkCanvas = resolvedCanvas
+
+        val onPlayerSleepTimerClick: () -> Unit = {
+            if (sleepTimerEnabled) {
+                playerConnection.service.sleepTimer.clear()
+            } else {
+                showSleepTimerSheet = true
+            }
+        }
+        val showPlayerMenu: (MediaMetadata) -> Unit = { metadata ->
+            menuState.show {
+                PlayerMenu(
+                    mediaMetadata = metadata,
+                    navController = navController,
+                    playerBottomSheetState = state,
+                    sleepTimerEnabled = sleepTimerEnabled,
+                    onSleepTimerClick = onPlayerSleepTimerClick,
+                    onShowDetailsDialog = {
+                        bottomSheetPageState.show {
+                            ShowMediaInfo(metadata.id)
+                        }
+                    },
+                    onDismiss = menuState::dismiss,
+                )
+            }
+        }
 
         val controlsContent: @Composable ColumnScope.(MediaMetadata, Boolean) -> Unit = { mediaMetadata, landscape ->
             PlayerControlsContent(
@@ -1284,7 +1324,8 @@ fun BottomSheetPlayer(
             playerDesignStyle != PlayerDesignStyle.V7 &&
             playerDesignStyle != PlayerDesignStyle.V8 &&
             playerDesignStyle != PlayerDesignStyle.V9 &&
-            playerDesignStyle != PlayerDesignStyle.V10
+            playerDesignStyle != PlayerDesignStyle.V10 &&
+            playerDesignStyle != PlayerDesignStyle.V11
         ) {
             PlayerBackground(
                 playerBackground = playerBackground,
@@ -1302,7 +1343,72 @@ fun BottomSheetPlayer(
 // distance
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            if (maxWidth > maxHeight) {
+            val isLandscape = maxWidth > maxHeight
+            val isPortrait = !isLandscape
+
+            val dynamicQueuePeekHeight =
+                if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.V11) {
+                    0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+                    88.dp +
+                        (if (showCodecOnPlayer) 24.dp else 0.dp) +
+                        (if (sleepTimerEnabled) 42.dp else 0.dp)
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    if (isPortrait) (if (showCodecOnPlayer) 94.dp else 78.dp) else 0.dp
+                } else if (playerDesignStyle == PlayerDesignStyle.V7) {
+                    72.dp
+                } else if (showCodecOnPlayer) {
+                    88.dp
+                } else {
+                    QueuePeekHeight
+                }
+
+            val queueCollapsedHeight = dynamicQueuePeekHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+            val v11Content: @Composable (Boolean) -> Unit = { landscape ->
+                enrichedMetadata?.let { metadata ->
+                    V11PlayerContent(
+                        mediaMetadata = metadata,
+                        playbackState = playbackState,
+                        isPlaying = isPlaying,
+                        canSkipPrevious = canSkipPrevious,
+                        canSkipNext = canSkipNext,
+                        sliderPosition = sliderPosition,
+                        position = position,
+                        duration = duration,
+                        playerConnection = playerConnection,
+                        navController = navController,
+                        state = state,
+                        palette = v11Palette,
+                        queueTitle = queueTitle,
+                        currentSongLiked = currentSongLiked,
+                        canvasSource = artworkCanvas?.source,
+                        canvasPrimaryUrl = artworkCanvas?.animated,
+                        canvasFallbackUrl = artworkCanvas?.videoUrl,
+                        sleepTimerEnabled = sleepTimerEnabled,
+                        sleepTimerTimeLeft = sleepTimerTimeLeft,
+                        onCollapseClick = { state.collapseSoft() },
+                        onQueueClick = openQueue,
+                        onLyricsClick = { isLyricsScreenVisible = true },
+                        onSliderValueChange = onSliderValueChange,
+                        onSliderValueChangeFinished = onSliderValueChangeFinished,
+                        onSleepTimerClick = onPlayerSleepTimerClick,
+                        onMenuClick = { showPlayerMenu(metadata) },
+                        onAddToPlaylistClick = { showChoosePlaylistDialog = true },
+                        landscape = landscape,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(bottom = queueCollapsedHeight)
+                                .windowInsetsPadding(
+                                    WindowInsets.systemBars.only(
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                                    ),
+                                ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                    )
+                }
+            }
+
+            if (isLandscape) {
                 if (playerDesignStyle == PlayerDesignStyle.V5) {
                     val littleBackground = MaterialTheme.colorScheme.primaryContainer
                     val littleTextColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1373,7 +1479,7 @@ fun BottomSheetPlayer(
                                                     if (sleepTimerEnabled) {
                                                         playerConnection.service.sleepTimer.clear()
                                                     } else {
-                                                        showSleepTimerDialog = true
+                                                        showSleepTimerSheet = true
                                                     }
                                                 },
                                                 onShowDetailsDialog = {
@@ -1396,7 +1502,7 @@ fun BottomSheetPlayer(
                         backdropBlurAmount = backdropBlurAmount,
                         showVolumeBar = showPlayerVolumeBar,
                         showCodecOnPlayer = showCodecOnPlayer,
-                        contentBottomPadding = queueSheetState.collapsedBound,
+                        contentBottomPadding = queueCollapsedHeight,
                         onAction = immersivePlayerViewModel::onAction,
                         modifier =
                             Modifier
@@ -1450,7 +1556,7 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
-                                        .padding(bottom = queueSheetState.collapsedBound)
+                                        .padding(bottom = queueCollapsedHeight)
                                         .windowInsetsPadding(
                                             WindowInsets.systemBars.only(
                                                 WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1490,7 +1596,7 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1525,7 +1631,7 @@ fun BottomSheetPlayer(
                                 if (sleepTimerEnabled) {
                                     playerConnection.service.sleepTimer.clear()
                                 } else {
-                                    showSleepTimerDialog = true
+                                    showSleepTimerSheet = true
                                 }
                             },
                             sleepTimerEnabled = sleepTimerEnabled,
@@ -1541,7 +1647,7 @@ fun BottomSheetPlayer(
                                             if (sleepTimerEnabled) {
                                                 playerConnection.service.sleepTimer.clear()
                                             } else {
-                                                showSleepTimerDialog = true
+                                                showSleepTimerSheet = true
                                             }
                                         },
                                         onShowDetailsDialog = {
@@ -1560,7 +1666,7 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1569,11 +1675,13 @@ fun BottomSheetPlayer(
                                     .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
+                } else if (playerDesignStyle == PlayerDesignStyle.V11) {
+                    v11Content(true)
                 } else {
                     LandscapePlayerLayout(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(bottom = queueSheetState.collapsedBound)
+                            .padding(bottom = queueCollapsedHeight)
                             .windowInsetsPadding(
                                 WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                             ),
@@ -1666,7 +1774,7 @@ fun BottomSheetPlayer(
                                                         if (sleepTimerEnabled) {
                                                             playerConnection.service.sleepTimer.clear()
                                                         } else {
-                                                            showSleepTimerDialog = true
+                                                            showSleepTimerSheet = true
                                                         }
                                                     },
                                                     onShowDetailsDialog = {
@@ -1690,7 +1798,7 @@ fun BottomSheetPlayer(
                         backdropBlurAmount = backdropBlurAmount,
                         showVolumeBar = showPlayerVolumeBar,
                         showCodecOnPlayer = showCodecOnPlayer,
-                        contentBottomPadding = queueSheetState.collapsedBound,
+                        contentBottomPadding = queueCollapsedHeight,
                         onAction = immersivePlayerViewModel::onAction,
                         modifier =
                             Modifier
@@ -1743,7 +1851,7 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
-                                        .padding(bottom = queueSheetState.collapsedBound)
+                                        .padding(bottom = queueCollapsedHeight)
                                         .windowInsetsPadding(
                                             WindowInsets.systemBars.only(
                                                 WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1782,7 +1890,7 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1817,7 +1925,7 @@ fun BottomSheetPlayer(
                                 if (sleepTimerEnabled) {
                                     playerConnection.service.sleepTimer.clear()
                                 } else {
-                                    showSleepTimerDialog = true
+                                    showSleepTimerSheet = true
                                 }
                             },
                             sleepTimerEnabled = sleepTimerEnabled,
@@ -1833,7 +1941,7 @@ fun BottomSheetPlayer(
                                             if (sleepTimerEnabled) {
                                                 playerConnection.service.sleepTimer.clear()
                                             } else {
-                                                showSleepTimerDialog = true
+                                                showSleepTimerSheet = true
                                             }
                                         },
                                         onShowDetailsDialog = {
@@ -1852,7 +1960,7 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
+                                    .padding(bottom = queueCollapsedHeight)
                                     .windowInsetsPadding(
                                         WindowInsets.systemBars.only(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -1861,6 +1969,8 @@ fun BottomSheetPlayer(
                                     .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
+                } else if (playerDesignStyle == PlayerDesignStyle.V11) {
+                    v11Content(false)
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1870,7 +1980,7 @@ fun BottomSheetPlayer(
                                     WindowInsets.systemBars.only(
                                         WindowInsetsSides.Horizontal,
                                     ),
-                                ).padding(bottom = queueSheetState.collapsedBound),
+                                ).padding(bottom = queueCollapsedHeight),
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
@@ -1892,42 +2002,20 @@ fun BottomSheetPlayer(
                     }
                 }
             }
+            QueueFooter(
+                playerBottomSheetState = state,
+                navController = navController,
+                viewModel = queueViewModel,
+                peekHeight = dynamicQueuePeekHeight,
+                onExpandQueue = openQueue,
+                onShowLyrics = { isLyricsScreenVisible = true },
+                TextBackgroundColor = TextBackgroundColor,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                onAddToPlaylistClick = { showChoosePlaylistDialog = true },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
-
-        val queueOnBackgroundColor = if (useBlackBackground) Color.White else MaterialTheme.colorScheme.onSurface
-        val queueSurfaceColor = if (useBlackBackground) Color.Black else MaterialTheme.colorScheme.surface
-
-        val (queueTextButtonColor, queueIconButtonColor) =
-            when (playerButtonsStyle) {
-                PlayerButtonsStyle.DEFAULT -> {
-                    Pair(queueOnBackgroundColor, queueSurfaceColor)
-                }
-
-                PlayerButtonsStyle.SECONDARY -> {
-                    Pair(
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.onSecondary,
-                    )
-                }
-            }
-
-        Queue(
-            state = queueSheetState,
-            playerBottomSheetState = state,
-            navController = navController,
-            backgroundColor =
-                if (useBlackBackground) {
-                    Color.Black
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainer
-                },
-            onBackgroundColor = queueOnBackgroundColor,
-            TextBackgroundColor = TextBackgroundColor,
-            textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            onShowLyrics = { isLyricsScreenVisible = true },
-            pureBlack = pureBlack,
-        )
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
@@ -1936,7 +2024,7 @@ fun BottomSheetPlayer(
                 mediaMetadata = metadata,
                 navController = navController,
                 lyricsSyncOffset = lyricsSyncOffset,
-                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                onLyricsSyncOffsetChange = { lyricsSyncOffsetViewModel.setOffset(metadata.id, it) },
                 onDismiss = { isLyricsScreenVisible = false },
                 onQueueClick = openQueue,
             )
@@ -1976,6 +2064,13 @@ fun BottomSheetPlayer(
             )
         }
     }
+
+    Queue(
+        playerBottomSheetState = state,
+        navController = navController,
+        viewModel = queueViewModel,
+        pureBlack = useBlackBackground,
+    )
 
     val activePlaybackError = playbackError
     val isRecoveryDestination =
@@ -2375,7 +2470,7 @@ private fun LittlePlayerContent(
                             .size(collapseIconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onCollapse,
                             ),
                 )
@@ -2396,7 +2491,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onToggleLike,
                             ),
                 )
@@ -2412,7 +2507,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onExpandQueue,
                             ),
                 )
@@ -2428,7 +2523,7 @@ private fun LittlePlayerContent(
                             .size(iconSize)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
+                                indication = tvFocusIndicationOrNull(),
                                 onClick = onMenuClick,
                             ),
                 )

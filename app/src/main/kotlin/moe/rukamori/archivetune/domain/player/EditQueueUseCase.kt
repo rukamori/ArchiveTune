@@ -22,7 +22,8 @@ class EditQueueUseCase @Inject constructor(private val repository: QueueReposito
     fun metadata(id: String) = repository.metadata(id)
     fun canPlayNext(id: String) = repository.canPlayNext(id)
     fun observeSleepTimer() = repository.observeSleepTimer()
-    fun startSleepTimer(minutes: Int) = repository.startSleepTimer(minutes)
+    fun startSleepTimer(minutes: Int, finishCurrentSong: Boolean, fadeOut: Boolean) =
+        repository.startSleepTimer(minutes, finishCurrentSong, fadeOut)
     fun clearSleepTimer() = repository.clearSleepTimer()
     suspend fun lock(value: Boolean) = repository.lock(value)
     suspend fun autoplay(value: Boolean) = repository.autoplay(value)

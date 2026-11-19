@@ -62,11 +62,8 @@
     <string name="recently_added">Mới thêm gần đây</string>
     <string name="sort_descending">Sắp xếp giảm dần</string>
     <string name="sort_ascending">Sắp xếp tăng dần</string>
-    <string name="your_collection">Bộ sưu tập của bạn</string>
     <string name="playing_desc">Đang phát</string>
     <string name="tracks_label">bài hát</string>
-    <string name="song_singular">Bài hát</string>
-    <string name="more_playlists_desc">Thêm Danh sách phát</string>
     <string name="more_label">Thêm</string>
     <string name="tracks_count_label">Số lượng bài hát</string>
     <string name="recently_updated">Cập nhật gần đây</string>
@@ -76,23 +73,18 @@
     <string name="personal_label">Cá nhân</string>
     <string name="youtube_synced">Đã đồng bộ YouTube</string>
     <string name="options_label">Tùy chọn</string>
-    <string name="top_artist_badge">NGHỆ SĨ HÀNG ĐẦU</string>
-    <string name="no_artist_yet">Chưa có nghệ sĩ</string>
-    <string name="total_label">tổng cộng</string>
     <string name="most_tracks">Nhiều bài hát nhất</string>
     <string name="least_tracks">Ít bài hát nhất</string>
     <string name="play_time">Thời lượng phát</string>
     <string name="subscribed_only">Đã đăng ký</string>
     <string name="all_artists_filter">Tất cả nghệ sĩ</string>
     <string name="artist_subtitle">Nghệ sĩ</string>
-    <string name="recently_played_artists">Nghệ sĩ đã phát gần đây</string>
     <string name="newest_year">Năm mới nhất</string>
     <string name="oldest_year">Năm cũ nhất</string>
     <string name="longest_duration">Thời lượng dài nhất</string>
     <string name="shortest_duration">Thời lượng ngắn nhất</string>
     <string name="year_sort">Năm</string>
     <string name="duration_sort">Thời lượng</string>
-    <string name="featured_album_badge">ALBUM NỔI BẬT</string>
     <string name="other_versions">Phiên bản khác</string>
     <string name="liked_songs">Bài hát đã thích</string>
     <string name="downloaded_songs">Bài hát đã tải xuống</string>
@@ -201,7 +193,6 @@
     <string name="undo">Khôi phục</string>
     <string name="lyrics_not_found">Không tìm thấy lời bài hát</string>
     <string name="sleep_timer">Hẹn giờ ngủ</string>
-    <string name="end_of_song">Cuối bài hát</string>
     <plurals name="minute">
         <item quantity="other">%d phút</item>
     </plurals>
@@ -311,7 +302,6 @@
     <string name="blur">Làm mờ</string>
     <string name="contrast">Độ tương phản</string>
     <string name="brightness">Độ sáng</string>
-    <string name="custom_value">Giá trị tùy chỉnh</string>
     <string name="show_button1_description">Bật/tắt hiển thị nút 1 trong Discord Rich Presence</string>
     <string name="show_button2_description">Bật/tắt hiển thị nút 2 trong Discord Rich Presence</string>
     <string name="discord_activity_type">Loại hoạt động</string>
@@ -357,7 +347,6 @@
     <string name="enable_betterlyrics">Bật BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Bật lời bài hát SimpMusic</string>
     <string name="player_and_audio">Trình phát và âm thanh</string>
-    <string name="audio_quality">Chất lượng âm thanh</string>
     <string name="audio_quality_auto">Tự động</string>
     <string name="audio_quality_high">Cao</string>
     <string name="audio_quality_low">Thấp</string>
@@ -527,7 +516,6 @@
     <string name="new_version_available">Phiên bản mới có sẵn</string>
     <string name="updates">Cập nhật</string>
     <string name="current_version">Phiên bản hiện tại</string>
-    <string name="latest_version_format">Mới nhất: %s</string>
     <string name="enable_update_notification">Bật Thông báo Cập nhật</string>
     <string name="update_channel">Kênh Cập nhật</string>
     <string name="recent_commits">Commit gần đây</string>
@@ -541,7 +529,6 @@
     <string name="update_notification_title">Cập nhật Có sẵn</string>
     <string name="update_notification_text">ArchiveTune %s hiện đã có sẵn</string>
     <string name="download">Tải xuống</string>
-    <string name="download_complete">Tải xuống hoàn tất</string>
     <string name="permissions_title">Cho phép ArchiveTune hoạt động tốt nhất</string>
     <string name="permissions_subtitle">Chúng tôi sử dụng một số quyền để phát và quản lý nhạc của bạn một cách đáng tin cậy. Bạn có thể thay đổi những quyền này bất cứ lúc nào trong cài đặt hệ thống.</string>
     <string name="permission_storage_title">Truy cập lưu trữ</string>
@@ -608,7 +595,6 @@
     <string name="together_server_error">Lỗi máy chủ, vui lòng thử lại sau</string>
     <string name="leave">Rời đi</string>
     <string name="join">Tham gia</string>
-    <string name="joined">Đã tham gia</string>
     <string name="loading">Đang tải</string>
     <string name="connecting">Đang kết nối</string>
     <string name="copy_link">Sao chép liên kết</string>
@@ -666,7 +652,6 @@
     <string name="sort_order_descending">Giảm dần</string>
     <string name="disable_animations">Vô hiệu hóa hoạt ảnh</string>
     <string name="disable_animations_desc">Vô hiệu hóa hầu hết các hoạt ảnh ứng dụng. Được đề xuất cho các thiết bị cấu hình thấp</string>
-    <string name="updates_status_checking">Kiểm tra bản phát hành mới nhất</string>
     <string name="updates_status_current">Bạn đang ở trên phiên bản mới nhất có sẵn</string>
     <string name="updates_loading_commits">Đang tải các commit gần nhất</string>
     <string name="updates_recent_commits_count">%1$d commit mới nhất</string>
@@ -804,7 +789,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Bật xáo trộn</string>
     <string name="together_shuffle_off">Tắt xáo trộn</string>
-    <string name="together_repeat_mode">Lặp lại %1$d</string>
     <string name="together_participants_empty">Chưa có người tham gia</string>
     <string name="together_participants_empty_body">Những người tham gia phiên này sẽ xuất hiện ở đây.</string>
     <string name="together_activity_log">Nhật ký hoạt động</string>
@@ -847,10 +831,6 @@
     <string name="lastfm_login_network_error">Lỗi mạng. Kiểm tra kết nối của bạn.</string>
     <string name="lastfm_login_failed">Đăng nhập thất bại. Thử lại.</string>
     <string name="storage_cache_clear_warning">Giữ ArchiveTune mở trong khi các tệp cache đang được xóa.</string>
-    <string name="storage_clear_song_cache_progress">Đang xóa cache bài hát...%1$d%%</string>
-    <string name="storage_clear_downloads_progress">Đang xóa tải xuống...%1$d%%</string>
-    <string name="storage_clear_image_cache_progress">Đang xóa cache hình ảnh...%1$d%%</string>
-    <string name="storage_clear_canvas_cache_progress">Đang xóa cache canvas...%1$d%%</string>
     <string name="cast">Truyền</string>
     <string name="cast_devices">Thiết bị Cast</string>
     <string name="cast_sheet_subtitle">Chọn nơi ArchiveTune phát</string>
@@ -887,7 +867,6 @@
     <string name="onboarding_foss_variant">Bản FOSS</string>
     <string name="onboarding_version_label">Phiên bản %1$s</string>
     <string name="onboarding_empty_title">Không khả dụng thiết lập</string>
-    <string name="onboarding_empty_subtitle">Tiếp tục tới ArchiveTune.</string>
     <string name="onboarding_error_generic">Không thể tải thiết lập</string>
     <string name="onboarding_permission_allowed_by_install">Đã cho phép qua cài đặt</string>
     <string name="onboarding_permission_unavailable">Không khả dụng</string>
@@ -929,6 +908,11 @@
     <string name="app_icon_empty">Không có biểu tượng</string>
     <string name="app_icon_load_failed">Không thể tải biểu tượng ứng dụng</string>
     <string name="app_icon_change_failed">Không thể đổi biểu tượng ứng dụng</string>
+    <string name="app_icon_applying">Đang áp dụng %1$s…</string>
+    <string name="app_icon_by_author">bởi %1$s</string>
+    <string name="app_icon_github_profile">Hồ sơ GitHub</string>
+    <string name="app_icon_details">Chi tiết biểu tượng</string>
+    <string name="app_icon_use">Dùng biểu tượng này</string>
     <string name="force_high_refresh_rate">Ép tần số quét cao</string>
     <string name="max_supported_refresh_rate">Cao nhất được hỗ trợ: %1$d Hz</string>
     <string name="view_debug_logs_description">Xem và lọc nhật ký ứng dụng</string>
@@ -958,7 +942,6 @@
     <string name="eq_sound_shaping_on">Điều chỉnh âm thanh đang bật</string>
     <string name="eq_sound_shaping_off">Điều chỉnh âm thanh đang tắt</string>
     <string name="eq_enable_description">Áp dụng các điều khiển này cho quá trình phát lại của ArchiveTune</string>
-    <string name="eq_control_mode">Chế độ điều chỉnh</string>
     <string name="eq_basic">Cơ bản</string>
     <string name="eq_advanced">Nâng cao</string>
     <string name="eq_basic_description">Các thiết lập nhanh và khả năng điều chỉnh âm thanh rộng rãi</string>

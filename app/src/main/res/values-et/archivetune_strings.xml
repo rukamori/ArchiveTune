@@ -7,7 +7,6 @@
     <string name="no_title">Pealkirja pole</string>
     <string name="unknown_artist">Tundmatu esitaja</string>
     <string name="retry_button">Proovi uuesti</string>
-    <string name="album_cover_desc">Albumi kaanepilt</string>
     <string name="top_music_videos">Populaarsed muusikavideod</string>
     <string name="trending">Populaarsust koguv</string>
     <string name="weeks">Nädalaid</string>
@@ -131,7 +130,6 @@
     <string name="clear_song_cache_dialog">Kas oled kindel, et soovid kõik puhverdatud lood kustutada?</string>
     <string name="clear_image_cache_dialog">Kas oled kindel, et soovid kõik puhverdatud pildid kustutada?</string>
     <string name="clear_downloads_dialog">Kas oled kindel, et soovid kõik allalaaditud sisu kustutada?</string>
-    <string name="similar_content">Sarnane sisu</string>
     <string name="assign_tags_to_playlists">Määra esitusloenditele</string>
     <string name="show_tags_in_library">Näita muusikakogus silte</string>
     <string name="advanced_login">Logi sisse tunnusloaga</string>
@@ -163,10 +161,8 @@
     <string name="audio_crossfade_description">Lugude vahetamisel kasutaja sujuvat üleminekut ühelt loolt teisele.</string>
     <string name="audio_crossfade_dialog_title">Ristsulatuse kestus</string>
     <string name="year_in_music">Aasta muusikas</string>
-    <string name="total_listening_time">Kuulamisaeg kokku</string>
     <string name="top_artists">Populaarsemad esitajad</string>
     <string name="share_summary">Jagamiste kokkuvõte</string>
-    <string name="no_listening_data">Selle aasta kohta pole kuulamisandmeid</string>
     <string name="custom_theme">Sinu kohendatud kujundus</string>
     <string name="import_theme">Impordi kujundus</string>
     <string name="export_theme">Ekspordi kujundus</string>
@@ -203,8 +199,6 @@
     <string name="music_recognition_processing">Töötlen…</string>
     <string name="music_recognition_listen_again">Kuula uuesti</string>
     <string name="music_recognition_no_match">Vastet ei leidu</string>
-    <string name="music_recognition_signature_failed">Allkirja loomine ei õnnestunud</string>
-    <string name="music_recognition_recognition_failed">Tuvastamine ei õnnestunud</string>
     <string name="music_recognition_open_shazam">Ava Shazam</string>
     <string name="music_recognition_lyrics_preview">Laulusõnade eelvaade</string>
     <string name="music_recognition_permission_title">Õigused mikrofoni kasutamiseks</string>
@@ -226,12 +220,10 @@
     <string name="theme_export_failed">Kujunduse eksportimine ei õnnestunud</string>
     <string name="suggestions">Soovitused</string>
     <string name="music_recognition_settings">Muusika tuvastamise seadistused</string>
-    <string name="music_recognition_background_title">Tuvastamine taustal</string>
     <string name="music_recognition_notification_status_listening">KUULAN</string>
     <string name="music_recognition_notification_status_processing">TÖÖTLEN</string>
     <string name="music_recognition_notification_status_result">TULEMUS</string>
     <string name="music_recognition_notification_listening_title">Kuulan muusikat</string>
-    <string name="music_recognition_notification_listening_text">Hõivan selles seadmes esitamisel olevat heli</string>
     <string name="music_recognition_notification_processing_title">Töötlen heliriba</string>
     <string name="music_recognition_notification_processing_text">Otsin tuvastatud heli sõrmejälje alusel</string>
     <string name="music_recognition_notification_artist">Esitaja: %1$s</string>
@@ -240,5 +232,4 @@
     <string name="music_recognition_notification_release">Avaldatud: %1$s</string>
     <string name="music_recognition_notification_label">Plaadifirma: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC-kood: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">Ühtegi lugu ei leidu</string>
 </resources>

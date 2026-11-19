@@ -10,23 +10,35 @@ package moe.rukamori.archivetune.playback.stream
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.innertube.NetworkGatekeeper
+import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.utils.hasCompleteYouTubeLoginCookies
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiAudioQuality
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
-import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiNetworkConfiguration
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolutionPriority
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiStreamRequest
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import timber.log.Timber
+import java.io.IOException
 import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Singleton
 class YoutubeiStreamRepository
@@ -37,16 +49,29 @@ class YoutubeiStreamRepository
         private val resolver =
             YoutubeiResolver(
                 context = context,
-                diagnostics = { message -> Timber.tag("YoutubeiResolver").d(message) },
+                diagnostics = { message -> Timber.tag(LOG_TAG).d(message) },
             ) {
-                YoutubeiNetworkConfiguration(
-                    proxy = YouTube.proxy,
-                    proxyUsername = YouTube.proxyUsername,
-                    proxyPassword = YouTube.proxyPassword,
-                    dns = YouTube.dns,
+                playbackNetworkConfiguration(context).copy(
                     interceptors = listOf(NetworkGatekeeper),
                 )
             }
+        private val streamProbeClient =
+            PlaybackHttpClient(
+                context,
+                OkHttpClient
+                    .Builder()
+                    .addInterceptor(NetworkGatekeeper)
+                    .connectTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .readTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .callTimeout(STREAM_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .build(),
+            )
+        private val gvsPoTokenVerifier =
+            GvsPoTokenVerifier(
+                maxMinterAttempts = MAX_TOKEN_GENERATOR_ATTEMPTS,
+                replaceMinter = BotGuardTokenGenerator::discardMinter,
+                probeStatus = ::probeStreamStatus,
+            )
 
         override suspend fun resolve(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(
@@ -72,6 +97,7 @@ class YoutubeiStreamRepository
             }
 
             val locale = YouTube.locale
+            var streamMediaId = request.mediaId
             val resolved =
                 try {
                     resolver.resolve(
@@ -97,6 +123,7 @@ class YoutubeiStreamRepository
                             ),
                         priority = priority.toYoutubeiPriority(),
                         videoPoTokenProvider = { replacementMediaId ->
+                            streamMediaId = replacementMediaId
                             val replacementAuthState =
                                 YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
                                     videoId = replacementMediaId,
@@ -147,19 +174,27 @@ class YoutubeiStreamRepository
                     throw failure
                 }
 
-            val streamUrl = resolved.url.toHttpUrlOrNull()
-            val streamToken = streamUrl?.queryParameter("pot")
-            val tokenBinding =
-                when {
-                    streamToken.isNullOrBlank() -> "missing"
-                    streamToken == authState.poTokenGvs && authState.poTokenGvsVideoId == request.mediaId -> "video"
-                    streamToken == authState.poTokenGvsSession -> "session"
-                    else -> "other"
+            val resolvedUrl = resolved.url.toHttpUrlOrNull()
+            val verifiedStream =
+                resolvedUrl?.let { url ->
+                    verifyGvsPoToken(
+                        mediaId = request.mediaId,
+                        streamMediaId = streamMediaId,
+                        authState = authState,
+                        streamUrl = url,
+                        contentLength = resolved.contentLength,
+                        requestHeaders = resolved.requestHeaders,
+                    )
                 }
-            Timber.tag("YoutubeiResolver").d(
-                "Stream contract signedIn=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
+            val streamUrl = verifiedStream?.url ?: resolvedUrl
+            val tokenBinding =
+                verifiedStream?.binding?.name?.lowercase()
+                    ?: if (streamUrl?.queryParameter("pot").isNullOrBlank()) "missing" else "unverified"
+            Timber.tag(LOG_TAG).d(
+                "Stream contract signedIn=%s accountSession=%s format=%d tokenBinding=%s nPresent=%s nError=%s " +
                     "signaturePresent=%s userAgentPresent=%s extractionProxy=%s streamProxy=%s",
                 authState.hasLoginCookie,
+                authState.hasPlaybackLoginContext,
                 resolved.formatId,
                 tokenBinding,
                 !streamUrl?.queryParameter("n").isNullOrBlank(),
@@ -167,11 +202,11 @@ class YoutubeiStreamRepository
                 !streamUrl?.queryParameter("sig").isNullOrBlank() ||
                     !streamUrl?.queryParameter("signature").isNullOrBlank(),
                 resolved.requestHeaders.any { (name, value) -> name.equals("User-Agent", ignoreCase = true) && value.isNotBlank() },
-                YouTube.proxy?.type()?.name ?: "DIRECT",
+                YouTube.streamOkHttpProxy.type().name,
                 YouTube.streamOkHttpProxy.type().name,
             )
             return ResolvedAudioStream(
-                url = resolved.url,
+                url = streamUrl?.toString() ?: resolved.url,
                 requestHeaders = resolved.requestHeaders,
                 formatId = resolved.formatId,
                 mimeType = resolved.mimeType,
@@ -189,6 +224,98 @@ class YoutubeiStreamRepository
                 loudnessDb = resolved.loudnessDb,
                 perceptualLoudnessDb = resolved.perceptualLoudnessDb,
                 playbackTrackingUrl = resolved.playbackTrackingUrl,
+                gvsPoTokenBinding = verifiedStream?.binding,
+                gvsPoTokenMinterGeneration = verifiedStream?.minterGeneration,
+            )
+        }
+
+        private suspend fun verifyGvsPoToken(
+            mediaId: String,
+            streamMediaId: String,
+            authState: PlaybackAuthState,
+            streamUrl: HttpUrl,
+            contentLength: Long,
+            requestHeaders: Map<String, String>,
+        ): VerifiedGvsStream? {
+            if (streamUrl.queryParameter("pot").isNullOrBlank() || streamUrl.queryParameter("sabr") == "1") return null
+            return try {
+                gvsPoTokenVerifier.verify(
+                    streamUrl = streamUrl,
+                    contentLength = contentLength,
+                    mint = {
+                        val tokens = YTPlayerUtils.mintYoutubeiPoTokens(streamMediaId, authState)
+                        MintedGvsPoTokens(
+                            videoToken = tokens.playerToken,
+                            sessionToken = tokens.sessionToken,
+                            minterGeneration = tokens.minterGeneration,
+                        )
+                    },
+                    requestHeaders = requestHeaders,
+                )
+            } catch (failure: YoutubeiException) {
+                if (failure.kind != YoutubeiFailureKind.PO_TOKEN) throw failure
+                throw YTPlayerUtils.BotDetectionPlaybackException(
+                    videoId = mediaId,
+                    clients = setOf(if (authState.hasLoginCookie) "WEB_CREATOR" else "MWEB"),
+                    cause = failure,
+                )
+            }
+        }
+
+        private suspend fun probeStreamStatus(
+            url: HttpUrl,
+            byteRange: LongRange,
+            requestHeaders: Map<String, String>,
+        ): Int? {
+            val request =
+                Request
+                    .Builder()
+                    .url(url)
+                    .apply { requestHeaders.forEach { (name, value) -> header(name, value) } }
+                    .header("Range", "bytes=${byteRange.first}-${byteRange.last}")
+                    .build()
+            return try {
+                streamProbeClient.newCall(request).awaitStatusCode().also { statusCode ->
+                    Timber.tag(LOG_TAG).d("Stream token check status=%d", statusCode)
+                }
+            } catch (failure: IOException) {
+                Timber.tag(LOG_TAG).w("Stream token check failed type=%s", failure.javaClass.simpleName)
+                null
+            }
+        }
+
+        private suspend fun Call.awaitStatusCode(): Int =
+            suspendCancellableCoroutine { continuation ->
+                continuation.invokeOnCancellation { cancel() }
+                enqueue(
+                    object : Callback {
+                        override fun onFailure(
+                            call: Call,
+                            e: IOException,
+                        ) {
+                            if (continuation.isActive) continuation.resumeWithException(e)
+                        }
+
+                        override fun onResponse(
+                            call: Call,
+                            response: Response,
+                        ) {
+                            val statusCode = response.use { it.code }
+                            if (continuation.isActive) continuation.resume(statusCode)
+                        }
+                    },
+                )
+            }
+
+        internal fun reportRejectedGvsPoToken(
+            minterGeneration: Long,
+            binding: GvsPoTokenBinding,
+        ) {
+            gvsPoTokenVerifier.reportRejected(minterGeneration, binding)
+            Timber.tag(LOG_TAG).w(
+                "Stream rejected %s-bound PO token from token generator %d; next resolution checks it again",
+                binding,
+                minterGeneration,
             )
         }
 
@@ -228,6 +355,9 @@ class YoutubeiStreamRepository
         }
 
         private companion object {
+            const val LOG_TAG = "YoutubeiResolver"
+            const val STREAM_PROBE_TIMEOUT_SECONDS = 10L
+            const val MAX_TOKEN_GENERATOR_ATTEMPTS = 3
             val CONTENT_CONFIRMATION_REASONS =
                 listOf(
                     "confirm your age",

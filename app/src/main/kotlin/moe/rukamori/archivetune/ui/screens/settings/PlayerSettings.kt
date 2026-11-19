@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -36,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.google.common.collect.ImmutableList
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
@@ -47,6 +50,7 @@ import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
+import moe.rukamori.archivetune.constants.DEFAULT_USB_DAC_VOLUME_PERCENT
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
@@ -59,7 +63,15 @@ import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectDriver
+import moe.rukamori.archivetune.constants.UsbBitPerfectDriverKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectFixedVolumeKey
+import moe.rukamori.archivetune.constants.UsbBitPerfectKey
+import moe.rukamori.archivetune.constants.UsbDacVolumeKey
 import moe.rukamori.archivetune.constants.WakelockKey
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectFallback
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectOutput
+import moe.rukamori.archivetune.playback.bitperfect.BitPerfectStatus
 import moe.rukamori.archivetune.sponsorblock.DEFAULT_SPONSOR_BLOCK_API_URL
 import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
 import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
@@ -81,6 +93,7 @@ import moe.rukamori.archivetune.viewmodels.PlaybackPerformanceSettingsViewModel
 import moe.rukamori.archivetune.viewmodels.SponsorBlockCategoryUiModel
 import moe.rukamori.archivetune.viewmodels.SponsorBlockSettingsScreenState
 import moe.rukamori.archivetune.viewmodels.SponsorBlockSettingsViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,6 +187,28 @@ fun PlayerSettings(navController: NavController) {
             AudioOffload,
             defaultValue = false,
         )
+    val (usbBitPerfect, onUsbBitPerfectChange) =
+        rememberPreference(
+            UsbBitPerfectKey,
+            defaultValue = false,
+        )
+    val (usbBitPerfectDriver, onUsbBitPerfectDriverChange) =
+        rememberEnumPreference(
+            UsbBitPerfectDriverKey,
+            defaultValue = UsbBitPerfectDriver.ANDROID,
+        )
+    val (usbBitPerfectFixedVolume, onUsbBitPerfectFixedVolumeChange) =
+        rememberPreference(
+            UsbBitPerfectFixedVolumeKey,
+            defaultValue = false,
+        )
+    val (usbDacVolume, onUsbDacVolumeChange) =
+        rememberPreference(
+            UsbDacVolumeKey,
+            defaultValue = DEFAULT_USB_DAC_VOLUME_PERCENT,
+        )
+    val usbDirectDriverActive =
+        usbBitPerfect && (!BitPerfectOutput.isMixerSupported || usbBitPerfectDriver == UsbBitPerfectDriver.DIRECT)
 
     val (seekExtraSeconds, onSeekExtraSeconds) =
         rememberPreference(
@@ -364,6 +399,7 @@ fun PlayerSettings(navController: NavController) {
                         onCheckedChange = { enabled ->
                             if (enabled) {
                                 onAudioOffloadChange(false)
+                                onUsbBitPerfectChange(false)
                             }
                             onCrossfadeEnabledChange(enabled)
                         },
@@ -395,7 +431,7 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                         checked = skipSilence,
                         onCheckedChange = onSkipSilenceChange,
-                        isEnabled = !audioOffload,
+                        isEnabled = !audioOffload && !usbBitPerfect,
                     )
                 }
 
@@ -419,9 +455,74 @@ fun PlayerSettings(navController: NavController) {
                             if (enabled) {
                                 onSkipSilenceChange(false)
                                 onCrossfadeEnabledChange(false)
+                                onUsbBitPerfectChange(false)
                             }
                         },
                     )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.usb_bit_perfect)) },
+                        description = stringResource(R.string.usb_bit_perfect_desc),
+                        icon = { Icon(Icons.Rounded.Usb, null) },
+                        checked = usbBitPerfect,
+                        onCheckedChange = { enabled ->
+                            onUsbBitPerfectChange(enabled)
+                            if (enabled) {
+                                onAudioOffloadChange(false)
+                                onSkipSilenceChange(false)
+                                onCrossfadeEnabledChange(false)
+                            }
+                        },
+                    )
+                }
+
+                item(visible = usbBitPerfect && BitPerfectOutput.isMixerSupported) {
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.usb_bit_perfect_driver)) },
+                        description = stringResource(R.string.usb_bit_perfect_driver_desc),
+                        icon = { Icon(painterResource(R.drawable.tune), null) },
+                        selectedValue = usbBitPerfectDriver,
+                        onValueSelected = onUsbBitPerfectDriverChange,
+                        valueText = {
+                            when (it) {
+                                UsbBitPerfectDriver.ANDROID -> stringResource(R.string.usb_bit_perfect_driver_android)
+                                UsbBitPerfectDriver.DIRECT -> stringResource(R.string.usb_bit_perfect_driver_direct)
+                            }
+                        },
+                    )
+                }
+
+                item(visible = usbDirectDriverActive) {
+                    val context = LocalContext.current
+                    val volumeText =
+                        remember(context) {
+                            { value: Int -> context.getString(R.string.percentage_format, value) }
+                        }
+                    NumberPickerPreference(
+                        title = { Text(stringResource(R.string.usb_dac_volume)) },
+                        icon = { Icon(painterResource(R.drawable.volume_up), null) },
+                        value = usbDacVolume,
+                        onValueChange = onUsbDacVolumeChange,
+                        minValue = 0,
+                        maxValue = 100,
+                        valueText = volumeText,
+                    )
+                }
+
+                item(visible = usbDirectDriverActive) {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.usb_bit_perfect_fixed_volume)) },
+                        description = stringResource(R.string.usb_bit_perfect_fixed_volume_desc),
+                        icon = { Icon(painterResource(R.drawable.volume_off), null) },
+                        checked = usbBitPerfectFixedVolume,
+                        onCheckedChange = onUsbBitPerfectFixedVolumeChange,
+                    )
+                }
+
+                item(visible = usbBitPerfect) {
+                    UsbBitPerfectStatusPreference()
                 }
 
                 item {
@@ -586,6 +687,50 @@ fun PlayerSettings(navController: NavController) {
             }
         }
     }
+}
+
+@Composable
+private fun UsbBitPerfectStatusPreference() {
+    val service = LocalPlayerConnection.current?.service
+    val status = service?.bitPerfectStatus?.collectAsStateWithLifecycle()?.value ?: BitPerfectStatus()
+    val dacName = status.dacName
+    val description =
+        when {
+            dacName == null -> stringResource(R.string.usb_bit_perfect_status_no_dac)
+            status.permissionRequired -> stringResource(R.string.usb_bit_perfect_status_permission, dacName)
+            status.active -> {
+                val sampleRate =
+                    if (status.sampleRateHz % 1000 == 0) {
+                        (status.sampleRateHz / 1000).toString()
+                    } else {
+                        String.format(Locale.getDefault(), "%.1f", status.sampleRateHz / 1000f)
+                    }
+                stringResource(
+                    if (status.exact) R.string.usb_bit_perfect_status_active else R.string.usb_bit_perfect_status_inexact,
+                    dacName,
+                    sampleRate,
+                    status.outputBits,
+                )
+            }
+            status.fallback == BitPerfectFallback.NO_HARDWARE_VOLUME ->
+                stringResource(R.string.usb_bit_perfect_status_no_volume, dacName)
+            status.fallback == BitPerfectFallback.UNAVAILABLE ->
+                stringResource(R.string.usb_bit_perfect_status_fallback, dacName)
+            else -> stringResource(R.string.usb_bit_perfect_status_ready, dacName)
+        }
+    val onRequestPermission =
+        if (status.permissionRequired && service != null) {
+            service::requestBitPerfectUsbPermission
+        } else {
+            null
+        }
+
+    PreferenceEntry(
+        title = { Text(stringResource(R.string.usb_bit_perfect_status)) },
+        description = description,
+        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+        onClick = onRequestPermission,
+    )
 }
 
 @Composable

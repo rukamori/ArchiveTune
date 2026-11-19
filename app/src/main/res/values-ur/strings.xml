@@ -74,11 +74,8 @@
     <string name="recently_added">حالیہ جامع</string>
     <string name="sort_descending">گھٹتی ہوئ</string>
     <string name="sort_ascending">بڑھتی ہوئ</string>
-    <string name="your_collection">آپکا مجموعہ</string>
     <string name="playing_desc">سنا جا رہا ہے</string>
     <string name="tracks_label">گانے</string>
-    <string name="song_singular">گیت</string>
-    <string name="more_playlists_desc">مزید مجموعہ گیت</string>
     <string name="more_label">مزید</string>
     <string name="tracks_count_label">گانوں کی تعداد</string>
     <string name="recently_updated">حالیہ پیش رفت کردہ</string>
@@ -88,23 +85,18 @@
     <string name="personal_label">زاتی</string>
     <string name="youtube_synced">یوٹیوب سے ہم عہد ہوا</string>
     <string name="options_label">انتخاب</string>
-    <string name="top_artist_badge">سب سے اوپر کا کلاکار</string>
-    <string name="no_artist_yet">اب تک کوئ کلاکار نہیں</string>
-    <string name="total_label">کُل</string>
     <string name="most_tracks">سب سے زیادہ گانے</string>
     <string name="least_tracks">سب سے کم گانے</string>
     <string name="play_time">گیت کی مدت</string>
     <string name="subscribed_only">صرف سبسکرائب کردہ</string>
     <string name="all_artists_filter">سب کلاکار</string>
     <string name="artist_subtitle">کلاکار</string>
-    <string name="recently_played_artists">حالیہ سنے گئے کلاکار</string>
     <string name="newest_year">تازہ ترین سن</string>
     <string name="oldest_year">سب سے پرانا سن</string>
     <string name="longest_duration">سب سے طویل دورانیہ</string>
     <string name="shortest_duration">سب سے مختصر دورانیہ</string>
     <string name="year_sort">سن</string>
     <string name="duration_sort">دورانیہ</string>
-    <string name="featured_album_badge">نمایاں البم</string>
     <string name="other_versions">الگ رسالے</string>
     <string name="liked_songs">پسند کردہ گیت</string>
     <string name="downloaded_songs">ڈاوئنلوڈ کردہ گیت</string>
@@ -284,7 +276,6 @@
     <string name="lyrics_not_found">بول نہ مل سکے</string>
     <string name="lyrics_word_sync">الفاظ کی ہم عہدی</string>
     <string name="sleep_timer">نیند ٹائمر</string>
-    <string name="end_of_song">گیت کا اختتام</string>
     <plurals name="minute">
         <item quantity="one">ایک منٹ</item>
         <item quantity="other">%d منٹ</item>
@@ -403,7 +394,6 @@
     <string name="blur">دھندلاوٹ</string>
     <string name="contrast">مقابلہ رنگ</string>
     <string name="brightness">چمک دمک</string>
-    <string name="custom_value">حسب ضرورت وصف</string>
     <string name="archivetune_canvas">‫ArchiveTune کینوس</string>
     <string name="archivetune_canvas_desc">‫سنتے دوران البم کی تصویر کو حرکت پذیر کیرں</string>
     <string name="player_background_style_v8_v9_desc">‫V8 اور V9 طرز سازندہ میں دستیاب نہیں</string>
@@ -477,7 +467,6 @@
     <string name="enable_simpmusic_lyrics">SimpMusic کے بول کو فاعل کریں</string>
     <string name="source">مصدر</string>
     <string name="enable_youlyplus_lyrics">YouLyPlus کے بول کو فاعل کریں</string>
-    <string name="audio_quality">معیار سامعہ</string>
     <string name="audio_quality_auto">خودکار</string>
     <string name="audio_quality_high">اعلیٰ</string>
     <string name="audio_quality_low">کم</string>
@@ -551,6 +540,11 @@
     <string name="app_icon_empty">ایپ کی کوئ تصویرات دستیاب نہیں</string>
     <string name="app_icon_load_failed">ایپ کی تصویرات لاد نہیں سکا</string>
     <string name="app_icon_change_failed">ایپ کی تصویر بدل میں ناکام</string>
+    <string name="app_icon_applying">%1$s لاگو ہو رہا ہے…</string>
+    <string name="app_icon_by_author">از %1$s</string>
+    <string name="app_icon_github_profile">GitHub پروفائل</string>
+    <string name="app_icon_details">آئیکن کی تفصیلات</string>
+    <string name="app_icon_use">یہ آئیکن استعمال کریں</string>
     <string name="cache">کیش</string>
     <string name="image_cache">تصویراتی کیش</string>
     <string name="song_cache">گیت کا کیش</string>
@@ -779,7 +773,6 @@
     <string name="eq_sound_shaping_off">سمعی ڈھالنا غیر فعل ہے</string>
     <string name="custom_background_permission_cleanup_error">پچھلی تصویر تک رسائی خلاصی نہیں ہو سکی۔</string>
     <string name="eq_enable_description">‫ان ترتیبات کو ArchiveTune کے سازندہ پر لاگو کرتا ہے</string>
-    <string name="eq_control_mode">کنٹرول اسلوب</string>
     <string name="eq_basic">بنیادی</string>
     <string name="eq_advanced">مقدم</string>
     <string name="eq_basic_description">فوری پیش تنطیمات اور کشادہ تشکیل سٰر</string>
@@ -851,8 +844,6 @@
     <string name="updates">پیش رفتات</string>
     <string name="recent_commits">حالیہ کام</string>
     <string name="current_version">موجودہ نسخہ</string>
-    <string name="latest_version_format">‫تازہ ترین: %s‬</string>
-    <string name="updates_status_checking">‫تازہ ترین اشعات کے لئے دیکھا جا رہا ہے</string>
     <string name="updates_status_current">آپ تازہ ترین دستیاب کردہ شائع پر ہیں</string>
     <string name="enable_update_notification">پیش رفت کی اطلاعات کو فعل کریں</string>
     <string name="enable_update_notification_channel_desc">اطلاع حاصل کریں جب کوئی نیا شائع مقررہ چینل پر دستیاب ہو</string>
@@ -869,7 +860,6 @@
     <string name="update_notification_channel_desc">ایپ کی نئی پیش رفت کی اطلاعات</string>
     <string name="update_notification_title">پیش رفت دستیاب</string>
     <string name="download">ڈاؤنلوڈ</string>
-    <string name="download_complete">ڈاؤنلوڈ مکمل</string>
     <string name="downloads">ڈاؤنلوڈیں</string>
     <string name="download_in_progress">تقدم میں</string>
     <string name="no_downloads">ابھی تک کوئی ڈاؤنلوڈ کردہ موسیقی نہیں</string>
@@ -898,7 +888,6 @@
     <string name="onboarding_foss_variant">FOSS نسخہ</string>
     <string name="onboarding_version_label">‫نسخہ: %1$s</string>
     <string name="onboarding_empty_title">تنظیم غیردستیاب</string>
-    <string name="onboarding_empty_subtitle">‫ArchiveTune کی جانب بڑھیں۔</string>
     <string name="onboarding_error_generic">تنطیم لاد نہیں سکا</string>
     <string name="onboarding_permission_allowed_by_install">نصب کی جانب سے اجازت شدہ</string>
     <string name="onboarding_permission_unavailable">غیر دستیاب</string>
@@ -960,7 +949,6 @@
     <string name="together_server_error">سرور کی تحریف، براہ مہربانی کچھ دیر بعد کوشش کریں</string>
     <string name="leave">رخصت</string>
     <string name="join">شامل</string>
-    <string name="joined">شامل ہوئے</string>
     <string name="loading">لادا جا رہا ہے</string>
     <string name="connecting">رابطہ ہورہا ہے</string>
     <string name="copy_link">ربط نکل</string>
@@ -980,7 +968,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">گڈمڈ مؤثر</string>
     <string name="together_shuffle_off">گڈمڈ بند</string>
-    <string name="together_repeat_mode">%1$d دہرایا جائے</string>
     <string name="together_participants_empty">ابھی تک کوئی شریک نہیں</string>
     <string name="together_participants_empty_body">جو لوگ اس سشن میں شامل ہوں گے انہیں ادھر دکھایا جائے گا۔</string>
     <string name="together_activity_log">سرگرمی کا لاگ</string>

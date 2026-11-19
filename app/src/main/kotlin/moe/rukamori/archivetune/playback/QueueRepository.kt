@@ -92,7 +92,9 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
         }
     }
 
-    fun startSleepTimer(minutes: Int) { connection.value?.service?.sleepTimer?.start(minutes) }
+    fun startSleepTimer(minutes: Int, finishCurrentSong: Boolean, fadeOut: Boolean) {
+        connection.value?.service?.sleepTimer?.start(minutes, finishCurrentSong, fadeOut)
+    }
     fun clearSleepTimer() { connection.value?.service?.sleepTimer?.clear() }
 
     private fun key(window: Timeline.Window): String =
@@ -104,8 +106,8 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
     fun observe(): Flow<QueueSnapshot?> = connection.flatMapLatest { player ->
         if (player == null) flowOf(null) else {
             val playback = combine(
-                player.queueWindows, player.currentWindowIndex, player.isPlaying, player.repeatMode, player.shuffleModeEnabled,
-            ) { windows, current, playing, repeat, shuffle ->
+                player.queue, player.isPlaying, player.repeatMode, player.shuffleModeEnabled,
+            ) { (windows, current), playing, repeat, shuffle ->
                 val liveUids = windows.mapTo(mutableSetOf()) { it.uid }
                 identities.keys.retainAll(liveUids)
                 QueuePlaybackData(
@@ -195,7 +197,8 @@ class QueueRepository @Inject constructor(@ApplicationContext private val contex
 
     suspend fun prepareSongs(ids: Set<String>): List<String> {
         val database = connection.value?.database ?: return emptyList()
-        val songs = windows().filter { key(it) in ids }.mapNotNull { it.mediaItem.metadata }
+        val songs = windows().filter { key(it) in ids }.mapNotNull { it.mediaItem.metadata }.distinctBy { it.id }
+        if (songs.isEmpty()) return emptyList()
         return withContext(Dispatchers.IO) {
             database.withTransaction { songs.forEach { insert(it) } }
             songs.map { it.id }

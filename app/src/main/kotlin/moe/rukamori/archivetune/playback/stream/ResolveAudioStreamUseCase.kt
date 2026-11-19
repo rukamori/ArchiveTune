@@ -7,9 +7,14 @@
 
 package moe.rukamori.archivetune.playback.stream
 
+import android.content.Context
 import android.os.Looper
 import android.os.SystemClock
 import androidx.annotation.WorkerThread
+import androidx.datastore.preferences.core.edit
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -18,12 +23,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import moe.rukamori.archivetune.constants.DataSyncIdKey
+import moe.rukamori.archivetune.innertube.PlaybackAuthState
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiException
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiFailureKind
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiNetworkConfiguration
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
+import moe.rukamori.archivetune.utils.toPlaybackAuthState
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import timber.log.Timber
 import java.io.InterruptedIOException
+import java.net.ConnectException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
@@ -32,6 +52,7 @@ import kotlin.coroutines.coroutineContext
 class ResolveAudioStreamUseCase
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val youtubeiRepository: YoutubeiStreamRepository,
         private val moduleAudio: moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase,
     ) {
@@ -43,6 +64,7 @@ class ResolveAudioStreamUseCase
             val authFingerprint: String,
             val pinnedFormatId: Int?,
             val requiresSongMetadata: Boolean,
+            val network: YoutubeiNetworkConfiguration,
         )
 
         private data class InFlightKey(
@@ -74,6 +96,9 @@ class ResolveAudioStreamUseCase
         private val cache = ConcurrentHashMap<CacheKey, ResolvedAudioStream>()
         private val inFlightLock = Any()
         private val inFlight = mutableMapOf<InFlightKey, InFlightResolution>()
+        private val sessionResetMutex = Mutex()
+        private val sessionResetRequired = AtomicBoolean(false)
+        private val loginContextMutex = Mutex()
 
         suspend operator fun invoke(request: AudioStreamRequest): ResolvedAudioStream =
             resolve(request, ResolutionConsumer.PLAYBACK)
@@ -175,6 +200,9 @@ class ResolveAudioStreamUseCase
                                     throw CancellationException(
                                         "Audio stream resolution no longer has active consumers",
                                     )
+                                }
+                                if (key.network != playbackNetworkConfiguration(context)) {
+                                    throw ConnectException("Playback network changed during stream resolution")
                                 }
                                 storeResolvedStream(key, resolved)
                             }
@@ -298,6 +326,30 @@ class ResolveAudioStreamUseCase
             cache.entries.removeIf { it.value.url == url }
         }
 
+        fun reportRejectedStream(url: String) {
+            val rejectedUrl = url.canonicalStreamUrl()
+            val rejectedEntry =
+                cache.entries.firstOrNull { it.value.url.canonicalStreamUrl() == rejectedUrl } ?: return
+            val rejected = rejectedEntry.value
+            synchronized(inFlightLock) {
+                cache.entries.removeIf { it.value.url.canonicalStreamUrl() == rejectedUrl }
+            }
+            if (rejected.source != StreamSource.YOUTUBEI) return
+            if (YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(url)) return
+            if (rejectedEntry.key.network != playbackNetworkConfiguration(context)) return
+            val rejectedBinding = rejected.gvsPoTokenBinding ?: return
+            val rejectedGeneration = rejected.gvsPoTokenMinterGeneration ?: return
+            youtubeiRepository.reportRejectedGvsPoToken(rejectedGeneration, rejectedBinding)
+            synchronized(inFlightLock) {
+                cache.entries.removeIf { it.value.gvsPoTokenMinterGeneration == rejectedGeneration }
+            }
+        }
+
+        fun invalidateSession() {
+            sessionResetRequired.set(true)
+            clear()
+        }
+
         fun peek(request: AudioStreamRequest): ResolvedAudioStream? {
             if (request.allowModules && request.pinnedFormatId == null && moduleAudio.enabled()) {
                 return moduleAudio.peek(request.mediaId, request.moduleMetadata)?.toResolvedAudioStream()
@@ -322,15 +374,104 @@ class ResolveAudioStreamUseCase
             request: AudioStreamRequest,
             priority: StreamResolutionPriority,
         ): ResolvedAudioStream {
+            sessionResetMutex.withLock {
+                if (sessionResetRequired.getAndSet(false)) {
+                    try {
+                        YTPlayerUtils.resetAnonymousFallbackSession()
+                        BotGuardTokenGenerator.invalidateAll()
+                        youtubeiRepository.invalidateSessions()
+                    } catch (failure: Throwable) {
+                        sessionResetRequired.set(true)
+                        throw failure
+                    }
+                }
+            }
+            return try {
+                resolveWithAuth(request, priority)
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                val rejectedLogin = failure is YTPlayerUtils.InvalidPlaybackLoginContextException ||
+                    failure is YoutubeiException && failure.kind == YoutubeiFailureKind.HTTP &&
+                    failure.httpStatus in setOf(401, 403)
+                if (!request.authState.hasLoginCookie || !rejectedLogin) throw failure
+                try {
+                    resolveWithAuth(request.copy(authState = PlaybackAuthState.EMPTY), priority)
+                } catch (anonymousFailure: Exception) {
+                    if (anonymousFailure is CancellationException) throw anonymousFailure
+                    YTPlayerUtils.resetAnonymousFallbackSession()
+                    if (anonymousFailure is YTPlayerUtils.LoginRequiredForPlaybackException ||
+                        anonymousFailure is YTPlayerUtils.BadStreamPlayerResponseException
+                    ) {
+                        failure.addSuppressed(anonymousFailure)
+                        throw failure
+                    }
+                    anonymousFailure.addSuppressed(failure)
+                    throw anonymousFailure
+                }
+            }
+        }
+
+        private suspend fun resolveWithAuth(
+            request: AudioStreamRequest,
+            priority: StreamResolutionPriority,
+        ): ResolvedAudioStream {
             val resolvedAuthState =
                 YTPlayerUtils.ensureYoutubeiPoTokensForPlayback(
                     videoId = request.mediaId,
-                    authState = request.authState,
+                    authState = restoreLoginContext(request),
                 )
             return youtubeiRepository.resolve(
                 request = request.copy(authState = resolvedAuthState),
                 priority = priority,
             )
+        }
+
+        private suspend fun restoreLoginContext(request: AudioStreamRequest): PlaybackAuthState {
+            val authState = request.authState
+            if (!authState.hasLoginCookie || authState.hasPlaybackLoginContext) return authState
+            val dataSyncId =
+                loginContextMutex.withLock {
+                    context.dataStore.data
+                        .first()
+                        .toPlaybackAuthState()
+                        .takeIf { it.cookie == authState.cookie }
+                        ?.dataSyncId
+                        ?: fetchLoginContext(request)
+                }
+            Timber.tag(TAG).i("Restored the account session for %s before stream resolution", request.mediaId)
+            return authState.copy(dataSyncId = dataSyncId).normalized()
+        }
+
+        private suspend fun fetchLoginContext(request: AudioStreamRequest): String {
+            val authState = request.authState
+            val targetUrl = "https://music.youtube.com/watch?v=${request.mediaId}"
+            if (YouTube.currentPlaybackAuthState().cookie != authState.cookie) {
+                throw YTPlayerUtils.InvalidPlaybackLoginContextException(
+                    videoId = request.mediaId,
+                    targetUrl = targetUrl,
+                    cause = IllegalStateException("YouTube account session is missing"),
+                )
+            }
+            val dataSyncId =
+                YouTube.accountDataSyncId().getOrElse { failure ->
+                    if (failure is CancellationException) throw failure
+                    val sessionRejected =
+                        failure is ClientRequestException ||
+                            failure is IllegalStateException && failure !is ResponseException
+                    if (!sessionRejected) throw failure
+                    throw YTPlayerUtils.InvalidPlaybackLoginContextException(
+                        videoId = request.mediaId,
+                        targetUrl = targetUrl,
+                        cause = failure,
+                    )
+                }
+            context.dataStore.edit { preferences ->
+                val persisted = preferences.toPlaybackAuthState()
+                if (persisted.cookie == authState.cookie && persisted.dataSyncId == null) {
+                    preferences[DataSyncIdKey] = dataSyncId
+                }
+            }
+            return dataSyncId
         }
 
         private fun AudioStreamRequest.resolutionPriority(
@@ -351,6 +492,7 @@ class ResolveAudioStreamUseCase
                 authFingerprint = authState.streamCacheFingerprint,
                 pinnedFormatId = pinnedFormatId,
                 requiresSongMetadata = requiresSongMetadata,
+                network = playbackNetworkConfiguration(context),
             )
 
         private fun storeResolvedStream(
@@ -402,6 +544,8 @@ class ResolveAudioStreamUseCase
 
         private fun isFresh(stream: ResolvedAudioStream): Boolean =
             stream.expiresAtMs > System.currentTimeMillis() + STREAM_EXPIRY_SAFETY_MS
+
+        private fun String.canonicalStreamUrl(): String = toHttpUrlOrNull()?.toString() ?: this
 
         private companion object {
             const val TAG = "AudioStreamResolver"

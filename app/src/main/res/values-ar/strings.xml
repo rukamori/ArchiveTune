@@ -173,7 +173,6 @@
     <string name="undo">تراجع</string>
     <string name="lyrics_not_found">لم يتم العثور على كلمات الأغاني</string>
     <string name="sleep_timer">مؤقت النوم</string>
-    <string name="end_of_song">نهاية الأغنية</string>
     <plurals name="minute">
         <item quantity="zero">0 دقيقة</item>
         <item quantity="one">دقيقة واحدة</item>
@@ -286,7 +285,6 @@
     <string name="blur">ضبابية</string>
     <string name="contrast">التباين</string>
     <string name="brightness">السطوع</string>
-    <string name="custom_value">القيمة المخصصة</string>
     <string name="show_button1_description">تبديل رؤية الزر 1 في حالة حضور ديسكورد</string>
     <string name="show_button2_description">تبديل رؤية الزر 2 في حالة حضور ديسكورد</string>
     <string name="discord_activity_type">نوع النشاط</string>
@@ -317,7 +315,6 @@
     <string name="enable_betterlyrics">تفعيل \"BetterLyrics \"</string>
     <string name="enable_simpmusic_lyrics">تفعيل كلمات SimpMusic</string>
     <string name="player_and_audio">المشغل والصوت</string>
-    <string name="audio_quality">جودة الصوت</string>
     <string name="audio_quality_auto">تلقائي</string>
     <string name="audio_quality_high">عالي</string>
     <string name="audio_quality_low">منخفض</string>
@@ -519,11 +516,8 @@
     <string name="recently_added">المضافة مؤخرًا</string>
     <string name="sort_descending">فرز تنازلي</string>
     <string name="sort_ascending">فرز تصاعدي</string>
-    <string name="your_collection">مجموعتك</string>
     <string name="playing_desc">قيد التشغيل</string>
     <string name="tracks_label">مقاطع</string>
-    <string name="song_singular">أغنية</string>
-    <string name="more_playlists_desc">المزيد من قوائم التشغيل</string>
     <string name="more_label">المزيد</string>
     <string name="tracks_count_label">عدد المقاطع</string>
     <string name="recently_updated">المحدثة مؤخرًا</string>
@@ -533,23 +527,18 @@
     <string name="personal_label">شخصي</string>
     <string name="youtube_synced">متزامن مع YouTube</string>
     <string name="options_label">خيارات</string>
-    <string name="top_artist_badge">أفضل فنان</string>
-    <string name="no_artist_yet">لا يوجد فنان بعد</string>
-    <string name="total_label">الإجمالي</string>
     <string name="most_tracks">الأكثر مقاطع</string>
     <string name="least_tracks">الأقل مقاطع</string>
     <string name="play_time">وقت التشغيل</string>
     <string name="subscribed_only">المشترك بها فقط</string>
     <string name="all_artists_filter">جميع الفنانين</string>
     <string name="artist_subtitle">الفنان</string>
-    <string name="recently_played_artists">الفنانون المشغلون مؤخرًا</string>
     <string name="newest_year">العام الأحدث</string>
     <string name="oldest_year">العام الأقدم</string>
     <string name="longest_duration">المدة الأطول</string>
     <string name="shortest_duration">المدة الأقصر</string>
     <string name="year_sort">العام</string>
     <string name="duration_sort">المدة</string>
-    <string name="featured_album_badge">ألبوم مميز</string>
     <string name="change_playlist_cover">تغيير غلاف قائمة التشغيل</string>
     <string name="remove_playlist_cover">إزالة الغلاف المخصص</string>
     <string name="playlist_cover_updated">تم تحديث غلاف قائمة التشغيل</string>
@@ -659,6 +648,11 @@
     <string name="app_icon_empty">لا تتوفر أيقونات للتطبيق</string>
     <string name="app_icon_load_failed">تعذر تحميل أيقونات التطبيق</string>
     <string name="app_icon_change_failed">تعذر تغيير أيقونة التطبيق</string>
+    <string name="app_icon_applying">جارٍ تطبيق %1$s…</string>
+    <string name="app_icon_by_author">بواسطة %1$s</string>
+    <string name="app_icon_github_profile">ملف GitHub الشخصي</string>
+    <string name="app_icon_details">تفاصيل الأيقونة</string>
+    <string name="app_icon_use">استخدام هذه الأيقونة</string>
     <string name="random_theme_on_startup">سمة عشوائية عند بدء التشغيل</string>
     <string name="random_theme_on_startup_desc">تطبيق لوحة ألوان عشوائية في كل مرة يفتح فيها التطبيق</string>
     <string name="font_preference">الخط</string>
@@ -737,7 +731,6 @@
     <string name="eq_sound_shaping_on">تشكيل الصوت قيد التشغيل</string>
     <string name="eq_sound_shaping_off">تشكيل الصوت معطل</string>
     <string name="eq_enable_description">يطبق هذه الضوابط على تشغيل ArchiveTune</string>
-    <string name="eq_control_mode">وضع التحكم</string>
     <string name="eq_basic">بسيط</string>
     <string name="eq_advanced">متقدم</string>
     <string name="eq_basic_description">إعدادات مسبقة سريعة وتشكيل عام للنغمة</string>
@@ -891,8 +884,6 @@
     <string name="new_version_available">إصدار جديد متوفر</string>
     <string name="updates">التحديثات</string>
     <string name="current_version">الإصدار الحالي</string>
-    <string name="latest_version_format">الأحدث: %s</string>
-    <string name="updates_status_checking">جاري التحقق من أحدث إصدار</string>
     <string name="updates_status_current">أنت على أحدث إصدار متاح</string>
     <string name="enable_update_notification">تفعيل إشعارات التحديث</string>
     <string name="enable_update_notification_channel_desc">تلقي إشعارات عند توفر إصدار جديد في القناة المحددة</string>
@@ -911,7 +902,6 @@
     <string name="update_notification_title">تحديث متوفر</string>
     <string name="update_notification_text">ArchiveTune %s متوفر الآن</string>
     <string name="download">تنزيل</string>
-    <string name="download_complete">اكتمل التنزيل</string>
     <string name="downloads">التنزيلات</string>
     <string name="download_in_progress">قيد التقدم</string>
     <string name="no_downloads">لا توجد موسيقى منزلّة بعد</string>
@@ -943,7 +933,6 @@
     <string name="onboarding_foss_variant">نسخة FOSS</string>
     <string name="onboarding_version_label">الإصدار %1$s</string>
     <string name="onboarding_empty_title">الإعداد غير متاح</string>
-    <string name="onboarding_empty_subtitle">المتابعة إلى ArchiveTune.</string>
     <string name="onboarding_error_generic">تعذر تحميل الإعداد</string>
     <string name="onboarding_permission_allowed_by_install">مسموح به عند التثبيت</string>
     <string name="onboarding_permission_unavailable">غير متاح</string>
@@ -1004,7 +993,6 @@
     <string name="together_server_error">خطأ في الخادم، يرجى المحاولة لاحقًا</string>
     <string name="leave">مغادرة</string>
     <string name="join">انضمام</string>
-    <string name="joined">تم الانضمام</string>
     <string name="loading">جاري التحميل</string>
     <string name="connecting">جاري الاتصال</string>
     <string name="copy_link">نسخ الرابط</string>
@@ -1024,7 +1012,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">التشغيل العشوائي مفعل</string>
     <string name="together_shuffle_off">التشغيل العشوائي معطل</string>
-    <string name="together_repeat_mode">تكرار %1$d</string>
     <string name="together_participants_empty">لا يوجد مشاركون بعد</string>
     <string name="together_participants_empty_body">سيظهر الأشخاص الذين ينضمون إلى هذه الجلسة هنا.</string>
     <string name="together_activity_log">سجل النشاط</string>

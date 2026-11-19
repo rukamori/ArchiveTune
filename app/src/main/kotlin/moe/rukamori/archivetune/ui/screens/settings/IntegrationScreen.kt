@@ -45,7 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -409,32 +409,32 @@ private fun SpotifyLoginSheet(
         }
     }
 
-    BackHandler(enabled = webView != null) {
-        val activeWebView = webView
-        val rootWebView = mainWebView
-        when {
-            activeWebView?.canGoBack() == true -> {
-                activeWebView.goBack()
-            }
-
-            activeWebView != null && rootWebView != null && activeWebView !== rootWebView -> {
-                activeWebView.destroySpotifyLoginWebView()
-                webView = rootWebView
-            }
-
-            else -> {
-                onDismiss()
-            }
-        }
-    }
-
-    ModalBottomSheet(
+    BackAwareModalBottomSheet(
         modifier = Modifier.fillMaxHeight(),
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
+        BackHandler(enabled = webView != null) {
+            val activeWebView = webView
+            val rootWebView = mainWebView
+            when {
+                activeWebView?.canGoBack() == true -> {
+                    activeWebView.goBack()
+                }
+
+                activeWebView != null && rootWebView != null && activeWebView !== rootWebView -> {
+                    activeWebView.destroySpotifyLoginWebView()
+                    webView = rootWebView
+                }
+
+                else -> {
+                    onDismiss()
+                }
+            }
+        }
+
         Column(
             modifier =
                 Modifier

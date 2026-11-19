@@ -14,26 +14,25 @@ import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
-import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
+import moe.rukamori.archivetune.R
 
 class PlaybackSpotlightWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -53,65 +52,71 @@ class PlaybackSpotlightWidget : GlanceAppWidget() {
 private fun PlaybackSpotlightContent(context: Context) {
     val state = currentState<Preferences>().toWidgetPlaybackState(context)
     val size = LocalSize.current
-    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
-    val showArtist = size.height >= 104.dp + 56.dp * textScale
-    val showControls = size.width >= 184.dp && size.height >= 152.dp + 56.dp * textScale
-    val showTitle = size.height >= 144.dp + 40.dp * textScale
+    val textScale = context.widgetTextScale()
+    val showHeader = size.height >= 150.dp + 24.dp * textScale
+    val showArtist = size.height >= 120.dp + 40.dp * textScale
+    val showControls = size.width >= 200.dp && size.height >= 220.dp + 56.dp * textScale
+    val titleSize = if (size.width >= 240.dp) 22.sp else 17.sp
 
-    WidgetTheme(state.dominantColor) { palette ->
-        Box(
-            modifier = GlanceModifier.fillMaxSize().background(palette.surface)
-                .cornerRadius(28.dp).clickable(openArchiveTuneAction(context)),
-        ) {
+    WidgetTheme(state.dominantColor, WidgetSurfaceStyle.Ambient, context) { palette ->
+        WidgetSurface(state, palette, context, contentPadding = 0.dp, backdrop = false) {
             WidgetArtwork(
-                artPath = state.artPath, context = context, contentDescription = null,
-                targetSize = maxOf(size.width, size.height), cornerRadius = 28.dp,
-                palette = palette, modifier = GlanceModifier.fillMaxSize(),
+                artPath = state.artPath,
+                context = context,
+                contentDescription = null,
+                targetSize = maxOf(size.width, size.height),
+                shape = WidgetArtShape.Square,
+                palette = palette,
+                modifier = GlanceModifier.fillMaxSize(),
+                fallbackIconSize = minOf(size.width, size.height) * 0.32f,
             )
-            Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
-                if (showTitle) {
-                    Column(
-                        modifier = GlanceModifier.fillMaxWidth().background(palette.surface).padding(12.dp),
-                    ) {
-                        Text(
-                            text = state.title,
-                            style = TextStyle(
-                                color = palette.onSurface,
-                                fontSize = if (size.width >= 240.dp) 22.sp else 16.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            maxLines = if (size.height >= 240.dp + 48.dp * textScale) 2 else 1,
+            Box(modifier = GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.widget_scrim_bottom))) {}
+            if (showHeader) {
+                Box(modifier = GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.widget_scrim_top))) {}
+            }
+            Column(modifier = GlanceModifier.fillMaxSize().padding(14.dp)) {
+                if (showHeader) {
+                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        WidgetEqualizer(state.isPlaying, palette, context, size = 14.dp)
+                        Spacer(GlanceModifier.width(6.dp))
+                        WidgetOverline(
+                            context.getString(R.string.widget_now_playing),
+                            palette,
+                            context,
+                            GlanceModifier.defaultWeight(),
+                            color = palette.onSurface,
                         )
-                        if (showArtist) {
-                            Spacer(GlanceModifier.height(2.dp))
-                            Text(
-                                text = state.artist,
-                                style = TextStyle(color = palette.onSurfaceVariant, fontSize = 12.sp),
-                                maxLines = 1,
-                            )
-                        }
-                        if (state.isAvailable) {
-                            Spacer(GlanceModifier.height(8.dp))
-                            WidgetPlaybackProgress(state, palette)
-                            Spacer(GlanceModifier.height(8.dp))
-                            if (showControls) {
-                                WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
-                            } else {
-                                WidgetPlayPauseButton(state, palette, context, cornerRadius = 12.dp)
-                            }
-                        }
+                        WidgetBrandGlyph(palette)
+                    }
+                }
+                Spacer(GlanceModifier.defaultWeight())
+                if (showControls) {
+                    WidgetTrackText(
+                        state,
+                        palette,
+                        GlanceModifier.fillMaxWidth(),
+                        titleSize = titleSize,
+                        titleLines = if (size.height >= 280.dp + 48.dp * textScale) 2 else 1,
+                    )
+                    if (state.isAvailable) {
+                        Spacer(GlanceModifier.height(10.dp))
+                        WidgetProgress(state, palette)
+                        Spacer(GlanceModifier.height(4.dp))
+                        WidgetTransport(state, palette, context, GlanceModifier.fillMaxWidth())
                     }
                 } else {
-                    Box(modifier = GlanceModifier.padding(8.dp)) {
+                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.defaultWeight(),
+                            titleSize = if (size.width >= 180.dp) 16.sp else 14.sp,
+                            titleLines = if (size.height >= 170.dp * textScale) 2 else 1,
+                            showArtist = showArtist,
+                        )
                         if (state.isAvailable) {
-                            WidgetPlayPauseButton(state, palette, context, cornerRadius = 12.dp)
-                        } else {
-                            Text(
-                                text = state.title,
-                                modifier = GlanceModifier.background(palette.surface).cornerRadius(8.dp).padding(8.dp),
-                                style = TextStyle(color = palette.onSurface, fontSize = 12.sp),
-                                maxLines = 1,
-                            )
+                            Spacer(GlanceModifier.width(8.dp))
+                            WidgetHeroPlayButton(state, palette, context, 44.dp)
                         }
                     }
                 }

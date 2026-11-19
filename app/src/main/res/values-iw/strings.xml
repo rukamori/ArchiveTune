@@ -63,11 +63,8 @@
     <string name="recently_added">נוסף לאחרונה</string>
     <string name="sort_descending">מיון בסדר יורד</string>
     <string name="sort_ascending">מיון בסדר עולה</string>
-    <string name="your_collection">האוסף שלך</string>
     <string name="playing_desc">מתנגן</string>
     <string name="tracks_label">רצועות</string>
-    <string name="song_singular">שיר</string>
-    <string name="more_playlists_desc">פלייליסטים נוספים</string>
     <string name="more_label">עוד</string>
     <string name="tracks_count_label">מספר שירים</string>
     <string name="recently_updated">עודכן לאחרונה</string>
@@ -86,14 +83,10 @@
     <string name="personal_label">אישי</string>
     <string name="youtube_synced">YouTube מסונכרן</string>
     <string name="options_label">אפשרויות</string>
-    <string name="top_artist_badge">אמן מוביל</string>
-    <string name="no_artist_yet">אין עדיין אמן</string>
-    <string name="total_label">סך הכל</string>
     <string name="play_time">זמן נגינה</string>
     <string name="subscribed_only">למנויים בלבד</string>
     <string name="all_artists_filter">כל האמנים</string>
     <string name="artist_subtitle">אמן</string>
-    <string name="recently_played_artists">אמנים שהושמעו לאחרונה</string>
     <string name="newest_year">שנה חדשה</string>
     <string name="oldest_year">שנה ישנה</string>
     <string name="lyrics_mode_enhanced">משופר</string>
@@ -115,7 +108,6 @@
     <string name="repeat_mode_off">מצב חזרה כבוי</string>
     <string name="audio_normalization">נרמול אודיו</string>
     <string name="palette_sunset_orange">שקיעה</string>
-    <string name="audio_quality">איכות השמע</string>
     <string name="permanent_shuffle_desc">השאיר ערבוב פעיל כששיר חדש מתנגן</string>
     <string name="change_playlist_cover">שנה את עטיפת הפלייליסט</string>
     <string name="testing_proxy_connection">בודק את חיבור הפרוקסי</string>
@@ -145,7 +137,6 @@
     <string name="lyrics_not_found">מילות השיר לא נמצאו</string>
     <string name="palette_mango">מנגו</string>
     <string name="other_versions">גרסאות אחרות</string>
-    <string name="custom_value">ערך מותאם אישית</string>
     <string name="add_anyway">הוסף בכל זאת</string>
     <string name="together_role_guest">אורח</string>
     <string name="sort_by_artist">אמן</string>
@@ -297,7 +288,6 @@
     <string name="add_to_queue">הוסף לתור</string>
     <string name="customize_theme_colors">בחר את צבעי ערכת הנושא של האפליקציה</string>
     <string name="eq_save_profile">שמירת פרופיל</string>
-    <string name="featured_album_badge">אלבום מומלץ</string>
     <string name="palette_coffee">קפה</string>
     <string name="contrast">ניגודיות</string>
     <string name="palette_rainbow">קשת בענן</string>
@@ -363,7 +353,6 @@
     <string name="added_to_n_playlists">נוסף ל%d פלייליסטים</string>
     <string name="stop_music_on_task_clear">עצירת מוזיקה עם סגירת האפליקציה</string>
     <string name="together_song_change_failed">שינוי השיר לא אושר. אנא נסה שוב.</string>
-    <string name="end_of_song">סוף השיר</string>
     <string name="pitch_mode_multiplier_short">x</string>
     <string name="bitrate">קצב סיביות</string>
     <string name="start_radio">התחל רדיו</string>
@@ -720,8 +709,6 @@
     <string name="new_version_available">גרסה חדשה זמינה</string>
     <string name="updates">עדכונים</string>
     <string name="current_version">גרסה נוכחית</string>
-    <string name="latest_version_format">אחרון: %s</string>
-    <string name="updates_status_checking">בודק את הגרסה האחרונה</string>
     <string name="updates_status_current">אתה נמצא בגרסה הזמינה האחרונה</string>
     <string name="enable_update_notification">הפעל התראות עדכון</string>
     <string name="update_channel">עדכון ערוץ</string>
@@ -783,7 +770,6 @@
     <string name="together_server_error">שגיאת שרת, אנא נסה שוב מאוחר יותר</string>
     <string name="leave">יציאה</string>
     <string name="join">הצטרפות</string>
-    <string name="joined">הצטרף</string>
     <string name="loading">טוען</string>
     <string name="connecting">מתחבר</string>
     <string name="copy_link">העתקת קישור</string>
@@ -857,7 +843,6 @@
     <string name="discord_reauthorize_required_title">סשן Discord פג תוקפו</string>
     <string name="discord_reauthorize_required_description">לא ניתן להציג את Rich Presence עד שתאשר שוב את Discord.</string>
     <string name="discord_reauthorize_action">הרשאה מחדש</string>
-    <string name="download_complete">ההורדה הושלמה</string>
     <string name="onboarding_welcome_title">ברוכים הבאים ל- ArchiveTune</string>
     <string name="onboarding_welcome_subtitle">הגדר השמעה, מוזיקה מקומית ועדכון הרשאות לפני שתתחיל להאזין.</string>
     <string name="onboarding_permissions_title">בדיקת הרשאות</string>
@@ -869,7 +854,6 @@
     <string name="onboarding_foss_variant">מהדורת FOSS</string>
     <string name="onboarding_version_label">גרסה %1$s</string>
     <string name="onboarding_empty_title">הגדרה לא זמינה</string>
-    <string name="onboarding_empty_subtitle">המשך ל-ArchiveTune.</string>
     <string name="onboarding_error_generic">לא ניתן היה לטעון את ההגדרות</string>
     <string name="onboarding_permission_allowed_by_install">מורשה על ידי התקנה</string>
     <string name="onboarding_permission_unavailable">לא זמין</string>
@@ -900,7 +884,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">ערבוב מופעל</string>
     <string name="together_shuffle_off">ערבוב מושבת</string>
-    <string name="together_repeat_mode">חזור %1$d</string>
     <string name="together_participants_empty">עדיין אין משתתפים</string>
     <string name="together_participants_empty_body">אנשים שיצטרפו לסשן הזה יופיעו כאן.</string>
     <string name="together_activity_log">יומן פעילות</string>

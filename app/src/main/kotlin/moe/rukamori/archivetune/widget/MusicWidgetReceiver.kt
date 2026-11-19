@@ -7,33 +7,8 @@
 
 package moe.rukamori.archivetune.widget
 
-import android.content.Context
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import androidx.glance.appwidget.GlanceAppWidget
 
-class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = MusicWidget()
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        scope.launch {
-            requestPlaybackWidgetUpdate(context)
-        }
-    }
-
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: android.appwidget.AppWidgetManager,
-        appWidgetIds: IntArray,
-    ) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        scope.launch {
-            requestPlaybackWidgetUpdate(context)
-        }
-    }
+class MusicWidgetReceiver : PlaybackWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = MusicWidget()
 }

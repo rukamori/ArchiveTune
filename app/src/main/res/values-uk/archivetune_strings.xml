@@ -8,7 +8,6 @@
     <string name="no_title">Без назви</string>
     <string name="unknown_artist">Невідомий виконавець</string>
     <string name="retry_button">Спробувати ще раз</string>
-    <string name="album_cover_desc">Обкладинка альбому</string>
     <string name="top_music_videos">Топ музичних кліпів</string>
     <string name="trending">Тренди</string>
     <string name="weeks">Тижні</string>
@@ -163,8 +162,6 @@
     <string name="music_recognition_processing">Обробка…</string>
     <string name="music_recognition_listen_again">Слухати ще раз</string>
     <string name="music_recognition_no_match">Збігів не знайдено</string>
-    <string name="music_recognition_signature_failed">Не вдалося створити сигнатуру</string>
-    <string name="music_recognition_recognition_failed">Визначення не вдалося</string>
     <string name="music_recognition_open_shazam">Відкрити Shazam</string>
     <string name="music_recognition_lyrics_preview">Попередній перегляд тексту пісні</string>
     <string name="music_recognition_permission_title">Дозвіл на використання мікрофона</string>
@@ -193,12 +190,9 @@
     <string name="audio_crossfade_description">Плавний перехід між піснями за допомогою плавного затихання та наростання звуку.</string>
     <string name="audio_crossfade_dialog_title">Тривалість переходу</string>
     <string name="settings_section_player_content">Плеєр і контент</string>
-    <string name="similar_content">Подібний контент</string>
     <string name="year_in_music">Рік у музиці</string>
-    <string name="total_listening_time">Загальний час прослуховування</string>
     <string name="top_artists">Топ виконавців</string>
     <string name="share_summary">Поділитися коротким оглядом</string>
-    <string name="no_listening_data">Даних про прослуховування за цей рік немає</string>
     <string name="custom_theme">Власна тема</string>
     <string name="import_theme">Імпортувати тему</string>
     <string name="export_theme">Експортувати тему</string>

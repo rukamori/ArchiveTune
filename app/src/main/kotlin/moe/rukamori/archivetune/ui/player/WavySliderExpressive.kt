@@ -13,7 +13,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,6 +48,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -62,6 +69,11 @@ import androidx.compose.ui.unit.times
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private const val KEY_STEP_FRACTION = 0.01f
+private const val KEY_PAGE_FRACTION = 0.1f
+private val SeekKeys =
+    setOf(Key.DirectionRight, Key.DirectionLeft, Key.PageUp, Key.PageDown, Key.MoveHome, Key.MoveEnd)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -125,7 +137,11 @@ fun WavySliderExpressive(
     val latestOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
     val latestOnValueCommit by rememberUpdatedState(onValueCommit)
     var isPointerSeeking by remember { mutableStateOf(false) }
-    val isInteracting = isPointerSeeking
+    var isKeySeeking by remember { mutableStateOf(false) }
+    var keySeekValue by remember { mutableFloatStateOf(0f) }
+    val focusInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val isFocused by focusInteractionSource.collectIsFocusedAsState()
+    val isInteracting = isPointerSeeking || isKeySeeking || isFocused
 
     val thumbInteractionFraction by animateFloatAsState(
         targetValue = if (isInteracting) 1f else 0f,
@@ -211,6 +227,40 @@ fun WavySliderExpressive(
         modifier = modifier
             .fillMaxWidth()
             .height(containerHeight)
+            .onKeyEvent { event ->
+                if (!enabled) return@onKeyEvent false
+                val span = valueRange.endInclusive - valueRange.start
+                if (span <= 0f) return@onKeyEvent false
+                when (event.type) {
+                    KeyEventType.KeyDown -> {
+                        val base = if (isKeySeeking) keySeekValue else value()
+                        val target =
+                            when (event.key) {
+                                Key.DirectionRight -> base + span * KEY_STEP_FRACTION
+                                Key.DirectionLeft -> base - span * KEY_STEP_FRACTION
+                                Key.PageUp -> base + span * KEY_PAGE_FRACTION
+                                Key.PageDown -> base - span * KEY_PAGE_FRACTION
+                                Key.MoveHome -> valueRange.start
+                                Key.MoveEnd -> valueRange.endInclusive
+                                else -> return@onKeyEvent false
+                            }.coerceIn(valueRange.start, valueRange.endInclusive)
+                        isKeySeeking = true
+                        keySeekValue = target
+                        latestOnValueChange(target)
+                        true
+                    }
+
+                    KeyEventType.KeyUp -> {
+                        if (!isKeySeeking || event.key !in SeekKeys) return@onKeyEvent false
+                        isKeySeeking = false
+                        latestOnValueCommit?.invoke(keySeekValue)
+                            ?: latestOnValueChangeFinished?.invoke()
+                        true
+                    }
+
+                    else -> false
+                }
+            }.focusable(enabled = enabled, interactionSource = focusInteractionSource)
             .clearAndSetSemantics {
                 if (!semanticsLabel.isNullOrBlank()) {
                     contentDescription = semanticsLabel

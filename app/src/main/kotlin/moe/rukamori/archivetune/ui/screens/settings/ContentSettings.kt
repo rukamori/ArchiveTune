@@ -10,8 +10,6 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import android.content.Intent
-import android.os.Build
-import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +24,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +42,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.settings.AppLanguageOption
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
@@ -52,9 +52,9 @@ import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.utils.setAppLocale
 import moe.rukamori.archivetune.viewmodels.AiContentFilterSettingsEffect
 import moe.rukamori.archivetune.viewmodels.AiContentFilterSettingsState
+import moe.rukamori.archivetune.viewmodels.AppLanguageSettingsState
 import moe.rukamori.archivetune.viewmodels.ContentSettingsViewModel
 import java.util.Locale
 
@@ -65,6 +65,7 @@ fun ContentSettings(
 ) {
     val context = LocalContext.current
     val aiContentFilterState by viewModel.aiContentFilterState.collectAsStateWithLifecycle()
+    val appLanguageState by viewModel.appLanguageState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel, context) {
@@ -80,8 +81,6 @@ fun ContentSettings(
             }
         }
     }
-
-    val (useSystemLanguage, onUseSystemLanguageChange) = rememberPreference(key = UseSystemLanguageKey, defaultValue = true)
 
     val (contentLanguage, onContentLanguageChange) = rememberPreference(key = ContentLanguageKey, defaultValue = "system")
     val (contentCountry, onContentCountryChange) = rememberPreference(key = ContentCountryKey, defaultValue = "system")
@@ -203,21 +202,14 @@ fun ContentSettings(
             onOpenSource = viewModel::openAiContentFilterSource,
         )
 
-        PreferenceGroup(title = stringResource(R.string.app_language)) {
-            item {
-                SwitchPreference(
-                    title = { Text(stringResource(R.string.use_system_language)) },
-                    icon = { Icon(painterResource(R.drawable.language), null) },
-                    checked = useSystemLanguage,
-                    onCheckedChange = { checked ->
-                        onUseSystemLanguageChange(checked)
-                        val newLocale = if (checked) Locale.getDefault() else Locale.ENGLISH
-                        setAppLocale(context, newLocale)
-                        (context as? android.app.Activity)?.recreate()
-                    },
-                )
-            }
-        }
+        AppLanguagePreferences(
+            state = appLanguageState,
+            onUseSystemLanguageChange = viewModel::setUseSystemLanguage,
+            onLanguageSelected = viewModel::setAppLanguage,
+            onOpenSelector = viewModel::openAppLanguageSelector,
+            onDismissSelector = viewModel::dismissAppLanguageSelector,
+            onReload = viewModel::loadAppLanguageSettings,
+        )
 
         PreferenceGroup(title = stringResource(R.string.misc)) {
             item {
@@ -269,6 +261,69 @@ fun ContentSettings(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+    }
+}
+
+@Composable
+private fun AppLanguagePreferences(
+    state: AppLanguageSettingsState,
+    onUseSystemLanguageChange: (Boolean) -> Unit,
+    onLanguageSelected: (AppLanguageOption) -> Unit,
+    onOpenSelector: () -> Unit,
+    onDismissSelector: () -> Unit,
+    onReload: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    PreferenceGroup(title = stringResource(R.string.app_language)) {
+        when (state) {
+            AppLanguageSettingsState.Loading -> item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.app_language)) },
+                    description = stringResource(R.string.loading),
+                    icon = { Icon(painterResource(R.drawable.language), null) },
+                    isEnabled = false,
+                )
+            }
+
+            AppLanguageSettingsState.Empty -> Unit
+
+            is AppLanguageSettingsState.Error -> item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.app_language)) },
+                    description = stringResource(state.messageResId),
+                    icon = { Icon(painterResource(R.drawable.language), null) },
+                    onClick = onReload,
+                )
+            }
+
+            is AppLanguageSettingsState.Success -> {
+                val model = state.model
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.use_system_language)) },
+                        icon = { Icon(painterResource(R.drawable.language), null) },
+                        checked = model.useSystemLanguage,
+                        onCheckedChange = onUseSystemLanguageChange,
+                        isEnabled = !model.saving,
+                    )
+                }
+                item(visible = !model.useSystemLanguage) {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.language_label)) },
+                        icon = { Icon(painterResource(R.drawable.language), null) },
+                        selectedValue = model.selectedLanguage,
+                        values = model.languages,
+                        valueText = { it.name },
+                        showBottomSheet = model.selectorVisible,
+                        sheetState = sheetState,
+                        onOpen = onOpenSelector,
+                        onDismiss = onDismissSelector,
+                        onValueSelected = onLanguageSelected,
+                        isEnabled = !model.saving,
+                    )
+                }
+            }
+        }
     }
 }
 

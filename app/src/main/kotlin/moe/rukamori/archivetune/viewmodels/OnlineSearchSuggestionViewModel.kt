@@ -12,11 +12,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
 import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
@@ -29,7 +34,8 @@ import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.getAsync
+import java.io.IOException
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,49 +49,39 @@ class OnlineSearchSuggestionViewModel
         private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
+        private val retryRequests = MutableStateFlow(0)
         private val _viewState = MutableStateFlow(SearchSuggestionViewState())
         val viewState = _viewState.asStateFlow()
 
         init {
             viewModelScope.launch {
-                query
+                combine(query, retryRequests) { query, _ -> query }
                     .flatMapLatest { query ->
-                        if (query.isEmpty()) {
+                        if (query.isBlank()) {
                             database.searchHistory().map { history ->
                                 SearchSuggestionViewState(
+                                    query = query,
                                     history = history,
                                 )
                             }
                         } else {
-                            val result = YouTube.searchSuggestions(query).getOrNull()
-                            val aiContentFilterPolicy = loadAiContentFilterPolicy()
-                            database
-                                .searchHistory(query)
-                                .map { it.take(3) }
-                                .map { history ->
-                                    SearchSuggestionViewState(
-                                        history = history,
-                                        suggestions =
-                                            result
-                                                ?.queries
-                                                ?.filter { query ->
-                                                    history.none { it.query == query }
-                                                }.orEmpty(),
-                                        items =
-                                            filterAiContent(
-                                                result
-                                                    ?.recommendedItems
-                                                    ?.filterExplicit(
-                                                        context.dataStore.get(
-                                                            HideExplicitKey,
-                                                            false,
-                                                        ),
-                                                    )?.filterVideo(context.dataStore.get(HideVideoKey, false))
-                                                    .orEmpty(),
-                                                aiContentFilterPolicy,
-                                            ),
-                                    )
-                                }
+                            combine(
+                                database.searchHistory(query).map { it.take(MaxMatchingHistory) },
+                                remoteSuggestions(query),
+                            ) { history, remote ->
+                                val normalizedQuery = query.trim()
+                                SearchSuggestionViewState(
+                                    query = query,
+                                    history = history,
+                                    suggestions =
+                                        remote.queries.filter { suggestion ->
+                                            !suggestion.equals(normalizedQuery, ignoreCase = true) &&
+                                                history.none { it.query.equals(suggestion, ignoreCase = true) }
+                                        },
+                                    items = remote.items,
+                                    remoteStatus = remote.status,
+                                )
+                            }
                         }
                     }.collect {
                         _viewState.value = it
@@ -93,8 +89,59 @@ class OnlineSearchSuggestionViewModel
             }
         }
 
+        private fun remoteSuggestions(query: String): Flow<RemoteSuggestions> =
+            flow {
+                val previous = _viewState.value
+                emit(
+                    if (previous.query.isNotBlank()) {
+                        RemoteSuggestions(
+                            status = SuggestionRemoteStatus.Loading,
+                            queries = previous.suggestions,
+                            items = previous.items,
+                        )
+                    } else {
+                        RemoteSuggestions(status = SuggestionRemoteStatus.Loading)
+                    },
+                )
+
+                val remote =
+                    YouTube.searchSuggestions(query).fold(
+                        onSuccess = { result ->
+                            val hideExplicit = context.dataStore.getAsync(HideExplicitKey, false)
+                            val hideVideo = context.dataStore.getAsync(HideVideoKey, false)
+                            RemoteSuggestions(
+                                status = SuggestionRemoteStatus.Loaded,
+                                queries = result.queries.distinct(),
+                                items =
+                                    filterAiContent(
+                                        result.recommendedItems
+                                            .filterExplicit(hideExplicit)
+                                            .filterVideo(hideVideo),
+                                        loadAiContentFilterPolicy(),
+                                    ).distinctBy { it.id },
+                            )
+                        },
+                        onFailure = { throwable ->
+                            if (throwable is CancellationException) throw throwable
+                            RemoteSuggestions(
+                                status =
+                                    if (throwable is IOException) {
+                                        SuggestionRemoteStatus.Offline
+                                    } else {
+                                        SuggestionRemoteStatus.Failed
+                                    },
+                            )
+                        },
+                    )
+                emit(remote)
+            }
+
         fun updateQuery(query: String) {
             this.query.value = query
+        }
+
+        fun retry() {
+            retryRequests.update { it + 1 }
         }
 
         fun deleteHistory(history: SearchHistory) {
@@ -102,10 +149,36 @@ class OnlineSearchSuggestionViewModel
                 delete(history)
             }
         }
+
+        fun clearHistory() {
+            database.query {
+                clearSearchHistory()
+            }
+        }
+
+        private data class RemoteSuggestions(
+            val status: SuggestionRemoteStatus,
+            val queries: List<String> = emptyList(),
+            val items: List<YTItem> = emptyList(),
+        )
+
+        private companion object {
+            const val MaxMatchingHistory = 3
+        }
     }
 
+enum class SuggestionRemoteStatus {
+    Idle,
+    Loading,
+    Loaded,
+    Offline,
+    Failed,
+}
+
 data class SearchSuggestionViewState(
+    val query: String = "",
     val history: List<SearchHistory> = emptyList(),
     val suggestions: List<String> = emptyList(),
     val items: List<YTItem> = emptyList(),
+    val remoteStatus: SuggestionRemoteStatus = SuggestionRemoteStatus.Idle,
 )

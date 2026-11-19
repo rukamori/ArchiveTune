@@ -19,6 +19,10 @@ data class LyricsEntity(
     val source: String = Source.REMOTE.value,
     @ColumnInfo(defaultValue = "0")
     val updatedAt: Long = System.currentTimeMillis(),
+    val provider: String? = null,
+    val providerUrl: String? = null,
+    val providerAuthor: String? = null,
+    val providerAuthorUrl: String? = null,
 ) {
     fun hasGenericSource(): Boolean =
         source == Source.REMOTE.value ||
@@ -29,8 +33,14 @@ data class LyricsEntity(
         source == Source.TRANSLATION.value ||
             source == Source.AI_TRANSLATION.value
 
+    fun isStaleRemoteNotFound(now: Long = System.currentTimeMillis()): Boolean =
+        lyrics == LYRICS_NOT_FOUND &&
+            source == Source.REMOTE.value &&
+            now - updatedAt >= NOT_FOUND_RETRY_INTERVAL_MS
+
     companion object {
         const val LYRICS_NOT_FOUND = "LYRICS_NOT_FOUND"
+        const val NOT_FOUND_RETRY_INTERVAL_MS = 24L * 60L * 60L * 1000L
     }
 
     enum class Source(
@@ -44,3 +54,6 @@ data class LyricsEntity(
         AI_TRANSLATION("AI_TRANSLATION"),
     }
 }
+
+fun LyricsEntity?.needsRemoteFetch(now: Long = System.currentTimeMillis()): Boolean =
+    this == null || isStaleRemoteNotFound(now)

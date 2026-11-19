@@ -13,7 +13,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,17 +61,18 @@ class LocalMediaIndexer @Inject constructor(
     @Suppress("DEPRECATION")
     private suspend fun findAudioFiles(): List<File> {
         val root = Environment.getExternalStorageDirectory()
-        val androidDirectory = File(root, "Android")
+        val androidDataDirectory = File(root, "Android/data")
+        val androidObbDirectory = File(root, "Android/obb")
         val files = mutableListOf<File>()
         root.walkTopDown()
             .onEnter { directory ->
-                directory != androidDirectory &&
+                directory != androidDataDirectory && directory != androidObbDirectory &&
                     (directory == root || !directory.name.startsWith('.')) &&
                     !File(directory, NoMediaFileName).exists()
             }
             .forEach { file ->
                 currentCoroutineContext().ensureActive()
-                if (file.isFile && file.extension.lowercase(Locale.ROOT) in IndexableExtensions && file.length() > 0L) {
+                if (file.isFile && SupportedLocalAudio.isSupported(file.name, null) && file.length() > 0L) {
                     files += file
                 }
             }
@@ -94,6 +94,5 @@ class LocalMediaIndexer @Inject constructor(
     private companion object {
         const val LogTag = "LocalMediaIndexer"
         const val NoMediaFileName = ".nomedia"
-        val IndexableExtensions = setOf("aac", "amr", "flac", "m4a", "m4b", "mp3", "oga", "ogg", "opus", "wav", "3ga")
     }
 }

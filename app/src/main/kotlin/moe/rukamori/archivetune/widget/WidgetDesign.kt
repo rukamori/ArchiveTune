@@ -9,16 +9,20 @@ package moe.rukamori.archivetune.widget
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Build
 import android.util.LruCache
-import androidx.annotation.DrawableRes
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -27,9 +31,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
@@ -37,27 +42,24 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
-import androidx.glance.layout.Column
 import androidx.glance.layout.ContentScale
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
+import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.material3.ColorProviders
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.toPath
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,6 +68,7 @@ import moe.rukamori.archivetune.R
 
 @Immutable
 internal data class WidgetPlaybackState(
+    val mediaId: String?,
     val title: String,
     val artist: String,
     val isPlaying: Boolean,
@@ -75,18 +78,42 @@ internal data class WidgetPlaybackState(
     val playbackPosition: Float,
 )
 
+internal enum class WidgetSurfaceStyle {
+    Ambient,
+    Tonal,
+}
+
+internal enum class WidgetArtShape {
+    Square,
+    Rounded,
+    Circle,
+    Cookie,
+    Clover,
+    Arch,
+}
+
+@Immutable
+internal data class WidgetDayNightColor(
+    val day: Int,
+    val night: Int,
+)
+
 @Immutable
 internal data class WidgetPalette(
-    val primary: ColorProvider,
-    val onPrimary: ColorProvider,
+    val style: WidgetSurfaceStyle,
     val surface: ColorProvider,
     val onSurface: ColorProvider,
     val onSurfaceVariant: ColorProvider,
-    val primaryContainer: ColorProvider,
-    val secondaryContainer: ColorProvider,
-    val progress: ColorProvider,
-    val progressTrack: ColorProvider,
+    val accent: ColorProvider,
+    val onAccent: ColorProvider,
+    val container: ColorProvider,
+    val onContainer: ColorProvider,
+    val track: ColorProvider,
+    val divider: ColorProvider,
     val artworkFallback: ColorProvider,
+    val motionAccent: WidgetDayNightColor,
+    val motionContainer: WidgetDayNightColor,
+    val backdropTint: Int,
 )
 
 internal fun Preferences.toWidgetPlaybackState(context: Context): WidgetPlaybackState {
@@ -95,6 +122,7 @@ internal fun Preferences.toWidgetPlaybackState(context: Context): WidgetPlayback
     val rawArtist = this[MusicWidgetKeys.TRACK_ARTIST].orEmpty()
 
     return WidgetPlaybackState(
+        mediaId = this[MusicWidgetKeys.CURRENT_MEDIA_ID]?.takeIf { isAvailable && it.isNotBlank() },
         title =
             rawTitle.takeIf { it.isNotBlank() }
                 ?: context.getString(R.string.no_track_playing),
@@ -115,6 +143,8 @@ internal fun Preferences.toWidgetPlaybackState(context: Context): WidgetPlayback
 @Composable
 internal fun WidgetTheme(
     dominantColor: Int?,
+    style: WidgetSurfaceStyle,
+    context: Context,
     content: @Composable (WidgetPalette) -> Unit,
 ) {
     GlanceTheme(
@@ -124,54 +154,170 @@ internal fun WidgetTheme(
             ArchiveTuneWidgetColors.providers
         },
     ) {
-        content(rememberWidgetPalette(dominantColor))
+        content(rememberWidgetPalette(dominantColor, style, context))
     }
 }
 
 @Composable
-private fun rememberWidgetPalette(dominantColor: Int?): WidgetPalette {
+private fun rememberWidgetPalette(
+    dominantColor: Int?,
+    style: WidgetSurfaceStyle,
+    context: Context,
+): WidgetPalette {
     val colors = GlanceTheme.colors
-    return remember(dominantColor, colors) {
+    return remember(dominantColor, style, colors, context) {
+        when (style) {
+            WidgetSurfaceStyle.Ambient -> ambientPalette(dominantColor)
+            WidgetSurfaceStyle.Tonal -> tonalPalette(dominantColor, colors, context)
+        }
+    }
+}
+
+private fun ambientPalette(dominantColor: Int?): WidgetPalette {
+    val base = (dominantColor?.let { Color(it).copy(alpha = 1f) } ?: AmbientFallback).toAmbientBase()
+    val white = Color.White
+    val container = base.blendWith(white, 0.18f)
+    return WidgetPalette(
+        style = WidgetSurfaceStyle.Ambient,
+        surface = ColorProvider(base),
+        onSurface = ColorProvider(white),
+        onSurfaceVariant = ColorProvider(white.copy(alpha = 0.72f)),
+        accent = ColorProvider(white),
+        onAccent = ColorProvider(base),
+        container = ColorProvider(container),
+        onContainer = ColorProvider(white),
+        track = ColorProvider(base.blendWith(white, 0.28f)),
+        divider = ColorProvider(base.blendWith(white, 0.12f)),
+        artworkFallback = ColorProvider(base.blendWith(white, 0.14f)),
+        motionAccent = WidgetDayNightColor(white.toArgb(), white.toArgb()),
+        motionContainer = WidgetDayNightColor(container.toArgb(), container.toArgb()),
+        backdropTint = base.toArgb(),
+    )
+}
+
+private fun tonalPalette(
+    dominantColor: Int?,
+    colors: androidx.glance.color.ColorProviders,
+    context: Context,
+): WidgetPalette {
+    val palette =
         if (dominantColor == null) {
             WidgetPalette(
-                primary = colors.primary,
-                onPrimary = colors.onPrimary,
+                style = WidgetSurfaceStyle.Tonal,
                 surface = colors.surface,
                 onSurface = colors.onSurface,
                 onSurfaceVariant = colors.onSurfaceVariant,
-                primaryContainer = colors.primaryContainer,
-                secondaryContainer = colors.secondaryContainer,
-                progress = colors.primary,
-                progressTrack = colors.surfaceVariant,
+                accent = colors.primary,
+                onAccent = colors.onPrimary,
+                container = colors.secondaryContainer,
+                onContainer = colors.onSecondaryContainer,
+                track = colors.surfaceVariant,
+                divider = colors.surfaceVariant,
                 artworkFallback = colors.surfaceVariant,
+                motionAccent = WidgetDayNightColor(0, 0),
+                motionContainer = WidgetDayNightColor(0, 0),
+                backdropTint = 0,
             )
         } else {
             val dominant = Color(dominantColor).copy(alpha = 1f)
-            val primary = androidx.glance.color.ColorProvider(
-                day = dominant.blendWith(Color.Black, 0.45f),
-                night = dominant.blendWith(Color.White, 0.65f),
-            )
-            val surface = androidx.glance.color.ColorProvider(
-                day = dominant.blendWith(Color.White, 0.94f),
-                night = dominant.blendWith(Color.Black, 0.88f),
-            )
+            val primaryDay = dominant.blendWith(Color.Black, 0.45f)
+            val primaryNight = dominant.blendWith(Color.White, 0.65f)
             val container = androidx.glance.color.ColorProvider(
                 day = dominant.blendWith(Color.White, 0.84f),
-                night = dominant.blendWith(Color.Black, 0.72f),
+                night = dominant.blendWith(Color.Black, 0.70f),
             )
             WidgetPalette(
-                primary = primary,
-                onPrimary = androidx.glance.color.ColorProvider(Color.White, Color.Black),
-                surface = surface,
+                style = WidgetSurfaceStyle.Tonal,
+                surface = androidx.glance.color.ColorProvider(
+                    day = dominant.blendWith(Color.White, 0.93f),
+                    night = dominant.blendWith(Color.Black, 0.86f),
+                ),
                 onSurface = colors.onSurface,
                 onSurfaceVariant = colors.onSurfaceVariant,
-                primaryContainer = container,
-                secondaryContainer = container,
-                progress = primary,
-                progressTrack = container,
+                accent = androidx.glance.color.ColorProvider(day = primaryDay, night = primaryNight),
+                onAccent = androidx.glance.color.ColorProvider(
+                    day = Color.White,
+                    night = dominant.blendWith(Color.Black, 0.80f),
+                ),
+                container = container,
+                onContainer = colors.onSurface,
+                track = container,
+                divider = container,
                 artworkFallback = container,
+                motionAccent = WidgetDayNightColor(0, 0),
+                motionContainer = WidgetDayNightColor(0, 0),
+                backdropTint = 0,
             )
         }
+    return palette.copy(
+        motionAccent = palette.accent.resolveDayNight(context),
+        motionContainer = palette.container.resolveDayNight(context),
+    )
+}
+
+private fun ColorProvider.resolveDayNight(context: Context): WidgetDayNightColor =
+    WidgetDayNightColor(
+        day = getColor(context.withNightMode(false)).toArgb(),
+        night = getColor(context.withNightMode(true)).toArgb(),
+    )
+
+private fun Context.withNightMode(night: Boolean): Context {
+    val configuration = Configuration(resources.configuration)
+    configuration.uiMode =
+        (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+        (if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
+    return createConfigurationContext(configuration)
+}
+
+internal fun GlanceModifier.widgetRootCorners(): GlanceModifier =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        cornerRadius(android.R.dimen.system_app_widget_background_radius)
+    } else {
+        this
+    }
+
+@Composable
+internal fun WidgetSurface(
+    state: WidgetPlaybackState,
+    palette: WidgetPalette,
+    context: Context,
+    contentPadding: Dp = 14.dp,
+    backdrop: Boolean = palette.style == WidgetSurfaceStyle.Ambient,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            GlanceModifier
+                .fillMaxSize()
+                .appWidgetBackground()
+                .widgetRootCorners()
+                .background(palette.surface)
+                .clickable(openArchiveTuneAction(context)),
+    ) {
+        if (backdrop && state.artPath != null) {
+            WidgetBackdrop(state.artPath, palette)
+        }
+        Box(modifier = GlanceModifier.fillMaxSize().padding(contentPadding)) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun WidgetBackdrop(
+    artPath: String,
+    palette: WidgetPalette,
+) {
+    val bitmap = rememberWidgetBitmap("backdrop:$artPath:${palette.backdropTint}") {
+        WidgetArtworkCache.backdrop(artPath, palette.backdropTint)
+    }
+    if (bitmap != null) {
+        Image(
+            provider = ImageProvider(bitmap),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = GlanceModifier.fillMaxSize(),
+        )
     }
 }
 
@@ -181,22 +327,18 @@ internal fun WidgetArtwork(
     context: Context,
     contentDescription: String?,
     targetSize: Dp,
-    cornerRadius: Dp,
+    shape: WidgetArtShape,
     palette: WidgetPalette,
     modifier: GlanceModifier = GlanceModifier,
-    fallbackIconSize: Dp = targetSize * 0.54f,
-    circular: Boolean = false,
+    cornerRadius: Dp = 12.dp,
+    fallbackIconSize: Dp = targetSize * 0.42f,
 ) {
-    val targetPx = (targetSize.value * context.resources.displayMetrics.density)
-        .toInt()
-        .coerceIn(48, 1024)
-    val bitmap = key(artPath, targetPx, circular) {
-        produceState<Bitmap?>(initialValue = null) {
-            value = withContext(Dispatchers.IO) {
-                artPath?.let { WidgetArtworkCache.decode(it, targetPx, circular) }
-            }
-        }
-    }.value
+    val density = context.resources.displayMetrics.density
+    val targetPx = (targetSize.value * density).toInt().coerceIn(48, 1024)
+    val radiusPx = cornerRadius.value * density
+    val bitmap = rememberWidgetBitmap("art:$artPath:$targetPx:$shape:$radiusPx") {
+        artPath?.let { WidgetArtworkCache.artwork(it, targetPx, shape, radiusPx) }
+    }
 
     Box(modifier = modifier) {
         if (bitmap != null) {
@@ -204,59 +346,59 @@ internal fun WidgetArtwork(
                 provider = ImageProvider(bitmap),
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                modifier =
-                    GlanceModifier
-                        .fillMaxSize()
-                        .cornerRadius(cornerRadius),
+                modifier = GlanceModifier.fillMaxSize(),
             )
         } else {
-            Box(
-                modifier =
-                    GlanceModifier
-                        .fillMaxSize()
-                        .cornerRadius(cornerRadius)
-                        .background(palette.artworkFallback),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    provider = ImageProvider(R.drawable.music_note),
-                    contentDescription = contentDescription,
-                    contentScale = ContentScale.Fit,
-                    colorFilter = ColorFilter.tint(palette.onSurfaceVariant),
-                    modifier = GlanceModifier.size(fallbackIconSize),
-                )
-            }
+            WidgetArtworkFallback(shape, palette, contentDescription, fallbackIconSize, cornerRadius)
         }
     }
 }
 
 @Composable
-internal fun WidgetControlButton(
-    modifier: GlanceModifier,
-    action: Action,
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    backgroundColor: ColorProvider,
-    contentColor: ColorProvider,
+private fun WidgetArtworkFallback(
+    shape: WidgetArtShape,
+    palette: WidgetPalette,
+    contentDescription: String?,
+    iconSize: Dp,
     cornerRadius: Dp,
-    iconSize: Dp = 22.dp,
 ) {
-    Box(
-        modifier =
-            modifier
-                .background(backgroundColor)
-                .cornerRadius(cornerRadius)
-                .clickable(action),
-        contentAlignment = Alignment.Center,
-    ) {
+    val shapeModifier =
+        when (shape) {
+            WidgetArtShape.Square -> GlanceModifier.fillMaxSize().background(palette.artworkFallback)
+            WidgetArtShape.Rounded, WidgetArtShape.Arch ->
+                GlanceModifier.fillMaxSize().cornerRadius(cornerRadius).background(palette.artworkFallback)
+            WidgetArtShape.Circle ->
+                GlanceModifier.fillMaxSize().background(
+                    imageProvider = ImageProvider(R.drawable.widget_shape_circle),
+                    colorFilter = ColorFilter.tint(palette.artworkFallback),
+                )
+            WidgetArtShape.Cookie, WidgetArtShape.Clover ->
+                GlanceModifier.fillMaxSize().background(
+                    imageProvider = ImageProvider(R.drawable.widget_shape_cookie),
+                    colorFilter = ColorFilter.tint(palette.artworkFallback),
+                )
+        }
+    Box(modifier = shapeModifier, contentAlignment = Alignment.Center) {
         Image(
-            provider = ImageProvider(icon),
+            provider = ImageProvider(R.drawable.music_note),
             contentDescription = contentDescription,
-            colorFilter = ColorFilter.tint(contentColor),
+            contentScale = ContentScale.Fit,
+            colorFilter = ColorFilter.tint(palette.onSurfaceVariant),
             modifier = GlanceModifier.size(iconSize),
         )
     }
 }
+
+@Composable
+private fun rememberWidgetBitmap(
+    cacheKey: String,
+    loader: () -> Bitmap?,
+): Bitmap? =
+    key(cacheKey) {
+        produceState<Bitmap?>(initialValue = null) {
+            value = withContext(Dispatchers.IO) { loader() }
+        }
+    }.value
 
 internal fun openArchiveTuneAction(context: Context): Action =
     actionStartActivity(
@@ -271,6 +413,22 @@ internal fun playPauseAction(): Action = actionRunCallback<PlayPauseAction>()
 internal fun skipNextAction(): Action = actionRunCallback<SkipNextAction>()
 
 internal fun skipPreviousAction(): Action = actionRunCallback<SkipPrevAction>()
+
+internal fun playQueueItemAction(item: WidgetMediaItem): Action =
+    actionRunCallback<PlayQueueItemAction>(
+        actionParametersOf(
+            WidgetActionKeys.MediaId to item.id,
+            WidgetActionKeys.QueueIndex to item.queueIndex,
+        ),
+    )
+
+internal fun playSongAction(item: WidgetMediaItem): Action =
+    actionRunCallback<PlaySongAction>(actionParametersOf(WidgetActionKeys.MediaId to item.id))
+
+internal object WidgetActionKeys {
+    val MediaId = ActionParameters.Key<String>("widget_media_id")
+    val QueueIndex = ActionParameters.Key<Int>("widget_queue_index")
+}
 
 internal object ArchiveTuneWidgetColors {
     val providers =
@@ -308,107 +466,29 @@ internal object ArchiveTuneWidgetColors {
         )
 }
 
-@Composable
-internal fun WidgetTrackInfo(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    modifier: GlanceModifier = GlanceModifier,
-    titleSize: Int = 16,
-    titleLines: Int = 1,
-    showArtist: Boolean = true,
-) {
-    Column(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = state.title,
-            style = TextStyle(color = palette.onSurface, fontSize = titleSize.sp, fontWeight = FontWeight.Bold),
-            maxLines = titleLines,
-        )
-        if (showArtist) {
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                text = state.artist,
-                style = TextStyle(color = palette.onSurfaceVariant, fontSize = 12.sp),
-                maxLines = 1,
-            )
-        }
+private val AmbientFallback = Color(0xFF5D2A2A)
+
+private fun Color.toAmbientBase(): Color {
+    var color = this
+    var steps = 0
+    while (color.luminance() > AmbientMaxLuminance && steps < 12) {
+        color = color.blendWith(Color.Black, 0.18f)
+        steps++
     }
-}
-
-@Composable
-internal fun WidgetPlayPauseButton(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    context: Context,
-    modifier: GlanceModifier = GlanceModifier.size(48.dp),
-    cornerRadius: Dp = 24.dp,
-) {
-    WidgetControlButton(
-        modifier = modifier,
-        action = playPauseAction(),
-        icon = if (state.isPlaying) R.drawable.pause else R.drawable.play,
-        contentDescription = context.getString(if (state.isPlaying) R.string.widget_pause else R.string.play),
-        backgroundColor = palette.primary,
-        contentColor = palette.onPrimary,
-        cornerRadius = cornerRadius,
-        iconSize = 28.dp,
-    )
-}
-
-@Composable
-internal fun WidgetSkipButton(
-    forward: Boolean,
-    palette: WidgetPalette,
-    context: Context,
-    modifier: GlanceModifier = GlanceModifier.size(48.dp),
-) {
-    WidgetControlButton(
-        modifier = modifier,
-        action = if (forward) skipNextAction() else skipPreviousAction(),
-        icon = if (forward) R.drawable.skip_next else R.drawable.skip_previous,
-        contentDescription = context.getString(if (forward) R.string.next else R.string.widget_previous),
-        backgroundColor = TransparentWidgetColor,
-        contentColor = palette.onSurface,
-        cornerRadius = 24.dp,
-        iconSize = 24.dp,
-    )
-}
-
-@Composable
-internal fun WidgetTransportControls(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    context: Context,
-    modifier: GlanceModifier = GlanceModifier,
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        WidgetSkipButton(forward = false, palette = palette, context = context)
-        WidgetPlayPauseButton(state = state, palette = palette, context = context)
-        WidgetSkipButton(forward = true, palette = palette, context = context)
+    while (color.luminance() < AmbientMinLuminance && steps < 24) {
+        color = color.blendWith(Color.White, 0.08f)
+        steps++
     }
+    return color
 }
 
-@Composable
-internal fun WidgetPlaybackProgress(
-    state: WidgetPlaybackState,
-    palette: WidgetPalette,
-    modifier: GlanceModifier = GlanceModifier,
-) {
-    LinearProgressIndicator(
-        progress = state.playbackPosition,
-        color = palette.progress,
-        backgroundColor = palette.progressTrack,
-        modifier = modifier.fillMaxWidth().height(4.dp).cornerRadius(2.dp),
-    )
-}
-
-private val TransparentWidgetColor = ColorProvider(Color.Transparent)
+private const val AmbientMaxLuminance = 0.09f
+private const val AmbientMinLuminance = 0.025f
 
 private object WidgetArtworkCache {
-    private const val CacheSizeBytes = 4 * 1024 * 1024
+    private const val CacheSizeBytes = 6 * 1024 * 1024
+    private const val BackdropSizePx = 128
+    private const val BackdropBlurPx = 10
 
     private val cache =
         object : LruCache<String, Bitmap>(CacheSizeBytes) {
@@ -418,17 +498,76 @@ private object WidgetArtworkCache {
             ): Int = value.byteCount
         }
 
-    fun decode(
+    private val shapePolygons: Map<WidgetArtShape, RoundedPolygon> by lazy {
+        mapOf(
+            WidgetArtShape.Cookie to MaterialShapes.Cookie9Sided,
+            WidgetArtShape.Clover to MaterialShapes.Clover4Leaf,
+            WidgetArtShape.Arch to MaterialShapes.Arch,
+        )
+    }
+
+    fun artwork(
         path: String,
         targetPx: Int,
-        circular: Boolean,
+        shape: WidgetArtShape,
+        radiusPx: Float,
     ): Bitmap? {
         val file = File(path)
-        if (!file.exists() || file.length() == 0L) return null
-
-        val cacheKey = "${file.absolutePath}:${file.lastModified()}:$targetPx:$circular"
+        if (!file.isFile || file.length() == 0L) return null
+        val cacheKey = "art:${file.absolutePath}:${file.lastModified()}:$targetPx:$shape:$radiusPx"
         cache.get(cacheKey)?.let { return it }
 
+        val square = decodeSquare(file, targetPx) ?: return null
+        val result =
+            if (shape == WidgetArtShape.Square) {
+                square
+            } else {
+                mask(square, shape, radiusPx).also { square.recycle() }
+            }
+        cache.put(cacheKey, result)
+        return result
+    }
+
+    fun backdrop(
+        path: String,
+        tint: Int,
+    ): Bitmap? {
+        val file = File(path)
+        if (!file.isFile || file.length() == 0L) return null
+        val cacheKey = "backdrop:${file.absolutePath}:${file.lastModified()}:$tint"
+        cache.get(cacheKey)?.let { return it }
+
+        val source = decodeSquare(file, BackdropSizePx) ?: return null
+        val tiny = Bitmap.createScaledBitmap(source, BackdropBlurPx, BackdropBlurPx, true)
+        if (tiny !== source) source.recycle()
+        val mid = Bitmap.createScaledBitmap(tiny, BackdropSizePx / 4, BackdropSizePx / 4, true)
+        tiny.recycle()
+        val soft = Bitmap.createScaledBitmap(mid, BackdropSizePx, BackdropSizePx, true)
+        mid.recycle()
+
+        val result = soft.copy(Bitmap.Config.ARGB_8888, true)
+        soft.recycle()
+        val canvas = Canvas(result)
+        val tintColor = Color(tint)
+        canvas.drawColor(tintColor.copy(alpha = 0.58f).toArgb())
+        val size = BackdropSizePx.toFloat()
+        val gradient = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, size,
+                tintColor.copy(alpha = 0f).toArgb(),
+                Color.Black.copy(alpha = 0.34f).toArgb(),
+                Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawRect(0f, 0f, size, size, gradient)
+        cache.put(cacheKey, result)
+        return result
+    }
+
+    private fun decodeSquare(
+        file: File,
+        targetPx: Int,
+    ): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.absolutePath, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
@@ -438,33 +577,63 @@ private object WidgetArtworkCache {
                 inSampleSize = calculateInSampleSize(bounds, targetPx, targetPx)
             }
         val decoded = BitmapFactory.decodeFile(file.absolutePath, options) ?: return null
-        val scale = targetPx.toFloat() / maxOf(decoded.width, decoded.height)
-        val bitmap = if (scale < 1f) {
-            Bitmap.createScaledBitmap(
-                decoded,
-                (decoded.width * scale).toInt().coerceAtLeast(1),
-                (decoded.height * scale).toInt().coerceAtLeast(1),
-                true,
-            ).also { if (it !== decoded) decoded.recycle() }
+        val side = minOf(decoded.width, decoded.height)
+        val cropped =
+            if (decoded.width != decoded.height) {
+                Bitmap.createBitmap(
+                    decoded,
+                    (decoded.width - side) / 2,
+                    (decoded.height - side) / 2,
+                    side,
+                    side,
+                ).also { if (it !== decoded) decoded.recycle() }
+            } else {
+                decoded
+            }
+        return if (side > targetPx) {
+            Bitmap.createScaledBitmap(cropped, targetPx, targetPx, true)
+                .also { if (it !== cropped) cropped.recycle() }
         } else {
-            decoded
+            cropped
         }
-        val artwork = if (circular) {
-            val side = minOf(bitmap.width, bitmap.height)
-            val result = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
-            val shader = BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-            shader.setLocalMatrix(Matrix().apply {
-                setTranslate((side - bitmap.width) / 2f, (side - bitmap.height) / 2f)
-            })
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.shader = shader }
-            Canvas(result).drawCircle(side / 2f, side / 2f, side / 2f, paint)
-            bitmap.recycle()
-            result
-        } else {
-            bitmap
+    }
+
+    private fun mask(
+        source: Bitmap,
+        shape: WidgetArtShape,
+        radiusPx: Float,
+    ): Bitmap {
+        val side = source.width
+        val result = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         }
-        cache.put(cacheKey, artwork)
-        return artwork
+        val bounds = RectF(0f, 0f, side.toFloat(), side.toFloat())
+        val path =
+            when (shape) {
+                WidgetArtShape.Square -> Path().apply { addRect(bounds, Path.Direction.CW) }
+                WidgetArtShape.Rounded -> Path().apply {
+                    val scaledRadius = radiusPx.coerceAtMost(side / 2f)
+                    addRoundRect(bounds, scaledRadius, scaledRadius, Path.Direction.CW)
+                }
+                WidgetArtShape.Circle -> Path().apply { addOval(bounds, Path.Direction.CW) }
+                WidgetArtShape.Cookie, WidgetArtShape.Clover, WidgetArtShape.Arch ->
+                    polygonPath(shapePolygons.getValue(shape), bounds)
+            }
+        Canvas(result).drawPath(path, paint)
+        return result
+    }
+
+    private fun polygonPath(
+        polygon: RoundedPolygon,
+        bounds: RectF,
+    ): Path {
+        val path = polygon.toPath(Path())
+        val polygonBounds = RectF()
+        path.computeBounds(polygonBounds, true)
+        val matrix = Matrix().apply { setRectToRect(polygonBounds, bounds, Matrix.ScaleToFit.CENTER) }
+        path.transform(matrix)
+        return path
     }
 }
 
@@ -480,7 +649,7 @@ private fun calculateInSampleSize(
     if (height > requestedHeight || width > requestedWidth) {
         val halfHeight = height / 2
         val halfWidth = width / 2
-        while (halfHeight / sampleSize >= requestedHeight || halfWidth / sampleSize >= requestedWidth) {
+        while (halfHeight / sampleSize >= requestedHeight && halfWidth / sampleSize >= requestedWidth) {
             sampleSize *= 2
         }
     }

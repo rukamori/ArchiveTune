@@ -7,6 +7,8 @@
 
 package moe.rukamori.archivetune.backup
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -15,6 +17,15 @@ import javax.inject.Singleton
 @Singleton
 class BackupOperationCoordinator @Inject constructor() {
     private val mutex = Mutex()
+    private val mutableRunning = MutableStateFlow(false)
+    val isRunning = mutableRunning.asStateFlow()
 
-    suspend fun <T> withLock(operation: suspend () -> T): T = mutex.withLock { operation() }
+    suspend fun <T> withLock(operation: suspend () -> T): T = mutex.withLock {
+        mutableRunning.value = true
+        try {
+            operation()
+        } finally {
+            mutableRunning.value = false
+        }
+    }
 }

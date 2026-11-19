@@ -165,7 +165,6 @@
     <string name="undo">Deshacer</string>
     <string name="lyrics_not_found">Letras no encontradas</string>
     <string name="sleep_timer">Temporizador de reposo</string>
-    <string name="end_of_song">Fin de la canción</string>
     <plurals name="minute">
         <item quantity="one">%d minuto</item>
         <item quantity="many">%d minutos</item>
@@ -279,7 +278,6 @@
     <string name="blur">Desenfoque</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Brillo</string>
-    <string name="custom_value">Valor personalizado</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animar la portada del álbum mientras se reproduce</string>
     <string name="show_button1_description">Alternar la visibilidad del botón 1 en Discord Rich Presence</string>
@@ -308,7 +306,6 @@
     <string name="enable_betterlyrics">Activar BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Activar letras de SimpMusic</string>
     <string name="player_and_audio">Reproductor y audio</string>
-    <string name="audio_quality">Calidad de audio</string>
     <string name="audio_quality_auto">Automático</string>
     <string name="audio_quality_high">Alta</string>
     <string name="audio_quality_low">Baja</string>
@@ -498,7 +495,6 @@
     <string name="new_version_available">Nueva versión disponible</string>
     <string name="updates">Actualizaciones</string>
     <string name="current_version">Versión Actual</string>
-    <string name="latest_version_format">Ultima: %s</string>
     <string name="enable_update_notification">Activar la Notificación de Actualización</string>
     <string name="update_channel">Canal de actualización</string>
     <string name="recent_commits">Cambios recientes</string>
@@ -551,7 +547,6 @@
     <string name="together_server_error">Error del servidor, por favor, inténtalo de nuevo más tarde</string>
     <string name="leave">Dejar</string>
     <string name="join">Únete</string>
-    <string name="joined">Te uniste</string>
     <string name="loading">Cargando</string>
     <string name="connecting">Conectando</string>
     <string name="copy_link">Copiar enlace</string>
@@ -602,7 +597,6 @@
     <string name="sort_order_descending">Descendente</string>
     <string name="disable_animations">Desactivar animaciones</string>
     <string name="disable_animations_desc">Desactiva la mayoría de las animaciones de las aplicaciones. Recomendado para dispositivos de gama baja</string>
-    <string name="updates_status_checking">Comprobar si hay una nueva versión</string>
     <string name="updates_status_current">Tienes la última versión disponible</string>
     <string name="updates_loading_commits">Cargando las últimas modificaciones</string>
     <string name="updates_recent_commits_count">%1$d commits recientes</string>
@@ -672,11 +666,8 @@
     <string name="recently_added">Añadido recientemente</string>
     <string name="sort_descending">Ordenar de forma descendente</string>
     <string name="sort_ascending">Ordenar de forma ascendente</string>
-    <string name="your_collection">Tu colección</string>
     <string name="playing_desc">Reproduciendo</string>
     <string name="tracks_label">pistas</string>
-    <string name="song_singular">Canción</string>
-    <string name="more_playlists_desc">Más listas de reproducción</string>
     <string name="more_label">Más</string>
     <string name="tracks_count_label">Recuento de pistas</string>
     <string name="recently_updated">Actualizado recientemente</string>
@@ -686,23 +677,18 @@
     <string name="personal_label">Personal</string>
     <string name="youtube_synced">Sincronizado con YouTube</string>
     <string name="options_label">Opciones</string>
-    <string name="top_artist_badge">ARTISTA DESTACADO</string>
-    <string name="no_artist_yet">Aún no hay artista</string>
-    <string name="total_label">total</string>
     <string name="most_tracks">La mayoría de las pistas</string>
     <string name="least_tracks">Menos pistas</string>
     <string name="play_time">Tiempo de reproducción</string>
     <string name="subscribed_only">Solo para suscriptores</string>
     <string name="all_artists_filter">Todos los artistas</string>
     <string name="artist_subtitle">Artista</string>
-    <string name="recently_played_artists">Artistas escuchados recientemente</string>
     <string name="newest_year">El año más reciente</string>
     <string name="oldest_year">Año más antiguo</string>
     <string name="longest_duration">Duración más larga</string>
     <string name="shortest_duration">Duración más corta</string>
     <string name="year_sort">Año</string>
     <string name="duration_sort">Duración</string>
-    <string name="featured_album_badge">ÁLBUM DESTACADO</string>
     <string name="download_progress_percent">%1$d%%</string>
     <string name="lyrics_synced_badge">Sincronizado</string>
     <string name="lyrics_word_sync">Sincronización automática</string>
@@ -785,6 +771,11 @@
     <string name="library_top_mixes_refresh">Actualizar las mezclas</string>
     <string name="library_top_mixes_configure_ai">Configurar la IA</string>
     <string name="app_icon_change_failed">No he podido cambiar el icono de la aplicación</string>
+    <string name="app_icon_applying">Aplicando %1$s…</string>
+    <string name="app_icon_by_author">por %1$s</string>
+    <string name="app_icon_github_profile">Perfil de GitHub</string>
+    <string name="app_icon_details">Detalles del icono</string>
+    <string name="app_icon_use">Usar este icono</string>
     <string name="app_icon_load_failed">No se han podido cargar los iconos de las aplicaciones</string>
     <string name="app_icon_empty">Sin iconos para la aplicación</string>
     <plurals name="app_icon_count">
@@ -882,7 +873,6 @@
     <string name="copy_log_entry">Copiar entrada de registro</string>
     <string name="export_logs_failed">No se pueden exportar los registros</string>
     <string name="enable_update_notification_channel_desc">Recibe notificaciones cuando haya una nueva versión disponible en el canal seleccionado</string>
-    <string name="download_complete">Descarga completa</string>
     <string name="onboarding_welcome_title">¡Bienvenido a ArchiveTune!</string>
     <string name="onboarding_welcome_subtitle">Configura la reproducción, la música local y los permisos de actualización antes de empezar a escuchar.</string>
     <string name="onboarding_permissions_title">Revisar permisos</string>
@@ -894,7 +884,6 @@
     <string name="onboarding_foss_variant">Edición FOSS</string>
     <string name="onboarding_version_label">Versión %1$s</string>
     <string name="onboarding_empty_title">Configuración no disponible</string>
-    <string name="onboarding_empty_subtitle">Continúa en ArchiveTune.</string>
     <string name="onboarding_error_generic">No se ha podido cargar el programa de instalación</string>
     <string name="onboarding_permission_allowed_by_install">Permitido por la instalación</string>
     <string name="onboarding_permission_unavailable">No disponible</string>
@@ -927,7 +916,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Aleatorio activado</string>
     <string name="together_shuffle_off">Aleatorio desactivado</string>
-    <string name="together_repeat_mode">Repetir %1$d</string>
     <string name="together_participants_empty">Aún no hay participantes</string>
     <string name="together_participants_empty_body">Los usuarios que participen en esta sesión aparecerán aquí.</string>
     <string name="together_activity_log">Registro de actividad</string>
@@ -978,7 +966,6 @@
     <string name="eq_sound_shaping_on">La configuración del sonido está habilitada</string>
     <string name="eq_sound_shaping_off">La configuración del sonido está desactivada</string>
     <string name="eq_enable_description">Aplique estos comandos a la reproducción de ArchiveTune</string>
-    <string name="eq_control_mode">Modo de control</string>
     <string name="eq_basic">Básico</string>
     <string name="eq_advanced">Avanzado</string>
     <string name="eq_basic_description">Ajustes predefinidos rápidos y amplia configuración del sonido</string>

@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.ui.screens.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,28 +15,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SearchBar
@@ -48,50 +41,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import kotlinx.coroutines.flow.distinctUntilChanged
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
-import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
-import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.models.toMediaMetadata
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.search.SearchDiscoveryUiModel
-import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.NavigationTitle
-import moe.rukamori.archivetune.ui.component.YouTubeGridItem
-import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.repository.moodAndGenresArtworkKey
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
-import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
-import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
-import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
-import moe.rukamori.archivetune.ui.screens.MoodAndGenresButton
-import moe.rukamori.archivetune.ui.screens.MoodAndGenresButtonHeight
-import moe.rukamori.archivetune.ui.utils.navigateToAlbum
-import moe.rukamori.archivetune.ui.utils.navigateToArtist
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
@@ -107,10 +86,14 @@ fun SearchScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val artwork by viewModel.artwork.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val layoutDirection = LocalLayoutDirection.current
+    val playerPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
     val tonalStart = MaterialTheme.colorScheme.primaryContainer
     val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
-    val lazyListState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
         backStackEntry
@@ -120,12 +103,36 @@ fun SearchScreen(
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
-            lazyListState.animateScrollToItem(0)
+            gridState.animateScrollToItem(0)
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
     }
 
-    Box(
+    val genres = (state as? SearchDiscoveryScreenState.Success)?.data?.moodAndGenres.orEmpty()
+    LaunchedEffect(gridState, genres, selectedTab, lifecycleOwner, viewModel) {
+        val itemsByKey = genres.associateBy {
+            "${it.title}:${it.endpoint.browseId}:${it.endpoint.params}"
+        }
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try {
+                snapshotFlow { gridState.layoutInfo.visibleItemsInfo.map { it.key } }
+                    .distinctUntilChanged()
+                    .collect { keys ->
+                        viewModel.setVisibleArtwork(
+                            if (selectedTab == SearchDiscoveryTab.EXPLORE) {
+                                keys.mapNotNull { itemsByKey[it]?.endpoint }
+                            } else {
+                                emptyList()
+                            },
+                        )
+                    }
+            } finally {
+                viewModel.setVisibleArtwork(emptyList())
+            }
+        }
+    }
+
+    BoxWithConstraints(
         modifier =
             Modifier
                 .fillMaxSize()
@@ -139,6 +146,16 @@ fun SearchScreen(
                     },
                 ),
     ) {
+        val startPadding = playerPadding.calculateStartPadding(layoutDirection) + 16.dp
+        val endPadding = playerPadding.calculateEndPadding(layoutDirection) + 16.dp
+        val availableWidth = maxWidth - startPadding - endPadding
+        val columnCount =
+            if (availableWidth < 320.dp) {
+                1
+            } else {
+                ((availableWidth.value + 8f) / 168f).toInt().coerceAtLeast(2)
+            }
+
         if (!disableBlur) {
             Box(
                 modifier =
@@ -158,12 +175,21 @@ fun SearchScreen(
             )
         }
 
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        LazyVerticalStaggeredGrid(
+            columns = StaggeredGridCells.Fixed(columnCount),
+            state = gridState,
+            contentPadding = PaddingValues(
+                start = startPadding,
+                top = playerPadding.calculateTopPadding(),
+                end = endPadding,
+                bottom = playerPadding.calculateBottomPadding(),
+            ),
+            verticalItemSpacing = 8.dp,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(
+                span = StaggeredGridItemSpan.FullLine,
                 key = "search_field",
                 contentType = "search_field",
             ) {
@@ -172,12 +198,13 @@ fun SearchScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(vertical = 8.dp)
                             .animateItem(),
                 )
             }
 
             item(
+                span = StaggeredGridItemSpan.FullLine,
                 key = "search_tabs",
                 contentType = "search_tabs",
             ) {
@@ -194,6 +221,7 @@ fun SearchScreen(
             when (val currentState = state) {
                 SearchDiscoveryScreenState.Loading -> {
                     item(
+                        span = StaggeredGridItemSpan.FullLine,
                         key = "search_loading",
                         contentType = "search_loading",
                     ) {
@@ -203,6 +231,7 @@ fun SearchScreen(
 
                 SearchDiscoveryScreenState.Empty -> {
                     item(
+                        span = StaggeredGridItemSpan.FullLine,
                         key = "search_empty",
                         contentType = "search_empty",
                     ) {
@@ -215,6 +244,7 @@ fun SearchScreen(
 
                 is SearchDiscoveryScreenState.Error -> {
                     item(
+                        span = StaggeredGridItemSpan.FullLine,
                         key = "search_error",
                         contentType = "search_error",
                     ) {
@@ -234,55 +264,101 @@ fun SearchScreen(
                     when (selectedTab) {
                         SearchDiscoveryTab.EXPLORE -> {
                             item(
+                                span = StaggeredGridItemSpan.FullLine,
                                 key = "search_explore_moods_title",
                                 contentType = "section_title",
                             ) {
-                                NavigationTitle(
-                                    title = stringResource(R.string.mood_and_genres),
-                                    modifier = Modifier.animateItem(),
+                                Text(
+                                    text = stringResource(R.string.mood_and_genres),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(vertical = 12.dp).semantics { heading() }.animateItem(),
                                 )
                             }
-                            item(
-                                key = "search_explore_moods",
-                                contentType = "mood_genres_grid",
-                            ) {
-                                SearchMoodAndGenresGrid(
-                                    data = currentState.data,
-                                    navController = navController,
-                                    modifier = Modifier.animateItem(),
+                            if (currentState.data.moodAndGenres.isEmpty()) {
+                                item(
+                                    span = StaggeredGridItemSpan.FullLine,
+                                    key = "search_explore_empty",
+                                    contentType = "search_empty",
+                                ) {
+                                    SearchStateMessage(
+                                        message = stringResource(R.string.no_results_found),
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                            }
+                            itemsIndexed(
+                                items = currentState.data.moodAndGenres,
+                                key = { _, item -> "${item.title}:${item.endpoint.browseId}:${item.endpoint.params}" },
+                                contentType = { _, _ -> "mood_genres_item" },
+                            ) { index, item ->
+                                SearchGenreTile(
+                                    title = item.title,
+                                    stripeColor = item.stripeColor,
+                                    artwork = artwork[item.endpoint.moodAndGenresArtworkKey()],
+                                    tileIndex = index,
+                                    onClick = {
+                                        navController.navigate(
+                                            buildString {
+                                                append("youtube_browse/${android.net.Uri.encode(item.endpoint.browseId)}")
+                                                append("?genreTitle=${android.net.Uri.encode(item.title)}")
+                                                item.endpoint.params?.let { append("&params=${android.net.Uri.encode(it)}") }
+                                            },
+                                        ) {
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().animateItem(),
                                 )
                             }
                         }
 
                         SearchDiscoveryTab.SUGGESTIONS -> {
+                            val data = currentState.data
+                            if (data.suggestedSongs.isEmpty() && data.suggestedArtists.isEmpty() && data.trendingAlbums.isEmpty()) {
+                                item(
+                                    span = StaggeredGridItemSpan.FullLine,
+                                    key = "search_suggestions_empty",
+                                    contentType = "search_empty",
+                                ) {
+                                    SearchStateMessage(
+                                        message = stringResource(R.string.no_results_found),
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                            }
+
                             item(
+                                span = StaggeredGridItemSpan.FullLine,
                                 key = "search_suggestions_songs",
                                 contentType = "suggestion_songs",
                             ) {
-                                SuggestedSongsSection(
-                                    songs = currentState.data.suggestedSongs,
+                                SuggestedSongsShelf(
+                                    songs = data.suggestedSongs,
                                     navController = navController,
                                     modifier = Modifier.animateItem(),
                                 )
                             }
 
                             item(
+                                span = StaggeredGridItemSpan.FullLine,
                                 key = "search_suggestions_artists",
                                 contentType = "suggestion_artists",
                             ) {
-                                SuggestedArtistsSection(
-                                    artists = currentState.data.suggestedArtists,
+                                SuggestedArtistsShelf(
+                                    artists = data.suggestedArtists,
                                     navController = navController,
                                     modifier = Modifier.animateItem(),
                                 )
                             }
 
                             item(
+                                span = StaggeredGridItemSpan.FullLine,
                                 key = "search_suggestions_albums",
                                 contentType = "suggestion_albums",
                             ) {
-                                TrendingAlbumsSection(
-                                    albums = currentState.data.trendingAlbums,
+                                TrendingAlbumsShelf(
+                                    albums = data.trendingAlbums,
                                     navController = navController,
                                     modifier = Modifier.animateItem(),
                                 )
@@ -385,326 +461,6 @@ private fun SearchDiscoveryTabs(
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun SearchMoodAndGenresGrid(
-    data: SearchDiscoveryUiModel,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    BoxWithConstraints(
-        modifier =
-            modifier
-                .fillMaxWidth(),
-    ) {
-        val columnCount = (maxWidth.value / MoodAndGenresMinCellWidth.value).toInt().coerceAtLeast(1)
-        val rowCount = ((data.moodAndGenres.size + columnCount - 1) / columnCount).coerceAtLeast(1)
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = MoodAndGenresMinCellWidth),
-            contentPadding = PaddingValues(6.dp),
-            userScrollEnabled = false,
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height((MoodAndGenresButtonHeight + 12.dp) * rowCount + 12.dp),
-        ) {
-            items(
-                items = data.moodAndGenres,
-                key = { item -> "${item.title}:${item.endpoint.browseId}:${item.endpoint.params}" },
-                contentType = { "mood_genres_item" },
-            ) { item ->
-                MoodAndGenresButton(
-                    title = item.title,
-                    stripeColor = item.stripeColor,
-                    endpoint = item.endpoint,
-                    onClick = {
-                        navController.navigate("youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}")
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(6.dp),
-                )
-            }
-        }
-    }
-}
-
-private val MoodAndGenresMinCellWidth = 180.dp
-
-private val SuggestedSongGroupHorizontalPadding = 12.dp
-private val SuggestedSongGroupVerticalPadding = 2.dp
-private val SuggestedSongGroupItemSpacing = 2.dp
-private val SuggestedSongGroupLargeCorner = 28.dp
-private val SuggestedSongGroupSmallCorner = 6.dp
-
-private fun segmentedSuggestedSongShape(
-    index: Int,
-    count: Int,
-): Shape {
-    val large = SuggestedSongGroupLargeCorner
-    val small = SuggestedSongGroupSmallCorner
-    return when {
-        count <= 1 -> {
-            RoundedCornerShape(large)
-        }
-
-        index == 0 -> {
-            RoundedCornerShape(
-                topStart = large,
-                topEnd = large,
-                bottomEnd = small,
-                bottomStart = small,
-            )
-        }
-
-        index == count - 1 -> {
-            RoundedCornerShape(
-                topStart = small,
-                topEnd = small,
-                bottomEnd = large,
-                bottomStart = large,
-            )
-        }
-
-        else -> {
-            RoundedCornerShape(small)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SuggestedSongsSection(
-    songs: List<SongItem>,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    if (songs.isEmpty()) return
-
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
-    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
-
-    SectionContainer(
-        title = stringResource(R.string.stats_unique_songs),
-        modifier = modifier,
-    ) {
-        val visibleSongs = remember(songs) { songs.take(6) }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(SuggestedSongGroupItemSpacing),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = SuggestedSongGroupHorizontalPadding,
-                        vertical = SuggestedSongGroupVerticalPadding,
-                    ),
-        ) {
-            visibleSongs.forEachIndexed { index, song ->
-                val isActive = song.id == mediaMetadata?.id
-                Card(
-                    shape = segmentedSuggestedSongShape(index = index, count = visibleSongs.size),
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                if (isActive) {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerLow
-                                },
-                        ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = {
-                                    if (isActive) {
-                                        playerConnection.player.togglePlayPause()
-                                    } else {
-                                        playerConnection.playQueue(
-                                            YouTubeQueue(
-                                                endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                                preloadItem = song.toMediaMetadata(),
-                                            ),
-                                        )
-                                    }
-                                },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuState.show {
-                                        YouTubeSongMenu(
-                                            song = song,
-                                            navController = navController,
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                            ),
-                ) {
-                    YouTubeListItem(
-                        item = song,
-                        albumIndex = index + 1,
-                        viewCountText = song.viewCountText,
-                        isActive = isActive,
-                        isPlaying = isPlaying,
-                        isSwipeable = false,
-                        showActiveContainer = false,
-                        trailingContent = {
-                            YouTubeSongMenuButton(song = song, navController = navController)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TrendingAlbumsSection(
-    albums: List<AlbumItem>,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    if (albums.isEmpty()) return
-
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
-    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
-
-    NavigationTitle(
-        title = stringResource(R.string.top_albums),
-        modifier = modifier,
-    )
-    LazyRow(
-        contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal).asPaddingValues(),
-    ) {
-        items(
-            items = albums,
-            key = { album -> album.id },
-            contentType = { "trending_album" },
-        ) { album ->
-            YouTubeGridItem(
-                item = album,
-                isActive = mediaMetadata?.album?.id == album.id,
-                isPlaying = isPlaying,
-                coroutineScope = coroutineScope,
-                modifier =
-                    Modifier
-                        .combinedClickable(
-                            onClick = {
-                                navController.navigateToAlbum(album.id)
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    YouTubeAlbumMenu(
-                                        albumItem = album,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        ).animateItem(),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SuggestedArtistsSection(
-    artists: List<ArtistItem>,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    if (artists.isEmpty()) return
-
-    val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
-
-    NavigationTitle(
-        title = stringResource(R.string.stats_unique_artists),
-        modifier = modifier,
-    )
-    LazyRow(
-        contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal).asPaddingValues(),
-    ) {
-        items(
-            items = artists,
-            key = { artist -> artist.id },
-            contentType = { "trending_artist" },
-        ) { artist ->
-            YouTubeGridItem(
-                item = artist,
-                modifier =
-                    Modifier
-                        .combinedClickable(
-                            onClick = {
-                                navController.navigateToArtist(artist.id)
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    YouTubeArtistMenu(
-                                        artist = artist,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        ).animateItem(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SectionContainer(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    NavigationTitle(
-        title = title,
-        modifier = modifier,
-    )
-    content()
-}
-
-@Composable
-private fun YouTubeSongMenuButton(
-    song: SongItem,
-    navController: NavController,
-) {
-    val menuState = LocalMenuState.current
-    IconButton(
-        onClick = {
-            menuState.show {
-                YouTubeSongMenu(
-                    song = song,
-                    navController = navController,
-                    onDismiss = menuState::dismiss,
-                )
-            }
-        },
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.more_vert),
-            contentDescription = null,
-        )
     }
 }
 

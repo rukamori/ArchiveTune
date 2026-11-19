@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.downloads.DownloadEntryUiModel
@@ -56,54 +57,79 @@ data class DownloadLibrarySort(
     val order: DownloadLibrarySortOrder = DownloadLibrarySortOrder.DESCENDING,
 )
 
+@Immutable
+data class DownloadLibraryControls(
+    val selectedTab: DownloadLibraryTab,
+    val query: String = "",
+    val isSearchActive: Boolean = false,
+    val sort: DownloadLibrarySort = DownloadLibrarySort(),
+    val typeFilter: DownloadMediaType? = null,
+    val selection: Set<String> = emptySet(),
+    val pendingRemoval: DownloadRemovalConfirmation? = null,
+) {
+    val hasActiveFilter: Boolean = query.isNotBlank() || typeFilter != null
+}
+
 sealed interface DownloadLibraryScreenState {
-    val pendingRemoval: DownloadRemovalConfirmation?
-    val sort: DownloadLibrarySort
+    val controls: DownloadLibraryControls
 
     data class Loading(
-        val selectedTab: DownloadLibraryTab,
-        val query: String,
-        val isSearchActive: Boolean,
-        override val sort: DownloadLibrarySort,
-        override val pendingRemoval: DownloadRemovalConfirmation? = null,
+        override val controls: DownloadLibraryControls,
     ) : DownloadLibraryScreenState
 
     data class Success(
-        val selectedTab: DownloadLibraryTab,
+        override val controls: DownloadLibraryControls,
         val library: DownloadLibraryUiModel,
-        val query: String,
-        val isSearchActive: Boolean,
-        override val sort: DownloadLibrarySort,
-        override val pendingRemoval: DownloadRemovalConfirmation? = null,
-    ) : DownloadLibraryScreenState
+    ) : DownloadLibraryScreenState {
+        val downloadedSections: List<DownloadSectionUiModel> = library.downloadedSections.ofType(controls.typeFilter)
+        val progressSections: List<DownloadSectionUiModel> = library.progressSections.ofType(controls.typeFilter)
+        val selectedEntries: List<DownloadEntryUiModel> =
+            sectionsFor(controls.selectedTab)
+                .flatMap(DownloadSectionUiModel::entries)
+                .filter { entry -> entry.id in controls.selection }
+        val allVisibleSelected: Boolean =
+            selectedEntries.isNotEmpty() &&
+                selectedEntries.size == sectionsFor(controls.selectedTab).sumOf { it.entries.size }
+
+        fun sectionsFor(tab: DownloadLibraryTab): List<DownloadSectionUiModel> =
+            if (tab == DownloadLibraryTab.PROGRESS) progressSections else downloadedSections
+    }
 
     data class Empty(
-        val selectedTab: DownloadLibraryTab,
-        val query: String,
-        val isSearchActive: Boolean,
-        override val sort: DownloadLibrarySort,
-        override val pendingRemoval: DownloadRemovalConfirmation? = null,
+        override val controls: DownloadLibraryControls,
     ) : DownloadLibraryScreenState
 
     data class Error(
-        val selectedTab: DownloadLibraryTab,
+        override val controls: DownloadLibraryControls,
         @StringRes val messageRes: Int,
-        val query: String,
-        val isSearchActive: Boolean,
-        override val sort: DownloadLibrarySort,
-        override val pendingRemoval: DownloadRemovalConfirmation? = null,
     ) : DownloadLibraryScreenState
 }
 
 @Immutable
 sealed interface DownloadRemovalConfirmation {
+    val cancelsActiveDownloads: Boolean
+
     data class Entry(
         val entry: DownloadEntryUiModel,
-    ) : DownloadRemovalConfirmation
+    ) : DownloadRemovalConfirmation {
+        override val cancelsActiveDownloads: Boolean = false
+    }
 
     data class Section(
         val section: DownloadSectionUiModel,
+        override val cancelsActiveDownloads: Boolean,
     ) : DownloadRemovalConfirmation
+
+    data class Selection(
+        val entries: List<DownloadEntryUiModel>,
+        override val cancelsActiveDownloads: Boolean,
+    ) : DownloadRemovalConfirmation
+
+    data class Queue(
+        val songIds: List<String>,
+    ) : DownloadRemovalConfirmation {
+        override val cancelsActiveDownloads: Boolean = true
+    }
 }
 
 sealed interface DownloadLibraryEvent {
@@ -115,10 +141,19 @@ sealed interface DownloadLibraryEvent {
         val route: String,
     ) : DownloadLibraryEvent
 
-    data class PlaySong(
-        val metadata: MediaMetadata,
+    data class PlayQueue(
+        val title: String?,
+        @StringRes val titleRes: Int?,
         val queue: ImmutableList<MediaMetadata>,
         val startIndex: Int,
+    ) : DownloadLibraryEvent
+
+    data class PlayNext(
+        val items: ImmutableList<MediaMetadata>,
+    ) : DownloadLibraryEvent
+
+    data class AddToQueue(
+        val items: ImmutableList<MediaMetadata>,
     ) : DownloadLibraryEvent
 }
 
@@ -129,37 +164,20 @@ class DownloadLibraryViewModel
         savedStateHandle: SavedStateHandle,
         private val manageDownloads: ManageDownloadsUseCase,
     ) : ViewModel() {
-        private val selectedTab =
+        private val controls =
             MutableStateFlow(
-                if (savedStateHandle.get<String>("tab") == PROGRESS_TAB_ARGUMENT) {
-                    DownloadLibraryTab.PROGRESS
-                } else {
-                    DownloadLibraryTab.DOWNLOADED
-                },
+                DownloadLibraryControls(
+                    selectedTab =
+                        if (savedStateHandle.get<String>("tab") == PROGRESS_TAB_ARGUMENT) {
+                            DownloadLibraryTab.PROGRESS
+                        } else {
+                            DownloadLibraryTab.DOWNLOADED
+                        },
+                ),
             )
-        private val query = MutableStateFlow("")
-        private val isSearchActive = MutableStateFlow(false)
-        private val sort = MutableStateFlow(DownloadLibrarySort())
-        private val pendingRemoval = MutableStateFlow<DownloadRemovalConfirmation?>(null)
         private val actionJobs = ConcurrentHashMap<String, Job>()
         private val eventChannel = Channel<DownloadLibraryEvent>(Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
-        private val screenControls =
-            combine(
-                selectedTab,
-                query,
-                isSearchActive,
-                sort,
-                pendingRemoval,
-            ) { tab, currentQuery, searchActive, currentSort, removalConfirmation ->
-                DownloadLibraryScreenControls(
-                    selectedTab = tab,
-                    query = currentQuery,
-                    isSearchActive = searchActive,
-                    sort = currentSort,
-                    pendingRemoval = removalConfirmation,
-                )
-            }
 
         val screenState =
             combine(
@@ -169,84 +187,102 @@ class DownloadLibraryViewModel
                     .catch {
                         emit(DownloadLibraryResult.Failure)
                     },
-                screenControls,
-            ) { result, controls ->
+                controls,
+            ) { result, currentControls ->
                 when (result) {
                     is DownloadLibraryResult.Data -> {
                         if (result.library.isEmpty) {
-                            DownloadLibraryScreenState.Empty(
-                                selectedTab = controls.selectedTab,
-                                query = controls.query,
-                                isSearchActive = controls.isSearchActive,
-                                sort = controls.sort,
-                                pendingRemoval = controls.pendingRemoval,
-                            )
+                            DownloadLibraryScreenState.Empty(currentControls)
                         } else {
                             DownloadLibraryScreenState.Success(
-                                selectedTab = controls.selectedTab,
-                                library = result.library.filteredBy(controls.query).sortedBy(controls.sort),
-                                query = controls.query,
-                                isSearchActive = controls.isSearchActive,
-                                sort = controls.sort,
-                                pendingRemoval = controls.pendingRemoval,
+                                controls = currentControls,
+                                library = result.library.filteredBy(currentControls.query).sortedBy(currentControls.sort),
                             )
                         }
                     }
 
                     DownloadLibraryResult.Failure -> {
                         DownloadLibraryScreenState.Error(
-                            selectedTab = controls.selectedTab,
+                            controls = currentControls,
                             messageRes = R.string.downloads_load_failed,
-                            query = controls.query,
-                            isSearchActive = controls.isSearchActive,
-                            sort = controls.sort,
-                            pendingRemoval = controls.pendingRemoval,
                         )
                     }
                 }
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000L),
-                initialValue =
-                    DownloadLibraryScreenState.Loading(
-                        selectedTab = selectedTab.value,
-                        query = "",
-                        isSearchActive = false,
-                        sort = sort.value,
-                    ),
+                initialValue = DownloadLibraryScreenState.Loading(controls.value),
             )
 
         fun selectTab(tab: DownloadLibraryTab) {
-            selectedTab.value = tab
+            controls.update { current ->
+                if (current.selectedTab == tab) current else current.copy(selectedTab = tab, selection = emptySet())
+            }
         }
 
         fun activateSearch() {
-            isSearchActive.value = true
+            controls.update { it.copy(isSearchActive = true) }
         }
 
         fun closeSearch() {
-            query.value = ""
-            isSearchActive.value = false
-        }
-
-        fun submitSearch() {
-            isSearchActive.value = false
+            controls.update { it.copy(query = "", isSearchActive = false) }
         }
 
         fun updateQuery(value: String) {
-            query.value = value
+            controls.update { it.copy(query = value) }
         }
 
         fun clearQuery() {
-            query.value = ""
+            controls.update { it.copy(query = "") }
+        }
+
+        fun clearFilters() {
+            controls.update { it.copy(query = "", isSearchActive = false, typeFilter = null) }
+        }
+
+        fun selectTypeFilter(type: DownloadMediaType?) {
+            controls.update { it.copy(typeFilter = type, selection = emptySet()) }
         }
 
         fun selectSortField(field: DownloadLibrarySortField) {
-            sort.value = sort.value.copy(field = field)
+            controls.update { it.copy(sort = it.sort.copy(field = field)) }
         }
 
         fun selectSortOrder(order: DownloadLibrarySortOrder) {
-            sort.value = sort.value.copy(order = order)
+            controls.update { it.copy(sort = it.sort.copy(order = order)) }
+        }
+
+        fun toggleSelection(entry: DownloadEntryUiModel) {
+            controls.update { current ->
+                val selection =
+                    if (entry.id in current.selection) current.selection - entry.id else current.selection + entry.id
+                current.copy(selection = selection)
+            }
+        }
+
+        fun toggleSelectAll() {
+            val state = successState() ?: return
+            controls.update { current ->
+                if (state.allVisibleSelected) {
+                    current.copy(selection = emptySet())
+                } else {
+                    current.copy(
+                        selection =
+                            state
+                                .sectionsFor(current.selectedTab)
+                                .flatMap(DownloadSectionUiModel::entries)
+                                .mapTo(mutableSetOf(), DownloadEntryUiModel::id),
+                    )
+                }
+            }
+        }
+
+        fun selectSection(section: DownloadSectionUiModel) {
+            controls.update { current -> current.copy(selection = current.selection + section.entries.map(DownloadEntryUiModel::id)) }
+        }
+
+        fun clearSelection() {
+            controls.update { it.copy(selection = emptySet()) }
         }
 
         fun open(entry: DownloadEntryUiModel) {
@@ -257,7 +293,179 @@ class DownloadLibraryViewModel
             eventChannel.trySend(event)
         }
 
-        private fun createPlaySongEvent(entry: DownloadEntryUiModel): DownloadLibraryEvent.PlaySong? {
+        fun play(
+            entry: DownloadEntryUiModel,
+            shuffle: Boolean,
+        ) {
+            if (entry.destinationRoute == null && !shuffle) {
+                open(entry)
+                return
+            }
+            sendPlayQueue(entry.playableSongs(), title = entry.title, titleRes = null, shuffle = shuffle)
+        }
+
+        fun playChild(
+            parent: DownloadEntryUiModel,
+            child: DownloadEntryUiModel,
+        ) {
+            val queue = parent.playableSongs()
+            val startIndex = queue.indexOfFirst { metadata -> metadata.id == child.playbackMetadata?.id }
+            if (startIndex < 0) return
+            eventChannel.trySend(
+                DownloadLibraryEvent.PlayQueue(
+                    title = parent.title,
+                    titleRes = null,
+                    queue = ImmutableList.copyOf(queue),
+                    startIndex = startIndex,
+                ),
+            )
+        }
+
+        fun playNext(entry: DownloadEntryUiModel) = sendPlayNext(listOf(entry))
+
+        fun addToQueue(entry: DownloadEntryUiModel) = sendAddToQueue(listOf(entry))
+
+        fun playAll(shuffle: Boolean) {
+            sendPlayQueue(
+                songs = currentDownloadedSongEntries().mapNotNull(DownloadEntryUiModel::playbackMetadata),
+                title = null,
+                titleRes = R.string.downloads,
+                shuffle = shuffle,
+            )
+        }
+
+        fun playSection(
+            section: DownloadSectionUiModel,
+            shuffle: Boolean,
+        ) {
+            sendPlayQueue(
+                songs = section.entries.flatMap { it.playableSongs() }.distinctBy(MediaMetadata::id),
+                title = null,
+                titleRes = R.string.downloads,
+                shuffle = shuffle,
+            )
+        }
+
+        fun playSelection(shuffle: Boolean) {
+            val entries = successState()?.selectedEntries.orEmpty()
+            sendPlayQueue(
+                songs = entries.flatMap { it.playableSongs() }.distinctBy(MediaMetadata::id),
+                title = null,
+                titleRes = R.string.downloads,
+                shuffle = shuffle,
+            )
+            clearSelection()
+        }
+
+        fun playSelectionNext() {
+            sendPlayNext(successState()?.selectedEntries.orEmpty())
+            clearSelection()
+        }
+
+        fun addSelectionToQueue() {
+            sendAddToQueue(successState()?.selectedEntries.orEmpty())
+            clearSelection()
+        }
+
+        fun pause(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.pause(entry.songIds) }
+
+        fun resume(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.resume(entry.songIds) }
+
+        fun remove(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.remove(entry.songIds) }
+
+        fun pause(section: DownloadSectionUiModel) = runAction(section.actionKey()) { manageDownloads.pause(section.songIds) }
+
+        fun resume(section: DownloadSectionUiModel) = runAction(section.actionKey()) { manageDownloads.resume(section.songIds) }
+
+        fun pauseSelection() {
+            val songIds = successState()?.selectedEntries.orEmpty().selectedSongIds()
+            clearSelection()
+            if (songIds.isNotEmpty()) runAction(SELECTION_ACTION_KEY) { manageDownloads.pause(songIds) }
+        }
+
+        fun resumeSelection() {
+            val songIds = successState()?.selectedEntries.orEmpty().selectedSongIds()
+            clearSelection()
+            if (songIds.isNotEmpty()) runAction(SELECTION_ACTION_KEY) { manageDownloads.resume(songIds) }
+        }
+
+        fun pauseAll() {
+            val songIds = successState()?.library?.queue?.songIds.orEmpty()
+            if (songIds.isNotEmpty()) runAction(QUEUE_ACTION_KEY) { manageDownloads.pause(songIds) }
+        }
+
+        fun resumeAll() {
+            val songIds = successState()?.library?.queue?.songIds.orEmpty()
+            if (songIds.isNotEmpty()) runAction(QUEUE_ACTION_KEY) { manageDownloads.resume(songIds) }
+        }
+
+        fun retryFailed() {
+            val songIds = successState()?.library?.queue?.failedSongIds.orEmpty()
+            if (songIds.isNotEmpty()) runAction(QUEUE_ACTION_KEY) { manageDownloads.resume(songIds) }
+        }
+
+        fun requestRemove(entry: DownloadEntryUiModel) {
+            controls.update { it.copy(pendingRemoval = DownloadRemovalConfirmation.Entry(entry)) }
+        }
+
+        fun requestRemove(section: DownloadSectionUiModel) {
+            val inProgress = controls.value.selectedTab == DownloadLibraryTab.PROGRESS
+            controls.update {
+                it.copy(pendingRemoval = DownloadRemovalConfirmation.Section(section, cancelsActiveDownloads = inProgress))
+            }
+        }
+
+        fun requestRemoveSelection() {
+            val state = successState() ?: return
+            if (state.selectedEntries.isEmpty()) return
+            controls.update {
+                it.copy(
+                    pendingRemoval =
+                        DownloadRemovalConfirmation.Selection(
+                            entries = state.selectedEntries,
+                            cancelsActiveDownloads = it.selectedTab == DownloadLibraryTab.PROGRESS,
+                        ),
+                )
+            }
+        }
+
+        fun requestCancelAll() {
+            val songIds = successState()?.library?.queue?.songIds.orEmpty()
+            if (songIds.isEmpty()) return
+            controls.update { it.copy(pendingRemoval = DownloadRemovalConfirmation.Queue(songIds)) }
+        }
+
+        fun dismissRemoveConfirmation() {
+            controls.update { it.copy(pendingRemoval = null) }
+        }
+
+        fun confirmRemove() {
+            val confirmation = controls.value.pendingRemoval ?: return
+            controls.update { it.copy(pendingRemoval = null) }
+            when (confirmation) {
+                is DownloadRemovalConfirmation.Entry -> {
+                    remove(confirmation.entry)
+                }
+
+                is DownloadRemovalConfirmation.Section -> {
+                    runAction(confirmation.section.actionKey()) { manageDownloads.remove(confirmation.section.songIds) }
+                }
+
+                is DownloadRemovalConfirmation.Selection -> {
+                    val songIds = confirmation.entries.selectedSongIds()
+                    clearSelection()
+                    runAction(SELECTION_ACTION_KEY) { manageDownloads.remove(songIds) }
+                }
+
+                is DownloadRemovalConfirmation.Queue -> {
+                    runAction(QUEUE_ACTION_KEY) { manageDownloads.remove(confirmation.songIds) }
+                }
+            }
+        }
+
+        private fun successState(): DownloadLibraryScreenState.Success? = screenState.value as? DownloadLibraryScreenState.Success
+
+        private fun createPlaySongEvent(entry: DownloadEntryUiModel): DownloadLibraryEvent.PlayQueue? {
             val selectedMetadata = entry.playbackMetadata ?: return null
             val downloadedSongQueue =
                 currentDownloadedSongEntries()
@@ -267,14 +475,16 @@ class DownloadLibraryViewModel
             val startIndex = downloadedSongQueue.indexOfFirst { (entryId) -> entryId == entry.id }
 
             return if (startIndex >= 0) {
-                DownloadLibraryEvent.PlaySong(
-                    metadata = selectedMetadata,
+                DownloadLibraryEvent.PlayQueue(
+                    title = null,
+                    titleRes = R.string.downloads,
                     queue = ImmutableList.copyOf(downloadedSongQueue.map { (_, metadata) -> metadata }),
                     startIndex = startIndex,
                 )
             } else {
-                DownloadLibraryEvent.PlaySong(
-                    metadata = selectedMetadata,
+                DownloadLibraryEvent.PlayQueue(
+                    title = selectedMetadata.title,
+                    titleRes = null,
                     queue = ImmutableList.of(selectedMetadata),
                     startIndex = 0,
                 )
@@ -282,8 +492,8 @@ class DownloadLibraryViewModel
         }
 
         private fun currentDownloadedSongEntries(): List<DownloadEntryUiModel> {
-            val state = screenState.value as? DownloadLibraryScreenState.Success ?: return emptyList()
-            if (state.selectedTab != DownloadLibraryTab.DOWNLOADED) return emptyList()
+            val state = successState() ?: return emptyList()
+            if (state.controls.selectedTab != DownloadLibraryTab.DOWNLOADED) return emptyList()
 
             return state.library.downloadedSections
                 .firstOrNull { section -> section.mediaType == DownloadMediaType.SONG }
@@ -291,37 +501,46 @@ class DownloadLibraryViewModel
                 .orEmpty()
         }
 
-        fun pause(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.pause(entry.songIds) }
-
-        fun resume(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.resume(entry.songIds) }
-
-        fun remove(entry: DownloadEntryUiModel) = runAction(entry.id) { manageDownloads.remove(entry.songIds) }
-
-        fun pause(section: DownloadSectionUiModel) = runAction("section:${section.mediaType}") { manageDownloads.pause(section.songIds) }
-
-        fun resume(section: DownloadSectionUiModel) = runAction("section:${section.mediaType}") { manageDownloads.resume(section.songIds) }
-
-        fun remove(section: DownloadSectionUiModel) = runAction("section:${section.mediaType}") { manageDownloads.remove(section.songIds) }
-
-        fun requestRemove(entry: DownloadEntryUiModel) {
-            pendingRemoval.value = DownloadRemovalConfirmation.Entry(entry)
-        }
-
-        fun requestRemove(section: DownloadSectionUiModel) {
-            pendingRemoval.value = DownloadRemovalConfirmation.Section(section)
-        }
-
-        fun dismissRemoveConfirmation() {
-            pendingRemoval.value = null
-        }
-
-        fun confirmRemove() {
-            val confirmation = pendingRemoval.value ?: return
-            pendingRemoval.value = null
-            when (confirmation) {
-                is DownloadRemovalConfirmation.Entry -> remove(confirmation.entry)
-                is DownloadRemovalConfirmation.Section -> remove(confirmation.section)
+        private fun sendPlayQueue(
+            songs: List<MediaMetadata>,
+            title: String?,
+            @StringRes titleRes: Int?,
+            shuffle: Boolean,
+        ) {
+            if (songs.isEmpty()) {
+                eventChannel.trySend(DownloadLibraryEvent.Message(R.string.download_nothing_to_play))
+                return
             }
+            eventChannel.trySend(
+                DownloadLibraryEvent.PlayQueue(
+                    title = title,
+                    titleRes = titleRes,
+                    queue = ImmutableList.copyOf(if (shuffle) songs.shuffled() else songs),
+                    startIndex = 0,
+                ),
+            )
+        }
+
+        private fun sendPlayNext(entries: List<DownloadEntryUiModel>) {
+            val songs = entries.flatMap { it.playableSongs() }.distinctBy(MediaMetadata::id)
+            eventChannel.trySend(
+                if (songs.isEmpty()) {
+                    DownloadLibraryEvent.Message(R.string.download_nothing_to_play)
+                } else {
+                    DownloadLibraryEvent.PlayNext(ImmutableList.copyOf(songs))
+                },
+            )
+        }
+
+        private fun sendAddToQueue(entries: List<DownloadEntryUiModel>) {
+            val songs = entries.flatMap { it.playableSongs() }.distinctBy(MediaMetadata::id)
+            eventChannel.trySend(
+                if (songs.isEmpty()) {
+                    DownloadLibraryEvent.Message(R.string.download_nothing_to_play)
+                } else {
+                    DownloadLibraryEvent.AddToQueue(ImmutableList.copyOf(songs))
+                },
+            )
         }
 
         private fun runAction(
@@ -348,13 +567,12 @@ class DownloadLibraryViewModel
             data object Failure : DownloadLibraryResult
         }
 
-        private data class DownloadLibraryScreenControls(
-            val selectedTab: DownloadLibraryTab,
-            val query: String,
-            val isSearchActive: Boolean,
-            val sort: DownloadLibrarySort,
-            val pendingRemoval: DownloadRemovalConfirmation?,
-        )
+        private fun DownloadEntryUiModel.playableSongs(): List<MediaMetadata> =
+            playbackMetadata?.let(::listOf) ?: children.mapNotNull(DownloadEntryUiModel::playbackMetadata)
+
+        private fun List<DownloadEntryUiModel>.selectedSongIds(): List<String> = flatMap(DownloadEntryUiModel::songIds).distinct()
+
+        private fun DownloadSectionUiModel.actionKey(): String = "section:$mediaType"
 
         private fun DownloadLibraryUiModel.filteredBy(query: String): DownloadLibraryUiModel {
             val normalizedQuery = query.trim()
@@ -406,5 +624,10 @@ class DownloadLibraryViewModel
 
         private companion object {
             const val PROGRESS_TAB_ARGUMENT = "progress"
+            const val SELECTION_ACTION_KEY = "selection"
+            const val QUEUE_ACTION_KEY = "queue"
         }
     }
+
+private fun List<DownloadSectionUiModel>.ofType(type: DownloadMediaType?): List<DownloadSectionUiModel> =
+    if (type == null) this else filter { section -> section.mediaType == type }

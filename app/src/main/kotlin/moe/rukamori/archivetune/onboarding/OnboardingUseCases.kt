@@ -176,25 +176,21 @@ class BuildOnboardingUiStateUseCase
                         id = OnboardingPageId.WELCOME,
                         titleResId = R.string.onboarding_welcome_title,
                         subtitleResId = R.string.onboarding_welcome_subtitle,
-                        iconResId = R.drawable.app_icon_small,
                     ),
                     OnboardingPageUiModel(
                         id = OnboardingPageId.PERMISSIONS,
                         titleResId = R.string.onboarding_permissions_title,
                         subtitleResId = R.string.onboarding_permissions_subtitle,
-                        iconResId = R.drawable.security,
                     ),
                     OnboardingPageUiModel(
                         id = OnboardingPageId.LOGIN,
                         titleResId = R.string.onboarding_login_title,
                         subtitleResId = R.string.onboarding_login_subtitle,
-                        iconResId = R.drawable.login,
                     ),
                     OnboardingPageUiModel(
                         id = OnboardingPageId.COMMUNITY,
                         titleResId = R.string.onboarding_community_title,
                         subtitleResId = R.string.onboarding_community_subtitle,
-                        iconResId = R.drawable.star,
                     ),
                 )
 
@@ -232,7 +228,7 @@ class BuildOnboardingUiStateUseCase
                     OnboardingCommunityActionUiModel(
                         id = "discord",
                         titleResId = R.string.onboarding_community_discord_title,
-                        descriptionResId = R.string.onboarding_community_telegram_desc,
+                        descriptionResId = R.string.onboarding_community_discord_desc,
                         iconResId = R.drawable.discord,
                         url = "https://discord.gg/archivetune",
                     ),
@@ -245,7 +241,7 @@ class BuildOnboardingUiStateUseCase
                     ),
                     OnboardingCommunityActionUiModel(
                         id = "donate",
-                        titleResId = R.string.about_content_desc_donate,
+                        titleResId = R.string.onboarding_support_development,
                         descriptionResId = R.string.onboarding_community_donate_desc,
                         iconResId = R.drawable.coffee,
                         url = "https://miuka.moe/donate",

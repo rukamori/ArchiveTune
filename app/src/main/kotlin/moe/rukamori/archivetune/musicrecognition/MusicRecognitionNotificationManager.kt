@@ -13,7 +13,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -43,31 +42,57 @@ class MusicRecognitionNotificationManager
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
 
-        fun listening(): Notification =
-            baseBuilder(
-                title = context.getString(R.string.music_recognition_notification_listening_title),
-                text = context.getString(R.string.music_recognition_notification_listening_text),
-                status = R.string.music_recognition_notification_status_listening,
-                alert = true,
-            ).setProgress(0, 0, true)
-                .addAction(
-                    R.drawable.close,
-                    context.getString(R.string.cancel),
-                    cancelPendingIntent(),
-                ).build()
+        internal fun floating(state: BackgroundRecognitionState): Notification {
+            val builder =
+                when (state) {
+                    BackgroundRecognitionState.Idle ->
+                        baseBuilder(
+                            title = context.getString(R.string.music_recognition_notification_floating_title),
+                            text = context.getString(R.string.music_recognition_notification_floating_text),
+                            status = R.string.music_recognition,
+                            alert = false,
+                        ).addAction(
+                            R.drawable.close,
+                            context.getString(R.string.close),
+                            servicePendingIntent(CloseRequestCode, FloatingMusicRecognitionService.closeIntent(context)),
+                        )
 
-        fun processing(): Notification =
-            baseBuilder(
-                title = context.getString(R.string.music_recognition_notification_processing_title),
-                text = context.getString(R.string.music_recognition_notification_processing_text),
-                status = R.string.music_recognition_notification_status_processing,
-                alert = false,
-            ).setProgress(0, 0, true)
-                .addAction(
-                    R.drawable.close,
-                    context.getString(R.string.cancel),
-                    cancelPendingIntent(),
-                ).build()
+                    BackgroundRecognitionState.Listening ->
+                        baseBuilder(
+                            title = context.getString(R.string.music_recognition_notification_listening_title),
+                            text = context.getString(R.string.music_recognition_notification_listening_mic_text),
+                            status = R.string.music_recognition_notification_status_listening,
+                            alert = false,
+                        ).setProgress(0, 0, true)
+                            .addAction(
+                                R.drawable.close,
+                                context.getString(R.string.cancel),
+                                servicePendingIntent(CancelRequestCode, FloatingMusicRecognitionService.cancelIntent(context)),
+                            )
+
+                    BackgroundRecognitionState.Processing ->
+                        baseBuilder(
+                            title = context.getString(R.string.music_recognition_notification_processing_title),
+                            text = context.getString(R.string.music_recognition_notification_processing_text),
+                            status = R.string.music_recognition_notification_status_processing,
+                            alert = false,
+                        ).setProgress(0, 0, true)
+                            .addAction(
+                                R.drawable.close,
+                                context.getString(R.string.cancel),
+                                servicePendingIntent(CancelRequestCode, FloatingMusicRecognitionService.cancelIntent(context)),
+                            )
+                }
+            return builder
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+        }
+
+        fun notifyFloating(notification: Notification) {
+            NotificationManagerCompat.from(context).notify(ForegroundNotificationId, notification)
+        }
 
         fun result(track: RecognizedTrack): Notification {
             val summary =
@@ -114,60 +139,8 @@ class MusicRecognitionNotificationManager
                 .build()
         }
 
-        fun failure(failure: MusicRecognitionFailure): Notification {
-            val title =
-                when (failure) {
-                    MusicRecognitionFailure.NoMatch -> {
-                        R.string.music_recognition_notification_no_match_title
-                    }
-
-                    MusicRecognitionFailure.RecordingFailed -> {
-                        R.string.music_recognition_notification_recording_failed_title
-                    }
-
-                    MusicRecognitionFailure.SignatureFailed -> {
-                        R.string.music_recognition_signature_failed
-                    }
-
-                    MusicRecognitionFailure.RecognitionFailed -> {
-                        R.string.music_recognition_recognition_failed
-                    }
-                }
-            val text =
-                when (failure) {
-                    MusicRecognitionFailure.NoMatch -> {
-                        R.string.music_recognition_notification_no_match_text
-                    }
-
-                    MusicRecognitionFailure.RecordingFailed -> {
-                        R.string.music_recognition_notification_recording_failed_text
-                    }
-
-                    MusicRecognitionFailure.SignatureFailed -> {
-                        R.string.music_recognition_notification_signature_failed_text
-                    }
-
-                    MusicRecognitionFailure.RecognitionFailed -> {
-                        R.string.music_recognition_notification_recognition_failed_text
-                    }
-                }
-
-            return baseBuilder(
-                title = context.getString(title),
-                text = context.getString(text),
-                status = R.string.music_recognition_notification_status_result,
-                alert = true,
-            ).setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(text)))
-                .setTimeoutAfter(ResultNotificationTimeoutMillis)
-                .build()
-        }
-
         fun notify(notification: Notification) {
             NotificationManagerCompat.from(context).notify(NotificationId, notification)
-        }
-
-        fun cancel() {
-            NotificationManagerCompat.from(context).cancel(NotificationId)
         }
 
         private fun baseBuilder(
@@ -203,38 +176,42 @@ class MusicRecognitionNotificationManager
             )
         }
 
-        private fun resultPendingIntent(track: RecognizedTrack): PendingIntent {
+        fun detailsIntent(track: RecognizedTrack): Intent {
             val jsonString = Json.encodeToString(RecognizedTrack.serializer(), track)
             val encodedTrack = Base64.encodeToString(
                 jsonString.toByteArray(Charsets.UTF_8),
                 Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
             )
-            val intent = Intent(context, MainActivity::class.java).apply {
+            return Intent(context, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 putExtra("navigate_to", "music_recognition/details/$encodedTrack")
             }
-            return PendingIntent.getActivity(
-                context,
-                ResultClickRequestCode,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
         }
 
-        private fun cancelPendingIntent(): PendingIntent =
+        private fun resultPendingIntent(track: RecognizedTrack): PendingIntent =
+            PendingIntent.getActivity(
+                context,
+                ResultClickRequestCode,
+                detailsIntent(track),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+        private fun servicePendingIntent(requestCode: Int, intent: Intent): PendingIntent =
             PendingIntent.getService(
                 context,
-                CancelRequestCode,
-                BackgroundMusicRecognitionService.cancelIntent(context),
+                requestCode,
+                intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
         companion object {
             const val NotificationId = 9_410
+            const val ForegroundNotificationId = 9_414
             private const val ChannelId = "music_recognition"
             private const val ResultRequestCode = 9_411
             private const val CancelRequestCode = 9_412
             private const val ResultClickRequestCode = 9_413
+            private const val CloseRequestCode = 9_415
             private const val ResultNotificationTimeoutMillis = 5 * 60 * 1_000L
         }
     }

@@ -31,17 +31,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.Headers.Companion.toHeaders
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.morideobfuscator.youtubei.YoutubeiNetworkConfiguration
+import moe.rukamori.archivetune.playback.stream.PlaybackHttpClient
+import moe.rukamori.archivetune.playback.stream.playbackNetworkConfiguration
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.IOException
+import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -81,7 +79,6 @@ object BotGuardTokenGenerator {
     private const val CHALLENGE_PAGE_URL = "https://www.youtube.com/?hl=en"
     private const val GENERATE_IT_URL = "https://www.youtube.com/api/jnn/v1/GenerateIT"
     private const val REQUEST_KEY = "O43z0dpjhgX20SCx4KAo"
-    private const val API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw"
     private const val WV_USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.3"
     private const val JS_BRIDGE = "BotGuardBridge"
@@ -95,11 +92,7 @@ object BotGuardTokenGenerator {
     /** Maximum number of cached player tokens. */
     private const val PLAYER_TOKEN_CACHE_SIZE = 200
 
-    private val httpClient =
-        OkHttpClient
-            .Builder()
-            .callTimeout(20, TimeUnit.SECONDS)
-            .build()
+    private lateinit var botGuardHttp: BotGuardHttp
 
     // ── state ────────────────────────────────────────────────────────
     private var appContext: Context? = null
@@ -109,8 +102,11 @@ object BotGuardTokenGenerator {
     private val mutex = Mutex()
     private var engine: BotGuardEngine? = null
     private var engineSessionId: String? = null
+    private var engineNetwork: YoutubeiNetworkConfiguration? = null
+    private var engineCookie: String? = null
     private var cachedSessionToken: String? = null
     private var engineReady = false
+    private var engineGeneration = 0L
 
     /**
      * LRU cache for per-video player tokens.
@@ -127,6 +123,18 @@ object BotGuardTokenGenerator {
     /** Call once from `Application.onCreate()`. */
     fun initialize(context: Context) {
         appContext = context.applicationContext
+        botGuardHttp = BotGuardHttp(
+            PlaybackHttpClient(
+                context.applicationContext,
+                OkHttpClient
+                    .Builder()
+                    .callTimeout(20, TimeUnit.SECONDS)
+                    .followRedirects(false)
+                    .followSslRedirects(false)
+                    .build(),
+            ),
+            WV_USER_AGENT,
+        )
         Timber.tag(TAG).d("Initialized")
     }
 
@@ -273,6 +281,15 @@ object BotGuardTokenGenerator {
         }
     }
 
+    suspend fun discardMinter(generation: Long) {
+        mutex.withLock {
+            if (engine == null || engineGeneration != generation) return@withLock
+            Timber.tag(TAG).w("Discarding token generator %d after YouTube rejected its playback tokens", generation)
+            playerTokenCache.clear()
+            destroyEngineLocked()
+        }
+    }
+
     // ── internal ─────────────────────────────────────────────────────
 
     private suspend fun ensureEngineReady(
@@ -296,7 +313,14 @@ object BotGuardTokenGenerator {
                 sessionId = sessionId,
             )
         val playerTok = eng.mint(videoId)
-        return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
+        if (!isEngineReadyForSession(sessionId)) {
+            throw ConnectException("Playback network or account changed during token generation")
+        }
+        return PoTokenResult(
+            playerToken = playerTok,
+            sessionToken = sessionTok,
+            minterGeneration = engineGeneration,
+        )
     }
 
     private suspend fun mintTokenLocked(
@@ -329,6 +353,7 @@ object BotGuardTokenGenerator {
                 return PoTokenResult(
                     playerToken = cachedPlayer,
                     sessionToken = sessionToken,
+                    minterGeneration = engineGeneration,
                 )
             }
         }
@@ -391,6 +416,8 @@ object BotGuardTokenGenerator {
             engineReady = false
             playerTokenCache.clear()
 
+            val network = playbackNetworkConfiguration(ctx)
+            val cookie = YouTube.currentPlaybackAuthState().cookie
             val newEngine = BotGuardEngine.create(ctx)
             val newSessionToken =
                 try {
@@ -403,8 +430,11 @@ object BotGuardTokenGenerator {
                 }
             engine = newEngine
             engineSessionId = sessionId
+            engineNetwork = network
+            engineCookie = cookie
             cachedSessionToken = newSessionToken
             engineReady = true
+            engineGeneration += 1
         }
 
         return Pair(
@@ -416,6 +446,8 @@ object BotGuardTokenGenerator {
     private fun isEngineReadyForSession(sessionId: String): Boolean =
         engineReady &&
             engineSessionId == sessionId &&
+            engineNetwork == appContext?.let(::playbackNetworkConfiguration) &&
+            engineCookie == YouTube.currentPlaybackAuthState().cookie &&
             cachedSessionToken != null &&
             engine?.isExpired == false
 
@@ -425,6 +457,8 @@ object BotGuardTokenGenerator {
         }
         engine = null
         engineSessionId = null
+        engineNetwork = null
+        engineCookie = null
         cachedSessionToken = null
         engineReady = false
     }
@@ -477,16 +511,7 @@ object BotGuardTokenGenerator {
                         .getJSONObject("interpreterUrl")
                         .getString("privateDoNotAccessOrElseTrustedResourceUrlWrappedValue")
                         .let { if (it.startsWith("//")) "https:$it" else it }
-                        .toHttpUrlOrNull()
-                        ?: throw PoTokenException("Invalid BotGuard interpreter URL")
-                    if (!interpreterUrl.isHttps ||
-                        !(interpreterUrl.host == "www.youtube.com" ||
-                            interpreterUrl.host == "www.google.com" ||
-                            interpreterUrl.host == "www.gstatic.com")
-                    ) {
-                        throw PoTokenException("Unsupported BotGuard interpreter origin")
-                    }
-                    requestBotGuard(interpreterUrl.toString()) { interpreter ->
+                    requestBotGuard(interpreterUrl) { interpreter ->
                         if (interpreter.isBlank()) throw PoTokenException("Empty BotGuard interpreter")
                         page.challenge.put(
                             "interpreterJavascript",
@@ -649,50 +674,7 @@ object BotGuardTokenGenerator {
             onSuccess: suspend (String) -> Unit,
         ) {
             scope.launch(exceptionHandler) {
-                val request =
-                    okhttp3.Request
-                        .Builder()
-                        .url(url)
-                        .apply {
-                            if (jsonBody != null) post(jsonBody.toRequestBody())
-                        }
-                        .headers(
-                            buildMap {
-                                put("User-Agent", WV_USER_AGENT)
-                                put("Accept", "*/*")
-                                put("Accept-Language", "en-US,en;q=0.7")
-                                if (jsonBody != null) {
-                                    put("Content-Type", "application/json+protobuf")
-                                    put("x-goog-api-key", API_KEY)
-                                    put("x-user-agent", "grpc-web-javascript/0.1")
-                                }
-                            }.toHeaders(),
-                        ).build()
-
-                val body = suspendCancellableCoroutine<String> { continuation ->
-                    val call = httpClient.newCall(request)
-                    continuation.invokeOnCancellation { call.cancel() }
-                    call.enqueue(
-                        object : Callback {
-                            override fun onFailure(call: Call, e: IOException) {
-                                if (continuation.isActive) continuation.resumeWithException(e)
-                            }
-
-                            override fun onResponse(call: Call, response: Response) {
-                                val result = runCatching {
-                                    response.use {
-                                        if (it.code != 200) {
-                                            throw PoTokenException("BotGuard HTTP ${it.code}")
-                                        }
-                                        it.body.string()
-                                    }
-                                }
-                                if (continuation.isActive) continuation.resumeWith(result)
-                            }
-                        },
-                    )
-                }
-                onSuccess(body)
+                onSuccess(botGuardHttp.fetch(url, jsonBody))
             }
         }
 

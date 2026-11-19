@@ -7,8 +7,6 @@
     <string name="music_recognition_processing">செயல்படுகிறது…</string>
     <string name="music_recognition_listen_again">மீண்டும் கேட்கவும்</string>
     <string name="music_recognition_no_match">கண்டறிய முடியவில்லை</string>
-    <string name="music_recognition_signature_failed">அடையாளக் குறியீட்டை உருவாக்க முடியவில்லை</string>
-    <string name="music_recognition_recognition_failed">அடையாளம் காண முடியவில்லை</string>
     <string name="music_recognition_open_shazam">Shazam-ஐத் திறக்கவும்</string>
     <string name="music_recognition_lyrics_preview">பாடல் வரிக் காட்சி</string>
     <string name="music_recognition_permission_title">மைக் அனுமதி</string>
@@ -16,16 +14,12 @@
     <string name="music_recognition_permission_action">அனுமதி</string>
     <string name="music_recognition_error">ஏதோ சிக்கல் ஏற்பட்டுள்ளது</string>
     <string name="music_recognition_settings">இசை அறிதல் அமைப்புகள்</string>
-    <string name="music_recognition_background_title">பின்னணியில் செயல்படுதல்</string>
-    <string name="music_recognition_background_description">செயல்படுத்தப்படும்போது, ArchiveTune செயலியைத் திறக்காமலேயே இந்த சாதனத்தில் ஒலிக்கும் இசையை Quick Settings Tile அடையாளம் காணும்.</string>
-    <string name="music_recognition_background_foss_description">FOSS பதிப்பில் பின்னணி அறிதல் வசதி கிடைக்காது. அதற்குப் பதிலாக, Quick Settings Tile recognition திரையை நேரடியாகத் திறக்கும்.</string>
     <string name="music_recognition_notification_channel_name">இசை அடையாளம் காணல்</string>
     <string name="music_recognition_notification_channel_description">இசை அடையாளம் காணல் நிலையும் முடிவுகளும்</string>
     <string name="music_recognition_notification_status_listening">கேட்கிறது</string>
     <string name="music_recognition_notification_status_processing">செயல்படுகிறது</string>
     <string name="music_recognition_notification_status_result">முடிவு</string>
     <string name="music_recognition_notification_listening_title">இசையைக் கவனிக்கிறது</string>
-    <string name="music_recognition_notification_listening_text">இந்த சாதனத்தில் ஒலிக்கும் இசையைப் பதிவு செய்கிறது</string>
     <string name="music_recognition_notification_processing_title">ஒலியைச் செயலாக்குகிறது</string>
     <string name="music_recognition_notification_processing_text">பதிவுசெய்த ஒலிக்குறிப்பைப் பொருத்துகிறது</string>
     <string name="music_recognition_notification_artist">கலைஞர்: %1$s</string>
@@ -34,10 +28,7 @@
     <string name="music_recognition_notification_release">வெளியானது: %1$s</string>
     <string name="music_recognition_notification_label">இசை நிறுவனம்: %1$s</string>
     <string name="music_recognition_notification_isrc">ISRC குறியீடு: %1$s</string>
-    <string name="music_recognition_notification_no_match_title">பாடல் எதுவும் கிடைக்கவில்லை</string>
     <string name="music_recognition_notification_no_match_text">இசையைத் தெளிவாக ஒலிக்கவிட்டு, மீண்டும் அடையாளம் காண முயற்சிக்கவும்.</string>
-    <string name="music_recognition_notification_recording_failed_title">சாதன ஒலியைப் பதிவு செய்ய முடியவில்லை</string>
-    <string name="music_recognition_notification_recording_failed_text">இயங்கும் செயலி ஆடியோ பதிவைத் தடுத்திருக்கலாம் அல்லது பாடல் நின்றிருக்கலாம்.</string>
     <string name="music_recognition_notification_signature_failed_text">பதிவான ஒலியில் பாடலைக் கண்டறிய போதுமான இசை விவரங்கள் இல்லை.</string>
     <string name="music_recognition_notification_recognition_failed_text">அடையாளம் காணும் சேவையால் இந்த ஆடியோவைக் கண்டறிய முடியவில்லை. சிறிது நேரத்தில் மீண்டும் முயற்சிக்கவும்.</string>
     <string name="music_recognition_history">அடையாளம் கண்ட வரலாறு</string>

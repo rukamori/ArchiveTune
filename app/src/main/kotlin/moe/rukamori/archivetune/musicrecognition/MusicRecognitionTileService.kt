@@ -25,7 +25,7 @@ class MusicRecognitionTileService : TileService() {
         super.onClick()
 
         if (MusicRecognitionRuntimeState.state != BackgroundRecognitionState.Idle) {
-            startService(BackgroundMusicRecognitionService.cancelIntent(this))
+            startService(FloatingMusicRecognitionService.cancelIntent(this))
             return
         }
 

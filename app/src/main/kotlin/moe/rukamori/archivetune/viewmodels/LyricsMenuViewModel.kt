@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.common.collect.ImmutableList
+import com.google.common.collect.ImmutableMap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ai.AiLyricsSongContext
 import moe.rukamori.archivetune.ai.AiLyricsTranslator
 import moe.rukamori.archivetune.ai.AiServiceConfig
 import moe.rukamori.archivetune.constants.AiApiKeyKey
@@ -54,6 +56,7 @@ import moe.rukamori.archivetune.lyrics.translation.TranslateLyricsUseCase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.reportException
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
@@ -63,6 +66,7 @@ sealed interface LyricsSearchScreenState {
     @Immutable
     data class Success(
         val results: ImmutableList<LyricsSearchResultUiModel>,
+        val formatCounts: ImmutableMap<LyricsSearchFormat, Int>,
         val isSearching: Boolean,
     ) : LyricsSearchScreenState
 
@@ -74,16 +78,24 @@ sealed interface LyricsSearchScreenState {
     ) : LyricsSearchScreenState
 }
 
+enum class LyricsSearchFormat {
+    WORD_SYNCED,
+    LINE_SYNCED,
+    PLAIN,
+}
+
 @Immutable
 data class LyricsSearchResultUiModel(
     val id: String,
     val providerName: String,
+    val providerUrl: String?,
+    val author: String?,
+    val authorUrl: String?,
     val lyrics: String,
     val preview: String,
     val lineCount: Int,
     val characterCount: Int,
-    val isLineSynced: Boolean,
-    val isWordSynced: Boolean,
+    val format: LyricsSearchFormat,
 )
 
 @Immutable
@@ -108,6 +120,12 @@ sealed interface LyricsTranslationScreenState {
     ) : LyricsTranslationScreenState
 }
 
+enum class LyricsRefetchResult {
+    Updated,
+    NotFound,
+    Unavailable,
+}
+
 @HiltViewModel
 class LyricsMenuViewModel
     @Inject
@@ -126,8 +144,8 @@ class LyricsMenuViewModel
         val lyricsSearchState: StateFlow<LyricsSearchScreenState> = _lyricsSearchState.asStateFlow()
         private val _isRefetching = MutableStateFlow(false)
         val isRefetching: StateFlow<Boolean> = _isRefetching.asStateFlow()
-        private val _refetchCompletionEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-        val refetchCompletionEvents: SharedFlow<Unit> = _refetchCompletionEvents.asSharedFlow()
+        private val _refetchCompletionEvents = MutableSharedFlow<LyricsRefetchResult>(extraBufferCapacity = 1)
+        val refetchCompletionEvents: SharedFlow<LyricsRefetchResult> = _refetchCompletionEvents.asSharedFlow()
         val isAiTranslating = MutableStateFlow(false)
 
         private val _lyricsTranslationState =
@@ -181,21 +199,14 @@ class LyricsMenuViewModel
                             if (model.preview.isBlank()) return@getAllLyrics
 
                             resultModels += model
-                            _lyricsSearchState.value =
-                                LyricsSearchScreenState.Success(
-                                    results = ImmutableList.copyOf(resultModels),
-                                    isSearching = true,
-                                )
+                            _lyricsSearchState.value = resultModels.toSuccessState(isSearching = true)
                         }
                         if (generation != searchGeneration.get()) return@launch
                         _lyricsSearchState.value =
                             if (resultModels.isEmpty()) {
                                 LyricsSearchScreenState.Empty
                             } else {
-                                LyricsSearchScreenState.Success(
-                                    results = ImmutableList.copyOf(resultModels),
-                                    isSearching = false,
-                                )
+                                resultModels.toSuccessState(isSearching = false)
                             }
                     } catch (e: CancellationException) {
                         throw e
@@ -222,22 +233,52 @@ class LyricsMenuViewModel
             if (!_isRefetching.compareAndSet(expect = false, update = true)) return
 
             viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val lyrics = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
-                    database.withTransaction {
-                        replaceLyrics(
-                            id = mediaMetadata.id,
-                            lyrics = lyrics,
-                            source = LyricsEntity.Source.REMOTE.value,
-                        )
+                val result =
+                    try {
+                        val fetched = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
+                        when {
+                            fetched.isFound -> {
+                                database.withTransaction {
+                                    replaceLyrics(
+                                        id = mediaMetadata.id,
+                                        lyrics = fetched.lyrics,
+                                        source = LyricsEntity.Source.REMOTE.value,
+                                        provider = fetched.providerName,
+                                        providerUrl = fetched.providerUrl,
+                                        providerAuthor = fetched.author,
+                                        providerAuthorUrl = fetched.authorUrl,
+                                    )
+                                }
+                                LyricsRefetchResult.Updated
+                            }
+
+                            fetched.isConclusive -> {
+                                database.withTransaction {
+                                    saveFetchedLyrics(
+                                        id = mediaMetadata.id,
+                                        lyrics = fetched.lyrics,
+                                        provider = fetched.providerName,
+                                        providerUrl = fetched.providerUrl,
+                                        providerAuthor = fetched.author,
+                                        providerAuthorUrl = fetched.authorUrl,
+                                    )
+                                }
+                                LyricsRefetchResult.NotFound
+                            }
+
+                            else -> {
+                                LyricsRefetchResult.Unavailable
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        _isRefetching.value = false
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
+                        LyricsRefetchResult.Unavailable
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                } finally {
-                    _isRefetching.value = false
-                    _refetchCompletionEvents.tryEmit(Unit)
-                }
+                _isRefetching.value = false
+                _refetchCompletionEvents.tryEmit(result)
             }
         }
 
@@ -245,6 +286,10 @@ class LyricsMenuViewModel
             mediaMetadata: MediaMetadata,
             lyrics: String,
             source: LyricsEntity.Source = LyricsEntity.Source.USER_EDIT,
+            provider: String? = null,
+            providerUrl: String? = null,
+            providerAuthor: String? = null,
+            providerAuthorUrl: String? = null,
         ) {
             viewModelScope.launch(Dispatchers.IO) {
                 val lyricsToSave =
@@ -266,6 +311,10 @@ class LyricsMenuViewModel
                         id = mediaMetadata.id,
                         lyrics = lyricsToSave,
                         source = source.value,
+                        provider = provider,
+                        providerUrl = providerUrl,
+                        providerAuthor = providerAuthor,
+                        providerAuthorUrl = providerAuthorUrl,
                     )
                 }
             }
@@ -358,6 +407,11 @@ class LyricsMenuViewModel
                                     ),
                                 lyrics = lyrics,
                                 targetLanguage = targetLanguage.ifBlank { "ENGLISH" },
+                                song =
+                                    AiLyricsSongContext(
+                                        title = mediaMetadata.title,
+                                        artist = mediaMetadata.artists.joinToString(", ") { it.name },
+                                    ),
                                 customPrompt = prefs[AiCustomPromptKey].orEmpty(),
                             )
                         val usableLyrics = usableTranslatedLyrics(translatedLyrics)
@@ -366,7 +420,7 @@ class LyricsMenuViewModel
                             return@launch
                         }
                         database.query {
-                            replaceLyrics(
+                            replaceLyricsKeepingProvider(
                                 id = mediaMetadata.id,
                                 lyrics = usableLyrics,
                                 source = LyricsEntity.Source.AI_TRANSLATION.value,
@@ -397,32 +451,45 @@ class LyricsMenuViewModel
             isAiTranslating.value = false
         }
 
+        private fun List<LyricsSearchResultUiModel>.toSuccessState(isSearching: Boolean): LyricsSearchScreenState.Success {
+            val counts = ImmutableMap.builder<LyricsSearchFormat, Int>()
+            LyricsSearchFormat.entries.forEach { format ->
+                counts.put(format, count { it.format == format })
+            }
+            return LyricsSearchScreenState.Success(
+                results = ImmutableList.copyOf(this),
+                formatCounts = counts.build(),
+                isSearching = isSearching,
+            )
+        }
+
         private fun LyricsResult.toUiModel(index: Int): LyricsSearchResultUiModel {
             val preview = displayLyricsText(lyrics)
             val lineCount = preview.lineSequence().count { it.isNotBlank() }
-            val isTtmlLyrics = isTtml(lyrics)
-            val ttmlEntries =
-                if (isTtmlLyrics) {
-                    runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList())
-                } else {
-                    emptyList()
+            val format =
+                when {
+                    LyricsUtils.hasWordSyncedLyrics(lyrics) -> LyricsSearchFormat.WORD_SYNCED
+                    isTtml(lyrics) ->
+                        if (runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList()).isNotEmpty()) {
+                            LyricsSearchFormat.LINE_SYNCED
+                        } else {
+                            LyricsSearchFormat.PLAIN
+                        }
+                    isLineSyncedLrc(lyrics) -> LyricsSearchFormat.LINE_SYNCED
+                    else -> LyricsSearchFormat.PLAIN
                 }
-            val isWordSynced = LyricsUtils.hasWordSyncedLyrics(lyrics)
 
             return LyricsSearchResultUiModel(
                 id = "${providerName}_${lyrics.hashCode()}_$index",
                 providerName = providerName,
+                providerUrl = providerUrl,
+                author = author,
+                authorUrl = authorUrl,
                 lyrics = lyrics,
                 preview = preview,
                 lineCount = lineCount,
                 characterCount = preview.length,
-                isLineSynced =
-                    when {
-                        isWordSynced -> false
-                        isTtmlLyrics -> ttmlEntries.isNotEmpty()
-                        else -> isLineSyncedLrc(lyrics)
-                    },
-                isWordSynced = isWordSynced,
+                format = format,
             )
         }
     }

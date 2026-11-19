@@ -158,8 +158,9 @@ class PrepareLyricsUseCase
                 startMs = timing.startMs,
                 endMs = timing.endMs,
                 text = text,
-                alignment = agent.toAlignment(),
+                alignment = if (agents.size > 1) LyricsLineAlignment.CENTER else agent.toAlignment(),
                 direction = resolveDirection(language, text),
+                singers = ImmutableList.copyOf(agents.mapNotNull(TtmlAgent::name).distinct()),
                 main = mainTrack,
                 backgrounds = ImmutableList.copyOf(backgroundTracks),
                 translation = translations.firstOrNull()?.text?.normalizedSupplementaryText()?.takeIf(String::isNotEmpty),
@@ -223,6 +224,7 @@ class PrepareLyricsUseCase
                         text = entry.text,
                         alignment = entry.agent.toAlignment(),
                         direction = resolveDirection(null, entry.text),
+                        singers = ImmutableList.copyOf(entry.singers.distinct()),
                         main = PreparedLyricsTrack(entry.text, null, ImmutableList.copyOf(words)),
                         backgrounds =
                             if (backgroundWords.isEmpty()) {
@@ -268,6 +270,7 @@ class PrepareLyricsUseCase
                             text = text,
                             alignment = LyricsLineAlignment.START,
                             direction = resolveDirection(null, text),
+                            singers = ImmutableList.of(),
                             main = PreparedLyricsTrack(text, null, ImmutableList.of()),
                             backgrounds = ImmutableList.of(),
                             translation = null,

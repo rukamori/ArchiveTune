@@ -11,16 +11,17 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
-import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -31,10 +32,11 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.text.TextAlign
+import moe.rukamori.archivetune.R
 
 class PlaybackDeckWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -54,91 +56,101 @@ class PlaybackDeckWidget : GlanceAppWidget() {
 private fun PlaybackDeckContent(context: Context) {
     val state = currentState<Preferences>().toWidgetPlaybackState(context)
     val size = LocalSize.current
-    val textScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
-    val wide = size.width >= 320.dp && size.height >= 128.dp + 48.dp * textScale
-    val stacked = !wide && size.height >= 168.dp + 48.dp * textScale
+    val textScale = context.widgetTextScale()
+    val padding = if (size.width < 200.dp) 10.dp else 14.dp
+    val wide = size.width >= 300.dp && size.height >= 150.dp + 48.dp * textScale
+    val stacked = !wide && size.height >= 220.dp + 64.dp * textScale
 
-    WidgetTheme(state.dominantColor) { palette ->
-        Box(
-            modifier = GlanceModifier.fillMaxSize().background(palette.surface)
-                .cornerRadius(28.dp).clickable(openArchiveTuneAction(context))
-                .padding(if (size.width < 200.dp) 8.dp else 12.dp),
-        ) {
+    WidgetTheme(state.dominantColor, WidgetSurfaceStyle.Ambient, context) { palette ->
+        WidgetSurface(state, palette, context, contentPadding = padding) {
             when {
                 wide -> {
-                    val recordSize = minOf(size.height - 24.dp, size.width * 0.42f, size.width - 184.dp)
-                    Row(
-                        modifier = GlanceModifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    val recordSize = minOf(size.height - padding * 2, size.width * 0.44f, size.width - 190.dp)
+                        .coerceAtLeast(72.dp)
+                    Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         DeckRecord(state, palette, context, recordSize)
                         Spacer(GlanceModifier.width(16.dp))
                         Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight()) {
-                            WidgetTrackInfo(
-                                state, palette, GlanceModifier.defaultWeight().fillMaxWidth(),
-                                titleSize = 22,
-                                titleLines = if (size.height >= 176.dp + 56.dp * textScale) 2 else 1,
+                            DeckHeader(state, palette, context)
+                            Spacer(GlanceModifier.defaultWeight())
+                            WidgetTrackText(
+                                state,
+                                palette,
+                                GlanceModifier.fillMaxWidth(),
+                                titleSize = 20.sp,
+                                titleLines = if (size.height >= 190.dp + 56.dp * textScale) 2 else 1,
                             )
                             if (state.isAvailable) {
-                                WidgetPlaybackProgress(state, palette)
-                                Spacer(GlanceModifier.height(12.dp))
-                                WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                                Spacer(GlanceModifier.height(10.dp))
+                                WidgetProgress(state, palette)
+                                Spacer(GlanceModifier.height(6.dp))
+                                WidgetTransport(state, palette, context, GlanceModifier.fillMaxWidth(), heroSize = 48.dp)
                             }
                         }
                     }
                 }
                 stacked -> {
-                    val recordSize = minOf(size.width - 24.dp, size.height - (96.dp + 48.dp * textScale))
+                    val controls = if (state.isAvailable) 84.dp else 0.dp
+                    val recordSize =
+                        minOf(size.width - padding * 2, size.height - padding * 2 - controls - 64.dp * textScale - 28.dp)
+                            .coerceAtLeast(72.dp)
                     Column(
                         modifier = GlanceModifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                        DeckHeader(state, palette, context)
                         Box(modifier = GlanceModifier.fillMaxWidth().defaultWeight(), contentAlignment = Alignment.Center) {
                             DeckRecord(state, palette, context, recordSize)
                         }
-                        Spacer(GlanceModifier.height(8.dp))
-                        WidgetTrackInfo(state, palette, GlanceModifier.fillMaxWidth())
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.fillMaxWidth(),
+                            titleSize = 17.sp,
+                            textAlign = TextAlign.Center,
+                        )
                         if (state.isAvailable) {
-                            Spacer(GlanceModifier.height(8.dp))
-                            WidgetPlaybackProgress(state, palette)
-                            Spacer(GlanceModifier.height(8.dp))
-                            WidgetTransportControls(state, palette, context, GlanceModifier.fillMaxWidth())
+                            Spacer(GlanceModifier.height(10.dp))
+                            WidgetProgress(state, palette)
+                            Spacer(GlanceModifier.height(4.dp))
+                            WidgetTransport(state, palette, context, GlanceModifier.fillMaxWidth())
                         }
                     }
                 }
                 else -> {
-                    val recordSize = minOf(80.dp, size.height - 24.dp, (size.width - 36.dp) * 0.45f)
-                        .coerceAtLeast(48.dp)
-                    Row(
-                        modifier = GlanceModifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(modifier = GlanceModifier.size(recordSize), contentAlignment = Alignment.Center) {
-                            DeckRecord(state, palette, context, recordSize)
-                            if (state.isAvailable) {
-                                WidgetPlayPauseButton(state, palette, context)
-                            }
-                        }
+                    val recordSize = (size.height - padding * 2).coerceIn(48.dp, 88.dp)
+                    Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        DeckRecord(state, palette, context, recordSize)
                         Spacer(GlanceModifier.width(12.dp))
-                        Column(modifier = GlanceModifier.defaultWeight()) {
-                            WidgetTrackInfo(
-                                state, palette, titleSize = 14,
-                                showArtist = size.height - 24.dp >= 40.dp * textScale,
-                            )
-                            if (state.isAvailable && size.height >= 136.dp + 24.dp * textScale &&
-                                size.width - recordSize - 36.dp >= 96.dp
-                            ) {
-                                Spacer(GlanceModifier.height(8.dp))
-                                Row(modifier = GlanceModifier.fillMaxWidth()) {
-                                    WidgetSkipButton(false, palette, context, GlanceModifier.defaultWeight().height(48.dp))
-                                    WidgetSkipButton(true, palette, context, GlanceModifier.defaultWeight().height(48.dp))
-                                }
-                            }
+                        WidgetTrackText(
+                            state,
+                            palette,
+                            GlanceModifier.defaultWeight(),
+                            titleSize = 15.sp,
+                            showArtist = size.height - padding * 2 >= 36.dp * textScale,
+                        )
+                        if (state.isAvailable) {
+                            Spacer(GlanceModifier.width(8.dp))
+                            WidgetHeroPlayButton(state, palette, context, 44.dp)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeckHeader(
+    state: WidgetPlaybackState,
+    palette: WidgetPalette,
+    context: Context,
+) {
+    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        WidgetEqualizer(state.isPlaying, palette, context, size = 14.dp)
+        Spacer(GlanceModifier.width(6.dp))
+        WidgetOverline(context.getString(R.string.widget_now_playing), palette, context, GlanceModifier.defaultWeight())
+        WidgetBrandGlyph(palette)
     }
 }
 
@@ -149,18 +161,32 @@ private fun DeckRecord(
     context: Context,
     diameter: Dp,
 ) {
-    Box(
-        modifier = GlanceModifier.size(diameter).background(palette.secondaryContainer)
-            .cornerRadius(diameter / 2).padding(4.dp),
-        contentAlignment = Alignment.Center,
-    ) {
+    val artSize = diameter * 0.84f
+    Box(modifier = GlanceModifier.size(diameter), contentAlignment = Alignment.Center) {
+        if (state.isPlaying) {
+            WidgetMotion(WidgetMotionKind.Cookie, palette.motionContainer, context, GlanceModifier.fillMaxSize())
+        } else {
+            Image(
+                provider = ImageProvider(R.drawable.widget_shape_cookie),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(palette.container),
+                modifier = GlanceModifier.fillMaxSize(),
+            )
+        }
         WidgetArtwork(
-            artPath = state.artPath, context = context, contentDescription = null,
-            targetSize = diameter - 8.dp, cornerRadius = (diameter - 8.dp) / 2,
-            palette = palette, modifier = GlanceModifier.fillMaxSize(), circular = true,
+            artPath = state.artPath,
+            context = context,
+            contentDescription = null,
+            targetSize = artSize,
+            shape = WidgetArtShape.Circle,
+            palette = palette,
+            modifier = GlanceModifier.size(artSize),
         )
-        Box(
-            modifier = GlanceModifier.size(16.dp).background(palette.surface).cornerRadius(8.dp),
-        ) {}
+        Image(
+            provider = ImageProvider(R.drawable.widget_shape_circle),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(palette.surface),
+            modifier = GlanceModifier.size((diameter * 0.12f).coerceAtLeast(8.dp)),
+        )
     }
 }

@@ -10,6 +10,8 @@
 package moe.rukamori.archivetune.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -25,10 +28,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,8 +44,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,18 +52,24 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -77,10 +87,8 @@ import moe.rukamori.archivetune.db.entities.formattedFileSize
 import moe.rukamori.archivetune.db.entities.formattedSampleRate
 import moe.rukamori.archivetune.models.ActiveOutputDevice
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.roundToInt
 
 @Composable
 fun QueueHeader(
@@ -234,89 +242,6 @@ fun QueueRecommendationChips(model: QueueUiModel, onAction: (QueueAction) -> Uni
 }
 
 /**
- * Shared Sleep Timer Dialog component used in both Queue and Player.
- */
-@Composable
-fun SleepTimerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-    onEndOfSong: () -> Unit,
-    initialValue: Float = 30f,
-) {
-    var sleepTimerValue by remember { mutableFloatStateOf(initialValue) }
-
-    SleepTimerDialog(
-        value = sleepTimerValue,
-        onValueChange = { sleepTimerValue = it },
-        onDismiss = onDismiss,
-        onConfirm = onConfirm,
-        onEndOfSong = onEndOfSong,
-    )
-}
-
-@Composable
-fun SleepTimerDialog(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-    onEndOfSong: () -> Unit,
-) {
-    ActionPromptDialog(
-        titleBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.sleep_timer),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-            }
-        },
-        onDismiss = onDismiss,
-        onConfirm = {
-            onConfirm(value.roundToInt())
-        },
-        onCancel = onDismiss,
-        onReset = {
-            onValueChange(30f)
-        },
-        content = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.minute,
-                            value.roundToInt(),
-                            value.roundToInt(),
-                        ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                Slider(
-                    value = value,
-                    onValueChange = onValueChange,
-                    valueRange = 5f..120f,
-                    steps = (120 - 5) / 5 - 1,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedButton(onClick = onEndOfSong, shapes = ButtonDefaults.shapes()) {
-                    Text(stringResource(R.string.end_of_song))
-                }
-            }
-        },
-    )
-}
-
-/**
  * Codec information row displayed when showCodecOnPlayer is enabled.
  */
 @Composable
@@ -326,6 +251,7 @@ fun CodecInfoRow(
     fileSize: String,
     textColor: Color,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(start = 30.dp, end = 30.dp, top = 6.dp, bottom = 2.dp),
 ) {
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -333,7 +259,7 @@ fun CodecInfoRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 30.dp, end = 30.dp, top = 6.dp, bottom = 2.dp),
+                .padding(contentPadding),
     ) {
         Text(
             text =
@@ -1509,5 +1435,200 @@ fun QueueCollapsedContentV9(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun QueueCollapsedContentV10(
+    showCodecOnPlayer: Boolean,
+    currentFormat: FormatEntity?,
+    accent: Color,
+    field: Color,
+    shuffleModeEnabled: Boolean,
+    repeatMode: Int,
+    currentSongLiked: Boolean,
+    canControlPlayback: Boolean = true,
+    onExpandQueue: () -> Unit,
+    onShuffleClick: () -> Unit,
+    onRepeatModeClick: () -> Unit,
+    onToggleLike: () -> Unit,
+    onAddToPlaylistClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .offset(y = (-8).dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (showCodecOnPlayer) {
+            val hasFormat = currentFormat != null
+            val container = if (hasFormat) currentFormat.containerLabel() else " "
+            val bitrate = currentFormat?.autoRateDisplay()
+            val codecAlpha by animateFloatAsState(
+                targetValue = if (hasFormat) 0.6f else 0f,
+                label = "V10CodecInfoAlpha",
+            )
+            CodecInfoRow(
+                codec = container,
+                bitrate = bitrate,
+                fileSize = "",
+                textColor = accent.copy(alpha = codecAlpha),
+                contentPadding = PaddingValues(start = 30.dp, end = 30.dp, top = 0.dp, bottom = 10.dp),
+                modifier = if (hasFormat) Modifier else Modifier.clearAndSetSemantics { },
+            )
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 38.dp),
+        ) {
+            // 1. Queue (expand action) - leftmost
+            EditorialSegmentedButton(
+                onClick = onExpandQueue,
+                accent = accent,
+                field = field,
+                isFirst = true,
+                iconResId = R.drawable.queue_music,
+                contentDescription = stringResource(R.string.queue),
+            )
+            // 2. Shuffle (toggle)
+            EditorialSegmentedButton(
+                onClick = onShuffleClick,
+                accent = accent,
+                field = field,
+                checked = shuffleModeEnabled,
+                isToggle = true,
+                enabled = canControlPlayback,
+                iconResId = R.drawable.shuffle,
+                contentDescription = stringResource(if (shuffleModeEnabled) R.string.action_shuffle_on else R.string.action_shuffle_off),
+            )
+            // 3. Repeat (toggle)
+            EditorialSegmentedButton(
+                onClick = onRepeatModeClick,
+                accent = accent,
+                field = field,
+                checked = repeatMode != Player.REPEAT_MODE_OFF,
+                isToggle = true,
+                enabled = canControlPlayback,
+                iconResId = if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
+                contentDescription =
+                    stringResource(
+                        when (repeatMode) {
+                            Player.REPEAT_MODE_ONE -> R.string.repeat_mode_one
+                            Player.REPEAT_MODE_ALL -> R.string.repeat_mode_all
+                            else -> R.string.repeat_mode_off
+                        },
+                    ),
+            )
+            // 4. Like (toggle)
+            EditorialSegmentedButton(
+                onClick = onToggleLike,
+                accent = accent,
+                field = field,
+                checked = currentSongLiked,
+                isToggle = true,
+                iconResId = if (currentSongLiked) R.drawable.favorite else R.drawable.favorite_border,
+                contentDescription = stringResource(if (currentSongLiked) R.string.action_remove_like else R.string.action_like),
+            )
+            // 5. Add to Playlist (action) - rightmost
+            EditorialSegmentedButton(
+                onClick = onAddToPlaylistClick,
+                accent = accent,
+                field = field,
+                isLast = true,
+                iconResId = R.drawable.library_add,
+                contentDescription = stringResource(R.string.add_to_playlist),
+            )
+        }
+    }
+}
+
+// ========== V10 EDITORIAL HELPERS ==========
+
+@Composable
+private fun RowScope.EditorialSegmentedButton(
+    onClick: () -> Unit,
+    accent: Color,
+    field: Color,
+    checked: Boolean = false,
+    isToggle: Boolean = false,
+    enabled: Boolean = true,
+    isFirst: Boolean = false,
+    isLast: Boolean = false,
+    iconResId: Int,
+    contentDescription: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
+
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> accent.copy(alpha = 0.04f)
+            isToggle && checked -> accent
+            else -> accent.copy(alpha = 0.08f)
+        },
+        label = "EditorialSegmentedBg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> accent.copy(alpha = 0.38f)
+            isToggle && checked -> field
+            else -> accent
+        },
+        label = "EditorialSegmentedFg",
+    )
+    val shape = editorialGroupedItemShape(isFirst = isFirst, isLast = isLast)
+    Box(
+        modifier =
+            modifier
+                .weight(1f)
+                .height(44.dp)
+                .clip(shape)
+                .background(containerColor)
+                .semantics {
+                    if (isToggle) {
+                        role = Role.Switch
+                        toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
+                    } else {
+                        role = Role.Button
+                    }
+                }
+                .clickable(enabled = enabled) {
+                    if (isToggle) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    onClick()
+                },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconResId),
+            contentDescription = contentDescription,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+private val EditorialGroupedFirstShape =
+    RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 8.dp, bottomEnd = 8.dp)
+private val EditorialGroupedMiddleShape = RoundedCornerShape(8.dp)
+private val EditorialGroupedLastShape =
+    RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 20.dp, bottomEnd = 20.dp)
+
+private fun editorialGroupedItemShape(isFirst: Boolean, isLast: Boolean): RoundedCornerShape {
+    return when {
+        isFirst -> EditorialGroupedFirstShape
+        isLast -> EditorialGroupedLastShape
+        else -> EditorialGroupedMiddleShape
     }
 }

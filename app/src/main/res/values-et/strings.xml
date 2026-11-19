@@ -137,7 +137,6 @@
     <string name="undo">Pööra tegevus tagasi</string>
     <string name="lyrics_not_found">Laulusõnu ei leidu</string>
     <string name="sleep_timer">Unetaimer</string>
-    <string name="end_of_song">Loo lõpp</string>
     <plurals name="minute">
         <item quantity="one">1 minut</item>
         <item quantity="other">%d minutit</item>

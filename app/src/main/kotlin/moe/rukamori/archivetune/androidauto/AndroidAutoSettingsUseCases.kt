@@ -31,15 +31,17 @@ class AndroidAutoSettingsUseCases @Inject constructor(
     fun currentConfiguration(): AndroidAutoConfiguration = repository.currentConfiguration()
     fun hasLocalAudioPermission(): Boolean = repository.hasLocalAudioPermission()
 
-    fun isOnlinePlaybackAllowed(configuration: AndroidAutoConfiguration): Boolean {
-        val network = repository.currentNetworkState()
-        return network.online && (configuration.meteredPlayback || !network.metered)
-    }
+    fun isOnlinePlaybackAllowed(configuration: AndroidAutoConfiguration): Boolean =
+        isOnlinePlaybackAllowed(configuration, repository.currentNetworkState())
 
-    fun isRemoteArtworkAllowed(configuration: AndroidAutoConfiguration): Boolean {
-        val network = repository.currentNetworkState()
-        return network.online && (configuration.meteredArtwork || !network.metered)
-    }
+    fun isRemoteArtworkAllowed(configuration: AndroidAutoConfiguration): Boolean =
+        isRemoteArtworkAllowed(configuration, repository.currentNetworkState())
+
+    fun isOnlinePlaybackAllowed(configuration: AndroidAutoConfiguration, network: AndroidAutoNetworkState): Boolean =
+        network.online && (configuration.meteredPlayback || !network.metered)
+
+    fun isRemoteArtworkAllowed(configuration: AndroidAutoConfiguration, network: AndroidAutoNetworkState): Boolean =
+        network.online && (configuration.meteredArtwork || !network.metered)
 
     suspend fun setOnlineRecommendations(enabled: Boolean) = repository.setOnlineRecommendations(enabled)
     suspend fun setOnlineVoiceSearch(enabled: Boolean) = repository.setOnlineVoiceSearch(enabled)

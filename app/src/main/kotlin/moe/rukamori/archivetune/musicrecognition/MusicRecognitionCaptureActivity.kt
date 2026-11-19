@@ -10,38 +10,37 @@ package moe.rukamori.archivetune.musicrecognition
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import moe.rukamori.archivetune.MainActivity
 
 class MusicRecognitionCaptureActivity : ComponentActivity() {
+    private val listenNow: Boolean
+        get() = intent.getBooleanExtra(ExtraListenNow, false)
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (hasRequiredPermissions()) {
-                requestPlaybackCapture()
+            if (hasPermission(Manifest.permission.RECORD_AUDIO)) {
+                requestOverlayPermission()
             } else {
-                finishWithoutAnimation()
+                finishFlow(started = false)
             }
         }
 
-    private val captureLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            if (result.resultCode == Activity.RESULT_OK && data != null) {
-                ContextCompat.startForegroundService(
-                    this,
-                    BackgroundMusicRecognitionService.devicePlaybackIntent(
-                        context = this,
-                        resultCode = result.resultCode,
-                        resultData = data,
-                    ),
-                )
+    private val overlayLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (Settings.canDrawOverlays(this)) {
+                startFloatingRecognition()
+            } else {
+                finishFlow(started = false)
             }
-            finishWithoutAnimation()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,38 +65,59 @@ class MusicRecognitionCaptureActivity : ComponentActivity() {
             }
 
         if (missingPermissions.isEmpty()) {
-            requestPlaybackCapture()
+            requestOverlayPermission()
         } else {
             permissionLauncher.launch(missingPermissions.toTypedArray())
         }
     }
 
-    private fun requestPlaybackCapture() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            ContextCompat.startForegroundService(
-                this,
-                BackgroundMusicRecognitionService.microphoneIntent(this),
+    private fun requestOverlayPermission() {
+        if (Settings.canDrawOverlays(this)) {
+            startFloatingRecognition()
+        } else {
+            overlayLauncher.launch(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.fromParts("package", packageName, null),
+                ),
             )
-            finishWithoutAnimation()
-            return
         }
-
-        val projectionManager =
-            getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        captureLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
-    private fun hasRequiredPermissions(): Boolean {
-        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) return false
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            hasPermission(Manifest.permission.POST_NOTIFICATIONS)
+    private fun startFloatingRecognition() {
+        ContextCompat.startForegroundService(
+            this,
+            FloatingMusicRecognitionService.showIntent(this, listen = listenNow),
+        )
+        finishFlow(started = true)
+    }
+
+    private fun finishFlow(started: Boolean) {
+        if (!started && listenNow) {
+            startActivity(
+                Intent(this, MainActivity::class.java).apply {
+                    action = ACTION_MUSIC_RECOGNITION
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                },
+            )
+        }
+        setResult(if (started) Activity.RESULT_OK else Activity.RESULT_CANCELED)
+        finish()
+        overridePendingTransition(0, 0)
     }
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-    private fun finishWithoutAnimation() {
-        finish()
-        overridePendingTransition(0, 0)
+    companion object {
+        private const val ExtraListenNow = "floating_recognition_listen_now"
+
+        fun intent(
+            context: Context,
+            listenNow: Boolean,
+        ): Intent =
+            Intent(context, MusicRecognitionCaptureActivity::class.java).apply {
+                putExtra(ExtraListenNow, listenNow)
+            }
     }
 }

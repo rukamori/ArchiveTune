@@ -25,7 +25,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,6 +44,7 @@ import moe.rukamori.archivetune.constants.StorageFolderTreeUriKey
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.downloads.DownloadedArtworkRepository
+import moe.rukamori.archivetune.extensions.directorySizeBytes
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.ArtworkStorage
@@ -87,7 +91,16 @@ data class StorageLocationOption(
     val volumeLabel: String?,
     val rootPath: String,
     val availableBytes: Long,
+    val totalBytes: Long,
     val isSelected: Boolean,
+)
+
+@Immutable
+data class StorageUsage(
+    val downloadsBytes: Long,
+    val songCacheBytes: Long,
+    val imageCacheBytes: Long,
+    val canvasCacheBytes: Long,
 )
 
 enum class StorageLocationKind {
@@ -169,6 +182,14 @@ class SetStorageFolderUseCase
         ): StorageFolderUpdateResult = repository.setStorageLocationAndMoveCache(optionId, onProgress)
     }
 
+class ObserveStorageUsageUseCase
+    @Inject
+    constructor(
+        private val repository: StorageLocationRepository,
+    ) {
+        operator fun invoke(): Flow<StorageUsage> = repository.usage
+    }
+
 class ClearStorageCacheUseCase
     @Inject
     constructor(
@@ -193,6 +214,31 @@ class StorageLocationRepository
             context.dataStore.data.map { preferences ->
                 preferences.selectionFor(context.storageLocationOptions(preferences))
             }
+
+        val usage: Flow<StorageUsage> =
+            flow {
+                while (true) {
+                    emit(measureUsage())
+                    delay(StorageUsageRefreshIntervalMillis)
+                }
+            }.distinctUntilChanged()
+                .flowOn(Dispatchers.IO)
+
+        private fun measureUsage(): StorageUsage =
+            StorageUsage(
+                downloadsBytes = downloadCache.measuredSize(StorageFolderKind.DOWNLOADS),
+                songCacheBytes = playerCache.measuredSize(StorageFolderKind.SONG_CACHE),
+                imageCacheBytes =
+                    runCatching { context.imageLoader.diskCache?.size }
+                        .getOrNull()
+                        ?: cacheDirectory(context, StorageFolderKind.IMAGE_CACHE).directorySizeBytes(),
+                canvasCacheBytes = cacheDirectory(context, StorageFolderKind.CANVAS_CACHE).directorySizeBytes(),
+            )
+
+        private fun Cache.measuredSize(kind: StorageFolderKind): Long {
+            val cacheSpace = runCatching { cacheSpace }.getOrDefault(0L)
+            return if (cacheSpace > 0L) cacheSpace else cacheDirectory(context, kind).directorySizeBytes()
+        }
 
         suspend fun clearCache(
             kind: StorageCacheKind,
@@ -297,6 +343,7 @@ class StorageLocationRepository
                         volumeLabel = null,
                         rootPath = context.defaultStorageRootDirectory().absolutePath,
                         availableBytes = context.defaultStorageRootDirectory().usableSpace,
+                        totalBytes = context.defaultStorageRootDirectory().totalSpace,
                         isSelected = true,
                     )
             return StorageFolderSelection(
@@ -929,6 +976,7 @@ private fun File.toStorageLocationOption(
         volumeLabel = volumeLabel,
         rootPath = canonicalPath,
         availableBytes = usableSpace,
+        totalBytes = totalSpace,
         isSelected =
             selectedPath?.let { configuredPath ->
                 runCatching { File(configuredPath).canonicalPath == canonicalPath }.getOrDefault(false)
@@ -963,6 +1011,7 @@ private const val InternalStorageOptionId = "internal"
 private const val ExternalStorageOptionIdPrefix = "external:"
 private const val ExternalStorageRootDirectoryName = "ArchiveTune"
 private const val AppRestartDelayMillis = 3_000L
+private const val StorageUsageRefreshIntervalMillis = 1_000L
 private const val StorageCopyBufferSizeBytes = 64 * 1024
 private const val CanvasArtworkCacheFileName = "canvas_artwork_cache.json"
 private const val SavedArtworkCacheFileName = "archivetune_saved_artworks.json"

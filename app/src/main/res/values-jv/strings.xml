@@ -167,7 +167,6 @@
     <string name="lyrics_not_found">Lirik tidak ditemukan</string>
     <string name="lyrics_word_sync">Sinkronisasi Kata</string>
     <string name="sleep_timer">Pengatur waktu tidur</string>
-    <string name="end_of_song">Akhir lagu</string>
     <plurals name="minute">
         <item quantity="other">%d menit</item>
     </plurals>
@@ -277,7 +276,6 @@
     <string name="blur">Blur</string>
     <string name="contrast">Kontras</string>
     <string name="brightness">Kecerahan</string>
-    <string name="custom_value">Nilai khusus</string>
     <string name="archivetune_canvas">Kanvas ArchiveTune</string>
     <string name="archivetune_canvas_desc">Menganimasikan sampul album saat diputer</string>
     <string name="show_button1_description">Alihkan visibilitas tombol 1 di Discord Rich Presence</string>
@@ -341,7 +339,6 @@
     <string name="enable_unison_lyrics">Aktifkan lirik Unison</string>
     <string name="enable_simpmusic_lyrics">Aktifkan lirik SimpMusic</string>
     <string name="player_and_audio">Pemutar dan audio</string>
-    <string name="audio_quality">Kualitas audio</string>
     <string name="audio_quality_auto">Otomatis</string>
     <string name="audio_quality_high">Tinggi</string>
     <string name="audio_quality_low">Rendah</string>
@@ -589,8 +586,6 @@
     <string name="new_version_available">Versi baru tersedia</string>
     <string name="updates">Pembaruan</string>
     <string name="current_version">Versi Saat Ini</string>
-    <string name="latest_version_format">Terbaru: %s</string>
-    <string name="updates_status_checking">Memeriksa rilis terbaru</string>
     <string name="updates_status_current">Kowe sedang menggunakan rilis terbaru yang tersedia</string>
     <string name="enable_update_notification">Aktifkan Pemberitahuan Pembaruan</string>
     <string name="update_channel">Saluran Pembaruan</string>
@@ -651,7 +646,6 @@
     <string name="together_server_error">Kesalahan server, silakan coba lagi nanti</string>
     <string name="leave">Pergi</string>
     <string name="join">Bergabunglah</string>
-    <string name="joined">Bergabung</string>
     <string name="loading">Ngisi</string>
     <string name="connecting">Menghubungkan...</string>
     <string name="copy_link">Salin tautan</string>

@@ -70,11 +70,8 @@
     <string name="recently_added">Adicionadas recentemente</string>
     <string name="sort_descending">Ordem descendente</string>
     <string name="sort_ascending">Ordem ascendente</string>
-    <string name="your_collection">A tua Coleção</string>
     <string name="playing_desc">A Tocar</string>
     <string name="tracks_label">faixas</string>
-    <string name="song_singular">Música</string>
-    <string name="more_playlists_desc">Mais Listas de Reprodução</string>
     <string name="more_label">Mais</string>
     <string name="tracks_count_label">Número de faixas</string>
     <string name="recently_updated">Atualizadas recentemente</string>
@@ -84,28 +81,23 @@
     <string name="personal_label">Pessoal</string>
     <string name="youtube_synced">Sincronizado com o YouTube</string>
     <string name="options_label">Opções</string>
-    <string name="top_artist_badge">TOP ARTISTAS</string>
     <plurals name="n_selected">
         <item quantity="one">Um %d selected</item>
         <item quantity="many">Muitos %d selected</item>
         <item quantity="other">Outros %d selected</item>
     </plurals>
-    <string name="no_artist_yet">Sem Artistas</string>
-    <string name="total_label">total</string>
     <string name="most_tracks">Mais faixas</string>
     <string name="least_tracks">Menos faixas</string>
     <string name="play_time">Tempo de reprodução</string>
     <string name="subscribed_only">Só Subscritos</string>
     <string name="all_artists_filter">Todos os Artistas</string>
     <string name="artist_subtitle">Artista</string>
-    <string name="recently_played_artists">Artistas Tocados Recentemente</string>
     <string name="newest_year">Ano mais recente</string>
     <string name="oldest_year">Ano mais antigo</string>
     <string name="longest_duration">Duração mais longa</string>
     <string name="shortest_duration">Duração mais curta</string>
     <string name="year_sort">Ano</string>
     <string name="duration_sort">Duração</string>
-    <string name="featured_album_badge">ÁLBUM EM DESTAQUE</string>
     <string name="other_versions">Outras versões</string>
     <string name="liked_songs">Músicas que gostei</string>
     <string name="downloaded_songs">Música transferida</string>
@@ -303,7 +295,6 @@
     <string name="lyrics_not_found">Letra não encontrada</string>
     <string name="lyrics_word_sync">Sincronização por Palavra</string>
     <string name="sleep_timer">Temporizador de sono</string>
-    <string name="end_of_song">Fim da música</string>
     <plurals name="minute">
         <item quantity="one">1 minuto</item>
         <item quantity="many">%d minutos</item>
@@ -343,6 +334,11 @@
     <string name="app_icon_empty">Sem ícones da app disponíveis</string>
     <string name="app_icon_load_failed">Impossível carregar os ícones da app</string>
     <string name="app_icon_change_failed">Imposssível alterar o ícone da app</string>
+    <string name="app_icon_applying">A aplicar %1$s…</string>
+    <string name="app_icon_by_author">por %1$s</string>
+    <string name="app_icon_github_profile">Perfil do GitHub</string>
+    <string name="app_icon_details">Detalhes do ícone</string>
+    <string name="app_icon_use">Usar este ícone</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Ativar tema dinâmico</string>
     <string name="random_theme_on_startup">Tema aleatório ao iniciar</string>
@@ -453,7 +449,6 @@
     <string name="blur">Desfoque</string>
     <string name="contrast">Contraste</string>
     <string name="brightness">Brilho</string>
-    <string name="custom_value">Valor personalizado</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Animar a capa do álbum durante a reprodução</string>
     <string name="player_background_style_v8_v9_desc">Indisponível com os estilos de reprodutor V8 e V9</string>
@@ -528,7 +523,6 @@
     <string name="enable_simpmusic_lyrics">Ativar letras do SimpMusic</string>
     <string name="enable_megalobiz_lyrics">Ativar letras do Megalobiz</string>
     <string name="player_and_audio">Reprodutor e áudio</string>
-    <string name="audio_quality">Qualidade de áudio</string>
     <string name="audio_quality_auto">Automático</string>
     <string name="audio_quality_high">Alta</string>
     <string name="audio_quality_low">Baixa</string>
@@ -572,7 +566,6 @@
     <string name="eq_sound_shaping_on">A função de modelagem de áudio está ativada</string>
     <string name="eq_sound_shaping_off">A função de modelagem de áudio está desativada</string>
     <string name="eq_enable_description">Aplica estes controles à reprodução do ArchiveTune</string>
-    <string name="eq_control_mode">Modo de controle</string>
     <string name="eq_basic">Básico</string>
     <string name="eq_advanced">Avançado</string>
     <string name="eq_basic_description">Predefinições rápidas e ampla modelagem de timbre</string>
@@ -857,8 +850,6 @@
     <string name="new_version_available">Nova versão disponível</string>
     <string name="updates">Atualizações</string>
     <string name="current_version">Versão Atual</string>
-    <string name="latest_version_format">Mais recente: %s</string>
-    <string name="updates_status_checking">A procurar versão mais recente</string>
     <string name="updates_status_current">Estás na versão mais recente disponível</string>
     <string name="enable_update_notification">Ativar Notificações de Atualização</string>
     <string name="enable_update_notification_channel_desc">Recebe uma notificação quando uma nova versão estiver disponível no canal selecionado</string>
@@ -877,7 +868,6 @@
     <string name="update_notification_title">Atualização Disponível</string>
     <string name="update_notification_text">ArchiveTune %s já está disponível</string>
     <string name="download">Transferir</string>
-    <string name="download_complete">Transferência concluída</string>
     <string name="downloads">Transferências</string>
     <string name="download_in_progress">Em curso</string>
     <string name="no_downloads">Ainda não há músicas transferidas</string>
@@ -909,7 +899,6 @@
     <string name="onboarding_foss_variant">Edição FOSS</string>
     <string name="onboarding_version_label">Versão %1$s</string>
     <string name="onboarding_empty_title">Configuração indisponível</string>
-    <string name="onboarding_empty_subtitle">Continuar para o ArchiveTune.</string>
     <string name="onboarding_error_generic">Impossível carregar a configuração</string>
     <string name="onboarding_permission_allowed_by_install">Permitido pela instalação</string>
     <string name="onboarding_permission_unavailable">Indisponível</string>
@@ -971,7 +960,6 @@
     <string name="together_server_error">Erro do servidor, tenta novamente mais tarde</string>
     <string name="leave">Sair</string>
     <string name="join">Entrar</string>
-    <string name="joined">Entraste</string>
     <string name="loading">A carregar</string>
     <string name="connecting">A conectar</string>
     <string name="copy_link">Copiar link</string>
@@ -991,7 +979,6 @@
     <string name="together_queue_position">%1$d/%2$d</string>
     <string name="together_shuffle_on">Modo aleatório ativado</string>
     <string name="together_shuffle_off">Modo aleatório desativado</string>
-    <string name="together_repeat_mode">Repetir %1$d</string>
     <string name="together_participants_empty">Ainda sem participantes</string>
     <string name="together_participants_empty_body">As pessoas que entrarem nesta sessão aparecerão aqui.</string>
     <string name="together_activity_log">Log de atividade</string>

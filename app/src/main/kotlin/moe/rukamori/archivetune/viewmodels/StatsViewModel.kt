@@ -253,7 +253,7 @@ class StatsViewModel
                                 uniqueArtistsCount = primary.artists.size,
                                 uniqueAlbumsCount = primary.albums.size,
                             )
-                        if (summary.totalPlayCount == 0 && primary.rankedSongs.isEmpty()) {
+                        if (listening.firstEvent == null && summary.totalPlayCount == 0 && primary.rankedSongs.isEmpty()) {
                             StatsScreenState.Empty
                         } else {
                             StatsScreenState.Success(

@@ -38,7 +38,13 @@ class ModuleCatalogReader(private val http: ModuleHttpClient) {
             if (!visited.add(normalized)) return
             documents++
             if (documents > 32) throw ModuleException(ModuleFailure.INVALID_DOCUMENT)
-            var (text, finalUrl) = if (suppliedText != null) suppliedText to url else http.document(normalized)
+            val gitHub = if (suppliedText == null) gitHubCandidates(normalized) else null
+            var (text, finalUrl) = when {
+                suppliedText != null -> suppliedText to url
+                gitHub != null -> gitHub.firstNotNullOfOrNull { http.documentIfPresent(it) }
+                    ?: throw ModuleException(ModuleFailure.INVALID_DOCUMENT)
+                else -> http.document(normalized)
+            }
             if (finalUrl.isNotBlank() && finalUrl != normalized && !visited.add(finalUrl)) return
             text = text.removePrefix("\uFEFF").trim()
             if (text.startsWith("<")) {
@@ -58,7 +64,7 @@ class ModuleCatalogReader(private val http: ModuleHttpClient) {
                 throw ModuleException(ModuleFailure.INVALID_DOCUMENT)
             }
             if (depth == 0) {
-                origin = finalUrl
+                origin = if (gitHub != null) normalized else finalUrl
                 name = root.optString("name").ifBlank { root.optString("title") }
             }
             val base = baseOverride?.takeIf(String::isNotBlank)?.let {
@@ -130,7 +136,23 @@ class ModuleCatalogReader(private val http: ModuleHttpClient) {
         return ModuleHttpClient.webUrl(target)
     }
 
+    private fun gitHubCandidates(url: String): List<String>? {
+        val uri = URI(url)
+        if (uri.host.lowercase(java.util.Locale.ROOT) !in GITHUB_HOSTS) return null
+        val segments = uri.rawPath.orEmpty().split('/').filter(String::isNotEmpty)
+        if (segments.size < 2) return null
+        val repository = "https://raw.githubusercontent.com/${segments[0]}/${segments[1].removeSuffix(".git")}/"
+        val location = segments.drop(2)
+        return when {
+            location.isEmpty() -> INDEX_NAMES.map { "${repository}HEAD/$it" }
+            location[0] == "tree" && location.size >= 2 -> INDEX_NAMES.map { repository + location.drop(1).joinToString("/") + "/" + it }
+            location[0] in setOf("blob", "raw") && location.size >= 3 -> listOf(repository + location.drop(1).joinToString("/"))
+            else -> null
+        }
+    }
+
     private companion object {
-        val INDEX_NAMES = setOf("index.json", "catalog.json", "source.json")
+        val INDEX_NAMES = listOf("registry.json", "index.json", "catalog.json", "source.json")
+        val GITHUB_HOSTS = setOf("github.com", "www.github.com")
     }
 }

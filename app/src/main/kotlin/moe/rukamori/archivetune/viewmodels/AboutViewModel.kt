@@ -88,12 +88,19 @@ data class TeamMemberCollection private constructor(
     }
 }
 
+enum class AboutLinkEmphasis {
+    STANDARD,
+    PRIMARY,
+    ACCENT,
+}
+
 @Immutable
 data class AboutLinkUiModel(
     val id: String,
     @DrawableRes val iconResId: Int,
     @StringRes val labelResId: Int,
     val url: String,
+    val emphasis: AboutLinkEmphasis = AboutLinkEmphasis.STANDARD,
 )
 
 @Immutable
@@ -417,6 +424,7 @@ class AboutViewModel
                             iconResId = R.drawable.github,
                             labelResId = R.string.about_content_desc_github,
                             url = "https://github.com/rukamori/ArchiveTune",
+                            emphasis = AboutLinkEmphasis.PRIMARY,
                         ),
                         AboutLinkUiModel(
                             id = "website",
@@ -435,6 +443,7 @@ class AboutViewModel
                             iconResId = R.drawable.coffee,
                             labelResId = R.string.about_content_desc_donate,
                             url = "https://miuka.moe/donate",
+                            emphasis = AboutLinkEmphasis.ACCENT,
                         ),
                         AboutLinkUiModel(
                             id = "discord",
@@ -584,6 +593,42 @@ class AboutViewModel
                                     ),
                                 ),
                         ),
+                        TeamMember(
+                            avatarUrl = "https://avatars.githubusercontent.com/u/26746725?v=4",
+                            name = "Boidushya",
+                            positionResId = R.string.about_position_boidushya,
+                            profileUrl = "https://github.com/boidushya",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/boidushya",
+                                    ),
+                                AboutLinkUiModel(
+                                    id = "website",
+                                    iconResId = R.drawable.website,
+                                    labelResId = R.string.about_content_desc_website,
+                                    url = "https://https://boidu.dev",
+                                ),
+                            ),
+                        ),
+                        TeamMember(
+                            avatarUrl = LrcRedAvatarUri,
+                            name = "lrc.red",
+                            positionResId = R.string.about_position_lrcred,
+                            profileUrl = LrcRedUrl,
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "website",
+                                        iconResId = R.drawable.website,
+                                        labelResId = R.string.about_content_desc_website,
+                                        url = LrcRedUrl,
+                                    ),
+                                ),
+                        ),
                     ),
                 contributorsState = contributorsState,
                 contributorsReadMoreUrl = ContributorsReadMoreUrl,
@@ -640,5 +685,8 @@ class AboutViewModel
             const val MaxDisplayedContributors = 20
             const val DebugBuildBadge = "DEBUG"
             const val ContributorsReadMoreUrl = "https://github.com/rukamori/ArchiveTune/graphs/contributors"
+            const val LrcRedUrl = "https://lrc.red"
+            const val LrcRedAvatarUri =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAnklEQVR42u3RMQ0AQAjAQCYMvH91CAELP5JwTargIiRJkiRJkiRJkiR9VPn60gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJsBJEmSJEmSJEmSpJUNCtLbRu3GUiYAAAAASUVORK5CYII="
         }
     }

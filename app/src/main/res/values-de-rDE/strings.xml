@@ -137,7 +137,6 @@
     <string name="undo">Rückgängig machen</string>
     <string name="lyrics_not_found">Songtext nicht gefunden</string>
     <string name="sleep_timer">Sleep-Timer</string>
-    <string name="end_of_song">Songende</string>
     <plurals name="minute">
         <item quantity="one">1 Minute</item>
         <item quantity="other">%d Minuten</item>
@@ -238,7 +237,6 @@
     <string name="ok_button">OK</string>
     <string name="custom_radius">Eckenradius des Thumbnails anpassen</string>
     <string name="custom">Benutzerdefiniert</string>
-    <string name="custom_value">Benutzerdefinierter Wert</string>
     <string name="customized_background">Angepasster Hintergrund</string>
     <string name="customize_background_title">Hintergrund anpassen</string>
     <string name="add_image">Bild hinzufügen</string>
@@ -269,7 +267,6 @@
     <string name="proxy_type">Proxy-Typ</string>
     <string name="enable_betterlyrics">BetterLyrics aktivieren</string>
     <string name="player_and_audio">Player und Audio</string>
-    <string name="audio_quality">Audioqualität</string>
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">Hoch</string>
     <string name="audio_quality_low">Niedrig</string>
@@ -462,11 +459,8 @@
     <string name="recently_added">Kürzlich hinzugefügt</string>
     <string name="sort_descending">Absteigend sortieren</string>
     <string name="sort_ascending">Aufsteigend sortieren</string>
-    <string name="your_collection">Deine Sammlung</string>
     <string name="playing_desc">Läuft</string>
     <string name="tracks_label">Titel</string>
-    <string name="song_singular">Song</string>
-    <string name="more_playlists_desc">Weitere Playlists</string>
     <string name="more_label">Mehr</string>
     <string name="tracks_count_label">Titelanzahl</string>
     <string name="recently_updated">Kürzlich aktualisiert</string>
@@ -621,7 +615,6 @@
     <string name="playback_state_unknown">UNBEKANNT</string>
     <string name="share_logs">Protokolle teilen</string>
     <string name="updates">Updates</string>
-    <string name="updates_status_checking">Überprüfe auf die aktuellste Version</string>
     <string name="updates_status_current">Du verwendest die aktuellste verfügbare Version</string>
     <string name="enable_update_notification">Updatebenachrichtigung aktivieren</string>
     <string name="update_channel">Updatekanal</string>
@@ -642,7 +635,6 @@
     <string name="permission_status_allowed">Erlaubt</string>
     <string name="next">Nächster</string>
     <string name="current_version">Aktuelle Version</string>
-    <string name="latest_version_format">Neueste: %s</string>
     <string name="allow">Zulassen</string>
     <string name="you_might_like">Könnte dir gefallen</string>
     <string name="refresh_suggestions">Vorschläge aktualisieren</string>
@@ -677,7 +669,6 @@
     <string name="together_server_error">Serverfehler, bitte später erneut versuchen</string>
     <string name="leave">Verlassen</string>
     <string name="join">Beitreten</string>
-    <string name="joined">Beigetreten</string>
     <string name="loading">Wird geladen</string>
     <string name="connecting">Verbinde</string>
     <string name="copy_link">Link kopieren</string>
@@ -695,7 +686,6 @@
     <string name="saved_accounts">Gespeicherte Konten</string>
     <string name="save_current_account">Aktuelles Konto speichern</string>
     <string name="library_top_mixes_no_recent_history">Höre dir mehr Songs an, dann aktualisiere, um KI-Mixe aus deinem bisherigen Verlauf zu erstellen.</string>
-    <string name="no_artist_yet">Noch kein Künstler</string>
     <string name="cached">Im Cache</string>
     <string name="library_top_mixes_refresh">Mixe aktualisieren</string>
     <string name="library_top_mixes_ai_not_configured_title">Konfiguriere KI, um Mixe zu erstellen</string>
@@ -735,8 +725,6 @@
     <string name="onboarding_permission_notifications_title">Benachrichtigungen</string>
     <string name="onboarding_permission_unavailable">Nicht verfügbar</string>
     <string name="onboarding_version_label">Version %1$s</string>
-    <string name="total_label">gesamt</string>
-    <string name="recently_played_artists">Kürzlich gespielte Künstler</string>
     <string name="longest_duration">Längste Dauer</string>
     <string name="shortest_duration">Kürzeste Dauer</string>
     <string name="cast_available_device_count">Geräte gefunden: %1$d</string>
@@ -783,10 +771,14 @@
     <string name="app_icon_empty">Keine App-Symbole verfügbar</string>
     <string name="app_icon_load_failed">App-Symbole konnten nicht geladen werden</string>
     <string name="app_icon_change_failed">App-Symbol konnte nicht geändert werden</string>
+    <string name="app_icon_applying">%1$s wird angewendet…</string>
+    <string name="app_icon_by_author">von %1$s</string>
+    <string name="app_icon_github_profile">GitHub-Profil</string>
+    <string name="app_icon_details">Symboldetails</string>
+    <string name="app_icon_use">Dieses Symbol verwenden</string>
     <string name="app_icon_current">Aktuelles Symbol</string>
     <string name="together_unknown_participant">Jemand</string>
     <string name="lyrics_searching_providers">Suche Anbieter</string>
-    <string name="featured_album_badge">VORGESTELLTES ALBUM</string>
     <string name="widget_insights_title">Höreinblicke</string>
     <string name="together_room_closed_inactivity_notification">Raum geschlossen, da für 10 Minuten niemand beigetreten ist</string>
     <string name="show_player_volume_bar">Lautstärkeregler anzeigen</string>
@@ -820,7 +812,6 @@
     <string name="updates_recent_commits_count">%1$d aktuelle Commits</string>
     <string name="updates_no_commits">Keine aktuellen Commits gefunden</string>
     <string name="check_for_update">Auf Update überprüfen</string>
-    <string name="download_complete">Herunterladen abgeschlossen</string>
     <string name="onboarding_community_title">Bleibe verbunden</string>
     <string name="onboarding_gms_variant">GMS-Edition</string>
     <string name="onboarding_foss_variant">FOSS-Edition</string>
@@ -836,7 +827,6 @@
     <string name="together_transfer_host_confirm">Host an %1$s übertragen?</string>
     <string name="lyrics_search_still_searching">Suche noch</string>
     <string name="unsupported_language">Sprache nicht unterstützt: %1$s</string>
-    <string name="top_artist_badge">TOP-KÜNSTLER</string>
     <string name="cast_sheet_subtitle">Wähle wo ArchiveTune spielen soll</string>
     <string name="cast_disconnect">Trennen</string>
     <string name="app_icon_description">App-Symbol auswählen</string>
@@ -844,7 +834,6 @@
     <string name="enable_youlyplus_lyrics">YouLyPlus-Songtexte aktivieren</string>
     <string name="eq_waiting_for_audio_session">Warte auf Audiositzung</string>
     <string name="onboarding_permissions_title">Berechtigungen überprüfen</string>
-    <string name="onboarding_empty_subtitle">Zu ArchiveTune fortfahren.</string>
     <string name="together_queue_count">%1$d in Warteschlange</string>
     <string name="together_shuffle_on">Shuffle an</string>
     <string name="together_shuffle_off">Shuffle aus</string>
@@ -937,7 +926,6 @@
     <string name="eq_sound_shaping_on">Soundanpassung ist an</string>
     <string name="eq_sound_shaping_off">Soundanpassung ist aus</string>
     <string name="eq_enable_description">Diese Kontrollen auf die ArchiveTune-Wiedergabe anwenden</string>
-    <string name="eq_control_mode">Kontrollmodus</string>
     <string name="eq_advanced">Erweitert</string>
     <string name="eq_preset_number">Voreinstellung %1$d</string>
     <string name="eq_profiles_description">Behalte, importiere und teile ganze Konfigurationen</string>
@@ -975,7 +963,6 @@
     <string name="together_welcome_host_body">Tippe Sitzung starten und teile dann den Sitzungslink. Lasse ArchiveTune während dem Hosten im Hintergrund offen.</string>
     <string name="together_activity_log_empty_body">Sitzungsereignisse werden hier erscheinen wenn sie passieren.</string>
     <string name="together_activity_log">Aktivitätslog</string>
-    <string name="together_repeat_mode">Wiederhole %1$d</string>
     <string name="together_playback_playing">Spielt</string>
     <string name="together_playback_empty">Nichts spielt</string>
     <string name="together_hosting">Hoste Sitzung</string>

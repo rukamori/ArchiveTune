@@ -22,10 +22,12 @@ import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
 import moe.rukamori.archivetune.constants.EnableBinimumLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
+import moe.rukamori.archivetune.constants.EnableLrcRedLyricsKey
 import moe.rukamori.archivetune.constants.EnableMegalobizLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixAppleMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
+import moe.rukamori.archivetune.constants.EnableMusixmatchLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixSpotifyLyricsKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
@@ -58,6 +60,7 @@ class LyricsProviderSettingsRepository @Inject constructor(
         PreferredLyricsProvider.BETTER_LYRICS_PORTATO to EnableBetterLyricsPortatoKey,
         PreferredLyricsProvider.YOULY_PLUS to EnableYouLyPlusLyricsKey,
         PreferredLyricsProvider.BINIMUM to EnableBinimumLyricsKey,
+        PreferredLyricsProvider.LRC_RED to EnableLrcRedLyricsKey,
         PreferredLyricsProvider.LRCLIB to EnableLrcLibKey,
         PreferredLyricsProvider.KUGOU to EnableKugouKey,
         PreferredLyricsProvider.MEGALOBIZ to EnableMegalobizLyricsKey,
@@ -66,6 +69,7 @@ class LyricsProviderSettingsRepository @Inject constructor(
         PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to EnablePaxsenixAppleMusicLyricsKey,
         PreferredLyricsProvider.PAXSENIX_SPOTIFY to EnablePaxsenixSpotifyLyricsKey,
         PreferredLyricsProvider.PAXSENIX_MUSIXMATCH to EnablePaxsenixMusixmatchLyricsKey,
+        PreferredLyricsProvider.MUSIXMATCH to EnableMusixmatchLyricsKey,
     )
 
     fun observe(): Flow<LyricsProviderPreferences> = dataStore.data.map { preferences ->

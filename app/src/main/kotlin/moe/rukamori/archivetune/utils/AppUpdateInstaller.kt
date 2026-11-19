@@ -16,31 +16,26 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.contentLength
 import io.ktor.utils.io.readAvailable
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.BuildConfig
 import okhttp3.ConnectionPool
 import java.io.File
 import java.io.IOException
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 
 object AppUpdateInstaller {
+    private val downloadMutex = Mutex()
+
     data class Progress(
         val downloadedBytes: Long,
         val totalBytes: Long,
-    ) {
-        val fraction: Float?
-            get() =
-                totalBytes
-                    .takeIf { it > 0L }
-                    ?.let { downloadedBytes.toFloat() / it.toFloat() }
-                    ?.coerceIn(0f, 1f)
-    }
+    )
 
     private val client by lazy {
         HttpClient(OkHttp) {
@@ -56,28 +51,31 @@ object AppUpdateInstaller {
         }
     }
 
-    suspend fun downloadAndInstall(
+    suspend fun download(
         context: Context,
         url: String,
         onProgress: (Progress) -> Unit,
-    ): Result<Unit> {
-        if (BuildConfig.DISTRIBUTION != "gms") {
-            return Result.failure(IllegalStateException("In-app updates are only available for GMS builds"))
-        }
-
-        return try {
-            val apkFile =
-                withContext(Dispatchers.IO) {
-                    downloadApk(context.applicationContext, url, onProgress)
-                }
-            withContext(Dispatchers.Main) {
-                installApk(context, apkFile)
+    ): File = downloadMutex.withLock {
+        check(BuildConfig.DISTRIBUTION == "gms") { "In-app updates are only available for GMS builds" }
+        withContext(Dispatchers.IO) {
+            val updateDir = File(context.cacheDir, UpdateDirectoryName)
+            if (!updateDir.isDirectory && !updateDir.mkdirs()) {
+                throw IOException("Could not create update directory")
             }
-            Result.success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            Result.failure(e)
+            val downloadedFile = File(updateDir, DownloadFileName)
+            val apkFile = File(updateDir, ApkFileName)
+            var completed = false
+            try {
+                downloadedFile.delete()
+                apkFile.delete()
+                val result = downloadApk(context.applicationContext, url, onProgress)
+                currentCoroutineContext().ensureActive()
+                completed = true
+                result
+            } finally {
+                downloadedFile.delete()
+                if (!completed) apkFile.delete()
+            }
         }
     }
 
@@ -91,9 +89,6 @@ object AppUpdateInstaller {
         }
 
         val updateDir = File(context.cacheDir, UpdateDirectoryName)
-        updateDir.mkdirs()
-        updateDir.listFiles()?.forEach { file -> file.deleteRecursively() }
-
         val downloadedFile = File(updateDir, DownloadFileName)
 
         client.prepareGet(url).execute { response ->
@@ -120,20 +115,21 @@ object AppUpdateInstaller {
                         lastUpdateMs = now
                     }
                 }
+                if (downloadedBytes == 0L || (totalBytes > 0 && downloadedBytes != totalBytes)) {
+                    throw IOException("Update download is incomplete")
+                }
                 emitProgress(downloadedBytes, totalBytes, onProgress)
             }
         }
 
-        return if (url.lowercase(Locale.US).substringBefore('?').endsWith(".apk")) {
+        val apkFile = if (downloadedFile.containsApkManifest()) {
             downloadedFile.renameAsApk()
         } else {
             extractGmsApk(downloadedFile, File(updateDir, ApkFileName))
-                ?: if (downloadedFile.containsApkManifest()) {
-                    downloadedFile.renameAsApk()
-                } else {
-                    throw IOException("No GMS APK found in update artifact")
-                }
+                ?: throw IOException("No GMS APK found in update artifact")
         }
+        check(apkFile.containsApkManifest()) { "Update artifact is not an APK" }
+        return apkFile
     }
 
     private suspend fun emitProgress(
@@ -146,48 +142,41 @@ object AppUpdateInstaller {
         }
     }
 
-    private fun extractGmsApk(
+    private suspend fun extractGmsApk(
         sourceFile: File,
         targetFile: File,
-    ): File? =
-        runCatching {
-            ZipFile(sourceFile).use { zip ->
-                val entries =
-                    zip.entries().asSequence().filter { entry ->
-                        val fileName = entry.name.substringAfterLast('/')
-                        !entry.isDirectory &&
-                            entry.name.endsWith(".apk", ignoreCase = true) &&
-                            !fileName.contains("foss-", ignoreCase = true) &&
-                            !fileName.contains("izzy-", ignoreCase = true)
-                    }
-                val preferredArtifactNames =
-                    listOf(
-                        "app-gms-${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-",
-                        "app-${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-",
-                    )
-                val selectedEntry =
-                    entries
-                        .sortedBy { entry ->
-                            val fileName = entry.name.substringAfterLast('/')
-                            val preferredIndex =
-                                preferredArtifactNames.indexOfFirst { preferredArtifactName ->
-                                    fileName.contains(preferredArtifactName, ignoreCase = true)
-                                }
-                            if (preferredIndex >= 0) preferredIndex else preferredArtifactNames.size
-                        }.firstOrNull()
-                        ?: return@runCatching null
+    ): File? = ZipFile(sourceFile).use { zip ->
+        val entries = zip.entries().asSequence().filter { entry ->
+            val fileName = entry.name.substringAfterLast('/')
+            !entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true) &&
+                !fileName.contains("foss-", ignoreCase = true) && !fileName.contains("izzy-", ignoreCase = true)
+        }
+        val preferredArtifactNames = listOf(
+            "app-gms-${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-",
+            "app-${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-",
+        )
+        val selectedEntry = entries.sortedBy { entry ->
+            val fileName = entry.name.substringAfterLast('/')
+            val preferredIndex = preferredArtifactNames.indexOfFirst { fileName.contains(it, ignoreCase = true) }
+            if (preferredIndex >= 0) preferredIndex else preferredArtifactNames.size
+        }.firstOrNull() ?: return@use null
 
-                zip.getInputStream(selectedEntry).use { input ->
-                    targetFile.outputStream().use { output -> input.copyTo(output) }
+        zip.getInputStream(selectedEntry).use { input ->
+            targetFile.outputStream().use { output ->
+                val buffer = ByteArray(STREAM_BUFFER_SIZE)
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val count = input.read(buffer)
+                    if (count == -1) break
+                    output.write(buffer, 0, count)
                 }
-                targetFile
             }
-        }.getOrNull()
+        }
+        targetFile
+    }
 
     private fun File.containsApkManifest(): Boolean =
-        runCatching {
-            ZipFile(this).use { zip -> zip.getEntry("AndroidManifest.xml") != null }
-        }.getOrDefault(false)
+        ZipFile(this).use { zip -> zip.getEntry("AndroidManifest.xml") != null }
 
     private fun File.renameAsApk(): File {
         val apkFile = File(parentFile, ApkFileName)
@@ -199,22 +188,19 @@ object AppUpdateInstaller {
         return apkFile
     }
 
-    private fun installApk(
+    fun createInstallIntent(
         context: Context,
         apkFile: File,
-    ) {
+    ): Intent {
         val uri =
             FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.FileProvider",
                 apkFile,
             )
-        val intent =
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, ApkMimeType)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        return Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, ApkMimeType)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
     private const val UpdateDirectoryName = "app_update"

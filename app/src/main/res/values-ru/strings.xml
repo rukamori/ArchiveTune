@@ -174,7 +174,6 @@
     <string name="playlist_synced">Плейлист синхронизирован</string>
     <string name="undo">Отменить</string>
     <string name="sleep_timer">Таймер сна</string>
-    <string name="end_of_song">Конец песни</string>
     <plurals name="minute">
         <item quantity="one">%d минута</item>
         <item quantity="few">%d минуты</item>
@@ -288,7 +287,6 @@
     <string name="blur">Размытие</string>
     <string name="contrast">Контраст</string>
     <string name="brightness">Яркость</string>
-    <string name="custom_value">Пользовательское</string>
     <string name="archivetune_canvas">ArchiveTune Canvas</string>
     <string name="archivetune_canvas_desc">Анимировать обложку альбома при воспроизведении</string>
     <string name="show_button1_description">Включить видимость кнопки 1 в Discord Rich Presence</string>
@@ -317,7 +315,6 @@
     <string name="enable_betterlyrics">Включить BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Включить SimpMusic lyrics</string>
     <string name="player_and_audio">Плеер и аудио</string>
-    <string name="audio_quality">Качество аудио</string>
     <string name="audio_quality_auto">Авто</string>
     <string name="audio_quality_high">Высокое</string>
     <string name="audio_quality_low">Низкое</string>
@@ -503,7 +500,6 @@
     <string name="new_version_available">Доступна новая версия</string>
     <string name="updates">Обновления</string>
     <string name="current_version">Текущая версия</string>
-    <string name="latest_version_format">Последняя: %s</string>
     <string name="enable_update_notification">Включить уведомление об обновлении</string>
     <string name="update_channel">Канал обновлений</string>
     <string name="recent_commits">Последние коммиты</string>
@@ -556,7 +552,6 @@
     <string name="together_server_error">Ошибка сервера, попробуйте позже</string>
     <string name="leave">Покинуть</string>
     <string name="join">Присоединиться</string>
-    <string name="joined">Присоединился</string>
     <string name="loading">Загрузка</string>
     <string name="connecting">Подключение…</string>
     <string name="copy_link">Скопировать ссылку</string>
@@ -630,7 +625,6 @@
     <string name="open_with_downloader">Открыть с помощью загрузчика</string>
     <string name="external_downloader_not_installed">Внешнее приложение-загрузчик не установлено</string>
     <string name="external_downloader_not_configured">Не настроено ни одного внешнего загрузчика. Настройте один в Настройки → Плеер.</string>
-    <string name="updates_status_checking">Проверка последнего релиза</string>
     <string name="updates_status_current">Вы на последней версии релиза</string>
     <string name="updates_loading_commits">Загрузка последних коммитов</string>
     <string name="updates_recent_commits_count">%1$d последних коммитов</string>
@@ -673,11 +667,8 @@
     <string name="play_all">Прослушать все</string>
     <string name="sort_descending">Сортировать по убыванию</string>
     <string name="sort_ascending">Сортировать по возрастанию</string>
-    <string name="your_collection">Твоя коллекция</string>
     <string name="playing_desc">Играет</string>
     <string name="tracks_label">треки</string>
-    <string name="song_singular">Песня</string>
-    <string name="more_playlists_desc">Больше плейлистов</string>
     <string name="more_label">Ещё</string>
     <string name="tracks_count_label">Количество треков</string>
     <string name="recently_updated">Недавно обновленные</string>
@@ -686,22 +677,18 @@
     <string name="grid_view">Вид сетки</string>
     <string name="personal_label">Личное</string>
     <string name="options_label">Настройки</string>
-    <string name="top_artist_badge">ЛУЧШИЙ ИСПОЛНИТЕЛЬ</string>
-    <string name="total_label">всего</string>
     <string name="most_tracks">Больше треков</string>
     <string name="least_tracks">Меньше треков</string>
     <string name="play_time">Время воспроизведения</string>
     <string name="subscribed_only">Только для подписчиков</string>
     <string name="all_artists_filter">Все исполнители</string>
     <string name="artist_subtitle">Исполнитель</string>
-    <string name="recently_played_artists">Недавно прослушанные исполнители</string>
     <string name="newest_year">Новый год</string>
     <string name="oldest_year">Старый год</string>
     <string name="longest_duration">Наибольшая длительность</string>
     <string name="shortest_duration">Кратчайшая длительность</string>
     <string name="year_sort">Год</string>
     <string name="duration_sort">Длительность</string>
-    <string name="featured_album_badge">РЕКОМЕНДУЕМЫЙ АЛЬБОМ</string>
     <string name="remove_playlist_cover">Убрать свою обложку</string>
     <string name="playlist_cover_updated">Обложка обновлена</string>
     <string name="playlist_cover_update_failed">Не удалось обновить обложку</string>

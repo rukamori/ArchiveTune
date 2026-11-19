@@ -9,7 +9,6 @@ package moe.rukamori.archivetune.cast
 
 import android.content.Context
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -20,7 +19,7 @@ class DefaultCastPlaybackRepository(
 
     override fun createPlayer(
         context: Context,
-        localPlayer: ExoPlayer,
+        localPlayer: Player,
         mediaItemResolver: CastMediaItemResolver,
     ): Player = localPlayer
 

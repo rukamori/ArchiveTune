@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recap_period_so_far">%1$s · Year so far</string>
+    <string name="recap_recorded_listening">Your recorded listening</string>
+    <string name="recap_highlights">Highlight reel</string>
+    <string name="recap_story_intro">This is your year in music.</string>
+    <string name="recap_story_end">There is even more to hear.</string>
+    <string name="recap_replay">Rewatch highlights</string>
+    <string name="recap_return_overview">Back to your year</string>
+    <string name="recap_hero_emphasis">Relive</string>
+    <string name="recap_hero_statement">%1$s your year in music.</string>
+    <string name="recap_reel_label">Year in Music ’%1$s</string>
+    <string name="recap_pause_highlights">Pause highlights</string>
+    <string name="recap_resume_highlights">Resume highlights</string>
+    <string name="recap_mute">Mute soundtrack</string>
+    <string name="recap_unmute">Unmute soundtrack</string>
+    <string name="recap_soundtrack_error">Soundtrack unavailable</string>
+    <string name="recap_retry_soundtrack">Retry soundtrack</string>
+    <string name="recap_soundtrack_loading">Starting soundtrack</string>
+    <string name="recap_streak_statement">Your longest listening streak was %1$s.</string>
+    <string name="recap_top_song">Top song</string>
+    <string name="recap_top_artist">Top artist</string>
+    <string name="recap_top_album">Top album</string>
+    <string name="recap_ranked_artist">%1$s · %2$s</string>
+    <string name="recap_top_artists_period">Your Top Artists of %1$s</string>
+    <string name="recap_top_songs_period">Your Top Songs of %1$s</string>
+    <string name="recap_top_albums_period">Your Top Albums of %1$s</string>
+    <string name="recap_months">Your year, month by month</string>
+    <string name="recap_habits">Your listening rhythm</string>
+    <string name="recap_distinct_tracks">Different tracks</string>
+    <string name="recap_active_days">Days with music</string>
+    <string name="recap_longest_streak">Longest listening streak</string>
+    <string name="recap_busiest_month">Busiest month</string>
+    <string name="recap_weekday">Most-listened weekday</string>
+    <string name="recap_hour">Most-listened hour</string>
+    <string name="recap_minutes_value">%1$s min</string>
+    <string name="recap_month_listening">You listened for %1$s minutes in %2$s.</string>
+    <string name="recap_listening_minutes">%1$s minutes</string>
+    <plurals name="recap_plays_value">
+        <item quantity="one">%1$s play</item>
+        <item quantity="other">%1$s plays</item>
+    </plurals>
+    <plurals name="recap_days_value">
+        <item quantity="one">%1$s day</item>
+        <item quantity="other">%1$s days</item>
+    </plurals>
+    <string name="recap_summary">Your music recap</string>
+    <string name="recap_choose_year">Choose a year</string>
+    <string name="recap_previous">Previous highlight</string>
+    <string name="recap_next">Next highlight</string>
+    <string name="recap_progress">Highlight %1$d of %2$d</string>
+    <string name="recap_back">Back</string>
+    <string name="recap_pause">Pause</string>
+    <string name="recap_loading">Gathering your listening history</string>
+    <string name="recap_month_empty">No music recorded this month</string>
+    <string name="recap_load_error">Your listening history could not be loaded.</string>
+    <string name="recap_action_error">This action could not be completed. The item may no longer be available.</string>
+    <string name="recap_share_error">Your recap image could not be shared.</string>
+    <string name="recap_preparing_share">Preparing image</string>
+    <string name="recap_month_accessibility">%1$s, %2$s</string>
+    <string name="recap_future_month">Not available yet</string>
+    <string name="recap_ranked_by_time">Ranked by listening time</string>
+</resources>
