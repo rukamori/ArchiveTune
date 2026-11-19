@@ -45,7 +45,6 @@ private const val DUPLICATE_WINDOW_MILLIS = 1_000L
 private val LOGCAT_FILTER_SPECS =
     listOf(
         "AndroidRuntime:E",
-        "LeakCanaryController:W",
         "MusicDatabase:V",
         "MusicWidgetActions:E",
         "RLog:I",
@@ -200,7 +199,7 @@ private fun isRelevantLogcatEntry(
 ): Boolean =
     when (tag) {
         "AndroidRuntime", "libc" -> level >= Log.ERROR
-        "LeakCanaryController", "MusicDatabase", "MusicWidgetActions", "RLog" -> true
+        "MusicDatabase", "MusicWidgetActions", "RLog" -> true
         "System.err" -> message.startsWith("PaxsenixLyrics:")
         "System.out" ->
             message.startsWith("AppleMusicCanvas:") ||

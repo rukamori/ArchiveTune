@@ -43,8 +43,6 @@ accompanist = "2.0.0-rc.4"
 accompanist-core = "0.5.1"
 androidsvg = "1.4"
 aboutLibraries = "15.3.0"
-leakCanary = "2.14"
-spotless = "8.11.0"
 graphicsShapes = "1.1.0"
 quickjsKt = "1.0.18"
 protobuf = "4.36.2"
@@ -157,7 +155,6 @@ accompanist-lyrics-ui = { module = "com.mocharealm.accompanist:lyrics-ui", versi
 accompanist-lyrics-core = { module = "com.mocharealm.accompanist:lyrics-core", version.ref = "accompanist-core" }
 androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
-leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakCanary" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjsKt" }
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
@@ -175,4 +172,3 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 aboutlibraries-android = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
-spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

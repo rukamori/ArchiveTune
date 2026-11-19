@@ -5,15 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.aboutlibraries.android) apply false
-    alias(libs.plugins.spotless)
-}
-
-spotless {
-    kotlin {
-        target("app/src/debug/**/*.kt", "app/src/nightly/**/*.kt")
-        targetExclude("**/build/**", "**/.gradle/**")
-        ktfmt("0.54").googleStyle()
-    }
 }
 
 tasks.named<Delete>("clean") {
@@ -27,15 +18,6 @@ if (tasks.findByName("prepareKotlinBuildScriptModel") == null) {
 subprojects {
     if (tasks.findByName("prepareKotlinBuildScriptModel") == null) {
         tasks.register("prepareKotlinBuildScriptModel") {}
-    }
-}
-
-subprojects {
-    tasks.matching { task ->
-        task.name.startsWith("assemble") &&
-            (task.name.endsWith("Debug") || task.name.endsWith("Nightly"))
-    }.configureEach {
-        dependsOn(rootProject.tasks.named("spotlessApply"))
     }
 }
 
