@@ -1,8 +1,8 @@
 name: Build APKs
 on:
   push:
-    branches: [ am-blend ]   # triggered by the sync workflow's push
-  workflow_dispatch:         # manual button too
+    branches: [ am-blend ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
         with:
           ref: am-blend
 
-      - name: Init submodules safely (no crash)
+      - name: Init submodules safely
         run: |
           git config --global fetch.recurseSubmodules false
           git submodule sync --recursive || true
@@ -24,15 +24,14 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Build (Debug + GMS + FOSS)
+      - name: Build Debug APK
         env:
-          KEYSTORE_B64:      ${{ secrets.KEYSTORE_B64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assemble
-
-      - uses: actions/upload-artifact@v4
+          # This passes your specific secret into the build
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+        run: ./gradlew assembleDebug
+        
+      - name: Save APK
+        uses: actions/upload-artifact@v4
         with:
-          name: archivetune-all
-          path: app/build/outputs/apk/**/*.apk
+          name: archivetune-debug
+          path: app/build/outputs/apk/debug/*.apk
