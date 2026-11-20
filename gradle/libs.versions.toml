@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.1"
+agp = "9.5.2"
 annotation = "1.11.0"
 kotlin = "2.4.21"
 kotlinMetadata = "2.4.21"
