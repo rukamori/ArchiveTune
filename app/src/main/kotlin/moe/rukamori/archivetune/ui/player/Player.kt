@@ -189,6 +189,7 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
+import moe.rukamori.archivetune.ui.player.flamingo.FlamingoPlayerContent
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerScreen
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
@@ -1666,6 +1667,36 @@ fun BottomSheetPlayer(
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V11) {
                     v11Content(true)
+                } else if (playerDesignStyle == PlayerDesignStyle.FLAMINGO) {
+                    enrichedMetadata?.let { metadata ->
+                        FlamingoPlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentSongLiked = currentSongLiked,
+                            volume = deviceMusicVolumeController.volumeFraction,
+                            onVolumeChange = onPlayerVolumeChange,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            currentFormat = currentFormat,
+                            contentBottomPadding = queueCollapsedHeight,
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            onLyricsVisibilityChange = { isLyricsScreenVisible = true },
+                            modifier = Modifier.fillMaxSize().nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
                 } else {
                     LandscapePlayerLayout(
                         modifier =
@@ -1961,6 +1992,36 @@ fun BottomSheetPlayer(
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V11) {
                     v11Content(false)
+                } else if (playerDesignStyle == PlayerDesignStyle.FLAMINGO) {
+                    enrichedMetadata?.let { metadata ->
+                        FlamingoPlayerContent(
+                            mediaMetadata = metadata,
+                            playbackState = playbackState,
+                            isPlaying = isPlaying,
+                            isLoading = isLoading,
+                            canSkipPrevious = canSkipPrevious,
+                            canSkipNext = canSkipNext,
+                            sliderPosition = sliderPosition,
+                            position = position,
+                            duration = duration,
+                            playerConnection = playerConnection,
+                            navController = navController,
+                            state = state,
+                            menuState = menuState,
+                            bottomSheetPageState = bottomSheetPageState,
+                            currentSongLiked = currentSongLiked,
+                            volume = deviceMusicVolumeController.volumeFraction,
+                            onVolumeChange = onPlayerVolumeChange,
+                            canvasPrimaryUrl = artworkCanvas?.animated,
+                            canvasFallbackUrl = artworkCanvas?.videoUrl,
+                            currentFormat = currentFormat,
+                            contentBottomPadding = queueCollapsedHeight,
+                            onSliderValueChange = onSliderValueChange,
+                            onSliderValueChangeFinished = onSliderValueChangeFinished,
+                            onLyricsVisibilityChange = { isLyricsScreenVisible = true },
+                            modifier = Modifier.fillMaxSize().nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        )
+                    }
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
