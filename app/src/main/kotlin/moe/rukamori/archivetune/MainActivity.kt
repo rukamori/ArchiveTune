@@ -263,6 +263,7 @@ import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.musicrecognition.ACTION_MUSIC_RECOGNITION
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
@@ -2915,7 +2916,9 @@ class MainActivity : ComponentActivity() {
         intent: Intent,
         navController: NavHostController,
     ) {
-        val uri = intent.data ?: intent.extras?.getString(Intent.EXTRA_TEXT)?.toUri() ?: return
+        val rawUri = intent.data ?: intent.extras?.getString(Intent.EXTRA_TEXT)?.firstWebLink()?.toUri() ?: return
+        val uri = rawUri.normalizeYouTubeAppUri() ?: return
+        if (!uri.isHierarchical) return
         val coroutineScope = lifecycleScope
 
         val authority = uri.authority?.lowercase()
@@ -2966,36 +2969,28 @@ class MainActivity : ComponentActivity() {
                 val videoId =
                     when {
                         path == "watch" -> uri.getQueryParameter("v")
-                        uri.host == "youtu.be" -> uri.pathSegments.firstOrNull()
+                        path == "embed" || path == "v" -> uri.pathSegments.getOrNull(1)
+                        uri.host.equals("youtu.be", ignoreCase = true) -> path
                         else -> null
-                    }
-                val playlistId = uri.getQueryParameter("list")
+                    }?.trim()?.takeIf { it.isNotEmpty() }
+                val playlistId = uri.getQueryParameter("list")?.trim()?.takeIf { it.isNotEmpty() }
                 val shouldShufflePlaylist = uri.requestsShuffledPlayback()
 
                 videoId?.let { vid ->
                     coroutineScope.launch {
-                        val result =
+                        val resolvedSong =
                             withContext(Dispatchers.IO) {
-                                YouTube.queue(listOf(vid), playlistId)
-                            }
-
-                        result
-                            .onSuccess { queued ->
-                                val mediaItem =
-                                    queued.firstOrNull { it.id == vid }?.toMediaItem()
-                                        ?: queued.firstOrNull()?.toMediaItem()
-                                        ?: MediaItem
-                                            .Builder()
-                                            .setMediaId(vid)
-                                            .setUri(vid)
-                                            .setCustomCacheKey(vid)
-                                            .build()
-                                pendingDeepLinkQueue = ListQueue(items = listOf(mediaItem))
-                                startMusicServiceSafely()
-                                playPendingDeepLinkQueueIfReady()
+                                YouTube.queue(listOf(vid))
                             }.onFailure {
                                 reportException(it)
-                            }
+                            }.getOrNull()
+                                ?.let { queued -> queued.firstOrNull { it.id == vid } ?: queued.firstOrNull() }
+
+                        pendingDeepLinkQueue =
+                            resolvedSong?.let { song -> ListQueue(items = listOf(song.toMediaItem())) }
+                                ?: YouTubeQueue(WatchEndpoint(videoId = vid, playlistId = playlistId))
+                        startMusicServiceSafely()
+                        playPendingDeepLinkQueueIfReady()
                     }
                     return
                 }
@@ -3034,6 +3029,33 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun String.firstWebLink(): String? =
+        split(WhitespaceRegex).firstOrNull { token ->
+            token.startsWith("https://", ignoreCase = true) || token.startsWith("http://", ignoreCase = true)
+        } ?: trim().takeIf { it.isNotEmpty() }
+
+    private fun Uri.normalizeYouTubeAppUri(): Uri? {
+        val isYouTubeAppScheme =
+            scheme.equals("vnd.youtube", ignoreCase = true) || scheme.equals("vnd.youtube.launch", ignoreCase = true)
+        if (!isYouTubeAppScheme) return this
+        val videoId =
+            schemeSpecificPart
+                ?.removePrefix("//")
+                ?.substringBefore('?')
+                ?.substringBefore('#')
+                ?.substringBefore('/')
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return null
+        return Uri
+            .Builder()
+            .scheme("https")
+            .authority("www.youtube.com")
+            .path("watch")
+            .appendQueryParameter("v", videoId)
+            .build()
     }
 
     private fun android.net.Uri.requestsShuffledPlayback(): Boolean {
@@ -3191,6 +3213,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val ACTION_SEARCH = "moe.rukamori.archivetune.action.SEARCH"
         const val ACTION_LIBRARY = "moe.rukamori.archivetune.action.LIBRARY"
+        private val WhitespaceRegex = Regex("\\s+")
     }
 }
 
