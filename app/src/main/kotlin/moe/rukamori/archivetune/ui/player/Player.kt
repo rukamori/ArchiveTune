@@ -1682,7 +1682,6 @@ fun BottomSheetPlayer(
                             playerConnection = playerConnection,
                             navController = navController,
                             state = state,
-                            menuState = menuState,
                             bottomSheetPageState = bottomSheetPageState,
                             currentSongLiked = currentSongLiked,
                             volume = deviceMusicVolumeController.volumeFraction,
