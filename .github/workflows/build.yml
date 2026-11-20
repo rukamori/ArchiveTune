@@ -1,4 +1,4 @@
-name: Build APKs
+name: Build Release APKs
 on:
   push:
     branches: [ am-blend ]
@@ -24,16 +24,34 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Build GMS and FOSS Phone APKs
+      - name: Prepare Signing Config (Release)
+        run: |
+          # If you ever add a real keystore secret, it will use it. 
+          # Otherwise, it generates a temporary one so the Release build doesn't crash!
+          if [ -n "${{ secrets.KEYSTORE_B64 }}" ]; then
+            echo "Using provided keystore secret..."
+            echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > release.keystore
+            echo "storeFile=release.keystore" > keystore.properties
+            echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> keystore.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
+          else
+            echo "No keystore secret found. Generating a temporary one for Release build..."
+            keytool -genkey -v -keystore release.keystore -alias releasekey -keyalg RSA -keysize 2048 -validity 10000 -storepass temp1234 -keypass temp1234 -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, S=Temp, C=US" -noprompt
+            echo "storeFile=release.keystore" > keystore.properties
+            echo "storePassword=temp1234" >> keystore.properties
+            echo "keyAlias=releasekey" >> keystore.properties
+            echo "keyPassword=temp1234" >> keystore.properties
+          fi
+
+      - name: Build GMS and FOSS Release APKs
         env:
           API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
-        # "Universal" ensures it works on all phone processors without ambiguity
-        run: ./gradlew assembleGmsMobileUniversalDebug assembleFossMobileUniversalDebug
+        run: ./gradlew assembleGmsMobileUniversalRelease assembleFossMobileUniversalRelease
 
-      - name: Save APKs
+      - name: Save Release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: archivetune-gms-foss-mobile
-          path: |
-            app/build/outputs/apk/gms/mobile/universal/debug/*.apk
-            app/build/outputs/apk/foss/mobile/universal/debug/*.apk
+          name: archivetune-release-apks
+          # Grabs any Release APKs generated
+          path: app/build/outputs/apk/**/release/*.apk
