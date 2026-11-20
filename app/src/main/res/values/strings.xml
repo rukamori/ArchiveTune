@@ -762,6 +762,8 @@
     <string name="device_volume_zero_playback_paused">Playback paused because device volume is 0. Raise volume to resume.</string>
     <string name="auto_skip_next_on_error">Auto skip to next song when error occurs</string>
     <string name="auto_skip_next_on_error_desc">Ensure your continuous playback experience</string>
+    <string name="play_video_as_official_audio">Play videos as official audio</string>
+    <string name="play_video_as_official_audio_desc">Swap music videos for their official song version, and play the video only when no audio version exists</string>
     <string name="stop_music_on_task_clear">Stop music on task clear</string>
     <string name="wakelock">Keep CPU awake during playback</string>
     <string name="wakelock_desc">Prevents the system from interrupting music by holding a CPU wake lock</string>

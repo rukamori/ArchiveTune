@@ -191,6 +191,7 @@ import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.PlayVideoAsOfficialAudioKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
 import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
@@ -288,6 +289,7 @@ import moe.rukamori.archivetune.sponsorblock.SponsorBlockPlaybackController
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.together.TogetherPlaybackSync
+import moe.rukamori.archivetune.together.isConnectedToSession
 import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
 import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
@@ -390,6 +392,18 @@ class MusicService :
 
     @Inject
     lateinit var moduleDiagnostics: ModuleDiagnostics
+
+    @Inject
+    lateinit var officialAudioResolver: OfficialAudioResolver
+
+    private var playVideoAsOfficialAudio = false
+    private var officialAudioSubstitutionJob: Job? = null
+    private var officialAudioSubstitutionPending = false
+    private val officialAudioSources =
+        object : LinkedHashMap<String, MediaItem>() {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MediaItem>?): Boolean =
+                size > MAX_OFFICIAL_AUDIO_SOURCES
+        }
 
     private val activeModuleAudio = ConcurrentHashMap<String, ModuleAudioSelection>()
     private val moduleSourceOutcomes = ConcurrentHashMap<String, ResolvedModuleSourceOutcome>()
@@ -1324,6 +1338,13 @@ class MusicService :
                 if (shouldHideMusicVideos) {
                     removeMusicVideoItems()
                 }
+            }
+        dataStore.data
+            .map { preferences -> preferences[PlayVideoAsOfficialAudioKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { enabled ->
+                playVideoAsOfficialAudio = enabled
+                requestOfficialAudioSubstitution()
             }
         widgetUpdater =
             MusicServiceWidgetUpdater(
@@ -2326,6 +2347,85 @@ class MusicService :
 
     private fun removeMusicVideoItems() {
         removeQueueItems { item -> item.metadata?.isMusicVideo == true }
+    }
+
+    private fun canSubstituteOfficialAudio(): Boolean =
+        playVideoAsOfficialAudio && !togetherSessionState.value.isConnectedToSession
+
+    private fun requestOfficialAudioSubstitution() {
+        if (!canSubstituteOfficialAudio()) return
+        officialAudioSubstitutionPending = true
+        if (officialAudioSubstitutionJob?.isActive == true) return
+        officialAudioSubstitutionJob =
+            scope.launch {
+                while (officialAudioSubstitutionPending) {
+                    officialAudioSubstitutionPending = false
+                    try {
+                        substituteUpcomingOfficialAudio()
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (failure: Exception) {
+                        Timber.tag("OfficialAudio").w(failure, "Failed to substitute official audio")
+                    }
+                }
+            }
+    }
+
+    private suspend fun substituteUpcomingOfficialAudio() {
+        val indices =
+            listOf(player.currentMediaItemIndex, player.nextMediaItemIndex)
+                .filter { it in 0 until player.mediaItemCount }
+                .distinct()
+        for (hintIndex in indices) {
+            if (!canSubstituteOfficialAudio() || hintIndex !in 0 until player.mediaItemCount) return
+            val video = player.getMediaItemAt(hintIndex)
+            val substitute = officialAudioFor(video) ?: continue
+            val index = findQueueItemIndex(video, hintIndex) ?: continue
+            if (index == player.currentMediaItemIndex &&
+                player.currentPosition > OFFICIAL_AUDIO_CURRENT_ITEM_SWAP_WINDOW_MS
+            ) {
+                continue
+            }
+            player.replaceMediaItem(index, substitute)
+        }
+    }
+
+    private suspend fun officialAudioFor(video: MediaItem): MediaItem? {
+        if (!canSubstituteOfficialAudio()) return null
+        val metadata = video.metadata?.takeIf { it.isMusicVideo && !it.isPodcast } ?: return null
+        val uri = video.localConfiguration?.uri
+        if (video.mediaId.isLocalMediaId() || uri == null || uri.shouldBypassYouTubeResolver()) return null
+        if (withContext(Dispatchers.IO) { downloadCache.isFullyCached(video.mediaId) }) return null
+        val song =
+            (officialAudioResolver.resolve(metadata) as? OfficialAudioResolver.Resolution.Available)?.song
+                ?: return null
+        if (!canSubstituteOfficialAudio()) return null
+        val entryId = video.queueEntryId ?: java.util.UUID.randomUUID().toString()
+        officialAudioSources[entryId] = video
+        return song.toMediaItem().withQueueEntry(recommended = video.isQueueRecommendation, id = entryId)
+    }
+
+    private fun findQueueItemIndex(
+        item: MediaItem,
+        hintIndex: Int,
+    ): Int? {
+        val entryId = item.queueEntryId
+        val matches = { candidate: MediaItem ->
+            if (entryId != null) candidate.queueEntryId == entryId else candidate === item
+        }
+        if (hintIndex in 0 until player.mediaItemCount && matches(player.getMediaItemAt(hintIndex))) return hintIndex
+        return (0 until player.mediaItemCount).firstOrNull { matches(player.getMediaItemAt(it)) }
+    }
+
+    private fun restoreOfficialAudioSource(): Boolean {
+        val current = player.currentMediaItem ?: return false
+        val video = current.queueEntryId?.let { entryId -> officialAudioSources.remove(entryId) } ?: return false
+        if (video.mediaId == current.mediaId) return false
+        officialAudioResolver.markUnavailable(video.mediaId)
+        Timber.tag("OfficialAudio").i("Falling back to %s after %s failed to play", video.mediaId, current.mediaId)
+        player.replaceMediaItem(player.currentMediaItemIndex, video)
+        player.prepare()
+        return true
     }
 
     private inline fun removeQueueItems(shouldRemove: (MediaItem) -> Boolean) {
@@ -4024,12 +4124,13 @@ class MusicService :
             val hideExplicit = dataStore.get(HideExplicitKey, false)
             val hideVideo = dataStore.get(HideVideoKey, false)
             val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
-            val preloadItem =
+            val preloadVideo =
                 queue.preloadItem
                     ?.toMediaItem()?.withQueueEntry(recommended = false)
                     ?.takeUnless { item ->
                         item.hasBlockedArtist(loadBlockedArtistIds())
                     }
+            val preloadItem = preloadVideo?.let { video -> officialAudioFor(video) ?: video }
             if (preloadItem != null) {
                 player.setMediaItem(preloadItem)
                 player.prepare()
@@ -4089,17 +4190,20 @@ class MusicService :
                 return@launch
             }
             if (preloadItem != null) {
-                val preloadMediaId = preloadItem.mediaId.trim()
+                val preloadMediaIds =
+                    listOfNotNull(preloadItem.mediaId, preloadVideo?.mediaId)
+                        .map(String::trim)
+                        .filterTo(HashSet(), String::isNotEmpty)
                 val insertionIndex =
                     initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
                 val itemsBeforeCurrent =
                     initialStatus.items
                         .subList(0, insertionIndex)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                        .filterNot { it.mediaId.trim() in preloadMediaIds }
                 val itemsAfterCurrent =
                     initialStatus.items
                         .subList(insertionIndex, initialStatus.items.size)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                        .filterNot { it.mediaId.trim() in preloadMediaIds }
 
                 player.addMediaItems(0, itemsBeforeCurrent)
                 player.addMediaItems(itemsAfterCurrent)
@@ -4107,8 +4211,11 @@ class MusicService :
                     applyCurrentFirstShuffleOrder()
                 }
             } else {
-                val items = initialStatus.items
                 val index = initialStatus.mediaItemIndex
+                val items =
+                    initialStatus.items.toMutableList().apply {
+                        getOrNull(index)?.let { video -> officialAudioFor(video) }?.let { substitute -> set(index, substitute) }
+                    }
 
                 player.setMediaItems(items, index, initialStatus.position)
                 player.prepare()
@@ -7202,6 +7309,15 @@ class MusicService :
         ) {
             updateNextStreamPreload()
         }
+        if (events.containsAny(
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED,
+            )
+        ) {
+            requestOfficialAudioSubstitution()
+        }
         val currentMediaId = player.currentMediaItem?.mediaId
         if (currentMediaId == null && currentHistoryMediaId != null) {
             beginHistorySession(null, forceNew = true)
@@ -7625,6 +7741,7 @@ class MusicService :
     }
 
     private suspend fun finishUnrecoveredPlaybackError(error: PlaybackException) {
+        if (restoreOfficialAudioSource()) return
         if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
         surfaceUnrecoveredPlaybackError(error)
     }
@@ -9030,6 +9147,8 @@ class MusicService :
         private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
         private const val DISCORD_SYNC_TAG = "DiscordSync"
         private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
+        private const val MAX_OFFICIAL_AUDIO_SOURCES = 256
+        private const val OFFICIAL_AUDIO_CURRENT_ITEM_SWAP_WINDOW_MS = 5_000L
         const val CHANNEL_ID = "music_channel_01"
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
             "moe.rukamori.archivetune.action.MEDIA_NOTIFICATION_DISMISSED"
