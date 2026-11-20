@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import moe.rukamori.archivetune.ui.component.BackAwareModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -128,7 +129,11 @@ fun Queue(
                             if (latestQueueVisible) {
                                 val message = if (event.count == 1) context.getString(R.string.removed_song_from_queue, event.title.orEmpty())
                                     else context.getString(R.string.removed_n_songs_from_queue, event.count)
-                                undo = snackbar.showSnackbar(message, actionLabel = context.getString(R.string.undo)) == SnackbarResult.ActionPerformed
+                                undo = snackbar.showSnackbar(
+                                    message = message,
+                                    actionLabel = context.getString(R.string.undo),
+                                    duration = SnackbarDuration.Long,
+                                ) == SnackbarResult.ActionPerformed
                             }
                         } finally { viewModel.finishRemoval(event.token, undo) }
                     }
