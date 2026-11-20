@@ -1,0 +1,44 @@
+name: Sync Stable Release
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # checks every 6 hours
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: am-blend
+
+      - name: Disable submodule auto-fetch (THE FIX)
+        run: git config --global fetch.recurseSubmodules false
+
+      - name: Get latest stable tag from rukamori
+        id: tag
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/rukamori/ArchiveTune/releases/latest | grep '"tag_name"' | cut -d '"' -f4)
+          echo "value=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest stable tag: $LATEST"
+
+      - name: Merge only if new release
+        run: |
+          git remote add upstream https://github.com/rukamori/ArchiveTune.git || true
+          git fetch --tags upstream
+          CURRENT=$(cat RELEASE_TAG 2>/dev/null || echo "none")
+          NEW="${{ steps.tag.outputs.value }}"
+          if [ "$CURRENT" != "$NEW" ] && [ -n "$NEW" ]; then
+            echo "New release detected: $NEW (was $CURRENT)"
+            git merge -X ours "upstream/$NEW" -m "sync stable $NEW" || true
+            echo "$NEW" > RELEASE_TAG
+            git config user.name "auto-sync"
+            git config user.email "sync@local"
+            git add RELEASE_TAG
+            git commit -m "bump to stable $NEW" || true
+            git push origin am-blend || true
+          else
+            echo "No new release. Still on $CURRENT"
+          fi
