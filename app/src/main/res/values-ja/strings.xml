@@ -623,8 +623,6 @@
     <string name="playback_error_hint_decoder">このデバイスはこのトラックのオーディオをデコードできませんでした。</string>
     <string name="playback_error_hint_http">サーバーは HTTP %1$d で応答しました。しばらくしてからもう一度試してください。</string>
     <string name="playback_error_hint_unknown">このトラックの再生中に問題が発生しました。技術的な詳細は、報告するときに役立ちます。</string>
-    <string name="playback_error_show_details">技術的な詳細を表示する</string>
-    <string name="playback_error_hide_details">技術的な詳細を隠す</string>
     <string name="content_language">デフォルトのコンテンツ言語</string>
     <string name="content_country">デフォルトのコンテンツの国</string>
     <string name="system_default">システムのデフォルト</string>

@@ -100,6 +100,8 @@ class PlayerConnection(
     val aodModeEnabled = MutableStateFlow(false)
 
     val error = MutableStateFlow<PlaybackException?>(null)
+    private val _failure = MutableStateFlow<PlaybackFailure?>(null)
+    val failure = _failure.asStateFlow()
     private var dismissedPlaybackError: PlaybackException? = null
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
@@ -131,8 +133,8 @@ class PlayerConnection(
 
         playbackErrorJob =
             scope.launch {
-                service.unrecoveredPlaybackError.collect { playbackError ->
-                    updatePlaybackError(playbackError)
+                service.unrecoveredPlaybackFailure.collect { playbackFailure ->
+                    updatePlaybackFailure(playbackFailure)
                 }
             }
 
@@ -312,7 +314,8 @@ class PlayerConnection(
     }
 
     fun dismissPlaybackError() {
-        dismissedPlaybackError = error.value ?: service.unrecoveredPlaybackError.value
+        dismissedPlaybackError = error.value ?: service.unrecoveredPlaybackFailure.value?.error
+        _failure.value = null
         error.value = null
     }
 
@@ -402,15 +405,18 @@ class PlayerConnection(
         }
     }
 
-    private fun updatePlaybackError(playbackError: PlaybackException?) {
+    private fun updatePlaybackFailure(playbackFailure: PlaybackFailure?) {
+        val playbackError = playbackFailure?.error
         when {
             playbackError == null -> {
                 dismissedPlaybackError = null
+                _failure.value = null
                 error.value = null
             }
 
             playbackError !== dismissedPlaybackError -> {
                 dismissedPlaybackError = null
+                _failure.value = playbackFailure
                 error.value = playbackError
             }
         }

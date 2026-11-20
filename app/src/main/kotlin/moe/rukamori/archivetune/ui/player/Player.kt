@@ -331,7 +331,7 @@ fun BottomSheetPlayer(
         immersivePlayerViewModel.bind(playerConnection)
         onDispose { immersivePlayerViewModel.unbind(playerConnection) }
     }
-    val playbackError by playerConnection.error.collectAsStateWithLifecycle()
+    val playbackFailure by playerConnection.failure.collectAsStateWithLifecycle()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val retryPlayback =
@@ -2072,18 +2072,18 @@ fun BottomSheetPlayer(
         pureBlack = useBlackBackground,
     )
 
-    val activePlaybackError = playbackError
+    val activePlaybackFailure = playbackFailure
     val isRecoveryDestination =
         currentRoute?.startsWith(LOGIN_ROUTE) == true || currentRoute == "settings/account"
-    if (activePlaybackError != null && !isRecoveryDestination) {
-        val errorInfo = remember(activePlaybackError) { activePlaybackError.toPlaybackErrorInfo() }
+    if (activePlaybackFailure != null && !isRecoveryDestination) {
+        val errorInfo = remember(activePlaybackFailure.error) { activePlaybackFailure.error.toPlaybackErrorInfo() }
         val loginClick =
             remember(errorInfo.loginRecoveryUrl, navigateToLogin) {
                 { navigateToLogin(errorInfo.loginRecoveryUrl) }
             }
 
         PlaybackErrorDialog(
-            error = activePlaybackError,
+            failure = activePlaybackFailure,
             showLoginAction = errorInfo.loginRecoveryUrl != null,
             onRetry = retryPlayback,
             onClose = dismissPlaybackError,

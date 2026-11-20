@@ -245,9 +245,14 @@ import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.modules.ModuleAudioSelection
+import moe.rukamori.archivetune.modules.ModuleDiagnostics
 import moe.rukamori.archivetune.modules.ModuleDownloadRepository
 import moe.rukamori.archivetune.modules.ModuleMediaStorage
+import moe.rukamori.archivetune.modules.ModuleRepository
 import moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase
+import moe.rukamori.archivetune.modules.displayAuthor
+import moe.rukamori.archivetune.modules.displayLabel
+import moe.rukamori.archivetune.modules.moduleDiagnosticLabel
 import moe.rukamori.archivetune.modules.moduleMatchMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
@@ -380,7 +385,19 @@ class MusicService :
     @Inject
     lateinit var moduleDownloadUtil: DownloadUtil
 
+    @Inject
+    lateinit var moduleRepository: ModuleRepository
+
+    @Inject
+    lateinit var moduleDiagnostics: ModuleDiagnostics
+
     private val activeModuleAudio = ConcurrentHashMap<String, ModuleAudioSelection>()
+    private val moduleSourceOutcomes = ConcurrentHashMap<String, ResolvedModuleSourceOutcome>()
+
+    private data class ResolvedModuleSourceOutcome(
+        val outcome: ModuleSourceOutcome,
+        val consultedModules: List<ConsultedModule>,
+    )
 
     @Inject
     lateinit var observePlaybackPreloadConfiguration: ObservePlaybackPreloadConfigurationUseCase
@@ -450,8 +467,8 @@ class MusicService :
     private lateinit var connectivityManager: ConnectivityManager
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
-    private val _unrecoveredPlaybackError = MutableStateFlow<PlaybackException?>(null)
-    val unrecoveredPlaybackError = _unrecoveredPlaybackError.asStateFlow()
+    private val _unrecoveredPlaybackFailure = MutableStateFlow<PlaybackFailure?>(null)
+    val unrecoveredPlaybackFailure = _unrecoveredPlaybackFailure.asStateFlow()
     private val isNetworkConnected = MutableStateFlow(false)
 
     private val audioQuality by enumPreference(
@@ -7505,8 +7522,8 @@ class MusicService :
 
     override fun onPlayerErrorChanged(error: PlaybackException?) {
         super.onPlayerErrorChanged(error)
-        if (_unrecoveredPlaybackError.value !== error) {
-            _unrecoveredPlaybackError.value = null
+        if (_unrecoveredPlaybackFailure.value?.error !== error) {
+            _unrecoveredPlaybackFailure.value = null
         }
     }
 
@@ -7524,9 +7541,87 @@ class MusicService :
     }
 
     private fun surfaceUnrecoveredPlaybackError(error: PlaybackException) {
-        if (player.playerError === error) {
-            _unrecoveredPlaybackError.value = error
+        if (player.playerError !== error) return
+        val item = player.currentMediaItem
+        val metadata = item?.metadata
+        _unrecoveredPlaybackFailure.value =
+            PlaybackFailure(
+                error = error,
+                source = item?.let { playbackFailureSource(it, error) },
+                trackTitle = metadata?.title?.takeIf(String::isNotBlank),
+                trackArtists =
+                    metadata?.artists
+                        ?.map { it.name }
+                        ?.filter(String::isNotBlank)
+                        ?.joinToString(", ")
+                        ?.takeIf(String::isNotBlank),
+            )
+    }
+
+    private fun playbackFailureSource(
+        item: MediaItem,
+        error: PlaybackException,
+    ): PlaybackFailureSource {
+        val uri = item.localConfiguration?.uri
+        val scheme = uri?.scheme?.lowercase(Locale.US)
+        if (item.mediaId.isLocalMediaId() || uri?.shouldBypassPlayerCache() == true) {
+            return PlaybackFailureSource.LocalFile
         }
+        if (scheme == "http" || scheme == "https") {
+            return PlaybackFailureSource.DirectLink(uri?.host.orEmpty())
+        }
+        val preparationFailed = error.hasCause<ModuleSourcePreparationException>()
+        val resolved = moduleSourceOutcomes[item.mediaId]
+        return when (val outcome = resolved?.outcome) {
+            is ModuleSourceOutcome.Selected -> {
+                outcome.selection.toFailureSource(outcome.offline, preparationFailed)
+            }
+
+            is ModuleSourceOutcome.Failed -> {
+                outcome.selection?.toFailureSource(outcome.offline, preparationFailed = true)
+                    ?: PlaybackFailureSource.ModulePipeline
+            }
+
+            is ModuleSourceOutcome.Fallback -> {
+                PlaybackFailureSource.YouTubeMusic(resolved?.consultedModules.orEmpty())
+            }
+
+            ModuleSourceOutcome.Bypassed, null -> {
+                if (preparationFailed) {
+                    PlaybackFailureSource.ModulePipeline
+                } else {
+                    PlaybackFailureSource.YouTubeMusic(emptyList())
+                }
+            }
+        }
+    }
+
+    private fun ModuleAudioSelection.toFailureSource(
+        offline: Boolean,
+        preparationFailed: Boolean,
+    ): PlaybackFailureSource.Module =
+        PlaybackFailureSource.Module(
+            name = module.displayLabel,
+            version = module.manifest.version,
+            author = module.displayAuthor,
+            icon = module.manifest.icon,
+            upstream = moduleDiagnosticLabel(stream.upstreamProvider),
+            variant = moduleDiagnosticLabel(stream.variant),
+            mimeType = moduleDiagnosticLabel(stream.mimeType),
+            codecs = moduleDiagnosticLabel(stream.codecs),
+            bitrate = stream.bitrate,
+            sampleRate = stream.sampleRate,
+            offline = offline,
+            preparationFailed = preparationFailed,
+        )
+
+    private inline fun <reified T : Throwable> Throwable.hasCause(): Boolean {
+        var throwable: Throwable? = this
+        while (throwable != null) {
+            if (throwable is T) return true
+            throwable = throwable.cause
+        }
+        return false
     }
 
     private suspend fun finishUnrecoveredPlaybackError(error: PlaybackException) {
@@ -8061,8 +8156,39 @@ class MusicService :
             completedDownload = { id ->
                 moduleDownloadUtil.downloadManager.downloadIndex.getDownload(id)?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
             },
-            selected = ::onModuleAudioSelected,
+            selected = ::onModuleSourceOutcome,
         )
+
+    private fun onModuleSourceOutcome(mediaId: String, outcome: ModuleSourceOutcome) {
+        val consulted =
+            if (outcome is ModuleSourceOutcome.Fallback) consultedModules(outcome.startedAtMs) else emptyList()
+        moduleSourceOutcomes[mediaId] = ResolvedModuleSourceOutcome(outcome, consulted)
+        if (moduleSourceOutcomes.size > 256) {
+            moduleSourceOutcomes.keys.filter { it != mediaId }.take(moduleSourceOutcomes.size - 256).forEach(moduleSourceOutcomes::remove)
+        }
+        when (outcome) {
+            is ModuleSourceOutcome.Selected -> onModuleAudioSelected(mediaId, outcome.selection)
+            is ModuleSourceOutcome.Fallback, ModuleSourceOutcome.Bypassed -> onModuleAudioSelected(mediaId, null)
+            is ModuleSourceOutcome.Failed -> Unit
+        }
+    }
+
+    private fun consultedModules(startedAtMs: Long): List<ConsultedModule> {
+        val registry = moduleRepository.state.value ?: return emptyList()
+        if (!registry.enabled) return emptyList()
+        val diagnostics = moduleDiagnostics.state.value
+        return registry.modules
+            .filter { it.enabled }
+            .map { module ->
+                ConsultedModule(
+                    name = module.displayLabel,
+                    status =
+                        diagnostics[module.id]
+                            ?.takeIf { it.atMs >= startedAtMs && it.revision == module.revision }
+                            ?.status,
+                )
+            }
+    }
 
     private fun onModuleAudioSelected(mediaId: String, selection: ModuleAudioSelection?) {
         if (selection == null) {

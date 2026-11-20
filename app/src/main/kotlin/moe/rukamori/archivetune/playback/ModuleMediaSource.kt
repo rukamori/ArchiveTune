@@ -33,7 +33,6 @@ import moe.rukamori.archivetune.modules.ModuleDownloadRepository
 import moe.rukamori.archivetune.modules.ModuleMediaStorage
 import moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase
 import moe.rukamori.archivetune.modules.moduleMatchMetadata
-import java.io.IOException
 
 internal class ModuleMediaSourceFactory(
     private val delegate: MediaSource.Factory,
@@ -41,7 +40,7 @@ internal class ModuleMediaSourceFactory(
     private val bindings: ModuleDownloadRepository,
     private val storage: ModuleMediaStorage,
     private val completedDownload: (String) -> Boolean,
-    private val selected: (String, ModuleAudioSelection?) -> Unit,
+    private val selected: (String, ModuleSourceOutcome) -> Unit,
 ) : MediaSource.Factory by delegate {
     override fun setDrmSessionManagerProvider(drmSessionManagerProvider: DrmSessionManagerProvider): MediaSource.Factory {
         delegate.setDrmSessionManagerProvider(drmSessionManagerProvider)
@@ -68,7 +67,7 @@ private class ModuleMediaSource(
     private val bindings: ModuleDownloadRepository,
     private val storage: ModuleMediaStorage,
     private val completedDownload: (String) -> Boolean,
-    private val selected: (String, ModuleAudioSelection?) -> Unit,
+    private val selected: (String, ModuleSourceOutcome) -> Unit,
 ) : CompositeMediaSource<Unit>() {
     private var scope: CoroutineScope? = null
     private var child: MediaSource? = null
@@ -81,20 +80,37 @@ private class ModuleMediaSource(
         val owner = CoroutineScope(SupervisorJob() + Handler(checkNotNull(Looper.myLooper())).asCoroutineDispatcher())
         scope = owner
         owner.launch {
+            var chosen: ModuleAudioSelection? = null
+            var offline = false
             try {
+                val startedAtMs = System.currentTimeMillis()
                 val result = withContext(Dispatchers.IO) {
                     val completed = completedDownload(item.mediaId)
+                    val consulted = !completed && resolver.enabled()
                     val download = if (completed) bindings.find(item.mediaId) else null
+                    offline = download != null
                     val audio = download ?: if (completed) null else resolver.resolve(item.mediaId, item.metadata?.moduleMatchMetadata())
+                    chosen = audio
                     if (audio != null) storage.record(audio)
-                    audio to (download != null)
+                    audio to consulted
                 }
-                selected(item.mediaId, result.first)
-                val source = result.first?.let { storage.mediaSource(item, it, result.second) } ?: factory.createMediaSource(item)
+                val audio = result.first
+                selected(
+                    item.mediaId,
+                    when {
+                        audio != null -> ModuleSourceOutcome.Selected(audio, offline)
+                        result.second -> ModuleSourceOutcome.Fallback(startedAtMs)
+                        else -> ModuleSourceOutcome.Bypassed
+                    },
+                )
+                val source = audio?.let { storage.mediaSource(item, it, offline) } ?: factory.createMediaSource(item)
                 child = source
                 prepareChildSource(Unit, source)
             } catch (error: CancellationException) { throw error }
-            catch (error: Exception) { failure = IOException("Audio source could not be prepared", error) }
+            catch (error: Exception) {
+                selected(item.mediaId, ModuleSourceOutcome.Failed(chosen, offline))
+                failure = ModuleSourcePreparationException(error)
+            }
         }
     }
 

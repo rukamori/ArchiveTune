@@ -65,6 +65,14 @@ data class ModuleDiagnostic(
 
 data class ModuleHealth(val check: ModuleDiagnostic?, val playback: ModuleDiagnostic?)
 
+val InstalledModule.displayLabel: String get() = metadata?.name ?: manifest.displayName.ifBlank { manifest.name }
+
+val InstalledModule.displayAuthor: String get() = metadata?.author ?: manifest.author
+
+private val ModuleDiagnosticLabelPattern = Regex("[\\p{L}\\p{N} _().+/-]*")
+
+fun moduleDiagnosticLabel(value: String): String = value.takeIf { it.length <= 96 && it.matches(ModuleDiagnosticLabelPattern) }.orEmpty()
+
 @Singleton
 class ModuleDiagnostics @Inject constructor() {
     private val mutableState = MutableStateFlow<Map<String, ModuleDiagnostic>>(emptyMap())
