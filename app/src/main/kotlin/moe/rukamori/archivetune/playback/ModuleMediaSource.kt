@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.modules.ModuleDownloadRepository
 import moe.rukamori.archivetune.modules.ModuleMediaStorage
 import moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase
 import moe.rukamori.archivetune.modules.moduleMatchMetadata
+import java.io.IOException
 
 internal class ModuleMediaSourceFactory(
     private val delegate: MediaSource.Factory,
