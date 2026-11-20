@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: auto-sync-stable
 on:
   schedule:
@@ -9,10 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+=======
+name: Auto Sync and Build
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Runs automatically every Monday morning
+  workflow_dispatch: # Adds a button to run it manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+>>>>>>> origin/main
     steps:
       - uses: actions/checkout@v4
         with:
           ref: am-blend
+<<<<<<< HEAD
           fetch-depth: 0
           submodules: false
 
@@ -45,12 +58,24 @@ jobs:
 
       - name: Push Updated Branch
         run: |
+=======
+          
+      - name: Sync with Main Rukamori Repo
+        run: |
+          git config user.name "auto-sync"
+          git config user.email "sync@local"
+          git remote add upstream https://github.com/rukamori/ArchiveTune.git
+          git fetch upstream main
+          # Pulls stable updates but keeps your Apple Music UI safe from overwrites
+          git merge -X ours upstream/main -m "auto-sync stable" || true
+>>>>>>> origin/main
           git push origin am-blend || true
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+<<<<<<< HEAD
 
       - name: Build APK
         run: ./gradlew assembleDebug
@@ -59,4 +84,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: archivetune-stable
+=======
+          
+      - name: Build APK
+        run: ./gradlew assembleDebug
+        
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivetune-apple-ui
+>>>>>>> origin/main
           path: app/build/outputs/apk/debug/*.apk
