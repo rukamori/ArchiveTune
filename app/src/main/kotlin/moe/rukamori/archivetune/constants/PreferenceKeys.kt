@@ -699,6 +699,7 @@ enum class PlayerDesignStyle {
     V9,
     V10,
     V11,
+    FLAMINGO,
 }
 
 /*
