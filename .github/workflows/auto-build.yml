@@ -11,14 +11,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: am-blend
-          # We removed 'submodules: recursive' from here to prevent hard crashes
       
       - name: Initialize Submodules Safely
         run: |
           git submodule sync --recursive
-          # Use protocol v2 which handles missing/rewritten submodule commits much better
           git -c protocol.version=2 submodule update --init --recursive --force || {
-            echo "Warning: Some submodules failed to fetch exact commits. Fetching latest defaults..."
+            echo "Warning: Some submodules failed. Fetching latest defaults..."
             git submodule foreach 'git fetch origin && git checkout $(git remote show origin | grep HEAD | cut -d" " -f5) || true'
             git submodule update --init --recursive || true
           }
@@ -38,6 +36,14 @@ jobs:
           java-version: 21
           
       - name: Build All APKs (Debug, GMS Release, FOSS Release)
+        env:
+          # This passes your saved GitHub Secret into the build process
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          
+          # If you have other signing secrets, add them here like this:
+          # KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          # KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          # KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assemble
         
       - name: Save All APKs
