@@ -1,0 +1,38 @@
+name: Build APKs
+on:
+  push:
+    branches: [ am-blend ]   # triggered by the sync workflow's push
+  workflow_dispatch:         # manual button too
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: am-blend
+
+      - name: Init submodules safely (no crash)
+        run: |
+          git config --global fetch.recurseSubmodules false
+          git submodule sync --recursive || true
+          git submodule update --init --recursive || true
+          git submodule foreach 'git fetch --all || true' || true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build (Debug + GMS + FOSS)
+        env:
+          KEYSTORE_B64:      ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assemble
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archivetune-all
+          path: app/build/outputs/apk/**/*.apk
