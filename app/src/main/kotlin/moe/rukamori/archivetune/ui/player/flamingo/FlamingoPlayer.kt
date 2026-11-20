@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -102,11 +103,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -177,7 +178,6 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.ui.player.LocalLyricsScrollListener
 import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -188,36 +188,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.draw.drawWithContent
-import moe.rukamori.archivetune.LocalStableSystemBarsTopPadding
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AiRomanizeLyricsKey
+import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
-import moe.rukamori.archivetune.constants.AutoAiRomanizeLyricsKey
-import moe.rukamori.archivetune.constants.AutoTranslateExcludedLanguagesKey
-import moe.rukamori.archivetune.constants.AutoTranslateLyricsKey
+import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.FlamingoBackgroundEffectKey
 import moe.rukamori.archivetune.constants.FlamingoShowVolumeBarKey
-import moe.rukamori.archivetune.constants.FlamingoHideSlideBarKey
 import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.codecLabel
-import moe.rukamori.archivetune.db.entities.isLossless
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.move
-import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
-import moe.rukamori.archivetune.ui.component.LocalLiquidGlassTuning
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.PlatformBackdrop
-import moe.rukamori.archivetune.ui.component.layerBackdrop
-import moe.rukamori.archivetune.ui.component.rememberBackdrop
-import moe.rukamori.archivetune.ui.component.rememberLiquidGlassEnabled
-import moe.rukamori.archivetune.ui.menu.AnchoredLyricsOverflowMenu
+import moe.rukamori.archivetune.ui.component.rememberControlledSliderState
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.menu.rememberCastPlayerMenuAction
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
@@ -226,26 +215,18 @@ import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LyricsMenuViewModel
+import moe.rukamori.archivetune.viewmodels.LyricsRenderViewModel
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
-import moe.rukamori.archivetune.canvas.procedural.ProceduralArtworkFallback
-import moe.rukamori.archivetune.constants.ProceduralArtworkEnabledKey
-import moe.rukamori.archivetune.ui.player.CanvasLoopSync
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.platform.LocalConfiguration
-import moe.rukamori.archivetune.ui.player.LocalVideoArtworkState
-import moe.rukamori.archivetune.ui.player.InlineVideoPlayer
-import moe.rukamori.archivetune.ui.player.LocalVideoPlaybackFailed
 import moe.rukamori.archivetune.ui.player.rememberThumbnailSwapState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.clip
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.colorControls
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -471,7 +452,9 @@ fun FlamingoPlayerContent(
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
-        val topInset = LocalStableSystemBarsTopPadding.current
+        // TODO(flamingo): LocalStableSystemBarsTopPadding was never defined here; use the
+        // platform insets directly so the layout keeps its top spacing.
+        val topInset = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
 
         val player = playerConnection.player
 
@@ -480,8 +463,11 @@ fun FlamingoPlayerContent(
 
         val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
         val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
-        val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle()
-        val currentWindowIndex by playerConnection.currentWindowIndex.collectAsStateWithLifecycle()
+        // TODO(flamingo): PlayerConnection exposes a single queue snapshot instead of the
+        // separate queueWindows/currentWindowIndex streams used by the Flamingo port.
+        val queueSnapshot by playerConnection.queue.collectAsStateWithLifecycle()
+        val queueWindows = queueSnapshot.windows
+        val currentWindowIndex = queueSnapshot.currentIndex
 
         val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
 
@@ -497,8 +483,8 @@ fun FlamingoPlayerContent(
             !canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()
         val canvasVisualActive = canvasActive && !videoShowing && !isPreS
 
-        val canvasLoopSync = remember { CanvasLoopSync() }
-
+        // TODO(flamingo): CanvasLoopSync/loopSyncFollower/loopSyncLeader are not supported by
+        // CanvasArtworkPlayer here; canvas instances play independently.
         val canvasBackdropReveal by animateFloatAsState(
             targetValue = if (canvasVisualActive && !landscape) 1f else 0f,
             animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
@@ -680,8 +666,10 @@ fun FlamingoPlayerContent(
         val romanizationOn = aiRomanizeLyricsPref && autoAiRomanizeLyrics
 
         val lyricsMenuViewModel: LyricsMenuViewModel = hiltViewModel()
-        val translationDismissedMediaIds by lyricsMenuViewModel.translationDismissedMediaIds
-            .collectAsStateWithLifecycle()
+        val lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel()
+        val lyricsRenderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
+        // TODO(flamingo): LyricsMenuViewModel has no translationDismissedMediaIds flow here.
+        val translationDismissedMediaIds = FlamingoTranslationDismissedMediaIds
 
         LaunchedEffect(
             mediaMetadata.id,
@@ -698,12 +686,12 @@ fun FlamingoPlayerContent(
             if (text.isBlank() || text == LyricsEntity.LYRICS_NOT_FOUND) return@LaunchedEffect
 
             if (snapshot.source == LyricsEntity.Source.AI_TRANSLATION.value &&
-                LyricsUtils.hasTranslation(text)
+                flamingoHasTranslation(text)
             ) return@LaunchedEffect
 
             if (mediaMetadata.id in translationDismissedMediaIds) return@LaunchedEffect
 
-            if (!LyricsUtils.shouldAutoTranslate(
+            if (!flamingoShouldAutoTranslate(
                     lyrics = text,
                     targetLanguage = translatorTargetLang,
                     excludedLanguageCodes = autoTranslateExcludedLanguages,
@@ -774,7 +762,7 @@ fun FlamingoPlayerContent(
             if (nowPageLambda.value == FlamingoPage.Lyric) {
                 showAnchoredLyricsMenu = true
             } else {
-                menuState.showImmersive {
+                menuState.show {
                     PlayerMenu(
                         mediaMetadata = mediaMetadata,
                         navController = navController,
@@ -819,16 +807,8 @@ fun FlamingoPlayerContent(
         val sliderPositionState = rememberUpdatedState(sliderPosition)
         val lyricsPosProvider = remember { { sliderPositionState.value } }
 
-        val lyricsControlsPoke: (Boolean) -> Unit =
-            remember(showControl, landscape) {
-                { scrolling ->
-                    if (scrolling && !landscape) {
-                        if (!showControl.value) showControl.value = true
-                        lastClickTime.longValue = System.currentTimeMillis()
-                    }
-                }
-            }
-
+        // TODO: LocalLyricsScrollListener was never defined in this codebase; restore the
+        // lyrics scroll notification hook here if LyricsEnhanced gains support for it.
         val glassLayerActive = showAnchoredLyricsMenu || translationPopupOpen || artistPickerOpen
 
         LaunchedEffect(glassLayerActive) {
@@ -985,12 +965,13 @@ fun FlamingoPlayerContent(
                                     ) {
                                         if (twinBackdropHealthy) {
                                             CanvasArtworkPlayer(
+                                                // TODO(flamingo): CanvasArtworkPlayer needs an explicit
+                                                // source; maxVideoEdgePx/loopSyncFollower are unavailable.
+                                                source = CanvasSource.ALL,
                                                 primaryUrl = canvasPrimaryUrl,
                                                 fallbackUrl = canvasFallbackUrl,
                                                 isPlaying = isPlayingStatusLambda.value && canvasSurfacesPlaying,
                                                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                                                maxVideoEdgePx = FlamingoCanvasBackdropMaxVideoEdgePx,
-                                                loopSyncFollower = canvasLoopSync,
                                                 modifier =
                                                     Modifier
                                                         .fillMaxWidth(1f / FlamingoCanvasBackdropUpscale)
@@ -1060,22 +1041,23 @@ fun FlamingoPlayerContent(
                                             label = "FlamingoLyricsRender",
                                         ) { renderKey ->
                                             val (showTranslationLines, showRomanization, _) = renderKey
-                                            CompositionLocalProvider(
-                                                LocalLyricsScrollListener provides lyricsControlsPoke,
-                                            ) {
-                                                LyricsEnhanced(
-                                                    sliderPositionProvider = lyricsPosProvider,
-                                                    lyricsSyncOffset = lyricsSyncOffset,
-                                                    translationVisibleOverride = showTranslationLines,
-                                                    phoneticVisibleOverride = if (showRomanization) null else false,
-                                                    textColorOverride = Color.White,
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .flamingoLyricsEdgeFade(
-                                                            weightLambda = { showControlLambda.value },
-                                                        ),
-                                                )
-                                            }
+                                            // TODO: Restore LocalLyricsScrollListener provisioning once
+                                            // the lyrics component supports scroll notifications again.
+                                            // TODO(flamingo): translationVisibleOverride and
+                                            // phoneticVisibleOverride do not exist on LyricsEnhanced;
+                                            // visibility now comes from the lyrics preferences.
+                                            LyricsEnhanced(
+                                                lyricsState = lyricsRenderState,
+                                                sliderPositionProvider = lyricsPosProvider,
+                                                lyricsSyncOffset = lyricsSyncOffset,
+                                                textColorOverride = Color.White,
+                                                lyricsRenderViewModel = lyricsRenderViewModel,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .flamingoLyricsEdgeFade(
+                                                        weightLambda = { showControlLambda.value },
+                                                    ),
+                                            )
                                         }
                                     }
                                 }
@@ -1215,18 +1197,19 @@ fun FlamingoPlayerContent(
                                             label = "FlamingoLandscapeLyricsRender",
                                         ) { renderKey ->
                                             val (showTranslationLines, showRomanization, _) = renderKey
-                                            CompositionLocalProvider(
-                                                LocalLyricsScrollListener provides lyricsControlsPoke,
-                                            ) {
-                                                LyricsEnhanced(
-                                                    sliderPositionProvider = lyricsPosProvider,
-                                                    lyricsSyncOffset = lyricsSyncOffset,
-                                                    translationVisibleOverride = showTranslationLines,
-                                                    phoneticVisibleOverride = if (showRomanization) null else false,
-                                                    textColorOverride = Color.White,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                )
-                                            }
+                                            // TODO: Restore LocalLyricsScrollListener provisioning once
+                                            // the lyrics component supports scroll notifications again.
+                                            // TODO(flamingo): translationVisibleOverride and
+                                            // phoneticVisibleOverride do not exist on LyricsEnhanced;
+                                            // visibility now comes from the lyrics preferences.
+                                            LyricsEnhanced(
+                                                lyricsState = lyricsRenderState,
+                                                sliderPositionProvider = lyricsPosProvider,
+                                                lyricsSyncOffset = lyricsSyncOffset,
+                                                textColorOverride = Color.White,
+                                                lyricsRenderViewModel = lyricsRenderViewModel,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
                                         }
                                     }
                                 }
@@ -1392,7 +1375,6 @@ fun FlamingoPlayerContent(
                                                     isPlaying = isPlayingStatusLambda.value,
                                                     stageHeight = sharpStageHeight,
                                                     staticArtworkUrl = artworkUrl,
-                                                    loopSyncLeader = canvasLoopSync,
                                                     refreshEpoch = orientationRefreshEpoch,
                                                     surfaceVisible = canvasStageSurfaceActive,
                                                     videoVisualAlpha = stageCanvasPageAlpha,
@@ -2078,7 +2060,9 @@ private fun FlamingoTranslationPopup(
                         R.string.show_translation
                     },
                 ),
-                iconRes = R.drawable.solar_eye,
+                // TODO(flamingo): solar_eye is not a resource here; use the existing Flamingo
+                // translation icon for the toggle.
+                iconRes = R.drawable.flamingo_np_translateon,
                 onClick = onToggleTranslation,
             )
 
@@ -2468,7 +2452,6 @@ private fun FlamingoCanvasStage(
     isPlaying: Boolean,
     stageHeight: Dp?,
     staticArtworkUrl: String?,
-    loopSyncLeader: CanvasLoopSync? = null,
     refreshEpoch: Int = 0,
     surfaceVisible: Boolean = true,
     videoVisualAlpha: Float = 1f,
@@ -2506,6 +2489,9 @@ private fun FlamingoCanvasStage(
             )
             .graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
+                // TODO(flamingo): CanvasArtworkPlayer has no visible/videoAlpha parameters,
+                // so apply the requested stage visibility/alpha at the container level.
+                alpha = if (surfaceVisible) videoVisualAlpha.coerceIn(0f, 1f) else 0f
             }
             .drawWithContent {
                 drawContent()
@@ -2543,25 +2529,20 @@ private fun FlamingoCanvasStage(
                         .graphicsLayer { alpha = staticRevealAlpha },
                 )
             }
-            CanvasArtworkPlayer(
-                primaryUrl = canvasPrimaryUrl,
-                fallbackUrl = canvasFallbackUrl,
-                isPlaying = isPlaying,
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                loopSyncLeader = loopSyncLeader,
-                visible = surfaceVisible,
-                videoAlpha = videoVisualAlpha,
-                onPlaybackAvailabilityChange = { available ->
-                    if (!available) {
-                        canvasFrameReady = false
-                    }
-                },
-                onFirstFrameRendered = {
-                    canvasFrameReady = true
-                },
-                refreshEpoch = refreshEpoch,
-                modifier = Modifier.matchParentSize(),
-            )
+            // TODO(flamingo): loopSyncLeader/refreshEpoch/availability callbacks are not part
+            // of CanvasArtworkPlayer's API here; refreshEpoch re-keys the player and frame
+            // snapshots drive the static artwork cross-fade.
+            key(refreshEpoch) {
+                CanvasArtworkPlayer(
+                    source = CanvasSource.ALL,
+                    primaryUrl = canvasPrimaryUrl,
+                    fallbackUrl = canvasFallbackUrl,
+                    isPlaying = isPlaying,
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                    onFrameCaptured = { bitmap -> canvasFrameReady = bitmap != null },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
         }
     }
 }
@@ -2626,12 +2607,15 @@ private fun FlamingoLandscapeStage(
                     )
                 }
 
+                // TODO(flamingo): CanvasArtworkPlayer has no playback availability callback;
+                // frame snapshots are used to cross-fade away the static artwork.
                 CanvasArtworkPlayer(
+                    source = CanvasSource.ALL,
                     primaryUrl = canvasPrimaryUrl,
                     fallbackUrl = canvasFallbackUrl,
                     isPlaying = isPlaying,
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                    onPlaybackAvailabilityChange = { canvasRendering = it },
+                    onFrameCaptured = { bitmap -> canvasRendering = bitmap != null },
                     modifier = Modifier.matchParentSize(),
                 )
 
@@ -3969,8 +3953,10 @@ private fun FlamingoPlayerControl(
         mutableLongStateOf(0L)
     }
     val context = LocalContext.current
-    val crossfadeMixing by playerConnection.service.crossfadeMixing.collectAsStateWithLifecycle()
-    val automixMixing by moe.rukamori.archivetune.playback.automix.AutoMixUiState.mixing.collectAsStateWithLifecycle()
+    // TODO(flamingo): MusicService has no crossfadeMixing flow; use the persisted crossfade
+    // preference. AutoMixUiState does not exist in this repo, so automix is treated as off.
+    val crossfadeMixing by rememberPreference(CrossfadeEnabledKey, defaultValue = false)
+    val automixMixing = false
     val sliderMixing = crossfadeMixing || automixMixing
     val playedTime = rememberSaveable(key = "FlamingoPlayerControl_playedTime") { mutableStateOf("0:00") }
     val remainingTime =
@@ -4033,10 +4019,17 @@ private fun FlamingoPlayerControl(
                         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
                         label = "flamingoSeekEngage",
                     )
-                    Slider(
+                    // TODO(flamingo): Material3's Slider overload with custom thumb/track
+                    // requires a SliderState; use the repo's controlled-state helper.
+                    val playbackSliderState = rememberControlledSliderState(
                         value = sliderPosition.floatValue,
+                        valueRange = 0f..playingDuration.longValue.toFloat().coerceAtLeast(0f),
+                    )
+                    Slider(
+                        state = playbackSliderState,
                         onValueChange = { newValue ->
                             isSliding.value = true
+                            playbackSliderState.value = newValue
 
                             sliderPosition.floatValue = newValue
                             val newTotalSeconds = newValue.toLong() / 1000
@@ -4055,7 +4048,6 @@ private fun FlamingoPlayerControl(
                             onSliderValueChangeFinished()
                             isSliding.value = false
                         },
-                        valueRange = 0f..playingDuration.longValue.toFloat().coerceAtLeast(0f),
                         colors = SliderDefaults.colors(
                             activeTrackColor = Color.White,
                             inactiveTrackColor = Color(0x0DFFFFFF),
@@ -4375,15 +4367,19 @@ private fun FlamingoVolumeSlider(
                 label = "flamingoVolumeEngage",
             )
 
-            Slider(
+            val volumeSliderState = rememberControlledSliderState(
                 value = animatedProgress.value,
+                valueRange = 0f..1f,
+            )
+            Slider(
+                state = volumeSliderState,
                 onValueChange = { newValue ->
                     sliding.value = true
+                    volumeSliderState.value = newValue
                     sliderPosition.floatValue = newValue
                     onVolumeChange(newValue)
                     onSlider()
                 },
-                valueRange = 0f..1f,
                 colors = SliderDefaults.colors(
                     activeTrackColor = Color.White,
                     inactiveTrackColor = Color(0x0DFFFFFF),
@@ -4591,7 +4587,8 @@ private fun FlamingoQualityIndicator(
                         if (isHiRes || isLossless) {
                             R.drawable.flamingo_quality_lossless
                         } else {
-                            R.drawable.player_graphic_eq
+                            // TODO(flamingo): player_graphic_eq is not a resource here.
+                            R.drawable.graphic_eq
                         },
                     ),
                     contentDescription = "quality_badge",

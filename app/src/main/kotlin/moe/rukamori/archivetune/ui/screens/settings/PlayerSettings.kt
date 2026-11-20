@@ -22,11 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-<<<<<<< HEAD
-=======
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.RadioButton
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,28 +63,11 @@ import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
-<<<<<<< HEAD
 import moe.rukamori.archivetune.constants.UsbBitPerfectDriver
 import moe.rukamori.archivetune.constants.UsbBitPerfectDriverKey
 import moe.rukamori.archivetune.constants.UsbBitPerfectFixedVolumeKey
 import moe.rukamori.archivetune.constants.UsbBitPerfectKey
 import moe.rukamori.archivetune.constants.UsbDacVolumeKey
-=======
-import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.constants.SwipeSensitivityKey
-import moe.rukamori.archivetune.constants.SwipeThumbnailKey
-import moe.rukamori.archivetune.constants.FlamingoBackgroundEffectKey
-import moe.rukamori.archivetune.constants.FlamingoLyricBlurKey
-import moe.rukamori.archivetune.constants.FlamingoLyricFontWeightKey
-import moe.rukamori.archivetune.constants.FlamingoLyricLineBalanceKey
-import moe.rukamori.archivetune.constants.FlamingoShowVolumeBarKey
-import moe.rukamori.archivetune.constants.FlamingoTranslationKey
-import moe.rukamori.archivetune.constants.PlayerDesignStyle
-import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
-import moe.rukamori.archivetune.constants.deserializeArtworkProviderOrder
-import moe.rukamori.archivetune.constants.TidalArtworkFallbackEnabledKey
-import moe.rukamori.archivetune.constants.TidalEnabledKey
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectFallback
 import moe.rukamori.archivetune.playback.bitperfect.BitPerfectOutput
@@ -109,7 +87,6 @@ import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
-<<<<<<< HEAD
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.PlaybackPerformanceSettingsUiState
 import moe.rukamori.archivetune.viewmodels.PlaybackPerformanceSettingsViewModel
@@ -185,48 +162,6 @@ fun PlayerSettings(navController: NavController) {
             AudioQualityKey,
             defaultValue = AudioQuality.AUTO,
         )
-=======
-import moe.rukamori.archivetune.utils.CanvasResolverEndpoints
-import moe.rukamori.archivetune.utils.rememberPreference
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
-import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.asPaddingValues
-import moe.rukamori.archivetune.ui.screens.ScreenHeaderHaze
-import moe.rukamori.archivetune.ui.screens.rememberScreenHeaderHaze
-import moe.rukamori.archivetune.LocalStableSystemBarsTopPadding
-import dev.chrisbanes.haze.hazeSource
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import moe.rukamori.archivetune.ui.component.SettingsPageTopBar
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PlayerSettings(navController: NavController, scrollTo: String? = null) {
-    val playerDesignStyle by rememberEnumPreference(
-        key = PlayerDesignStyleKey,
-        defaultValue = PlayerDesignStyle.V4,
-    )
-
-    val (flamingoBackgroundEffect, onFlamingoBackgroundEffectChange) =
-        rememberPreference(FlamingoBackgroundEffectKey, defaultValue = false)
-    val (flamingoShowVolumeBar, onFlamingoShowVolumeBarChange) =
-        rememberPreference(FlamingoShowVolumeBarKey, defaultValue = true)
-    val (flamingoLyricBlur, onFlamingoLyricBlurChange) =
-        rememberPreference(FlamingoLyricBlurKey, defaultValue = false)
-    val (flamingoTranslation, onFlamingoTranslationChange) =
-        rememberPreference(FlamingoTranslationKey, defaultValue = true)
-    val (flamingoLyricLineBalance, onFlamingoLyricLineBalanceChange) =
-        rememberPreference(FlamingoLyricLineBalanceKey, defaultValue = false)
-    val (flamingoLyricFontWeight, onFlamingoLyricFontWeightChange) =
-        rememberPreference(FlamingoLyricFontWeightKey, defaultValue = "ExtraBold")
-    var showFlamingoFontWeightDialog by remember { mutableStateOf(false) }
-
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
     val (persistentQueue, onPersistentQueueChange) =
         rememberPreference(
             PersistentQueueKey,
@@ -386,58 +321,12 @@ fun PlayerSettings(navController: NavController, scrollTo: String? = null) {
         )
     }
 
-<<<<<<< HEAD
     SponsorBlockApiUrlDialog(
         state = sponsorBlockSettingsState,
         onValueChange = onSponsorBlockApiUrlDraftChange,
         onConfirm = onSponsorBlockApiUrlConfirm,
         onDismiss = onSponsorBlockApiUrlEditorDismiss,
     )
-=======
-    if (showFlamingoFontWeightDialog) {
-        val fontWeights = listOf(
-            "Thin", "ExtraLight", "Light", "Regular", "Medium",
-            "SemiBold", "Bold", "ExtraBold", "Black",
-        )
-        DefaultDialog(
-            onDismiss = { showFlamingoFontWeightDialog = false },
-            buttons = {
-                TextButton(
-                    onClick = { showFlamingoFontWeightDialog = false },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        ) {
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                fontWeights.forEach { weightName ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = weightName == flamingoLyricFontWeight,
-                            onClick = {
-                                onFlamingoLyricFontWeightChange(weightName)
-                                showFlamingoFontWeightDialog = false
-                            },
-                        )
-                        Text(
-                            text = weightName,
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    val headerHaze = rememberScreenHeaderHaze()
-    val systemBarsTopPadding = LocalStableSystemBarsTopPadding.current
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
 
     Scaffold(
         topBar = {
@@ -485,7 +374,6 @@ fun PlayerSettings(navController: NavController, scrollTo: String? = null) {
                     )
                 }
 
-<<<<<<< HEAD
                 playbackPerformancePreferences(
                     state = playbackPerformanceSettingsState,
                     onLowDataModeChange = onLowDataModeChange,
@@ -493,77 +381,6 @@ fun PlayerSettings(navController: NavController, scrollTo: String? = null) {
                     onRetry = onPlaybackPerformanceRetry,
                 )
 
-=======
-            if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
-                PreferenceGroup(
-                    title = stringResource(R.string.flamingo_settings_section_title),
-                ) {
-                    item {
-                        SwitchPreference(
-                            title = { Text(stringResource(R.string.flamingo_settings_background_effect)) },
-                            description = stringResource(R.string.flamingo_settings_background_effect_desc),
-                            icon = { Icon(painterResource(R.drawable.flamingo_np_airplay), null) },
-                            checked = flamingoBackgroundEffect,
-                            onCheckedChange = onFlamingoBackgroundEffectChange,
-                        )
-                    }
-
-                    item {
-                        SwitchPreference(
-                            title = { Text(stringResource(R.string.flamingo_settings_volume_bar)) },
-                            description = stringResource(R.string.flamingo_settings_volume_bar_desc),
-                            icon = { Icon(painterResource(R.drawable.flamingo_np_volume), null) },
-                            checked = flamingoShowVolumeBar,
-                            onCheckedChange = onFlamingoShowVolumeBarChange,
-                        )
-                    }
-
-                    item {
-                        SwitchPreference(
-                            title = { Text(stringResource(R.string.flamingo_settings_lyric_blur)) },
-                            description = stringResource(R.string.flamingo_settings_lyric_blur_desc),
-                            icon = { Icon(painterResource(R.drawable.flamingo_np_lyrics), null) },
-                            checked = flamingoLyricBlur,
-                            onCheckedChange = onFlamingoLyricBlurChange,
-                        )
-                    }
-
-                    item {
-                        SwitchPreference(
-                            title = { Text(stringResource(R.string.flamingo_settings_lyric_translation)) },
-                            description = stringResource(R.string.flamingo_settings_lyric_translation_desc),
-                            icon = { Icon(painterResource(R.drawable.flamingo_np_translate), null) },
-                            checked = flamingoTranslation,
-                            onCheckedChange = onFlamingoTranslationChange,
-                        )
-                    }
-
-                    item {
-                        SwitchPreference(
-                            title = { Text(stringResource(R.string.flamingo_settings_lyric_line_balance)) },
-                            description = stringResource(R.string.flamingo_settings_lyric_line_balance_desc),
-                            icon = { Icon(painterResource(R.drawable.flamingo_queue_reorder), null) },
-                            checked = flamingoLyricLineBalance,
-                            onCheckedChange = onFlamingoLyricLineBalanceChange,
-                        )
-                    }
-
-                    item {
-                        PreferenceEntry(
-                            title = { Text(stringResource(R.string.flamingo_settings_lyric_font_weight)) },
-                            description = flamingoLyricFontWeight,
-                            icon = { Icon(painterResource(R.drawable.flamingo_np_favorite), null) },
-                            onClick = { showFlamingoFontWeightDialog = true },
-                        )
-                    }
-                }
-            }
-
-            PreferenceGroup(
-                modifier = positions.modifierFor("enable_video_playback"),
-                title = stringResource(R.string.video_playback),
-            ) {
->>>>>>> 2b69bdc8c (feat(player): replace Apple Music style with complete Flamingo player port — NowPlaying layout, karaoke lyric view, floating-light background, queue page, icons, and settings (from Flamingo, GPLv3))
                 item {
                     SliderPreference(
                         title = { Text(stringResource(R.string.history_duration)) },

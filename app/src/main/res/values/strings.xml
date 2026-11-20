@@ -1826,4 +1826,9 @@
     <string name="flamingo_settings_lyric_font_weight">Lyric font weight</string>
     <string name="flamingo_settings_lyric_line_balance">Balanced lyric lines</string>
     <string name="flamingo_settings_lyric_line_balance_desc">Balance line breaks across lyric lines</string>
+    <!-- TODO(flamingo): strings used by the ported translation/romanization popup. -->
+    <string name="hide_translation">Hide translation</string>
+    <string name="show_translation">Show translation</string>
+    <string name="hide_romanization">Hide romanization</string>
+    <string name="show_romanization">Show romanization</string>
 </resources>
