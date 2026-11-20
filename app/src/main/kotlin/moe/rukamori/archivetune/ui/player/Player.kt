@@ -189,7 +189,6 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
-import moe.rukamori.archivetune.ui.player.flamingo.FlamingoPlayerContent
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerEvent
 import moe.rukamori.archivetune.ui.player.immersive.ImmersivePlayerScreen
 import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
@@ -1333,10 +1332,6 @@ fun BottomSheetPlayer(
             )
         }
 
-        val positionProvider: () -> Long = { sliderPosition ?: position }
-        var isAppleMusicInlineLyricsOpen by rememberSaveable { mutableStateOf(false) }
-        var orientationRefreshEpoch by remember { mutableIntStateOf(0) }
-
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isLandscape = maxWidth > maxHeight
 
@@ -1669,42 +1664,6 @@ fun BottomSheetPlayer(
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
-                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
-                    enrichedMetadata?.let { metadata ->
-                        FlamingoPlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            positionProvider = positionProvider,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            bottomSheetPageState = bottomSheetPageState,
-                            currentSongLiked = currentSongLiked,
-                            volume = deviceMusicVolumeController.volumeFraction,
-                            onVolumeChange = onPlayerVolumeChange,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            currentFormat = currentFormat,
-                            contentBottomPadding = queueCollapsedHeight + 20.dp,
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            lyricsSyncOffset = lyricsSyncOffset,
-                            onLyricsSyncOffsetChange = { lyricsSyncOffsetViewModel.setOffset(metadata.id, it) },
-                            onLyricsVisibilityChange = { isAppleMusicInlineLyricsOpen = it },
-                            landscape = true,
-                            orientationRefreshEpoch = orientationRefreshEpoch,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                    }
                 } else if (playerDesignStyle == PlayerDesignStyle.V11) {
                     v11Content(true)
                 } else {
@@ -1998,41 +1957,6 @@ fun BottomSheetPlayer(
                                             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                         ),
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                    }
-                } else if (playerDesignStyle == PlayerDesignStyle.APPLE_MUSIC) {
-                    enrichedMetadata?.let { metadata ->
-                        FlamingoPlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            positionProvider = positionProvider,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            bottomSheetPageState = bottomSheetPageState,
-                            currentSongLiked = currentSongLiked,
-                            volume = deviceMusicVolumeController.volumeFraction,
-                            onVolumeChange = onPlayerVolumeChange,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            currentFormat = currentFormat,
-                            contentBottomPadding = queueCollapsedHeight + 20.dp,
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            lyricsSyncOffset = lyricsSyncOffset,
-                            onLyricsSyncOffsetChange = { lyricsSyncOffsetViewModel.setOffset(metadata.id, it) },
-                            onLyricsVisibilityChange = { isAppleMusicInlineLyricsOpen = it },
-                            orientationRefreshEpoch = orientationRefreshEpoch,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         )
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V11) {
