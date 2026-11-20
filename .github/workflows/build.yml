@@ -25,7 +25,10 @@ jobs:
           java-version: 21
 
       - name: Restore Permanent Keystore
-        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > release.keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > release.keystore
+          # Verify the keystore isn't empty (prevents silent failures)
+          ls -lh release.keystore
 
       - name: Build GMS Release APK
         env:
@@ -38,12 +41,8 @@ jobs:
 
       - name: Sign the APK with Permanent Key
         run: |
-          java -jar uber-apk-signer-1.3.0.jar \
-            --apks $(find app/build/outputs/apk -name "*.apk" | head -n 1) \
-            --ks release.keystore \
-            --ksAlias archive-tune \
-            --ksPass mysecretpassword \
-            --keyPass mysecretpassword
+          # Single line command with explicit JKS type to prevent password prompt errors
+          java -jar uber-apk-signer-1.3.0.jar --apks $(find app/build/outputs/apk -name "*.apk" | head -n 1) --ks release.keystore --ksAlias archive-tune --ksPass mysecretpassword --keyPass mysecretpassword --ksType JKS
 
       - name: Save Signed Release APK
         uses: actions/upload-artifact@v4
