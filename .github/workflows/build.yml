@@ -24,14 +24,16 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Build Debug APK
+      - name: Build GMS and FOSS Phone APKs (Fast)
         env:
-          # This passes your specific secret into the build
           API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
-        run: ./gradlew assembleDebug
-        
-      - name: Save APK
+        # This ONLY builds standard mobile versions (skips TV/Car/Watch/Emulators)
+        run: ./gradlew assembleGmsMobileDebug assembleFossMobileDebug
+
+      - name: Save APKs
         uses: actions/upload-artifact@v4
         with:
-          name: archivetune-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: archivetune-gms-foss-mobile
+          path: |
+            app/build/outputs/apk/gms/mobile/debug/*.apk
+            app/build/outputs/apk/foss/mobile/debug/*.apk
