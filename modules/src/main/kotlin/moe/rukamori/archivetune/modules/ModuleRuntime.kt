@@ -58,8 +58,8 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
             }
         } ?: throw ModuleException(ModuleFailure.TIMEOUT)
 
-    suspend fun search(id: String, source: String, origin: String, query: String, settings: Map<String, String>): List<ModuleTrack> {
-        val result = call(id, source, origin, "searchTracks", JSONArray().put(query).put(10).put(context(settings)))
+    suspend fun search(id: String, source: String, origin: String, query: String, settings: Map<String, String>, song: ModuleSong? = null): List<ModuleTrack> {
+        val result = call(id, source, origin, "searchTracks", JSONArray().put(query).put(10).put(context(settings, song = song)))
         val tracks = when (result) {
             is JSONArray -> result
             is JSONObject -> result.optJSONArray("tracks")
@@ -87,9 +87,10 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
         }
     }
 
-    suspend fun stream(id: String, source: String, origin: String, trackId: String, settings: Map<String, String>, metadata: ModuleTrack? = null): ModuleStream {
+    suspend fun stream(id: String, source: String, origin: String, trackId: String, settings: Map<String, String>, metadata: ModuleTrack? = null,
+        song: ModuleSong? = null): ModuleStream {
         val quality = settings["quality"]?.let(::parseJsonValue) ?: JSONObject.NULL
-        val value = call(id, source, origin, "getTrackStreamUrl", JSONArray().put(trackId).put(quality).put(context(settings, metadata))) as? JSONObject
+        val value = call(id, source, origin, "getTrackStreamUrl", JSONArray().put(trackId).put(quality).put(context(settings, metadata, song))) as? JSONObject
             ?: throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "INVALID_STREAM_RESULT")
         val url = ModuleHttpClient.webUrl(value.text("streamUrl").ifBlank { value.text("url") })
         val track = value.optJSONObject("track") ?: JSONObject()
@@ -397,7 +398,7 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
         else -> ""
     }
 
-    private fun context(settings: Map<String, String>, track: ModuleTrack? = null): JSONObject = JSONObject()
+    private fun context(settings: Map<String, String>, track: ModuleTrack? = null, song: ModuleSong? = null): JSONObject = JSONObject()
         .put("settings", JSONObject().apply {
             settings.forEach { (key, value) -> put(key, JSONObject().put("value", parseJsonValue(value))) }
         }).apply {
@@ -407,5 +408,6 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
                     .put("album", it.album).put("duration", it.durationSeconds).put("explicit", it.explicit).put("isrc", it.identifier)
                 put("track", metadata).put("metadata", metadata).put("item", metadata)
             }
+            put("song", song?.json() ?: JSONObject.NULL)
         }
 }

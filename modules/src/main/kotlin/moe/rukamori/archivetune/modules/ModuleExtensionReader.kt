@@ -16,7 +16,7 @@ import java.io.ByteArrayOutputStream
 import java.net.URI
 
 object ModuleExtensionReader {
-    private val runtimeFeatures = setOf("signedSession@3", "sessionGrant@1", "downloadSegments@1", "preparedContext@1", ModuleAppAttestation.FEATURE)
+    private val runtimeFeatures = setOf("signedSession@3", "sessionGrant@1", "downloadSegments@1", "preparedContext@1", ModuleAppAttestation.FEATURE, ModuleSong.FEATURE)
 
     fun isManifest(value: JSONObject): Boolean = value.opt("name") is String && value.opt("version") is String &&
         (value.has("permissions") || value.optJSONArray("type")?.strings()?.any { it.endsWith("_provider") } == true)

@@ -144,7 +144,7 @@ the credential setting when your service does not need one.
 | `module.qualityLabel` | Optional label for the generated quality setting, defaults to the key `quality`. |
 
 Supported required feature IDs are `fetch@1`, `settings@1`, `streamResolution@1`,
-`packagedIcon@1`, `qualityOptions@1`, and `appAttestation@1`. These describe the host functionality
+`packagedIcon@1`, `qualityOptions@1`, `appAttestation@1`, and `songContext@1`. These describe the host functionality
 implemented by this build. publish the exact app build you verified, not just API v1.
 
 ### Optional icon
@@ -302,8 +302,9 @@ Signature: `searchTracks(query, limit, context)`.
 
 - `query` is a title/primary-artist query created from the existing song.
 - `limit` is currently `10`. Respect it, the host parses at most 100 results.
-- `context.settings` contains typed values. Track context is not supplied to
-  search in API v1.
+- `context.settings` contains typed values.
+- `context.song` describes the ArchiveTune song being resolved, see
+  [Song context](#song-context). Provider track context is not supplied to search.
 
 Return an array of track objects, or an object containing `tracks: [...]`. An
 empty array means the request succeeded and there were no results. Throw on
@@ -335,7 +336,43 @@ Signature: `getTrackStreamUrl(trackId, quality, context)`.
 `trackId` is the selected provider ID. `context.track` contains the selected
 provider candidate: `id`, `title`, `artist`, `artists`, and known album, duration,
 explicit, and ISRC fields. `context.metadata` and `context.item` are aliases of
-that same object. This is not a YouTube account or authentication context.
+that same object. `context.song` is the ArchiveTune song that this candidate was
+matched against, see [Song context](#song-context). Neither is a YouTube account
+or authentication context.
+
+### Song context
+
+Both `searchTracks` and `getTrackStreamUrl` receive `context.song`, the metadata
+ArchiveTune holds for the song being resolved. It is read-only and describes
+the song in the user's queue or library, not your provider's result. Every key is
+always present. Unknown values are `null`, never guessed or empty placeholders.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | ArchiveTune song ID. For online songs this is the YouTube Music video ID. |
+| `title` | Displayed song title. |
+| `artist` | Artist names joined with `, `. |
+| `artists` | Array of artist-name strings, in credit order. |
+| `artistDetails` | Array of `{name, id}` objects in the same order. `id` is the YouTube Music channel/browse ID, or `null`. |
+| `album` / `albumId` | Album title and YouTube Music album browse ID. |
+| `albumArtist` | Album artist credit when known. |
+| `duration` / `durationMs` | Running time in seconds and milliseconds. |
+| `explicit` | `true` when the source marks the song explicit, otherwise `null`. `false` is never asserted because the source does not reliably report it. |
+| `year` | Release year. |
+| `trackNumber` / `discNumber` | Position on the album. |
+| `thumbnailUrl` | Artwork URL as stored by ArchiveTune. |
+| `query` | The exact search string passed as `query`. |
+
+ISRC, lyrics, and personal library data such as likes, play counts, or download
+state are not included. ArchiveTune does not hold verified ISRCs for its songs.
+Use this context to build provider-specific lookups, such as an album search or
+duration filter. ArchiveTune's own matcher still decides which candidate is
+accepted. When a stream is refreshed after expiry, `context.song` is filled again
+from the library. It is `null` only when the song is no longer known there.
+
+Declare `songContext@1` in `requiredRuntimeFeatures` when your module cannot work
+without this object. Older builds then refuse installation instead of passing
+`undefined`.
 
 Return a JSON-serializable object describing an accessible audio resource:
 
@@ -845,7 +882,7 @@ An imported extension's `minAppVersion` refers to its originating host. It is re
 extension data, not compared numerically with ArchiveTune's version. Required
 runtime features determine host compatibility. This implementation recognizes
 `signedSession@3`, `sessionGrant@1`, `downloadSegments@1`,
-`preparedContext@1`, and `appAttestation@1`, `apiV3@1` is not implemented.
+`preparedContext@1`, `appAttestation@1`, and `songContext@1`, `apiV3@1` is not implemented.
 
 ### Authoring a compatible `.arch`
 
@@ -868,8 +905,8 @@ ArchiveTune even when the extension runtime is selected.
 | --- | --- |
 | `registerExtension(object)` | Exactly one registration with callable track-search and download methods is required. |
 | `initialize(settings)` | Receives flat, typed setting values. Initialization runs when that engine's configuration changes, a returned `false` fails the operation. |
-| `searchTracks(query, limit)` | Results are mapped from extension fields such as `name`, `artists`, `album_name`, and `duration_ms` before the existing recording matcher runs. |
-| `download(id, quality, outputPath, onProgress, options)` | Runs in transfer-resolution mode. The host captures the first file-transfer request and stops the extension's download pipeline there. No successful file download or local output path is fabricated. |
+| `searchTracks(query, limit, options)` | `options.song` is the [song context](#song-context). Results are mapped from extension fields such as `name`, `artists`, `album_name`, and `duration_ms` before the existing recording matcher runs. |
+| `download(id, quality, outputPath, onProgress, options)` | `options.song` is the [song context](#song-context). Runs in transfer-resolution mode. The host captures the first file-transfer request and stops the extension's download pipeline there. No successful file download or local output path is fabricated. |
 | `http.get/head/delete(url, headers)` | Synchronous, cancellable HTTP with status, body, final URL, headers, and permission checks. Nested `headers`/`params` options are accepted for GET helpers. |
 | `http.post/put/patch(url, body, headers)` | String bodies are preserved, object bodies are JSON encoded. Content type defaults to JSON when a body is present. |
 | `http.request(url, options)` | Generic synchronous request with `method`, `headers`, and `body`. |

@@ -30,10 +30,35 @@ data class ModuleMatchMetadata(
     val duration: Int,
     val explicit: Boolean?,
     val eligible: Boolean,
+    val id: String = "",
+    val artistIds: List<String?> = emptyList(),
+    val albumId: String? = null,
+    val albumArtist: String? = null,
+    val year: Int? = null,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
+    val thumbnailUrl: String? = null,
 )
 
 fun MediaMetadata.moduleMatchMetadata() = ModuleMatchMetadata(title, artists.map { it.name }, album?.title,
-    duration, explicit.takeIf { it }, !id.isLocalMediaId() && !isPodcast && !isMusicVideo)
+    duration, explicit.takeIf { it }, !id.isLocalMediaId() && !isPodcast && !isMusicVideo,
+    id, artists.map { it.id }, album?.id, albumArtist, year, trackNumber, discNumber, thumbnailUrl)
+
+internal fun ModuleMatchMetadata.moduleSong(originalId: String): ModuleSong = ModuleSong(
+    id = id.ifBlank { originalId },
+    title = title,
+    artists = artists.mapIndexed { index, name -> ModuleSongArtist(name, artistIds.getOrNull(index)?.takeIf(String::isNotBlank)) },
+    album = album?.takeIf(String::isNotBlank),
+    albumId = albumId?.takeIf(String::isNotBlank),
+    albumArtist = albumArtist?.takeIf(String::isNotBlank),
+    durationSeconds = duration.takeIf { it > 0 },
+    explicit = explicit,
+    year = year?.takeIf { it > 0 },
+    trackNumber = trackNumber?.takeIf { it > 0 },
+    discNumber = discNumber?.takeIf { it > 0 },
+    thumbnailUrl = thumbnailUrl?.takeIf(String::isNotBlank),
+    query = ModuleTrackMatcher.query(this),
+)
 
 data class ModuleAudioSelection(
     val originalId: String,
@@ -42,6 +67,7 @@ data class ModuleAudioSelection(
     val stream: ModuleStream,
     val cacheKey: String,
     val metadata: ModuleTrack? = null,
+    val song: ModuleMatchMetadata? = null,
 )
 
 enum class ModuleCheckStatus { READY, CONFIGURATION, UNAVAILABLE, FAILED, NO_MATCH, RESOLVED, TIMEOUT }
@@ -92,7 +118,9 @@ class ModuleTrackMetadataRepository @Inject constructor(private val database: Mu
         database.withTransaction {
             getSongByIdBlocking(id)?.let { item ->
                 ModuleMatchMetadata(item.title, item.artists.map { it.name }, item.song.albumName, item.song.duration,
-                    item.song.explicit.takeIf { it }, !item.song.isLocal && !item.song.isPodcast && !item.song.isMusicVideo)
+                    item.song.explicit.takeIf { it }, !item.song.isLocal && !item.song.isPodcast && !item.song.isMusicVideo,
+                    item.song.id, item.artists.map { it.id }, item.song.albumId, item.song.albumArtist, item.song.year,
+                    item.song.trackNumber, item.song.discNumber, item.song.thumbnailUrl)
             }
         }
     }
@@ -151,7 +179,7 @@ class ResolveModuleAudioUseCase @Inject constructor(
                         val candidate = withTimeoutOrNull(15_000) {
                             ModuleRepository.validateConfiguration(module.manifest, module.configuration)
                             val tracks = repository.runtime.search(engineId(module), module.source, module.origin,
-                                ModuleTrackMatcher.query(target), module.configuration)
+                                ModuleTrackMatcher.query(target), module.configuration, target.moduleSong(id))
                             candidateCount = tracks.size
                             phase = ModuleResolutionPhase.MATCH
                             val evaluated = tracks.map { it to ModuleTrackMatcher.evaluate(target, it) }
@@ -164,7 +192,7 @@ class ResolveModuleAudioUseCase @Inject constructor(
                                 null
                             } else {
                                 phase = ModuleResolutionPhase.STREAM
-                                selection(id, module, match.id, match)
+                                selection(id, module, match.id, match, target)
                             }
                             completed = true
                             result
@@ -204,7 +232,8 @@ class ResolveModuleAudioUseCase @Inject constructor(
 
     suspend fun refresh(selection: ModuleAudioSelection): ModuleAudioSelection {
         if (selection.stream.expiresAtMs > System.currentTimeMillis() + 60_000) return selection
-        val refreshed = this.selection(selection.originalId, selection.module, selection.trackId, selection.metadata)
+        val song = selection.song ?: metadataRepository.get(selection.originalId)
+        val refreshed = this.selection(selection.originalId, selection.module, selection.trackId, selection.metadata, song)
         if (refreshed.cacheKey != selection.cacheKey ||
             (selection.stream.contentLength > 0 && refreshed.stream.contentLength > 0 && selection.stream.contentLength != refreshed.stream.contentLength)) {
             throw ModuleException(ModuleFailure.EXECUTION)
@@ -212,12 +241,14 @@ class ResolveModuleAudioUseCase @Inject constructor(
         return refreshed
     }
 
-    private suspend fun selection(id: String, module: InstalledModule, trackId: String, metadata: ModuleTrack?): ModuleAudioSelection {
-        val stream = repository.runtime.stream(engineId(module), module.source, module.origin, trackId, module.configuration, metadata)
+    private suspend fun selection(id: String, module: InstalledModule, trackId: String, metadata: ModuleTrack?,
+        song: ModuleMatchMetadata?): ModuleAudioSelection {
+        val stream = repository.runtime.stream(engineId(module), module.source, module.origin, trackId, module.configuration, metadata,
+            song?.moduleSong(id))
         val identity = listOf(id, module.id, module.revision, trackId, stream.upstreamProvider, stream.upstreamId, stream.variant, stream.mimeType, stream.codecs,
             stream.bitrate.toString(), stream.sampleRate?.toString().orEmpty()).joinToString("") { "${it.length}:$it" }
         val digest = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
-        return ModuleAudioSelection(id, module, trackId, stream, "module:$digest", metadata)
+        return ModuleAudioSelection(id, module, trackId, stream, "module:$digest", metadata, song)
     }
 
     fun invalidateFailures(moduleId: String) {

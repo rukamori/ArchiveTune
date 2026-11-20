@@ -141,7 +141,7 @@ fun moduleIcon(encoded: String): ByteString {
 }
 
 fun ModuleManifest.requireCompatible(appVersion: String) {
-    val features = setOf("fetch@1", "settings@1", "streamResolution@1", "packagedIcon@1", "qualityOptions@1", ModuleAppAttestation.FEATURE)
+    val features = setOf("fetch@1", "settings@1", "streamResolution@1", "packagedIcon@1", "qualityOptions@1", ModuleAppAttestation.FEATURE, ModuleSong.FEATURE)
     if (requiredRuntimeFeatures.any { it !in features }) throw ModuleException(ModuleFailure.UNSUPPORTED,
         stage = ModuleLoadStage.MANIFEST, diagnosticCode = "ARCH_RUNTIME_FEATURE")
     if (minAppVersion.isBlank()) return
@@ -161,6 +161,46 @@ data class ModuleTrack(
     val explicit: Boolean?,
     val identifier: String?,
 )
+
+data class ModuleSongArtist(val name: String, val id: String?)
+
+data class ModuleSong(
+    val id: String,
+    val title: String,
+    val artists: List<ModuleSongArtist>,
+    val album: String?,
+    val albumId: String?,
+    val albumArtist: String?,
+    val durationSeconds: Int?,
+    val explicit: Boolean?,
+    val year: Int?,
+    val trackNumber: Int?,
+    val discNumber: Int?,
+    val thumbnailUrl: String?,
+    val query: String,
+) {
+    fun json(): JSONObject = JSONObject()
+        .put("id", id)
+        .put("title", title)
+        .put("artist", artists.joinToString(", ") { it.name })
+        .put("artists", JSONArray(artists.map { it.name }))
+        .put("artistDetails", JSONArray(artists.map { JSONObject().put("name", it.name).put("id", it.id ?: JSONObject.NULL) }))
+        .put("album", album ?: JSONObject.NULL)
+        .put("albumId", albumId ?: JSONObject.NULL)
+        .put("albumArtist", albumArtist ?: JSONObject.NULL)
+        .put("duration", durationSeconds ?: JSONObject.NULL)
+        .put("durationMs", durationSeconds?.let { it * 1000L } ?: JSONObject.NULL)
+        .put("explicit", explicit ?: JSONObject.NULL)
+        .put("year", year ?: JSONObject.NULL)
+        .put("trackNumber", trackNumber ?: JSONObject.NULL)
+        .put("discNumber", discNumber ?: JSONObject.NULL)
+        .put("thumbnailUrl", thumbnailUrl ?: JSONObject.NULL)
+        .put("query", query)
+
+    companion object {
+        const val FEATURE = "songContext@1"
+    }
+}
 
 data class ModuleStream(
     val url: String,

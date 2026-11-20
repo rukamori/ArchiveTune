@@ -180,7 +180,7 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
   const provider={...metadata,authentication:!!metadata.signedSession,
     async searchTracks(query,limit,context) {
       await start(context);
-      const result=await registered.searchTracks(query,limit);
+      const result=await registered.searchTracks(query,limit,{song:context?.song ?? null});
       const values=Array.isArray(result)?result:result?.tracks;
       if (!Array.isArray(values)) throw new TypeError('Invalid extension search result');
       prepared.clear();
@@ -192,7 +192,7 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
       await start(context);
       let outcome;
       try {
-        outcome=await registered.download(id,quality,'/resolved/audio',()=>{}, {duration_ms:(context?.track?.duration || 0)*1000,preparedContext:prepared.get(String(id))});
+        outcome=await registered.download(id,quality,'/resolved/audio',()=>{}, {duration_ms:(context?.track?.duration || 0)*1000,preparedContext:prepared.get(String(id)),song:context?.song ?? null});
       } catch(error) { if (!transfer) throw error; }
       if (!transfer) {
         const error=new Error('Extension did not resolve a playable transfer');
