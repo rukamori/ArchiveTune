@@ -1383,7 +1383,7 @@ class MusicService :
             carMediaButtonPreferences = ::buildAndroidAutoButtons
             adoptQueueContinuation = ::adoptQueueContinuation
         }
-        val mediaSessionBuilder = MediaLibrarySession.Builder(this, player, mediaLibrarySessionCallback)
+        val mediaSessionBuilder = MediaLibrarySession.Builder(this, MediaSessionNavigationPlayer(player), mediaLibrarySessionCallback)
             .setBitmapLoader(CoilBitmapLoader(this, scope))
         if (BuildConfig.DEVICE != "automotive") {
             mediaSessionBuilder.setSessionActivity(
@@ -3818,6 +3818,7 @@ class MusicService :
             .setDisplayName(displayName)
             .setCustomIconResId(iconResId)
             .setSessionCommand(command)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setEnabled(enabled)
             .build()
 

@@ -21,9 +21,9 @@ enum class MediaNotificationAction {
     ;
 
     companion object {
-        const val MAX_ACTIONS = 4
+        const val MAX_ACTIONS = 2
 
-        val DefaultActions: List<MediaNotificationAction> = listOf(LIKE, REPEAT, SHUFFLE, START_RADIO)
+        val DefaultActions: List<MediaNotificationAction> = listOf(LIKE, REPEAT)
 
         fun decode(value: String?): List<MediaNotificationAction> {
             if (value == null) return DefaultActions
